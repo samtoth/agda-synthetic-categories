@@ -1,0 +1,177 @@
+\date{2025-02-22}
+\title{Coherent Isomorphism}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module foundations.CoherentIsomorphism where
+
+open import foundations.universe
+open import foundations.QuasiIsomorphism
+open import foundations.Sigma
+open import foundations.Functions
+open import foundations.FunctionInverses
+open import foundations.Homotopy
+open import foundations.Identity
+}
+% ```
+
+\p{We can upgrade [quasi isomorphism](QuasiIsomorphism.lagda) into a [correct notion of equivalence](st-????) by adding an extra coherence condition, that makes it into a proposition. }
+
+\subtree[stt-000K]{
+\taxon{remark}
+\title{Half adjoint equivalence}
+
+\p{The defintion of a quasi isomorphism involves:}
+
+\ul{
+\li{#{f : A \to B}}
+\li{#{g : B \to A}}
+\li{#{\eta : f \circ g = \id}}
+\li{#{\varepsilon : \id = g \circ f}}
+}
+
+\p{The names #{\eta} and #{\varepsilon} remind us that this looks like the data of an adjunction. But we are missing the laws, often called the zig-zag laws. One of which state that the following 2-cell contracts to the identity:
+}
+
+\quiver{
+% https://q.uiver.app/#q=WzAsNCxbMCwwLCJBIl0sWzIsMiwiQiJdLFs0LDAsIkEiXSxbNiwyLCJCIl0sWzAsMSwiZiIsMl0sWzEsMiwiZyIsMl0sWzIsMywiZiIsMl0sWzAsMiwiXFxpZCIsMCx7InN0eWxlIjp7ImhlYWQiOnsibmFtZSI6Im5vbmUifX19XSxbMSwzLCJcXGlkIiwyLHsic3R5bGUiOnsiaGVhZCI6eyJuYW1lIjoibm9uZSJ9fX1dLFswLDIsIiIsMCx7Im9mZnNldCI6LTEsInN0eWxlIjp7ImhlYWQiOnsibmFtZSI6Im5vbmUifX19XSxbMSwzLCIiLDAseyJvZmZzZXQiOi0xLCJzdHlsZSI6eyJoZWFkIjp7Im5hbWUiOiJub25lIn19fV0sWzcsMSwiXFx2YXJlcHNpbG9uIiwwLHsic2hvcnRlbiI6eyJzb3VyY2UiOjIwLCJ0YXJnZXQiOjMwfX1dLFsyLDgsIlxcZXRhIiwwLHsic2hvcnRlbiI6eyJzb3VyY2UiOjIwLCJ0YXJnZXQiOjIwfX1dXQ==
+\begin{tikzcd}
+	A &&&& A \\
+	\\
+	&& B &&&& B
+	\arrow[""{name=0, anchor=center, inner sep=0}, no head, from=1-1, to=1-5]
+	\arrow["\id", shift left, no head, from=1-1, to=1-5]
+	\arrow["f"', from=1-1, to=3-3]
+	\arrow["f"', from=1-5, to=3-7]
+	\arrow["g"', from=3-3, to=1-5]
+	\arrow[""{name=1, anchor=center, inner sep=0}, "\id"', no head, from=3-3, to=3-7]
+	\arrow[shift left, no head, from=3-3, to=3-7]
+	\arrow["\varepsilon", shorten <=7pt, shorten >=11pt, Rightarrow, from=0, to=3-3]
+	\arrow["\eta", shorten <=7pt, shorten >=7pt, Rightarrow, from=1-5, to=1]
+\end{tikzcd}
+}
+
+\p{In symbols, this is: #{f \cdot \varepsilon \circ \eta \cdot f = \id} (where #{\cdot} denotes horizontal composition and #{\circ} denotes vertical composition).}
+}
+
+\p{Note that in formalisation #{\varepsilon} is a 2-cell in the opposite direction, but since all 2-cells are invertible, this makes no difference to the definition and makes the formalization slightly smoother.}
+
+% ```agda
+\agda{
+is-coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-quasi-iso f → Type (𝓤 ⊔ 𝓥)
+is-coh {f = f} (g , η , ε) = f ◂ ε ＝ η ▸ f
+
+}
+% ```
+
+\subtree{
+\taxon{definition}
+\title{Equivalences}
+
+\p{Of the many equivalent notions of equivelences in HoTT, we will single out coherent isomorphisms as the default one in the library.}
+
+% ```agda
+\agda{
+record is-equiv {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-eqv
+  field
+    qiso     : is-quasi-iso f
+    coherent : is-coh qiso
+
+
+  open _≅_ (mk-iso f qiso) public
+
+
+record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor _,_
+  field
+    fwd : A → B
+    has-is-eqv : is-equiv fwd
+
+  open is-equiv has-is-eqv public
+    
+}
+% ```
+}
+
+\subtree{
+\taxon{theorem}
+
+% HoTT book. 4.2.3
+
+\p{Every quasi-isomorphism can be upgraded to a coherent isomorphism.}
+
+\proof{
+\p{Since we (are soon to) know that being an equivalence is a proposition, and that quasi isomorphisms aren't equivalent to equivalences,
+we know that whatever the map is, it cannot be a section of the obvious map #{\textrm{is-equiv}(f) \to \textrm{is-qiso}(f)}, and so as a
+result we know we will have to be a bit clever about how we choose the 2-cells of our coherent isomorphism.}
+
+\p{The proof goes through by cooking up a 2-cell #{\varepsilon} that makes the coherence go through trivially.
+Working backwards, we need an #{\varepsilon '} such that #{f(\varepsilon') = \eta_f}. }
+
+
+\quiver{
+% https://q.uiver.app/#q=WzAsNSxbMCwwLCJmZ2YiXSxbNiwwLCJmIl0sWzEsMiwiZmdmZ2YiXSxbNCwxLCJmZ2YiXSxbNSwzLCJmZ2YiXSxbMCwxLCJmXFxldGEiXSxbMCwyLCJcXHZhcmVwc2lsb25eey0xfSBmZ2YiLDJdLFsyLDMsIlxcdmFyZXBzaWxvbiBmZ2YiXSxbMywxLCJmXFxldGEiLDJdLFswLDMsIiIsMSx7ImxldmVsIjoyLCJzdHlsZSI6eyJoZWFkIjp7Im5hbWUiOiJub25lIn19fV0sWzIsNCwiZmdmIFxcZXRhIiwwLHsiY3VydmUiOi0xfV0sWzQsMSwiXFx2YXJlcHNpbG9uIGYiLDIseyJjdXJ2ZSI6M31dLFs0LDMsIklJIiwyLHsic2hvcnRlbiI6eyJzb3VyY2UiOjMwLCJ0YXJnZXQiOjIwfSwibGV2ZWwiOjJ9XSxbMiw0LCJmXFxldGFfe2dmfSIsMix7ImN1cnZlIjoyfV0sWzIsOSwiSSIsMix7InNob3J0ZW4iOnsic291cmNlIjozMCwidGFyZ2V0IjozMH19XSxbMTMsMTAsIklJSSIsMix7InNob3J0ZW4iOnsic291cmNlIjoyMCwidGFyZ2V0IjoyMH19XV0=
+\begin{tikzcd}
+	fgf &&&&&& f \\
+	&&&& fgf \\
+	& fgfgf \\
+	&&&&& fgf
+	\arrow["{f\eta}", from=1-1, to=1-7]
+	\arrow[""{name=0, anchor=center, inner sep=0}, equals, from=1-1, to=2-5]
+	\arrow["{\varepsilon^{-1} fgf}"', from=1-1, to=3-2]
+	\arrow["{f\eta}"', from=2-5, to=1-7]
+	\arrow["{\varepsilon fgf}", from=3-2, to=2-5]
+	\arrow[""{name=1, anchor=center, inner sep=0}, "{fgf \eta}", from=3-2, to=4-6]
+	\arrow[""{name=2, anchor=center, inner sep=0}, "{f\eta gf}"', bend right,from=3-2, to=4-6]
+	\arrow["{\varepsilon f}"', bend right, from=4-6, to=1-7]
+	\arrow["2", shorten <=11pt, shorten >=8pt, Rightarrow, from=4-6, to=2-5]
+	\arrow["1"', shorten <=11pt, shorten >=11pt, Rightarrow, from=3-2, to=0]
+	\arrow["3"', shorten <=2pt, shorten >=2pt, Rightarrow, from=2, to=1]
+\end{tikzcd}
+}
+
+
+\p{
+Consider the above diagram, and in particular note that the lower boundary is given by morphisms of the form #{\alpha f} for some alpha.
+By taking the horizontal composition of these #{\alpha}'s gives us our desired #{\epsilon' := \varepsilon^{-1} fg \cdot f \eta g \cdot \varepsilon}. It satisfies the necessary equations by the vertical composite of the cells: 
+}
+
+\ol{
+\li{Trivially follws from paths forming groupoids.}
+\li{The naturality of homotopies.}
+\li{Lemma 2.4.3}
+}
+
+% ```agda
+\agda{
+qiso→equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → is-quasi-iso f → is-equiv f
+qiso→equiv f (g , η , ε) = mk-eqv qiso' coh where
+
+  η' : f ∘ g ~ id
+  η' = (η ~⁻¹) ▸ f ▸ g ~∙
+       f ◂ ε ▸ g       ~∙
+       η
+
+  qiso' : is-quasi-iso f
+  qiso' .fst = g
+  qiso' .snd .fst = η'
+  qiso' .snd .snd = ε
+
+  coh : is-coh qiso'
+  coh = (f ◂ ε)                                       ＝⟨ {!~∙-cancel!} ⟩
+        (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ η ▸ f ▸ g ▸ f ~∙ f ◂ ε ＝⟨ {!!} ⟩~∙⟨ {!homotopy-natural !} ⟩
+        (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ g ◂ f ◂ ε ~∙ η ▸ f ＝⟨ {!!} ⟩~∙⟨ {!homotopy-inverse!} ⟩~∙⟨ {!!} ⟩
+        (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ ε ▸ g ▸ f ~∙ η ▸ f ＝⟨⟩
+        η' ▸ f ∎
+
+
+}
+% ```
+
+
+}
+
+}

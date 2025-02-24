@@ -1,0 +1,67 @@
+\date{2025-02-24}
+\title{Characterising the Path Space of Sigma Types}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module foundations.SigmaPath where
+
+open import foundations.universe
+open import foundations.Sigma
+open import foundations.Identity
+open import foundations.DependentIdentity
+open import foundations.Homotopy
+open import foundations.FunctionInverses
+open import foundations.CoherentIsomorphism
+open import foundations.QuasiIsomorphism
+}
+% ```
+
+
+\subtree{
+\taxon{theorem}
+
+\p{Given two terms #{(x_1 , x_2) , (y_1 , y_2) : \Sigma_{(a:A)}B(a)}, we have #{(x_1,x_2) = (y_1,y_2) \simeq
+\Sigma_{(p : x_1 = y_1)}(x_2 =_B^p y_2)}  }
+
+}
+
+% ```agda
+\agda{
+Σ-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B} → (Σ (x .fst ＝ y .fst) λ p → IdP B (x .snd) p (y .snd)) ≃ (x ＝ y)
+Σ-path {x = x1 , x2} {y1 , y2} = qiso→equiv (mk-iso to-path (from-path , sec , ret)) where
+  to-path : Σ (x1 ＝ y1) (λ p → IdP _ x2 p y2) → (x1 , x2) ＝ (y1 , y2)
+  to-path (refl , refl) = refl
+
+  from-path : (x1 , x2) ＝ (y1 , y2) →
+            Σ (x1 ＝ y1) (λ p → IdP _ x2 p y2)
+  from-path refl = refl , refl
+
+  sec : section-witness to-path from-path
+  sec refl = refl
+
+  ret : retract-witness to-path from-path
+  ret (refl , refl) = refl
+
+Σ-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B} → (Σ (x .fst ＝ y .fst) λ p → IdP B (x .snd) p (y .snd)) → (x ＝ y)
+Σ-path→ = Σ-path ._≃_.fwd
+
+
+-- TODO: Find a proper place for this lemma - In the presense of univalence - it's trivial because B ＝ B'
+Σ-ap-≃ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B B' : A → Type 𝓥} → ((a : A) → B a ≃ B' a) →  Σ A B ≃ Σ A B'
+Σ-ap-≃ {A = A} {B} {B'} eq = qiso→equiv (mk-iso f iso) where
+  module A x = _≃_ (eq x)
+  open A
+
+  f : Σ A B → Σ A B'
+  f (a , b) = a , fwd a b
+
+  iso : is-quasi-iso f
+  iso .fst (a , b) = a , bwd a b
+  iso .snd .fst (a , b) = Σ-path→ (refl , section-fwd a .snd b)
+  iso .snd .snd (a , b) = Σ-path→ (refl , retract-fwd a .snd b)
+
+
+}
+% ```

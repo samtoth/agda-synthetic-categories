@@ -61,8 +61,8 @@ open import foundations.PathReasoning
 
 % ```agda
 \agda{
-is-coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-quasi-iso f → Type (𝓤 ⊔ 𝓥)
-is-coh {f = f} (g , η , ε) = f ◂ ε ~ η ▸ f
+qiso-coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-quasi-iso f → Type (𝓤 ⊔ 𝓥)
+qiso-coh {f = f} (g , η , ε) = f ◂ ε ~ η ▸ f
 
 }
 % ```
@@ -79,11 +79,18 @@ record is-equiv {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) : Type
   constructor mk-eqv
   field
     qiso     : is-quasi-iso f
-    coherent : is-coh qiso
+    coherent : qiso-coh qiso
+  
+  has-qiso : A ≅ B
+  has-qiso = mk-iso f qiso
+  
+  open _≅_ has-qiso public hiding (fwd)
 
+  η : f ∘ bwd ~ id
+  η x = section-fwd .snd x
 
-  open _≅_ (mk-iso f qiso) public
-
+  ε : bwd ∘ f ~ id
+  ε x = retract-fwd .snd x
 
 record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
   constructor _,_
@@ -93,11 +100,16 @@ record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) 
 
   open is-equiv has-is-eqv public
     
+equiv→qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ≅ B
+equiv→qiso (_ , has-is-eqv) = has-qiso where open is-equiv has-is-eqv
+
 }
 % ```
 }
 
-\subtree{
+
+
+\subtree[stt-000J]{
 \taxon{theorem}
 
 % HoTT book. 4.2.3
@@ -148,8 +160,8 @@ By taking the horizontal composition of these #{\alpha}'s gives us our desired #
 
 % ```agda
 \agda{
-qiso→equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → is-quasi-iso f → is-equiv f
-qiso→equiv f (g , η , ε) = mk-eqv qiso' coh where
+qiso→is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-quasi-iso f → is-equiv f
+qiso→is-equiv {f = f} (g , η , ε) = mk-eqv qiso' coh where
 
   η' : f ∘ g ~ id
   η' = (η ~⁻¹) ▸ f ▸ g ~∙
@@ -179,18 +191,63 @@ qiso→equiv f (g , η , ε) = mk-eqv qiso' coh where
   lem1 a = ∙.insertr _ {h = η (f (g (f a)))} {i = sym (η (f (g (f a))))} (∙-sym' (η (f (g (f a))))) {_} {ap f (ε a)}
 
 
-  coh : is-coh qiso'
+  coh : qiso-coh qiso'
   coh =   (f ◂ ε)                                       ~⟨ lem1 ⟩
           (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ η ▸ f ▸ g ▸ f ~∙ f ◂ ε ~⟨ ~refl {f = η ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ lem2 ⟩
           (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ g ◂ f ◂ ε ~∙ η ▸ f ~⟨ ~refl {f = η ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ f ⟩~◂⟨ lem3 ⟩~∙⟨ ~refl {f = η ▸ f} ⟩
           (η ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ ε ▸ g ▸ f ~∙ η ▸ f ~⟨⟩
            η' ▸ f                                       ~∎
 
+qiso→equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → A ≃ B
+qiso→equiv (mk-iso fwd fwd-iso) = fwd , (qiso→is-equiv fwd-iso)
 
 }
 % ```
 
 
 }
+}
+
+\transclude{EquivContrFibre.lagda}
+
+
+\subtree{
+\title{Equivalences form an #{\infty}-groupoid over types}
+
+% ```agda
+\agda{
+idequiv : ∀ {𝓤} {A : Type 𝓤} → A ≃ A
+idequiv = id , (mk-eqv (id , ~refl , ~refl) ~refl)
+
+equiv-comp : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+             → A ≃ B → B ≃ C → A ≃ C
+equiv-comp f g = qiso→equiv (comp-iso (equiv→qiso f) (equiv→qiso g))
+
+id→equiv : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
+id→equiv refl = idequiv
+
+_e⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → B ≃ A
+e e⁻¹ = qiso→equiv (equiv→qiso e ≅⁻¹)
+
+≃⟨⟩-syntax : ∀ {𝓤 𝓥 𝓦} (A : Type 𝓤) {B : Type 𝓥} {C : Type 𝓦}
+           → B ≃ C → A ≃ B → A ≃ C
+≃⟨⟩-syntax A g f = equiv-comp f g
+
+
+_≃⟨⟩_ : ∀ {𝓤 𝓥} (A : Type 𝓤) {B : Type 𝓥} → A ≃ B → A ≃ B
+x ≃⟨⟩ x≃y = x≃y
+
+_≃∎ : ∀ {ℓ} (A : Type ℓ) → A ≃ A
+x ≃∎ = idequiv
+
+infix 31 _e⁻¹
+
+infixr 2 ≃⟨⟩-syntax _≃⟨⟩_
+infix  3 _≃∎
+infix 21 _≃_
+
+syntax ≃⟨⟩-syntax x q p = x ≃⟨ p ⟩ q
+}
+% ```
 
 }

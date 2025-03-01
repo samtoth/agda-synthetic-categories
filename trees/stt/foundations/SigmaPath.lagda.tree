@@ -49,24 +49,32 @@ open import foundations.QuasiIsomorphism
 Σ-path→ = Σ-path ._≃_.fwd
 
 
+Σ-path-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+             → x ＝ y → x .fst ＝ y .fst
+Σ-path-fst refl = refl             
 
--- TODO: Find a proper place for this lemma - In the presense of univalence - it's trivial because B ＝ B'
--- Σ-ap-fst-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦} → (f : A ≃ A') → Σ A B ≃ Σ A' (B ∘ _≃_.bwd f)
--- Σ-ap-fst-≃ eq ._≃_.fwd (a , b) = (eq ._≃_.fwd a) , {!!}
--- Σ-ap-fst-≃ eq ._≃_.has-is-eqv = {!!}
+-- TODO: Find a proper place for these lemmas
 
-Σ-ap-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → ((a : A) → B a ≃ B' a) →  Σ A B ≃ Σ A B'
-Σ-ap-≃ {A = A} {B} {B'} eq = qiso→equiv (mk-iso f iso) where
-  module A x = _≃_ (eq x)
+is-fibrewise-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → (∀ a → B a → B' a) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-fibrewise-equiv f = ∀ a → is-equiv (f a) 
+
+totalisation : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦}
+               → (f : ∀ a → B a → B' a) → Σ A B → Σ A B'
+totalisation f (a , b) = (a , f a b)
+
+is-fibrewise-equiv→is-total-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → {f : ∀ a → B a → B' a}
+                                  → is-fibrewise-equiv f → is-equiv (totalisation f)
+is-fibrewise-equiv→is-total-equiv {f = f} feq = qiso→is-equiv iso where
+  module A x = is-equiv (feq x)
   open A
 
-  f : Σ A B → Σ A B'
-  f (a , b) = a , fwd a b
-
-  iso : quasi-iso f
+  iso : quasi-iso (totalisation f)
   iso .fst (a , b) = a , bwd a b
   iso .snd .fst (a , b) = Σ-path→ (refl , retract-fwd a .snd b)
   iso .snd .snd (a , b) = Σ-path→ (refl , section-fwd a .snd b)
+
+Σ-ap-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → ((a : A) → B a ≃ B' a) →  Σ A B ≃ Σ A B'
+Σ-ap-≃ eq = totalisation (_≃_.fwd ∘ eq) , is-fibrewise-equiv→is-total-equiv (_≃_.has-is-eqv ∘ eq)
 
 
 Σ-assoc : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}

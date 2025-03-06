@@ -18,7 +18,7 @@
   <xsl:import href="community-overrides.xsl" />
   
   <!-- My layout -->
-  <!-- <xsl:import href="uts-layout.xsl" /> -->
+  <xsl:import href="layout.xsl" />
 
   <!-- <!-\- My overrides -\-> -->
   <!-- <!-\- Note: Overriding named templates only works when the xlst to be overriden is also imported -\-> -->

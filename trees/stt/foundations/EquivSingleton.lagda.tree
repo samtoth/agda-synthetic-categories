@@ -29,13 +29,14 @@ open import foundations.SingletonClosure
 open import foundations.EquivContrFibre
 open import foundations.SigmaPath
 open import foundations.FibrePath
+open import foundations.TheoremOfChoice
 
 }
 % ```
 
 
 \subtree[stt-000O]{
-% HoTT book 4.2.8
+\meta{HoTT}{4.2.8}
 \taxon{lemma}
 
 \p{If #{f} has a quasi-inverse, then so do ##{f \circ - : (C \to A) \to (C \to B)} ##{- \circ f : (A \to C) \to (B \to C)}}
@@ -69,7 +70,7 @@ postcomp-qinv {f = f} (g , η , ε) = (_∘ g) , η∘ , ε∘ where
 }
 
 \subtree[stt-000Q]{
-% HoTT book 4.2.9
+\meta{HoTT}{4.2.9}
 \taxon{lemma}
 
 
@@ -87,13 +88,13 @@ just the fibre of #{(-\circ f)} at #{\id}. This type is contractible because [[E
 % ```agda
 \agda{
 
-qinv→retracts-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (retract f)
-qinv→retracts-singleton {f = f} fqe = equiv-singleton→singleton {A = fibre (_∘ f) id} (Σ-ap-≃ (λ h → funext-≃ FE))
-                                        (is-equiv→is-contr-map (qiso→is-equiv (postcomp-qinv fqe)) id)
+retracts-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (retract f)
+retracts-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (_∘ f) id} (Σ-ap-≃ (λ h → funext-≃ FE))
+                                        (is-contr-map←is-equiv (qiso→is-equiv (postcomp-qinv fqe)) id)
 
-qinv→section-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (section f)
-qinv→section-singleton {f = f} fqe = equiv-singleton→singleton {A = fibre (f ∘_) id} (Σ-ap-≃ λ h → funext-≃ FE) 
-                                        (is-equiv→is-contr-map (qiso→is-equiv (precomp-qinv fqe)) id)
+section-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (section f)
+section-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (f ∘_) id} (Σ-ap-≃ λ h → funext-≃ FE) 
+                                        (is-contr-map←is-equiv (qiso→is-equiv (precomp-qinv fqe)) id)
 }
 % ```
 }
@@ -110,17 +111,6 @@ qinv→section-singleton {f = f} fqe = equiv-singleton→singleton {A = fibre (f
 \proof{
 % ```agda
 \agda{
-thm-choice : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
-            → (∀ a → Σ (B a) (C a)) ≃ Σ ((a : A) → B a) λ f → ∀ a → C a (f a)
-thm-choice {A = A} {B} {C} = qiso→equiv iso where
-  open _≅_ 
-  iso : (∀ a → Σ (B a) (C a)) ≅  Σ ((a : A) → B a) (λ f → (a : A) → C a (f a))
-  iso .fwd f = (fst ∘ f , snd ∘ f)
-  iso .fwd-iso .fst (f , g) a = f a , g a
-  iso .fwd-iso .snd .fst _ = refl
-  iso .fwd-iso .snd .snd _ = refl
-
-
 Π-ap-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → (∀ a → B a ≃ B' a) → ((a : A) → B a) ≃ ((a : A) → B' a)
 Π-ap-≃ {A = A} {B} {B'} beq = qiso→equiv lem where
   module beq a = _≃_ (beq a)
@@ -139,7 +129,7 @@ section-coherence-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A 
                          → let (g , ε) = sec
                            in (section-coherence f sec) ≃ (∀ (x : A) → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))
 section-coherence-path {f = f} (g , ε)
-  = Σ (g ∘ f ~ id) (λ η → f ◂ η ~ ε ▸ f)                        ≃⟨ thm-choice e⁻¹ ⟩
+  = Σ (g ∘ f ~ id) (λ η → f ◂ η ~ ε ▸ f)                        ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
     (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ＝ ε (f a)))         ≃⟨ Π-ap-≃ (λ _ → Σ-ap-≃ lem) ⟩
     (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ∙ refl ＝ ε (f a)))  ≃⟨ Π-ap-≃ (λ a → fibre-path e⁻¹ ) ⟩
     (∀ x → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))   ≃∎ where
@@ -148,8 +138,8 @@ section-coherence-path {f = f} (g , ε)
 
 section-coherence-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f
                               → (s : section f) → is-singleton (section-coherence f s)
-section-coherence-singleton {f = f} feq s = equiv-singleton→singleton (section-coherence-path s e⁻¹)
-  (Singleton-Π FE λ x → Singleton-Id (is-equiv→is-contr-map feq (f x)) _ _)
+section-coherence-singleton {f = f} feq s = singleton←equiv-to-singleton (section-coherence-path s e⁻¹)
+  (Singleton-Π FE λ x → Singleton-Id (is-contr-map←is-equiv feq (f x)) _ _)
 }
 % ```
 }
@@ -164,8 +154,8 @@ section-coherence-singleton {f = f} feq s = equiv-singleton→singleton (section
 is-equiv-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
                    → {f : A → B} → is-subsingleton (is-equiv f)
 is-equiv-is-prop {f = f} = is-prop←is-single-if-inhabited
-  (λ eq → equiv-singleton→singleton ((qiso→equiv lem) e⁻¹)
-           (Singleton-Σ (qinv→section-singleton (is-equiv.qiso eq ))
+  (λ eq → singleton←equiv-to-singleton ((qiso→equiv lem) e⁻¹)
+           (Singleton-Σ (section-is-single←qinv (is-equiv.qiso eq ))
                         (section-coherence-singleton eq))) where
   lem : is-equiv f ≅ Σ (section f) (section-coherence f)
   lem ._≅_.fwd (mk-eqv (g , η , ε) coh) = (g , ε) , (η , coh)

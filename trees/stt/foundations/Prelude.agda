@@ -15,3 +15,4 @@ open import foundations.SingletonEquivSingleton public
 open import foundations.TheoremOfChoice public
 open import foundations.CurryEquiv public
 open import foundations.IdentityEquiv public
+open import foundations.EquivContrFibre public

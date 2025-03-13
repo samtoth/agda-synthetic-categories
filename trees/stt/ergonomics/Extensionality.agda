@@ -8,8 +8,6 @@ open import foundations.EquivContrFibre
 open import ufAxioms
 open Identity-system public 
 
-
-
 instance
   IdS-default : ∀ {𝓤} {A : Type 𝓤} → Identity-system A 𝓤
   IdS-default .IdS = _＝_

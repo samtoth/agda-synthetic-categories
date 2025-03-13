@@ -48,20 +48,20 @@ precomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B
              → quasi-iso f → quasi-iso {B = C → B} (f ∘_)
 precomp-qinv {f = f} (g , ret , sec) = (g ∘_) , ret∘ , sec∘ where
   sec∘ : section-witness (_∘_ f) (g ∘_)
-  sec∘ h  = funext FE (sec ▸ h)
+  sec∘ h  = WithFunExt.funext→ FE (sec ▸ h)
 
   ret∘ : retract-witness (_∘_ f) (g ∘_)
-  ret∘ h = funext FE (ret ▸ h)
+  ret∘ h = WithFunExt.funext→ FE (ret ▸ h)
 
 
 postcomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
              → quasi-iso f → quasi-iso {B = A → C} (_∘ f)
 postcomp-qinv {f = f} (g , η , ε) = (_∘ g) , η∘ , ε∘ where
   η∘ : retract-witness (_∘ f) (_∘ g)
-  η∘ h = funext FE (h ◂ ε)
+  η∘ h = WithFunExt.funext→ FE (h ◂ ε)
 
   ε∘ : section-witness (_∘ f) (_∘ g)
-  ε∘ h = funext FE (h ◂ η)
+  ε∘ h = WithFunExt.funext→ FE (h ◂ η)
 
 }
 % ```
@@ -89,11 +89,11 @@ just the fibre of #{(-\circ f)} at #{\id}. This type is contractible because [[E
 \agda{
 
 retracts-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (retract f)
-retracts-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (_∘ f) id} (Σ-ap-≃ (λ h → funext-≃ FE))
+retracts-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (_∘ f) id} (Σ-ap-≃ (λ h → WithFunExt.funext≃ FE))
                                         (is-contr-map←is-equiv (is-equiv←qiso (postcomp-qinv fqe)) id)
 
 section-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (section f)
-section-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (f ∘_) id} (Σ-ap-≃ λ h → funext-≃ FE) 
+section-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (f ∘_) id} (Σ-ap-≃ λ h → WithFunExt.funext≃ FE) 
                                         (is-contr-map←is-equiv (is-equiv←qiso (precomp-qinv fqe)) id)
 }
 % ```
@@ -112,14 +112,14 @@ section-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre
 % ```agda
 \agda{
 Π-ap-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → (∀ a → B a ≃ B' a) → ((a : A) → B a) ≃ ((a : A) → B' a)
-Π-ap-≃ {A = A} {B} {B'} beq = qiso→equiv lem where
+Π-ap-≃ {A = A} {B} {B'} beq = equiv←qiso lem where
   module beq a = _≃_ (beq a)
 
   lem : ((a : A) → B a) ≅ ((a : A) → B' a)
   lem ._≅_.fwd x a = beq.fwd a (x a)
   lem ._≅_.fwd-iso .fst x a = beq.bwd a (x a)
-  lem ._≅_.fwd-iso .snd .fst x = funext FE (λ a → beq.retract-fwd a .snd (x a))
-  lem ._≅_.fwd-iso .snd .snd f = funext FE (λ a → beq.section-fwd a .snd (f a))
+  lem ._≅_.fwd-iso .snd .fst x = WithFunExt.funext→ FE (λ a → beq.retract-fwd a .snd (x a))
+  lem ._≅_.fwd-iso .snd .snd f = WithFunExt.funext→ FE (λ a → beq.section-fwd a .snd (f a))
 
   
 section-coherence : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → section f → Type (𝓤 ⊔ 𝓥)
@@ -131,7 +131,7 @@ section-coherence-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A 
 section-coherence-path {f = f} (g , ε)
   = Σ (g ∘ f ~ id) (λ η → f ◂ η ~ ε ▸ f)                        ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
     (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ＝ ε (f a)))         ≃⟨ Π-ap-≃ (λ _ → Σ-ap-≃ lem) ⟩
-    (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ∙ refl ＝ ε (f a)))  ≃⟨ Π-ap-≃ (λ a → fibre-path e⁻¹ ) ⟩
+    (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ∙ refl ＝ ε (f a)))  ≃⟨ Π-ap-≃ (λ a → fibre-path≃ e⁻¹ ) ⟩
     (∀ x → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))   ≃∎ where
    lem : ∀ {a} (p : g (f a) ＝ a) → (ap f p ＝ ε (f a)) ≃ (ap f p ∙ refl ＝ ε (f a))
    lem p = id→equiv (ap (_＝ ε (f _)) (sym (∙-reflr _)))
@@ -154,7 +154,7 @@ section-coherence-singleton {f = f} feq s = singleton←equiv-to-singleton (sect
 is-equiv-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
                    → {f : A → B} → is-subsingleton (is-equiv f)
 is-equiv-is-prop {f = f} = is-prop←is-single-if-inhabited
-  (λ eq → singleton←equiv-to-singleton ((qiso→equiv lem) e⁻¹)
+  (λ eq → singleton←equiv-to-singleton ((equiv←qiso lem) e⁻¹)
            (Singleton-Σ (section-is-single←qinv (is-equiv.qiso eq ))
                         (section-coherence-singleton eq))) where
   lem : is-equiv f ≅ Σ (section f) (section-coherence f)

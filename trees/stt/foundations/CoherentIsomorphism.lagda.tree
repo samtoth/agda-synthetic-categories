@@ -100,6 +100,10 @@ record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) 
 
   open is-equiv has-is-eqv public
     
+
+qiso←is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f → quasi-iso f
+qiso←is-equiv = is-equiv.qiso
+
 qiso←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ≅ B
 qiso←equiv (_ , has-is-eqv) = has-qiso where open is-equiv has-is-eqv
 
@@ -160,47 +164,47 @@ By taking the horizontal composition of these #{\alpha}'s gives us our desired #
 
 % ```agda
 \agda{
-opaque
-  is-equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-equiv f
-  is-equiv←qiso {f = f} (g , η , ε) = mk-eqv qiso' coh where
+is-equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-equiv f
+is-equiv←qiso {f = f} (g , η , ε) = mk-eqv (g , η , ε') coh where opaque
+  ε' : f ∘ g ~ id
+  ε' = (ε ~⁻¹) ▸ f ▸ g ~∙
+       f ◂ η ▸ g       ~∙
+       ε
 
-    ε' : f ∘ g ~ id
-    ε' = (ε ~⁻¹) ▸ f ▸ g ~∙
-         f ◂ η ▸ g       ~∙
-         ε
+  lem3 : g ◂ f ◂ η ~ η ▸ g ▸ f
+  lem3 x = sym (ap-comp g f (η x)) ∙ n where
+    n : (g ∘ f ◂ η) x ＝ (η ▸ g ▸ f) x
+    n = sym (homotopy-inverse (g ∘ f) η x)
 
-    qiso' : quasi-iso f
-    qiso' .fst = g
-    qiso' .snd .fst = η
-    qiso' .snd .snd = ε'
+  lem2 : ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~ f ◂ g ◂ f ◂ η ~∙ ε ▸ f
+  lem2 x = I ∙ ap (_∙ (ε (f x))) (ap-comp f g (ap f (η x))) where
+    I : ε (f (g (f x))) ∙ (ap f (η x)) ＝
+         ap (λ z → (f ∘ g) z) (ap f (η x)) ∙ ε (f x)
+    I = homotopy-natural ε {f (g (f x))} (ap f (η x))
 
-    lem3 : g ◂ f ◂ η ~ η ▸ g ▸ f
-    lem3 x = sym (ap-comp g f (η x)) ∙ n where
-      n : (g ∘ f ◂ η) x ＝ (η ▸ g ▸ f) x
-      n = sym (homotopy-inverse (g ∘ f) η x)
-
-
-
-    lem2 : ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~ f ◂ g ◂ f ◂ η ~∙ ε ▸ f
-    lem2 x = I ∙ ap (_∙ (ε (f x))) (ap-comp f g (ap f (η x))) where
-      I : ε (f (g (f x))) ∙ (ap f (η x)) ＝
-           ap (λ z → (f ∘ g) z) (ap f (η x)) ∙ ε (f x)
-      I = homotopy-natural ε {f (g (f x))} (ap f (η x))
-
-    lem1 : f ◂ η ~
-             ((ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η)
-    lem1 a = ∙.insertr _ {h = ε (f (g (f a)))} {i = sym (ε (f (g (f a))))} (∙-sym' (ε (f (g (f a))))) {_} {ap f (η a)}
+  lem1 : f ◂ η ~
+           ((ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η)
+  lem1 a = ∙.insertr _ {h = ε (f (g (f a)))} {i = sym (ε (f (g (f a))))} (∙-sym' (ε (f (g (f a))))) {_} {ap f (η a)}
 
 
-    coh : qiso-coh qiso'
-    coh =   (f ◂ η)                                       ~⟨ lem1 ⟩
-            (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ lem2 ⟩
-            (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ g ◂ f ◂ η ~∙ ε ▸ f ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ f ⟩~◂⟨ lem3 ⟩~∙⟨ ~refl {f = ε ▸ f} ⟩
-            (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ η ▸ g ▸ f ~∙ ε ▸ f ~⟨⟩
-             ε' ▸ f                                       ~∎
+  coh : qiso-coh (g , η , ε')
+  coh =   (f ◂ η)                                       ~⟨ lem1 ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ lem2 ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ g ◂ f ◂ η ~∙ ε ▸ f ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ f ⟩~◂⟨ lem3 ⟩~∙⟨ ~refl {f = ε ▸ f} ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ η ▸ g ▸ f ~∙ ε ▸ f ~⟨⟩
+           ε' ▸ f                                       ~∎
 
-qiso→equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → A ≃ B
-qiso→equiv (mk-iso fwd fwd-iso) = fwd , (is-equiv←qiso fwd-iso)
+equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → A ≃ B
+equiv←qiso (mk-iso fwd fwd-iso) = fwd , (is-equiv←qiso fwd-iso)
+
+≃-rep≅  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A ≃ B) ≅ Σ (A → B) is-equiv
+≃-rep≅ ._≅_.fwd (f , e) = f , e
+≃-rep≅ ._≅_.fwd-iso .fst (f , e) = f , e
+≃-rep≅ ._≅_.fwd-iso .snd .fst _ = refl
+≃-rep≅ ._≅_.fwd-iso .snd .snd _ = refl
+
+≃-rep : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A ≃ B) ≃ Σ (A → B) is-equiv
+≃-rep = equiv←qiso ≃-rep≅
 }
 % ```
 
@@ -227,13 +231,19 @@ idequiv = id , id-is-equiv
 
 equiv-comp : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
              → A ≃ B → B ≃ C → A ≃ C
-equiv-comp f g = qiso→equiv (comp-iso (qiso←equiv f) (qiso←equiv g))
+equiv-comp (f , e) (g , e') = g ∘ f , is-equiv←qiso (comp-has-qiso (qiso←is-equiv e) (qiso←is-equiv e'))
+
+_∙≃_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+             → A ≃ B → B ≃ C → A ≃ C
+_∙≃_ = equiv-comp 
+
+infix 29 _∙≃_
 
 id→equiv : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
 id→equiv refl = idequiv
 
 _e⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → B ≃ A
-e e⁻¹ = qiso→equiv (qiso←equiv e ≅⁻¹)
+e e⁻¹ = equiv←qiso (qiso←equiv e ≅⁻¹)
 
 ≃⟨⟩-syntax : ∀ {𝓤 𝓥 𝓦} (A : Type 𝓤) {B : Type 𝓥} {C : Type 𝓦}
            → B ≃ C → A ≃ B → A ≃ C

@@ -147,10 +147,22 @@ module _ {M : HigherModality} where
     ＝-Modal : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-○-modal (a ＝ b)
     ＝-Modal = ＝-is-○-modal
 
-  test : ∀ {𝓤} {A : Type 𝓤} → ○ ○ A → ○ A
-  test = ind! ○-η
+    Π-Modal : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → ⦃ _ : ∀ {x} → is-○-modal (B x) ⦄ → is-○-modal (∀ x → B x)
+    Π-Modal = is-equiv←qiso (λ where
+            .fst → λ f a → rec! (λ f → f a) f
+            .snd .fst → λ f → ext! (λ a → ○-β' _ _ _)
+            .snd .snd → λ f → ind! {B = λ f → ○-η (λ x → ○-ind' _ (λ f → f x) f) ＝ f}
+                                   (λ f → ap ○-η (funext→ (λ a → ○-β' _ _ _))) f)
 
 
+
+  ○-elim! : ∀ {𝓤} {A : Type 𝓤} ⦃ _ : is-○-modal A ⦄
+            → ○ A → A
+  ○-elim! = rec! id
+
+  private module test where
+    test : ∀ {𝓤} {A : Type 𝓤} → ○ ○ A → ○ A
+    test = ○-elim!
 }
 % ```
 
@@ -163,12 +175,36 @@ module _ {M : HigherModality} where
 
 % ```agda
 \agda{
-  -- instance
---     Modal-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
---             → ⦃ _ : is-○-modal A ⦄
---             → ⦃ _ : ∀ {x} → is-○-modal (B x) ⦄
---             → is-○-modal (Σ A B)
---     Modal-Σ = {!!}
+  ○-Σ-closed : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+            → ⦃ _ : is-○-modal A ⦄
+            → ⦃ _ : ∀ {x} → is-○-modal (B x) ⦄
+            → is-○-modal (Σ A B)
+  ○-Σ-closed {A = A} {B = B} = is-equiv←qiso I where
+
+    f : ○ Σ A B → A
+    f = rec! (λ a _ → a)
+
+    f-β : ∀ {a : A} {b : B a} → f (○-η (a , b)) ＝ a
+    f-β = ○-β' _ _ _
+
+    g : (x : ○ Σ A B) → B (f x)
+    g = ind! (λ a b → tr B (sym f-β) b)
+
+    g-β : ∀ {a : A} {b : B a} → IdP B b (sym f-β) (g (○-η (a , b)))
+    g-β = sym (○-β' _ _ _)
+
+    I : quasi-iso ○-η
+    I .fst x = f x , g x
+    I .snd .fst (a , b) = Σ-path→ (f-β , symP' B {p = f-β} g-β)
+    I .snd .snd = ind! λ a b → ap ○-η (Σ-path→ (f-β , symP' B {p = f-β} g-β))
+
+
+  instance
+    Modal-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+            → ⦃ _ : is-○-modal A ⦄
+            → ⦃ _ : ∀ {x} → is-○-modal (B x) ⦄
+            → is-○-modal (Σ A B)
+    Modal-Σ = ○-Σ-closed 
 }
 % ```
 

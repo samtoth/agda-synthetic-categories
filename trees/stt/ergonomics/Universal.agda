@@ -68,9 +68,9 @@ Universal←equiv-to-universal eq ua = Universal←Equiv (Univ≃ ua ∙≃ eq)
 
 instance
   Universal-Σ 
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (x : A) → B x → Type 𝓦}
-    → ⦃ _ : Universal ((x : A) (y : B x) → C x y) 𝓦 ⦄
-    → Universal ((x : Σ A B) → C (x .fst) (x .snd)) 𝓦
+    : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : A → Type 𝓥} {C : (x : A) → B x → Type 𝓦}
+    → ⦃ _ : Universal ((x : A) (y : B x) → C x y) 𝓛 ⦄
+    → Universal ((x : Σ A B) → C (x .fst) (x .snd)) 𝓛
   Universal-Σ ⦃ u ⦄ = Universal←equiv-to-universal uncurry≃ u
 
 rec! : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} ⦃ r : Universal (A → B) 𝓦 ⦄ → r .methods → A → B

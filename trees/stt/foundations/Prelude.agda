@@ -18,3 +18,4 @@ open import foundations.IdentityEquiv public
 open import foundations.EquivContrFibre public
 open import foundations.Embedding public
 open import foundations.DependentIdentity public
+open import foundations.EquivOfSingleton public

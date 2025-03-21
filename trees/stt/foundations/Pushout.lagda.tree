@@ -18,6 +18,9 @@ open import foundations.Singleton
 open import foundations.Sigma
 open import foundations.Homotopy
 open import foundations.DependentIdentity
+open import foundations.DependentHomotopy
+open import foundations.SigmaPath
+open import foundations.FunExt
 }
 % ```
 
@@ -80,6 +83,22 @@ record CoconeD {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
     p : (l : Left) → P (p l) 
     q : (r : Right) → P (q r)
     filler : (c : Centre) → IdP P (p (left c)) (filler c) (q (right c))
+
+module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+               {𝓛} {Q : Type 𝓛} {cc : Cocone S Q}
+               {𝓜} {P : Q → Type 𝓜}  where
+  open CoconeD
+  open Span S
+  module cc = Cocone cc
+
+  coconeᵈ-path→ : ∀ {a b : CoconeD S cc P}
+               (pp : a .CoconeD.p ＝ b .CoconeD.p)
+               (qq : a .CoconeD.q ＝ b .CoconeD.q)
+               (filler-path : IdP (λ x → ∀ c → IdP P (x .fst (left c)) (cc.filler c) (x .snd (right c))) (a .filler)
+                              (×-path→ (pp , qq)) (b .filler))
+               → a ＝ b
+  coconeᵈ-path→ {mk-coconeD p₁ q₁ filler₁} {mk-coconeD p₂ q₂ filler₂} refl refl refl = refl
+
 }
 % ```
 }
@@ -121,9 +140,7 @@ record CoconeD {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
 module _ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) where
   construct-cocone : ∀ {𝓛 𝓜} {C : Type 𝓛} (C-cc : Cocone S C)
                 {Q : Type 𝓜} → (C → Q) → Cocone S Q
-  construct-cocone C f .Cocone.p = f ∘ p where open Cocone C
-  construct-cocone C f .Cocone.q = f ∘ q where open Cocone C
-  construct-cocone C f .Cocone.filler a = ap f (filler a) where open Cocone C
+  construct-cocone C f = mk-cocone (f ∘ p) (f ∘ q) λ a → ap f (filler a) where open Cocone C
 
   is-pushout : ∀ {𝓛} {C : Type 𝓛} → Cocone S C → Type _
   is-pushout {𝓛} C = ∀ {Q : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)} → is-equiv (construct-cocone C {Q})
@@ -140,9 +157,7 @@ module _ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) where
                       → {Q : C → Type 𝓜}
                       → ((c : C) → Q c)
                       → CoconeD S C-cc Q 
-  construct-coconeᵈ C f .CoconeD.p = f ∘ p where open Cocone C
-  construct-coconeᵈ C f .CoconeD.q = f ∘ q where open Cocone C
-  construct-coconeᵈ C f .CoconeD.filler c = apᵈ _ f (filler c) where open Cocone C
+  construct-coconeᵈ C f = mk-coconeD (f ∘ p) (f ∘ q) (apᵈ f ∘ filler) where open Cocone C
 
   is-pushoutᵈ : ∀ {𝓛} {C : Type 𝓛} → Cocone S C → Type _
   is-pushoutᵈ {𝓛} {C} Cc =  ∀ {Q : C → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)} → is-equiv (construct-coconeᵈ Cc {Q})
@@ -194,17 +209,23 @@ record large-pushout {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) : Typeω where
   Dependent←cocone (mk-cocone p q eq) = mk-coconeD p q
                     λ c → tr-constant (filler c) _ ∙ eq c
 
-  has-is-pushout : is-pushout S cocone
-  has-is-pushout {Q = Q} = is-equiv←qiso (f , (η , ε)) where
+  -- has-is-pushout : FunExtGlobal → is-pushout S cocone
+  -- has-is-pushout FE {Q = Q} = is-equiv←qiso (f , (η , ε)) where
+  --   open WithFunExt FE
 
-    f : Cocone S _ → Pushout → _
-    f cc = is-equiv.bwd has-is-pushoutᵈ (Dependent←cocone cc)
+  --   f : Cocone S _ → Pushout → _
+  --   f cc = is-equiv.bwd has-is-pushoutᵈ (Dependent←cocone cc)
 
-    η : f ∘ (construct-cocone S cocone) ~ id
-    η = {!is-equiv.η has-is-pushoutᵈ !}
+  --   η : f ∘ (construct-cocone S cocone) ~ id
+  --   η f = ap (is-equiv.bwd has-is-pushoutᵈ) (coconeᵈ-path→ refl refl (funext→ (λ a → {!!}))) ∙ is-equiv.η has-is-pushoutᵈ f 
 
-    ε : (construct-cocone S cocone) ∘ f ~ id
-    ε = {!!}
+  --   lem : ∀ p → is-equiv.bwd has-is-pushoutᵈ 
+  --        (mk-coconeD (Cocone.p p) (Cocone.q p)
+  --         λ c → tr-constant (filler c) (Cocone.p p (Span.left S c)) ∙ Cocone.filler p c) ＝ id
+  --   lem = {!!}
+
+  --   ε : (construct-cocone S cocone) ∘ f ~ id
+  --   ε p = {!!}
 
 global-pushouts : Typeω
 global-pushouts = ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) → large-pushout S

@@ -50,4 +50,3 @@ postulate
   Pushouts : global-pushouts 
 
 
-open import foundations.WithPushouts Pushouts public

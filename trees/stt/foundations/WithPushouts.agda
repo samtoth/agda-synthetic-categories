@@ -8,7 +8,9 @@ open import foundations.Identity
 open import foundations.DependentIdentity
 open import foundations.Functions
 open import foundations.Sigma
+open import foundations.SigmaPath
 open import foundations.CoherentIsomorphism
+open import foundations.DependentHomotopy
 
 
 module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
@@ -23,7 +25,7 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
   
   module _ {𝓠} (Q : Pushout → Type 𝓠)
            (p : (b : B) → Q (ι₁ b)) (q : (c : C) → Q (ι₂ c))
-           (eq : ∀ c → tr Q (filler c) (p (f c)) ＝ q (g c)) where
+           (eq : ∀ c → IdP Q (p (f c)) (filler c) (q (g c))) where
            
     open is-equiv (has-is-pushoutᵈ {Q = Q})
 
@@ -40,9 +42,15 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
     pushout-indβ2 : ∀ x → pushout-ind (ι₂ x) ＝ q x
     pushout-indβ2 = happly (ap CoconeD.q (ε M-cocone))
 
-  -- pushout-ind-apβ : 
+
+    pushout-ind-apβ : ∀ (c : A)
+                     → IdP (λ z → IdP Q (z .CoconeD.p (f c)) (filler c) (z .CoconeD.q (g c)))
+                           (apᵈ pushout-ind (filler c))
+                             (ε M-cocone)
+                           (eq c)
+    pushout-ind-apβ x = happlyᵈ (ε M-cocone) (apᵈ CoconeD.filler (ε M-cocone)) x  
   
-  module _ {𝓠} (Q : Type 𝓠)
+  module _ {𝓠} {Q : Type 𝓠}
            (p : B → Q) (q : C → Q)
            (eq : ∀ c → (p (f c)) ＝ q (g c)) where
 
@@ -65,9 +73,9 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
     -- the following type is a bit complicated because we
     -- do not (necesarily) have strictly computing β-laws
     -- so we have to transport over this equality
-    pushout-rec-ap : ∀ {x : A}
-      → IdP id
+    pushout-rec-ap : ∀ (x : A)
+      → IdP (λ z → z .fst ＝ z .snd)
          (ap (pushout-rec ) (filler x))
-           (ap₂ (_＝_) (pushout-recβ1 (f x)) (pushout-recβ2 (g  x)))
+           (×-path→ (pushout-recβ1 (f x) , pushout-recβ2 (g  x)))
          (eq x)
-    pushout-rec-ap = {!ε Q-cocone!}
+    pushout-rec-ap x = {!pushout-ind-apβ (λ _ → Q) p q eq' x!}

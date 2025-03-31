@@ -42,8 +42,6 @@ open WithGlobalUnivalence UA public
 {-# REWRITE ua-linv #-}
 
 
-
-
 open import foundations.Pushout public
 
 
@@ -87,66 +85,6 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 
   {-# REWRITE pushout-ind-apβ #-}
 
-  opaque 
-    pushout-rec : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-                  → (c : Cocone (mk-span _ f g) Q)
-                  → (p : Pushout f g) → Q
-    pushout-rec cc = pushout-ind _ (mk-coconeD p q λ a → tr-constant _ _ ∙ filler a) where open Cocone cc
-
-    pushout-recβ1 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-                   → {c : Cocone (mk-span _ f g) Q}
-                   → ∀ l → pushout-rec c (ι₁ l) ＝ c .Cocone.p l
-    pushout-recβ1 l = refl
-
-    pushout-recβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-                   → {c : Cocone (mk-span _ f g) Q}
-                   → ∀ r → pushout-rec c (ι₂ r) ＝ c .Cocone.q r
-    pushout-recβ2 l = refl
-
-  {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
-
-  opaque 
-    unfolding pushout-rec
-    pushout-rec-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-                      → {c : Cocone (mk-span _ f g) Q}
-                      → ∀ x → ap (pushout-rec c) (glue x)
-                                ＝ c .Cocone.filler x
-    pushout-rec-apβ {f = f} {g = g}{c = c} x =  sym (sym (filler-lem {c = c} x) ∙ apᵈ-is-ap ) where
-      filler-lem : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-                    {c : Cocone (mk-span _ f g) Q} →
-                    ∀ x → (tr-constant (glue {f} {g} x) _ ∙ c .Cocone.filler x)
-                                       ＝[ ap (_＝ Cocone.q c (g x)) (tr-constant _ _) ]
-                          c .Cocone.filler x
-      filler-lem {f = f} {g = g} {Q = Q}{c = c} x = ?
-
-  {-# REWRITE pushout-rec-apβ #-}
-
-
-  pushout-ind-is-equiv : ∀ {f : A → B} {g : A → C}
-                         {𝓠} {Q : Pushout f g → Type 𝓠}
-                         → is-equiv (pushout-ind Q)
-  pushout-ind-is-equiv {f} {g} {Q = Q} = is-equiv←qiso I where
-
-   s : ((p : Pushout f g) → Q p) → CoconeD (mk-span _ f g) po-cocone Q
-   s f = mk-coconeD (f ∘ ι₁) (f ∘ ι₂) (apᵈ f ∘ glue)
-
-   I : quasi-iso (pushout-ind Q)
-   I .fst f = s f 
-   I .snd .fst (mk-coconeD p q filler) = refl
-   I .snd .snd f = funext→ (pushout-ind (λ z → (pushout-ind _ ∘ s) f z ＝ f z)
-                   (mk-coconeD ~refl ~refl λ a → {! drop-i (apᵈ f (glue a)) !} ))
-
-
-
-pushout-rec-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤}{B : Type 𝓥}
-                       {C : Type 𝓦}
-                        {f : A → B} {g : A → C} 
-                        → is-pushoutω (mk-span _ f g) po-cocone
-pushout-rec-is-equiv {A = A} {f = f} {g} {Q = Q} = is-equiv←qiso I where
-  I : quasi-iso (construct-cocone (mk-span A f g) po-cocone)
-  I .fst = pushout-rec
-  I .snd .fst fun = funext→ (pushout-ind _ (mk-coconeD ~refl ~refl λ a → {!drop-j!})) 
-  I .snd .snd (mk-cocone p q filler) = refl
 
 
 Pushouts : global-pushouts

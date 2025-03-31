@@ -1,7 +1,7 @@
 module ergonomics.Extensionality where
 
 open import foundations.Prelude
-open import foundations.IdentitySystem
+open import foundations.IdentitySystem public
 open import foundations.Subtypes
 open import foundations.EquivContrFibre
 

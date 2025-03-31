@@ -12,6 +12,7 @@ module foundations.DependentIdentity where
 open import foundations.universe
 open import foundations.Identity
 open import foundations.Functions
+open import foundations.Sigma
 }
 % ```
 
@@ -54,61 +55,85 @@ We define the type of dependent identifications over p, written #{x =_B^p y}.
 
 % ```agda
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)  where
-
-  IdP : ∀ {a} (a' : B a) {b} (p : a ＝ b) (b' : B b) → Type 𝓥 
-  IdP a p b = tr B p a ＝ b
-
+module _ {𝓤} {A : Type 𝓤} {B : Type 𝓤} (P : A ＝ B) where
+  IdP : A → B → Type 𝓤
+  IdP a b = coe P a ＝ b
 
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}  where
+IdP-syntax : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A → B → Type 𝓤
+IdP-syntax = IdP
 
-  infix 6 _＝[_]_
-  _＝[_]_ : ∀ {a} (a' : B a) {b} (p : a ＝ b) (b' : B b) → Type _
-  a ＝[ p ] b = IdP _ a p b
+infix 6 IdP-syntax
+syntax IdP-syntax P a b = a ＝[ P ] b 
 
+module _ {𝓤} {A B : Type 𝓤} where
 
-  {-# DISPLAY IdP _ a p b = a ＝[ p ] b #-}
+  symP : ∀ {P : A ＝ B} {a} {b} → IdP P a b → IdP (sym P) b a
+  symP {P = refl} p = sym p
 
-  --     IdP : ∀ {a b : A} (p : a ＝ b) → B a →  B b → Type 𝓥
-  --     IdP p a b = Subst B p a ＝ b
-  symP : ∀ {a} {a' : B a} {b} {p : a ＝ b} {b' : B b} → IdP B a' p b' → IdP B b' (sym p) a'
-  symP {p = refl} p = sym p
+  symP' : ∀ {P : A ＝ B} {a} {b} → IdP (sym P) b a → IdP P a b
+  symP' {P = refl} p = sym p
 
-  symP' : ∀ {a} {a' : B a} {b} {p : b ＝ a} {b' : B b} → IdP B a' (sym p) b' → IdP B b' p a'
-  symP' {p = refl} p = sym p
+  IdP-inl : ∀ {P : A ＝ B} {a : A} {b : B} → coe P a ＝ b → IdP P a b 
+  IdP-inl {P = P} p = p
 
-  IdP-inl : ∀ {a b : A} (p : a ＝ b) (a' : B a) (b' : B b) → tr B p a' ＝ b' → IdP B a' p b' 
-  IdP-inl refl a b p = p
-
-  IdP-inr :  ∀ {a b : A} (p : a ＝ b) (a' : B a) (b' : B b) → a' ＝ tr B (sym p) b' → IdP B a' p b' 
-  IdP-inr refl a b p = p
+  IdP-inr :  ∀ {P : A ＝ B} {a : A} {b : B} → a ＝ coe (sym P) b → IdP P a b 
+  IdP-inr {P = refl} p = p
 
 
-  IdP-right : ∀ {a} {a' : B a} {b} {p : a ＝ b} {b' : B b}
-            → IdP B a' p b' → a' ＝ tr B (sym p) b'
-  IdP-right {p = refl} refl = refl
+  IdP-right : ∀ {P : A ＝ B} {a : A} {b : B}  
+            → IdP P a b → a ＝ coe (sym P) b
+  IdP-right {P = refl} p = p
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}  where
-  -- happlyᵈ : ∀ {𝓦} {C : (a : A) → B → Type 𝓦}
-  --           {x y : A} (p : x ＝ y)
-  --           {f : (b : B) → C x b}
-  --         → {g : (b : B) → C y b} → IdP (λ a → (b : B) → C a b) f p g
-  --         → (b : B) → IdP id (f b) (ap (λ x → C x b) p) (g b)
-  -- happlyᵈ refl refl b = refl
+IdP-refl : ∀ {𝓤} {A : Type 𝓤} {P : A ＝ A} (_ : P ＝ refl) {a : A} → IdP P a a
+IdP-refl refl = refl
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}  where
-  apᵈ : ∀ {a b : A} (f : (a : A) → B a) → (p : a ＝ b) → IdP B (f a) p (f b)
+  
+
+module _ {𝓤} {A : Type 𝓤} where
+  apᵈ : ∀ {𝓥} {B : A → Type 𝓥}
+           (f : (a  : A) → B a)
+           {a b : A} 
+         → (p : a ＝ b)
+         → IdP (ap B p) (f a) (f b)
   apᵈ f refl = refl
 
-apᵈ-constant : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-               → {a b : A} (f : A → B) → (p : a ＝ b) → apᵈ f p ＝ ap f p
-apᵈ-constant f refl = refl
+  apᵈ-is-ap : ∀ {𝓥} {B : Type 𝓥}
+              → {f : A → B}
+              → {a b : A}
+              → {p : a ＝ b}
+              → apᵈ f p ＝[ ap (_＝ f b) (tr-constant _ _) ]  ap f p
+  apᵈ-is-ap {p = refl} = refl
 
-{-# REWRITE apᵈ-constant #-}
 
+
+transp-leftP : ∀ {𝓤}
+                 {A B : Type 𝓤} (P : A ＝ B)
+                 {a : A}  {b : B}  
+                 → a ＝[ P ] b → {b' : B} → b ＝ b' → a ＝[ P ] b'
+transp-leftP refl p q = p ∙ q
+
+transIdP : ∀ {𝓤} {A B C : Type 𝓤}
+             (P : A ＝ B) (Q : B ＝ C)
+             {a : A} {b : B} {c : C}
+           → a ＝[ P ] b → b ＝[ Q ] c
+           → a ＝[ P ∙ Q ] c
+transIdP P Q {a} p q = sym (coe∙coe P Q a) ∙ ap (coe Q) p ∙ q 
+{-# NOINLINE transIdP #-}
+
+syntax transIdP P Q p q = p ∙[ P ∙ Q ] q
+
+-- syntax transp-rightP B p q r = p ∙[ B ∣ q ] r
+-- syntax transp-leftP  B p q r = q [ B ∣ p ]∙ r 
 }
 % ```
 
 }
 
+\subtree{
+\title{Squares and dependent squares}
+
+
+
+
+}

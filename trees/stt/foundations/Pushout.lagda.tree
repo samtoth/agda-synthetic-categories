@@ -7,12 +7,14 @@
 
 % ```agda
 \agda{
+{-# OPTIONS --allow-unsolved-metas #-}
 module foundations.Pushout where
 
 open import foundations.universe
 open import foundations.Functions
 open import foundations.Identity
 open import foundations.CoherentIsomorphism
+open import foundations.QuasiIsomorphism
 open import foundations.EquivSingleton
 open import foundations.Singleton
 open import foundations.Sigma
@@ -82,7 +84,7 @@ record CoconeD {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
   field
     p : (l : Left) → P (p l) 
     q : (r : Right) → P (q r)
-    filler : (c : Centre) → IdP P (p (left c)) (filler c) (q (right c))
+    filler : HomotopyP (P ◂ filler) (p ∘ left) (q ∘ right)
 
 module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
                {𝓛} {Q : Type 𝓛} {cc : Cocone S Q}
@@ -91,14 +93,35 @@ module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
   open Span S
   module cc = Cocone cc
 
-  coconeᵈ-path→ : ∀ {a b : CoconeD S cc P}
-               (pp : a .CoconeD.p ＝ b .CoconeD.p)
-               (qq : a .CoconeD.q ＝ b .CoconeD.q)
-               (filler-path : IdP (λ x → ∀ c → IdP P (x .fst (left c)) (cc.filler c) (x .snd (right c))) (a .filler)
-                              (×-path→ (pp , qq)) (b .filler))
-               → a ＝ b
-  coconeᵈ-path→ {mk-coconeD p₁ q₁ filler₁} {mk-coconeD p₂ q₂ filler₂} refl refl refl = refl
 
+  record coconeᵈ~ (a b : CoconeD S cc P) : Type (𝓤 ⊔ 𝓦 ⊔ 𝓥 ⊔ 𝓜) where
+    module a = CoconeD a
+    module b = CoconeD b
+    field
+      p~ : a.p ~ b.p
+      q~ : a.q ~ b.q
+      filler~ : HomotopyP (λ c → ap₂ (IdP ((P ◂ cc.filler) c)) (p~ (left c)) (q~ (right c)))
+                  a.filler
+                  b.filler
+
+  record coconeᵈ-path (a b : CoconeD S cc P) : Type (𝓤 ⊔ 𝓦 ⊔ 𝓥 ⊔ 𝓜) where
+    module a = CoconeD a
+    module b = CoconeD b
+    field
+      p＝ : a.p ＝ b.p
+      q＝ : a.q ＝ b.q
+      filler＝ : IdP (ap₂ (HomotopyP (P ◂ cc.filler)) (ap (_∘ left) p＝) (ap (_∘ right) q＝))
+                    a.filler b.filler
+
+  path←cocone~ : FunExtGlobal → ∀ {a b : CoconeD S cc P} → coconeᵈ~ a b → coconeᵈ-path a b
+  path←cocone~ fe record { p~ = p~ ; q~ = q~ ; filler~ = filler~ }
+    = record { p＝ = funext→ fe p~ ; q＝ = funext→ fe q~ ; filler＝ = {!!} ∙ funext→ fe filler~ } where open WithFunExt
+
+  from-coconeᵈ-path : ∀ {a b : CoconeD S cc P} → coconeᵈ-path a b → a ＝ b
+  from-coconeᵈ-path record { p＝ = refl ; q＝ = refl ; filler＝ = refl } = refl
+
+  funext-coconeᵈ→ : FunExtGlobal → ∀ {a b : CoconeD S cc P} → coconeᵈ~ a b → a ＝ b
+  funext-coconeᵈ→ fe = from-coconeᵈ-path ∘ path←cocone~ fe
 }
 % ```
 }
@@ -218,15 +241,44 @@ record Ind-Pushout {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) : Typeω where
 
   field
     pushout-ind-apβ : ∀ {𝓠} {Q : Pushout → Type 𝓠} {c : CoconeD S cocone Q}
-                      → ∀ x → IdP (λ z → IdP Q (z .fst) (glue x) (z .snd))
-                                  (apᵈ (pushout-ind Q c) (glue x))
-                                    (×-path→ (pushout-indβ1 (left x) , pushout-indβ2 (right x)))
-                                  (c .filler x)
-
-
+                      → HomotopyP (λ c → ap₂ (IdP (ap Q (glue c))) (pushout-indβ1 (left c)) (pushout-indβ2 (right c)))
+                                  (apᵈ (pushout-ind Q c) ∘ glue) 
+                                  (c .filler)
   Dependent←cocone : ∀ {𝓠} {Q : Type 𝓠} →
                       Cocone S Q → CoconeD S cocone λ _ → Q
-  Dependent←cocone (mk-cocone p q eq) = mk-coconeD p q eq
+  Dependent←cocone (mk-cocone p q eq) = mk-coconeD p q λ c → tr-constant (glue c) (p (left c)) ∙ eq c
+
+  pushout-ind-equiv :  FunExtGlobal → ∀ {𝓠} {Q : Pushout → Type 𝓠} 
+                      → is-equiv (pushout-ind Q)
+  pushout-ind-equiv FE {Q = Q} = is-equiv←qiso I where
+    open WithFunExt
+
+    I : quasi-iso (pushout-ind Q)
+    I .fst = construct-coconeᵈ S cocone 
+    I .snd .fst C@(mk-coconeD p q eq) = funext-coconeᵈ→ FE II where
+       II : coconeᵈ~ ((construct-coconeᵈ S cocone ∘ pushout-ind Q) C) C 
+       II .coconeᵈ~.p~ = pushout-indβ1
+       II .coconeᵈ~.q~ = pushout-indβ2
+       II .coconeᵈ~.filler~ = pushout-ind-apβ
+    I .snd .snd f = funext→ FE (pushout-ind (λ z → (pushout-ind Q ∘ I .fst) f z ＝ f z)
+                               (mk-coconeD pushout-indβ1 pushout-indβ2 {!!})) 
+
+
+  pushout-rec : ∀ {𝓠} {Q : Type 𝓠} → Cocone S Q → Pushout → Q
+  pushout-rec {Q = Q} cc = pushout-ind (λ _ → Q) (mk-coconeD (cc .Cocone.p) (cc .Cocone.q)
+                            λ a → tr-constant  (glue a) (cc .Cocone.p (left a)) ∙ cc .Cocone.filler a) 
+
+  pushout-rec-equiv : FunExtGlobal → ∀ {𝓠} {Q : Type 𝓠} 
+                      → is-equiv (pushout-rec {Q = Q})
+  pushout-rec-equiv fe = is-equiv←qiso I where
+    open WithFunExt
+
+    I : quasi-iso pushout-rec
+    I .fst = construct-cocone S cocone
+    I .snd .fst = {!!}
+    I .snd .snd f = funext→ fe (pushout-ind (λ z → (pushout-rec ∘ I .fst) f z ＝ f z)
+                            (mk-coconeD pushout-indβ1 pushout-indβ2 λ a → ?))
+
 
 
 global-pushouts : Typeω

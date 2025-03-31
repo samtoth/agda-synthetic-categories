@@ -7,34 +7,58 @@ open import foundations.Functions
 open import foundations.Homotopy
 
 
-HomotopyP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤}
-              → {B : Type 𝓥}
-              → (C : A → B → Type 𝓦)
-              → {x : B} 
-              → (f : ∀ a → C a x)
-              → {y : B} → (p : x ＝ y)
-              → (g : ∀ a → C a y)
+HomotopyP : ∀ {𝓤 𝓥} {A : Type 𝓤}
+              → {B : A → Type 𝓥}
+              → {C : A → Type 𝓥}
+              → (P : B ~ C)
+              → (f : ∀ a → B a)
+              → (g : ∀ a → C a)
               → Type _
-HomotopyP {A = A} {B} C f p g = ∀ (a : A) → IdP {A = B} (λ b → C a b) (f a) p (g a)
+HomotopyP {A = A} P f g = ∀ (a : A) → IdP (P a) (f a) (g a)
 
-_~[_]_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤}
-              → {B : Type 𝓥}
-              → {C : A → B → Type 𝓦}
-              → {x : A} 
-              → (f : ∀ b → C x b)
-              → {y : A} → (p : x ＝ y)
-              → (g : ∀ b → C y b)
+HomotopyP-syntax : ∀ {𝓤 𝓥} {A : Type 𝓤}
+              → {B : A → Type 𝓥}
+              → {C : A → Type 𝓥}
+              → (P : B ~ C)
+              → (f : ∀ a → B a)
+              → (g : ∀ a → C a)
               → Type _
-f ~[ p ] g = HomotopyP _ f p g               
+HomotopyP-syntax = HomotopyP
 
-infix 10 _~[_]_
-{-# DISPLAY HomotopyP _ f p g = f ~[ p ] g #-}
+syntax HomotopyP-syntax P f g = f ~[ P ] g
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}  where
-  happlyᵈ : ∀ {𝓦} {C : (a : A) → B → Type 𝓦}
-            {x y : A} (p : x ＝ y)
-            {f : (b : B) → C x b}
-          → {g : (b : B) → C y b}
-          → f ＝[ p ] g
-          → f ~[ p ] g
-  happlyᵈ refl refl b = refl
+{-# DISPLAY HomotopyP P f g = f ~[ P ] g #-}
+
+HomotopyP-const : ∀ {𝓤 𝓥} {A : Type 𝓤}
+                    {B : A → Type 𝓥}
+                    {f g : Π A B}
+                    {p : B ~ B}
+                    (_ : p ＝ ~refl)
+                    → f ~ g → f ~[ p ] g
+HomotopyP-const {f = f} {g} refl h = h
+
+
+-- HomotopyP-sq : ∀ {𝓤 𝓥} {A : Type 𝓤}
+--                  {B : A → Type 𝓥}
+--                  {C : A → Type 𝓥}
+--                  {f : Π A B}
+--                  {g : Π A C}
+--                  {p : B ~ C}
+--                  → ~refl {f = f} ~[ {!!} ] ~refl {f = g}
+-- HomotopyP-sq = {!!}                 
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}   where
+  happlyᵈ : ∀ {P : B ＝ C}
+          → {f : ∀ a → B a}
+          → {g : ∀ a → C a}
+          → f ＝[ ap (λ f → (a : A) → f a) P ] g
+          → f ~[ happly P ] g
+  happlyᵈ {P = refl} p = happly p
+
+
+
+apᵈ~ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : ∀ {a} → B a → Type 𝓦}
+        {f g : (a : A) → B a} (h : f ~ g)
+        (x : ∀ {a} → (b : B a) → C b)
+      →  (x ∘ f) ~[ C ◂ h ] (x ∘ g)
+apᵈ~ {A = A} {B} {C} h x a = apᵈ x (h a)

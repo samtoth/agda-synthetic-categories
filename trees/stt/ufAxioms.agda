@@ -22,7 +22,6 @@ open fe public
 
 open import foundations.EquivSingleton global-funext public 
 
-
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
                → happly (funext→ p) ＝ p
@@ -98,7 +97,5 @@ Pushouts S = po where
   po .Ind-Pushout.pushout-indβ1 _ = refl
   po .Ind-Pushout.pushout-indβ2 _ = refl
   po .Ind-Pushout.pushout-ind-apβ _ = refl -- :)
-
-
 
 

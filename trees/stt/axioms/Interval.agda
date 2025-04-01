@@ -36,8 +36,17 @@ postulate
 
 {-# REWRITE toPath-η #-}
 
-fromPath : ∀ {𝓤} {A : Type 𝓤} {a b : A} → Path A a b → a ＝ b
-fromPath {a = a} = IJ (λ {v} p → a ＝ v) refl
+Id←Path : ∀ {𝓤} {A : Type 𝓤} {a b : A} → Path A a b → a ＝ b
+Id←Path {a = a} = IJ (λ {v} p → a ＝ v) refl
 
 path-drop-j : ∀ {𝓤} {A : I → Type 𝓤} → (p : (i : I) → A i) → PathP (λ i → p i ＝ p i) refl refl
 path-drop-j p = toPath (λ i → refl {a = p i})
+
+
+adjust-path : ∀ {𝓤} {A : I → Type 𝓤} {a a' : A i0} {b b' : A i1}
+         → (p : a ＝ a') → (q : b ＝ b')
+         → PathP A a b → PathP A a' b'
+adjust-path refl refl = id
+
+Path←Id : ∀ {𝓤} {A : Type 𝓤} {a b : A} → a ＝ b → Path A a b
+Path←Id refl = reflP

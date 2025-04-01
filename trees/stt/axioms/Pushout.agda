@@ -37,6 +37,27 @@ record CoconeD {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
     q : (r : Right) → P (q r)
     filler : ∀ (c : Centre) → PathP (λ i → P (filler c $ i)) (p (left c)) (q (right c)) 
 
+record CoconeD-Path {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+                    {𝓠} {Q : Type 𝓠} (cc : Cocone S Q)
+                    {𝓜} {P : Q → Type 𝓜} (CA CB : CoconeD S cc P)
+                    : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓠 ⊔ 𝓜) where
+  open Span S
+  open Cocone cc
+  module CA = CoconeD CA
+  module CB = CoconeD CB
+  field
+    p-eq : ∀ l → PathP (λ i → P (p l) ) (CA.p l) (CB.p l)
+    q-eq : ∀ r → PathP (λ i → P (q r) ) (CA.q r) (CB.q r)
+    filler-eq : ∀ c → PathP (λ i → PathP (λ j → P (filler c $ j)) (p-eq (left c) $ i) (q-eq (right c) $ i))
+                        (CA.filler c) (CB.filler c)
+
+Path←CoconeD-Path : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+                    {𝓠} {Q : Type 𝓠} {cc : Cocone S Q}
+                    {𝓜} {P : Q → Type 𝓜} {CA CB : CoconeD S cc P}
+                    → CoconeD-Path cc CA CB → Path _ CA CB
+Path←CoconeD-Path record { p-eq = p-eq ; q-eq = q-eq ; filler-eq = filler-eq }
+  = toPath (λ i → mk-coconeD ((_$ i) ∘ p-eq) ((_$ i) ∘ q-eq) ((_$ i) ∘ filler-eq))
+                    
 
 module _ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) where
   construct-cocone : ∀ {𝓛 𝓜} {C : Type 𝓛} (C-cc : Cocone S C)
@@ -177,3 +198,7 @@ Pushout-is-pushout =  is-equiv←qiso ((pushout-ind _) , ret , sec) where
 
   sec : section-witness (construct-coconeᵈ _ po-cocone) (pushout-ind _)
   sec a = refl
+
+Pushout-ind-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {Q : Pushout (S .Span.left) (S .Span.right) → Type 𝓛}
+                     → is-equiv (pushout-ind Q)
+Pushout-ind-is-equiv = is-equiv-bwd Pushout-is-pushout

@@ -107,12 +107,9 @@ is-identity-system←Sing-sing R R₀ Sing-sing b
     Sing-recentre p = is-prop←is-single Sing-sing _ _ 
 
     the-iso : quasi-iso (idtoppred (R , R₀) b)
-    the-iso = ?
-    -- the-iso .fst rb = Σ-path-fst (Sing-recentre (_ , rb))
-    -- the-iso .snd .fst refl = ap Σ-path-fst (is-prop←is-single
-    --                                         (Singleton-Id Sing-sing _ _)
-    --                                          _ _)
-    -- the-iso .snd .snd rb = Σ-path-snd (Sing-recentre (_ , rb))
+    the-iso .fst rb = Σ-path-fst (Sing-recentre (_ , rb))
+    the-iso .snd .fst refl = ap Σ-path-fst (is-prop←is-single (Singleton-Id Sing-sing _ _) _ _)
+    the-iso .snd .snd rb = Σ-path-snd (Sing-recentre (_ , rb)) 
 
     
                                  

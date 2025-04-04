@@ -8,6 +8,7 @@
 module modalities.HigherModality where
 
 open import foundations.Prelude
+open import foundations.IdentitySystem
 open import ufAxioms
 open import ergonomics.Universal 
 open import ergonomics.Extensionality
@@ -30,7 +31,7 @@ record HigherModality : Typeω where
   is-○-modal A = is-equiv (○-η {A = A})
 
   field
-    ＝-is-○-modal : ∀ {𝓤} {A : Type 𝓤} {x y : A} → is-○-modal (x ＝ y)
+    ＝-○-is-○-modal : ∀ {𝓤} {A : Type 𝓤} {x y : ○ A} → is-○-modal (x ＝ y)
 
   opaque
     ○-rec : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → ○ B) → (○ A → ○ B) 
@@ -58,8 +59,23 @@ record HigherModality : Typeω where
     the-iso : quasi-iso ○-η
     the-iso .fst = ○-ind _ id
     the-iso .snd .fst = ○-β _ id
-    the-iso .snd .snd a = unmod ＝-is-○-modal (○-ind (λ a → (○-η (○-ind _ id a)) ＝ a)
+    the-iso .snd .snd a = unmod ＝-○-is-○-modal (○-ind (λ a → (○-η (○-ind _ id a)) ＝ a)
                  (λ a → ○-η (ap ○-η (○-β _ _ a))) a)
+}
+% ```
+}
+
+\subtree{
+\taxon{lemma}
+\title{Equality on modal is modal}
+
+% ```agda
+\agda{
+  ≃-○-modal : ∀ {𝓤} {A B : Type 𝓤} → A ≃ B → is-○-modal A → is-○-modal B
+  ≃-○-modal e = tr is-○-modal (ua e) 
+
+  ＝-is-○-modal : ∀ {𝓤} {A : Type 𝓤} → is-○-modal A  → {a b : A}  → is-○-modal (a ＝ b)
+  ＝-is-○-modal {A = A} H {a} {b} =  ≃-○-modal ((_ , equiv→ap-equiv H) e⁻¹) (＝-○-is-○-modal)
 }
 % ```
 }
@@ -86,7 +102,7 @@ record HigherModality : Typeω where
     ○-ind'-qiso .fst = _∘ ○-η
     ○-ind'-qiso {P-mod = is-mod} .snd .fst f = ext! (○-β' is-mod f) 
     ○-ind'-qiso {P = P} {P-mod = is-mod} .snd .snd f = ext! (○-ind' {P = λ a → _ ＝ f a}
-                     (λ {a} → ＝-is-○-modal {y = f a}) (○-β' is-mod (f ∘ ○-η)))
+                     (λ {a} →  ＝-is-○-modal is-mod) (○-β' is-mod (f ∘ ○-η)))
 
     ○-ind'-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
                        {P-mod : ∀ {a} → is-○-modal (P a)}
@@ -112,7 +128,7 @@ module _ {M : HigherModality} where
                             (○-ind P)
   ○-ind-qiso .fst = _∘ ○-η
   ○-ind-qiso .snd .fst f = ext! (○-β _ f)
-  ○-ind-qiso {A = A} {P = P} .snd .snd f = ext! (○-ind' ＝-is-○-modal (○-β _ (f ∘ ○-η)))
+  ○-ind-qiso {A = A} {P = P} .snd .snd f = ext! (○-ind' ＝-○-is-○-modal (○-β _ (f ∘ ○-η)))
 
   ○-ind-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
                  → is-equiv {A = (a : A) → ○ P (○-η a)} {B = (a : ○ A) → ○ P a}
@@ -144,8 +160,8 @@ module _ {M : HigherModality} where
     ○-Modal : ∀ {𝓤} {A : Type 𝓤} → is-○-modal (○ A)
     ○-Modal = ○-is-○-modal
 
-    ＝-Modal : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-○-modal (a ＝ b)
-    ＝-Modal = ＝-is-○-modal
+    ＝-Modal : ∀ {𝓤} {A : Type 𝓤} → ⦃ is-○-modal A ⦄ → {a b : A}  → is-○-modal (a ＝ b)
+    ＝-Modal ⦃ H ⦄ =  ＝-is-○-modal H
 
     Π-Modal : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → ⦃ _ : ∀ {x} → is-○-modal (B x) ⦄ → is-○-modal (∀ x → B x)
     Π-Modal = is-equiv←qiso (λ where
@@ -190,13 +206,13 @@ module _ {M : HigherModality} where
     g : (x : ○ Σ A B) → B (f x)
     g = ind! (λ a b → tr B (sym f-β) b)
 
-    g-β : ∀ {a : A} {b : B a} → IdP B b (sym f-β) (g (○-η (a , b)))
-    g-β = sym (○-β' _ _ _)
+    g-β : ∀ {a : A} {b : B a} → IdP (sym (ap B  f-β)) b (g (○-η (a , b)))
+    g-β {a} {b} =  tr (λ z → IdP z b (g (○-η (a , b)))) (ap-sym B f-β) (sym (○-β' _ _ _))
 
     I : quasi-iso ○-η
     I .fst x = f x , g x
-    I .snd .fst (a , b) = Σ-path→ (f-β , symP' B {p = f-β} g-β)
-    I .snd .snd = ind! λ a b → ap ○-η (Σ-path→ (f-β , symP' B {p = f-β} g-β))
+    I .snd .fst (a , b) = Σ-path→ (f-β ,  symP' g-β  ) 
+    I .snd .snd = ind! λ a b → ap ○-η (Σ-path→ (f-β , symP' g-β))
 
 
   instance

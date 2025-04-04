@@ -12,6 +12,7 @@ open import foundations.SingletonClosure
 open import foundations.CoherentIsomorphism
 open import foundations.QuasiIsomorphism
 open import foundations.EquivContrFibre
+open import foundations.EquivHomotopy
 
 module _ {𝓤} (A : Type 𝓤) (a₀ : A) where
   Reflexive-ppred : ∀ 𝓥 → Type _
@@ -104,14 +105,35 @@ is-identity-system←Sing-sing : ∀ {𝓤 𝓥} {A : Type 𝓤} {a₀}
 is-identity-system←Sing-sing R R₀ Sing-sing b
   = is-equiv←qiso the-iso where
     Sing-recentre : ∀ (p : Σ _ R) → (_ , R₀) ＝ p
-    Sing-recentre p = is-prop←is-single Sing-sing _ _ 
+    Sing-recentre p = is-prop←is-single Sing-sing _ _
+
+    coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {R : A → Type 𝓥} {x y : Σ A R} (p : x ＝ y) →  ap R (Σ-path-fst p) ＝ ap (λ a → R (fst a)) p
+    coh refl = refl
 
     the-iso : quasi-iso (idtoppred (R , R₀) b)
     the-iso .fst rb = Σ-path-fst (Sing-recentre (_ , rb))
     the-iso .snd .fst refl = ap Σ-path-fst (is-prop←is-single
                                             (Singleton-Id Sing-sing _ _)
                                              _ _)
-    the-iso .snd .snd rb = Σ-path-snd (Sing-recentre (_ , rb))
+    the-iso .snd .snd rb =    happly (ap coe (coh (Sing-recentre (_ , rb)))) R₀ ∙ Σ-path-snd (Sing-recentre (_ , rb))
 
-    
-                                 
+
+
+family~idtoppred  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {a₀ : A} (f : (a : A) → (a₀ ＝ a) → B a)
+             → {a : A} → (p : a₀ ＝ a) → (idtoppred (B , f a₀ refl) a) p ＝ f a p
+family~idtoppred f refl = refl
+
+
+family-equiv←Sing-sing : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {a₀ : A}
+                       → (f : (a : A) → (a₀ ＝ a) → B a)
+                       → is-singleton (Σ[ a ∶ A ] B a)
+                       → (a : A) → is-equiv (f a)
+family-equiv←Sing-sing {B = B} {a₀} f H a = homotopy-is-equiv (family~idtoppred f) (is-identity-system←Sing-sing B (f a₀ refl) H a )
+
+equiv→ap-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : A} →
+               is-equiv f → is-equiv (ap  f)
+equiv→ap-equiv {A = A} {f = f} {x} {y} h = family-equiv←Sing-sing (λ a → ap f) sing y where
+  sing : is-singleton (Σ A (λ z → f x ＝ f z))
+  sing = contr←section-contr (totalisation (λ a → sym))
+                             ((λ (a , p) → (a , (sym p))) , λ x →  Σ-path→ (refl , sym-sym))
+                             (is-contr-map←is-equiv h (f x))

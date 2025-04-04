@@ -20,7 +20,7 @@ postulate
 private module fe {𝓤} {𝓥} = WithFunExt {𝓤} {𝓥} global-funext
 open fe public
 
-open import foundations.EquivSingleton global-funext public 
+open import foundations.EquivSingleton global-funext public
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
@@ -45,7 +45,7 @@ open import foundations.Pushout public
 
 
 module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
-  postulate 
+  postulate
     Pushout : ∀ (f : A → B) (g : A → C) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
 
     ι₁ : ∀ {f : A → B} {g : A → C} → B → Pushout f g
@@ -97,5 +97,3 @@ Pushouts S = po where
   po .Ind-Pushout.pushout-indβ1 _ = refl
   po .Ind-Pushout.pushout-indβ2 _ = refl
   po .Ind-Pushout.pushout-ind-apβ _ = refl -- :)
-
-

@@ -21,6 +21,7 @@
         <link rel="stylesheet" href="katex.min.css" />
         <!-- uts-begin -->
         <link rel="stylesheet" href="st-style.css" />
+	<link rel="stylesheet" href="html/Agda.css" />
         <!-- uts-end -->
         <script type="text/javascript">
           <xsl:if test="/f:tree/f:frontmatter/f:source-path">

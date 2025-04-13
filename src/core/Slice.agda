@@ -1,4 +1,4 @@
-module foundations.Slice where
+module core.Slice where
 
 -- Although we don't have the tools to talk about it
 -- in full generality yet, if we fix a type A, we

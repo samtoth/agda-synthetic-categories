@@ -1,6 +1,6 @@
 module foundations.Subtypes where
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Sigma
 open import foundations.Functions
 open import foundations.QuasiIsomorphism
@@ -9,13 +9,13 @@ open import foundations.Identity
 open import foundations.Singleton
 open import foundations.EquivContrFibre
 open import foundations.FibrePath
-open import foundations.SingletonEquivSingleton
+open import foundations.EquivSingleton
 open import foundations.SigmaPath
 open import foundations.FunextUnivalence
 
 
 is-subtype : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) → Type _
-is-subtype P = ∀ x → is-subsingleton (P x)
+is-subtype P = ∀ x → is-prop (P x)
 
 record Subtype {𝓤} (A : Type 𝓤) 𝓥 : Type (𝓤 ⊔ lsuc 𝓥) where
   constructor mk-subtype
@@ -33,7 +33,7 @@ module _ {𝓤} {A : Type 𝓤} {𝓥} (P : Subtype A 𝓥) where
   Σ̃-π = fst
 
   Σ̃-π-emb : is-prop-map Σ̃-π 
-  Σ̃-π-emb a = subsingleton←equiv-to-subsingleton
+  Σ̃-π-emb a = is-prop←equiv-to-prop
                (fibre-straighten _ _ e⁻¹)
                (has-is-subtype a)
 

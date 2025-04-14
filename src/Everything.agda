@@ -1,5 +1,4 @@
 module Everything where
-
 open import foundations.CoherentIsomorphism
 open import foundations.CurryEquiv
 open import foundations.DependentIdentity
@@ -7,7 +6,7 @@ open import foundations.Embedding
 open import foundations.EquivContrFibre
 open import foundations.EquivHomotopy
 open import foundations.EquivOfSingleton
-open import foundations.EquivSingleton
+open import foundations.EquivProp
 open import foundations.FibrePath
 open import foundations.FunExt
 open import foundations.FunctionInverses
@@ -19,16 +18,17 @@ open import foundations.PropMapEmbedding
 open import foundations.Pushout
 open import foundations.QuasiIsomorphism
 open import foundations.Sigma
-open import foundations.SigmaFibrewiseEquiv
+open import foundations.TotalEquiv
+open import foundations.FibrewiseEquiv
 open import foundations.SigmaPath
 open import foundations.Singleton
 open import foundations.SingletonClosure
-open import foundations.SingletonEquivSingleton
+open import foundations.EquivSingleton
 open import foundations.Square
 open import foundations.TheoremOfChoice
 open import foundations.Unit
 open import foundations.Univalence
-open import foundations.universe
+open import foundations.Universes
 open import modalities.HigherModality
 open import core.Arrow
 open import core.Join

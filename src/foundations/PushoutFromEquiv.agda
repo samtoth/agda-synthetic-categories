@@ -3,7 +3,7 @@ open import foundations.Pushout
 
 module foundations.PushoutFromEquiv where
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Identity
 open import foundations.DependentIdentity
 open import foundations.Functions

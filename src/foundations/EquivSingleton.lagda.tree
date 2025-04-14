@@ -1,200 +1,39 @@
 \date{2025-02-26}
-\title{Being an equivalence is a property}
-\taxon{theorem}
+\taxon{module}
+\meta{module}{\startverb foundations.EquivSingleton \stopverb}
 \author{samueltoth}
+\title{Types equivalent to (sub)singleton types are (sub)singleton}
 
 \import{stt-macros}
 
-\p{Under the assumption of function extentionality, we have that for any map #{f : A \to B}, the type #{\textrm{isEquiv}(f)} is
-a [singleton](Singleton.lagda).}
 
-% ```
+% ```agda
 \agda{
+module foundations.EquivSingleton where
 
-open import foundations.FunExt
-
-module foundations.EquivSingleton (FE : FunExtGlobal) where
-
-open import foundations.universe
-open import foundations.CoherentIsomorphism
-open import foundations.QuasiIsomorphism
-open import foundations.Functions
-open import foundations.FunctionInverses
-open import foundations.Sigma
+open import foundations.Universes
 open import foundations.Identity
-open import foundations.Homotopy
+open import foundations.Functions
+open import foundations.CoherentIsomorphism
 open import foundations.Singleton
-open import foundations.SingletonEquivSingleton
-open import foundations.SingletonClosure
-open import foundations.EquivContrFibre
-open import foundations.SigmaPath
-open import foundations.FibrePath
-open import foundations.TheoremOfChoice
-
 }
 % ```
-
-
-\subtree[stt-000O]{
-\meta{HoTT}{4.2.8}
-\taxon{lemma}
-
-\p{If #{f} has a quasi-inverse, then so do ##{f \circ - : (C \to A) \to (C \to B)} ##{- \circ f : (A \to C) \to (B \to C)}}
-
-\proof{
-% ```agda
-\agda{
-precomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
-             → quasi-iso f → quasi-iso {B = C → B} (f ∘_)
-precomp-qinv {f = f} (g , ret , sec) = (g ∘_) , ret∘ , sec∘ where
-  sec∘ : section-witness (_∘_ f) (g ∘_)
-  sec∘ h  = WithFunExt.funext→ FE (sec ▸ h)
-
-  ret∘ : retract-witness (_∘_ f) (g ∘_)
-  ret∘ h = WithFunExt.funext→ FE (ret ▸ h)
-
-precomp-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
-                → is-equiv f → is-equiv {B = C → B} (f ∘_)
-precomp-equiv eq = is-equiv←qiso (precomp-qinv (qiso←is-equiv eq))                
-
-
-family-precomp-qinv : ∀ {𝓤 𝓥 𝓦} {C : Type 𝓦} {A : C → Type 𝓤} {B : C → Type 𝓥} {f : ∀ {c} → A c → B c} 
-                → (∀ {q} → quasi-iso (f {q})) → quasi-iso {A = ∀ c → A c} {B = ∀ c → B c} (λ g a → f {a} (g a))
-family-precomp-qinv {f = f} eq = (λ g c → eq .fst (g c)) , ret , sec where
-   ret : retract-witness (λ g a → f (g a)) (λ g c → eq .fst (g c))
-   ret f = WithFunExt.funext→ FE (λ c → eq .snd .fst (f c))
-
-   sec : section-witness  (λ g a → f (g a)) (λ g c → eq .fst (g c))
-   sec g = WithFunExt.funext→ FE (λ c → eq .snd .snd (g c))
-
-family-precomp-equiv : ∀ {𝓤 𝓥 𝓦} {C : Type 𝓦} {A : C → Type 𝓤} {B : C → Type 𝓥} {f : ∀ {c} → A c → B c} 
-                → (∀ {q} → is-equiv (f {q})) → is-equiv {A = ∀ c → A c} {B = ∀ c → B c} (λ g a → f {a} (g a))
-family-precomp-equiv eq = is-equiv←qiso (family-precomp-qinv (qiso←is-equiv eq))
-
-
-postcomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
-             → quasi-iso f → quasi-iso {B = A → C} (_∘ f)
-postcomp-qinv {f = f} (g , η , ε) = (_∘ g) , η∘ , ε∘ where
-  η∘ : retract-witness (_∘ f) (_∘ g)
-  η∘ h = WithFunExt.funext→ FE (h ◂ ε)
-
-  ε∘ : section-witness (_∘ f) (_∘ g)
-  ε∘ h = WithFunExt.funext→ FE (h ◂ η)
-
-postcomp-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
-                → is-equiv f → is-equiv {B = A → C} (_∘ f)
-postcomp-is-equiv eq = is-equiv←qiso (postcomp-qinv (qiso←is-equiv eq))
-
-
-}
-% ```
-}
-
-}
-
-\subtree[stt-000Q]{
-\meta{HoTT}{4.2.9}
-\taxon{lemma}
-
-
-\p{
-If #{f : A \to B} is an inverse then the types of sections of #{f} and retracts of #{f} are singletons.
-}
-
-\proof{
-\p{
-By function extensionality, the type of sections of #{f} is equivalent to #{\Sigma_{(g : B \to A)} fg = \id}, but this is
-just the fibre of #{(-\circ f)} at #{\id}. This type is contractible because [[EquivContrFibre.lagda]].
-
-}
-
-% ```agda
-\agda{
-
-retracts-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (retract f)
-retracts-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (_∘ f) id} (Σ-ap-≃ (λ h → WithFunExt.funext≃ FE))
-                                        (is-contr-map←is-equiv (is-equiv←qiso (postcomp-qinv fqe)) id)
-
-section-is-single←qinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-singleton (section f)
-section-is-single←qinv {f = f} fqe = singleton←equiv-to-singleton {A = fibre (f ∘_) id} (Σ-ap-≃ λ h → WithFunExt.funext≃ FE) 
-                                        (is-contr-map←is-equiv (is-equiv←qiso (precomp-qinv fqe)) id)
-}
-% ```
-}
-}
-
-
-
-\subtree{
-\taxon{lemma}
-
-\p{Given }
 
 
 \proof{
-% ```agda
-\agda{
-Π-ap-≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦} → (∀ a → B a ≃ B' a) → ((a : A) → B a) ≃ ((a : A) → B' a)
-Π-ap-≃ {A = A} {B} {B'} beq = equiv←qiso lem where
-  module beq a = _≃_ (beq a)
-
-  lem : ((a : A) → B a) ≅ ((a : A) → B' a)
-  lem ._≅_.fwd x a = beq.fwd a (x a)
-  lem ._≅_.fwd-iso .fst x a = beq.bwd a (x a)
-  lem ._≅_.fwd-iso .snd .fst x = WithFunExt.funext→ FE (λ a → beq.retract-fwd a .snd (x a))
-  lem ._≅_.fwd-iso .snd .snd f = WithFunExt.funext→ FE (λ a → beq.section-fwd a .snd (f a))
-
-  
-section-coherence : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → section f → Type (𝓤 ⊔ 𝓥)
-section-coherence f (g , ε) = Σ (g ∘ f ~ id) λ η → f ◂ η ~ ε ▸ f
-
-section-coherence-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} (sec : section f) 
-                         → let (g , ε) = sec
-                           in (section-coherence f sec) ≃ (∀ (x : A) → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))
-section-coherence-path {f = f} (g , ε)
-  = Σ (g ∘ f ~ id) (λ η → f ◂ η ~ ε ▸ f)                        ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
-    (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ＝ ε (f a)))         ≃⟨ Π-ap-≃ (λ _ → Σ-ap-≃ lem) ⟩
-    (∀ a → Σ ((g ∘ f) a ＝ a) (λ v → ap f v ∙ refl ＝ ε (f a)))  ≃⟨ Π-ap-≃ (λ a → fibre-path≃ e⁻¹ ) ⟩
-    (∀ x → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))   ≃∎ where
-   lem : ∀ {a} (p : g (f a) ＝ a) → (ap f p ＝ ε (f a)) ≃ (ap f p ∙ refl ＝ ε (f a))
-   lem p = id→equiv (ap (_＝ ε (f _)) (sym (∙-reflr _)))
-
-section-coherence-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f
-                              → (s : section f) → is-singleton (section-coherence f s)
-section-coherence-singleton {f = f} feq s = singleton←equiv-to-singleton (section-coherence-path s e⁻¹)
-  (Singleton-Π FE λ x → Singleton-Id (is-contr-map←is-equiv feq (f x)) _ _)
-}
-% ```
-}
-}
-
-
-\proof{
+\p{Suppose we have an equivalence #{f : A \toeq B}, and #{A} is a singleton, then we need to show for any two
+terms #{x,y : B}, we need an identification #{x = y}. But becuase #{f} is an equivalence, it surfices to consider two terms
+#{a,b : A}, and find an identification #{f(a) = f(b)}.}
 
 % ```agda
 \agda{
+is-single←equiv-to-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (e : A ≃ B) → is-singleton A → is-singleton B
+is-single←equiv-to-single (mk≃ f e) (mk-singl a sing)
+  = mk-singl (f a) λ x → ap f (sing (bwd x)) ∙ ε x where open is-equiv e
 
-is-equiv-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-                   → {f : A → B} → is-subsingleton (is-equiv f)
-is-equiv-is-prop {f = f} = is-prop←is-single-if-inhabited
-  (λ eq → singleton←equiv-to-singleton ((equiv←qiso lem) e⁻¹)
-           (Singleton-Σ (section-is-single←qinv (is-equiv.qiso eq ))
-                        (section-coherence-singleton eq))) where
-  lem : is-equiv f ≅ Σ (section f) (section-coherence f)
-  lem ._≅_.fwd (mk-eqv (g , η , ε) coh) = (g , ε) , (η , coh)
-  lem ._≅_.fwd-iso .fst ((g , ε) , η , coh) = mk-eqv (g , η , ε) coh
-  lem ._≅_.fwd-iso .snd .fst a = refl
-  lem ._≅_.fwd-iso .snd .snd a = refl
-
-
-≃-path : ∀ {𝓤 𝓥} → {A : Type 𝓤} {B : Type 𝓥} → (e1 e2 : A ≃ B) → Type (𝓤 ⊔ 𝓥)
-≃-path e1 e2 = fwd e1 ＝ fwd e2 where open _≃_
-
-≃-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → {e1 e2 : A ≃ B} → ≃-path e1 e2 → e1 ＝ e2
-≃-path→ {e1 = e1@(f , eq) } {e2@(f' , eq')} refl = help (is-equiv-is-prop eq eq') where
-  help : (q : eq ＝ eq') → e1 ＝ e2
-  help refl = refl
+is-prop←equiv-to-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (e : A ≃ B) → is-prop A → is-prop B
+is-prop←equiv-to-prop (mk≃ f e) ss x y
+  = sym (ε x) ∙ ap f (ss (bwd x) (bwd y)) ∙ ε y where open is-equiv e
 }
 % ```
-
 }

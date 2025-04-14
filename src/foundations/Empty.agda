@@ -1,6 +1,6 @@
 module foundations.Empty where
 
-open import foundations.universe
+open import foundations.Universes
 
 data ⊥ : Type where
 

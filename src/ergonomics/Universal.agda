@@ -24,12 +24,12 @@ record Universal {𝓤} (A : Type 𝓤) 𝓥 : Type (𝓤 ⊔ lsuc 𝓥) where
   Univ← = is-equiv.bwd from-is-equiv
 
   Univ≃ : methods ≃ A
-  Univ≃ = from , from-is-equiv
+  Univ≃ = mk≃ from from-is-equiv
 
   Univ≃' : A ≃ methods
   Univ≃' = Univ≃ e⁻¹
 
-  module ≃ = _≃_ (from , from-is-equiv)
+  module ≃ = _≃_ (mk≃ from from-is-equiv)
 
 
 open Universal

@@ -1,5 +1,7 @@
 \date{2025-02-22}
 \title{Coherent Isomorphism}
+\taxon{module}
+\meta{module}{\startverb foundations.CoherentIsomorphism \stopverb}
 
 \import{stt-macros}
 
@@ -7,7 +9,7 @@
 \agda{
 module foundations.CoherentIsomorphism where
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.QuasiIsomorphism
 open import foundations.Sigma
 open import foundations.Functions
@@ -57,19 +59,29 @@ open import foundations.PathReasoning
 \p{In symbols, this is: #{f \cdot \varepsilon \circ \eta \cdot f = \id} (where #{\cdot} denotes horizontal composition and #{\circ} denotes vertical composition).}
 }
 
-\p{Note that in formalisation #{\varepsilon} is a 2-cell in the opposite direction, but since all 2-cells are invertible, this makes no difference to the definition and makes the formalization slightly smoother.}
+\p{Note that in our formalisation #{\varepsilon} is a 2-cell in the opposite direction, but since all 2-cells are invertible, this makes no difference to the definition and makes the formalization slightly smoother.}
+
+\subtree[stt-001R]{
+\taxon{definition}
+\title{Coherence data for [quasi isomorphisms](foundations.QuasiIsomorphism)}
+\meta{defines}{\startverb ["qiso-coh"] \stopverb}
 
 % ```agda
 \agda{
 qiso-coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → Type (𝓤 ⊔ 𝓥)
 qiso-coh {f = f} (g , ε , η) = f ◂ ε ~ η ▸ f
-
 }
 % ```
+}
 
-\subtree{
+\subtree[stt-001U]{
 \taxon{definition}
 \title{Equivalences}
+
+\meta{defines}{\startverb ["is-equiv","mk-eqv", "is-equiv.qiso",
+                           "is-equiv.coherent", "is-equiv.ε", "is-equiv.η",
+                           "_≃_", "_≃_.fwd", "_≃_.has-is-eqv", "mk≃",
+                           "qiso←is-equiv", "qiso←equiv"] \stopverb}
 
 \p{Of the many equivalent notions of equivelences in HoTT, we will single out coherent isomorphisms as the default one in the library.}
 
@@ -91,9 +103,15 @@ record is-equiv {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) : Type
 
   η : bwd ∘ f ~ id
   η x = retract-fwd .snd x
+}
+% ```
 
+\p{We also define the packaged version of an equivalence together with the proof of it being an equivalence}
+
+% ```agda
+\agda{
 record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
-  constructor _,_
+  constructor mk≃
   field
     fwd : A → B
     has-is-eqv : is-equiv fwd
@@ -105,7 +123,7 @@ qiso←is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} 
 qiso←is-equiv = is-equiv.qiso
 
 qiso←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ≅ B
-qiso←equiv (_ , has-is-eqv) = has-qiso where open is-equiv has-is-eqv
+qiso←equiv (mk≃ _ has-is-eqv) = has-qiso where open is-equiv has-is-eqv
 
 }
 % ```
@@ -126,7 +144,7 @@ we know that whatever the map is, it cannot be a section of the obvious map #{\t
 result we know we will have to be a bit clever about how we choose the 2-cells of our coherent isomorphism.}
 
 \p{The proof goes through by cooking up a 2-cell #{\varepsilon} that makes the coherence go through trivially.
-Working backwards, we need an #{\varepsilon '} such that #{f(\varepsilon') = \eta_f}. }
+Working backwards, we need an #{\varepsilon '} such that #{\varepsilon' f = \eta f}. }
 
 
 \quiver{
@@ -159,8 +177,10 @@ By taking the horizontal composition of these #{\alpha}'s gives us our desired #
 \ol{
 \li{Trivially follws from paths forming groupoids.}
 \li{The naturality of homotopies.}
-\li{Lemma 2.4.3}
+\li{\citet{2.4.3}{HoTT} [[stt-001O]]}
 }
+
+\meta{defines}{\startverb ["is-equiv←qiso", "equiv←qiso", "≃-rep≅", "≃-rep≃"] \stopverb}
 
 % ```agda
 \agda{
@@ -196,11 +216,11 @@ is-equiv←qiso {f = f} (g , η , ε) = mk-eqv (g , η , ε') coh where opaque
            ε' ▸ f                                       ~∎
 
 equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → A ≃ B
-equiv←qiso (mk-iso fwd fwd-iso) = fwd , (is-equiv←qiso fwd-iso)
+equiv←qiso (mk-iso fwd fwd-iso) = mk≃ fwd (is-equiv←qiso fwd-iso)
 
 ≃-rep≅  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A ≃ B) ≅ Σ (A → B) is-equiv
-≃-rep≅ ._≅_.fwd (f , e) = f , e
-≃-rep≅ ._≅_.fwd-iso .fst (f , e) = f , e
+≃-rep≅ ._≅_.fwd (mk≃ f e) = f , e
+≃-rep≅ ._≅_.fwd-iso .fst (f , e) = mk≃ f e
 ≃-rep≅ ._≅_.fwd-iso .snd .fst _ = refl
 ≃-rep≅ ._≅_.fwd-iso .snd .snd _ = refl
 
@@ -213,14 +233,11 @@ equiv←qiso (mk-iso fwd fwd-iso) = fwd , (is-equiv←qiso fwd-iso)
 }
 }
 
-\transclude{foundations.EquivOfSingleton}
-
-\transclude{foundations.EquivContrFibre}
-
-\transclude{foundations.EquivSingleton}
-
-\subtree{
+\subtree[stt-001T]{
 \title{Equivalences form an #{\infty}-groupoid over types}
+
+\meta{defines}{\startverb ["id-is-equiv", "idequiv", "is-equiv-∘",
+                           "equiv-comp", "equiv←Id"] \stopverb}
 
 % ```agda
 \agda{
@@ -228,7 +245,7 @@ id-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-equiv (id {A = A})
 id-is-equiv =  (mk-eqv (id , ~refl , ~refl) ~refl)
 
 idequiv : ∀ {𝓤} {A : Type 𝓤} → A ≃ A
-idequiv = id , id-is-equiv
+idequiv = mk≃ id id-is-equiv
 
 is-equiv-∘ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
                   {f : B → C} {g : A → B} →
@@ -238,16 +255,29 @@ is-equiv-∘ f g = is-equiv←qiso (comp-has-qiso (qiso←is-equiv g) (qiso←is
 
 equiv-comp : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
              → A ≃ B → B ≃ C → A ≃ C
-equiv-comp (f , e) (g , e') = g ∘ f , is-equiv-∘ e' e
+equiv-comp (mk≃ f e) (mk≃ g e') = mk≃ (g ∘ f) (is-equiv-∘ e' e)
 
+
+equiv←Id : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
+equiv←Id refl = idequiv
+}
+% ```
+}
+
+\subtree[stt-001S]{
+\taxon{notation}
+
+\title{Reasoning combinators for equivalences}
+
+\meta{defines}{\startverb ["_∙≃_", "_e⁻¹", "_≃⟨⟩_", "_≃∎"] \stopverb}
+
+% ```agda
+\agda{
 _∙≃_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
              → A ≃ B → B ≃ C → A ≃ C
 _∙≃_ = equiv-comp 
 
 infix 29 _∙≃_
-
-id→equiv : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
-id→equiv refl = idequiv
 
 _e⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → B ≃ A
 e e⁻¹ = equiv←qiso (qiso←equiv e ≅⁻¹)
@@ -272,5 +302,4 @@ infix 21 _≃_
 syntax ≃⟨⟩-syntax x q p = x ≃⟨ p ⟩ q
 }
 % ```
-
 }

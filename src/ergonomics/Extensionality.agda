@@ -24,7 +24,7 @@ instance
   IdS-Π ⦃ s ⦄ .IdS f g = ∀ a → s .IdS (f a) (g a)
   IdS-Π ⦃ s ⦄ .IdS₀ _ = s .IdS₀
   IdS-Π {A = A} {B = B} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
-    (singleton←equiv-to-singleton (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
+    (is-single←equiv-to-single (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
       (weak-funext (λ a → SingS-is-single s (f a)))) 
     
 
@@ -48,7 +48,7 @@ instance
   IdS-uncurry ⦃ s ⦄ .IdS f g =  s .IdS (curry f) (curry g)
   IdS-uncurry ⦃ s ⦄ .IdS₀ = s .IdS₀
   IdS-uncurry {A = A} {B} {C} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
-    (singleton←equiv-to-singleton (Σ-ap-≃-fst uncurry≃) (SingS-is-single s (curry f)) )
+    (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃) (SingS-is-single s (curry f)) )
    
 ext! : ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
      → s .IdS x y → x ＝ y
@@ -63,9 +63,9 @@ IdS←Embedding
 IdS←Embedding {f = f} pm s .IdS a b = s .IdS (f a) (f b)
 IdS←Embedding pm s .IdS₀ = s .IdS₀
 IdS←Embedding {f = f} pm s .has-is-ids a = is-identity-system←Sing-sing _ _
-  (mk-contr (a , IdS₀ s) (is-ss (a , IdS₀ s))) where
-   is-ss : is-subsingleton (Σ[ z ∶ _ ] IdS s (f a) (f z))
-   is-ss = subsingleton←equiv-to-subsingleton (Σ-ap-≃ (λ z → sym≃ ∙≃ Id≃IdS s)) (pm (f a))
+  (mk-singl (a , IdS₀ s) (is-ss (a , IdS₀ s))) where
+   is-ss : is-prop (Σ[ z ∶ _ ] IdS s (f a) (f z))
+   is-ss = is-prop←equiv-to-prop (Σ-ap-≃ (λ z → sym≃ ∙≃ Id≃IdS s)) (pm (f a))
 
 IdS←Equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}

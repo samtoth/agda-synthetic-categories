@@ -14,13 +14,13 @@ postulate
                 → (∀ a → is-singleton (B a))
                 → is-singleton ((a : A) → B a)
 
-  global-funext : FunExtGlobal
+  global-funext : FunExt-global
 
 
-private module fe {𝓤} {𝓥} = WithFunExt {𝓤} {𝓥} global-funext
+private module fe = WithFunExt-global global-funext
 open fe public
 
-open import foundations.EquivSingleton global-funext public
+open import foundations.EquivProp global-funext public
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}

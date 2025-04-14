@@ -1,8 +1,9 @@
 module foundations.IdentitySystem where
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Sigma
 open import foundations.SigmaPath
+open import foundations.FibrewiseEquiv
 open import foundations.Identity
 open import foundations.DependentIdentity
 open import foundations.Functions
@@ -58,12 +59,12 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) where
   tr←idtopred refl = refl
 
   SingS-is-single : ∀ a → is-singleton (SingS a)
-  SingS-is-single a = mk-contr (a , IdS₀) I where 
+  SingS-is-single a = mk-singl (a , IdS₀) I where 
     I : (x : SingS a) → (a , IdS₀) ＝ x
     I (b , p) = Σ-path→ (Id←IdS p , tr←idtopred (Id←IdS p) ∙ IdS←Id←IdS p)
 
   Id≃IdS : ∀ {a b} → (a ＝ b) ≃ IdS a b
-  Id≃IdS = (IdS←Id , has-is-ids _ _)
+  Id≃IdS = (mk≃ IdS←Id (has-is-ids _ _))
 
   -- IdS≃Id : ∀ {a b} → IdS a b ≃ (a ＝ b)
   -- IdS≃Id = Id←IdS , {!has-is-ids _ _!}
@@ -134,6 +135,6 @@ equiv→ap-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                is-equiv f → is-equiv (ap  f)
 equiv→ap-equiv {A = A} {f = f} {x} {y} h = family-equiv←Sing-sing (λ a → ap f) sing y where
   sing : is-singleton (Σ A (λ z → f x ＝ f z))
-  sing = contr←section-contr (totalisation (λ a → sym))
-                             ((λ (a , p) → (a , (sym p))) , λ x →  Σ-path→ (refl , sym-sym))
-                             (is-contr-map←is-equiv h (f x))
+  sing = is-single←section-single (total-map (λ a → sym))
+                                  ((λ (a , p) → (a , (sym p))) , λ x →  Σ-path→ (refl , sym-sym))
+                                  (is-contr-map←is-equiv h (f x))

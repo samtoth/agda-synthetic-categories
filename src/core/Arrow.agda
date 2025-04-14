@@ -1,6 +1,6 @@
 module core.Arrow where
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Sigma
 open import foundations.Functions
 open import foundations.Homotopy

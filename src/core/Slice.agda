@@ -4,7 +4,7 @@ module core.Slice where
 -- in full generality yet, if we fix a type A, we
 -- can consider the large slice ∞-category 𝓢ω/A
 
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Sigma
 open import foundations.Functions
 open import foundations.Homotopy

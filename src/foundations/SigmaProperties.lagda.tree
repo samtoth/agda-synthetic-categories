@@ -1,0 +1,80 @@
+\date{2025-04-14}
+\title{Miscellaneous properties of Sigma Types}
+\taxon{module}
+\meta{module}{\startverb foundations.SigmaProperties \stopverb}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module foundations.SigmaProperties where
+
+open import foundations.Universes
+open import foundations.Sigma
+open import foundations.SigmaPath
+open import foundations.Identity
+open import foundations.Functions
+open import foundations.QuasiIsomorphism
+open import foundations.CoherentIsomorphism
+}
+% ```
+
+
+% ```agda
+\agda{
+Σ-ap-≃-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦} → ((mk≃ f _) : A' ≃ A) → Σ A' (B ∘ f) ≃ Σ A B
+Σ-ap-≃-fst {A = A} {A'} {B} eq = mk≃ func (is-equiv←qiso the-iso) where
+  open _≃_ eq
+
+  func : Σ _ (B ∘ fwd) → Σ _ B
+  func (a , b) = fwd a , b
+
+  lem : {a : A'} {b : (B ∘ fwd) a} → 
+      tr (B ∘ fwd) (η a) (tr B (sym (ε (fwd a))) b) ＝ b
+  lem {a} {b} = tr (B ∘ fwd) (η a) _                    ＝⟨ tr∘ B fwd (η a) ⟩
+                tr B (ap fwd (η a)) _                   ＝⟨ ap (λ p → tr B p (tr B (sym (ε (fwd a))) b)) (coherent a) ⟩
+                tr B (ε (fwd a)) _                      ＝⟨ tr∙tr-sym' {P = B} (ε (fwd a)) b ⟩
+                b ∎
+  
+  the-iso : quasi-iso func
+  the-iso .fst (a , b) = (bwd a , tr B (sym (ε a)) b)
+  the-iso .snd .fst (a , b) = Σ-path→ (η a ,  lem) 
+  the-iso .snd .snd (a , b) = Σ-path→ (ε a ,  tr∙tr-sym' (ε a) b)
+
+
+
+Σ-assoc : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
+          → Σ (Σ A B) (λ x → C (fst x) (snd x)) ≃ Σ A λ a → Σ (B a) λ b → C a b
+Σ-assoc {A = A} {B} {C} = equiv←qiso iso where
+  fwd : Σ (Σ A B) (λ x → C (fst x) (snd x)) → Σ A (λ a → Σ (B a) (C a))
+  fwd ((a , b) , c) = a , (b , c)
+
+  iso : Σ (Σ A B) (λ x → C (fst x) (snd x)) ≅ Σ A (λ a → Σ (B a) (C a))
+  iso ._≅_.fwd = fwd
+  iso ._≅_.fwd-iso .fst (x , y , z) = (x , y) , z
+  iso ._≅_.fwd-iso .snd .fst a = refl
+  iso ._≅_.fwd-iso .snd .snd a = refl
+
+
+Σ-singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
+        → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
+Σ-singl {A = A} {a'} {B} = equiv←qiso iso where
+  iso : Σ A (λ a → Σ (a ＝ a') (B a)) ≅ B a' refl
+  iso ._≅_.fwd (.a' , refl , ba) = ba
+  iso ._≅_.fwd-iso .fst ba = a' , refl , ba
+  iso ._≅_.fwd-iso .snd .fst (.a' , refl , ba) = refl
+  iso ._≅_.fwd-iso .snd .snd _ = refl
+
+
+Σ-comm : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
+         → (Σ A λ a → Σ B (C a)) ≃ (Σ B λ b → Σ A λ a → C a b)
+Σ-comm {A = A} {B} {C} = mk≃ f (is-equiv←qiso iso) where
+  f : Σ A (λ a → Σ B (C a)) → Σ B (λ b → Σ A (λ a → C a b))
+  f (a , b , c) = b , a , c
+
+  iso : quasi-iso f
+  iso .fst (b , a , c) = a , b , c
+  iso .snd .fst _ = refl
+  iso .snd .snd _ = refl
+}
+% ```

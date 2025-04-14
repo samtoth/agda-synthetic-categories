@@ -1,4 +1,4 @@
-open import foundations.universe
+open import foundations.Universes
 open import foundations.Identity
 
 

@@ -1,0 +1,112 @@
+\date{2025-02-21}
+\title{Quasi Isomorphisms}
+\taxon{module}
+\meta{module}{\startverb foundations.QuasiIsomorphism \stopverb}
+
+\import{stt-macros}
+
+\p{Naively, an isomorphism is a function with a two-sided inverse. We can encode this directly in HoTT, but there is an issue;
+being an isomorphism in this way is \em{not a [property](stt-0009)} of a type, but instead it is extra structure. This is in contrast to the
+(many equivalent) notions of equivalence.}
+
+% ```agda
+\agda{
+module foundations.QuasiIsomorphism where
+
+open import foundations.Universes
+open import foundations.Functions
+open import foundations.FunctionInverses
+open import foundations.Singleton
+open import foundations.Sigma
+open import foundations.Identity
+open import foundations.Homotopy
+}
+% ```
+
+\subtree[stt-001K]{
+  \taxon{definition}
+  \title{Quasi-isomorphism}
+
+  \meta{defines}{\startverb ["quasi-iso", "_≅_", "_≅_.fwd", "_≅_.fwd-iso"
+  ,  "_≅_.bwd", "_≅_.section-fwd", "_≅_.section-bwd", "_≅_.retract-fwd", "_≅_.retract-bwd"] \stopverb}
+
+  \p{We want to reserve the word isomorphism for the coherent kind in [[foundations.CoherentIsomorphism]], and so here we define the naive kind of
+  isomorphism to be called a quasi-isomorphism.}
+
+
+% ```agda
+\agda{
+quasi-iso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (f : A → B) → Type (𝓤 ⊔ 𝓥)
+quasi-iso f = Σ _ λ g → retract-witness f g × section-witness f g
+
+infix 20 _≅_
+record _≅_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-iso
+  field
+    fwd : A → B
+    fwd-iso : quasi-iso fwd 
+
+  bwd : B → A
+  bwd = fwd-iso .fst
+
+  section-fwd : section fwd
+  section-fwd = bwd , fwd-iso .snd .snd
+
+  retract-fwd : retract fwd
+  retract-fwd = bwd , fwd-iso .snd .fst
+
+  section-bwd : section bwd
+  section-bwd = fwd , retract→section {g = bwd} (retract-fwd .snd)
+
+  retract-bwd : retract bwd
+  retract-bwd = fwd , section→retract {g = fwd} (section-fwd .snd)
+}
+% ```
+}
+
+\subtree[stt-001L]{
+\taxon{remark}
+\title{Isomorphisms form a groupoid on types}
+
+\meta{defines}{\startverb ["idiso", "comp-has-qiso", "comp-qiso", "inv-iso", "_∙≅_", "_≅⁻¹"] \stopverb}
+
+% ```agda
+\agda{
+idiso : ∀ {𝓤} {A : Type 𝓤} → A ≅ A
+idiso = mk-iso id (id , ~refl , ~refl)
+
+comp-has-qiso : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                  {f : A → B} {g : B → C}
+                  → quasi-iso f → quasi-iso g → quasi-iso (g ∘ f)
+comp-has-qiso {f = f} {g} (finv , fret , fsec) (ginv , gret , gsec) = (finv ∘ ginv , ret , sec) where
+  sec : section-witness (g ∘ f) (finv ∘ ginv)
+  sec = g ∘ f ∘ finv ∘ ginv ~⟨ g ◂ fsec ▸ ginv ⟩
+        g ∘ ginv            ~⟨ gsec ⟩ 
+        id                  ~∎  
+
+  ret : retract-witness (g ∘ f) (finv ∘ ginv)
+  ret = finv ∘ ginv ∘ g ∘ f ~⟨ finv ◂ gret ▸ f ⟩
+        finv ∘ f            ~⟨ fret ⟩
+        id ~∎
+
+comp-qiso : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} 
+           → A ≅ B → B ≅ C → A ≅ C
+comp-qiso (mk-iso f fi) (mk-iso g gi) = mk-iso (g ∘ f) (comp-has-qiso fi gi)
+
+  
+inv-iso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → B ≅ A
+inv-iso (mk-iso fwd (bwd , sec , ret)) = mk-iso bwd (fwd , ret , sec)
+
+infix 19 _≅⁻¹
+infixr 19 _∙≅_
+
+_∙≅_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} 
+           → A ≅ B → B ≅ C → A ≅ C
+_∙≅_ = comp-qiso 
+
+_≅⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → B ≅ A
+_≅⁻¹ = inv-iso
+
+}
+% ```
+}

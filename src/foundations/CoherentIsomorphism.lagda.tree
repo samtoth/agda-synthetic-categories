@@ -1,0 +1,305 @@
+\date{2025-02-22}
+\title{Coherent Isomorphism}
+\taxon{module}
+\meta{module}{\startverb foundations.CoherentIsomorphism \stopverb}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module foundations.CoherentIsomorphism where
+
+open import foundations.Universes
+open import foundations.QuasiIsomorphism
+open import foundations.Sigma
+open import foundations.Functions
+open import foundations.FunctionInverses
+open import foundations.Homotopy
+open import foundations.Identity
+open import foundations.PathReasoning
+}
+% ```
+
+\p{We can upgrade [quasi isomorphism](QuasiIsomorphism.lagda) into a [correct notion of equivalence](st-????) by adding an extra coherence condition, that makes it into a proposition. }
+
+\subtree[stt-000K]{
+\taxon{remark}
+\title{Half adjoint equivalence}
+
+\p{The defintion of a quasi isomorphism involves:}
+
+\ul{
+\li{#{f : A \to B}}
+\li{#{g : B \to A}}
+\li{#{\eta : f \circ g = \id}}
+\li{#{\varepsilon : \id = g \circ f}}
+}
+
+\p{The names #{\eta} and #{\varepsilon} remind us that this looks like the data of an adjunction. But we are missing the laws, often called the zig-zag laws. One of which state that the following 2-cell contracts to the identity:
+}
+
+\quiver{
+% https://q.uiver.app/#q=WzAsNCxbMCwwLCJBIl0sWzIsMiwiQiJdLFs0LDAsIkEiXSxbNiwyLCJCIl0sWzAsMSwiZiIsMl0sWzEsMiwiZyIsMl0sWzIsMywiZiIsMl0sWzAsMiwiXFxpZCIsMCx7InN0eWxlIjp7ImhlYWQiOnsibmFtZSI6Im5vbmUifX19XSxbMSwzLCJcXGlkIiwyLHsic3R5bGUiOnsiaGVhZCI6eyJuYW1lIjoibm9uZSJ9fX1dLFswLDIsIiIsMCx7Im9mZnNldCI6LTEsInN0eWxlIjp7ImhlYWQiOnsibmFtZSI6Im5vbmUifX19XSxbMSwzLCIiLDAseyJvZmZzZXQiOi0xLCJzdHlsZSI6eyJoZWFkIjp7Im5hbWUiOiJub25lIn19fV0sWzcsMSwiXFx2YXJlcHNpbG9uIiwwLHsic2hvcnRlbiI6eyJzb3VyY2UiOjIwLCJ0YXJnZXQiOjMwfX1dLFsyLDgsIlxcZXRhIiwwLHsic2hvcnRlbiI6eyJzb3VyY2UiOjIwLCJ0YXJnZXQiOjIwfX1dXQ==
+\begin{tikzcd}
+	A &&&& A \\
+	\\
+	&& B &&&& B
+	\arrow[""{name=0, anchor=center, inner sep=0}, no head, from=1-1, to=1-5]
+	\arrow["\id", shift left, no head, from=1-1, to=1-5]
+	\arrow["f"', from=1-1, to=3-3]
+	\arrow["f"', from=1-5, to=3-7]
+	\arrow["g"', from=3-3, to=1-5]
+	\arrow[""{name=1, anchor=center, inner sep=0}, "\id"', no head, from=3-3, to=3-7]
+	\arrow[shift left, no head, from=3-3, to=3-7]
+	\arrow["\varepsilon", shorten <=7pt, shorten >=11pt, Rightarrow, from=0, to=3-3]
+	\arrow["\eta", shorten <=7pt, shorten >=7pt, Rightarrow, from=1-5, to=1]
+\end{tikzcd}
+}
+
+\p{In symbols, this is: #{f \cdot \varepsilon \circ \eta \cdot f = \id} (where #{\cdot} denotes horizontal composition and #{\circ} denotes vertical composition).}
+}
+
+\p{Note that in our formalisation #{\varepsilon} is a 2-cell in the opposite direction, but since all 2-cells are invertible, this makes no difference to the definition and makes the formalization slightly smoother.}
+
+\subtree[stt-001R]{
+\taxon{definition}
+\title{Coherence data for [quasi isomorphisms](foundations.QuasiIsomorphism)}
+\meta{defines}{\startverb ["qiso-coh"] \stopverb}
+
+% ```agda
+\agda{
+qiso-coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → Type (𝓤 ⊔ 𝓥)
+qiso-coh {f = f} (g , ε , η) = f ◂ ε ~ η ▸ f
+}
+% ```
+}
+
+\subtree[stt-001U]{
+\taxon{definition}
+\title{Equivalences}
+
+\meta{defines}{\startverb ["is-equiv","mk-eqv", "is-equiv.qiso",
+                           "is-equiv.coherent", "is-equiv.ε", "is-equiv.η",
+                           "_≃_", "_≃_.fwd", "_≃_.has-is-eqv", "mk≃",
+                           "qiso←is-equiv", "qiso←equiv"] \stopverb}
+
+\p{Of the many equivalent notions of equivelences in HoTT, we will single out coherent isomorphisms as the default one in the library.}
+
+% ```agda
+\agda{
+record is-equiv {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-eqv
+  field
+    qiso     : quasi-iso f
+    coherent : qiso-coh qiso
+  
+  has-qiso : A ≅ B
+  has-qiso = mk-iso f qiso
+  
+  open _≅_ has-qiso public hiding (fwd)
+
+  ε : f ∘ bwd ~ id
+  ε x = section-fwd .snd x
+
+  η : bwd ∘ f ~ id
+  η x = retract-fwd .snd x
+}
+% ```
+
+\p{We also define the packaged version of an equivalence together with the proof of it being an equivalence}
+
+% ```agda
+\agda{
+record _≃_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk≃
+  field
+    fwd : A → B
+    has-is-eqv : is-equiv fwd
+
+  open is-equiv has-is-eqv public
+    
+
+qiso←is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f → quasi-iso f
+qiso←is-equiv = is-equiv.qiso
+
+qiso←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ≅ B
+qiso←equiv (mk≃ _ has-is-eqv) = has-qiso where open is-equiv has-is-eqv
+
+}
+% ```
+}
+
+
+
+\subtree[stt-000J]{
+\taxon{theorem}
+\title{Quasi isomorphisms are coherent}
+% HoTT book. 4.2.3
+
+\p{Every quasi-isomorphism can be upgraded to a coherent isomorphism.}
+
+\proof{
+\p{Since we (are soon to) know that being an equivalence is a proposition, and that quasi isomorphisms aren't equivalent to equivalences,
+we know that whatever the map is, it cannot be a section of the obvious map #{\textrm{is-equiv}(f) \to \textrm{is-qiso}(f)}, and so as a
+result we know we will have to be a bit clever about how we choose the 2-cells of our coherent isomorphism.}
+
+\p{The proof goes through by cooking up a 2-cell #{\varepsilon} that makes the coherence go through trivially.
+Working backwards, we need an #{\varepsilon '} such that #{\varepsilon' f = \eta f}. }
+
+
+\quiver{
+% https://q.uiver.app/#q=WzAsNSxbMCwwLCJmZ2YiXSxbNiwwLCJmIl0sWzEsMiwiZmdmZ2YiXSxbNCwxLCJmZ2YiXSxbNSwzLCJmZ2YiXSxbMCwxLCJmXFxldGEiXSxbMCwyLCJcXHZhcmVwc2lsb25eey0xfSBmZ2YiLDJdLFsyLDMsIlxcdmFyZXBzaWxvbiBmZ2YiXSxbMywxLCJmXFxldGEiLDJdLFswLDMsIiIsMSx7ImxldmVsIjoyLCJzdHlsZSI6eyJoZWFkIjp7Im5hbWUiOiJub25lIn19fV0sWzIsNCwiZmdmIFxcZXRhIiwwLHsiY3VydmUiOi0xfV0sWzQsMSwiXFx2YXJlcHNpbG9uIGYiLDIseyJjdXJ2ZSI6M31dLFs0LDMsIklJIiwyLHsic2hvcnRlbiI6eyJzb3VyY2UiOjMwLCJ0YXJnZXQiOjIwfSwibGV2ZWwiOjJ9XSxbMiw0LCJmXFxldGFfe2dmfSIsMix7ImN1cnZlIjoyfV0sWzIsOSwiSSIsMix7InNob3J0ZW4iOnsic291cmNlIjozMCwidGFyZ2V0IjozMH19XSxbMTMsMTAsIklJSSIsMix7InNob3J0ZW4iOnsic291cmNlIjoyMCwidGFyZ2V0IjoyMH19XV0=
+\begin{tikzcd}
+	fgf &&&&&& f \\
+	&&&& fgf \\
+	& fgfgf \\
+	&&&&& fgf
+	\arrow["{f\eta}", from=1-1, to=1-7]
+	\arrow[""{name=0, anchor=center, inner sep=0}, equals, from=1-1, to=2-5]
+	\arrow["{\varepsilon^{-1} fgf}"', from=1-1, to=3-2]
+	\arrow["{f\eta}"', from=2-5, to=1-7]
+	\arrow["{\varepsilon fgf}", from=3-2, to=2-5]
+	\arrow[""{name=1, anchor=center, inner sep=0}, "{fgf \eta}", from=3-2, to=4-6]
+	\arrow[""{name=2, anchor=center, inner sep=0}, "{f\eta gf}"', bend right,from=3-2, to=4-6]
+	\arrow["{\varepsilon f}"', bend right, from=4-6, to=1-7]
+	\arrow["2", shorten <=11pt, shorten >=8pt, Rightarrow, from=4-6, to=2-5]
+	\arrow["1"', shorten <=11pt, shorten >=11pt, Rightarrow, from=3-2, to=0]
+	\arrow["3"', shorten <=2pt, shorten >=2pt, Rightarrow, from=2, to=1]
+\end{tikzcd}
+}
+
+
+\p{
+Consider the above diagram, and in particular note that the lower boundary is given by morphisms of the form #{\alpha f} for some alpha.
+By taking the horizontal composition of these #{\alpha}'s gives us our desired #{\epsilon' := \varepsilon^{-1} fg \cdot f \eta g \cdot \varepsilon}. It satisfies the necessary equations by the vertical composite of the cells: 
+}
+
+\ol{
+\li{Trivially follws from paths forming groupoids.}
+\li{The naturality of homotopies.}
+\li{\citet{2.4.3}{HoTT} [[stt-001O]]}
+}
+
+\meta{defines}{\startverb ["is-equiv←qiso", "equiv←qiso", "≃-rep≅", "≃-rep≃"] \stopverb}
+
+% ```agda
+\agda{
+is-equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → quasi-iso f → is-equiv f
+is-equiv←qiso {f = f} (g , η , ε) = mk-eqv (g , η , ε') coh where opaque
+  ε' : f ∘ g ~ id
+  ε' = (ε ~⁻¹) ▸ f ▸ g ~∙
+       f ◂ η ▸ g       ~∙
+       ε
+
+  lem3 : g ◂ f ◂ η ~ η ▸ g ▸ f
+  lem3 x = sym (ap-comp g f (η x)) ∙ n where
+    n : (g ∘ f ◂ η) x ＝ (η ▸ g ▸ f) x
+    n = sym (homotopy-inverse (g ∘ f) η x)
+
+  lem2 : ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~ f ◂ g ◂ f ◂ η ~∙ ε ▸ f
+  lem2 x = I ∙ ap (_∙ (ε (f x))) (ap-comp f g (ap f (η x))) where
+    I : ε (f (g (f x))) ∙ (ap f (η x)) ＝
+         ap (λ z → (f ∘ g) z) (ap f (η x)) ∙ ε (f x)
+    I = ap (_ ∙_) (sym (ap-id (ap f (η x)))) ∙
+        homotopy-natural ε {f (g (f x))} (ap f (η x)) 
+
+  lem1 : f ◂ η ~
+           ((ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η)
+  lem1 a = ∙.insertr _ {h = ε (f (g (f a)))} {i = sym (ε (f (g (f a))))} (∙-sym' (ε (f (g (f a))))) {_} {ap f (η a)}
+
+
+  coh : qiso-coh (g , η , ε')
+  coh =   (f ◂ η)                                       ~⟨ lem1 ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ ε ▸ f ▸ g ▸ f ~∙ f ◂ η ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ lem2 ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ g ◂ f ◂ η ~∙ ε ▸ f ~⟨ ~refl {f = ε ▸ f ▸ g ▸ f ~⁻¹} ⟩~∙⟨ f ⟩~◂⟨ lem3 ⟩~∙⟨ ~refl {f = ε ▸ f} ⟩
+          (ε ▸ f ▸ g ▸ f ~⁻¹) ~∙ f ◂ η ▸ g ▸ f ~∙ ε ▸ f ~⟨⟩
+           ε' ▸ f                                       ~∎
+
+equiv←qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≅ B → A ≃ B
+equiv←qiso (mk-iso fwd fwd-iso) = mk≃ fwd (is-equiv←qiso fwd-iso)
+
+≃-rep≅  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A ≃ B) ≅ Σ (A → B) is-equiv
+≃-rep≅ ._≅_.fwd (mk≃ f e) = f , e
+≃-rep≅ ._≅_.fwd-iso .fst (f , e) = mk≃ f e
+≃-rep≅ ._≅_.fwd-iso .snd .fst _ = refl
+≃-rep≅ ._≅_.fwd-iso .snd .snd _ = refl
+
+≃-rep : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A ≃ B) ≃ Σ (A → B) is-equiv
+≃-rep = equiv←qiso ≃-rep≅
+}
+% ```
+
+
+}
+}
+
+\subtree[stt-001T]{
+\title{Equivalences form an #{\infty}-groupoid over types}
+
+\meta{defines}{\startverb ["id-is-equiv", "idequiv", "is-equiv-∘",
+                           "equiv-comp", "equiv←Id"] \stopverb}
+
+% ```agda
+\agda{
+id-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-equiv (id {A = A})
+id-is-equiv =  (mk-eqv (id , ~refl , ~refl) ~refl)
+
+idequiv : ∀ {𝓤} {A : Type 𝓤} → A ≃ A
+idequiv = mk≃ id id-is-equiv
+
+is-equiv-∘ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                  {f : B → C} {g : A → B} →
+                  is-equiv f → is-equiv g
+                  → is-equiv (f ∘ g)
+is-equiv-∘ f g = is-equiv←qiso (comp-has-qiso (qiso←is-equiv g) (qiso←is-equiv f))
+
+equiv-comp : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+             → A ≃ B → B ≃ C → A ≃ C
+equiv-comp (mk≃ f e) (mk≃ g e') = mk≃ (g ∘ f) (is-equiv-∘ e' e)
+
+
+equiv←Id : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
+equiv←Id refl = idequiv
+}
+% ```
+}
+
+\subtree[stt-001S]{
+\taxon{notation}
+
+\title{Reasoning combinators for equivalences}
+
+\meta{defines}{\startverb ["_∙≃_", "_e⁻¹", "_≃⟨⟩_", "_≃∎"] \stopverb}
+
+% ```agda
+\agda{
+_∙≃_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+             → A ≃ B → B ≃ C → A ≃ C
+_∙≃_ = equiv-comp 
+
+infix 29 _∙≃_
+
+_e⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → B ≃ A
+e e⁻¹ = equiv←qiso (qiso←equiv e ≅⁻¹)
+
+≃⟨⟩-syntax : ∀ {𝓤 𝓥 𝓦} (A : Type 𝓤) {B : Type 𝓥} {C : Type 𝓦}
+           → B ≃ C → A ≃ B → A ≃ C
+≃⟨⟩-syntax A g f = equiv-comp f g
+
+
+_≃⟨⟩_ : ∀ {𝓤 𝓥} (A : Type 𝓤) {B : Type 𝓥} → A ≃ B → A ≃ B
+x ≃⟨⟩ x≃y = x≃y
+
+_≃∎ : ∀ {ℓ} (A : Type ℓ) → A ≃ A
+x ≃∎ = idequiv
+
+infix 31 _e⁻¹
+
+infixr 2 ≃⟨⟩-syntax _≃⟨⟩_
+infix  3 _≃∎
+infix 21 _≃_
+
+syntax ≃⟨⟩-syntax x q p = x ≃⟨ p ⟩ q
+}
+% ```
+}

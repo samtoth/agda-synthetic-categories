@@ -1,0 +1,140 @@
+\date{2025-02-24}
+\title{Dependent Identity Types}
+\author{samueltoth}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+
+module foundations.DependentIdentity where
+
+open import foundations.Universes
+open import foundations.Identity
+open import foundations.Functions
+open import foundations.Sigma
+}
+% ```
+
+
+\p{Suppose we have types #{A, B : \UU}, and a path between them #{A =_\UU B}.
+We want to talk about equalities between terms #{a : A} and #{b : B}, but the type #{a =_{?} b} is not well formed (what type
+do we put for \em{?}).
+}
+
+\subtree{
+\taxon{example}
+
+\def\Fin[n]{\mathbb{N}^{\n}  }
+
+\p{Consider the type of the standard finite types indexed over natural numbers. Addition can be defined as a function
+#{(x : \Fin{<m}) \to (y : \Fin{<n}) \to \Fin{<(m + n)}}. Then consider the type of #{n + 2} and #{2 + n}. The types aren't definitionally
+equal but are equal up to a path (the proof of commutativity of natural number addition). }
+}
+
+\p{The indexed case is so common that it is treated as the default, and the case of identity over an identity between types
+can be recovered by identity over the identity type family.}
+
+\subtree{
+\taxon{definition}
+\title{Dependent Identity}
+
+\p{
+Given:
+\ul{
+\li{a base type #{A : \UU}}
+\li{a family #{B : A \to \UV} over A}
+\li{a path #{p : a =_A b}}
+\li{a term #{(x : B a)} over a}
+\li{a term #{(y : B b)} over b}
+}
+
+We define the type of dependent identifications over p, written #{x =_B^p y}.
+}
+
+
+% ```agda
+\agda{
+module _ {𝓤} {A : Type 𝓤} {B : Type 𝓤} (P : A ＝ B) where
+  IdP : A → B → Type 𝓤
+  IdP a b = coe P a ＝ b
+
+
+IdP-syntax : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A → B → Type 𝓤
+IdP-syntax = IdP
+
+infix 6 IdP-syntax
+syntax IdP-syntax P a b = a ＝[ P ] b 
+
+module _ {𝓤} {A B : Type 𝓤} where
+
+  symP : ∀ {P : A ＝ B} {a} {b} → IdP P a b → IdP (sym P) b a
+  symP {P = refl} p = sym p
+
+  symP' : ∀ {P : A ＝ B} {a} {b} → IdP (sym P) b a → IdP P a b
+  symP' {P = refl} p = sym p
+
+  IdP-inl : ∀ {P : A ＝ B} {a : A} {b : B} → coe P a ＝ b → IdP P a b 
+  IdP-inl {P = P} p = p
+
+  IdP-inr :  ∀ {P : A ＝ B} {a : A} {b : B} → a ＝ coe (sym P) b → IdP P a b 
+  IdP-inr {P = refl} p = p
+
+
+  IdP-right : ∀ {P : A ＝ B} {a : A} {b : B}  
+            → IdP P a b → a ＝ coe (sym P) b
+  IdP-right {P = refl} p = p
+
+IdP-refl : ∀ {𝓤} {A : Type 𝓤} {P : A ＝ A} (_ : P ＝ refl) {a : A} → IdP P a a
+IdP-refl refl = refl
+
+  
+
+module _ {𝓤} {A : Type 𝓤} where
+  apᵈ : ∀ {𝓥} {B : A → Type 𝓥}
+           (f : (a  : A) → B a)
+           {a b : A} 
+         → (p : a ＝ b)
+         → IdP (ap B p) (f a) (f b)
+  apᵈ f refl = refl
+
+  apᵈ-is-ap : ∀ {𝓥} {B : Type 𝓥}
+              → {f : A → B}
+              → {a b : A}
+              → {p : a ＝ b}
+              → apᵈ f p ＝[ ap (_＝ f b) (tr-constant _ _) ]  ap f p
+  apᵈ-is-ap {p = refl} = refl
+
+
+
+transp-leftP : ∀ {𝓤}
+                 {A B : Type 𝓤} (P : A ＝ B)
+                 {a : A}  {b : B}  
+                 → a ＝[ P ] b → {b' : B} → b ＝ b' → a ＝[ P ] b'
+transp-leftP refl p q = p ∙ q
+
+transIdP : ∀ {𝓤} {A B C : Type 𝓤}
+             (P : A ＝ B) (Q : B ＝ C)
+             {a : A} {b : B} {c : C}
+           → a ＝[ P ] b → b ＝[ Q ] c
+           → a ＝[ P ∙ Q ] c
+transIdP P Q {a} p q = sym (coe∙coe P Q a) ∙ ap (coe Q) p ∙ q 
+{-# NOINLINE transIdP #-}
+
+syntax transIdP P Q p q = p ∙[ P ∙ Q ] q
+
+-- syntax transp-rightP B p q r = p ∙[ B ∣ q ] r
+-- syntax transp-leftP  B p q r = q [ B ∣ p ]∙ r 
+
+}
+% ```
+
+}
+
+\subtree{
+\title{Squares and dependent squares}
+
+
+
+
+}

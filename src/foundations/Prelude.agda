@@ -24,3 +24,6 @@ open import foundations.DependentIdentity public
 open import foundations.DependentHomotopy public
 open import foundations.EquivOfSingleton public
 open import foundations.Square public
+open import foundations.PathReasoning public
+open import foundations.DependentCocone public
+

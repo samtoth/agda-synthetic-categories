@@ -42,6 +42,7 @@ open WithGlobalUnivalence UA public
 
 
 open import foundations.Pushout public
+open import foundations.DependentCocone
 
 
 module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
@@ -52,23 +53,23 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 
     ι₂ :  ∀ {f : A → B} {g : A → C} → C → Pushout f g
 
-    glue : ∀ {f : A → B} {g : A → C} → (x : A) → Id (Pushout f g) (ι₁ (f x)) (ι₂ (g x))
+    glue : ∀ {f : A → B} {g : A → C} → ι₁ {f} {g} ∘ f ~ ι₂ ∘ g
 
-  po-cocone : ∀ {f : A → B} {g : A → C} → Cocone (mk-span _ f g) (Pushout f g)
-  po-cocone = mk-cocone ι₁ ι₂ glue
+  pushout : ∀ {f : A → B} {g : A → C} → Cocone (mk-span _ f g) (Pushout f g)
+  pushout = mk-cocone ι₁ ι₂ glue
 
   postulate
     pushout-ind : ∀ {f : A → B} {g : A → C} {𝓠} (Q : Pushout f g → Type 𝓠)
-                  → CoconeD (mk-span _ f g) po-cocone Q → (x : Pushout f g) → Q x
+                  → CoconeD (mk-span _ f g) pushout Q → (x : Pushout f g) → Q x
 
   pushout-indβ1 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠} →
-                    {c : CoconeD (mk-span _ f g) po-cocone Q} →
+                    {c : CoconeD (mk-span _ f g) pushout Q} →
                      ∀ x → pushout-ind Q c (ι₁ x) ＝ c .CoconeD.p x
   pushout-indβ1 {c = c} x = primEraseEquality eq where
     postulate eq : pushout-ind _ _ (ι₁ x) ＝ c .CoconeD.p x
 
   pushout-indβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠} →
-                    {c : CoconeD (mk-span _ f g) po-cocone Q} →
+                    {c : CoconeD (mk-span _ f g) pushout Q} →
                       ∀ x → pushout-ind Q c (ι₂ x) ＝ c .CoconeD.q x
   pushout-indβ2 {c = c} x = primEraseEquality eq where
     postulate eq : pushout-ind _ _ (ι₂ x) ＝ c .CoconeD.q x
@@ -76,24 +77,42 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
   {-# REWRITE pushout-indβ1 pushout-indβ2 #-}
 
   pushout-ind-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
-                      {c : CoconeD (mk-span _ f g) po-cocone Q} →
+                      {c : CoconeD (mk-span _ f g) pushout Q} →
                        ∀ x → apᵈ (pushout-ind Q c) (glue x) ＝ c .CoconeD.filler x
   pushout-ind-apβ {c = c} x = primEraseEquality eq where postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .CoconeD.filler x
 
+  opaque
+    pushout-rec : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                  → Cocone (mk-span _ f g) Q
+                  → Pushout f g → Q
+    pushout-rec {Q = Q} cc@(mk-cocone p q h)
+      = pushout-ind (λ _ → Q) (Dependent←Cocone {P = λ _ → Q} cc)
 
+    pushout-recβ1 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                    → {c : Cocone (mk-span _ f g) Q}
+                    → ∀ x → pushout-rec c (ι₁ x) ＝ c .Cocone.p x
+    pushout-recβ1 _ = refl
 
-  {-# REWRITE pushout-ind-apβ #-}
+    pushout-recβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                    → {c : Cocone (mk-span _ f g) Q}
+                    → ∀ x → pushout-rec c (ι₂ x) ＝ c .Cocone.q x
+    pushout-recβ2 _ = refl 
 
+  {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
 
-
-Pushouts : global-pushouts
-Pushouts S = po where
-  open Span S
-
-  po : Ind-Pushout S
-  po .Ind-Pushout.Pushout = Pushout left right
-  po .Ind-Pushout.cocone = po-cocone
-  po .Ind-Pushout.pushout-ind = pushout-ind
-  po .Ind-Pushout.pushout-indβ1 _ = refl
-  po .Ind-Pushout.pushout-indβ2 _ = refl
-  po .Ind-Pushout.pushout-ind-apβ _ = refl -- :)
+  opaque 
+    unfolding pushout-rec
+    pushout-rec-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                      {c : Cocone (mk-span _ f g)  Q} →
+                       ∀ x → ap (pushout-rec c) (glue x) ＝ c .Cocone.filler x
+    pushout-rec-apβ {f} {g} {Q = Q} {c} x
+      = ap (pushout-rec _) (glue x)                      ＝⟨ sym apᵈ-is-ap ⟩
+        coe (tr-cst ∙-) (apᵈ (pushout-rec c) (glue x))   ＝⟨ ap (coe (tr-cst ∙-)) (pushout-ind-apβ x) ⟩
+        coe (tr-cst ∙-)
+          (CoconeD.filler {cc = pushout}
+            (Dependent←Cocone {P = λ _ → Q} c) x)        ＝⟨⟩
+        coe (tr-cst ∙-) (tr-cst ∙ (c .Cocone.filler x))  ＝⟨ coe-postcomp＝ tr-cst _ ⟩
+        sym tr-cst ∙ (tr-cst ∙ (c .Cocone.filler x))     ＝⟨ ∙.cancelr _ {h = tr-cst} (∙-sym' tr-cst) {f = c .Cocone.filler x} ⟩
+        Cocone.filler c x ∎ where
+         tr-cst : tr (λ _ → Q) (glue {f = f} {g} x) (pushout-rec c (ι₁ (f x))) ＝ pushout-rec c (ι₁ (f x))
+         tr-cst = tr-constant (glue x) (pushout-rec c (ι₁ (f x)))

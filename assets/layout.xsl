@@ -31,6 +31,9 @@
           </xsl:if>
         </script>
         <script type="module" src="forester.js"></script>
+	<xsl:if test="/f:tree/f:frontmatter/f:source-path">
+	  <script src="reload.js"></script>
+	</xsl:if>
         <title>
           <xsl:value-of select="/f:tree/f:frontmatter/f:title" />
         </title>

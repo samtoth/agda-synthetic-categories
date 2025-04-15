@@ -1,1 +1,1 @@
-forester build forest.toml --dev
+agda-forester --forest -otrees/stt/autogen src/Everything.agda

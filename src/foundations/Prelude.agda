@@ -7,6 +7,7 @@ open import foundations.SigmaProperties public
 open import foundations.TotalEquiv public
 open import foundations.FibrewiseEquiv public
 open import foundations.Unit public
+open import foundations.Empty public
 open import foundations.Identity public
 open import foundations.Singleton public
 open import foundations.Functions public

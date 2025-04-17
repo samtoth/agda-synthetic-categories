@@ -41,7 +41,19 @@ open WithGlobalUnivalence UA public
 {-# REWRITE ua-linv #-}
 
 
-open import foundations.Pushout public
+open import foundations.Pushout public hiding (Cocone-path→)
+import foundations.Pushout as PO
+
+Cocone-path→ : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {X : Type 𝓛}
+               → (c c' : Cocone S X)
+               → (p : c .Cocone.p ＝ c' .Cocone.p)
+               → (q : c .Cocone.q ＝ c' .Cocone.q)
+               → (c .Cocone.filler ~∙ happly q ▸ S .Span.right
+                    ~ happly p ▸ S .Span.left ~∙ c' .Cocone.filler)
+               → c ＝ c'
+Cocone-path→ = PO.Cocone-path→ global-funext
+
+
 open import foundations.DependentCocone
 
 

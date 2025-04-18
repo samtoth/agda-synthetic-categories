@@ -39,6 +39,9 @@ postulate
 {-# BUILTIN AGDATCMBIND   bindTC   #-}
 
 module DoTC where
+  infixr 1 _=<<_
+  infixl 1 _>>=_
+
   _>>=_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → TC A → (A → TC B) → TC B
   _>>=_ = bindTC
 
@@ -70,12 +73,12 @@ postulate
   catchTC : ∀ {a} {A : Set a} → TC A → TC A → TC A
 
   -- Infer the type of a given term
-  inferType : Term → TC Term
+  infer-type : Term → TC Term
 
   -- Check a term against a given type. This may resolve implicit arguments
   -- in the term, so a new refined term is returned. Can be used to create
   -- new metavariables: newMeta t = checkType unknown t
-  checkType : Term → Term → TC Term
+  check-type : Term → Term → TC Term
 
   -- Compute the normal form of a term.
   normalise : Term → TC Term
@@ -87,16 +90,16 @@ postulate
   -- it is indexable by deBruijn index. Note that the types in the context are
   -- valid in the rest of the context. To use in the current context they need
   -- to be weakened by 1 + their position in the list.
-  getContext : TC Telescope
+  get-context : TC Telescope
 
   -- Extend the current context with a variable of the given type and its name.
-  extendContext : ∀ {a} {A : Set a} → String → Arg Term → TC A → TC A
+  extend-context : ∀ {a} {A : Set a} → String → Arg Term → TC A → TC A
 
   -- Set the current context relative to the context the TC computation
   -- is invoked from.  Takes a context telescope entries in reverse
   -- order, as given by `getContext`. Each type should be valid in the
   -- context formed by the remaining elements in the list.
-  inContext : ∀ {a} {A : Set a} → Telescope → TC A → TC A
+  in-context : ∀ {a} {A : Set a} → Telescope → TC A → TC A
 
   -- Quote a value, returning the corresponding Term.
   quoteTC : ∀ {a} {A : Set a} → A → TC Term
@@ -113,7 +116,7 @@ postulate
   -- Declare a new function of the given type. The function must be defined
   -- later using 'defineFun'. Takes an Arg Name to allow declaring instances
   -- and irrelevant functions. The Visibility of the Arg must not be hidden.
-  declareDef : Arg Name → Term → TC 𝟙
+  declare-def : Arg Name → Term → TC 𝟙
 
   -- Declare a new postulate of the given type. The Visibility of the Arg
   -- must not be hidden. It fails when executed from command-line with --safe
@@ -132,15 +135,15 @@ postulate
 
   -- Define a declared function. The function may have been declared using
   -- 'declareDef' or with an explicit type signature in the program.
-  defineFun : Name → List Clause → TC 𝟙
+  define-fun : Name → List Clause → TC 𝟙
 
   -- Get the type of a defined name relative to the current
   -- module. Replaces 'primNameType'.
-  getType : Name → TC Term 
+  get-type : Name → TC Term 
 
   -- Get the definition of a defined name relative to the current
   -- module. Replaces 'primNameDefinition'.
-  getDefinition : Name → TC Definition
+  get-definition : Name → TC Definition
 
   -- Check if a name refers to a macro
   isMacro : Name → TC Bool
@@ -211,24 +214,24 @@ postulate
 {-# BUILTIN AGDATCMTYPEERROR                  typeError                  #-}
 {-# BUILTIN AGDATCMBLOCK                      blockTC                    #-}
 {-# BUILTIN AGDATCMCATCHERROR                 catchTC                    #-}
-{-# BUILTIN AGDATCMINFERTYPE                  inferType                  #-}
-{-# BUILTIN AGDATCMCHECKTYPE                  checkType                  #-}
+{-# BUILTIN AGDATCMINFERTYPE                  infer-type                 #-}
+{-# BUILTIN AGDATCMCHECKTYPE                  check-type                 #-}
 {-# BUILTIN AGDATCMNORMALISE                  normalise                  #-}
 {-# BUILTIN AGDATCMREDUCE                     reduce                     #-}
-{-# BUILTIN AGDATCMGETCONTEXT                 getContext                 #-}
-{-# BUILTIN AGDATCMEXTENDCONTEXT              extendContext              #-}
-{-# BUILTIN AGDATCMINCONTEXT                  inContext                  #-}
+{-# BUILTIN AGDATCMGETCONTEXT                 get-context                #-}
+{-# BUILTIN AGDATCMEXTENDCONTEXT              extend-context             #-}
+{-# BUILTIN AGDATCMINCONTEXT                  in-context                 #-}
 {-# BUILTIN AGDATCMQUOTETERM                  quoteTC                    #-}
 {-# BUILTIN AGDATCMUNQUOTETERM                unquoteTC                  #-}
 {-# BUILTIN AGDATCMQUOTEOMEGATERM             quoteωTC                   #-}
 {-# BUILTIN AGDATCMFRESHNAME                  freshName                  #-}
-{-# BUILTIN AGDATCMDECLAREDEF                 declareDef                 #-}
+{-# BUILTIN AGDATCMDECLAREDEF                 declare-def                #-}
 {-# BUILTIN AGDATCMDECLAREPOSTULATE           declarePostulate           #-}
 {-# BUILTIN AGDATCMDECLAREDATA                declareData                #-}
 {-# BUILTIN AGDATCMDEFINEDATA                 defineData                 #-}
-{-# BUILTIN AGDATCMDEFINEFUN                  defineFun                  #-}
-{-# BUILTIN AGDATCMGETTYPE                    getType                    #-}
-{-# BUILTIN AGDATCMGETDEFINITION              getDefinition              #-}
+{-# BUILTIN AGDATCMDEFINEFUN                  define-fun                 #-}
+{-# BUILTIN AGDATCMGETTYPE                    get-type                   #-}
+{-# BUILTIN AGDATCMGETDEFINITION              get-definition             #-}
 {-# BUILTIN AGDATCMCOMMIT                     commitTC                   #-}
 {-# BUILTIN AGDATCMISMACRO                    isMacro                    #-}
 {-# BUILTIN AGDATCMPRAGMAFOREIGN              pragmaForeign              #-}
@@ -248,6 +251,12 @@ postulate
 {-# BUILTIN AGDATCMGETINSTANCES               getInstances               #-}
 {-# BUILTIN AGDATCMSOLVEINSTANCES             solveInstanceConstraints   #-}
 
+
+argH0 argI argH argN : ∀ {ℓ} {A : Type ℓ} → A → Arg A
+argH  = arg (arginfo hidden (modality relevant quantity-ω))
+argH0 = arg (arginfo hidden (modality relevant quantity-0))
+argI  = arg (arginfo instance' (modality relevant quantity-ω))
+argN  = arg (arginfo visible (modality relevant quantity-ω))
 
 pattern _v∷_ t xs = arg (arginfo visible (modality relevant quantity-ω)) t ∷ xs
 pattern _h∷_ t xs = arg (arginfo hidden (modality relevant quantity-ω)) t ∷ xs

@@ -1,14 +1,7 @@
 module core.Arrow where
 
-open import foundations.Universes
-open import foundations.Sigma
-open import foundations.Functions
-open import foundations.Homotopy
-open import foundations.Identity
-open import foundations.CoherentIsomorphism
-open import foundations.QuasiIsomorphism
-open import foundations.FibrePath
-open import foundations.FunExt
+open import foundations.Prelude
+open import ufAxioms
 open import ergonomics.Marker
 
 record Arrow : Typeω where
@@ -51,39 +44,49 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                                    h' ∘ f' ∘ g       ~⟨ comm' ▸ g ⟩
                                    f'' ∘ g' ∘ g      ~∎)
 
-  -- paste-equiv-maps : FunExtGlobal → ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
-  --                    → (ae : arrow-equiv-map _ _ a) → (be : arrow-equiv-map _ _ b)
-  --                    →  arrow-equiv-map _ _ (paste-squares a b)
-  -- paste-equiv-maps fe {a} {b} ae be x
-  --   = tr is-equiv (WithFunExt.funext→ fe (I x))
-  --      (is-equiv-∘ {f = arrow-fibre _ _ a (b .Arrow-map.bot x)} {g = arrow-fibre f f' b x}
-  --        (ae (b .Arrow-map.bot x))
-  --        (be x)) where
-  --   module b = is-equiv (be x)
-  --   module a = is-equiv (ae (b .Arrow-map.bot x))
+  paste-equiv-maps :  ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
+                     → (ae : arrow-equiv-map _ _ a) → (be : arrow-equiv-map _ _ b)
+                     →  arrow-equiv-map _ _ (paste-squares a b)
+  paste-equiv-maps {a} {b} ae be x
+    = tr is-equiv (funext→ (I x))
+       (is-equiv-∘ {f = arrow-fibre _ _ a (b .Arrow-map.bot x)} {g = arrow-fibre f f' b x}
+         (ae (b .Arrow-map.bot x))
+         (be x)) where
+    module b = is-equiv (be x)
+    module a = is-equiv (ae (b .Arrow-map.bot x))
 
-  --   open Arrow-map
+    open Arrow-map
 
-  --   II : (x : B) (fib : fibre f x) →
-  --      sym (paste-squares a b .Arrow-map.comm (fib .fst)) ∙
-  --        ap (paste-squares a b .Arrow-map.bot) (fib .snd)
-  --       ＝
-  --      (arrow-fibre f' f'' a (b .Arrow-map.bot x) ∘ arrow-fibre f f' b x)
-  --        fib .snd
-  --   II x (aa , p) = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p                        ＝⟨⟩
-  --              sym (ap (a .bot) (b .comm aa) ∙ ⌜ a .comm (b .top aa) ∙ refl ⌝) ∙ ap (a .bot ∘ b .bot) p     ＝⟨ {!!} ⟩
-  --              ⌜ sym (ap (a .bot) (b .comm aa) ∙ a .comm (b .top aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p            ＝⟨ {!!} ⟩
-  --              sym (a .comm (b .top aa)) ∙ ⌜ sym (ap (a .bot) (b .comm aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p      ＝⟨ {!!} ⟩
-  --              sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa)) ∙ ⌜ ap (a .bot ∘ b .bot) p ⌝      ＝⟨ {!!} ⟩
-  --              sym (a .comm (b .top aa)) ∙ ⌜ ap (a .bot) (sym (b .comm aa)) ∙ ap (a .bot) (ap (b .bot) p) ⌝ ＝⟨ {!!} ⟩ 
-  --              sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa) ∙ ap (b .bot) p)                   ＝⟨⟩ 
-  --              (arrow-fibre f' f'' a (b .bot x) ∘ arrow-fibre f f' b x) (aa , p) .snd ∎
+    II : (x : B) (fib : fibre f x) →
+       sym (paste-squares a b .Arrow-map.comm (fib .fst)) ∙
+         ap (paste-squares a b .Arrow-map.bot) (fib .snd)
+        ＝
+       (arrow-fibre f' f'' a (b .Arrow-map.bot x) ∘ arrow-fibre f f' b x)
+         fib .snd
+    II x (aa , p)
+     = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p
+         ＝⟨⟩
+       sym (ap (a .bot) (b .comm aa) ∙ ⌜ a .comm (b .top aa) ∙ refl ⌝) ∙ ap (a .bot ∘ b .bot) p
+         ＝⟨ ap! (∙-reflr _) ⟩
+       ⌜ sym (ap (a .bot) (b .comm aa) ∙ a .comm (b .top aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
+         ＝⟨ ap! (∙-symsym (ap (a .bot) (b .comm aa)) _) ⟩
+       (sym (a .comm (b .top aa)) ∙ sym (ap (a .bot) (b .comm aa))) ∙ ap (a .bot ∘ b .bot) p
+         ＝⟨ ∙-assoc (sym (a .comm (b .top aa))) _ (ap (a .bot ∘ b .bot) p) ⟩
+       sym (a .comm (b .top aa)) ∙ ⌜ sym (ap (a .bot) (b .comm aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
+         ＝⟨ ap! (sym (ap-sym (a .bot) _)) ⟩
+       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa)) ∙ ⌜ ap (a .bot ∘ b .bot) p ⌝
+         ＝⟨ ap! (ap-∘ _ _ _) ⟩
+       sym (a .comm (b .top aa)) ∙ ⌜ ap (a .bot) (sym (b .comm aa)) ∙ ap (a .bot) (ap (b .bot) p) ⌝
+         ＝⟨ ap! (sym (ap-∙ (a .bot) (sym (b .comm aa)) _)) ⟩ 
+       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa) ∙ ap (b .bot) p)
+         ＝⟨⟩ 
+       (arrow-fibre f' f'' a (b .bot x) ∘ arrow-fibre f f' b x) (aa , p) .snd ∎
 
 
-  --   I : (x : B) →
-  --     arrow-fibre _ _ a (b .Arrow-map.bot x) ∘ arrow-fibre _ _ b x
-  --       ~
-  --     arrow-fibre _ _ (paste-squares a b) x
-  --   I x fib = fibre-path→ (refl , II x fib)
+    I : (x : B) →
+      arrow-fibre _ _ a (b .Arrow-map.bot x) ∘ arrow-fibre _ _ b x
+        ~
+      arrow-fibre _ _ (paste-squares a b) x
+    I x fib = fibre-path→ (refl , II x fib)
 
     

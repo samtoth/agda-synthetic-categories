@@ -1,0 +1,155 @@
+\taxon{module}
+\date{2025-04-18}
+\title{Meta programming primitives}
+\meta{module}{\startverb ergonomics.TCM \stopverb}
+
+\import{stt-macros}
+
+\citek{1lab}
+
+% ```agda
+\agda{
+module ergonomics.Marker where
+
+open import foundations.Prelude
+open import ergonomics.Builtins
+open import ergonomics.TCM
+
+⌜_⌝ : ∀ {𝓤} {A : Type 𝓤} → A → A
+⌜ x ⌝ = x
+{-# NOINLINE ⌜_⌝ #-}
+}
+% ```
+
+\p{\code{abstract-marker} takes a term contain some markers
+and if they all contain the same term returns a term with
+a free variabe with each instance of the marker replaced with
+that variable. The idea is we just recurse through
+the term, noting how many binders we go under, and replace any ⌜_⌝ with
+the variable at the top level.}
+
+% ```agda
+\agda{
+abstract-marker : Term → Maybe Term
+abstract-marker = go 0 where
+  open DoMaybe
+
+  go : ℕ → Term → Maybe Term
+  go* : ℕ → List (Arg Term)
+       → Maybe (List (Arg Term)) 
+
+  go k (var x args) = Maybe-map (var j) (go* k args) where
+    -- Is the variable bound or free? If free, then we need
+    -- to increase level by one
+    j : ℕ
+    j with x <ℕ k
+    ... | true = x
+    ... | false = suc x
+  go k (con c args) = Maybe-map (con c) (go* k args)
+  go k (def f args) with f
+  ... | quote ⌜_⌝ = just (var k [])
+  ... | _         = Maybe-map (def f) (go* k args)
+  go k (lam v (abs s x)) = Maybe-map (lam v ∘ abs s) (go (suc k) x)
+  go k (pat-lam cs args) = nothing
+  go k (pi (arg i a) (abs s x)) = do
+    a' <- go k a
+    x' <- go (suc k) x
+    just (pi (arg i a') (abs s x'))
+  go k (agda-sort s) with s
+  ... | set t = Maybe-map (agda-sort ∘ set) (go k t)
+  ... | lit n = just (agda-sort (lit n))
+  ... | prop t = Maybe-map (agda-sort ∘ prop) (go k t)
+  ... | propLit n = just (agda-sort (propLit n))
+  ... | inf n = just (agda-sort (inf n))
+  ... | unknown = just unknown
+  go k (lit l) = just (lit l)
+  go k (meta m args) = Maybe-map (meta m) (go* k args)
+  go k unknown = just unknown
+
+  go* k [] = just []
+  go* k (arg ai x ∷ xs) = do
+      x' <- go k x
+      xs' <- go* k xs
+      just (arg ai x' ∷ xs')
+}
+% ```
+
+\subtree[stt-0033]{
+% ```agda
+\agda{
+private
+  -- We need this weird record (instead of a Σ-type) for two reasons.
+  -- One is universe levels. The second is that, if we're elaborating a
+  -- pre-existing
+  --
+  --   ap! p
+  --
+  -- (and supposing ap! had type {it : Σ Type _} → it .fst → x ≡ y), we
+  -- will elaborate p against it .fst *before* running the ap-worker
+  -- tactic, which very helpfully solves it := ? , [type of p] and
+  -- prevents the tactic from firing. So we also need it to be
+  -- no-eta-equality.
+  record ap-data {𝓤} {A : Type 𝓤} (x y : A) : Typeω where
+    no-eta-equality ; pattern ; constructor mk-apdata
+    field
+      𝓤-mark : Level
+      mark   : Type 𝓤-mark
+      from   : mark → x ＝ y
+
+  
+  ap-worker : ∀ {𝓤} {A : Type 𝓤} (x : A) → Term → TC 𝟙
+  ap-worker x goal = withNormalisation false do
+    x' ← wait-for-type =<< quoteTC x
+    go x' (abstract-marker x')
+    where
+      open DoTC
+      go : Term → Maybe Term → TC 𝟙
+      go t nothing = typeError (
+        (strErr "Failed to abstract over marker in term")
+          ∷  termErr t
+          ∷ [])
+      go _ (just m) = do
+        unify goal (con (quote mk-apdata)
+          (unknown v∷ unknown v∷
+            def (quote ap) (lam visible (abs "x" m) v∷ []) v∷
+            []))
+
+  ap!-wrapper : ∀ {𝓤} {A : Type 𝓤}
+               → {x y : A}
+               → {@(tactic ap-worker x) p : ap-data x y}
+               → p .ap-data.mark
+               → x ＝ y
+  ap!-wrapper {p = mk-apdata _ _ from} = from 
+}
+% ```
+}
+
+\subtree[stt-0032]{
+\taxon{macro}
+\title{Generalised ap}
+\meta{defines}{\startverb ["ap!"] \stopverb}
+
+% ```agda
+\agda{
+macro
+  -- Generalised ap. Automatically generates the function to apply to by
+  -- abstracting over any markers in the LEFT ENDPOINT of the path.
+  ap! : Term → TC 𝟙
+  ap! g = unify g (def (quote ap!-wrapper) [])
+}
+% ```
+}
+
+\subtree[stt-0033]{
+\taxon{test}
+% ```agda
+\agda{
+module _ {ℓ} {A : Type ℓ} {x y : A} {p : x ＝ y} {f : A → (A → A) → A} where
+  private
+    q : f x (λ y → x) ＝ f y (λ z → y)
+    q =
+      f ⌜ x ⌝ (λ _ → ⌜ x ⌝) ＝⟨ ap! p ⟩
+      f y (λ _ → y)         ∎
+}
+% ```
+}

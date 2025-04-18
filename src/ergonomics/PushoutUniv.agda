@@ -88,6 +88,16 @@ Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv
                                                (happly (Univ≃.ε auto! q) (g a))) ⟩
       happly (Univ≃.ε auto! p) (f a) ∙ filler a ∎ where open Cocone cc
 
+
+Cocone≃universal : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥}
+                  {C : Type 𝓦} {f : A → B} {g : A → C}
+                  {Q : Type 𝓠}
+                  ⦃ p-u : Universal (B → Q) 𝓜 ⦄
+                  ⦃ q-u : Universal (C → Q) 𝓝 ⦄
+                  → Coconeᵘ {f = f} {g = g} Q ≃ Cocone (mk-span A f g) Q
+Cocone≃universal = mk≃ (Cocone←universal _) (Cocone←universal-is-equiv _)
+
+
 instance
   Universal-Po : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
                    {f : A → B} {g : A → C} {Q : Type 𝓠}

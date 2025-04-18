@@ -21,6 +21,9 @@ private module fe = WithFunExt-global global-funext
 open fe public
 
 open import foundations.EquivProp global-funext public
+open import foundations.EmptyUP global-funext public
+open import foundations.SingletonClosure public hiding (Singleton-Π)
+Singleton-Π = weak-funext
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}

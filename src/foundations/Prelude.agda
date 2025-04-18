@@ -7,7 +7,9 @@ open import foundations.SigmaProperties public
 open import foundations.TotalEquiv public
 open import foundations.FibrewiseEquiv public
 open import foundations.Unit public
+open import foundations.UnitUP public
 open import foundations.Empty public
+open import foundations.Nat public
 open import foundations.Identity public
 open import foundations.Singleton public
 open import foundations.Functions public
@@ -27,4 +29,5 @@ open import foundations.EquivOfSingleton public
 open import foundations.Square public
 open import foundations.PathReasoning public
 open import foundations.DependentCocone public
+open import foundations.FibrePath public
 

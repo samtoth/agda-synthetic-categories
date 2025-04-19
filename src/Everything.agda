@@ -4,10 +4,10 @@ open import ergonomics.Literal
 open import ergonomics.Marker
 open import ergonomics.Meta
 open import ergonomics.Name
+open import ergonomics.Representation
 open import ergonomics.TCM
 open import ergonomics.Term
 open import foundations.CoherentIsomorphism
-open import foundations.Coproducts
 open import foundations.CurryEquiv
 open import foundations.DependentIdentity
 open import foundations.Embedding

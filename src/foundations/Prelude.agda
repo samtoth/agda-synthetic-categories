@@ -30,3 +30,4 @@ open import foundations.Square public
 open import foundations.PathReasoning public
 open import foundations.DependentCocone public
 open import foundations.FibrePath public
+open import foundations.Span public hiding (Cocone-path→)

@@ -1,0 +1,167 @@
+\taxon{module}
+\date{2025-04-18}
+\title{Sigma representations for records}
+\meta{module}{\startverb ergonomics.Representation \stopverb}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module ergonomics.Representation where
+
+open import foundations.Prelude
+open import ergonomics.Builtins
+open import ergonomics.TCM
+}
+% ```
+
+% ```agda
+\agda{
+Σ←field-names : ∀ {𝓤} {A : Type 𝓤} → List A → Term
+Σ←field-names [] = def (quote 𝟙) []
+Σ←field-names (_ ∷ []) = unknown
+Σ←field-names (_ ∷ xs) =
+  def (quote Σ) (lam visible (abs "_" (Σ←field-names xs)) v∷ [])
+
+Fields : Type
+Fields = List (Name × List Name)
+
+-- an accessor is a term like fst (snd (snd (snd x)))
+Fields←Field-names : List (Arg Name) → Fields
+Fields←Field-names [] = []
+Fields←Field-names ((arg _ x) ∷ []) = (x , []) ∷ []
+Fields←Field-names (arg ai x ∷ y ∷ ys) with Fields←Field-names (y ∷ ys)
+... | flds = (x , (quote fst ∷ [])) ∷ List-map (λ (nm , p) → nm , quote snd ∷ p) flds
+
+iso-type←record : Name → Name → (List (Arg Term) → TC Term) → TC Term
+iso-type←record eqty namen unfolded = go [] =<< normalise =<< infer-type (def namen []) where
+  open DoTC 
+
+  go : List ArgInfo → Term → TC Term
+  go acc (pi argu@(arg i argTy) (abs s ty)) = do
+    r ← extend-context "arg" argu (go (i ∷ acc) ty)
+    returnTC (pi (argH argTy) (abs s r))
+  go acc (agda-sort _) = do
+    let orig = def namen (reverse (map-up (λ n ai → arg ai (var n [])) 0 acc))
+    repr     ← unfolded (reverse (map-up (λ n _ → argH (var n [])) 0 acc))
+    returnTC (def eqty (orig v∷ repr v∷ []))
+  go acc t = typeError (strErr "Not a record type " ∷ nameErr namen ∷ [])
+
+
+-- repr ._≅_.fwd a .snd .snd .fst = field2 a
+fwd-clause : Name × List Name → Clause
+fwd-clause (field-nm , sel) = clause (("rec" , argN unknown) ∷ [])
+           (argN (proj (quote _≅_.fwd)) ∷
+            argN (var 0) ∷
+            List-map (argN ∘ proj) sel)
+           (def field-nm (var 0 [] v∷ []))
+
+-- repr ._≅_.fwd-iso .fst x .fieldNm = fst (snd (snd ...))
+bwd-clause : Name × List Name → Clause
+bwd-clause (field-nm , sel)
+  = clause (("sig" , argN unknown) ∷ [])
+           (argN (proj (quote _≅_.fwd-iso)) ∷
+            argN (proj (quote fst)) ∷
+            argN (var 0) ∷
+            argN (proj field-nm)  ∷
+            [])
+           (foldr (λ nm p → def nm (p v∷ [])) (var 0 []) (reverse sel))
+
+fwd-bwd-clause : Clause
+fwd-bwd-clause
+  = clause (("rec" , (argN unknown)) ∷ [])
+           (argN (proj (quote _≅_.fwd-iso)) ∷
+            argN (proj (quote snd)) ∷
+            argN (proj (quote fst)) ∷
+            argN (var 0) ∷ [])
+           (con (quote refl) (unknown h∷ unknown h∷ unknown h∷ []))
+
+bwd-fwd-clause : Clause
+bwd-fwd-clause 
+  = clause (("sig" , (argN unknown)) ∷ [])
+           (argN (proj (quote _≅_.fwd-iso)) ∷
+            argN (proj (quote snd)) ∷
+            argN (proj (quote snd)) ∷
+            argN (var 0) ∷ [])
+           (con (quote refl) (unknown h∷ unknown h∷ unknown h∷ []))
+
+-- Look up a record type definition in the signature.
+get-record-type : Name → TC (Name × List (Arg Name))
+get-record-type n = get-definition n >>= λ where
+  (record-type conm fields) → returnTC (conm , fields)
+  _ → typeError (
+                strErr "get-record-type: definition " ∷
+                nameErr n ∷
+                strErr " is not a record type." ∷
+                []) where
+  open DoTC
+
+private 
+  instantiate' : Term → Term → Term
+  instantiate' (pi _ (abs _ xs)) (pi _ (abs _ b)) = instantiate' xs b
+  instantiate' (agda-sort _) tm = tm
+  instantiate' _ tm = tm
+  
+  sigma←pi-term : Term → TC Term
+  sigma←pi-term (pi (arg _ x) (abs n (def n' _))) = returnTC x
+  sigma←pi-term (pi (arg _ x) (abs n y)) = do
+    sig ← sigma←pi-term y
+    returnTC (def (quote Σ) (x v∷ lam visible (abs n sig) v∷ []))
+    where open DoTC
+  sigma←pi-term _ = typeError (strErr "Not a record type constructor! " ∷ [])
+
+
+make-record-repr : Name → Name → Name → TC 𝟙
+make-record-repr iso eqv rec = do
+  R-con , fields ← get-record-type rec
+  let fields = Fields←Field-names fields
+
+  R-ty ← get-type rec
+  con-ty ← get-type R-con
+
+  let fun args = do
+    let tm = instantiate' R-ty con-ty
+    sigma←pi-term tm
+  iso-type ← iso-type←record (quote _≅_) rec fun
+  eqv-type ← iso-type←record (quote _≃_) rec fun
+  
+  declare-def (argN iso) iso-type
+  declare-def (argN eqv) eqv-type
+
+  define-fun iso (List-map fwd-clause fields ++
+                 (List-map bwd-clause fields ++
+                 (fwd-bwd-clause ∷ bwd-fwd-clause ∷ [])))
+
+  define-fun eqv (clause [] [] (def (quote equiv←qiso) (def iso [] v∷ [])) ∷ [])
+  where open DoTC
+}
+% ```
+
+\subtree[stt-0035]{
+\taxon{test}
+
+% ```agda
+\agda{
+private module _ where
+  record Test {𝓤} (A B : Type 𝓤) : Type (lsuc 𝓤) where
+    field
+      f : A → B
+      g : B → A
+      h : f ∘ g ~ id
+
+  record NoCtx : Type where
+    field
+      b : Bool
+      s : String
+
+  unquoteDecl test-repr≅' test-repr≃' = make-record-repr test-repr≅' test-repr≃' (quote Test)
+
+  unquoteDecl noctx-repr≅ noctx-repr≃ = make-record-repr noctx-repr≅ noctx-repr≃ (quote NoCtx)
+
+  _ : NoCtx ≃ (Bool × String)
+  _ = noctx-repr≃
+
+}
+% ```
+
+}

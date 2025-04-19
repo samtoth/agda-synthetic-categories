@@ -4,6 +4,14 @@ open import core.CanonicalPushouts
 open import core.Join
 open import core.Spheres
 open import core.Suspensions
+open import ergonomics.Fixity
+open import ergonomics.Literal
+open import ergonomics.Marker
+open import ergonomics.Meta
+open import ergonomics.Name
+open import ergonomics.Representation
+open import ergonomics.TCM
+open import ergonomics.Term
 open import foundations.CoherentIsomorphism
 open import foundations.Coproducts
 open import foundations.CurryEquiv
@@ -42,8 +50,8 @@ open import foundations.Univalence
 open import foundations.Universes
 open import modalities.HigherModality
 open import core.Slice
+open import ergonomics.Builtins
 open import ergonomics.Extensionality
-open import ergonomics.Marker
 open import ergonomics.PushoutUniv
 open import ergonomics.Universal
 open import ergonomics.auto

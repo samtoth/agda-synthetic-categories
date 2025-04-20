@@ -7,6 +7,7 @@ open import ufAxioms
 open import ergonomics.Universal
 open import ergonomics.Extensionality
 open import ergonomics.Universal
+open import ergonomics.Representation
 open import ergonomics.auto
 
 
@@ -24,6 +25,8 @@ record Coconeᵘ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥}
     q : q-u .methods
     filler : p-u .from p ∘ f ~ q-u .from q ∘ g
 
+-- unquoteDecl coconeᵘ-repr≅ coconeᵘ-repr≃ =
+--   make-record-repr coconeᵘ-repr≅ coconeᵘ-repr≃ (quote Coconeᵘ)
 
 CoconeU-path→ : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥}
                 {C : Type 𝓦} {f : A → B} {g : A → C}

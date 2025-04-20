@@ -2,6 +2,7 @@ module Everything where
 open import core.Arrow
 open import core.CanonicalPushouts
 open import core.Join
+open import core.Slice
 open import core.Spheres
 open import core.Suspensions
 open import ergonomics.Fixity
@@ -12,6 +13,7 @@ open import ergonomics.Name
 open import ergonomics.Representation
 open import ergonomics.TCM
 open import ergonomics.Term
+open import foundations.3for2
 open import foundations.CoherentIsomorphism
 open import foundations.Coproducts
 open import foundations.CurryEquiv
@@ -19,6 +21,7 @@ open import foundations.DependentCocone
 open import foundations.DependentIdentity
 open import foundations.Embedding
 open import foundations.EmptyUP
+open import foundations.Epimorphism
 open import foundations.EquivContrFibre
 open import foundations.EquivHomotopy
 open import foundations.EquivOfSingleton
@@ -41,6 +44,7 @@ open import foundations.SigmaPath
 open import foundations.SigmaProperties
 open import foundations.Singleton
 open import foundations.SingletonClosure
+open import foundations.Span
 open import foundations.Square
 open import foundations.TheoremOfChoice
 open import foundations.TotalEquiv
@@ -49,7 +53,6 @@ open import foundations.UnitUP
 open import foundations.Univalence
 open import foundations.Universes
 open import modalities.HigherModality
-open import core.Slice
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv

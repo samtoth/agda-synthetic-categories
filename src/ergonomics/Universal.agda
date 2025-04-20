@@ -29,10 +29,9 @@ record Universal {𝓤} (A : Type 𝓤) 𝓥 : Type (𝓤 ⊔ lsuc 𝓥) where
   Univ≃' : A ≃ methods
   Univ≃' = Univ≃ e⁻¹
 
-  module ≃ = _≃_ (mk≃ from from-is-equiv)
+  module Univ≃ = _≃_ (mk≃ from from-is-equiv)
 
-
-open Universal
+open Universal public
 
 Universal←Equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
                 → B ≃ A → Universal A 𝓥
@@ -75,6 +74,20 @@ instance
     → ⦃ _ : Universal ((x : A) (y : B x) → C x y) 𝓛 ⦄
     → Universal ((x : Σ A B) → C (x .fst) (x .snd)) 𝓛
   Universal-Σ ⦃ u ⦄ = Universal←equiv-to-universal uncurry≃ u
+
+  Universal-𝟙
+    : ∀ {𝓤 𝓥} {A : Type 𝓤}
+      → ⦃ _ : Universal A 𝓥 ⦄
+      → Universal (𝟙 → A) 𝓥
+  Universal-𝟙 ⦃ u ⦄ = Universal←equiv-to-universal (unit-UP≃ e⁻¹) u
+
+  Universal-⊥
+    : ∀ {𝓤} {A : Type 𝓤}
+      → Universal (⊥ → A) lzero
+  Universal-⊥ .methods = 𝟙
+  Universal-⊥ .from _  = ¡_
+  Universal-⊥ .from-is-equiv = K¡-sing-is-equiv
+
 
 rec! : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} ⦃ r : Universal (A → B) 𝓦 ⦄ → r .methods → A → B
 rec! ⦃ r ⦄ = r .from

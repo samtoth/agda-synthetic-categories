@@ -2,12 +2,6 @@ module ergonomics.Builtins where
 
 open import foundations.Prelude
 
-data ℕ : Type where
-  zero : ℕ
-  suc : ℕ → ℕ
-
-{-# BUILTIN NATURAL ℕ #-}
-
 data Bool : Type where
   true false : Bool
 

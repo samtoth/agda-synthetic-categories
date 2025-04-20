@@ -2,7 +2,6 @@
 \title{Miscellaneous properties of Sigma Types}
 \taxon{module}
 \meta{module}{\startverb foundations.SigmaProperties \stopverb}
-
 \import{stt-macros}
 
 % ```agda
@@ -16,9 +15,13 @@ open import foundations.Identity
 open import foundations.Functions
 open import foundations.QuasiIsomorphism
 open import foundations.CoherentIsomorphism
+open import foundations.Singleton
+open import foundations.EquivContrFibre
+open import foundations.EquivSingleton
 }
 % ```
 
+\meta{defines}{\startverb ["Σ-ap-≃-fst", "Σ-assoc", "Σ-＝singl", "Σ-＝singl'", "Σ-comm"] \stopverb}
 
 % ```agda
 \agda{
@@ -56,10 +59,20 @@ open import foundations.CoherentIsomorphism
   iso ._≅_.fwd-iso .snd .snd a = refl
 
 
-Σ-singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
+Σ-＝singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
         → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
-Σ-singl {A = A} {a'} {B} = equiv←qiso iso where
+Σ-＝singl {A = A} {a'} {B} = equiv←qiso iso where
   iso : Σ A (λ a → Σ (a ＝ a') (B a)) ≅ B a' refl
+  iso ._≅_.fwd (.a' , refl , ba) = ba
+  iso ._≅_.fwd-iso .fst ba = a' , refl , ba
+  iso ._≅_.fwd-iso .snd .fst (.a' , refl , ba) = refl
+  iso ._≅_.fwd-iso .snd .snd _ = refl
+
+
+Σ-＝singl' : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a' ＝ a → Type 𝓥}
+        → Σ A (λ a → Σ (a' ＝ a) λ p → B a p) ≃ B a' refl
+Σ-＝singl' {A = A} {a'} {B} = equiv←qiso iso where
+  iso : Σ A (λ a → Σ (a' ＝ a) (B a)) ≅ B a' refl
   iso ._≅_.fwd (.a' , refl , ba) = ba
   iso ._≅_.fwd-iso .fst ba = a' , refl , ba
   iso ._≅_.fwd-iso .snd .fst (.a' , refl , ba) = refl
@@ -76,5 +89,42 @@ open import foundations.CoherentIsomorphism
   iso .fst (b , a , c) = a , b , c
   iso .snd .fst _ = refl
   iso .snd .snd _ = refl
+
+
+
 }
 % ```
+
+\subtree[stt-002T]{
+\taxon{theorem}
+
+\meta{defines}{\startverb ["fibre-straighten", "Σ-singleton"] \stopverb}
+
+\p{Given a family of singleton types #{P : A \to \UU}, the projection from the straightening is an equivalence.}
+\proof{
+\citet{4.9.3}{HoTT}
+\p{The fibre of the projection #{\pi : \Sigma_{(x : A)}P(x) \to A} at some #{x : A} is equivalent to #{P(x)}. By assumption
+we have the each #{P(x)} is singleton, and therefore so is each fibre of #{\pi}, thus it is an equivalence. }
+
+% ```agda
+\agda{
+fibre-straighten : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) →
+                   ∀ x → fibre (fst {B = P}) x ≃ P x
+fibre-straighten P x = equiv←qiso lem where
+  lem : fibre fst x ≅ P x
+  lem ._≅_.fwd ((a , p) , refl) = p
+  lem ._≅_.fwd-iso .fst p = (x , p) , refl
+  lem ._≅_.fwd-iso .snd .fst (_ , refl) = refl
+  lem ._≅_.fwd-iso .snd .snd a = refl
+
+Σ-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+              → (∀ x → is-singleton (P x))
+              → Σ A P ≃ A
+Σ-singleton {P = P} sngl
+  = mk≃ fst
+        (is-equiv←is-contr-map
+          (λ b → is-single←equiv-to-single (fibre-straighten P b e⁻¹) (sngl b)))
+}
+% ```
+}
+}

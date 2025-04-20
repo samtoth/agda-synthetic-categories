@@ -11,6 +11,7 @@ open import foundations.EquivContrFibre
 open import foundations.FibrePath
 open import foundations.EquivSingleton
 open import foundations.SigmaPath
+open import foundations.SigmaProperties
 open import foundations.FunextUnivalence
 
 

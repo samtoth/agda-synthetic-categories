@@ -1,0 +1,103 @@
+\date{2025-04-20}
+\title{Slices of types}
+\taxon{module}
+\meta{module}{\startverb core.Slice \stopverb}
+
+\import{stt-macros}
+
+\p{
+ If we fix a type A, we can consider the slice ∞-category #{\mathcal{S}/A}
+}
+
+% ```agda
+\agda{
+module core.Slice where
+
+open import foundations.Prelude
+}
+% ```
+
+% ```agda
+\agda{
+Slice-map : ∀ {𝓤} {A : Type 𝓤}
+              {𝓥} {B : Type 𝓥} (p : B → A) {𝓦}
+              {C : Type 𝓦} (q : C → A)
+              → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Slice-map {B = B} p {C = C} q = Σ[ f ∶ (B → C) ] (q ∘ f ~ p)
+
+Slice-id : ∀ {𝓤} {A : Type 𝓤}
+             {𝓥} {B : Type 𝓥}
+             (p : B → A)
+             → Slice-map p p
+Slice-id p = id , ~refl             
+    
+Slice-fibre : ∀ {𝓤} {A : Type 𝓤}
+              {𝓥} {B : Type 𝓥} {p : B → A}
+              {𝓦} {C : Type 𝓦} {q : C → A}
+              → Slice-map p q →
+              (∀ a → fibre p a → fibre q a)
+Slice-fibre (f , comm) a (b , fib) = (f b , comm b ∙ fib)
+}
+% ```
+
+\subtree[stt-003D]{
+\taxon{theorem}
+\title{Equivalence from fibrewise equivalence}
+
+\p{Given a pair of maps #{p : A \to C}, #{q : B \to C}, and a map #{(f , h)} from #{p} to #{q} in the slice
+category, then #{f} is an equivalence iff the induced map on fibres is an equivalence.}
+
+\remark{\p{In \lbrack{}[[foundations.FibrewiseEquiv]]\rbrack{}, we showed the straightened
+version of this theorem, with type families over a base.}}
+
+\p{In fact, this is just a corollary of the theorem [[stt-0030]], by considering #{\textrm{fib}_{p}}
+as a family over #{C}.}
+
+\todo{Find place for base≃total-fibres}
+
+% ```agda
+\agda{
+base←total-fibre : ∀ {𝓤} {B : Type 𝓤}
+                     {𝓥} {A : Type 𝓥} (p : A → B)
+                   → total-fibre p → A
+base←total-fibre p (_ , a , _) = a
+
+refl-fibre : ∀ {𝓤} {B : Type 𝓤}
+               {𝓥} {A : Type 𝓥} (p : A → B)
+               → A → total-fibre  p
+refl-fibre p a = (p a , a , refl)
+
+base≃total-fibre : ∀ {𝓤} {B : Type 𝓤}
+                     {𝓥} {A : Type 𝓥} (p : A → B)
+                   → total-fibre p ≃ A
+base≃total-fibre {A = A} p = mk≃ (base←total-fibre p) (is-equiv←qiso f-qiso) where
+
+  f-qiso : quasi-iso (base←total-fibre p)
+  f-qiso .fst = refl-fibre p
+  f-qiso .snd .fst (_ , a , refl) = refl
+  f-qiso .snd .snd a = refl
+
+
+equiv←on-fibres : ∀ {𝓤} {C : Type 𝓤}
+                    {𝓥} {A : Type 𝓥} {p : A → C}
+                    {𝓦} {B : Type 𝓦} {q : B → C}
+                    → (F@(f , h) : Slice-map p q)
+                    → (is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F))
+                    → is-equiv f
+equiv←on-fibres {p = p} {q = q} (f , h) fw
+  = 3-for-2~' (lemma {p = p} {q = q} (f , h))
+              ((base≃total-fibre p) ._≃_.has-is-eqv)
+              (is-equiv-∘ ((base≃total-fibre q) ._≃_.has-is-eqv)
+                          (is-total-equiv←is-fibrewise-equiv fw)) where        
+  lemma : ∀ {𝓤} {C : Type 𝓤}
+            {𝓥} {A : Type 𝓥} {p : A → C}
+            {𝓦} {B : Type 𝓦} {q : B → C}
+            (F@(f , _) : Slice-map p q)
+            → base←total-fibre q ∘ total-map (Slice-fibre {p = p} {q = q} F)
+               ~
+             f ∘ base←total-fibre p
+  lemma (f , h) a = refl
+}
+% ```
+
+}

@@ -11,6 +11,8 @@ module core.Arrow where
 open import foundations.Prelude
 open import ufAxioms
 open import ergonomics.Marker
+open import ergonomics.Extensionality
+open import core.Slice
 }
 % ```
 
@@ -151,13 +153,13 @@ Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
 
 \quiver{
 \begin{tikzcd}
-	A && B \\
+	A && C \\
 	\\
-	C && D
-	\arrow["{f'}", from=1-1, to=1-3]
-	\arrow["{g'}"', from=1-1, to=3-1]
-	\arrow["g", from=1-3, to=3-3]
-	\arrow["f"', from=3-1, to=3-3]
+	B && D
+	\arrow["{g'}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{f'}", from=1-3, to=3-3]
+	\arrow["g"', from=3-1, to=3-3]
 \end{tikzcd}
 }
 
@@ -171,8 +173,8 @@ on fibres.}
 
 \quiver{
 \begin{tikzcd}
-	A && {C \times_D B} \\
-	& C
+	A && {B \times_D C} \\
+	& B
 	\arrow["{\textit{gap}}", from=1-1, to=1-3]
 	\arrow["f"', from=1-1, to=2-2]
 	\arrow["{\pi_1}", from=1-3, to=2-2]
@@ -184,5 +186,43 @@ an equivalence. The fibre of the projection is equivalent to the fibre of
 #{g} at #{f(c)}, and so by the [3-for-2](foundations.3for2) property of equivalences we
 have that the square is a pullback.}
 
+% ```agda
+\agda{
+is-pullback←is-pb-square : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  → (g : Arrow-map f f')
+  → arrow-equiv-map f f' g
+  → let (s , c) = Cone←Arrow-map g 
+  in is-pullbackω s c
+is-pullback←is-pb-square {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
+  = is-pullback←gap cone (is-equiv←on-fibres slice-map slice-equiv) where
+  cospan = Cone←Arrow-map G .fst
+  cone = Cone←Arrow-map G .snd
+
+  g : A → C
+  g = G .Arrow-map.top
+
+  g' : B → D
+  g' = G .Arrow-map.bot
+
+  open pb g' f'
+
+  slice-map : Slice-map f π₁
+  slice-map .fst = gap cone
+  slice-map .snd = ~refl
+
+  lem : {a = b : B} →
+      arrow-fibre f f' G b ~
+      fib-π₁ g' f' b ._≃_.fwd ∘ Slice-fibre (gap cone , ~refl) b
+  lem (a , refl) = Σ-path→ (refl , (∙-reflr _))
+
+  slice-equiv : is-fibrewise-equiv (Slice-fibre {q = π₁} (gap cone , ~refl))
+  slice-equiv b = 3-for-2~ {f = fib-π₁ g' f' b ._≃_.fwd}
+                           lem
+                           (fib-π₁ g' f' b ._≃_.has-is-eqv)
+                           (pbsq b)
+}
+% ```
 }
 }

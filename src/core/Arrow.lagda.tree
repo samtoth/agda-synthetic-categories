@@ -10,6 +10,7 @@ module core.Arrow where
 
 open import foundations.Prelude
 open import ufAxioms
+open import ergonomics.Representation
 open import ergonomics.Marker
 open import ergonomics.Extensionality
 open import core.Slice
@@ -146,6 +147,7 @@ Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
 \subtree[stt-003C]{
 \title{Pullback squares from fibre equivalence}
 \taxon{theorem}
+\meta{defines}{\startverb ["is-pullback←is-pb-square"] \stopverb}
 \p{A square is a pullback iff it is an equivalence on fibres}
 
 \proof{
@@ -222,7 +224,223 @@ is-pullback←is-pb-square {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
                            lem
                            (fib-π₁ g' f' b ._≃_.has-is-eqv)
                            (pbsq b)
+
+
+is-pb-square←is-pullback : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  → (g : Arrow-map f f')
+  → let (s , c) = Cone←Arrow-map g
+  in is-pullbackω s c
+  → arrow-equiv-map f f' g
+is-pb-square←is-pullback {f = f} {f' = f'} g pb b
+  = homotopy-is-equiv lem
+                      (is-equiv-∘ (fib-π₁ bot f' b ._≃_.has-is-eqv)
+                                  (fibre-equiv←is-equiv slice-map gap-is-equiv b )) where
+  open Arrow-map g
+  open pb bot f'
+
+  cospan = Cone←Arrow-map g .fst
+  cone = Cone←Arrow-map g .snd
+
+  gap-is-equiv : is-equiv (gap (mk-cone f top comm))
+  gap-is-equiv = gap-is-equiv←is-pullback _ pb
+
+  slice-map : Slice-map f π₁
+  slice-map .fst = gap cone
+  slice-map .snd = ~refl
+
+  lem : fib-π₁ bot f' b ._≃_.fwd ∘
+      Slice-fibre slice-map b
+      ~ arrow-fibre f f' g b
+  lem (a , refl) = Σ-path→ (refl , sym (∙-reflr _))
+
+
 }
 % ```
+}
+}
+
+\subtree[stt-003P]{
+\taxon{definition}
+\title{Squares from pre/post-composition}
+
+\p{Given a square of the form:}
+
+\quiver{
+\begin{tikzcd}
+	A && C \\
+	\\
+	B && D
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{f'}", from=1-3, to=3-3]
+	\arrow["{g'}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{For all types #{Q}, we obtain squares:}
+
+\quiver{
+\begin{tikzcd}
+	{Q \to A} && {Q \to C} \\
+	\\
+	{Q \to B} && {Q \to D}
+	\arrow["{g \circ -}", from=1-1, to=1-3]
+	\arrow["{f \circ -}"', from=1-1, to=3-1]
+	\arrow["{f' \circ -}", from=1-3, to=3-3]
+	\arrow["{g' \circ -}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{and}
+
+\quiver{
+\begin{tikzcd}
+	{D \to Q} && {B \to Q} \\
+	\\
+	{C \to Q} && {A \to Q}
+	\arrow["{- \circ g'}", from=1-1, to=1-3]
+	\arrow["{- \circ f'}"', from=1-1, to=3-1]
+	\arrow["{- \circ f'}", from=1-3, to=3-3]
+	\arrow["{- \circ g}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+% ```agda
+\agda{
+private
+  postcomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+               {𝓦} (C : Type 𝓦) → (f : A → B)
+             → (B → C) → (A → C)
+  postcomp C f = _∘ f
+
+  precomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+               {𝓦} (C : Type 𝓦) → (f : A → B)
+             → (C → A) → (C → B)
+  precomp C f = f ∘_
+
+postcomp-square : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  (g : Arrow-map f f')
+  → ∀ {𝓛} {C : Type 𝓛} → Arrow-map (postcomp C f') (postcomp C f)
+postcomp-square (mk-amap top bot p) {_} {C}
+ = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p ~⁻¹))
+
+precomp-square : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  (g : Arrow-map f f')
+  → ∀ {𝓛} {C : Type 𝓛} → Arrow-map (precomp C f) (precomp C f')
+precomp-square (mk-amap top bot p) {_} {C}
+  = mk-amap (top ∘_) (bot ∘_) λ f → funext→ (p ▸ f)
+}
+% ```
+}
+
+\remark{
+\p{Precomposing squares gives the result of applying the functor
+#{Hom(Q,-)} to the square. It is a well known result that this functor preserves
+pullbacks. Likewise, postcomposition is given by #{Hom(-,Q)}, and this functor turns
+pushouts in to pullbacks.
+}
+}
+
+\subtree[stt-003R]{
+\title{Precomposition of pullback squares}
+\taxon{theorem}
+
+\p{Given a square of the following form:}
+
+\quiver{
+\begin{tikzcd}
+	A && C \\
+	\\
+	B && D
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{f'}", from=1-3, to=3-3]
+	\arrow["{g'}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{We show that the square obtained via precomposition
+   is a pullback iff the original square is.
+}
+
+\proof{
+
+\p{
+First note that the type of cones on #{(Q \to B) \to (Q \to D) \leftarrow (Q \to C)}
+is equivalent to the canonical pullback of #{B \to D \leftarrow C}. We can construct
+the following triangle, and apply the three for two property for equivalences:
+}
+
+\quiver{
+\begin{tikzcd}
+	{(A \to Q)} &&& {(B \to Q)\times_{(C \to Q)} (D \to Q)} \\
+	\\
+	&& {\textrm{Cone}(f,g)}
+	\arrow["{\textit{gap}}", from=1-1, to=1-4]
+	\arrow["{\textrm{cone-map}}"', from=1-1, to=3-3]
+	\arrow["\sim", from=1-4, to=3-3]
+\end{tikzcd}
+}
+
+% ```agda
+\agda{
+
+unquoteDecl cone-repr≅ cone-repr≃
+  = make-record-repr cone-repr≅ cone-repr≃ (quote Cone)
+
+precomp-cone≃pb : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {f : A → B}
+  {g : C → B} {D : Type 𝓜}
+  → Cone (mk-cospan B f g) D ≃ Pullback (precomp D f) (precomp D g)
+precomp-cone≃pb {f = f} {g = g} {D = D}
+  = Cone (mk-cospan _ f g) D              ≃⟨ cone-repr≃ ⟩
+    Σ[ f' ∶ (D → _) ] Σ[ g' ∶ (D → _) ]
+        (precomp D f f' ~ precomp D g g') ≃⟨ Σ-ap-≃ (λ f' → Σ-ap-≃ (λ g' → funext≃ e⁻¹)) ⟩
+    Pullback (precomp D f) (precomp D g)  ≃∎
+
+
+precomp-pullback : ∀ {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  (g : Arrow-map f f')
+  → arrow-equiv-map f f' g
+  → ∀ {𝓛} {C : Type 𝓛}
+  → arrow-equiv-map _ _
+        (precomp-square g {𝓛} {C})
+precomp-pullback {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
+  = is-pb-square←is-pullback _
+      (is-pullback←gap (cn∘ C)
+                       (3-for-2
+                         {f = _≃_.bwd precomp-cone≃pb}
+                         {g = gap (cn∘ C)}
+                         (_≃_.has-is-eqv (precomp-cone≃pb e⁻¹))
+                         (cn-is-pb C))) where
+  cs : Cospan _ _ _
+  cs = Cone←Arrow-map G .fst
+
+  cn : Cone cs _
+  cn = Cone←Arrow-map G .snd
+
+  cs∘ : ∀ {𝓠} (Q : Type 𝓠) → Cospan _ _ _
+  cs∘ {𝓠} Q = Cone←Arrow-map (precomp-square G {𝓠} {Q}) .fst
+
+  cn∘ : ∀ {𝓠} (Q : Type 𝓠) → Cone (cs∘ Q) _
+  cn∘ {𝓠} Q = Cone←Arrow-map (precomp-square G {𝓠} {Q}) .snd
+
+  cn-is-pb : is-pullbackω cs cn
+  cn-is-pb = is-pullback←is-pb-square G eq
+
+  map : ∀ {𝓠} {Q : Type 𝓠} → (Q → A) → Cone cs Q
+  map {_} {Q} = _≃_.bwd precomp-cone≃pb  ∘ gap (cn∘ Q)
+}
+% ```
+
 }
 }

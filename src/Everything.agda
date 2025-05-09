@@ -14,7 +14,9 @@ open import ergonomics.Representation
 open import ergonomics.TCM
 open import ergonomics.Term
 open import foundations.3for2
+open import foundations.CanonicalPullbacks
 open import foundations.CoherentIsomorphism
+open import foundations.CompositionEquiv
 open import foundations.Coproducts
 open import foundations.CurryEquiv
 open import foundations.DependentCocone
@@ -37,6 +39,7 @@ open import foundations.Homotopy
 open import foundations.Identity
 open import foundations.Nat
 open import foundations.PropMapEmbedding
+open import foundations.Pullbacks
 open import foundations.Pushout
 open import foundations.QuasiIsomorphism
 open import foundations.Sigma

@@ -36,6 +36,19 @@ record Arrow : Typeω where
 % ```
 }
 
+\subtree[stt-003U]{
+\taxon{definition}
+\meta{defines}{\startverb ["Arrow-map", "mk-amap",
+                           "Arrow-map.top", "Arrow-map.bot",
+                           "Arrow-map.comm"] \stopverb}
+\title{Morphisms of arrows}
+
+
+\p{Given a pair of arrows, we define a morphism between them to be
+a commutative square, that is a pair of a maps and a homotopy witnessing
+that the square commutes.
+}
+
 % ```agda
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
@@ -47,16 +60,18 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
       bot  : B → D
       comm : bot ∘ f ~ f' ∘ top
 
-
-  arrow-fibre :  (gs : Arrow-map) →
-                 ∀ (b : B)
-                 → fibre f b → fibre f' (gs .Arrow-map.bot b)
-  arrow-fibre (mk-amap g g' hom) b (a , p) = (g a , sym (hom a) ∙ ap g' p)
+}
+% ```
+}
 
 
-  arrow-equiv-map : Arrow-map → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  arrow-equiv-map a = ∀ (b : B) → is-equiv (arrow-fibre a b)
-                    
+\subtree[stt-003X]{
+\taxon{theorem}
+\meta{defines}{\startverb ["id-square", "paste-squares"] \stopverb}
+\title{Arrows and squares form a category}
+
+% ```agda
+\agda{
 id-square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
             → Arrow-map f f
 id-square = mk-amap id id ~refl
@@ -64,21 +79,58 @@ id-square = mk-amap id id ~refl
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
         {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
-
-
   paste-squares : Arrow-map f' f'' → Arrow-map f f'
                   → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
     = mk-amap (g' ∘ g) (h' ∘ h) (  h' ∘ h ∘ f        ~⟨ h' ◂ comm ⟩
                                    h' ∘ f' ∘ g       ~⟨ comm' ▸ g ⟩
                                    f'' ∘ g' ∘ g      ~∎)
+}
+% ```
+}
 
-  paste-equiv-maps :  ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
-                     → (ae : arrow-equiv-map _ _ a) → (be : arrow-equiv-map _ _ b)
-                     →  arrow-equiv-map _ _ (paste-squares a b)
-  paste-equiv-maps {a} {b} ae be x
+\subtree[stt-003V]{
+\taxon{definition}
+\meta{defines}{\startverb ["arrow-fibre", "is-pb-square"] \stopverb}
+\title{Pullback squares}
+
+\p{Given a map of arrows #{f \to f'}, we can define a family of functions
+from the fibre over #{f} to the fibre over #{f'}. If this map is a
+fibrewise equivalence, then we say that the square is a pullback square.
+}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
+  arrow-fibre :  (gs : Arrow-map f f') →
+                 ∀ (b : B)
+                 → fibre f b → fibre f' (gs .Arrow-map.bot b)
+  arrow-fibre (mk-amap g g' hom) b (a , p) = (g a , sym (hom a) ∙ ap g' p)
+
+
+  is-pb-square : Arrow-map f f' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  is-pb-square a = is-fibrewise-equiv (arrow-fibre a)
+}
+% ```
+}
+
+\subtree[stt-003W]{
+\taxon{theorem}
+\meta{defines}{\startverb ["compose-pb"] \stopverb}
+\title{horizontal composition of pullbacks}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
+        {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
+  compose-pb :  ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
+                     → (ae : is-pb-square a) → (be : is-pb-square  b)
+                     →  is-pb-square (paste-squares a b)
+  compose-pb {a} {b} ae be x
     = tr is-equiv (funext→ (I x))
-       (is-equiv-∘ {f = arrow-fibre _ _ a (b .Arrow-map.bot x)} {g = arrow-fibre f f' b x}
+       (is-equiv-∘ {f = arrow-fibre a (b .Arrow-map.bot x)} {g = arrow-fibre b x}
          (ae (b .Arrow-map.bot x))
          (be x)) where
     module b = is-equiv (be x)
@@ -90,7 +142,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
        sym (paste-squares a b .Arrow-map.comm (fib .fst)) ∙
          ap (paste-squares a b .Arrow-map.bot) (fib .snd)
         ＝
-       (arrow-fibre f' f'' a (b .Arrow-map.bot x) ∘ arrow-fibre f f' b x)
+       (arrow-fibre a (b .Arrow-map.bot x) ∘ arrow-fibre b x)
          fib .snd
     II x (aa , p)
      = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p
@@ -109,22 +161,26 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          ＝⟨ ap! (sym (ap-∙ (a .bot) (sym (b .comm aa)) _)) ⟩ 
        sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa) ∙ ap (b .bot) p)
          ＝⟨⟩ 
-       (arrow-fibre f' f'' a (b .bot x) ∘ arrow-fibre f f' b x) (aa , p) .snd ∎
+       (arrow-fibre a (b .bot x) ∘ arrow-fibre b x) (aa , p) .snd ∎
 
 
     I : (x : B) →
-      arrow-fibre _ _ a (b .Arrow-map.bot x) ∘ arrow-fibre _ _ b x
+      arrow-fibre a (b .Arrow-map.bot x) ∘ arrow-fibre b x
         ~
-      arrow-fibre _ _ (paste-squares a b) x
+      arrow-fibre (paste-squares a b) x
     I x fib = fibre-path→ (refl , II x fib)
 }
 % ```
-    
+}
 
 \subtree[stt-002Z]{
 \taxon{theorem}
 \title{Arrow morphisms are squares}
 \meta{defines}{\startverb ["Cocone←Arrow-map", "Cone←Arrow-map"] \stopverb}
+
+\p{We now have (at least) three things that can be called squares. We give functions
+to convert from arrow-map squares, to either cones over cospans or cocones over spans.}
+
 
 % ```agda
 \agda{
@@ -148,7 +204,8 @@ Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
 \title{Pullback squares from fibre equivalence}
 \taxon{theorem}
 \meta{defines}{\startverb ["is-pullback←is-pb-square"] \stopverb}
-\p{A square is a pullback iff it is an equivalence on fibres}
+\p{We show that a pullback square in the sense of [[stt-003V]] deserves it's name.
+ That is, a square is a pullback iff the corrosponding cone is a pullback cone.}
 
 \proof{
 \p{Suppose we have a square:}
@@ -158,10 +215,10 @@ Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
 	A && C \\
 	\\
 	B && D
-	\arrow["{g'}", from=1-1, to=1-3]
+	\arrow["g", from=1-1, to=1-3]
 	\arrow["f"', from=1-1, to=3-1]
 	\arrow["{f'}", from=1-3, to=3-3]
-	\arrow["g"', from=3-1, to=3-3]
+	\arrow["{g'}"', from=3-1, to=3-3]
 \end{tikzcd}
 }
 
@@ -194,7 +251,7 @@ is-pullback←is-pb-square : ∀ {𝓤 𝓥 𝓦 𝓜}
   {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
   → (g : Arrow-map f f')
-  → arrow-equiv-map f f' g
+  → is-pb-square g
   → let (s , c) = Cone←Arrow-map g 
   in is-pullbackω s c
 is-pullback←is-pb-square {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
@@ -215,7 +272,7 @@ is-pullback←is-pb-square {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
   slice-map .snd = ~refl
 
   lem : {a = b : B} →
-      arrow-fibre f f' G b ~
+      arrow-fibre G b ~
       fib-π₁ g' f' b ._≃_.fwd ∘ Slice-fibre (gap cone , ~refl) b
   lem (a , refl) = Σ-path→ (refl , (∙-reflr _))
 
@@ -232,7 +289,7 @@ is-pb-square←is-pullback : ∀ {𝓤 𝓥 𝓦 𝓜}
   → (g : Arrow-map f f')
   → let (s , c) = Cone←Arrow-map g
   in is-pullbackω s c
-  → arrow-equiv-map f f' g
+  → is-pb-square g
 is-pb-square←is-pullback {f = f} {f' = f'} g pb b
   = homotopy-is-equiv lem
                       (is-equiv-∘ (fib-π₁ bot f' b ._≃_.has-is-eqv)
@@ -252,10 +309,8 @@ is-pb-square←is-pullback {f = f} {f' = f'} g pb b
 
   lem : fib-π₁ bot f' b ._≃_.fwd ∘
       Slice-fibre slice-map b
-      ~ arrow-fibre f f' g b
+      ~ arrow-fibre g b
   lem (a , refl) = Σ-path→ (refl , sym (∙-reflr _))
-
-
 }
 % ```
 }
@@ -309,31 +364,20 @@ is-pb-square←is-pullback {f = f} {f' = f'} g pb b
 
 % ```agda
 \agda{
-private
-  postcomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-               {𝓦} (C : Type 𝓦) → (f : A → B)
-             → (B → C) → (A → C)
-  postcomp C f = _∘ f
-
-  precomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-               {𝓦} (C : Type 𝓦) → (f : A → B)
-             → (C → A) → (C → B)
-  precomp C f = f ∘_
-
 postcomp-square : ∀ {𝓤 𝓥 𝓦 𝓜}
   {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
   (g : Arrow-map f f')
-  → ∀ {𝓛} {C : Type 𝓛} → Arrow-map (postcomp C f') (postcomp C f)
-postcomp-square (mk-amap top bot p) {_} {C}
+  → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (postcomp C f') (postcomp C f)
+postcomp-square (mk-amap top bot p) C
  = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p ~⁻¹))
 
 precomp-square : ∀ {𝓤 𝓥 𝓦 𝓜}
   {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
   (g : Arrow-map f f')
-  → ∀ {𝓛} {C : Type 𝓛} → Arrow-map (precomp C f) (precomp C f')
-precomp-square (mk-amap top bot p) {_} {C}
+  → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (precomp C f) (precomp C f')
+precomp-square (mk-amap top bot p) C
   = mk-amap (top ∘_) (bot ∘_) λ f → funext→ (p ▸ f)
 }
 % ```
@@ -390,7 +434,6 @@ the following triangle, and apply the three for two property for equivalences:
 
 % ```agda
 \agda{
-
 unquoteDecl cone-repr≅ cone-repr≃
   = make-record-repr cone-repr≅ cone-repr≃ (quote Cone)
 
@@ -410,10 +453,10 @@ precomp-pullback : ∀ {𝓤 𝓥 𝓦 𝓜}
   {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
   (g : Arrow-map f f')
-  → arrow-equiv-map f f' g
+  → is-pb-square g
   → ∀ {𝓛} {C : Type 𝓛}
-  → arrow-equiv-map _ _
-        (precomp-square g {𝓛} {C})
+  → is-pb-square
+        (precomp-square g C)
 precomp-pullback {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
   = is-pb-square←is-pullback _
       (is-pullback←gap (cn∘ C)
@@ -429,10 +472,10 @@ precomp-pullback {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
   cn = Cone←Arrow-map G .snd
 
   cs∘ : ∀ {𝓠} (Q : Type 𝓠) → Cospan _ _ _
-  cs∘ {𝓠} Q = Cone←Arrow-map (precomp-square G {𝓠} {Q}) .fst
+  cs∘ {𝓠} Q = Cone←Arrow-map (precomp-square G Q) .fst
 
   cn∘ : ∀ {𝓠} (Q : Type 𝓠) → Cone (cs∘ Q) _
-  cn∘ {𝓠} Q = Cone←Arrow-map (precomp-square G {𝓠} {Q}) .snd
+  cn∘ {𝓠} Q = Cone←Arrow-map (precomp-square G Q) .snd
 
   cn-is-pb : is-pullbackω cs cn
   cn-is-pb = is-pullback←is-pb-square G eq
@@ -441,6 +484,5 @@ precomp-pullback {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
   map {_} {Q} = _≃_.bwd precomp-cone≃pb  ∘ gap (cn∘ Q)
 }
 % ```
-
 }
 }

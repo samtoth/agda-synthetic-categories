@@ -6,7 +6,11 @@ open import foundations.Subtypes
 open import foundations.EquivContrFibre
 
 open import ufAxioms
-open Identity-system public 
+open Identity-system ⦃ ... ⦄ public
+module Reasoning {𝓤 𝓥} {A : Type 𝓤} ⦃ S : Identity-system A 𝓥 ⦄ where
+  open IdSReasoning S public
+
+open Reasoning public
 
 instance
   IdS-default : ∀ {𝓤} {A : Type 𝓤} → Identity-system A 𝓤
@@ -25,8 +29,7 @@ instance
   IdS-Π ⦃ s ⦄ .IdS₀ _ = s .IdS₀
   IdS-Π {A = A} {B = B} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
     (is-single←equiv-to-single (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
-      (weak-funext (λ a → SingS-is-single s (f a)))) 
-    
+      (weak-funext (λ a → SingS-is-single ⦃ s ⦄ (f a))))
 
 {-# OVERLAPPABLE IdS-Π #-}
 
@@ -48,24 +51,31 @@ instance
   IdS-uncurry ⦃ s ⦄ .IdS f g =  s .IdS (curry f) (curry g)
   IdS-uncurry ⦃ s ⦄ .IdS₀ = s .IdS₀
   IdS-uncurry {A = A} {B} {C} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
-    (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃) (SingS-is-single s (curry f)) )
-   
+    (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃) (SingS-is-single ⦃ s ⦄ (curry f)) )
+
 ext! : ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
      → s .IdS x y → x ＝ y
-ext! ⦃ s ⦄ = Id←IdS s 
+ext! = Id←IdS
 
+ext!≃ :  ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
+     → Id A x y ≃ IdS x y
+ext!≃ = Id≃IdS
+
+ext!≃' :  ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
+     → IdS x y ≃ Id A x y
+ext!≃' ⦃ s ⦄ = Id≃IdS e⁻¹
 
 IdS←Embedding
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
   → {f : A → B} → is-prop-map f
   → Identity-system B 𝓦
   → Identity-system A 𝓦
-IdS←Embedding {f = f} pm s .IdS a b = s .IdS (f a) (f b)
-IdS←Embedding pm s .IdS₀ = s .IdS₀
+IdS←Embedding {f = f} pm s .IdS a b = IdS ⦃ s ⦄ (f a) (f b)
+IdS←Embedding pm s .IdS₀ = IdS₀ ⦃ s ⦄
 IdS←Embedding {f = f} pm s .has-is-ids a = is-identity-system←Sing-sing _ _
-  (mk-singl (a , IdS₀ s) (is-ss (a , IdS₀ s))) where
-   is-ss : is-prop (Σ[ z ∶ _ ] IdS s (f a) (f z))
-   is-ss = is-prop←equiv-to-prop (Σ-ap-≃ (λ z → sym≃ ∙≃ Id≃IdS s)) (pm (f a))
+  (mk-singl (a , IdS₀ ⦃ s ⦄) (is-ss (a , IdS₀ ⦃ s ⦄))) where
+   is-ss : is-prop (Σ[ z ∶ _ ] IdS ⦃ s ⦄ (f a) (f z))
+   is-ss = is-prop←equiv-to-prop (Σ-ap-≃ (λ z → sym≃ ∙≃ Id≃IdS ⦃ s ⦄)) (pm (f a))
 
 IdS←Equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
@@ -73,7 +83,7 @@ IdS←Equiv
     → Identity-system A 𝓦
     → Identity-system B 𝓦
 IdS←Equiv eq s = IdS←Embedding (is-prop-map←is-contr-map
-                    (is-contr-map←is-equiv ((eq e⁻¹) ._≃_.has-is-eqv))) s    
+                    (is-contr-map←is-equiv ((eq e⁻¹) ._≃_.has-is-eqv))) s
 
 
 IdS←Subtype : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
@@ -84,9 +94,8 @@ IdS←Subtype p s = IdS←Embedding {f = fst} (Σ̃-π-emb (mk-subtype p)) s
 
 instance
   IdS-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-              → {B : Type 𝓦}
-              → ⦃ _ : Identity-system (A → B) 𝓥 ⦄
-              → Identity-system (A ≃ B) 𝓥
+              → ⦃ _ : Identity-system (A → B) 𝓦 ⦄
+              → Identity-system (A ≃ B) 𝓦
   IdS-equiv ⦃ s ⦄ = IdS←Equiv (≃-rep e⁻¹) (IdS←Subtype (λ _ → is-equiv-is-prop) s)
 
 private module test {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
@@ -98,3 +107,40 @@ private module test {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type �
 
   _ : {P : A → Type 𝓦} {f g : Σ A P → B} → ((a : A) (b : P a) → f (a , b) ＝ g (a , b)) → f ＝ g
   _ = ext!
+
+instance
+  IdS-Sigma : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
+              → ⦃ _ : Identity-system A 𝓦 ⦄
+              → ⦃ _ : ∀ {a : A} → Identity-system (B a) 𝓜 ⦄
+              → Identity-system (Σ A B) (𝓦 ⊔ 𝓜)
+  IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS (a , b) (a' , b')
+    = Σ[ p ∶ IdS a a' ] IdS (trS ⦃ A ⦄ p b) b'
+  IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS₀ {(a , b)} = IdS₀ ⦃ A ⦄ , IdS₀ ⦃ B ⦄
+  IdS-Sigma {A = A}{B}⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
+    = is-identity-system←Sing-sing _ _
+      (is-single←equiv-to-single (lem e⁻¹) (SingS-is-single ⦃ Bs ⦄ b)) where
+    lem : Σ (Σ A B) (λ where (a' , b') → Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b')
+           ≃
+          SingS ⦃ Bs ⦄ b
+    lem =
+         Σ (Σ A B)
+           (λ { (a' , b')
+                  → Σ[ p ∶ IdS a a' ]
+                     IdS (trS ⦃ As ⦄ p b) b'
+              })
+
+             ≃⟨ Σ-assoc ⟩
+
+          (Σ[ a' ∶ A ] Σ[ b' ∶ B a' ]
+            Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b')
+
+            ≃⟨ Σ-ap-≃ (λ a₁ → Σ-comm) ⟩
+
+          (Σ[ a' ∶ A ]  Σ[ p ∶ IdS a a' ]
+            Σ[ b' ∶ B a' ] IdS (trS ⦃ As ⦄ p b) b')
+
+            ≃⟨ Σ-singS' ⦃ As ⦄ ⟩
+
+          SingS ⦃ Bs ⦄ b ≃∎
+
+{-# OVERLAPPABLE IdS-Sigma #-}

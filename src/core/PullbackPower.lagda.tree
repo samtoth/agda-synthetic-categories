@@ -1,0 +1,162 @@
+\date{2025-05-18}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb core.PullbackPower \stopverb}
+\import{stt-macros}
+
+\title{The pullback power}
+
+%```agda
+\agda{
+module core.PullbackPower where
+
+open import foundations.Prelude
+open import ufAxioms
+
+open import core.Arrow
+open import core.Lifts
+open import ergonomics.Extensionality
+}
+%```
+
+
+\subtree[stt-004D]{
+\title{Pullback power}
+\taxon{construction}
+
+\quiver{
+\begin{tikzcd}
+	A && C \\
+	\\
+	B && D
+	\arrow[dashed, from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["g", from=1-3, to=3-3]
+	\arrow["l"{description}, from=3-1, to=1-3]
+	\arrow[dashed, from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{Given a pair of arrows as above, any diagonal map
+gives rise to a square for which it is trivially a lifting.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
+         (f' : C → D) where
+  pullback-power : (B → C) → Arrow-map f f'
+  pullback-power l .Arrow-map.top = l ∘ f
+  pullback-power l .Arrow-map.bot = f' ∘ l
+  pullback-power l .Arrow-map.comm = ~refl
+
+  pullback-power-lifts : (l : B → C) → Lift (pullback-power l)
+  pullback-power-lifts l .Lift.lift = l
+  pullback-power-lifts l .Lift.K = ~refl
+  pullback-power-lifts l .Lift.L = ~refl
+  pullback-power-lifts l .Lift.pastes = ~refl
+}
+%```
+}
+
+\subtree[stt-004C]{
+\title{Pullback power is a gap map}
+\taxon{theorem}
+
+\p{The name pullback power comes from the fact that for any pair
+of maps, we can define a square as follows:}
+
+\quiver{
+\begin{tikzcd}
+	{C^B} && {C^A} \\
+	\\
+	{D^B} && {D^A}
+	\arrow["{- \circ f}", from=1-1, to=1-3]
+	\arrow["{g \circ -}"', from=1-1, to=3-1]
+	\arrow["{g \circ -}", from=1-3, to=3-3]
+	\arrow["{- \circ f}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{Then the gap map of this square is the [pullback power](stt-004D) in the
+sense that the following triangle commutes.}
+
+\quiver{
+\begin{tikzcd}
+	& {B \to C} \\
+	\\
+	{\Hom(f,g)} && {D^B\times_{D^A}C^A}
+	\arrow["{f\pitchfork g}"', from=1-2, to=3-1]
+	\arrow["gap", from=1-2, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
+         (g : C → D)  where
+  power-hom : Arrow-map (precomp B g) (precomp A g)
+  power-hom .Arrow-map.top = postcomp _ f
+  power-hom .Arrow-map.bot = postcomp _ f
+  power-hom .Arrow-map.comm = ~refl
+
+  pb-power-cone : Cone (mk-cospan _ (precomp _ g) (postcomp D f)) (B → C)
+  pb-power-cone = mk-cone (postcomp C f) (precomp _ g) ~refl
+
+  pullback-gap~pullback-power :
+    gap pb-power-cone ~ Arrow-as-pullback ._≃_.fwd ∘ pullback-power f g
+  pullback-gap~pullback-power f = ext! (~refl , ~refl , sym (ap sym funext-refl))
+}
+%```
+}
+
+\subtree[stt-004L]{
+% \title{The pullback power is an equiv  is a pullback}
+\taxon{corollary}
+
+\p{The [pullback power](stt-004D) is an equivalence iff the square of
+[stt-004C](stt-004C) is a pullback square.}
+
+%```agda
+\agda{
+  pullback-power-is-equiv←power-pb : is-equiv (pullback-power f g)
+                                   → is-pullbackω _ pb-power-cone
+  pullback-power-is-equiv←power-pb pb-eq = is-pullback←gap (pb-power-cone)
+    (homotopy-is-equiv (pullback-gap~pullback-power ~⁻¹)
+                       (is-equiv-∘ (Arrow-as-pullback ._≃_.has-is-eqv)
+                                   pb-eq))
+
+  power-is-pb←pullback-power : is-pullbackω _ pb-power-cone
+                             → is-equiv (pullback-power f g)
+  power-is-pb←pullback-power pb = 3-for-2~ pullback-gap~pullback-power
+                                           (Arrow-as-pullback ._≃_.has-is-eqv)
+                                           (gap-is-equiv←is-pullback _ pb)
+}
+%```
+}
+
+\subtree[stt-004K]{
+\taxon{theorem}
+\title{Characterising fibres of the pullback map}
+
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
+         (g : C → D)  where
+
+  pb-power-fibre≃lifts : ∀ (G : Arrow-map f g)
+                         → fibre (pullback-power f g) G ≃ Lift G
+  pb-power-fibre≃lifts G
+    = fibre (pullback-power f g) G ≃⟨⟩
+      Σ[ l ∶ (B → C)] _            ≃⟨ Σ-ap-≃ (λ
+                                   l → arrow-map-path
+                                       (pullback-power f g l) G) ⟩
+      (Σ[ l ∶ (B → C)] _) ≃⟨ Lift-repr≃ G e⁻¹ ⟩
+      Lift G ≃∎
+}
+%```
+}

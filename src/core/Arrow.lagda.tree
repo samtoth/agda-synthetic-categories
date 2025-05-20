@@ -14,6 +14,8 @@ open import ergonomics.Representation
 open import ergonomics.Marker
 open import ergonomics.Extensionality
 open import core.Slice
+open import core.CanonicalPushouts
+open import core.PullbackPath
 }
 % ```
 
@@ -60,10 +62,84 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
       bot  : B → D
       comm : bot ∘ f ~ f' ∘ top
 
+  unquoteDecl Arrow-map-repr≅ Arrow-map-repr≃
+    = make-record-repr Arrow-map-repr≅ Arrow-map-repr≃ (quote Arrow-map)
 }
 % ```
 }
 
+
+\subtree[stt-004H]{
+\taxon{theorem}
+\date{2025-05-17}
+\meta{defines}{\startverb ["Arrow-as-pullback"] \stopverb}
+\title{A square is a pullback}
+
+\p{The type #{\Hom(f,g)} is equivalent to the pullback of #{g \circ -} with
+#{- \circ f}.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {g : C → D} where
+
+  pullback←arrow : Arrow-map f g → Pullback (g ∘_) (_∘ f)
+  pullback←arrow (mk-amap f g h) = f , g , sym (funext→ h)
+
+  Arrow-as-pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
+  Arrow-as-pullback
+    = Arrow-map f g                      ≃⟨ Arrow-map-repr≃ f g ⟩
+      Σ[ k ∶ (A → C) ]
+       Σ[ h ∶ (B → D) ] (h ∘ f ~ g ∘ k)  ≃⟨  Σ-ap-≃ (λ _
+                                           → Σ-ap-≃ λ _
+                                             → (funext≃ e⁻¹) ∙≃ sym≃)  ⟩
+      Pullback (g ∘_) (_∘ f) ≃∎
+}
+%```
+
+}
+
+\subtree[stt-004I]{
+\title{Characterising the path of arrow maps}
+\taxon{theorem}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
+
+  arrow-map-Path : ∀ (G H : Arrow-map f f') → Type _
+  arrow-map-Path (mk-amap t b H) (mk-amap t' b' H')
+    = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
+      (H ~∙ (f' ◂ p) ~ q ▸ f ~∙ H')
+
+  arrow-map-Path-refl : {G : Arrow-map f f'} → arrow-map-Path G G
+  arrow-map-Path-refl = ~refl , ~refl , ~∙-reflr _
+
+  arrow-map-Path-is-Rppred : ∀ (G : Arrow-map f f')
+                             → Reflexive-ppred _ G _
+  arrow-map-Path-is-Rppred G = (arrow-map-Path G) , arrow-map-Path-refl
+
+  arrow-map-path→ : ∀ {G H : Arrow-map f f'} → (G ＝ H) → arrow-map-Path G H
+  arrow-map-path→ = idtoppred (arrow-map-Path-is-Rppred _) _
+
+  arrow-map-path : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ arrow-map-Path G H
+  arrow-map-path G@(mk-amap t b h) H
+    = mk≃ arrow-map-path→
+          (is-identity-system←Sing-sing
+            (arrow-map-Path G)
+            arrow-map-Path-refl
+            (is-single←equiv-to-single
+              (Σ-ap-≃-fst (Arrow-map-repr≃ _ _ e⁻¹))
+              (is-singleton-structure←parts (SingS-is-single t)
+                (t , ~refl)
+                (is-singleton-structure←parts (SingS-is-single b)
+                  (b , ~refl)
+                  (SingS-is-single λ a → h a ∙ refl))))
+            H)
+}
+%```
+}
 
 \subtree[stt-003X]{
 \taxon{theorem}
@@ -82,9 +158,9 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   paste-squares : Arrow-map f' f'' → Arrow-map f f'
                   → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
-    = mk-amap (g' ∘ g) (h' ∘ h) (  h' ∘ h ∘ f        ~⟨ h' ◂ comm ⟩
-                                   h' ∘ f' ∘ g       ~⟨ comm' ▸ g ⟩
-                                   f'' ∘ g' ∘ g      ~∎)
+    = mk-amap (g' ∘ g) (h' ∘ h) ( h' ∘ h ∘ f        ~⟨ h' ◂ comm ⟩
+                                  h' ∘ f' ∘ g       ~⟨ comm' ▸ g ⟩
+                                  f'' ∘ g' ∘ g      ~∎)
 }
 % ```
 }
@@ -187,7 +263,7 @@ to convert from arrow-map squares, to either cones over cospans or cocones over 
 Cocone←Arrow-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                   {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
                 → Arrow-map f f' → Σ[ S ∶  Span 𝓤 𝓥 𝓦 ] Cocone S D
-Cocone←Arrow-map {f = f} {f' = f'} (mk-amap g g'  comm)
+Cocone←Arrow-map {f = f} {f' = f'} (mk-amap g g' comm)
   = (mk-span _ f g) , mk-cocone g' f' comm
 
 
@@ -199,6 +275,30 @@ Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
 }
 % ```
 }
+
+\subtree[stt-004E]{
+\taxon{defition}
+
+\title{(co)gap maps from squares}
+
+% ```agda
+\agda{
+gap-map←square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                   {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+                 → (g : Arrow-map f f')
+                 → A → Pullback (g .Arrow-map.bot) f'
+gap-map←square g = gap (Cone←Arrow-map g .snd)
+
+
+cogap-map←square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                   {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+                 → (g : Arrow-map f f')
+                 → Pushout f (g .Arrow-map.top) → D
+cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
+}
+% ```
+}
+
 
 \subtree[stt-003C]{
 \title{Pullback squares from fibre equivalence}
@@ -252,7 +352,7 @@ is-pullback←is-pb-square : ∀ {𝓤 𝓥 𝓦 𝓜}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
   → (g : Arrow-map f f')
   → is-pb-square g
-  → let (s , c) = Cone←Arrow-map g 
+  → let (s , c) = Cone←Arrow-map g
   in is-pullbackω s c
 is-pullback←is-pb-square {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
   = is-pullback←gap cone (is-equiv←on-fibres slice-map slice-equiv) where
@@ -385,8 +485,8 @@ precomp-square (mk-amap top bot p) C
 
 \remark{
 \p{Precomposing squares gives the result of applying the functor
-#{Hom(Q,-)} to the square. It is a well known result that this functor preserves
-pullbacks. Likewise, postcomposition is given by #{Hom(-,Q)}, and this functor turns
+#{Hom(Q,H)} to the square. It is a well known result that this functor preserves
+pullback Likewise, postcomposition is given by #{Hom(-,Q)}, and this functor turns
 pushouts in to pullbacks.
 }
 }

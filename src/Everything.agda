@@ -2,6 +2,10 @@ module Everything where
 open import core.Arrow
 open import core.CanonicalPushouts
 open import core.Join
+open import core.Lifts
+open import core.Orthogonal
+open import core.PullbackPath
+open import core.PullbackPower
 open import core.Slice
 open import core.Spheres
 open import core.Suspensions
@@ -13,6 +17,7 @@ open import ergonomics.Name
 open import ergonomics.Representation
 open import ergonomics.TCM
 open import ergonomics.Term
+open import ergonomics.notations.Orthogonality
 open import foundations.3for2
 open import foundations.CanonicalPullbacks
 open import foundations.CoherentIsomorphism
@@ -29,6 +34,7 @@ open import foundations.EquivHomotopy
 open import foundations.EquivOfSingleton
 open import foundations.EquivProp
 open import foundations.EquivSingleton
+open import foundations.FibrantReplacement
 open import foundations.FibrePath
 open import foundations.FibrewiseEquiv
 open import foundations.FunExt
@@ -49,6 +55,7 @@ open import foundations.Singleton
 open import foundations.SingletonClosure
 open import foundations.Span
 open import foundations.Square
+open import foundations.Subtypes
 open import foundations.TheoremOfChoice
 open import foundations.TotalEquiv
 open import foundations.Unit
@@ -56,6 +63,8 @@ open import foundations.UnitUP
 open import foundations.Univalence
 open import foundations.Universes
 open import modalities.HigherModality
+open import modalities.ModalMaps
+open import modalities.Subuniverses
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv
@@ -70,5 +79,4 @@ open import foundations.PathReasoning
 open import foundations.Prelude
 open import foundations.PushoutFromEquiv
 open import foundations.Reasoning
-open import foundations.Subtypes
 open import ufAxioms

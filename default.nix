@@ -1,6 +1,9 @@
 { system ? builtins.currentSystem }:
 let
-  pkgs = import <nixpkgs> { inherit system; };
+  thunkSource = (import ./nix/nix-thunk {}).thunkSource;
+  # pkgs = import <nixpkgs> { inherit system; };
+  pkgs = import "${thunkSource ./nix/agda-forester}/nix/nixpkgs.nix"
+                 { inherit system; };
 
   af = import ./nix/agda-forester {};
 

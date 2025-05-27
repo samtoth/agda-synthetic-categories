@@ -5,17 +5,7 @@ let
   pkgs = import "${thunkSource ./nix/agda-forester}/nix/nixpkgs.nix"
                  { inherit system; };
 
-  af = import ./nix/agda-forester {} //
-               {
-                 overrideAttributes = old: {
-                   ocamlPackages = old.ocamlPackages.findlib.overrideAttrs (old': {
-                     src = pkgs.fetchurl {
-                       url = "https://github.com/ocaml/ocamlfind/archive/refs/tags/findlib-${old'.version}.tar.gz";
-                       sha256 = "0ci6nps2qgkhfjqji18qjc26rid9gkpmxzlb1svg5wwair0qvb0s";
-                     };
-                   });
-                 };
-               };
+  af = import ./nix/agda-forester {};
 
   tex = pkgs.texlive.combine {
     inherit (pkgs.texlive)

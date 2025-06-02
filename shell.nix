@@ -11,8 +11,7 @@ in pkgs.mkShell {
 
     buildInputs = [
       af
-      af.passthru.forest
-      (forester-server.packages.${builtins.currentSystem}.default)
+      (forester-server.packages.${system}.default)
     ];
 
     shellHook = ''

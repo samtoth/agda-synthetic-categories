@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 echo "module Everything where" > src/Everything.agda
 
 find src -type f -name '*.lagda.tree' | \

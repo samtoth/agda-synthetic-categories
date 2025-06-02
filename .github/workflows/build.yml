@@ -1,0 +1,58 @@
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !contains(github.ref, 'main') }}
+
+
+name: Build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+           name: agda-synthetic-categories
+           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Build
+        run: nix-build
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: result/
+          retention-days: 1
+
+  deploy:
+    # Add a dependency to the build job
+    needs: build
+    if: ${{ github.ref_name == 'main' }}
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

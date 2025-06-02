@@ -1,29 +1,41 @@
 { system ? builtins.currentSystem }:
 let
-  pkgs = import <nixpkgs> { inherit system; };
+  thunkSource = (import ./nix/nix-thunk {}).thunkSource;
+  # pkgs = import <nixpkgs> { inherit system; };
+  pkgs = import "${thunkSource ./nix/agda-forester}/nix/nixpkgs.nix"
+                 { inherit system; };
 
   af = import ./nix/agda-forester {};
+
+  tex = pkgs.texlive.combine {
+    inherit (pkgs.texlive)
+      collection-basic
+      collection-latex
+      pgf
+      tikz-cd
+      quiver
+      babel
+      mathtools
+      dvisvgm
+      standalone;
+  };
 in
   pkgs.stdenv.mkDerivation rec {
-    name = "synthetic-agda";
+    name = "agda-synthetic-categories";
 
-    src = ./.;
-    
+    src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+
     buildInputs = [
       af
-      af.passthru.forest
+      tex
     ];
 
-    # shellHook = ''
-    #   export out=site
-    # '';
-
-
     buildPhase = ''
+      mkdir -p trees/stt/autogen
       ./generateEverything.sh
       echo "Generated everything file"
-      agda-forester --forest -otrees/stt/autogen src/Everything.agda
-      echo "Generated trees" 
+      LC_ALL=C.UTF-8 agda-forester --forest -otrees/stt/autogen src/Everything.agda
+      echo "Generated trees"
       forester build
     '';
 

@@ -27,7 +27,6 @@ in
 
     buildInputs = [
       af
-      af.passthru.forest
       tex
     ];
 

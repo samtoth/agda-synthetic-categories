@@ -34,7 +34,7 @@ in
       mkdir -p trees/stt/autogen
       ./generateEverything.sh
       echo "Generated everything file"
-      LC_ALL=en_US.UTF-8 agda-forester --forest -otrees/stt/autogen src/Everything.agda
+      LC_ALL=C.UTF-8 agda-forester --forest -otrees/stt/autogen src/Everything.agda
       echo "Generated trees"
       forester build
     '';

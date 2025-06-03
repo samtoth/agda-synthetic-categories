@@ -23,6 +23,7 @@ open import foundations.3for2
 open import foundations.CanonicalPullbacks
 open import foundations.CoherentIsomorphism
 open import foundations.CompositionEquiv
+open import foundations.CompositionFibres
 open import foundations.Coproducts
 open import foundations.CurryEquiv
 open import foundations.DependentCocone
@@ -78,6 +79,5 @@ open import foundations.IdentityEquiv
 open import foundations.IdentitySystem
 open import foundations.PathReasoning
 open import foundations.Prelude
-open import foundations.PushoutFromEquiv
 open import foundations.Reasoning
 open import ufAxioms

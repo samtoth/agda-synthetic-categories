@@ -1,5 +1,6 @@
 module Everything where
 open import core.Arrow
+open import core.ArrowEquiv
 open import core.CanonicalPushouts
 open import core.Join
 open import core.Lifts

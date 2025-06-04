@@ -67,6 +67,7 @@ open import foundations.Universes
 open import modalities.HigherModality
 open import modalities.ModalMaps
 open import modalities.Subuniverses
+open import modalities.instances.OpenModalities
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv

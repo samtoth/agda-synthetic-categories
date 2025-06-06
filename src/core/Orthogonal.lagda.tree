@@ -10,11 +10,14 @@
 \agda{
 module core.Orthogonal where
 
+open import ufAxioms
 open import foundations.Prelude
 open import core.Arrow
+open import core.ArrowEquiv
 open import core.Lifts
 open import core.PullbackPower
 open import ergonomics.notations.Orthogonality
+open import ergonomics.Extensionality
 }
 % ```
 
@@ -38,27 +41,6 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
 % ```
 }
 
-\subtree[stt-004B]{
-\taxon{notation}
-
-\p{When we have that #{f} is orthogonal to #{g}, we write
-#{f \perp g}.}
-
-% ```agda
-\agda{
-module notation {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
-       {B : Type 𝓥} {C : Type 𝓦}
-       {D : Type 𝓛} where
-  instance
-    orth-maps : Orthogonality (A → B) (C → D)
-    orth-maps .Orthogonality.𝓦 = 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛
-    orth-maps .Orthogonality._⊥_ = are-orthogonal
-
-open notation
-}
-% ```
-}
-
 
 
 \subtree[stt-004A]{
@@ -70,8 +52,10 @@ are equivalent:}
 
 \ol{
   \li{#{f \perp g}}
-  \li{The square defined in [[stt-004C]] is a pullback square}
+  \li{The square defined in \ref{stt-004C} is a pullback square}
   \li{The [pullback power](stt-004D) of f with g is an equivalence}
+  \li{The [dependent postcomposition](stt-004M) by #{f} at the fibre of
+      #{g} is an equivalence.}
 }
 
 \proof{
@@ -82,7 +66,10 @@ are equivalent:}
   iff for all #{(G = (t , b , H) : \Hom(f,g))},
   #{\textrm{fib}_{f \pitchfork g}(G)} is a singleton. [We have
   shown](stt-004K) the fibres of the pullback power are equivalent to the
-  type of lifts of #{G}.}
+  type of lifts of #{G}.
+
+  \p{Finally we show (2) iff (4).  }
+}
 
 
 %```agda
@@ -98,7 +85,175 @@ pb-power-is-equiv←orthogonal {A = A}{B}{C}{D}{f}{g} orth
                         (pb-power-fibre≃lifts f g G e⁻¹)
                         (orth G)
 
+
+postcomp-Π←is-pullback-power : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+                             {C : Type 𝓦} {D : Type 𝓛}
+                             {f : A → B} {g : C → D}
+                           → is-cartesian (power-hom f g)
+                           → ∀ (h : B → D)
+                           → is-equiv (postcomp-Π (fibre g ∘ h) f)
+postcomp-Π←is-pullback-power {f = f} {g} pb h
+  = is-equiv←Arrow-equiv {F = amap} amap-eq (pb h) where
+  amap : Arrow-map
+           (arrow-fibre (power-hom f g) h)
+           (postcomp-Π (fibre g ∘ h) f)
+  amap .Arrow-map.top = _≃_.fwd (fibre-precomp≃ g h)
+  amap .Arrow-map.bot = _≃_.fwd (fibre-precomp≃ g (h ∘ f))
+  amap .Arrow-map.comm (_ , refl) = refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq = ( fibre-precomp≃ g h ._≃_.has-is-eqv
+            , fibre-precomp≃ g (h ∘ f) ._≃_.has-is-eqv
+            )
+
+is-pullback-power←postcomp-Π : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+                                {C : Type 𝓦} {D : Type 𝓛}
+                                {f : A → B} {g : C → D}
+                              → (∀ h → is-equiv (postcomp-Π (fibre g ∘ h) f))
+                              → is-cartesian (power-hom f g)
+is-pullback-power←postcomp-Π {f = f}{g} eq h
+  = is-equiv←Arrow-equiv⁻¹ {F = amap} amap-eq (eq h) where
+  amap : Arrow-map
+           (arrow-fibre (power-hom f g) h)
+           (postcomp-Π (fibre g ∘ h) f)
+  amap .Arrow-map.top = _≃_.fwd (fibre-precomp≃ g h)
+  amap .Arrow-map.bot = _≃_.fwd (fibre-precomp≃ g (h ∘ f))
+  amap .Arrow-map.comm (_ , refl) = refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq = ( fibre-precomp≃ g h ._≃_.has-is-eqv
+            , fibre-precomp≃ g (h ∘ f) ._≃_.has-is-eqv
+            )
+
+orthogonal←postcomp-Π : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+                          {C : Type 𝓦} {D : Type 𝓛}
+                          {f : A → B} {g : C → D}
+                       → (∀ (h : B → D) → is-equiv (postcomp-Π (fibre g ∘ h) f))
+                       → are-orthogonal f g
+orthogonal←postcomp-Π {f = f}{g} eqv F
+  = is-single←equiv-to-single (pb-power-fibre≃lifts _ _ F)
+     (is-contr-map←is-equiv
+       (pullback-power←power-hom-cartesian _ _
+         (is-pullback-power←postcomp-Π eqv))
+        F)
 }
 %```
 }
+}
+
+
+\subtree[stt-004N]{
+\date{2025-05-24}
+\taxon{remark}
+\title{Orthogonality at types}
+\p{We say that a type #{A} is orthogonal to a map when the unique map #{A \to 1}
+   is.}
+}
+
+
+\subtree[stt-004O]{
+\date{2025-05-24}
+\taxon{theorem}
+\title{Orthogonality via composition}
+
+\p{A type #{A} is [orthogonal](stt-004N) to a map #{X \to Y} iff precomposition
+by f is an equivalence.}
+
+\p{We postpone this proof until later, but for now in the formalisation we
+   define orthogonality to be the types satisfying the above property.}
+
+%```agda
+\agda{
+orthogonal-type : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
+                    (f : X → Y)
+                    (A : Type 𝓦) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+orthogonal-type f A = is-equiv (postcomp A f)
+
+
+}
+%```
+}
+
+
+\subtree[stt-004B]{
+\taxon{notation}
+
+\p{When we have that #{f} is orthogonal to #{g}, we write
+#{f \perp g}. Likewise if #{A} is a type, then we can write
+  #{f \perp A} to mean #{f} is orthogonal to #{!_A}.}
+
+% ```agda
+\agda{
+module notation where
+  instance
+    orth-maps : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
+       {B : Type 𝓥} {C : Type 𝓦}
+       {D : Type 𝓛} → Orthogonality (A → B) (C → D)
+    orth-maps {𝓤} {𝓥} {𝓦} {𝓛} .Orthogonality.𝓦 = 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛
+    orth-maps .Orthogonality._⊥_ = are-orthogonal
+
+  instance
+    orth-map-typ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤}
+       {B : Type 𝓥} → Orthogonality (A → B) (Type 𝓦)
+    orth-map-typ {𝓤} {𝓥} {𝓦} .Orthogonality.𝓦 = 𝓤 ⊔ 𝓥 ⊔ 𝓦
+    orth-map-typ .Orthogonality._⊥_ = orthogonal-type
+
+open notation
+}
+% ```
+}
+
+
+\subtree[stt-004Q]{
+\taxon{proof}
+\title{Proof of \ref{stt-004O}}
+
+\p{
+We want to show #{A \to \bb1} is orthogonal to #{f : X \to Y}, which by
+the [[stt-004A]], it surfices to show that for all #{h : Y \to 1}, the map
+#{- \circ f : ((y : Y) → \fibre{!}{h(y)}) \to ((x : X) → \fibre{!}{h(f(x))})}
+is an equivalence. But the fibre of #{A \to 1} is just A. Formally, we can
+use the 3-for-2 property on the following diagram:
+}
+
+\quiver{
+\begin{tikzcd}
+	{\fibre{!}{-}^Y} &&& {\fibre{!}{-}^X} \\
+	\\
+	& {A^Y} & {A^X}
+	\arrow[from=1-1, to=1-4]
+	\arrow["\sim"', from=1-1, to=3-2]
+	\arrow["{A^f}"', from=3-2, to=3-3]
+	\arrow["\sim"', from=3-3, to=1-4]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+orthogonal-! : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
+                 {f : X → Y} {A : Type 𝓦}
+               → f ⊥ A
+               → f ⊥ (! {A = A})
+orthogonal-! {X = X}{Y}{f}{A} orth = orthogonal←postcomp-Π (λ _
+  → is-equiv~∘ {f = (fst⁻¹ ∘_)} {(_∘ f) ∘ (fst ∘_)}
+               h
+               (precomp-equiv {f = fst⁻¹} (is-equiv⁻¹ fst-is-equiv))
+               (is-equiv-∘ {f = (_∘ f)}
+                           {fst ∘_}
+                           orth
+                           (precomp-Π-equiv fst-is-equiv))) where
+  fst⁻¹ : A → fibre {A = A} ! _
+  fst⁻¹ a = a , refl
+
+  fst-is-equiv : is-equiv {A = fibre {A = A} ! tt} fst
+  fst-is-equiv = is-equiv←qiso (fst⁻¹
+                               , (λ where (a , refl) → refl)
+                               , ~refl)
+
+  h : {h : Y → 𝟙}
+      → postcomp-Π (fibre (λ _ → tt) ∘ h) f ~ ((fst⁻¹ ∘_) ∘ (_∘ f)) ∘ (fst ∘_)
+  h f' = ext! (λ a → refl , (is-prop←is-single
+         (＝-singleton←is-prop (is-prop←is-single 𝟙-is-singleton) tt tt) _ refl))
+}
+%```
 }

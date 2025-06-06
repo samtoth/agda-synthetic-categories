@@ -1,5 +1,6 @@
 module Everything where
 open import core.Arrow
+open import core.ArrowEquiv
 open import core.CanonicalPushouts
 open import core.Join
 open import core.Lifts
@@ -22,6 +23,7 @@ open import foundations.3for2
 open import foundations.CanonicalPullbacks
 open import foundations.CoherentIsomorphism
 open import foundations.CompositionEquiv
+open import foundations.CompositionFibres
 open import foundations.Coproducts
 open import foundations.CurryEquiv
 open import foundations.DependentCocone
@@ -62,9 +64,11 @@ open import foundations.Unit
 open import foundations.UnitUP
 open import foundations.Univalence
 open import foundations.Universes
+open import modalities.Factorisation
 open import modalities.HigherModality
 open import modalities.ModalMaps
 open import modalities.Subuniverses
+open import modalities.instances.OpenModalities
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv
@@ -77,6 +81,5 @@ open import foundations.IdentityEquiv
 open import foundations.IdentitySystem
 open import foundations.PathReasoning
 open import foundations.Prelude
-open import foundations.PushoutFromEquiv
 open import foundations.Reasoning
 open import ufAxioms

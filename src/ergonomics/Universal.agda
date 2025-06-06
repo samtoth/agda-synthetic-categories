@@ -1,4 +1,3 @@
-
 module ergonomics.Universal where
 
 open import foundations.Prelude
@@ -54,10 +53,11 @@ instance
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
     → ⦃ _ : ∀ {a} → Universal (B a) 𝓦 ⦄
     → Universal (∀ a → B a) (𝓤 ⊔ 𝓦)
-  Universal-Π ⦃ u ⦄ .methods = ∀ a → u {a} .methods 
+  Universal-Π ⦃ u ⦄ .methods = ∀ a → u {a} .methods
   Universal-Π ⦃ u ⦄ .from = u .from ∘_
-  Universal-Π {A = A} {B} ⦃ u ⦄ .from-is-equiv = family-precomp-equiv (u .from-is-equiv)  
-  
+  Universal-Π {A = A} {B} ⦃ u ⦄ .from-is-equiv
+    = precomp-Π-equiv (u .from-is-equiv)
+
   {-# INCOHERENT Universal-default #-}
   {-# OVERLAPPABLE Universal-Π #-}
 
@@ -65,11 +65,11 @@ Universal←equiv-to-universal : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 
                              → A ≃ B
                              → Universal A 𝓦
                              → Universal B 𝓦
-Universal←equiv-to-universal eq ua = Universal←Equiv (Univ≃ ua ∙≃ eq) 
+Universal←equiv-to-universal eq ua = Universal←Equiv (Univ≃ ua ∙≃ eq)
 
 
 instance
-  Universal-Σ 
+  Universal-Σ
     : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : A → Type 𝓥} {C : (x : A) → B x → Type 𝓦}
     → ⦃ _ : Universal ((x : A) (y : B x) → C x y) 𝓛 ⦄
     → Universal ((x : Σ A B) → C (x .fst) (x .snd)) 𝓛
@@ -83,7 +83,7 @@ instance
 
   Universal-⊥
     : ∀ {𝓤} {A : Type 𝓤}
-      → Universal (⊥ → A) lzero
+      → Universal (∅ → A) lzero
   Universal-⊥ .methods = 𝟙
   Universal-⊥ .from _  = ¡_
   Universal-⊥ .from-is-equiv = K¡-sing-is-equiv

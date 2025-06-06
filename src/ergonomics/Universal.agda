@@ -1,4 +1,3 @@
-
 module ergonomics.Universal where
 
 open import foundations.Prelude
@@ -84,7 +83,7 @@ instance
 
   Universal-⊥
     : ∀ {𝓤} {A : Type 𝓤}
-      → Universal (⊥ → A) lzero
+      → Universal (∅ → A) lzero
   Universal-⊥ .methods = 𝟙
   Universal-⊥ .from _  = ¡_
   Universal-⊥ .from-is-equiv = K¡-sing-is-equiv

@@ -65,6 +65,7 @@ open import foundations.UnitUP
 open import foundations.Univalence
 open import foundations.Universes
 open import modalities.Factorisation
+open import modalities.Flat.Flat
 open import modalities.HigherModality
 open import modalities.ModalMaps
 open import modalities.Subuniverses

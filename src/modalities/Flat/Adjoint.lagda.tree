@@ -1,0 +1,135 @@
+\date{2025-06-11}
+\title{Right adjoint to the Flat Modality}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb modalities.Flat.Adjoint \stopverb}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import foundations.Prelude
+open import ufAxioms
+open import modalities.HigherModality
+
+module modalities.Flat.Adjoint (@♭ Sharp : ∀ {𝓤} → HigherModality 𝓤) where
+
+module ♯ {𝓤} = HigherModality (Sharp {𝓤})
+open ♯ using () renaming (○_ to ⟨♯|_⟩;
+                          ○-η to ♯-η;
+                          ○-ind to ♯-ind;
+                          ○-β to ♯-β;
+                          is-○-modal to is-codisc)
+
+open import modalities.Flat.Flat
+}
+%```
+
+\p{Suppose we have a [higher modality](stt-000G) #{\modsharp{-}}. In this module
+we define a sufficient condition for this modality to be a right adjoint to
+#{\flat}.}
+
+
+\subtree[stt-0059]{
+\taxon{definition}
+
+\p{We say that a modality #{\sharp} satisfies a crisp induction principal if
+given a crisp type #{A} and any family of types #{B} over #{A}, then to define
+a map #{\Pi_{a : A} \modsharp{B(a)}}, it suffices to define a map
+#{\Pi_{a :^\flat A} B(a)}. Furthermore, the action of crisp induction on
+a crisp element should be the modal unit of #{\modsharp{-}}}
+
+
+%```agda
+\agda{
+record has-crisp-ind : Typeω where
+  field
+    crisp-ind : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : A → Type 𝓥)
+                → ((@♭ x : A) → B x) → (x : A) → ⟨♯| B x ⟩
+
+    crisp-ind-β : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : A → Type 𝓥}
+                  → (f : (@♭ x : A) → B x) → (@♭ x : A)
+                  → crisp-ind B f x ＝ ♯-η (f x)
+
+    crisp-♯ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ ⟨♯| A ⟩ → A
+    crisp-♯-unitβ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ x : A)
+                → crisp-♯ (♯-η x) ＝ x
+    crisp-♯-unitη : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ x : ⟨♯|  A ⟩)
+                → ♯-η (crisp-♯ x) ＝ x
+
+    _⊢⟨♯|_⟩ : ∀ {@♭ 𝓤} {𝓥} (@♭ Γ : Type 𝓤)
+                (C : @♭ Γ → Type 𝓥)
+              → (x : Γ) → Type 𝓥
+    _⊢⟨♯|_⟩-crisp : ∀ {@♭ 𝓤} {𝓥} (@♭ Γ : Type 𝓤)
+                      (C : @♭ Γ → Type 𝓥)
+                    → (@♭ x : Γ) → (Γ ⊢⟨♯| C ⟩) x ＝ ⟨♯| C x ⟩
+
+    crisp-pws-ind : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : @♭ A → Type 𝓥)
+                → ((@♭ x : A) → B x) → Π _ (A ⊢⟨♯| (λ x → B x) ⟩)
+
+-- syntax Γ ⊢⟨♯| (λ x → C) ⟩ = ⟨♯| x ∶ Γ ↦ C ⟩
+
+⟨♯♭|_⟩ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤
+⟨♯♭| A ⟩ = ⟨♯| ⟨♭| A ⟩ ⟩
+
+⟨♭♯|_⟩ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤
+⟨♭♯| A ⟩ = ⟨♭| ⟨♯| A ⟩ ⟩
+
+♯-eats-♭ : has-crisp-ind →
+           ∀ {@♭ 𝓤} → {@♭ A : Type 𝓤} → ⟨♯♭| A ⟩ → ⟨♯| A ⟩
+♯-eats-♭ C = crisp-ind _ λ x → ε (crisp-♯ x) where open has-crisp-ind C
+
+♭-eats-♯ : @♭ has-crisp-ind →
+           ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭♯| A ⟩ → ⟨♭| A ⟩
+♭-eats-♯ C (mod♭ a) = mod♭ (crisp-♯ a) where open has-crisp-ind C
+
+♭-eats-♯≃ : @♭ has-crisp-ind →
+           ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭♯| A ⟩ ≃ ⟨♭| A ⟩
+♭-eats-♯≃ C = mk≃ (♭-eats-♯ C) (is-equiv←qiso qiso) where
+  open has-crisp-ind C
+
+  qiso : quasi-iso (♭-eats-♯ C)
+  qiso .fst = ♭-map ♯-η
+  qiso .snd .fst (mod♭ x) = mod♭＝ (mod♭ (crisp-♯-unitη x))
+  qiso .snd .snd (mod♭ a) = mod♭＝ (mod♭ (crisp-♯-unitβ a))
+
+ap♭ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → (f : @♭ A → B) → {@♭ x y : A} → @♭ x ＝ y
+      → f x ＝ f y
+ap♭ f refl = refl
+}
+%```
+
+\citet{Theorem 5.6}{shulmanRealCohesive2017}
+
+%```agda
+\agda{
+J-crisp : @♭ has-crisp-ind → ∀ {@♭ 𝓤 𝓥} → J-crisp-ind 𝓤 𝓥
+J-crisp C {A = A}{a} P prfl p = {!!} where
+  open has-crisp-ind C
+  Mot : (@♭ b' : A) (p : a ＝ b') → Type _
+  Mot b' = _ ⊢⟨♯| (λ p → P b' p ) ⟩
+
+  lem : ∀ (@♭ b : A) (p : a ＝ b) → Mot b p
+  lem b' = crisp-pws-ind (P b') λ x → {!J♭ Mot ? x!}
+
+adj : @♭ has-crisp-ind →
+      ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → (⟨♭| (⟨♭| A ⟩ → B) ⟩) ≃ (⟨♭| (A → ⟨♯| B ⟩) ⟩)
+adj C {A = A} {B = B} = mk≃ fwd (is-equiv←qiso qiso) where
+  open has-crisp-ind C
+
+  fwd : ⟨♭| (⟨♭| A ⟩ → B)⟩ → ⟨♭| (A → ⟨♯| B ⟩)⟩
+  fwd (mod♭ f) = mod♭ (crisp-ind _ λ x → f (mod♭ x))
+
+  bwd : ⟨♭| (A → ⟨♯| B ⟩)⟩ → ⟨♭| (⟨♭| A ⟩ → B) ⟩
+  bwd (mod♭ f) = mod♭ (λ where (mod♭ x) → crisp-♯ (f x))
+
+  qiso : quasi-iso fwd
+  qiso .fst = bwd
+  qiso .snd .fst (mod♭ f) = mod♭＝ (mod♭ (funext→ (λ where
+    (mod♭ a) →   ap♭ crisp-♯ (crisp-ind-β _ a)
+               ∙ crisp-♯-unitβ (f (mod♭ a)))))
+  qiso .snd .snd (mod♭ f) = {!!}
+}
+%```
+}

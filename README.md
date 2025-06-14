@@ -2,7 +2,7 @@
  
 An agda development focussed on the development of infinity category theory 
 using simplicial type theory.
-Visit [the-forest](samtoth.github.io/agda-synthetic-categories) to browse the resource and find out more about the project.
+Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories) to browse the resource and find out more about the project.
 
 
 ## Building

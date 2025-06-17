@@ -69,6 +69,7 @@ open import modalities.Flat.Flat
 open import modalities.HigherModality
 open import modalities.ModalMaps
 open import modalities.Subuniverses
+open import modalities.instances.Localisation
 open import modalities.instances.OpenModalities
 open import ergonomics.Builtins
 open import ergonomics.Extensionality

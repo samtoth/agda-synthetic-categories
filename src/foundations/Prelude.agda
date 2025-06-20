@@ -10,6 +10,7 @@ open import foundations.Unit public
 open import foundations.UnitUP public
 open import foundations.Empty public
 open import foundations.Nat public
+open import foundations.Coproducts public
 open import foundations.Identity public
 open import foundations.Singleton public
 open import foundations.Functions public
@@ -37,3 +38,5 @@ open import foundations.Span public hiding (Cocone-path→)
 open import foundations.3for2 public
 open import foundations.Pullbacks public
 open import foundations.CanonicalPullbacks public
+open import foundations.PullbackPath public
+open import foundations.PathSplit public

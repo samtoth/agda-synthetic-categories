@@ -1,11 +1,11 @@
 module Everything where
+open import axioms.FreeAlgInj
 open import core.Arrow
 open import core.ArrowEquiv
 open import core.CanonicalPushouts
 open import core.Join
 open import core.Lifts
 open import core.Orthogonal
-open import core.PullbackPath
 open import core.PullbackPower
 open import core.Slice
 open import core.Spheres
@@ -46,7 +46,9 @@ open import foundations.FunextUnivalence
 open import foundations.Homotopy
 open import foundations.Identity
 open import foundations.Nat
+open import foundations.PathSplit
 open import foundations.PropMapEmbedding
+open import foundations.PullbackPath
 open import foundations.Pullbacks
 open import foundations.Pushout
 open import foundations.QuasiIsomorphism

@@ -22,6 +22,8 @@ open fe public
 
 import foundations.CanonicalPullbacks
 open foundations.CanonicalPullbacks.WithFunExt global-funext public
+import foundations.PathSplit
+open foundations.PathSplit.PSWithFunExt global-funext public
 open import foundations.EquivProp global-funext public
 open import foundations.EmptyUP global-funext public
 open import foundations.SingletonClosure public hiding (Singleton-Π)

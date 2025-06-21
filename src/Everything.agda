@@ -3,6 +3,8 @@ open import axioms.FreeAlgInj
 open import core.Arrow
 open import core.ArrowEquiv
 open import core.CanonicalPushouts
+open import core.CoSlice
+open import core.Codiagonal
 open import core.Join
 open import core.Lifts
 open import core.Orthogonal

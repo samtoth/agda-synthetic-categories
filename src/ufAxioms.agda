@@ -27,9 +27,14 @@ open foundations.PathSplit.PSWithFunExt global-funext public
 open import foundations.EquivProp global-funext public
 open import foundations.EmptyUP global-funext public
 open import foundations.SingletonClosure public hiding (Singleton-Π)
+open import foundations.PropClosure public hiding (is-prop-Π)
 open import foundations.CompositionEquiv global-funext public
 open import foundations.CompositionFibres global-funext public
 Singleton-Π = weak-funext
+is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+            → ((a : A) → is-prop (B a))
+            → is-prop (Π A B)
+is-prop-Π = foundations.PropClosure.is-prop-Π global-funext
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}

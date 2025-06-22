@@ -17,6 +17,8 @@ open import core.CanonicalPushouts
 open import core.Codiagonal
 open import core.CoSlice
 open import ergonomics.notations.Orthogonality
+open import modalities.HigherModality
+open import modalities.Subuniverses
 open core.Orthogonal.notation
 }
 %```
@@ -35,6 +37,12 @@ is-local : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : 
                → Type 𝓦
                → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
 is-local f A = ∀ i → orthogonal-type (f i) A
+
+is-local-is-prop
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+    → ∀ (A : Type 𝓦) → is-prop (is-local f A)
+is-local-is-prop A = is-prop-Π λ i → is-equiv-is-prop
 }
 %```
 }
@@ -148,6 +156,20 @@ is-local←sec←sec-∇ sec sec∇ i
           (Δ←∇ _ _)
           Δ←∇-is-equiv
           (sec∇ i)))
+
+
+sec∇←is-local
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      {X : Type 𝓦}
+    → is-local f X
+    → ∀ i → section (postcomp X (∇ (f i)))
+sec∇←is-local loc i = sec←sec-Coslice-equiv
+                        (Δ←∇ _ _)
+                        Δ←∇-is-equiv
+                        (sec-diag←is-pathsplit
+                          (is-pathsplit←is-equiv (loc i)))
 }
 %```
 }
@@ -196,4 +218,121 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
                    (λ i → injector-Free-inj (left i))
                    (λ i → injector-Free-inj (right i))
 }
+%```
+}
+
+\subtree[stt-0065]{
+\date{2025-06-21}
+\title{Nullification is a [higher modality](stt-000G)}
+\taxon{theorem}
+
+
+%```agda
+\agda{
+Null∙-HigherModality
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      (a∙ : ∀ i → A i)
+      𝓥
+    → HigherModality 𝓥
+Null∙-HigherModality a 𝓥 = hm where
+  open HigherModality
+
+  hm : HigherModality 𝓥
+  ○ hm = Null∙ _ a
+  hm .○-η = Free-inj.inc
+  hm .○-ind P f = {!!}
+  hm .○-β = {!!}
+  hm .＝-○-is-○-modal = {!!}
+}
+%```
+}
+
+
+\subtree[stt-0066]{
+\title{Localisation is a [reflective subuniverse](stt-0041)}
+
+\p{Localisation at any family of maps forms a reflective subuniverse
+which is not in general #{\Sigma}-closed.}
+
+%```agda
+\agda{
+module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓤}
+         where
+  open is-reflective
+  open Reflector
+
+  Local-SubU
+    : (f : (i : I) → A i → B i)
+      → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+  Local-SubU f = mk-subtype
+                         {family = is-local f}
+                         is-local-is-prop
+
+  postcomp-inj : ∀ {𝓜}
+                   {f : (i : I) → A i → B i}
+                   (X : Type 𝓦) {Y : Type 𝓜}
+                 → (Free-inj f X → Y)
+                 → (X → Y)
+  postcomp-inj X {Y} = postcomp Y Free-inj.inc
+
+
+  -- This is RSS lemma 2.7: Should extract to it's own tree probably
+  Local-reflects : ∀ {𝓜}
+                   {f : (i : I) → A i → B i}
+                   (X : Type 𝓦) {Y : Type 𝓜}
+                 → is-local f Y
+                 → is-equiv (postcomp-inj {f = f} X {Y})
+  Local-reflects {_}{f} X {Y} Y-loc = is-equiv←is-pathsplit ps where
+    module Y {i} = is-equiv (Y-loc i)
+    module ∘Y {i g h} where
+      abstract
+        e : is-equiv (ap (postcomp Y (f i)) {g} {h})
+        e = (is-embedding←is-equiv (Y-loc i))
+      open is-equiv e public
+
+    -- RHS (2.8) from RSS modalities
+    lem : (g h : Free-inj f X → Y)
+       (p : postcomp-inj X g ＝ postcomp-inj X h) (i : I)
+       (g' : A i → Free-inj _ X)
+       (x : g ∘ g' ~ h ∘ g') →
+       postcomp Y (f i) (g ∘ Free-inj.ext g') ＝
+       postcomp Y (f i) (h ∘ Free-inj.ext g')
+    lem g h p i g' q = funext→ λ a → ap g (Free-inj.is-ext g' a)
+                                   ∙ q a
+                                   ∙ ap h (sym (Free-inj.is-ext g' a))
+
+    ps : is-pathsplit (postcomp-inj X)
+    -- The section for postcomp is easy
+    ps .fst .fst g = Free-inj.ind
+                       (λ _ → Y)
+                       g
+                       (λ _ → Y.bwd)
+                       λ g' h a → tr-const (Free-inj.is-ext g' a)
+                                  ∙ happly (Y.ε h) a
+    ps .fst .snd h = refl
+    -- Proof for second part (section of ap) at page 2:34
+    ps .snd g h .fst p
+      = funext→ (Free-inj.ind
+                  (λ z → g z ＝ h z)
+                  (happly p)
+                  (λ g' x → happly
+                    (∘Y.bwd (lem g h p _ g' x)))
+                  λ g' H a → IdP-func←Square {f = g} {h}
+                                              (Free-inj.is-ext g' a)
+                                              _
+                                              (H a)
+                                              {!!})
+    ps .snd g h .snd p = {!!}
+
+  Local-reflective
+    : (f : (i : I) → A i → B i)
+    → is-reflective (Local-SubU f)
+  Local-reflective f .has-reflectors A .Reflector.○ = Loc f A
+  Local-reflective f .has-reflectors A .○∈S = Loc-is-local
+  Local-reflective f .has-reflectors A .○-η = Free-inj.inc
+  Local-reflective f .has-reflectors A .reflects = {!!}
+}
+%```
 }

@@ -129,20 +129,24 @@ is-identity-system←Sing-sing : ∀ {𝓤 𝓥} {A : Type 𝓤} {a₀}
                                 → (R₀ : R a₀)
                                 → is-singleton (Σ[ b ∶ A ] R b)
                                 → is-identity-system-at A a₀ (R , R₀)
-is-identity-system←Sing-sing R R₀ Sing-sing b
-  = is-equiv←qiso the-iso where
+is-identity-system←Sing-sing {a₀ = a₀} R R₀ Sing-sing b
+  = is-equiv←qiso (bwd , the-iso) where
     Sing-recentre : ∀ (p : Σ _ R) → (_ , R₀) ＝ p
     Sing-recentre p = is-prop←is-single Sing-sing _ _
 
     coh : ∀ {𝓤 𝓥} {A : Type 𝓤} {R : A → Type 𝓥} {x y : Σ A R} (p : x ＝ y) →  ap R (Σ-path-fst p) ＝ ap (λ a → R (fst a)) p
     coh refl = refl
 
-    the-iso : quasi-iso (idtoppred (R , R₀) b)
-    the-iso .fst rb = Σ-path-fst (Sing-recentre (_ , rb))
-    the-iso .snd .fst refl = ap Σ-path-fst (is-prop←is-single
-                                            (Singleton-Id Sing-sing _ _)
-                                             _ _)
-    the-iso .snd .snd rb =    happly (ap coe (coh (Sing-recentre (_ , rb)))) R₀ ∙ Σ-path-snd (Sing-recentre (_ , rb))
+    bwd : R b → a₀ ＝ b
+    bwd rb = Σ-path-fst (Sing-recentre (_ , rb))
+
+    abstract
+      the-iso : retract-witness (idtoppred (R , R₀) b) bwd ×
+                section-witness (idtoppred (R , R₀) b) bwd
+      the-iso .fst refl = ap Σ-path-fst (is-prop←is-single
+                                              (Singleton-Id Sing-sing _ _)
+                                               _ _)
+      the-iso .snd rb =    happly (ap coe (coh (Sing-recentre (_ , rb)))) R₀ ∙ Σ-path-snd (Sing-recentre (_ , rb))
 
 
 -- TODO: Find special place for this
@@ -176,7 +180,7 @@ family-equiv←Sing-sing {B = B} {a₀} f H a = homotopy-is-equiv (family~idtopp
 
 ap-equiv←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : A} →
                is-equiv f → is-equiv (ap  f)
-ap-equiv←equiv {A = A} {f = f} {x} {y} h = family-equiv←Sing-sing (λ a → ap f) sing y where
+ap-equiv←equiv {A = A} {f = f} {x} {y} h = family-equiv←Sing-sing (λ a → ap f) sing y where abstract
   sing : is-singleton (Σ A (λ z → f x ＝ f z))
   sing = is-single←section-single (total-map (λ a → sym))
                                   ((λ (a , p) → (a , (sym p))) , λ x →  Σ-path→ (refl , sym-sym))

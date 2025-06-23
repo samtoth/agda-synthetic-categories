@@ -105,7 +105,8 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
   pushout-ind-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
                       {c : CoconeD (mk-span _ f g) pushout Q} →
                        ∀ x → apᵈ (pushout-ind Q c) (glue x) ＝ c .CoconeD.filler x
-  pushout-ind-apβ {c = c} x = primEraseEquality eq where postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .CoconeD.filler x
+  pushout-ind-apβ {c = c} x = primEraseEquality eq where
+    postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .CoconeD.filler x
 
   opaque
     pushout-rec : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
@@ -122,11 +123,11 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
     pushout-recβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
                     → {c : Cocone (mk-span _ f g) Q}
                     → ∀ x → pushout-rec c (ι₂ x) ＝ c .Cocone.q x
-    pushout-recβ2 _ = refl 
+    pushout-recβ2 _ = refl
 
   {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
 
-  opaque 
+  opaque
     unfolding pushout-rec
     pushout-rec-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
                       {c : Cocone (mk-span _ f g)  Q} →

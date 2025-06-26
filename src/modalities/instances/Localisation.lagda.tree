@@ -1,0 +1,569 @@
+\date{2025-06-17}
+\title{Localisations}
+\taxon{module}
+\meta{module}{\startverb modalities.instances.Localisation \stopverb}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module modalities.instances.Localisation where
+
+open import ufAxioms
+open import axioms.FreeAlgInj
+open import foundations.Prelude
+open import core.Orthogonal
+open import core.CanonicalPushouts
+open import core.Codiagonal
+open import core.CoSlice
+open import core.Arrow
+open import core.ArrowEquiv
+open import core.Postwhisker
+open import ergonomics.notations.Orthogonality
+open import modalities.HigherModality
+open import modalities.Subuniverses
+open core.Orthogonal.notation
+}
+%```
+
+\subtree[stt-005F]{
+\taxon{definition}
+\title{Local types}
+
+\p{Given a family of maps #{f_i : A_i \to B_i}, we say that a type
+is #{f}-local if it is [orthogonal](stt-004O) to each map.}
+
+%```agda
+\agda{
+is-local : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+               → (f : (i : I) → A i → B i)
+               → Type 𝓦
+               → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-local f A = ∀ i → orthogonal-type (f i) A
+
+is-local-is-prop
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+    → ∀ (A : Type 𝓦) → is-prop (is-local f A)
+is-local-is-prop A = is-prop-Π λ i → is-equiv-is-prop
+}
+%```
+}
+
+
+\subtree[stt-005G]{
+\taxon{definition}
+\title{Null types}
+
+\p{Given a family of types #{A_i}, we say a type #{X} is #{A} null if
+it is right orthogonal to each #{A_i}. Or equivalently, if the
+obvious maps #{X \to (A_i \to X)} are equivalences for each #{i}.}
+
+%```agda
+\agda{
+is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
+            → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-null A X = ∀ i → is-equiv (const X (A i))
+
+is-null-is-prop
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+    → ∀ (X : Type 𝓥) → is-prop (is-null A X)
+is-null-is-prop X = is-prop-Π λ a → is-equiv-is-prop
+
+null≃ : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+          {X : Type 𝓥} (_ : is-null A X) i
+        → X
+        ≃ (A i → X)
+null≃ {A = A}{X} An i = mk≃ (const X (A i)) (An i)
+}
+%```
+}
+
+\subtree[stt-005H]{
+\taxon{theorem}
+\title{Null types are #{!\rm{-local}}}
+
+\p{A type is #{A_i}-null iff it is #{(! : A_i \to 1)\rm{-local}}.}
+
+\proof{
+\p{A type #{X} is #{!\rm{-local}} when the map #{- \circ\ ! : (1 \to X) \to (A_i \to X)}
+is an equivalence.}
+}
+
+%```agda
+\agda{
+is-local←is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+                   → {X : Type 𝓥}
+                   → is-null A X
+                   → is-local (λ i → ! {A = A i}) X
+is-local←is-null eq i = 3-for-2' (is-equiv⁻¹ unit-ev-is-equiv) (eq i)
+
+is-null←is-local : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+                   → {X : Type 𝓥}
+                   → is-local (λ i → ! {A = A i}) X
+                   → is-null A X
+is-null←is-local eq i = is-equiv-∘ (eq i) unit-const-is-equiv
+}
+%```
+}
+
+\subtree[stt-005K]{
+\title{Nullification at a pointed family}
+\taxon{definition}
+
+\p{The nullification of a pointed type can be constructed
+using the [free algabraic injection](stt-005I)
+higher inductive type. By definition, the free
+algabraic injection already gives a section to
+the precomposition map. Because any map #{A \to 1}
+has a section, then the precomposition by this
+map already has a retract, and so the type is not just
+algabraicly #{A}-injective, but #{A}-null.}
+
+%```agda
+\agda{
+Null∙ : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
+         (A∙ : Π _ A) (X : Type 𝓥)
+       → Type 𝓥
+Null∙ A _ X = Free-inj
+               (λ i → ! {A = A i})
+                X
+
+Null∙-is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘}
+                 {A : I → Type 𝓤} (A∙ : Π _ A)
+                 {X : Type 𝓥}
+               → is-null A (Null∙ A A∙ X)
+Null∙-is-null a = is-null←is-local I where
+  I : is-local (λ _ → !) _
+  I i = is-equiv←qiso λ where
+    .fst → injector-Free-inj i .fst
+    .snd .fst α → funext→ (λ _ → Free-inj.is-ext (α ∘ !) (a i))
+    .snd .snd → injector-Free-inj i .snd
+}
+%```
+}
+
+
+\subtree[stt-005Z]{
+\taxon{lemma}
+\title{Locality via sections of the codiagonal}
+\citet{rijkeMod2020}{2.13}
+
+\p{Given maps #{f_i : A_i \to B_i}, a type #{X} is #{f\rm{-local}}
+iff #{-\circ f_i} and #{-\circ \nabla_{f_i}} all have sections.}
+
+%```agda
+\agda{
+is-local←sec←sec-∇
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      {X : Type 𝓦}
+    → (∀ i → section (postcomp X (f i)))
+    → (∀ i → section (postcomp X (∇ (f i))))
+    → is-local f X
+is-local←sec←sec-∇ sec sec∇ i
+  = is-equiv←is-pathsplit
+      (is-pathsplit←sec-diag
+        (sec i)
+        (sec←sec-Coslice-equiv'
+          (Δ←∇ _ _)
+          Δ←∇-is-equiv
+          (sec∇ i)))
+
+
+sec∇←is-local
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      {X : Type 𝓦}
+    → is-local f X
+    → ∀ i → section (postcomp X (∇ (f i)))
+sec∇←is-local loc i = sec←sec-Coslice-equiv
+                        (Δ←∇ _ _)
+                        Δ←∇-is-equiv
+                        (sec-diag←is-pathsplit
+                          (is-pathsplit←is-equiv (loc i)))
+}
+%```
+}
+
+\subtree[stt-005Y]{
+\title{Localisation}
+\taxon{definition}
+
+\p{Unlike in the case of [nullification](stt-005K), we cannot
+in general expect the family of functions against which we are
+localising to all have sections, and so the [Free algabraicly injective](stt-005I)
+type will not get us all the way to a localisation.}
+
+
+\p{As explained in \citet{2.14}{rijkeMod2020}, even though
+we don't immediately get a localisation, we can add some morphisms to the class
+with which we localise against to make it so. By the observation in \ref{stt-005Z},
+we need to add all maps of the form #{\nabla_{f_i}} to #{f}.}
+
+%```agda
+\agda{
+
+module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓤}
+         where
+  private
+    A' : (f : ∀ i → A i → B i) → I ⊎ I → Type 𝓤
+    A' f (left i) = A i
+    A' f (right i) = Pushout (f i) (f i)
+
+    B' : (f : ∀ i → A i → B i) → I ⊎ I → Type 𝓤
+    B' f (left i)  = B i
+    B' f (right i) = B i
+
+    f' : (f : ∀ i → A i → B i) → (i : I ⊎ I) → A' f i → B' f i
+    f' f (left i) = f i
+    f' f (right i) = ∇ (f i)
+
+  Loc : (f : ∀ i → A i → B i) → Type 𝓦 → Type 𝓦
+  Loc f = Free-inj (f' f)
+
+  Loc-is-local : ∀ {X : Type 𝓦}
+                   {f : ∀ i → A i → B i}
+                 → is-local f (Loc f X)
+  Loc-is-local = is-local←sec←sec-∇
+                   (λ i → injector-Free-inj (left i))
+                   (λ i → injector-Free-inj (right i))
+}
+%```
+}
+
+
+\subtree[stt-006C]{
+\date{2025-06-23}
+\taxon{theorem}
+\title{A partial universal property for Free Algebraic Injectives}
+
+\p{The Free Algebraic Injective type former is the left
+adjoint to the forgetful functor from Algabraic injectives on #{\SS} to #{\SS}.
+In this formalisaton we have shied away from formalising this full universal property,
+but we now formalise the (easier) restriction to the category of #{f\rm{-local}}
+types.}
+
+\p{For an #{f\rm{-local}} type #{Y}, and any type #{X},
+   the map #{- \circ \eta : (\mathcal{J}_f(X) \to Y) \to (X \to Y)}
+   is an equivalence.
+   }
+
+%```agda
+\agda{
+postcomp-inj : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
+                   {I : Type 𝓘} {A : I → Type 𝓤}
+                   {B : I → Type 𝓥}
+                   {f : (i : I) → A i → B i}
+                   (X : Type 𝓦) {Y : Type 𝓜}
+                 → (Free-inj f X → Y)
+                 → (X → Y)
+postcomp-inj X {Y} = postcomp Y Free-inj.inc
+}
+%```
+\proof{
+
+\p{To prove this, we use [pathsplit](stt-005Q) as our notion of equivalence.
+   So we have to give a section to #{(- \circ \eta)} and to #{\rm{ap}_{- \circ \eta}^{g,h}} for any pair of maps #{g, h : \mathcal{J}_f(X) \to Y}.
+   }
+
+%```agda
+\agda{
+Free-inj-reflects : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
+                   {I : Type 𝓘} {A : I → Type 𝓤}
+                   {B : I → Type 𝓥}
+                 {f : (i : I) → A i → B i}
+                 (X : Type 𝓦) {Y : Type 𝓜}
+               → is-local f Y
+               → is-equiv (postcomp-inj {f = f} X {Y})
+Free-inj-reflects {I = I} {A}{B}{f} X {Y} Y-loc
+  = is-equiv←is-pathsplit ps where
+  module Y {i} = is-equiv (Y-loc i)
+}
+%```
+
+\p{In the first case, the section of #{(- \circ \eta)} is relatively trivial
+to construct. To do so, we are given a map #{g : X \to Y} and need to construct
+one #{\mathcal{J}_f(X) \to Y}. We induct on the free algebraic injective:}
+
+\ol{
+\li{case \strong{inc}: We need a map #{X \to Y}, which is given by #{g}.
+     The map we are constructing needs to be a section of #{- \circ \eta},
+     but the computation rule says that #{\rm{ind}(g,..)(\eta(x)) = g(x)},
+     and thus our map is a section by definition.
+     }
+\li{case \strong{ext}: For all #{f' : A_i \to \mathcal{J}_f(X)} we need
+    a map #{(A_i \to Y) \to (B_i \to Y)} which is equal to #{f'} under
+    postcomposition by #{f}. This map is obtained by the fact that #{Y}
+    is #{f}-local.}
+}
+
+
+%```agda
+\agda{
+  sec-postcomp-inj : section (postcomp-inj X)
+  sec-postcomp-inj .fst g = Free-inj.ind
+                     (λ _ → Y)
+                     g
+                     (λ _ → Y.bwd)
+                     λ g' h a → tr-const (Free-inj.is-ext g' a)
+                                ∙ happly (Y.ε h) a
+  sec-postcomp-inj .snd h = refl
+}
+%```
+
+\p{Now we fix a pair of maps #{g, h : \mathcal{J}_f(X) \to Y}, and
+give a section to #{\rm{ap}_{- \circ  \eta}^{g,h} : g = h \to g\eta = h\eta}.}
+
+\p{[We can construct](stt-006I) an [equivalence of arrows](stt-004R) between
+[postwhiskering](stt-006G) by #{\eta} and #{\rm{ap}_{- \circ \eta}}
+using function extensionality. As a result, [it suffices](stt-0069)
+then to give a section to the map by \em{postwhiskering} with #{\eta}.
+By the same result, we note that because postcomposition by #{f_i} at #{Y}
+is an equivalence, then so is the postwhiskering by #{f_i} at maps #{B_i \to Y}}
+
+%```agda
+\agda{
+  opaque
+    Y▸-is-equiv : ∀ {i} {g h : B i → Y} → is-equiv (postwhisker (f i) g h)
+    Y▸-is-equiv {i} = postwhisker-is-equiv←ap-compose
+      (is-embedding←is-equiv (Y-loc i))
+
+  module Y▸ {i} {g h} = is-equiv (Y▸-is-equiv {i} {g} {h})
+}
+%```
+
+\p{Now, we are ready to construct the section. Given #{H : g\eta \sim h\eta}
+we want to show for all #{x : \mathcal{J}_f(X)}, #{g(x) = h(x)}, which
+we do again by induction on #{x} with the motive #{x \mapsto g(x) = h(x)}.}
+
+\ol{
+\li{case \strong{inc}: We require #{g\eta \sim h\eta}, so as above, we can supply
+     the #{H} in the hypothesis. As above, the #{\beta} rule for HITs means, that
+     the map we are constructing will be a definitional section of postwhiskering
+     by #{\eta}.}
+\li{case \strong{ext}: Now, for any #{f' : A_i \to \mathcal{J}_f(X)},
+     we need to give a map #{f'' : gf' \sim hf' \to g\rm{ext}(f') \sim h\rm{ext}(f')},
+     such that for any #{(K : gf' \sim hf')}, #{f''(K)f_i =_{x ↦ g(x) = h(x)}^{\rm{is-ext}_{f'}} K}
+     (N.B. #{\rm{ext}(f') : B_i \to \mathcal{J}_f(X)})
+
+     \p{For the map in question, we take:
+       ##{(K : gf' \sim hf') \mapsto
+         (- ▸ f_f)^{-1}(g(\rm{is-ext}_{f'}) \cdot K \cdot h(\rm{is-ext}_{f'})^{-1})}
+      }
+
+      \p{Unfolding #{f''(K)f_i =_{x ↦ g(x) = h(x)}^{\rm{is-ext}_{f'}} K},
+         we find that we need to give a witness to the following square:
+         }
+
+      \quiver{
+        \begin{tikzcd}
+	{gf'} && {g\textrm{ext}_{f'}f_i} \\
+	\\
+	{hf'} && {h\textrm{ext}_{f'}f_i}
+	\arrow["{g(\textrm{is-ext}_{f'})^{-1}}", no head, from=1-1, to=1-3]
+	\arrow["{K}"', no head, from=1-1, to=3-1]
+	\arrow["{(- \blacktriangleright f')^{-1}(f''(K))f_i}", no head, from=1-3, to=3-3]
+	\arrow["{h(\textrm{is-ext}_{f'})}^{-1}"', no head, from=3-1, to=3-3]
+        \end{tikzcd}
+      }
+
+      \p{But now we have the postwhiskering applied to the inverse of postwhiskering
+         on the right hand side. Once this is eliminated, and #{f''} is unfolded,
+         we get:}
+
+      \quiver{
+        \begin{tikzcd}
+	{gf'} && {g\rm{ext}_{f'}f_i} && {gf'} \\
+	\\
+	{hf'} && {h\rm{ext}_{f'}f_i} && {hf'}
+	\arrow["{g(\textrm{is-ext}_{f'})^{-1}}", no head, from=1-1, to=1-3]
+	\arrow["K"', no head, from=1-1, to=3-1]
+	\arrow["{g(\textrm{is-ext}_{f'})}", no head, from=1-3, to=1-5]
+	\arrow[""{name=0, anchor=center, inner sep=0}, "{(- \blacktriangleright f')^{-1}(f''(K))f_i}"{description}, no head, from=1-3, to=3-3]
+	\arrow[""{name=1, anchor=center, inner sep=0}, "K", no head, from=1-5, to=3-5]
+	\arrow["{h(\textrm{is-ext}_{f'})^{-1}}"', no head, from=3-1, to=3-3]
+	\arrow["{h(\textrm{is-ext}_{f'})}"', no head, from=3-3, to=3-5]
+	\arrow["\epsilon"{pos=0.7}, shorten <=41pt, shorten >=14pt, Rightarrow, from=0, to=1]
+        \end{tikzcd}
+      }
+
+      \p{and this square clearly commutes.}
+     }
+}
+
+%```agda
+\agda{
+  lem : (g h : Free-inj f X → Y)
+     (i : I)
+     (g' : A i → Free-inj _ X)
+     (q : g ∘ g' ~ h ∘ g') →
+     postcomp Y (f i) (g ∘ Free-inj.ext g') ~
+     postcomp Y (f i) (h ∘ Free-inj.ext g')
+  lem g h i g' K =      g ◂ (Free-inj.is-ext g')
+                     ~∙ K
+                     ~∙ (h ◂ Free-inj.is-ext g' ~⁻¹)
+
+  secAp : ∀ (g h : Free-inj f X → Y)
+          → section (postwhisker Free-inj.inc g h)
+  secAp g h .fst H
+    = Free-inj.ind (λ z → g z ＝ h z)
+        H
+        (λ f' (K : g ∘ f' ~ h ∘ f')
+          → Y▸.bwd (lem g h _ f' K))
+        λ f' (K : g ∘ f' ~ h ∘ f') a
+          → IdP-func←Square
+             (Free-inj.is-ext f' a)
+             _
+             (K a)
+             (Square←brt＝l
+               (ap g (Free-inj.is-ext f' a))
+               {ap h (Free-inj.is-ext f' a)}
+               {Y▸.bwd {g = g ∘ Free-inj.ext f'}
+                       {h = h ∘ Free-inj.ext f'}
+                       (lem g h _ f' K) (f _ a)}
+               (sym (happly (Y▸.ε (lem g h _ f' K)) a)))
+  secAp g h .snd K = refl
+
+  ps : is-pathsplit (postcomp-inj X)
+  ps .fst = sec-postcomp-inj
+  ps .snd g h = section←Arrow-equiv⁻¹ {F = postwhisker←ap-compose _ _ _ }
+                                      postwhisker-funext(secAp g h)
+}
+%```
+}
+}
+
+\subtree[stt-0065]{
+\date{2025-06-21}
+\title{Nullification is a [reflective subuniverse](stt-0041)}
+\taxon{corollary}
+
+
+%```agda
+\agda{
+Null∙-SubU
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      (a∙ : ∀ i → A i)
+    → SubU 𝓤 (𝓘 ⊔ 𝓤)
+Null∙-SubU {A = A} A∙ .Subtype.family = is-null A
+Null∙-SubU A∙ .Subtype.has-is-subtype = is-null-is-prop
+
+Null∙-reflective
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      (a∙ : ∀ i → A i)
+    → Reflective (Null∙-SubU a∙)
+Null∙-reflective a .Reflective.○ = Null∙ _ a
+Null∙-reflective a .Reflective.η = Free-inj.inc
+Null∙-reflective a .Reflective.has-is-reflector
+  .is-reflector.○∈S = Null∙-is-null a
+Null∙-reflective a .Reflective.has-is-reflector
+  .is-reflector.reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
+}
+%```
+}
+
+\subtree[stt-006E]{
+\taxon{theorem}
+\date{2025-06-25}
+\title{Nullification is a #{\Sigma}-closed reflective subuniverse}
+
+
+\proof{
+\p{By calculation:}
+
+##{
+\begin{align}
+  \Sigma_{(x : X)} Y(x)  &\simeq \Sigma_{(x : X)} A_i \to Y(x) \\
+                         &\simeq \Sigma_{(x : A_i \to X)} \Pi_{(a : A_i)} Y(f(a))\\
+                         &\simeq A_i \to \Sigma_{(x : X)} Y(x)
+\end{align}
+}
+
+\p{Where (1) and (2) follow from the fact #{X} and each #{Y(x)} are #{A}-[null](stt-005G),
+and (3) is the [type theoretic theorem of choice](foundations.TheoremOfChoice).}
+}
+
+%```agda
+\agda{
+Null∙-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
+                   {A : I → Type 𝓤}
+                   (a : Π _ A)
+                 → is-Σ-closed (Null∙-SubU a)
+Null∙-Σ-closed {A = A} a∙ {A = X} {Y} Xnull Ynull i
+  = I ._≃_.has-is-eqv where
+  I : Σ X Y ≃ (A i → Σ X Y)
+  I = Σ X Y
+        ≃⟨ Σ-ap-≃ (λ x → null≃ (Ynull x) i) ⟩
+      Σ X (λ x → A i → Y x)
+        ≃⟨ Σ-ap-≃-fst {B = λ f → (a : A i) → Y (f a)} (null≃ Xnull i)  ⟩
+      Σ (A i → X) (λ f → (a : A i) → Y (f a))
+        ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
+      (A i → Σ X Y) ≃∎
+}
+%```
+}
+
+
+\subtree[stt-006A]{
+\date{2025-06-23}
+\taxon{lemma}
+\title{#{f} local maps are #{\nabla(f)} local}
+
+%```agda
+\agda{
+is-local∇←is-local : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                 (f : A → B)
+                 {X : Type 𝓦}
+               → is-equiv (postcomp X f)
+               → is-equiv (postcomp X (∇ f))
+is-local∇←is-local f {X} eq = equiv←Coslice-equiv
+                                (Δ←∇ f X)
+                                Δ←∇-is-equiv
+                                (diagonal-is-equiv eq)
+}
+%```
+}
+
+\subtree[stt-0066]{
+\title{Localisation is a [reflective subuniverse](stt-0041)}
+\taxon{corollary}
+
+\p{Localisation at any family of maps forms a reflective subuniverse
+which is not in general #{\Sigma}-closed.}
+
+%```agda
+\agda{
+module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓤}
+         where
+  open Reflective
+  open is-reflector
+
+  Local-SubU
+    : (f : (i : I) → A i → B i)
+      → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+  Local-SubU f = mk-subtype
+                         {family = is-local f}
+                         is-local-is-prop
+
+
+
+  Local-reflective
+    : (f : (i : I) → A i → B i)
+    → Reflective (Local-SubU f)
+  Local-reflective f .○ = Loc f
+  Local-reflective f .η = Free-inj.inc
+  Local-reflective f .has-is-reflector .○∈S = Loc-is-local
+  Local-reflective f .has-is-reflector .reflects cloc
+    = Free-inj-reflects _ λ where
+      (left i) → cloc i
+      (right i) → is-local∇←is-local (f i) (cloc i)
+}
+%```
+}

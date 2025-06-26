@@ -1,0 +1,223 @@
+\date{2025-06-19}
+\title{Pathsplit maps}
+\taxon{module}
+\meta{module}{\startverb foundations.PathSplit \stopverb}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module foundations.PathSplit where
+
+open import foundations.Universes
+open import foundations.Functions
+open import foundations.FunctionInverses
+open import foundations.Sigma
+open import foundations.Identity
+open import foundations.QuasiIsomorphism
+open import foundations.CoherentIsomorphism
+open import foundations.EquivOfSingleton
+open import foundations.EquivProp
+open import foundations.SingletonClosure
+open import foundations.Singleton
+open import foundations.Embedding
+open import foundations.EquivSingleton
+open import foundations.CanonicalPullbacks
+open import foundations.FibrewiseEquiv
+open import foundations.TheoremOfChoice
+open import foundations.CompositionEquiv
+open import foundations.CurryEquiv
+open import foundations.SigmaProperties
+open import foundations.IdentityEquiv
+open import foundations.PullbackPath
+
+open import foundations.FunExt as FE
+}
+%```
+
+\subtree[stt-005Q]{
+\title{Pathsplit maps}
+\taxon{definition}
+
+\p{A map #{f : A \to B} is \em{pathsplit} when there
+is a section of #{f} and for each #{x, y : A}, there
+is a section of #{\rm{ap}_f^{x,y}}.}
+
+%```agda
+\agda{
+is-pathsplit : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                 (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-pathsplit f = section f × (∀ x y → section (ap f {x} {y}))
+}
+%```
+}
+
+\subtree[stt-005R]{
+\title{Pathsplit maps are equivalences}
+\taxon{theorem}
+
+\p{To show a [pathsplit](stt-005Q) map #{f : A \to B},
+is an equivalence, it suffices to give a retract of #{f}.
+We can show that #{fgf = f} where #{g} is the given section,
+and since #{\rm{ap}_f} has a section we derive that #{fg = id}.}
+
+%```agda
+\agda{
+is-equiv←is-pathsplit : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                           {f : A → B}
+                         → is-pathsplit f
+                         → is-equiv f
+is-equiv←is-pathsplit {f = f} ((g , sec) , apsec)
+  = is-equiv←qiso λ where
+      .fst → g
+      .snd .fst a → apsec _ a .fst (sec (f a))
+      .snd .snd → sec
+}
+%```
+}
+
+\subtree[stt-005S]{
+\title{Being pathsplit is equivalent to being an equivalence}
+\taxon{theorem}
+
+\p{We want to show that the map defined in \ref{stt-005R} is an
+equivalence.}
+
+\proof{
+\p{To show the map is an equivalence, [it suffices](stt-005T)
+to assume the codomain is inhabited. Becuase [being an equivalence
+is a property](stt-001Y), we just need to show that the domain is a
+singleton. Then if the map is already an equivalence,
+[it's type of sections is a singleton](stt-000Q), and it is
+an embedding so the type of sections of #{\rm{ap}} is also a singleton.}
+}
+
+
+%```agda
+\agda{
+module PSWithFunExt (FE : FunExt-global) where
+  is-equiv≃is-pathsplit : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                             {f : A → B}
+                           → is-pathsplit f
+                           ≃ is-equiv f
+  is-equiv≃is-pathsplit {f = f}
+    = mk≃ is-equiv←is-pathsplit (is-equiv←is-equiv-if-cod (λ
+        e → is-equiv←single-to-prop
+             (Singleton-Σ (section-is-single←qinv FE (qiso←is-equiv e))
+                          λ _ → Singleton-Π FE
+                           λ a → Singleton-Π FE
+                            λ b → section-is-single←qinv FE
+                                   (qiso←is-equiv (is-embedding←is-equiv e)))
+             (is-equiv-is-prop FE) _))
+
+  is-pathsplit←is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                            {f : A → B}
+                          → is-equiv f
+                          → is-pathsplit f
+  is-pathsplit←is-equiv = _≃_.bwd is-equiv≃is-pathsplit
+}
+%```
+}
+
+\subtree[stt-005V]{
+\title{Begin pathsplit is a proposition}
+\taxon{corollary}
+
+\p{Any type equivalent to a proposition is a proposition,
+so from \ref{stt-005S} it follows being pathsplit is a proposition.}
+
+%```agda
+  \agda{
+  is-pathsplit-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                           {f : A → B}
+                         → is-prop (is-pathsplit f)
+  is-pathsplit-is-prop = is-prop←equiv-to-prop
+                             (is-equiv≃is-pathsplit e⁻¹)
+                             (is-equiv-is-prop FE)
+  }
+%```
+}
+
+\subtree[stt-005U]{
+\title{Pathsplitness via the diagonal}
+\taxon{theorem}
+\p{The type \code{is-pathsplit f} is equivalent to the type
+#{\rm{section}(f) \times \rm{section}(\Delta_f)}, where #{\Delta_f}
+is the [diagonal map](stt-005X) associated to a pullback.}
+
+\proof{
+\p{We show #{\rm{section}(\Delta_f) \simeq \Pi_{(x,y : A)}\rm{section}(\rm{ap}_{x,y}(f))}
+by calculation:}
+
+##{
+\begin{align*}
+  \rm{section}(\Delta_f) &\simeq
+    \Sigma_{(g : A \times_B A \to A)} \Pi_{(x : A \times_B A)} (g(x), g(x), \refl) = x\\
+  &\simeq \Pi_{(x, y : A)} \Pi_{(p : x = y)} \Sigma_{a : A} (a , a , \refl) = (x, y, p) \\
+  &\simeq \Pi_{(x, y : A)} \Pi_{(p : x = y)} \Sigma_{a : A}
+    \Sigma_{(q : a ＝ x)} \Sigma_{(r : a = y)} (\rm{ap}_f(q) \cdot p = \rm{ap}_f(r)) \\
+  &\simeq \Pi_{(x, y : A)} \Pi_{(p : x = y)}
+          \Sigma_{(r : a = y)} (p = \rm{ap}_f(r)) \\
+  &\simeq \Pi_{(x, y: A)} \rm{section}(\rm{ap}_f)
+\end{align*}
+}
+}
+
+%```agda
+\agda{
+  is-pathsplit≃sec-diag
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → (section f × section (diagonal f)) ≃ is-pathsplit f
+  is-pathsplit≃sec-diag {A = A}{f = f} = Σ-ap-≃ λ a
+    → section (diagonal f) ≃⟨⟩
+      Σ[ g ∶ (Pullback f f → A)] (∀ pb → (g pb , g pb , refl) ＝ pb)
+
+         ≃⟨ Σ-Π-swap≃ _ (λ pb a → (a , a , refl) ＝ pb) e⁻¹  ⟩
+
+      ((x : Pullback f f) → Σ[ a ∶ A ] ((a , a , refl) ＝ x))
+
+          ≃⟨ precomp-Π-≃ FE(λ c → Σ-ap-≃ (λ _ → pullback-path _ _)) ⟩
+
+      (∀ (x : Pullback f f) → Σ[ a ∶ A ] pullback-Path (a , a , refl) x)
+
+         ≃⟨ curry≃ ⟩
+
+      (∀ x (y : Σ _ (λ v₁ → f x ＝ f v₁)) →
+        Σ[ a ∶ A ] pullback-Path (a , a , refl) (x , y))
+
+         ≃⟨ precomp-Π-≃ FE (λ c → curry≃) ⟩
+
+      (∀ x y (p : f x ＝ f y) →
+          Σ[ z ∶ A ] Σ[ P ∶ (z ＝ x)] Σ[ Q ∶ (z ＝ y)]
+            ((ap f P) ∙ p ＝ ap f Q))
+
+          ≃⟨ precomp-Π-≃ FE (λ _ → precomp-Π-≃ FE λ _
+              → precomp-Π-≃ FE λ c → Σ-＝singl) ⟩
+
+      ((x y : A) (p : f x ＝ f y) → (Σ[ Q ∶ (x ＝ y)] (p ＝ ap f Q)))
+
+        ≃⟨ precomp-Π-≃ FE (λ _ →
+             precomp-Π-≃ FE (λ _ →
+               Σ-Π-swap≃ _ _ ∙≃ Σ-ap-≃ (λ _ → precomp-Π-≃ FE (λ _ → sym≃)))) ⟩
+
+      (∀ x y → section (ap f)) ≃∎
+
+  is-pathsplit←sec-diag
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → section f
+      → section (diagonal f)
+      → is-pathsplit f
+  is-pathsplit←sec-diag sec secd = sec ,
+    _≃_.fwd is-pathsplit≃sec-diag (sec , secd) .snd
+
+  sec-diag←is-pathsplit
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → is-pathsplit f
+      → section (diagonal f)
+  sec-diag←is-pathsplit = snd ∘ _≃_.bwd is-pathsplit≃sec-diag
+}
+%```
+}

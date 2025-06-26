@@ -1,0 +1,102 @@
+\date{2025-06-21}
+\title{(co)diagonal maps}
+\taxon{module}
+\meta{module}{\startverb core.Codiagonal \stopverb}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module core.Codiagonal where
+
+open import foundations.Prelude
+open import ufAxioms
+open import core.CanonicalPushouts
+open import core.CoSlice
+}
+%```
+
+
+\subtree[stt-005M]{
+  \taxon{definition}
+  \title{The codiagonal map}
+  \p{Given a map #{f : B \to C}, we can define the map #{\nabla_f : B +^A B \to C}
+  called the codiagonal map.}
+
+%```agda
+\agda{
+∇ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → Pushout f f → B
+∇ f = pushout-rec (mk-cocone id id ~refl)
+}
+%```
+}
+
+
+\subtree[stt-0064]{
+\title{Pullback of postcomposition is a cocone}
+
+%```agda
+\agda{
+Cocone←Pullback : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+                    {C : Type 𝓦} {f : A → B} {g : A → C}
+                    {X : Type 𝓜}
+                  → Pullback (postcomp X f) (postcomp X g)
+                  → Cocone (mk-span A f g) X
+Cocone←Pullback (p , q , H) =  mk-cocone p q (happly H)
+
+Cocone←Pullback-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {f : A → B} {g : A → C}
+      {X : Type 𝓜}
+    → is-equiv (Cocone←Pullback {f = f} {g} {X})
+Cocone←Pullback-is-equiv = is-equiv←qiso λ where
+  .fst (mk-cocone p q H) → (p , q , funext→ H)
+  .snd .fst (p , q , H) → ap (λ H → (p , q , H)) (funext.η _)
+  .snd .snd (mk-cocone p q H) → refl
+}
+%```
+}
+
+\subtree[stt-0063]{
+\title{Connection between diagonal and codiagonal}
+\taxon{theorem}
+\citet{2.11}{rijkeMod2020}
+
+\p{We can construct a map in the [coslice category](stt-0062)
+from postcomposition by the [codiagonal](stt-005M) of #{f : A \to B}
+to the [diagonal](stt-005X) of postcomposition by #{f}. This map
+is an equivalence.}
+
+\quiver{
+\begin{tikzcd}
+	&& {X^A} \\
+	\\
+	{B +^A B \to X} &&&& {X^B \times_{X^A} X^B}
+	\arrow["{-\circ \nabla_f}"', from=1-3, to=3-1]
+	\arrow["{\Delta_{-\circ f}}", from=1-3, to=3-5]
+	\arrow["\sim"', from=3-1, to=3-5]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+Δ←∇ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+        (f : A → B) (X : Type 𝓦)
+      → Coslice-map (diagonal (postcomp X f)) (postcomp X (∇ f))
+Δ←∇ f X .fst = cogap ∘ Cocone←Pullback
+Δ←∇ f X .snd g = funext→ (pushout-ind _ (mk-coconeD ~refl ~refl
+    λ a → IdP-func←Square (glue a) refl refl
+      ( ∙-reflr _
+      ∙ pushout-rec-apβ a
+      ∙ sym ( ap-∘ g _ _
+            ∙ ap (ap g) (pushout-rec-apβ a)))))
+
+Δ←∇-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                 {f : A → B} {X : Type 𝓦}
+               → Coslice-equiv (Δ←∇ f X)
+Δ←∇-is-equiv = is-equiv-∘ pushout-rec-is-equiv Cocone←Pullback-is-equiv
+}
+%```
+}

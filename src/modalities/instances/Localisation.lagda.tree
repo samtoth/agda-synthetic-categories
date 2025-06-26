@@ -18,6 +18,7 @@ open import core.Codiagonal
 open import core.CoSlice
 open import core.Arrow
 open import core.ArrowEquiv
+open import core.Postwhisker
 open import ergonomics.notations.Orthogonality
 open import modalities.HigherModality
 open import modalities.Subuniverses
@@ -68,6 +69,12 @@ is-null-is-prop
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
     → ∀ (X : Type 𝓥) → is-prop (is-null A X)
 is-null-is-prop X = is-prop-Π λ a → is-equiv-is-prop
+
+null≃ : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+          {X : Type 𝓥} (_ : is-null A X) i
+        → X
+        ≃ (A i → X)
+null≃ {A = A}{X} An i = mk≃ (const X (A i)) (An i)
 }
 %```
 }
@@ -235,7 +242,7 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
 \title{A partial universal property for Free Algebraic Injectives}
 
 \p{The Free Algebraic Injective type former is the left
-adjoint to the forgetfull functor from Algabraic injectives on #{\SS} to #{\SS}.
+adjoint to the forgetful functor from Algabraic injectives on #{\SS} to #{\SS}.
 So far, we have shied away from formalising this full universal property,
 but it is easier to formalise if we restrict to the category of #{f\rm{-local}}
 types.}
@@ -311,6 +318,8 @@ one #{\mathcal{J}_f(X) \to Y}. We induct on the free algebraic injective:}
 \p{Now we fix a pair of maps #{g, h : \mathcal{J}_f(X) \to Y}, and
 give a section to #{\rm{ap}_{- \circ  \eta}^{g,h} : g = h \to g\eta = h\eta}.}
 
+\todo{Have refactored this to \ref{stt-006G}}
+
 \p{Firstly we note generally that for any map #{f : A \to B},
 and maps #{g, h : B \to C}
 we can construct a map #{g \sim h \to gf \sim hf} by \em{postwhiskering} by
@@ -322,47 +331,12 @@ then to give a section to the map by \em{postwhiskering} with #{\eta}.}
 
 %```agda
 \agda{
-  postwhisker : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-                  (X : Type 𝓦) (f : A → B)
-                → ∀ {g h : B → X} → (g ~ h)
-                → g ∘ f ~ h ∘ f
-  postwhisker X f = _▸ f
-
-  amap : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-            {C : Type 𝓦}
-           (f : A → B)
-           (g h : B → C)
-         → Arrow-map
-              (ap (postcomp C f) {g} {h})
-              (postwhisker C f {g} {h})
-  amap _ _ _ .Arrow-map.top = happly
-  amap _ _ _ .Arrow-map.bot = happly
-  amap _ _ _ .Arrow-map.comm refl = refl
-
-  amap-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-                    {C : Type 𝓦}
-                    {f : A → B}
-                    {g h : B → C}
-                  → is-Arrow-equiv (amap f g h)
-  amap-is-equiv .fst = global-funext
-  amap-is-equiv .snd = global-funext
-}
-%```
-
-\p{Because every [equivalence is an embedding](stt-006D), we have that
-#{ap_{-\circ f_i}^{g,h}} is an equivalence, and so by the observation above
-#{- ▸ f : g \sim h \to gf_i \sim hf_i} is also an equivalence.}
-
-%```agda
-\agda{
   opaque
-    Y▸-is-equiv : ∀ {i g h} → is-equiv (postwhisker Y (f i) {g} {h})
-    Y▸-is-equiv {i} = is-equiv←Arrow-equiv {F = amap _ _ _}
-                                   amap-is-equiv
-                               (is-embedding←is-equiv (Y-loc i))
+    Y▸-is-equiv : ∀ {i} {g h : B i → Y} → is-equiv (postwhisker (f i) g h)
+    Y▸-is-equiv {i} = postwhisker-is-equiv←ap-compose
+      (is-embedding←is-equiv (Y-loc i))
 
-
-  module Y▸ {i g h} = is-equiv (Y▸-is-equiv {i} {g} {h})
+  module Y▸ {i} {g h} = is-equiv (Y▸-is-equiv {i} {g} {h})
 }
 %```
 
@@ -439,7 +413,7 @@ we do again by induction on #{x} with the motive #{x \mapsto g(x) = h(x)}.}
                      ~∙ (h ◂ Free-inj.is-ext g' ~⁻¹)
 
   secAp : ∀ (g h : Free-inj f X → Y)
-          → section (postwhisker Y Free-inj.inc {g} {h})
+          → section (postwhisker Free-inj.inc g h)
   secAp g h .fst H
     = Free-inj.ind (λ z → g z ＝ h z)
         H
@@ -461,7 +435,8 @@ we do again by induction on #{x} with the motive #{x \mapsto g(x) = h(x)}.}
 
   ps : is-pathsplit (postcomp-inj X)
   ps .fst = sec-postcomp-inj
-  ps .snd g h = section←Arrow-equiv⁻¹ {F = amap _ _ _} amap-is-equiv (secAp g h)
+  ps .snd g h = section←Arrow-equiv⁻¹ {F = postwhisker←ap-compose _ _ _ }
+                                      postwhisker-funext(secAp g h)
 }
 %```
 }
@@ -487,18 +462,42 @@ Null∙-reflective
   : ∀ {𝓘 𝓤} {I : Type 𝓘}
       {A : I → Type 𝓤}
       (a∙ : ∀ i → A i)
-    → is-reflective (Null∙-SubU a∙)
-Null∙-reflective a .is-reflective.has-reflectors A .Reflector.○
-  = Null∙ _ a A
-Null∙-reflective a .is-reflective.has-reflectors A .Reflector.○∈S
-  = Null∙-is-null a
-Null∙-reflective a .is-reflective.has-reflectors A .Reflector.○-η
-  = Free-inj.inc
-Null∙-reflective a .is-reflective.has-reflectors A .Reflector.reflects
-  cnull = Free-inj-reflects _ (is-local←is-null cnull)
+    → Reflective (Null∙-SubU a∙)
+Null∙-reflective a .Reflective.○ = Null∙ _ a
+Null∙-reflective a .Reflective.η = Free-inj.inc
+Null∙-reflective a .Reflective.has-is-reflector
+  .is-reflector.○∈S = Null∙-is-null a
+Null∙-reflective a .Reflective.has-is-reflector
+  .is-reflector.reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
 }
 %```
 }
+
+\subtree[stt-006E]{
+\taxon{theorem}
+\date{2025-06-25}
+\title{Nullfication is a #{\Sigma}-closed reflective subuniverse}
+
+%```agda
+\agda{
+Null∙-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
+                   {A : I → Type 𝓤}
+                   (a : Π _ A)
+                 → is-Σ-closed (Null∙-SubU a)
+Null∙-Σ-closed {A = A} a∙ {A = X} {Y} Xnull Ynull i
+  = I ._≃_.has-is-eqv where
+  I : Σ X Y ≃ (A i → Σ X Y)
+  I = Σ X Y
+        ≃⟨ Σ-ap-≃ (λ x → null≃ (Ynull x) i) ⟩
+      Σ X (λ x → A i → Y x)
+        ≃⟨ Σ-ap-≃-fst {B = λ f → (a : A i) → Y (f a)} (null≃ Xnull i)  ⟩
+      Σ (A i → X) (λ f → (a : A i) → Y (f a))
+        ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
+      (A i → Σ X Y) ≃∎
+}
+%```
+}
+
 
 \subtree[stt-006A]{
 \date{2025-06-23}
@@ -532,8 +531,8 @@ which is not in general #{\Sigma}-closed.}
 module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
          {A : I → Type 𝓤} {B : I → Type 𝓤}
          where
-  open is-reflective
-  open Reflector
+  open Reflective
+  open is-reflector
 
   Local-SubU
     : (f : (i : I) → A i → B i)
@@ -546,11 +545,11 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
 
   Local-reflective
     : (f : (i : I) → A i → B i)
-    → is-reflective (Local-SubU f)
-  Local-reflective f .has-reflectors A .Reflector.○ = Loc f A
-  Local-reflective f .has-reflectors A .○∈S = Loc-is-local
-  Local-reflective f .has-reflectors A .○-η = Free-inj.inc
-  Local-reflective f .has-reflectors A .reflects cloc
+    → Reflective (Local-SubU f)
+  Local-reflective f .○ = Loc f
+  Local-reflective f .η = Free-inj.inc
+  Local-reflective f .has-is-reflector .○∈S = Loc-is-local
+  Local-reflective f .has-is-reflector .reflects cloc
     = Free-inj-reflects _ λ where
       (left i) → cloc i
       (right i) → is-local∇←is-local (f i) (cloc i)

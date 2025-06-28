@@ -8,6 +8,8 @@ open import core.Codiagonal
 open import core.Join
 open import core.Lifts
 open import core.Orthogonal
+open import core.PiSection
+open import core.Postwhisker
 open import core.PullbackPower
 open import core.Slice
 open import core.Spheres
@@ -49,6 +51,7 @@ open import foundations.Homotopy
 open import foundations.Identity
 open import foundations.Nat
 open import foundations.PathSplit
+open import foundations.PropClosure
 open import foundations.PropMapEmbedding
 open import foundations.PullbackPath
 open import foundations.Pullbacks
@@ -75,6 +78,7 @@ open import modalities.ModalMaps
 open import modalities.Subuniverses
 open import modalities.instances.Localisation
 open import modalities.instances.OpenModalities
+open import modalities.instances.Truncation
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv

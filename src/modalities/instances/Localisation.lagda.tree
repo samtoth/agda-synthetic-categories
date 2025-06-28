@@ -96,13 +96,38 @@ is-local←is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
                    → {X : Type 𝓥}
                    → is-null A X
                    → is-local (λ i → ! {A = A i}) X
-is-local←is-null eq i = 3-for-2' (is-equiv⁻¹ unit-ev-is-equiv) (eq i)
+is-local←is-null eq i = 3-for-2' (unit-const-is-equiv) (eq i)
+
+is-local-sing←is-null : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+                          {A : I → Type 𝓤}
+                          {B : I → Type 𝓥}
+                          (Bsing : ∀ i → is-singleton (B i))
+                          (f : ∀ i → A i → B i)
+                        → {X : Type 𝓦}
+                        → is-null A X
+                        → is-local f X
+is-local-sing←is-null Bsing f null i
+  = 3-for-2'
+    (is-equiv⁻¹ (eval-sing-is-equiv global-funext (Bsing i)))
+    (null i)
 
 is-null←is-local : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
                    → {X : Type 𝓥}
                    → is-local (λ i → ! {A = A i}) X
                    → is-null A X
 is-null←is-local eq i = is-equiv-∘ (eq i) unit-const-is-equiv
+
+is-null←is-local-sing : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+                          {A : I → Type 𝓤}
+                          {B : I → Type 𝓥}
+                          (Bsing : ∀ i → is-singleton (B i))
+                          (f : ∀ i → A i → B i)
+                        → {X : Type 𝓦}
+                        → is-local f X
+                        → is-null A X
+is-null←is-local-sing Bs f loc i = is-equiv-∘
+                                     (loc i)
+                                     ((is-equiv⁻¹ (eval-sing-is-equiv global-funext (Bs i))))
 }
 %```
 }
@@ -445,19 +470,19 @@ we do again by induction on #{x} with the motive #{x \mapsto g(x) = h(x)}.}
 
 %```agda
 \agda{
-Null∙-SubU
+Null-SubU
   : ∀ {𝓘 𝓤} {I : Type 𝓘}
       {A : I → Type 𝓤}
-      (a∙ : ∀ i → A i)
-    → SubU 𝓤 (𝓘 ⊔ 𝓤)
-Null∙-SubU {A = A} A∙ .Subtype.family = is-null A
-Null∙-SubU A∙ .Subtype.has-is-subtype = is-null-is-prop
+      𝓦
+    → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
+Null-SubU {A = A} 𝓦 .Subtype.family = is-null A
+Null-SubU 𝓦 .Subtype.has-is-subtype = is-null-is-prop
 
 Null∙-reflective
-  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+  : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
       {A : I → Type 𝓤}
       (a∙ : ∀ i → A i)
-    → Reflective (Null∙-SubU a∙)
+    → Reflective (Null-SubU 𝓦)
 Null∙-reflective a .Reflective.○ = Null∙ _ a
 Null∙-reflective a .Reflective.η = Free-inj.inc
 Null∙-reflective a .Reflective.has-is-reflector
@@ -473,6 +498,8 @@ Null∙-reflective a .Reflective.has-is-reflector
 \date{2025-06-25}
 \title{Nullification is a #{\Sigma}-closed reflective subuniverse}
 
+\p{Nullification is a #{\Sigma}-closed reflective subuniverse and so
+is also a higher modality.}
 
 \proof{
 \p{By calculation:}
@@ -491,11 +518,10 @@ and (3) is the [type theoretic theorem of choice](foundations.TheoremOfChoice).}
 
 %```agda
 \agda{
-Null∙-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
+Null-Σ-closed : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
                    {A : I → Type 𝓤}
-                   (a : Π _ A)
-                 → is-Σ-closed (Null∙-SubU a)
-Null∙-Σ-closed {A = A} a∙ {A = X} {Y} Xnull Ynull i
+                 → is-Σ-closed (Null-SubU 𝓦)
+Null-Σ-closed {A = A} {A = X} {Y} Xnull Ynull i
   = I ._≃_.has-is-eqv where
   I : Σ X Y ≃ (A i → Σ X Y)
   I = Σ X Y
@@ -505,6 +531,15 @@ Null∙-Σ-closed {A = A} a∙ {A = X} {Y} Xnull Ynull i
       Σ (A i → X) (λ f → (a : A i) → Y (f a))
         ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
       (A i → Σ X Y) ≃∎
+
+Null∙-HigherModality
+  : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      (a : Π _ A)
+    → HigherModality 𝓦
+Null∙-HigherModality a = HigherModality←SubU
+                           (Null∙-reflective a)
+                           (Null-Σ-closed)
 }
 %```
 }
@@ -539,7 +574,7 @@ which is not in general #{\Sigma}-closed.}
 
 %```agda
 \agda{
-module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
+module _ {𝓘 𝓤 : Level} {I : Type 𝓘}
          {A : I → Type 𝓤} {B : I → Type 𝓤}
          where
   open Reflective
@@ -547,16 +582,17 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
 
   Local-SubU
     : (f : (i : I) → A i → B i)
-      → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓦)
-  Local-SubU f = mk-subtype
+      (𝓦 : Level)
+    → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+  Local-SubU f 𝓦 = mk-subtype
                          {family = is-local f}
                          is-local-is-prop
 
 
 
   Local-reflective
-    : (f : (i : I) → A i → B i)
-    → Reflective (Local-SubU f)
+    : ∀ {𝓦} (f : (i : I) → A i → B i)
+    → Reflective (Local-SubU f 𝓦)
   Local-reflective f .○ = Loc f
   Local-reflective f .η = Free-inj.inc
   Local-reflective f .has-is-reflector .○∈S = Loc-is-local
@@ -564,6 +600,43 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
     = Free-inj-reflects _ λ where
       (left i) → cloc i
       (right i) → is-local∇←is-local (f i) (cloc i)
+}
+%```
+}
+
+\subtree[stt-006R]{
+\title{Localisation at a singleton codomain}
+\taxon{theorem}
+
+\p{Localisation at a family of maps #{A_i \to B_i} where each #{B_i}
+gives a reflective subuniverse
+which is #{\Sigma}-closed.}
+
+%```agda
+\agda{
+module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓤}
+         where
+  open Reflective
+  open is-reflector
+
+  Local-Σ-closed
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → is-Σ-closed (Local-SubU f 𝓦)
+  Local-Σ-closed f sngl aloc bloc
+    = is-local-sing←is-null sngl f
+        (Null-Σ-closed
+        (is-null←is-local-sing sngl f aloc)
+           λ a → is-null←is-local-sing sngl f (bloc a))
+
+  Local-HigherModality
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → HigherModality 𝓦
+  Local-HigherModality f s = HigherModality←SubU
+                               (Local-reflective f)
+                               (Local-Σ-closed f s)
 }
 %```
 }

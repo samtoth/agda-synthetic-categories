@@ -1,0 +1,128 @@
+\date{2025-06-27}
+\title{Truncation modalities}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb modalities.instances.Truncation \stopverb}
+\import{stt-macros}
+
+%```agda
+\agda{
+module modalities.instances.Truncation where
+
+open import foundations.Prelude
+open import ufAxioms
+open import core.Spheres
+open import modalities.instances.Localisation
+open import modalities.Subuniverses
+open import modalities.HigherModality
+open import ergonomics.Universal
+open import ergonomics.PushoutUniv
+}
+%```
+
+\subtree[stt-006P]{
+\title{#{n}-truncated types}
+
+\p{A type #{X} is #{n-2}-truncated for #{n : \mathbb{N}} when
+   it is [null](stt-005G) with respect to #{S^{n-1}}.}
+
+
+%```agda
+\agda{
+is-S-1null : ∀ {𝓤}
+                → ℕ
+                → Type 𝓤 → Type 𝓤
+is-S-1null zero    = is-null {I = 𝟙} (const _ _ ∅)
+is-S-1null (suc n) = is-null {I = 𝟙} (const _ _ (S n))
+}
+%```
+}
+
+\subtree[stt-006Q]{
+\title{Truncation is a [higher modality](stt-000G)}
+
+%```agda
+\agda{
+Truncation
+  : ∀ {𝓤}
+      (n : ℕ)
+    → HigherModality 𝓤
+Truncation zero = Local-HigherModality {I = 𝟙}
+                             (λ _ → ! {A = ∅}) λ _ → 𝟙-is-singleton
+Truncation (suc n) = Null∙-HigherModality (const _ 𝟙 (S-∙ {n}))
+
+
+module Trunc {𝓤} n where
+  open HigherModality (Truncation {𝓤} n)
+    public renaming (is-modal to is-truncated)
+
+  private opaque
+    A∈S' : ∀ {𝓤} {A : Type 𝓤} (n : ℕ)
+            → HigherModality.is-modal (Truncation n) A
+            → is-S-1null n A
+    A∈S' zero tr
+      =  is-null←is-local (HigherModality←SubU-modal-types (Local-reflective (λ _ → ! {A = ∅}))
+                                          (Local-Σ-closed _ (λ _ → 𝟙-is-singleton))
+                                          _ tr)
+    A∈S' {A = A} (suc n) tr
+      = HigherModality←SubU-modal-types (Null∙-reflective (λ _ → S-∙ {n}))
+         Null-Σ-closed A tr
+
+
+  ∈S : ∀ {A : Type 𝓤}
+        → is-truncated A
+        → is-S-1null n A
+  ∈S = A∈S' n
+
+Trunc : ∀ {𝓤} → ℕ → Type 𝓤 → Type 𝓤
+Trunc = Trunc.○_
+
+∥_∥ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+∥_∥ = Trunc 1
+}
+%```
+}
+
+\subtree[stt-006T]{
+\title{Truncation-modal types are #{n}-types}
+\taxon{theorem}
+
+\p{We show #{-2} truncated types are singletons, and #{-1} truncated types
+are propositions}
+
+%```agda
+\agda{
+is-singleton←is-truncated
+  : ∀ {𝓤} {A : Type 𝓤}
+    → Trunc.is-truncated 0 A
+    → is-singleton A
+is-singleton←is-truncated {A = A} trunc
+  = is-single←equiv-to-single (∅-UP≃ ∙≃ eqv) 𝟙-is-singleton where
+  orth : A ∈ Local-SubU (λ _ → !) _
+  orth = HigherModality←SubU-modal-types
+           (Local-reflective {I = 𝟙} (λ _ → ! {A = ∅}) )
+           (Local-Σ-closed ((λ _ → ! {A = ∅})) λ _ → 𝟙-is-singleton)
+           A trunc
+
+  open is-equiv (Trunc.∈S 0 trunc tt)
+
+  eqv : (∅ → A) ≃ A
+  eqv = mk≃ (const _ _) (Trunc.∈S 0 trunc tt) e⁻¹
+
+
+is-prop←is-truncated
+  : ∀ {𝓤} {A : Type 𝓤}
+    → Trunc.is-truncated 1 A
+    → is-prop A
+is-prop←is-truncated {A = A} tr x y
+  =  sym (happly (ε f) (ι₁ tt)) ∙ happly (ε f) (ι₂ tt) where
+  eqv : is-equiv (λ a (x : S 0) → a)
+  eqv = Trunc.∈S 1 tr tt
+
+  open is-equiv eqv
+
+  f : S 0 → A
+  f = rec! (mk-coconeU x y ¡_)
+}
+%```
+}

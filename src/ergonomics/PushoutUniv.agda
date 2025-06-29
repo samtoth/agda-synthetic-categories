@@ -7,6 +7,7 @@ open import ufAxioms
 open import ergonomics.Universal
 open import ergonomics.Extensionality
 open import ergonomics.Universal
+open Universal
 open import ergonomics.Representation
 open import ergonomics.auto
 

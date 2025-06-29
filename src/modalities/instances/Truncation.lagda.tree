@@ -11,12 +11,14 @@ module modalities.instances.Truncation where
 
 open import foundations.Prelude
 open import ufAxioms
+open import core.Suspensions
 open import core.Spheres
 open import modalities.instances.Localisation
 open import modalities.Subuniverses
 open import modalities.HigherModality
 open import ergonomics.Universal
 open import ergonomics.PushoutUniv
+import modalities.ModalMaps
 }
 %```
 
@@ -54,7 +56,12 @@ Truncation (suc n) = Null∙-HigherModality (const _ 𝟙 (S-∙ {n}))
 
 module Trunc {𝓤} n where
   open HigherModality (Truncation {𝓤} n)
-    public renaming (is-modal to is-truncated)
+    public renaming (is-modal to is-truncated; ＝-is-modal to ＝-is-truncated)
+
+  open Do public
+
+  open modalities.ModalMaps (Truncation {𝓤} n)
+    public renaming (is-modal-map to is-truncated-map)
 
   private opaque
     A∈S' : ∀ {𝓤} {A : Type 𝓤} (n : ℕ)
@@ -68,14 +75,36 @@ module Trunc {𝓤} n where
       = HigherModality←SubU-modal-types (Null∙-reflective (λ _ → S-∙ {n}))
          Null-Σ-closed A tr
 
-
-  ∈S : ∀ {A : Type 𝓤}
+    A∈S : ∀ {𝓤} {A : Type 𝓤} (n : ℕ)
+            → is-S-1null n A
+            → HigherModality.is-modal (Truncation n) A
+    A∈S zero tr = HigherModality←SubU-modal-types'
+                   (Local-reflective (λ _ → ! {A = ∅}))
+                   (Local-Σ-closed _ λ _ → 𝟙-is-singleton)
+                   _
+                   (is-local←is-null tr)
+    A∈S {A = A} (suc n) tr = HigherModality←SubU-modal-types'
+                               (Null∙-reflective (λ _ → S-∙ {n}))
+                               Null-Σ-closed
+                               A
+                               tr
+  null←tr : ∀ {A : Type 𝓤}
         → is-truncated A
         → is-S-1null n A
-  ∈S = A∈S' n
+  null←tr = A∈S' n
+
+  tr←null : ∀ {A : Type 𝓤}
+            → is-S-1null n A
+            → is-truncated A
+  tr←null = A∈S n
+
+  is-trunc! : ∀ {A : Type 𝓤} ⦃ _ : is-truncated A ⦄ → is-truncated A
+  is-trunc! ⦃ a ⦄ = a
 
 Trunc : ∀ {𝓤} → ℕ → Type 𝓤 → Type 𝓤
 Trunc = Trunc.○_
+
+{-# DISPLAY Trunc.○_ n A = Trunc n A #-}
 
 ∥_∥ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
 ∥_∥ = Trunc 1
@@ -104,11 +133,19 @@ is-singleton←is-truncated {A = A} trunc
            (Local-Σ-closed ((λ _ → ! {A = ∅})) λ _ → 𝟙-is-singleton)
            A trunc
 
-  open is-equiv (Trunc.∈S 0 trunc tt)
+  open is-equiv (Trunc.null←tr 0 trunc tt)
 
   eqv : (∅ → A) ≃ A
-  eqv = mk≃ (const _ _) (Trunc.∈S 0 trunc tt) e⁻¹
+  eqv = mk≃ (const _ _) (Trunc.null←tr 0 trunc tt) e⁻¹
 
+is-truncated←is-singleton
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-singleton A
+    → Trunc.is-truncated 0 A
+is-truncated←is-singleton {A = A} tr
+  = Trunc.tr←null 0 λ i → eqv where
+  eqv : is-equiv (λ (a : A) (b : ∅) → a)
+  eqv = homotopy-is-equiv (λ a → funext→ (λ ())) (K¡-sing-is-equiv tr)
 
 is-prop←is-truncated
   : ∀ {𝓤} {A : Type 𝓤}
@@ -117,12 +154,133 @@ is-prop←is-truncated
 is-prop←is-truncated {A = A} tr x y
   =  sym (happly (ε f) (ι₁ tt)) ∙ happly (ε f) (ι₂ tt) where
   eqv : is-equiv (λ a (x : S 0) → a)
-  eqv = Trunc.∈S 1 tr tt
+  eqv = Trunc.null←tr 1 tr tt
 
   open is-equiv eqv
 
   f : S 0 → A
   f = rec! (mk-coconeU x y ¡_)
+
+is-truncated←is-prop
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-prop A
+    → Trunc.is-truncated 1 A
+is-truncated←is-prop {A = A} pr
+  = Trunc.tr←null 1 λ i → is-equiv←qiso qiso  where
+  qiso : quasi-iso λ (a : A) (b : Susp ∅) → a
+  qiso .fst f = f (ι₁ tt)
+  qiso .snd .fst = ~refl
+  qiso .snd .snd f = funext→ (λ a → pr _ _)
+}
+%```
+}
+
+
+
+\subtree[stt-006V]{
+\title{Truncation at identity types}
+\taxon{Theorem}
+
+\p{For all modalities, #{x =_{A} y} is modal when #{A} is.
+For truncation in particular we can strengthen this to say
+that #{A} is #{n + 1}-truncated iff #{x = y} is #{n}
+truncated.}
+
+
+\proof{
+
+\p{We split into cases. The case for #{-2} truncation we [have already shown](stt-000).}
+
+\p{For #{\rm{suc}(n)}, let #{A} be a type,
+   then for any #{x,y} in #{A}, we show #{x = y} is #{n + 1} truncated
+   iff #{A} is #{n + 2} truncated. Consider the following diagram:}
+
+\quiver{
+\begin{tikzcd}
+	{\Sigma_{(x,y : A)}x = y} &&&& {\Sigma_{(x,y:A)}(x=y)^{S^n}} \\
+	\\
+	& A && {A^{\Sigma S^n}}
+	\arrow["{\rm{tot}\Delta_{x=y}}", from=1-1, to=1-5]
+	\arrow["\sim"', from=1-1, to=3-2]
+	\arrow["{\Delta_{A}}"', from=3-2, to=3-4]
+	\arrow["\sim"', from=3-4, to=1-5]
+\end{tikzcd}
+}
+
+\p{#{A} is #{n + 2} truncated iff #{A \to A^{S^{n+1}}} is an equivalence,
+iff the total map of #{x = y \to (x=y)^{S^n}} is an equivalence [iff](stt-0030) the map
+is a fibrewise equivalence iff #{x = y} is #{n + 1} truncated.}
+}
+
+%```agda
+\agda{
+＝-is-pred-truncated
+  : ∀ {𝓤} {A : Type 𝓤} {n}
+    → Trunc.is-truncated (suc n) A
+    → ∀ {x y : A} → Trunc.is-truncated n (x ＝ y)
+＝-is-pred-truncated {𝓤} {A} {zero} tr {x} {y}
+  = is-truncated←is-singleton (＝-singleton←is-prop
+                               (is-prop←is-truncated tr) x y)
+
+＝-is-pred-truncated {𝓤} {A} {suc n} tr {x} {y}
+  = Trunc.tr←null (suc n) λ i → fw-eqv (x , y) where
+
+  snull : is-equiv (λ (a : A) (s : S (suc n)) → a)
+  snull = Trunc.null←tr (suc (suc n)) tr tt
+
+  eqv :  (Σ[ ab ∶ (A × A) ] (ab .fst ＝ ab .snd))
+        ≃ (Σ[ ab ∶ (A × A) ] (S n → ab .fst ＝ ab .snd))
+  eqv = Σ[ (a , b) ∶ (A × A) ] (a ＝ b) ≃⟨ Σ-assoc  ⟩
+         _                              ≃⟨ Σ-singleton (λ p → Sing-is-singleton) ⟩
+         A                              ≃⟨ mk≃ _ snull ⟩
+         (S (suc n) → A)                ≃⟨ Susp-UP≃ ⟩
+         Σ[ x ∶  A ] Σ[ y ∶ A ]
+           (S n → x ＝ y)               ≃⟨ Σ-assoc e⁻¹ ⟩
+         _ ≃∎
+
+
+  fw-Δ = λ _ p _ → p
+
+  tot-test-map~ : (_≃_.fwd eqv) ~ total-map fw-Δ
+  tot-test-map~ ((a , b) ,  refl)
+    = Σ-path→
+      ( refl
+      , funext→ (λ a' → (ap-const (glue a')))
+      )
+
+  fw-eqv : is-fibrewise-equiv fw-Δ
+  fw-eqv = is-fibrewise-equiv←is-total-equiv
+                   (homotopy-is-equiv tot-test-map~ (eqv ._≃_.has-is-eqv))
+
+
+instance
+  Truncated-Id : ∀ {𝓤} {A : Type 𝓤} {n}
+                   ⦃ _ : Trunc.is-truncated (suc n) A ⦄
+                 → ∀ {x y : A} → Trunc.is-truncated n (x ＝ y)
+  Truncated-Id ⦃ t ⦄ = ＝-is-pred-truncated t
+  {-# OVERLAPPING Truncated-Id #-}
+}
+%```
+}
+
+\subtree[stt-006W]{
+\date{2025-06-29}
+\title{Truncation of the diagonal map}
+\taxon{corollory}
+
+\p{A type #{A} is #{n+1} truncated iff the
+diagonal map #{A \to A \times A} is #{n} truncated}
+
+\proof{
+
+}
+
+%```agda
+\agda{
+-- Δ-is-truncated : ∀ {𝓤}{A : Type 𝓤} n
+--       → Trunc.is-truncated (suc n) A
+--       → Trunc.is-truncated-map n (Δ× A)
+-- Δ-is-truncated n tr = {! Trunc.tr←null n ?!}
 }
 %```
 }

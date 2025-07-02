@@ -131,7 +131,13 @@ record HigherModality 𝓤 : Type (lsuc 𝓤) where
 \taxon{universal property}
 % ```agda
 \agda{
-module ModalInstances {𝓤} (M : HigherModality 𝓤) where
+record Is-modal {𝓤} (M : HigherModality 𝓤) (A : Type 𝓤) : Type 𝓤 where
+  constructor mk-modal
+  open HigherModality M
+  field
+    has-is-modal : is-modal A
+
+module ModalUniversal {𝓤} (M : HigherModality 𝓤) where
 
   open HigherModality M
 
@@ -152,40 +158,49 @@ module ModalInstances {𝓤} (M : HigherModality 𝓤) where
 
   instance
     Universal-○ : ∀ {𝓦} {A : Type 𝓤} {P : ○ A → Type 𝓤}
-                 → ⦃ _ : ∀ {a} → is-modal (P a) ⦄
+                 → ⦃ _ : ∀ {a} → Is-modal M (P a) ⦄
                  → ⦃ _ : Universal ((a : A) → P (η a)) 𝓦 ⦄
                  → Universal ((a : ○ A) → P a) 𝓦
-    Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.methods = u .methods
-    Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.from = ind' mod ∘ u .from
-    Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.from-is-equiv
+    Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.methods = u .methods
+    Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.from
+      = ind' (λ {_} → mod .Is-modal.has-is-modal) ∘ u .from
+    Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.from-is-equiv
       = is-equiv-∘ ind'-is-equiv (u .from-is-equiv)
 }
 % ```
 }
 
-\subtree{
+\subtree[stt-006Z]{
 
 \title{Instance resolution for is-modal}
 
 % ```agda
 \agda{
-  instance
-    ○-Modal : ∀ {A : Type 𝓤} → is-modal (○ A)
-    ○-Modal = ○-is-modal
-
-    ＝-Modal : ∀ {A : Type 𝓤} → ⦃ is-modal A ⦄ → {a b : A}  → is-modal (a ＝ b)
-    ＝-Modal ⦃ H ⦄ =  ＝-is-modal H
-
-    Π-Modal : ∀ {A : Type 𝓤} {B : A → Type 𝓤} → ⦃ _ : ∀ {x} → is-modal (B x) ⦄ → is-modal (∀ x → B x)
-    Π-Modal = is-equiv←qiso (λ where
-            .fst → λ f a → rec! (λ f → f a) f
-            .snd .fst → λ f → ext! (λ a → ind-β' _ _ _)
-            .snd .snd → λ f → ind! {B = λ f → η (λ x → ind' _ (λ f → f x) f) ＝ f}
-                                   (λ f → ap η (funext→ (λ a → ind-β' _ _ _))) f)
 
 
+module ModalInstances {𝓤} (M : HigherModality 𝓤) where
 
-  ○-elim! : ∀ {A : Type 𝓤} ⦃ _ : is-modal A ⦄
+  open HigherModality M
+  open ModalUniversal M
+
+  instance opaque
+    ○-Modal : ∀ {A : Type 𝓤} → Is-modal M (○ A)
+    ○-Modal = mk-modal ○-is-modal
+
+    ＝-Modal : ∀ {A : Type 𝓤} → ⦃ Is-modal M A ⦄ → {a b : A}  → Is-modal M (a ＝ b)
+    ＝-Modal ⦃ (mk-modal H) ⦄ = mk-modal (＝-is-modal H)
+
+    Π-Modal : ∀ {A : Type 𝓤} {B : A → Type 𝓤} → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
+              → Is-modal M (∀ x → B x)
+    Π-Modal = mk-modal (is-equiv←qiso λ where
+                .fst → λ f a → rec! (λ f → f a) f
+                .snd .fst → λ f → ext! (λ a → ind-β' _ _ _)
+                .snd .snd → λ f → ind! {B = λ f → η (λ x → ind' _ (λ f → f x) f) ＝ f}
+                                       (λ f → ap η (funext→ (λ a → ind-β' _ _ _))) f)
+
+
+
+  ○-elim! : ∀ {A : Type 𝓤} ⦃ _ : Is-modal M A ⦄
             → ○ A → A
   ○-elim! = rec! id
 
@@ -205,8 +220,8 @@ module ModalInstances {𝓤} (M : HigherModality 𝓤) where
 % ```agda
 \agda{
   ○-Σ-closed : ∀ {A : Type 𝓤} {B : A → Type 𝓤}
-            → ⦃ _ : is-modal A ⦄
-            → ⦃ _ : ∀ {x} → is-modal (B x) ⦄
+            → ⦃ _ : Is-modal M A ⦄
+            → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
             → is-modal (Σ A B)
   ○-Σ-closed {A = A} {B = B} = is-equiv←qiso I where
 
@@ -228,12 +243,12 @@ module ModalInstances {𝓤} (M : HigherModality 𝓤) where
     I .snd .snd = ind! λ a b → ap η (Σ-path→ (f-β , symP' g-β))
 
 
-  instance
+  instance opaque
     Modal-Σ : ∀ {A : Type 𝓤} {B : A → Type 𝓤}
-            → ⦃ _ : is-modal A ⦄
-            → ⦃ _ : ∀ {x} → is-modal (B x) ⦄
-            → is-modal (Σ A B)
-    Modal-Σ = ○-Σ-closed
+            → ⦃ _ : Is-modal M A ⦄
+            → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
+            → Is-modal M (Σ A B)
+    Modal-Σ = mk-modal ○-Σ-closed
 }
 % ```
 }
@@ -269,10 +284,11 @@ with modal types.}
 \agda{
 module Do {𝓤} (M : HigherModality 𝓤) where
   open HigherModality M
-  open ModalInstances M public
+  open ModalUniversal M
+
 
   _>>=_ : ∀ {A B : Type 𝓤}
-            ⦃ _ : is-modal B ⦄
+            ⦃ _ : Is-modal M B ⦄
           → ○ A
           → (A → B)
           → B

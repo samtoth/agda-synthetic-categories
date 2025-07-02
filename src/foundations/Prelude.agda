@@ -21,7 +21,7 @@ open import foundations.QuasiIsomorphism public
 open import foundations.CoherentIsomorphism public
 open import foundations.EquivSingleton public
 open import foundations.TheoremOfChoice public
-open import foundations.CurryEquiv public
+open import foundations.PiProperties public
 open import foundations.IdentityEquiv public
 open import foundations.EquivContrFibre public
 open import foundations.EquivHomotopy public

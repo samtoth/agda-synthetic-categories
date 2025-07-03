@@ -29,7 +29,6 @@ open import foundations.CoherentIsomorphism
 open import foundations.CompositionEquiv
 open import foundations.CompositionFibres
 open import foundations.Coproducts
-open import foundations.CurryEquiv
 open import foundations.DependentCocone
 open import foundations.DependentIdentity
 open import foundations.Embedding
@@ -51,6 +50,7 @@ open import foundations.Homotopy
 open import foundations.Identity
 open import foundations.Nat
 open import foundations.PathSplit
+open import foundations.PiProperties
 open import foundations.PropClosure
 open import foundations.PropMapEmbedding
 open import foundations.PullbackPath

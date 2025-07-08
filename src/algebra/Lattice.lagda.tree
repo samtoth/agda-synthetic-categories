@@ -1,0 +1,169 @@
+\title{Lattices}
+\date{2025-06-19}
+\taxon{module}
+\author{markwilliams}
+\import{stt-macros}
+\meta{module}{\startverb algebra.Lattice \stopverb}
+
+%```agda
+\agda{
+module algebra.Lattice where
+
+open import ufAxioms
+open import foundations.Prelude
+open import algebra.Poset
+open import Data.Bool
+
+}
+%```
+
+\subtree[stt-004T]{
+\title{Lattices}
+\taxon{definition}
+\p{A lattice #{L} is an algebraic strucutre with two operations #{\wedge,\vee : L \to L \to L}, satisfying absorption laws.
+   Equivalently this structure can be described by a poset, with operations taking binary meets and joins for each pair of elements.}
+
+%```agda
+\agda{
+
+record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L) (_∨_ : L → L → L) : Type 𝓤 where
+  no-eta-equality
+  field
+    car-is-set  : is-set L
+    ∧-assoc : {x y z : L} → x ∧ (y ∧ z) ＝ (x ∧ y) ∧ z
+    ∨-assoc : {x y z : L} → x ∨ (y ∨ z) ＝ (x ∨ y) ∨ z
+    ∧-comm : {x y : L} → x ∧ y ＝ y ∧ x
+    ∨-comm : {x y : L} → x ∨ y ＝ y ∨ x
+    ∨-∧-abs : {x y : L} → x ∨ (x ∧ y) ＝ x
+    ∧-∨-abs : {x y : L} → x ∧ (x ∨ y) ＝ x
+    0-bottom : {x : L} → x ∨ 0l ＝ x
+    1-top    : {x : L} → x ∧ 1l ＝ x
+
+record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
+  field
+    0l 1l : L
+    _∧_ : L → L → L
+    _∨_ : L → L → L
+    str-is-lattice : is-lattice 0l 1l (_∧_) (_∨_)
+  infixr 24 _∧_
+  infixr 25 _∨_
+
+  _≤_ : L → L → Type ℓ
+  x ≤ y = x ∧ y ＝ x
+
+  open is-lattice str-is-lattice public
+
+  ≤-is-poset : is-poset (_≤_)
+  ≤-is-poset =
+    record { ≤-is-prop = ≤-is-prop
+           ; ≤-refl = ≤-refl
+           ; ≤-trans = ≤-trans
+           ; ≤-antisym = ≤-antisym }
+    where
+      ≤-is-prop : {x y : L} → is-prop (x ≤ y)
+      ≤-is-prop {x} {y} = car-is-set (x ∧ y) x
+
+      ≤-refl : {x : L} → x ≤ x
+      ≤-refl {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
+                   x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
+                   x ∎
+
+      ≤-trans : {x y z : L} → x ≤ y → y ≤ z → x ≤ z
+      ≤-trans {x} {y} {z} p q =  x ∧ z        ＝⟨  ap (_∧ z) (sym p)  ⟩
+                                  (x ∧ y) ∧ z ＝⟨ sym ∧-assoc ⟩
+                                  x ∧ (y ∧ z) ＝⟨ ap (x ∧_) q ⟩
+                                  x ∧ y       ＝⟨ p ⟩
+                                  x ∎
+
+      ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
+      ≤-antisym {x} {y} p q = sym p ∙ ∧-comm ∙ q
+
+record is-lattice-hom
+        {𝓤} {𝓤'} {A : Type 𝓤} {B : Type 𝓤'}
+        (L : Lattice A) (M : Lattice B) (f : A → B) : Type (𝓤 ⊔ 𝓤') where
+  private
+    module A = Lattice L
+    module B = Lattice M
+  field
+    pres-∨ : {x y : A} → f (x A.∨ y) ＝ f x B.∨ f y
+    pres-∧ : {x y : A} → f (x A.∧ y) ＝ f x B.∧ f y
+    pres-0 : f A.0l ＝ B.0l
+    pres-1 : f A.1l ＝ B.1l
+
+is-lattice-algebra : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (L : Lattice A) (M : Lattice B) (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-lattice-algebra = is-lattice-hom
+
+initial-lattice-algebra : {𝓤 : Level} {A : Type 𝓤} (L : Lattice A) → is-lattice-algebra L L id
+initial-lattice-algebra L .is-lattice-hom.pres-∨ = refl
+initial-lattice-algebra L .is-lattice-hom.pres-∧ = refl
+initial-lattice-algebra L .is-lattice-hom.pres-0 = refl
+initial-lattice-algebra L .is-lattice-hom.pres-1 = refl
+}
+%```
+
+
+\subtree[stt-004S]{
+\title{Congruences}
+\taxon{definition}
+\p{An equivalence relation #{\sim} on a lattice #{L} is a congruence if it respects all lattice operations}
+
+%```agda
+\agda{
+module Congruence where
+
+record Equivalence {𝓤 𝓥} {A : Type 𝓤} (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  field
+    ~-is-prop : {x y : A} → is-prop (x ~ y)
+    reflexive : {x : A} → x ~ x
+    symmetric : {x y : A} → x ~ y → y ~ x
+    transitive : {x y z : A} → x ~ y → y ~ z → x ~ z
+
+record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  open Lattice L
+  field
+    ~-equivalence : Equivalence (_~_)
+    ~-∨ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∨ a2 ~ b1 ∨ b2
+    ~-∧ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∧ a2 ~ b1 ∧ b2
+
+  open Equivalence (~-equivalence) public
+
+{-
+module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
+  open Lattice L
+  data ⟪_⟫ (R : A → A → Type 𝓥) : A → A → Type (𝓤 ⊔ 𝓥) where
+    ⟪⟫-inc  : {a b : A} → R a b → ⟪ R ⟫ a b
+    ⟪⟫-refl : {a : A} → ⟪ R ⟫ a a
+    ⟪⟫-sym  : {a b : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b a
+    ⟪⟫-trans : {a b c : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b c → ⟪ R ⟫ a c
+    ⟪⟫-∨ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∨ a2) (b1 ∨ b2)
+    ⟪⟫-∧ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∧ a2) (b1 ∧ b2)
+
+  ⟪⟫-congruence : {R : A → A → Type 𝓥} → LatticeCongruence L ⟪ R ⟫
+  ⟪⟫-congruence = record
+    { ~-equivalence = record
+      { ~-is-prop = {!!}
+      ; reflexive = ⟪⟫-refl
+      ; symmetric = ⟪⟫-sym
+      ; transitive = ⟪⟫-trans }
+    ; ~-∨ = ⟪⟫-∨
+    ; ~-∧ = ⟪⟫-∧ }
+-}
+
+}
+%```
+}
+
+}
+
+\subtree[stt-004U]{
+\title{Examples}
+\taxon{examples}
+\p{The subobject/subtype classifier #{\mathrm{Prop}} has a canonical lattice structure on it, given by logical and and or}
+
+%```agda
+\agda{
+}
+%```
+}
+
+}

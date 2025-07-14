@@ -40,3 +40,4 @@ open import foundations.Pullbacks public
 open import foundations.CanonicalPullbacks public
 open import foundations.PullbackPath public
 open import foundations.PathSplit public
+open import foundations.Lift public

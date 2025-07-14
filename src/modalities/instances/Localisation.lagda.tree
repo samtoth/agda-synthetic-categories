@@ -22,6 +22,7 @@ open import core.Postwhisker
 open import ergonomics.notations.Orthogonality
 open import modalities.HigherModality
 open import modalities.Subuniverses
+open import modalities.GlobalSubuniverses
 open core.Orthogonal.notation
 }
 %```
@@ -231,20 +232,20 @@ we need to add all maps of the form #{\nabla_{f_i}} to #{f}.}
 %```agda
 \agda{
 
-module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
-         {A : I → Type 𝓤} {B : I → Type 𝓤}
+module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
          where
   private
-    A' : (f : ∀ i → A i → B i) → I ⊎ I → Type 𝓤
-    A' f (left i) = A i
+    A' : (f : ∀ i → A i → B i) → I ⊎ I → Type (𝓤 ⊔ 𝓥)
+    A' f (left i) = ULift 𝓥 (A i)
     A' f (right i) = Pushout (f i) (f i)
 
-    B' : (f : ∀ i → A i → B i) → I ⊎ I → Type 𝓤
+    B' : (f : ∀ i → A i → B i) → I ⊎ I → Type 𝓥
     B' f (left i)  = B i
     B' f (right i) = B i
 
     f' : (f : ∀ i → A i → B i) → (i : I ⊎ I) → A' f i → B' f i
-    f' f (left i) = f i
+    f' f (left i) =  f i ∘ unlift
     f' f (right i) = ∇ (f i)
 
   Loc : (f : ∀ i → A i → B i) → Type 𝓦 → Type 𝓦
@@ -253,9 +254,12 @@ module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
   Loc-is-local : ∀ {X : Type 𝓦}
                    {f : ∀ i → A i → B i}
                  → is-local f (Loc f X)
-  Loc-is-local = is-local←sec←sec-∇
-                   (λ i → injector-Free-inj (left i))
-                   (λ i → injector-Free-inj (right i))
+  Loc-is-local {X}{f}
+    =  is-local←sec←sec-∇
+         (λ i → sec-3-for-2 {f = postcomp _ unlift} {postcomp _ (f i)}
+                             (postcomp-equiv (is-equiv⁻¹ lift-is-equiv))
+                             (injector-Free-inj (left i)))
+         (λ i → injector-Free-inj (right i))
 }
 %```
 }
@@ -471,25 +475,46 @@ we do again by induction on #{x} with the motive #{x \mapsto g(x) = h(x)}.}
 
 %```agda
 \agda{
-Null-SubU
-  : ∀ {𝓘 𝓤} {I : Type 𝓘}
-      {A : I → Type 𝓤}
-      𝓦
-    → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
-Null-SubU {A = A} 𝓦 .Subtype.family = is-null A
-Null-SubU 𝓦 .Subtype.has-is-subtype = is-null-is-prop
+module _ where
+  open is-globally-reflective
+  open is-global-reflector
 
-Null∙-reflective
-  : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
-      {A : I → Type 𝓤}
-      (a∙ : ∀ i → A i)
-    → Reflective (Null-SubU 𝓦)
-Null∙-reflective a .Reflective.○ = Null∙ _ a
-Null∙-reflective a .Reflective.η = Free-inj.inc
-Null∙-reflective a .Reflective.has-is-reflector
-  .is-reflector.○∈S = Null∙-is-null a
-Null∙-reflective a .Reflective.has-is-reflector
-  .is-reflector.reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
+  Null-SubU
+    : ∀ {𝓘 𝓤} {I : Type 𝓘}
+        (A : I → Type 𝓤)
+        𝓦
+      → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
+  Null-SubU A 𝓦 .Subtype.family = is-null A
+  Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
+
+  Null-GSU : ∀ {𝓘 𝓤} {I : Type 𝓘}
+               (A : I → Type 𝓤)
+              → GSU (_⊔ (𝓘 ⊔ 𝓤))
+  Null-GSU A .GSU.S = Null-SubU A _
+  Null-GSU A .GSU.S-equiv e anull i
+    = is-equiv←Arrow-equiv
+        {F = mk-amap fwd (precomp _ fwd) ~refl}
+        (has-is-eqv , precomp-equiv has-is-eqv)
+        (anull i) where open _≃_ e
+
+  Null∙-global-reflectors
+    : ∀ {𝓘 𝓤} {I : Type 𝓘}
+        {A : I → Type 𝓤}
+        (a∙ : ∀ i → A i)
+      → is-globally-reflective (Null-GSU A)
+  Null∙-global-reflectors a .○ = Null∙ _ a
+  Null∙-global-reflectors a .η = Free-inj.inc
+  Null∙-global-reflectors a .has-is-reflector
+    .○∈S = Null∙-is-null a
+  Null∙-global-reflectors a .has-is-reflector
+    .reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
+
+  Null∙-reflective
+    : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+        {A : I → Type 𝓤}
+        (a∙ : ∀ i → A i)
+      → Reflective (Null-SubU A 𝓦)
+  Null∙-reflective a = reflective←global (Null∙-global-reflectors a)
 }
 %```
 }
@@ -521,7 +546,7 @@ and (3) is the [type theoretic theorem of choice](foundations.TheoremOfChoice).}
 \agda{
 Null-Σ-closed : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
                    {A : I → Type 𝓤}
-                 → is-Σ-closed (Null-SubU 𝓦)
+                 → is-Σ-closed (Null-SubU A 𝓦)
 Null-Σ-closed {A = A} {A = X} {Y} Xnull Ynull i
   = eqv where
   opaque
@@ -533,8 +558,7 @@ Null-Σ-closed {A = A} {A = X} {Y} Xnull Ynull i
         Σ (A i → X) (λ f → (a : A i) → Y (f a))
           ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
         (A i → Σ X Y) ≃∎
-  opaque
-    unfolding I
+
     eqv : is-equiv (const (Σ X Y) (A i))
     eqv = I ._≃_.has-is-eqv
 
@@ -580,32 +604,49 @@ which is not in general #{\Sigma}-closed.}
 
 %```agda
 \agda{
-module _ {𝓘 𝓤 : Level} {I : Type 𝓘}
-         {A : I → Type 𝓤} {B : I → Type 𝓤}
+module _ {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
          where
   open Reflective
   open is-reflector
+  open is-globally-reflective
+  open is-global-reflector
 
   Local-SubU
     : (f : (i : I) → A i → B i)
       (𝓦 : Level)
-    → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+    → SubU 𝓦 (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
   Local-SubU f 𝓦 = mk-subtype
                          {family = is-local f}
                          is-local-is-prop
 
+  Local-GSU
+    : (f : (i : I) → A i → B i)
+    → GSU ((𝓘 ⊔ 𝓤 ⊔ 𝓥) ⊔_)
+  Local-GSU f .GSU.S {𝓤} = Local-SubU f 𝓤
+  Local-GSU f .GSU.S-equiv {A = A} {B} e aloc i
+    = is-equiv←Arrow-equiv
+       {F = mk-amap (precomp _ fwd) (precomp _ fwd) ~refl}
+       (precomp-equiv has-is-eqv , precomp-equiv has-is-eqv)
+       (aloc i) where
+    open _≃_ e
 
+  Local-global-reflectors
+    : (f : (i : I) → A i → B i)
+    → is-globally-reflective (Local-GSU f)
+  Local-global-reflectors f .○ = Loc f
+  Local-global-reflectors f .η = Free-inj.inc
+  Local-global-reflectors f .has-is-reflector .○∈S = Loc-is-local
+  Local-global-reflectors f .has-is-reflector .reflects cloc
+    = Free-inj-reflects _ λ where
+       (left i) → is-equiv-∘ (postcomp-equiv (is-equiv⁻¹ lift-is-equiv))
+                             (cloc i)
+       (right i) → is-local∇←is-local (f i) (cloc i)
 
   Local-reflective
     : ∀ {𝓦} (f : (i : I) → A i → B i)
     → Reflective (Local-SubU f 𝓦)
-  Local-reflective f .○ = Loc f
-  Local-reflective f .η = Free-inj.inc
-  Local-reflective f .has-is-reflector .○∈S = Loc-is-local
-  Local-reflective f .has-is-reflector .reflects cloc
-    = Free-inj-reflects _ λ where
-      (left i) → cloc i
-      (right i) → is-local∇←is-local (f i) (cloc i)
+  Local-reflective f = reflective←global (Local-global-reflectors f)
 }
 %```
 }
@@ -620,8 +661,8 @@ which is #{\Sigma}-closed.}
 
 %```agda
 \agda{
-module _ {𝓘 𝓤 𝓦 : Level} {I : Type 𝓘}
-         {A : I → Type 𝓤} {B : I → Type 𝓤}
+module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
          where
   open Reflective
   open is-reflector

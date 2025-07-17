@@ -77,6 +77,7 @@ open import modalities.Flat.Flat
 open import modalities.GlobalSubuniverses
 open import modalities.HigherModality
 open import modalities.ModalMaps
+open import modalities.Seperated
 open import modalities.Subuniverses
 open import modalities.instances.Localisation
 open import modalities.instances.OpenModalities

@@ -1,0 +1,223 @@
+\date{2025-06-14}
+\title{Seperated types}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb modalities.Seperated \stopverb}
+\import{stt-macros}
+
+%```agda
+\agda{
+module modalities.Seperated  where
+
+open import foundations.Prelude
+open import ufAxioms
+open import modalities.Subuniverses
+open import modalities.GlobalSubuniverses
+open import modalities.instances.Localisation
+open import core.Suspensions
+open import core.Arrow
+open import core.ArrowEquiv
+open import ergonomics.Universal
+open import ergonomics.PushoutUniv
+open import axioms.FreeAlgInj
+}
+%```
+
+
+\subtree[stt-007E]{
+\title{Seperated types for a subuniverse}
+\taxon{definition}
+
+\p{A type is seperated if it's identity types are modal. This forms a
+[(global)](stt-007A) [subuniverse](stt-003Z).}
+
+
+%```agda
+\agda{
+is-seperated : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦) → Type 𝓤 → Type (𝓤 ⊔ 𝓦)
+is-seperated S A = ∀ (x y : A) → (x ＝ y) ∈ S
+
+seperated-SubU : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦) → SubU 𝓤 (𝓤 ⊔ 𝓦)
+seperated-SubU S .Subtype.family = is-seperated S
+seperated-SubU S .Subtype.has-is-subtype A
+  = is-prop-Π λ x → is-prop-Π λ y → Subtype.has-is-subtype S (x ＝ y)
+
+equiv-seperated : ∀ {α} (S : GSU α) {𝓤 𝓥} {A : Type 𝓤}
+                    {B : Type 𝓥} (e : A ≃ B)
+                  → is-seperated (SubU←global S) A
+                  → is-seperated (SubU←global S) B
+equiv-seperated S e sep x y
+  = GSU.S-equiv S
+       (embedding≃ (is-embedding←is-equiv
+                     (is-equiv⁻¹ has-is-eqv)) x y)
+       (sep (bwd x) (bwd y))
+  where
+    open _≃_ e
+
+seperated-GSU : ∀ {α} (S : GSU α) → GSU  (λ 𝓤 → 𝓤 ⊔ α 𝓤)
+seperated-GSU S .GSU.S = seperated-SubU (SubU←global S)
+seperated-GSU S .GSU.S-equiv = equiv-seperated S
+}
+%```
+}
+
+
+\subtree[stt-007I]{
+\title{Local types are seperated}
+\taxon{theorem}
+
+\p{Given a reflective subuniverse #{S},
+the #{S}-modal types are also #{S}-seperated.}
+
+\todo{
+Most of the seperated stuff
+requires the modified join construction which we don't have yet.
+}
+
+%```agda
+\agda{
+-- is-seperated←is-modal
+--   : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
+--       {A : Type 𝓤}
+--     → A ∈ S
+--     → A ∈ seperated-SubU S
+-- is-seperated←is-modal S as x y
+--   = {!!}
+}
+%```
+}
+
+\subtree[stt-007F]{
+\title{Seperated types and localisations}
+\taxon{theorem}
+
+\p{Given a family of maps #{f_i : A_i \to B_i}, the seperated
+types with respect to localisation at #{f} are the #{\Sigma(f)}
+local types. (Where #{\Sigma(-)} is the  functorial action of
+the suspension)}
+
+
+\proof{
+\p{We can construct the following commutative diagram:}
+\quiver{
+\begin{tikzcd}
+	{\Sigma_{(x,y : X)} (x = y) ^ {B_i}} && {\Sigma_{(x,y:X)}(x=y)^{A_i}} \\
+	\\
+	{X^{\Sigma B_i}} && {X^{\Sigma A_i}}
+	\arrow["{\textrm{total}((x=y)^f)}", from=1-1, to=1-3]
+	\arrow["\sim"', from=1-1, to=3-1]
+	\arrow["\sim", from=1-3, to=3-3]
+	\arrow["{X^{\Sigma f}}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{It then follows that postcomposition by #{f} at #{x = y} is an equivalence
+iff postcomposition by #{\Sigma(f)} is at #{X}.}
+}
+
+%```agda
+\agda{
+module _ {𝓘 𝓤 𝓥} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
+         (f : (i : I) → A i → B i) where
+
+  private
+    Σf : (i : I) → Susp (A i) → Susp (B i)
+    Σf i = Susp-map (f i)
+
+  is-seperated←is-Σ-local
+    : ∀ {𝓤} {X : Type 𝓤}
+    → is-local Σf X
+    → is-seperated (Local-SubU f 𝓤) X
+  is-seperated←is-Σ-local {X = X} loc x y i
+    = fw-eqv (x , y) where
+    map : ∀ (ab : X × X)
+        → (B i → ab .fst ＝ ab .snd)
+        → (A i → ab .fst ＝ ab .snd)
+    map (x , y) = postcomp (x ＝ y) (f i)
+
+    eqv : (Σ[ ab ∶ (X × X)] (B i → ab .fst ＝ ab .snd))
+        ≃ (Σ[ ab ∶ (X × X)] (A i → ab .fst ＝ ab .snd))
+    eqv =  Σ-assoc
+        ∙≃ (Susp-UP≃ e⁻¹)
+        ∙≃ mk≃ _ (loc i)
+        ∙≃ Susp-UP≃
+        ∙≃ (Σ-assoc e⁻¹)
+
+    H : (_≃_.fwd eqv) ~ total-map map
+    H ((x , y) , K)
+      = Σ-path→
+        ( refl
+        , funext→ (λ a
+            →   ap-∘ (pushout-rec (mk-cocone (λ _ → x) (λ _ → y) K))
+                     (pushout-rec (mk-cocone ι₁ ι₂ (glue ∘ f i)))
+                     (glue a)
+              ∙ ap (ap _) (pushout-rec-apβ a)
+              ∙ pushout-rec-apβ (f i a)))
+
+    fw-eqv : is-fibrewise-equiv map
+    fw-eqv = is-fibrewise-equiv←is-total-equiv
+              (homotopy-is-equiv H (eqv ._≃_.has-is-eqv))
+
+}
+%```
+}
+
+\subtree[stt-007H]{
+\title{Iterated seperation}
+\taxon{definition}
+
+\p{Because the seperated types give a (reflective) subuniverse for
+each (reflective) subuniverse, we can consider the result of
+repeatedly applying seperation.
+}
+
+%```agda
+\agda{
+is-n-seperated : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
+                 → (n : ℕ) → Type 𝓤
+                 → Type (𝓤 ⊔ 𝓦)
+is-n-seperated {𝓤} S zero A = ULift 𝓤 (A ∈ S)
+is-n-seperated S (suc n) A
+  = ∀ (x y : A) → is-n-seperated S n (x ＝ y)
+
+is-n-seperated-is-prop
+  : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
+      (n : ℕ) (A : Type 𝓤)
+    → is-prop (is-n-seperated S n A)
+is-n-seperated-is-prop S zero A
+  = is-prop-ULift (S .Subtype.has-is-subtype A)
+is-n-seperated-is-prop S (suc n) A
+  = is-prop-Π λ
+     a → is-prop-Π λ
+       b → is-n-seperated-is-prop S n (a ＝ b)
+
+n-seperated-SubU : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
+                   → (n : ℕ) → SubU 𝓤 (𝓤 ⊔ 𝓦)
+n-seperated-SubU S n .Subtype.family = is-n-seperated S n
+n-seperated-SubU S n .Subtype.has-is-subtype
+  = is-n-seperated-is-prop S n
+
+equiv-n-seperated
+  : ∀ {𝓤 𝓥 α} (S : GSU α)
+      (n : ℕ)
+      {A : Type 𝓤} {B : Type 𝓥}
+    → A ≃ B
+    → is-n-seperated (SubU←global S) n A
+    → is-n-seperated (SubU←global S) n B
+equiv-n-seperated S zero eq (mk-lift sep)
+  = mk-lift (S .GSU.S-equiv eq sep)
+equiv-n-seperated S (suc n) eq sep b b'
+  = equiv-n-seperated S n
+      (mk≃ _ (is-embedding←is-equiv
+                 (is-equiv⁻¹ has-is-eqv)) e⁻¹)
+      (sep (bwd b) (bwd b')) where open _≃_ eq
+
+
+n-seperated-GSU : ∀ {α} (S : GSU α)
+                  → (n : ℕ) → GSU (λ 𝓤 → 𝓤 ⊔ α 𝓤)
+n-seperated-GSU S n .GSU.S = n-seperated-SubU (SubU←global S) n
+n-seperated-GSU S n .GSU.S-equiv = equiv-n-seperated S n
+}
+%```
+}

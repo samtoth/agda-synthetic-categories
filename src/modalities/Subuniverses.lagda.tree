@@ -14,6 +14,8 @@ open import ufAxioms
 open import modalities.HigherModality
 open import core.Postwhisker
 open import core.PiSection
+open import ergonomics.Universal
+open import ergonomics.Extensionality
 }
 % ```
 
@@ -73,6 +75,21 @@ record Reflector {𝓤 𝓥} (S : SubU 𝓤 𝓥)
     has-is-reflector : is-reflector S A ○ η
 
   open is-reflector has-is-reflector public
+
+
+is-reflector-subtype-equiv
+  : ∀ {𝓤 𝓥 𝓥'} {S : SubU 𝓤 𝓥} {K : SubU 𝓤 𝓥'}
+      (A : Type 𝓤) {○A : Type 𝓤}
+      {η : A → ○A}
+    → (Subtype-equiv S K)
+    → is-reflector S A ○A η
+    → is-reflector K A ○A η
+is-reflector-subtype-equiv A {○A} {η} eq rfl = lem where
+  open is-reflector rfl
+
+  lem : is-reflector _ A ○A η
+  lem .is-reflector.○∈S = eq ○A .fst ○∈S
+  lem .is-reflector.reflects ck = reflects (eq _ .snd ck)
 }
 % ```
 }
@@ -82,17 +99,30 @@ record Reflector {𝓤 𝓥} (S : SubU 𝓤 𝓥)
 \taxon{theorem}
 
 \p{In [[modalities.HigherModality]], we start by defining the reflectors, and say that a type
-is #{\bigcirc}-modal if the reflection map is an equivalence. In this setting, this definition
-is a theorem.}
+is #{\bigcirc}-modal if the reflection map is an equivalence. In the setting of reflective
+subuniverses we have a theorem: a type is modal iff #{\eta} is an equivalence.}
 
 % ```agda
 \agda{
-in-subU←η-is-equiv : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
+η-is-equiv←in-SubU : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
+                       {A : Type 𝓤}
+                     → (RA : Reflector S A)
+                     → A ∈ S
+                     → is-equiv (RA .Reflector.η)
+η-is-equiv←in-SubU rfl as = is-equiv←qiso qiso where
+  open Reflector rfl
+
+  qiso : quasi-iso η
+  qiso .fst      = ○-elim as id
+  qiso .snd .fst = ○-elim-β as id
+  qiso .snd .snd = ∈S▸η.bwd ○∈S (η ◂ ○-elim-β as id)
+
+in-SubU←η-is-equiv : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
                        {A : Type 𝓤}
                      → (RA : Reflector S A)
                      → is-equiv (RA .Reflector.η)
                      → A ∈ S
-in-subU←η-is-equiv {S = S} RA eq
+in-SubU←η-is-equiv {S = S} RA eq
   = tr (_∈ S)
        (ua (mk≃ η eq e⁻¹))
        ○∈S where open Reflector RA
@@ -103,12 +133,12 @@ in-subU←η-is-equiv {S = S} RA eq
 
 % ```agda
 \agda{
-η-has-retract←in-subU : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
+η-retract←in-SubU : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
                        {A : Type 𝓤}
                        (RA : Reflector S A)
                        → A ∈ S
                        → retract (RA .Reflector.η)
-η-has-retract←in-subU RA a∈S = (bwd id , happly (ε id)) where
+η-retract←in-SubU RA a∈S = (bwd id , happly (ε id)) where
   open Reflector RA
   open is-equiv (reflects a∈S)
 
@@ -123,12 +153,21 @@ in-subU←η-is-equiv {S = S} RA eq
       , ret
       , ∈S▸η.bwd ○∈S (η ◂ ret)) where open Reflector RA
 
-in-subU←η-retract : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
+in-SubU←η-retract : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
                        {A : Type 𝓤}
                        (RA : Reflector S A)
                        → retract (RA .Reflector.η)
                        → A ∈ S
-in-subU←η-retract RA ρ = in-subU←η-is-equiv RA (η-is-equiv←retract RA ρ)
+in-SubU←η-retract RA ρ = in-SubU←η-is-equiv RA (η-is-equiv←retract RA ρ)
+
+
+unmod : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥}
+          {A : Type 𝓤}
+          (RA : Reflector S A)
+        → A ∈ S
+        → let open Reflector RA
+        in ○ → A
+unmod RA = fst ∘ η-retract←in-SubU RA
 }
 % ```
 }
@@ -137,12 +176,12 @@ in-subU←η-retract RA ρ = in-subU←η-is-equiv RA (η-is-equiv←retract RA 
 \subtree[stt-0041]{
 \title{Reflective subuniverse}
 \taxon{definition}
-\meta{defines}{\startverb ["Reflective", "mk-reflective", "is-reflective.has-reflectors"] \stopverb}
+\meta{defines}{\startverb ["is-reflective", "mk-reflective", "is-reflective.has-reflectors"] \stopverb}
 \p{A subuniverse is reflective if it has all reflectors.}
 
 % ```agda
 \agda{
-record Reflective {𝓤 𝓥} (S : SubU 𝓤 𝓥) : Type (lsuc 𝓤 ⊔ 𝓥) where
+record is-reflective {𝓤 𝓥} (S : SubU 𝓤 𝓥) : Type (lsuc 𝓤 ⊔ 𝓥) where
   constructor mk-reflective
   field
     ○ : Type 𝓤 → Type 𝓤
@@ -159,6 +198,19 @@ record Reflective {𝓤 𝓥} (S : SubU 𝓤 𝓥) : Type (lsuc 𝓤 ⊔ 𝓥) w
   reflector : ∀ (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η has-is-reflector
 
+
+is-reflective-subtype-equiv
+  : ∀ {𝓤 𝓥 𝓥'} {S : SubU 𝓤 𝓥} {K : SubU 𝓤 𝓥'}
+    → (Subtype-equiv S K)
+    → is-reflective S
+    → is-reflective K
+is-reflective-subtype-equiv {S = S} eq rfl
+  = mk-reflective ○ η
+     (is-reflector-subtype-equiv
+      {S = S}
+       _
+       eq
+       has-is-reflector) where open is-reflective rfl
 }
 % ```
 }
@@ -170,24 +222,23 @@ record Reflective {𝓤 𝓥} (S : SubU 𝓤 𝓥) : Type (lsuc 𝓤 ⊔ 𝓥) w
 
 %```agda
 \agda{
-
 η＝-retract : ∀ {𝓤 𝓥} {A : Type 𝓤}
                 {x y : A}
                 {S : SubU 𝓤 𝓥}
-                (RS : Reflective S)
+                (RS : is-reflective S)
               → A ∈ S
-              → retract (Reflective.η RS {x ＝ y})
-η＝-retract RS a = (∈S▸η.bwd a id , happly (∈S▸η.ε a id)) where open Reflective RS
+              → retract (is-reflective.η RS {x ＝ y})
+η＝-retract RS a = (∈S▸η.bwd a id , happly (∈S▸η.ε a id)) where open is-reflective RS
 
 is-modal-＝ : ∀ {𝓤 𝓥} {A : Type 𝓤}
                 {x y : A}
                 {S : SubU 𝓤 𝓥}
-                (RS : Reflective S)
+                (RS : is-reflective S)
               → A ∈ S
               → (x ＝ y) ∈ S
 is-modal-＝ {A = A}{x}{y} RS a
-  = in-subU←η-retract (reflector (x ＝ y)) (η＝-retract RS a) where
-  open Reflective RS
+  = in-SubU←η-retract (reflector (x ＝ y)) (η＝-retract RS a) where
+  open is-reflective RS
 }
 %```
 }
@@ -219,7 +270,8 @@ is-Σ-closed {𝓤} S = ∀ {A : Type 𝓤} {B : A → Type 𝓤}
 \title{Sigma closed reflective subuniverses are higher modalities}
 
 \p{Every #{\Sigma}-closed reflective subuniverse
-#{(S, \bigcirc, \eta)} gives rise to a higher modality}
+#{(S, \bigcirc, \eta)} gives rise to a higher modality with the same
+modal types.}
 
 \proof{
 \p{We have the data of the modal operator and unit, as well as the fact that
@@ -245,56 +297,75 @@ inverse map to get a homotopy #{\pi \bar{f} \sim \id}.}
 
 %```agda
 \agda{
-HigherModality←Σ-ref-SubU
-  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} (Sref : Reflective S)
+
+module ModalInduction {𝓤 𝓥} {S : SubU 𝓤 𝓥} (Sref : is-reflective S) (SΣ : is-Σ-closed S) where opaque
+  open is-reflective Sref
+  ind : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤} (P∈S : ∀ a → P a ∈ S)
+        → (Π A (P ∘ η)) → Π (○ A) P
+  ind {A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
+    f'' : A → Σ (○ A) P
+    f'' a = (η a , f a)
+
+    f' : ○ A → Σ (○ A) P
+    f' = ○-elim (SΣ ○∈S ps) f''
+
+    secη : fst ∘ f' ∘ η ~ η
+    secη = fst ◂ ○-elim-β _ _
+
+  ind-β : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤} (P∈S : ∀ a → P a ∈ S)
+        → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
+  ind-β {A} {P} PS f a
+    = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
+        ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
+      tr P (ap fst (○-elim-β _ f'' a)) (snd (f' (η a)))
+        ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
+      tr (P ∘ fst) (○-elim-β _ f'' a) (snd (f' (η a)))
+        ＝⟨ apᵈ snd (○-elim-β _ f'' a) ⟩
+      snd (f'' a)
+        ＝⟨⟩
+      f a ∎       where open ind PS f
+
+
+HigherModality←SubU
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} (Sref : is-reflective S)
       (SΣ : is-Σ-closed S)
     → HigherModality 𝓤
-HigherModality←Σ-ref-SubU {𝓤} {S = S} rfl cls
+HigherModality←SubU {𝓤} {S = S} rfl cls
   = mod where
   open HigherModality
-  module S = Reflective rfl
-
-  f'' : ∀ {A : Type 𝓤}
-          (P : S.○ A → Type 𝓤)
-        → (Π A (S.○ ∘ P ∘ S.η))
-        → A → Σ (S.○ A) (S.○ ∘ P)
-  f'' P f a = (S.η a , f a)
-
-  f' : ∀ {A : Type 𝓤}
-          (P : S.○ A → Type 𝓤)
-        → (Π A (S.○ ∘ P ∘ S.η))
-        → S.○ A → Σ (S.○ A) (S.○ ∘ P)
-  f' P f = S.○-elim (cls S.○∈S λ _ → S.○∈S)
-                 (f'' P f)
-  secη : ∀ {A : Type 𝓤}
-          {P : S.○ A → Type 𝓤}
-          {f : Π A (S.○ ∘ P ∘ S.η)}
-        → fst ∘ f' P f ∘ S.η ~ S.η
-  secη = fst ◂ S.○-elim-β _ _
-
-  sec : ∀ {A : Type 𝓤}
-          (P : S.○ A → Type 𝓤)
-        → (Π A (S.○ ∘ P ∘ S.η))
-        → section (fst {B = S.○ ∘ P})
-  sec {A} P f = (f' P f , S.▸η.bwd secη)
+  module S = is-reflective rfl
 
   mod : HigherModality 𝓤
   mod .○_ A = S.○ A
-  mod .○-η = S.η
-  mod .○-ind P f = Π←section (sec P f)
-  mod .○-β P f a
-    = tr (S.○ ∘ P) (S.▸η.bwd secη (S.η a)) (snd (f' P f (S.η a)))
-         ＝⟨ ap (λ p → tr (S.○ ∘ P) p (snd (f' P f (S.η a)))) (happly (S.▸η.ε secη) a) ⟩
-      tr (S.○ ∘ P) (ap fst (S.○-elim-β _ (f'' P f) a)) (snd (f' P f (S.η a)))
-         ＝⟨ ap (λ p → coe p (snd (f' P f (S.η a)))) (sym (ap-∘ (S.○ ∘ P) fst _)) ⟩
-      tr (S.○ ∘ P ∘ fst) (S.○-elim-β _ (f'' P f) a) (snd (f' P f (S.η a)))
-         ＝⟨ apᵈ snd (S.○-elim-β _ (f'' P f) a) ⟩
-      snd (f'' P f a)
-         ＝⟨⟩
-      f a ∎
-  mod .＝-○-is-○-modal = η-is-equiv←retract
+  mod .η = S.η
+  mod .ind   P f = ModalInduction.ind   rfl cls (λ _ → S.○∈S) f
+  mod .ind-β P f = ModalInduction.ind-β rfl cls (λ _ → S.○∈S) f
+  mod .＝-○-is-modal = η-is-equiv←retract
                           (S.reflector _)
                           (η＝-retract rfl S.○∈S)
+
+
+HigherModality←SubU-modal-types
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} (Sref : is-reflective S)
+      (SΣ : is-Σ-closed S)
+    → (A : Type 𝓤)
+    → HigherModality.is-modal (HigherModality←SubU Sref SΣ) A
+    → A ∈ S
+HigherModality←SubU-modal-types {𝓤} {S = S} rfl cls A ismod
+  = in-SubU←η-retract (reflector A) retract-fwd where
+  open is-reflective rfl
+  open is-equiv ismod
+
+
+HigherModality←SubU-modal-types'
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} (Sref : is-reflective S)
+      (SΣ : is-Σ-closed S)
+    → (A : Type 𝓤)
+    → A ∈ S
+    → HigherModality.is-modal (HigherModality←SubU Sref SΣ) A
+HigherModality←SubU-modal-types' {𝓤} {S = S} rfl cls A ismod
+  = η-is-equiv←in-SubU (reflector A) ismod where
+  open is-reflective rfl
 }
 %```
 }

@@ -30,7 +30,7 @@ record Universal {𝓤} (A : Type 𝓤) 𝓥 : Type (𝓤 ⊔ lsuc 𝓥) where
 
   module Univ≃ = _≃_ (mk≃ from from-is-equiv)
 
-open Universal public
+open Universal 
 
 Universal←Equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
                 → B ≃ A → Universal A 𝓥
@@ -86,7 +86,7 @@ instance
       → Universal (∅ → A) lzero
   Universal-⊥ .methods = 𝟙
   Universal-⊥ .from _  = ¡_
-  Universal-⊥ .from-is-equiv = K¡-sing-is-equiv
+  Universal-⊥ .from-is-equiv = K¡-𝟙-is-equiv
 
 
 rec! : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} ⦃ r : Universal (A → B) 𝓦 ⦄ → r .methods → A → B

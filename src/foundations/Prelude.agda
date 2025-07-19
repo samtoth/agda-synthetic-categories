@@ -21,7 +21,7 @@ open import foundations.QuasiIsomorphism public
 open import foundations.CoherentIsomorphism public
 open import foundations.EquivSingleton public
 open import foundations.TheoremOfChoice public
-open import foundations.CurryEquiv public
+open import foundations.PiProperties public
 open import foundations.IdentityEquiv public
 open import foundations.EquivContrFibre public
 open import foundations.EquivHomotopy public
@@ -40,3 +40,4 @@ open import foundations.Pullbacks public
 open import foundations.CanonicalPullbacks public
 open import foundations.PullbackPath public
 open import foundations.PathSplit public
+open import foundations.Lift public

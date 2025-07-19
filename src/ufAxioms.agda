@@ -28,6 +28,7 @@ open import foundations.EquivProp global-funext public
 open import foundations.EmptyUP global-funext public
 open import foundations.SingletonClosure public hiding (Singleton-Π)
 open import foundations.PropClosure public hiding (is-prop-Π)
+open import foundations.SingletonProp global-funext public
 open import foundations.CompositionEquiv global-funext public
 open import foundations.CompositionFibres global-funext public
 Singleton-Π = weak-funext
@@ -54,6 +55,11 @@ open WithGlobalUnivalence UA public
 
 {-# REWRITE ua-linv #-}
 
+open import foundations.PropExt public using (PropExt)
+import foundations.PropExt as PE
+
+propExt : ∀ {𝓤} → PropExt 𝓤
+propExt = PE.PropExt←Univalence global-funext UA
 
 open import foundations.Pushout public
 import foundations.Span as Sp

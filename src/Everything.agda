@@ -8,6 +8,8 @@ open import core.Codiagonal
 open import core.Join
 open import core.Lifts
 open import core.Orthogonal
+open import core.PiSection
+open import core.Postwhisker
 open import core.PullbackPower
 open import core.Slice
 open import core.Spheres
@@ -27,7 +29,6 @@ open import foundations.CoherentIsomorphism
 open import foundations.CompositionEquiv
 open import foundations.CompositionFibres
 open import foundations.Coproducts
-open import foundations.CurryEquiv
 open import foundations.DependentCocone
 open import foundations.DependentIdentity
 open import foundations.Embedding
@@ -47,8 +48,12 @@ open import foundations.Functions
 open import foundations.FunextUnivalence
 open import foundations.Homotopy
 open import foundations.Identity
+open import foundations.Lift
 open import foundations.Nat
 open import foundations.PathSplit
+open import foundations.PiProperties
+open import foundations.PropClosure
+open import foundations.PropExt
 open import foundations.PropMapEmbedding
 open import foundations.PullbackPath
 open import foundations.Pullbacks
@@ -59,6 +64,7 @@ open import foundations.SigmaPath
 open import foundations.SigmaProperties
 open import foundations.Singleton
 open import foundations.SingletonClosure
+open import foundations.SingletonProp
 open import foundations.Span
 open import foundations.Square
 open import foundations.Subtypes
@@ -70,11 +76,14 @@ open import foundations.Univalence
 open import foundations.Universes
 open import modalities.Factorisation
 open import modalities.Flat.Flat
+open import modalities.GlobalSubuniverses
 open import modalities.HigherModality
 open import modalities.ModalMaps
+open import modalities.Separated
 open import modalities.Subuniverses
 open import modalities.instances.Localisation
 open import modalities.instances.OpenModalities
+open import modalities.instances.Truncation
 open import ergonomics.Builtins
 open import ergonomics.Extensionality
 open import ergonomics.PushoutUniv

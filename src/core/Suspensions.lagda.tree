@@ -12,7 +12,14 @@
 module core.Suspensions where
 
 open import foundations.Prelude
+open import core.CanonicalPushouts
+open import core.Arrow
+open import core.ArrowEquiv
 open import ufAxioms
+open import ergonomics.Universal
+open import ergonomics.PushoutUniv
+open import ergonomics.Representation
+open Universal ⦃...⦄
 }
 % ```
 
@@ -72,4 +79,99 @@ merid = glue
 }
 }
 
+\todo{
+\p{Ideally we use universal property for pushouts macro,
+   followed by coconeᵘ representation macro, but the latter isn't
+   working at the moment.}
+}
+
+%```agda
+\agda{
+unquoteDecl cocone-repr≅ cocone-repr≃ =
+  make-record-repr cocone-repr≅ cocone-repr≃ (quote Cocone)
+
+
+Susp-UP→ :  ∀ {𝓤 𝓥} {X : Type 𝓤}
+            {Y : Type 𝓥}
+          → Σ[ x ∶ Y ] Σ[ y ∶ Y ] (X → x ＝ y)
+          → Susp X → Y
+Susp-UP→ (x , y , p) = pushout-rec (mk-cocone (λ _ → x) (λ _ → y) p)
+
+Susp-UP-is-equiv
+  : ∀ {𝓤 𝓥} {X : Type 𝓤}
+      {Y : Type 𝓥}
+    → is-equiv (Susp-UP→ {X = X}{Y})
+Susp-UP-is-equiv = is-equiv←qiso (λ where
+  .fst po → (po (ι₁ tt) , po (ι₂ tt) , po ◂ glue)
+  .snd .fst (a , b , H) → ap ((a ,_) ∘ (b ,_)) (funext→ pushout-rec-apβ)
+  .snd .snd → is-equiv.η Pushout-is-pushoutω)
+
+Susp-UP≃ : ∀ {𝓤 𝓥} {X : Type 𝓤}
+            {Y : Type 𝓥}
+          →  (Susp X → Y) ≃ (Σ[ x ∶ Y ] Σ[ y ∶ Y ] (X → x ＝ y))
+Susp-UP≃ {X = X} {Y} = mk≃ _ (is-equiv⁻¹ Susp-UP-is-equiv)
+  -- = (Susp X → Y) ≃⟨ mk≃ _ Pushout-is-pushoutω  ⟩
+  --   Cocone _ Y                                            ≃⟨ cocone-repr≃ ⟩
+  --   (Σ[ f ∶ (𝟙 → Y) ] Σ[ g ∶ (𝟙 → Y )] (X → f tt ＝ g tt)) ≃⟨ Σ-ap-≃-fst unit-UP≃ ⟩
+  --   (Σ[ x ∶ Y ] Σ[ g ∶ (𝟙 → Y) ] (X → x ＝ g tt))          ≃⟨ Σ-ap-≃ (λ x → Σ-ap-≃-fst (unit-UP≃)) ⟩
+  --   Σ[ x ∶ Y ] Σ[ y ∶ Y ] (X → x ＝ y) ≃∎
+}
+%```
+}
+
+\subtree[stt-007G]{
+\title{Suspension is a functor}
+\taxon{theorem}
+
+%```agda
+\agda{
+Susp-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+           → (f : A → B)
+           → Susp A → Susp B
+Susp-map f = Susp-UP→ (ι₁ tt , ι₂ tt , glue ∘ f)
+}
+%```
+}
+
+\subtree[stt-007J]{
+\title{Suspension preserves the unit type}
+\taxon{theorem}
+
+%```agda
+\agda{
+Susp-𝟙 : Susp 𝟙 ≃ 𝟙
+Susp-𝟙 = equiv←qiso (λ where
+  ._≅_.fwd → !
+  ._≅_.fwd-iso .fst _ → North
+  ._≅_.fwd-iso .snd .fst
+    → pushout-ind _ (mk-coconeD ~refl glue λ
+                        a → IdP←Square refl refl _ (glue a)
+                              (sym ( ∙-reflr _
+                                   ∙ coe-precomp＝ refl (glue a))))
+  ._≅_.fwd-iso .snd .snd → ~refl)
+}
+%```
+}
+
+
+\subtree[stt-007K]{
+\title{Suspension map of #{!}}
+\taxon{corollary}
+\p{There exists an equivalence of arrows #{!_{\Sigma A} \simeq \Sigma !_A}}
+
+%```agda
+\agda{
+Susp-! : ∀ {𝓤} {A : Type 𝓤} → Arrow-map (Susp-map (! {A = A})) (! {A = Susp A})
+Susp-! .Arrow-map.top = id
+Susp-! .Arrow-map.bot = !
+Susp-! .Arrow-map.comm = ~refl
+
+Susp-!-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-Arrow-equiv (Susp-! {A = A})
+Susp-!-is-equiv .fst = id-is-equiv
+Susp-!-is-equiv .snd = Susp-𝟙 ._≃_.has-is-eqv
+
+Susp-!⁻¹ : ∀ {𝓤} {A : Type 𝓤} → Arrow-map (! {A = Susp A}) (Susp-map (! {A = A}))
+Susp-!⁻¹ = Arrow⁻¹←Arrow-equiv Susp-! Susp-!-is-equiv
+}
+%```
 }

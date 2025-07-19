@@ -1,0 +1,138 @@
+\title{Proposition extensionality}
+\date{2025-07-18}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb foundations.PropExt \stopverb}
+\import{stt-macros}
+
+%```agda
+\agda{
+module foundations.PropExt where
+
+open import foundations.Universes
+open import foundations.Singleton
+open import foundations.Sigma
+open import foundations.SigmaProperties
+open import foundations.Functions
+open import foundations.Identity
+open import foundations.QuasiIsomorphism
+open import foundations.CoherentIsomorphism
+open import foundations.EquivProp
+open import foundations.FunExt
+open import foundations.Univalence
+open import foundations.3for2
+open import foundations.FunextUnivalence
+open import foundations.IdentitySystem
+open import foundations.EquivHomotopy
+open import foundations.EquivSingleton
+open import foundations.FibrewiseEquiv
+open import foundations.SingletonProp
+}
+%```
+
+\subtree[stt-007P]{
+\title{Weak propositional extensionality}
+\taxon{definition}
+
+\p{Weak propositional extensionality says that for propositions
+#{P} and #{Q}, the projection from #{P \simeq Q} to #{P \iff Q}
+is an equivalence. Functional extensionality implies weak-PropExt}
+
+%```agda
+\agda{
+logical←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ⇔ B
+logical←equiv e = (fwd , bwd) where open _≃_ e
+
+equiv←logical : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → is-prop A → is-prop B
+      → A ⇔ B → A ≃ B
+equiv←logical aprp bprp (f , g)
+  = equiv←qiso (mk-iso f
+                ( g
+                ,(λ _ → aprp _ _)
+                ,(λ a → bprp _ _)
+                ))
+
+weak-PropExt : (𝓤 𝓥 : Level) → Type (lsuc (𝓤 ⊔ 𝓥))
+weak-PropExt 𝓤 𝓥 = ∀ {A : Type 𝓤} {B : Type 𝓥}
+                       (ap : is-prop A) (bp : is-prop B)
+                     → is-equiv (logical←equiv {A = A} {B})
+
+weak-PropExt←FunExt : ∀ {𝓤 𝓥} → FunExt-global → weak-PropExt 𝓤 𝓥
+weak-PropExt←FunExt FE aprp bprp = is-equiv←qiso lem where
+  lem : quasi-iso logical←equiv
+  lem .fst = equiv←logical aprp bprp
+  lem .snd .snd (f , g) = refl
+  lem .snd .fst e = ≃-path→ FE refl
+}
+%```
+}
+
+\subtree[stt-007Q]{
+\title{Propositional extensionality}
+\taxon{defintion}
+
+\p{By path induction, we can define a function
+#{P = Q \to P \iff Q}. Propositional extensionality
+says that this map is an equivalence when #{P} and #{Q}
+are propositions.}
+
+\p{Since logical equivalences are equivalent to equivalences
+(under the assumption of funext), propositional extensionality
+can be seen as #{(-1)}-univalence, where the #{-1} refers to
+truncation levels. As such full univalence implies prop-ext.}
+
+\todo{Get rid of assumption of global funext here. We have
+formalised univalence implies funext for a particular universe,
+but certain modules rely needlessly on global funext, which doesn't
+follow from univalence. I would like to do a big refactor of how
+axioms work which should address this.}
+
+%```agda
+\agda{
+logical←Id : ∀ {𝓤} {P Q : Type 𝓤}
+             → P ＝ Q → P ⇔ Q
+logical←Id refl = (id , id)
+
+PropExt : (𝓤 : Level) → Type (lsuc 𝓤)
+PropExt 𝓤 = ∀ {P Q : Type 𝓤}
+             → is-prop P → is-prop Q
+             → is-equiv (logical←Id {𝓤} {P} {Q})
+
+PropExt←Univalence : ∀ {𝓤} → FunExt-global → is-univalent 𝓤 → PropExt 𝓤
+PropExt←Univalence {𝓤} FE uu pp qq = is-equiv~∘
+                                       (λ where refl → refl)
+                                       (weak-PropExt←FunExt FE pp qq)
+                                       uu
+}
+%```
+}
+
+\subtree[stt-007R]{
+\title{Logical equivalence is an identity system for propositions}
+\taxon{corollory}
+
+%```agda
+\agda{
+Prop : (𝓤 : Level) → Type (lsuc 𝓤)
+Prop 𝓤 = Σ[ A ∶ Type 𝓤 ] is-prop A
+
+module PropExt (FE : FunExt-global) (UA : Univalence) where
+  Prop-IdS : ∀ {𝓤} → Identity-system (Prop 𝓤) 𝓤
+  Prop-IdS .Identity-system.IdS (P , _) (Q , _) = P ⇔ Q
+  Prop-IdS .Identity-system.IdS₀ = (id , id)
+  Prop-IdS .Identity-system.has-is-ids (A , ap)
+    = is-identity-system←Sing-sing ((A ⇔_) ∘ fst) (id , id) lem where
+    lem : is-singleton (Σ (Σ (Type _) is-prop) ((A ⇔_) ∘ fst))
+    lem = is-single←equiv-to-single
+             ((  Σ-assoc
+              ∙≃ Σ-ap-≃ (λ
+                B → Σ-ap-≃ λ
+                 bp → mk≃ _ (PropExt←Univalence FE UA ap bp ) e⁻¹)
+              ∙≃ Σ-ap-≃ (λ a → ×-swap)
+              ∙≃  Σ-＝singl'
+             ) e⁻¹)
+             (mk-singl ap (is-prop-is-prop FE ap))
+}
+%```
+}

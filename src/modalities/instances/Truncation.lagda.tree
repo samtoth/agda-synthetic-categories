@@ -18,6 +18,7 @@ open import modalities.instances.Localisation
 open import modalities.Subuniverses
 open import modalities.HigherModality
 open import modalities.GlobalSubuniverses
+open import modalities.Seperated
 open import ergonomics.Universal
 open import ergonomics.PushoutUniv
 open import ergonomics.Extensionality
@@ -27,168 +28,180 @@ import modalities.ModalMaps
 %```
 
 \subtree[stt-006P]{
+\taxon{defintion}
 \title{#{n}-truncated types}
 
-\p{A type #{X} is #{n-2}-truncated for #{n : \mathbb{N}} when
-   it is [null](stt-005G) with respect to #{S^{n-1}}.}
-
+\p{A type #{X} is #{n}-truncated for #{n : \mathbb{N}} when
+   it is #{n}-[seperated](stt-007H) with respect to being a
+   [singleton](stt-0006).
+   Equivalently, a type is truncated if it
+   is [null](stt-005G) with respect to #{S^{n-1}}.
+}
 
 %```agda
 \agda{
-is-S-1null : ∀ {𝓤}
-                → ℕ
-                → Type 𝓤 → Type 𝓤
-is-S-1null zero    = is-null {I = 𝟙} (const _ _ ∅)
-is-S-1null (suc n) = is-null {I = 𝟙} (const _ _ (S n))
+is-S-null : ∀ {𝓤}
+             → ℕ
+             → Type 𝓤 → Type 𝓤
+is-S-null n = is-null {I = 𝟙} (const _ _ (S n))
+
+singleton-SubU : ∀ {𝓤} → SubU 𝓤 𝓤
+singleton-SubU .Subtype.family = is-singleton
+singleton-SubU .Subtype.has-is-subtype _ = is-single-is-prop
+
+is-truncated : ∀ {𝓤} (n : ℕ) (A : Type 𝓤) → Type 𝓤
+is-truncated = is-n-seperated singleton-SubU
 }
 %```
 }
 
-\subtree[stt-006Q]{
-\title{Truncation is a [higher modality](stt-000G)}
-
-%```agda
-\agda{
-Truncation
-  : ∀ {𝓤}
-      (n : ℕ)
-    → HigherModality 𝓤
-Truncation zero = Local-HigherModality {I = 𝟙}
-                             (λ _ → ! {A = ∅}) λ _ → 𝟙-is-singleton
-Truncation (suc n) = Null∙-HigherModality (const _ 𝟙 (S-∙ {n}))
-
-
-module Trunc {𝓤} n where
-  open HigherModality (Truncation {𝓤} n)
-    public renaming (is-modal to is-truncated; ＝-is-modal to ＝-is-truncated)
-
-
-  open modalities.ModalMaps (Truncation {𝓤} n)
-    public renaming (is-modal-map to is-truncated-map)
-
-  open ModalInstances (Truncation {𝓤} n) public
-    hiding (＝-Modal)
-
-  opaque
-    Is-truncated : Type 𝓤 → Type 𝓤
-    Is-truncated = Is-modal (Truncation {𝓤} n)
-
-    mk-trunc : ∀ {A : Type 𝓤} → is-truncated A → Is-truncated A
-    mk-trunc = mk-modal
-
-  private opaque
-    A∈S' : ∀ {𝓤} {A : Type 𝓤} (n : ℕ)
-            → HigherModality.is-modal (Truncation n) A
-            → is-S-1null n A
-    A∈S' zero tr
-      =  is-null←is-local (HigherModality←SubU-modal-types (Local-reflective (λ _ → ! {A = ∅}))
-                                          (Local-Σ-closed _ (λ _ → 𝟙-is-singleton))
-                                          _ tr)
-    A∈S' {A = A} (suc n) tr
-      = HigherModality←SubU-modal-types (Null∙-reflective (λ _ → S-∙ {n}))
-         Null-Σ-closed A tr
-
-    A∈S : ∀ {𝓤} {A : Type 𝓤} (n : ℕ)
-            → is-S-1null n A
-            → HigherModality.is-modal (Truncation n) A
-    A∈S zero tr = HigherModality←SubU-modal-types'
-                   (Local-reflective (λ _ → ! {A = ∅}))
-                   (Local-Σ-closed _ λ _ → 𝟙-is-singleton)
-                   _
-                   (is-local←is-null tr)
-    A∈S {A = A} (suc n) tr = HigherModality←SubU-modal-types'
-                               (Null∙-reflective (λ _ → S-∙ {n}))
-                               Null-Σ-closed
-                               A
-                               tr
-  null←tr : ∀ {A : Type 𝓤}
-        → is-truncated A
-        → is-S-1null n A
-  null←tr = A∈S' n
-
-  tr←null : ∀ {A : Type 𝓤}
-            → is-S-1null n A
-            → is-truncated A
-  tr←null = A∈S n
-
-  opaque
-    unfolding Is-truncated
-    is-trunc! : ∀ {A : Type 𝓤} ⦃ _ : Is-truncated A ⦄ → is-truncated A
-    is-trunc! ⦃ (mk-modal a) ⦄ = a
-
-Trunc : ∀ {𝓤} → ℕ → Type 𝓤 → Type 𝓤
-Trunc = Trunc.○_
-
-{-# DISPLAY Trunc.○_ n A = Trunc n A #-}
-
-∥_∥ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
-∥_∥ = Trunc 1
-}
-%```
-}
+\remark{Note that we use numbering starting from #{0}
+as opposed to from #{-2} as is often used.}
 
 \subtree[stt-006T]{
 \title{Truncation-modal types are #{n}-types}
 \taxon{theorem}
 
-\p{We show #{-2} truncated types are singletons, and #{-1} truncated types
-are propositions}
+\p{We show #{0}-truncated types are singletons, and #{1}-truncated types
+are propositions. Furthermore, by the [general theory](stt-007F) of seperated
+types, we show that #{n + 1} truncated types are null with repsect to the
+#{n}-sphere.
+}
 
 %```agda
 \agda{
 is-singleton←is-truncated
   : ∀ {𝓤} {A : Type 𝓤}
-    → Trunc.is-truncated 0 A
+    → is-truncated 0 A
     → is-singleton A
-is-singleton←is-truncated {A = A} trunc
-  = is-single←equiv-to-single (∅-UP≃ ∙≃ eqv) 𝟙-is-singleton where
-  orth : A ∈ Local-SubU (λ _ → !) _
-  orth = HigherModality←SubU-modal-types
-           (Local-reflective {I = 𝟙} (λ _ → ! {A = ∅}) )
-           (Local-Σ-closed ((λ _ → ! {A = ∅})) λ _ → 𝟙-is-singleton)
-           A trunc
-
-  open is-equiv (Trunc.null←tr 0 trunc tt)
-
-  eqv : (∅ → A) ≃ A
-  eqv = mk≃ (const _ _) (Trunc.null←tr 0 trunc tt) e⁻¹
+is-singleton←is-truncated {A = A} trunc = unlift trunc
 
 is-truncated←is-singleton
   : ∀ {𝓤} {A : Type 𝓤}
     → is-singleton A
-    → Trunc.is-truncated 0 A
+    → is-truncated 0 A
 is-truncated←is-singleton {A = A} tr
-  = Trunc.tr←null 0 λ i → eqv where
-  eqv : is-equiv (λ (a : A) (b : ∅) → a)
-  eqv = homotopy-is-equiv (λ a → funext→ (λ ())) (K¡-sing-is-equiv tr)
+  = mk-lift tr
 
 is-prop←is-truncated
   : ∀ {𝓤} {A : Type 𝓤}
-    → Trunc.is-truncated 1 A
+    → is-truncated 1 A
     → is-prop A
-is-prop←is-truncated {A = A} tr x y
-  =  sym (happly (ε f) (ι₁ tt)) ∙ happly (ε f) (ι₂ tt) where
-  eqv : is-equiv (λ a (x : S 0) → a)
-  eqv = Trunc.null←tr 1 tr tt
-
-  open is-equiv eqv
-
-  f : S 0 → A
-  f = rec! (mk-coconeU x y (λ ()))
+is-prop←is-truncated {A = A} tr x = is-singleton.centre ∘ unlift ∘ tr x
 
 is-truncated←is-prop
   : ∀ {𝓤} {A : Type 𝓤}
     → is-prop A
-    → Trunc.is-truncated 1 A
-is-truncated←is-prop {A = A} pr
-  = Trunc.tr←null 1 λ i → is-equiv←qiso qiso  where
+    → is-truncated 1 A
+is-truncated←is-prop {A = A} pr x y = mk-lift (＝-singleton←is-prop pr x y)
+
+is-prop←is-S0-null : ∀ {𝓤} {A : Type 𝓤}
+                     → is-null (const _ 𝟙 (S 0)) A
+                     → is-prop A
+is-prop←is-S0-null {A = A} null x y
+  =   sym (happly (ε f) (ι₁ tt)) ∙ happly (ε f) (ι₂ tt) where
+  open is-equiv (null tt)
+
+  f : S 0 → A
+  f = rec! (mk-coconeU x y (λ ()))
+
+is-S0-null←is-prop : ∀ {𝓤} {A : Type 𝓤}
+                     → is-prop A
+                     → is-null (const _ 𝟙 (S 0)) A
+is-S0-null←is-prop {_}{A} pr _ = is-equiv←qiso qiso where
   qiso : quasi-iso λ (a : A) (b : Susp ∅) → a
   qiso .fst f = f (ι₁ tt)
   qiso .snd .fst = ~refl
   qiso .snd .snd f = funext→ (λ a → pr _ _)
+
+is-truncated←null : ∀ {𝓤} n {A : Type 𝓤}
+                    → is-S-null n A
+                    → is-truncated (suc n) A
+is-truncated←null zero = is-truncated←is-prop ∘ is-prop←is-S0-null
+is-truncated←null (suc n) {A} null x y
+  = is-truncated←null n (lem x y) where
+  lem : is-seperated (Null-SubU (λ (_ : 𝟙) → S n) _) A
+  lem = is-seperated←is-Σ-null (λ _ → S n) null
+
+is-null←truncated : ∀ {𝓤} n {A : Type 𝓤}
+                    → is-truncated (suc n) A
+                    → is-S-null n A
+is-null←truncated zero = is-S0-null←is-prop ∘ is-prop←is-truncated
+is-null←truncated (suc n) tr  = is-Σ-null←is-seperated _ lem where
+  lem : ∀ x y → is-S-null n (x ＝ y)
+  lem x y = is-null←truncated n (tr x y)
 }
 %```
 }
+
+\subtree[stt-006Q]{
+\title{Truncation is a [global reflective subuniverse](stt-007A)}
+\taxon{corollary}
+
+%```agda
+\agda{
+Truncation-SubU
+  : ∀ {𝓤} (n : ℕ)
+    → SubU 𝓤 𝓤
+Truncation-SubU = n-seperated-SubU singleton-SubU
+
+singleton-GSU : GSU id
+singleton-GSU .GSU.S = singleton-SubU
+singleton-GSU .GSU.S-equiv = is-single←equiv-to-single
+
+Truncation-GSU : ℕ → GSU id
+Truncation-GSU = n-seperated-GSU singleton-GSU
+
+Trunc≃SNull-GSU : ∀ {n} → GSU-equiv (Null-GSU (λ (_ : 𝟙) → S n)) (Truncation-GSU (suc n))
+Trunc≃SNull-GSU A = (is-truncated←null _ , is-null←truncated _)
+
+singleton-GSU-is-reflective : is-globally-reflective singleton-GSU
+singleton-GSU-is-reflective .is-globally-reflective.○ A = ∅ → A
+singleton-GSU-is-reflective .is-globally-reflective.η a _ = a
+singleton-GSU-is-reflective .is-globally-reflective.has-is-reflector {𝓤} {A}
+  = gr where
+  open is-global-reflector
+  gr : is-global-reflector singleton-GSU A (∅ → A) (const A ∅)
+  gr .○∈S = ∅-UP-sing
+  gr .reflects Qs = is-equiv←single-to-prop
+                     (Singleton-Π (λ _ → Qs))
+                     (is-prop←is-single (Singleton-Π (λ _ → Qs)))
+                     (postcomp _ (const A ∅))
+
+
+
+Truncation-refl : ∀ {n} → is-globally-reflective (Truncation-GSU n)
+Truncation-refl {zero}  = mk-gReflectors ○ η
+                              (mk-grfltor (mk-lift ○∈S) (reflects ∘ unlift)) where
+  open is-globally-reflective singleton-GSU-is-reflective
+Truncation-refl {suc n} = is-globally-reflective-subtype-equiv Trunc≃SNull-GSU
+                            (Null∙-global-reflectors (λ _ → S-∙))
+
+
+Truncation-Σ-closed : ∀ {n} → is-globally-Σ-closed (Truncation-GSU n)
+Truncation-Σ-closed {zero} As Bs = mk-lift (Singleton-Σ (unlift As) (unlift ∘ Bs))
+Truncation-Σ-closed {suc n} {A = A} {B} As Bs
+  = Trunc≃SNull-GSU (Σ A B) .fst (Null-globally-Σ-closed
+                                   (is-null←truncated _ As)
+                                   (is-null←truncated _ ∘ Bs))
+module Trunc where
+  module _ {n} where
+    open GRSUInduction (Truncation-refl {n}) Truncation-Σ-closed public
+
+    open GSU (Truncation-GSU n) public
+    open is-globally-reflective (Truncation-refl {n}) public
+
+Trunc : ∀ {𝓤} n → Type 𝓤 → Type 𝓤
+Trunc n = Trunc.○ {n}
+
+∥_∥ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+∥_∥ = Trunc 1
+
+{-# DISPLAY Trunc.○ {n} A = Trunc n A #-}
+}
+%```
+}
+
 
 \subtree[stt-0075]{
 \title{Lifting truncation levels}
@@ -279,105 +292,24 @@ suc-is-null {X = X}{A} AXnull i = eqv where opaque
                    map1-is-equiv
 
 suc-is-truncated : ∀ {𝓤} {A : Type 𝓤} n
-                   → Trunc.is-truncated n A
-                   → Trunc.is-truncated (suc n) A
+                   → is-truncated n A
+                   → is-truncated (suc n) A
 suc-is-truncated zero
   = is-truncated←is-prop
   ∘ is-prop←is-single
   ∘ is-singleton←is-truncated
 suc-is-truncated {A = A} (suc n)
-  = Trunc.tr←null (suc (suc n))
+  = is-truncated←null (suc n)
   ∘ suc-is-null
-  ∘ Trunc.null←tr (suc n)
+  ∘ is-null←truncated n
 
 +-is-truncated : ∀ {𝓤} {A : Type 𝓤}
                    n k
-                 → Trunc.is-truncated n A
-                 → Trunc.is-truncated (n + k) A
+                 → is-truncated n A
+                 → is-truncated (n + k) A
 +-is-truncated n zero = id
 +-is-truncated n (suc k) tr = suc-is-truncated (n + k)
                                 (+-is-truncated n k tr)
-}
-%```
-}
-
-
-\subtree[stt-006V]{
-\title{Truncation at identity types}
-\taxon{Theorem}
-
-\p{For all modalities, #{x =_{A} y} is modal when #{A} is.
-For truncation in particular we can strengthen this to say
-that #{A} is #{n + 1}-truncated iff #{x = y} is #{n}
-truncated.}
-
-
-\proof{
-
-\p{We split into cases. The case for #{-2} truncation we [have already shown](stt-000).}
-
-\p{For #{\rm{suc}(n)}, let #{A} be a type,
-   then for any #{x,y} in #{A}, we show #{x = y} is #{n + 1} truncated
-   iff #{A} is #{n + 2} truncated. Consider the following diagram:}
-
-\quiver{
-\begin{tikzcd}
-	{\Sigma_{(x,y : A)}x = y} &&&& {\Sigma_{(x,y:A)}(x=y)^{S^n}} \\
-	\\
-	& A && {A^{\Sigma S^n}}
-	\arrow["{\rm{tot}\Delta_{x=y}}", from=1-1, to=1-5]
-	\arrow["\sim"', from=1-1, to=3-2]
-	\arrow["{\Delta_{A}}"', from=3-2, to=3-4]
-	\arrow["\sim"', from=3-4, to=1-5]
-\end{tikzcd}
-}
-
-\p{#{A} is #{n + 2} truncated iff #{A \to A^{S^{n+1}}} is an equivalence,
-iff the total map of #{x = y \to (x=y)^{S^n}} is an equivalence [iff](stt-0030) the map
-is a fibrewise equivalence iff #{x = y} is #{n + 1} truncated.}
-}
-
-%```agda
-\agda{
-＝-is-pred-truncated
-  : ∀ {𝓤} {A : Type 𝓤} {n}
-    → Trunc.is-truncated (suc n) A
-    → ∀ {x y : A} → Trunc.is-truncated n (x ＝ y)
-＝-is-pred-truncated {𝓤} {A} {zero} tr {x} {y}
-  = is-truncated←is-singleton (＝-singleton←is-prop
-                               (is-prop←is-truncated tr) x y)
-
-＝-is-pred-truncated {𝓤} {A} {suc n} tr {x} {y}
-  = Trunc.tr←null (suc n) λ i → fw-eqv (x , y) where
-
-  snull : is-equiv (λ (a : A) (s : S (suc n)) → a)
-  snull = Trunc.null←tr (suc (suc n)) tr tt
-
-  eqv :  (Σ[ ab ∶ (A × A) ] (ab .fst ＝ ab .snd))
-        ≃ (Σ[ ab ∶ (A × A) ] (S n → ab .fst ＝ ab .snd))
-  eqv = Σ[ (a , b) ∶ (A × A) ] (a ＝ b) ≃⟨ Σ-assoc  ⟩
-         _                              ≃⟨ Σ-singleton (λ p → Sing-is-singleton) ⟩
-         A                              ≃⟨ mk≃ _ snull ⟩
-         (S (suc n) → A)                ≃⟨ Susp-UP≃ ⟩
-         Σ[ x ∶  A ] Σ[ y ∶ A ]
-           (S n → x ＝ y)               ≃⟨ Σ-assoc e⁻¹ ⟩
-         _ ≃∎
-
-
-  fw-Δ = λ _ p _ → p
-
-  tot-test-map~ : (_≃_.fwd eqv) ~ total-map fw-Δ
-  tot-test-map~ ((a , b) ,  refl)
-    = Σ-path→
-      ( refl
-      , funext→ (λ a' → (ap-const (glue a')))
-      )
-
-  fw-eqv : is-fibrewise-equiv fw-Δ
-  fw-eqv = is-fibrewise-equiv←is-total-equiv
-                   (homotopy-is-equiv tot-test-map~ (eqv ._≃_.has-is-eqv))
-
-
 }
 %```
 }
@@ -418,90 +350,95 @@ we run into trouble with Agda's instance search.
 \p{To remedy this, we follow the approach taken in the \citek{1lab}{1Lab.HLevel.Closure}, and define
 instances uniformly for all truncation levels.}
 
+\todo{Get this working - or take a different approach all together}
+
 %```agda
 \agda{
 
-truncation-instance : ∀ {𝓤} {A : Type 𝓤} n
-                      → Trunc.is-truncated n A
-                      → ∀ {k}
-                      → Trunc.Is-truncated (n + k) A
-truncation-instance n tr {k} = Trunc.mk-trunc (n + k) (+-is-truncated n k tr)
+-- truncation-instance : ∀ {𝓤} {A : Type 𝓤} n
+--                       → Trunc.is-truncated n A
+--                       → ∀ {k}
+--                       → Trunc.Is-truncated (n + k) A
+-- truncation-instance n tr {k} = Trunc.mk-trunc (n + k) (+-is-truncated n k tr)
 
-instance opaque
-  unfolding Trunc.Is-truncated
+-- instance opaque
+--   unfolding Trunc.Is-truncated
 
-  Truncated-Id : ∀ {𝓤} {A : Type 𝓤} {n}
-                   ⦃ _ : Trunc.Is-truncated (suc n) A ⦄
-                 → ∀ {x y : A} → Trunc.Is-truncated n (x ＝ y)
-  Truncated-Id ⦃ (mk-modal t) ⦄ = mk-modal (＝-is-pred-truncated t)
-
-
-instance opaque
-  unfolding Trunc.Is-truncated
-  Π-trunc : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-              {n}
-               → ⦃ _ : ∀ {a} → Trunc.Is-truncated n (B a) ⦄
-               → Trunc.Is-truncated n (Π A B)
-  Π-trunc {n = zero} ⦃ m ⦄
-    = mk-modal (Trunc.tr←null 0
-                 (Π-is-null (λ a
-                   → Trunc.null←tr 0 (m .has-is-modal)))) where
-    open Is-modal
-  Π-trunc {n = suc n} ⦃ m ⦄
-    = mk-modal (Trunc.tr←null (suc n)
-                 (Π-is-null (λ a
-                   → Trunc.null←tr (suc n) (m .has-is-modal)))) where
-    open Is-modal
-
-instance opaque
-  unfolding Trunc.Is-truncated
-  Trunc-trunc : ∀ {𝓤} {A : Type 𝓤}
-                  {n k}
-                → Trunc.Is-truncated (n + k) (Trunc n A)
-  Trunc-trunc {n = n}{k} = truncation-instance n (Trunc.○-is-modal n) {k}
-  {-# INCOHERENT Trunc-trunc #-}
-
-module TruncDo where
-  open Trunc
-
-  open Universal
-
-  instance
-    Universal-○ : ∀ {𝓤 𝓦} {A : Type 𝓤} {n} {P : Trunc n A → Type 𝓤}
-                 → ⦃ _ : ∀ {a} → Is-truncated n (P a) ⦄
-                 → ⦃ _ : Universal ((a : A) → P (Trunc.η n a)) 𝓦 ⦄
-                 → Universal ((a : Trunc n A) → P a) 𝓦
-    Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.methods = u .methods
-    Universal-○ {n = n} ⦃ mod ⦄ ⦃ u ⦄ .Universal.from = ind' n
-                                                        (is-trunc! n) ∘ u .from
-    Universal-○ {n = n} ⦃ _ ⦄ ⦃ u ⦄ .Universal.from-is-equiv
-      = is-equiv-∘ (ind'-is-equiv n) (u .from-is-equiv)
-
-  -- It can't figure this out
-  -- _>>=_ : ∀ {𝓤} {A : Type 𝓤} {B : Type 𝓤}
-  --           {n}
-  --           ⦃ _ : Trunc.Is-truncated n B ⦄
-  --         → Trunc n A
-  --         → (A → B)
-  --         → B
-  -- _>>=_ {B = B}{n = n} x f = rec! f x
-
-  return : ∀ {𝓤} {A : Type 𝓤} {n} → A → Trunc n A
-  return {n = n} = Trunc.η n
+--   Truncated-Id : ∀ {𝓤} {A : Type 𝓤} {n}
+--                    ⦃ _ : Trunc.Is-truncated (suc n) A ⦄
+--                  → ∀ {x y : A} → Trunc.Is-truncated n (x ＝ y)
+--   Truncated-Id ⦃ (mk-modal t) ⦄ = mk-modal (＝-is-pred-truncated t)
 
 
-module _ {𝓤} {A : Type 𝓤} ⦃ _ : ∀ {k} → Trunc.Is-truncated (suc (suc k)) A ⦄ where
-  tst : Trunc.is-truncated 3 A
-  tst =  Trunc.is-trunc! 3
+-- instance opaque
+--   unfolding Trunc.Is-truncated
+--   Π-trunc : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+--               {n}
+--                → ⦃ _ : ∀ {a} → Trunc.Is-truncated n (B a) ⦄
+--                → Trunc.Is-truncated n (Π A B)
+--   Π-trunc {n = zero} ⦃ m ⦄
+--     = mk-modal (Trunc.tr←null 0
+--                  (Π-is-null (λ a
+--                    → Trunc.null←tr 0 (m .has-is-modal)))) where
+--     open Is-modal
+--   Π-trunc {n = suc n} ⦃ m ⦄
+--     = mk-modal (Trunc.tr←null (suc n)
+--                  (Π-is-null (λ a
+--                    → Trunc.null←tr (suc n) (m .has-is-modal)))) where
+--     open Is-modal
 
-  tst2 : ∀ {x y : A} → Trunc.is-truncated 1 (x ＝ y)
-  tst2 = Trunc.is-trunc! 1
+-- instance opaque
+--   unfolding Trunc.Is-truncated
+--   Trunc-trunc : ∀ {𝓤} {A : Type 𝓤}
+--                   {n k}
+--                 → Trunc.Is-truncated (n + k) (Trunc n A)
+--   Trunc-trunc {n = n}{k} = truncation-instance n (Trunc.○-is-modal n) {k}
+--   {-# INCOHERENT Trunc-trunc #-}
 
-  tst3 : Trunc.is-truncated 2 (A → A)
-  tst3 = Trunc.is-trunc! 2
+-- module TruncDo where
+--   open Trunc
 
-  tst4 : ∀ {f g : S 5 → A} → Trunc.is-truncated 1 (f ~ g)
-  tst4 = Trunc.is-trunc! 1
+--   open Universal
+
+--   instance
+--     Universal-○ : ∀ {𝓤 𝓦} {A : Type 𝓤} {n} {P : Trunc n A → Type 𝓤}
+--                  → ⦃ _ : ∀ {a} → Is-truncated n (P a) ⦄
+--                  → ⦃ _ : Universal ((a : A) → P (Trunc.η n a)) 𝓦 ⦄
+--                  → Universal ((a : Trunc n A) → P a) 𝓦
+--     Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.methods = u .methods
+--     Universal-○ {n = n} ⦃ mod ⦄ ⦃ u ⦄ .Universal.from = ind' n
+--                                                         (is-trunc! n) ∘ u .from
+--     Universal-○ {n = n} ⦃ _ ⦄ ⦃ u ⦄ .Universal.from-is-equiv
+--       = is-equiv-∘ (ind'-is-equiv n) (u .from-is-equiv)
+
+--   -- It can't figure this out
+--   _>>=_ : ∀ {𝓤} {A : Type 𝓤} {B : Type 𝓤}
+--             {n}
+--             ⦃ _ : ∀ {k} → Trunc.Is-truncated (n + k) B ⦄
+--           → Trunc n A
+--           → (A → B)
+--           → B
+--   _>>=_ {B = B}{n = n} ⦃ t ⦄ x f
+--     = rec! {B = B}
+--            ⦃ Universal-○ {n = n} ⦃ t ⦄ ⦃ Universal-default ⦄ ⦄
+--            f x
+
+--   return : ∀ {𝓤} {A : Type 𝓤} {n} → A → Trunc n A
+--   return {n = n} = Trunc.η n
+
+
+-- module _ {𝓤} {A : Type 𝓤} ⦃ _ : ∀ {k} → Trunc.Is-truncated (suc (suc k)) A ⦄ where
+  -- tst : Trunc.is-truncated 3 A
+  -- tst =  Trunc.is-trunc! 3
+
+  -- tst2 : ∀ {x y : A} → Trunc.is-truncated 1 (x ＝ y)
+  -- tst2 = Trunc.is-trunc! 1
+
+  -- tst3 : Trunc.is-truncated 2 (A → A)
+  -- tst3 = Trunc.is-trunc! 2
+
+  -- tst4 : ∀ {f g : S 5 → A} → Trunc.is-truncated 1 (f ~ g)
+  -- tst4 = Trunc.is-trunc! 1
 
   -- tst5 : (x : Trunc 1 A) (f : Trunc 1 A → A) → Trunc.η 1 (f x) ＝ x
   -- tst5 x f = do
@@ -509,28 +446,6 @@ module _ {𝓤} {A : Type 𝓤} ⦃ _ : ∀ {k} → Trunc.Is-truncated (suc (suc
   --   {!!}
   --   where open TruncDo
 
-}
-%```
-}
-
-\subtree[stt-006W]{
-\date{2025-06-29}
-\title{Truncation of the diagonal map}
-\taxon{corollory}
-
-\p{A type #{A} is #{n+1} truncated iff the
-diagonal map #{A \to A \times A} is #{n} truncated}
-
-\proof{
-
-}
-
-%```agda
-\agda{
--- Δ-is-truncated : ∀ {𝓤}{A : Type 𝓤} n
---       → Trunc.is-truncated (suc n) A
---       → Trunc.is-truncated-map n (Δ× A)
--- Δ-is-truncated n tr = {! Trunc.tr←null n ?!}
 }
 %```
 }

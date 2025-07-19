@@ -53,6 +53,7 @@ open import foundations.Nat
 open import foundations.PathSplit
 open import foundations.PiProperties
 open import foundations.PropClosure
+open import foundations.PropExt
 open import foundations.PropMapEmbedding
 open import foundations.PullbackPath
 open import foundations.Pullbacks
@@ -63,6 +64,7 @@ open import foundations.SigmaPath
 open import foundations.SigmaProperties
 open import foundations.Singleton
 open import foundations.SingletonClosure
+open import foundations.SingletonProp
 open import foundations.Span
 open import foundations.Square
 open import foundations.Subtypes

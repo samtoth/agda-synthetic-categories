@@ -40,6 +40,9 @@ record GSU (α : Level → Level) : Typeω where
 
 SubU←global : ∀ {α} → GSU α →  ∀ {𝓤} → SubU 𝓤 (α 𝓤)
 SubU←global (mk-GSU s _) = s
+
+GSU-equiv : ∀ {α β} → GSU α → GSU β → Typeω
+GSU-equiv S K = ∀ {𝓤} → Subtype-equiv (GSU.S S {𝓤}) (GSU.S K {𝓤})
 }
 %```
 }
@@ -82,6 +85,20 @@ is-reflector←global : ∀ {α} {GS : GSU α} {𝓤}
                       → is-global-reflector GS A ○A η
                       → let open GSU GS in is-reflector S A ○A η
 is-reflector←global (mk-grfltor ○∈S reflects) = mk-is-rfltor ○∈S reflects
+
+is-global-reflector-subtype-equiv
+  : ∀ {α β} {S : GSU α} {K : GSU β}
+      {𝓤} {A : Type 𝓤} {○A : Type 𝓤}
+      {η : A → ○A}
+    → (GSU-equiv S K)
+    → is-global-reflector S A ○A η
+    → is-global-reflector K A ○A η
+is-global-reflector-subtype-equiv {A = A} {○A} {η} eq rfl = lem where
+  open is-global-reflector rfl
+
+  lem : is-global-reflector _ A ○A η
+  lem .is-global-reflector.○∈S = eq _ .fst ○∈S
+  lem .is-global-reflector.reflects QK = reflects (eq _ .snd QK)
 }
 %```
 
@@ -109,10 +126,20 @@ record is-globally-reflective {α} (GS : GSU α) : Typeω where
   reflector A = mk-rfltor (○ A) η (is-reflector←global has-is-reflector)
 
 
-reflective←global :  ∀ {α} {GS : GSU α} → is-globally-reflective GS
-                     → ∀ {𝓤} → Reflective (SubU←global GS {𝓤})
-reflective←global (mk-gReflectors ○ η has-is-reflector)
+is-reflective←global :  ∀ {α} {GS : GSU α} → is-globally-reflective GS
+                     → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
+is-reflective←global (mk-gReflectors ○ η has-is-reflector)
   = mk-reflective ○ η (is-reflector←global has-is-reflector)
+
+
+is-globally-reflective-subtype-equiv
+  : ∀ {α β} {S : GSU α} {K : GSU β}
+    → GSU-equiv S K
+    → is-globally-reflective S
+    → is-globally-reflective K
+is-globally-reflective-subtype-equiv {S = S} eq rfl
+  = mk-gReflectors ○ η (is-global-reflector-subtype-equiv eq has-is-reflector) where
+    open is-globally-reflective rfl
 }
 %```
 }
@@ -130,6 +157,11 @@ is-globally-Σ-closed (mk-GSU S _) = ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → 
                                     → A ∈ S → (∀ a → B a ∈ S)
                                     → Σ A B ∈ S
 
+is-Σ-closed←globally : ∀ {α} (GS : GSU α)
+                       → is-globally-Σ-closed GS
+                       → ∀ {𝓤}
+                       → is-Σ-closed (SubU←global GS {𝓤})
+is-Σ-closed←globally GS sc = sc
 
 }
 %```
@@ -196,7 +228,7 @@ module GRSUInduction {α} {GS : GSU α}
   ind-qiso PS .fst = _∘ η
   ind-qiso PS .snd .fst f = ext! (ind-β _ f)
   ind-qiso {A = A} {P} PS .snd .snd f = ext!
-    (ind (λ a → is-modal-＝ (reflective←global Sref) (PS a))
+    (ind (λ a → is-modal-＝ (is-reflective←global Sref) (PS a))
          (ind-β _ (f ∘ η)))
 
   ind-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (PS : ∀ a → P a ∈ S)
@@ -206,104 +238,3 @@ module GRSUInduction {α} {GS : GSU α}
 }
 %```
 }
-
-%```agda
-\agda{
--- module GRSUInstances {α} (GS : GSU α) (Grfl : Global-reflectors GS) where
---   open GSU GS
---   open Global-reflectors Grfl
-
---   record IsModal {𝓤} (A : Type 𝓤) : Type (α 𝓤) where
---     constructor mk-is-modal
---     field
---       has-is-modal : A ∈ S
-
---   ∈S! : ∀ {𝓤} {A : Type 𝓤} ⦃ _ : IsModal A ⦄ → A ∈ S
---   ∈S! {A = _} ⦃ mk-is-modal m ⦄ = m
-
---   instance opaque
---     ○-Modal : ∀ {𝓤} {A : Type 𝓤} → IsModal (○ A)
---     ○-Modal = mk-is-modal ○∈S
-
---     ＝-Modal : ∀ {𝓤} {A : Type 𝓤} → ⦃ IsModal A ⦄ → {a b : A} → IsModal (a ＝ b)
---     ＝-Modal ⦃ (mk-is-modal H) ⦄ = mk-is-modal (is-modal-＝ (reflectors←global Grfl) H)
-
---     Π-Modal : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
---                 ⦃ _ : ∀ {x} → IsModal (B x) ⦄
---               → IsModal (∀ x → B x)
---     Π-Modal {A = A} {B}
---       = mk-is-modal (in-SubU←η-retract (reflector _) retr) where
---       retr : retract (Reflector.η (reflector ((x : A) → B x)))
---       retr .fst f a = ○-rec ∈S! (ev a) f
---       retr .snd f = funext→ λ a → ○-rec-β ∈S! (ev a) f
-
---   {-# INCOHERENT  ＝-Modal #-}
-
---   ○-elim! : ∀ {𝓤} {A : Type 𝓤} ⦃ _ : IsModal A ⦄
---             → ○ A → A
---   ○-elim! = ○-rec ∈S! id
-
---   private module test where
---     test : ∀ {𝓤} {A : Type 𝓤} → ○ (○ A) → ○ A
---     test = ○-elim!
-
-
---   instance
---     Universal-○ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : ○ A → Type 𝓥}
---                  → ⦃ _ : ∀ {a} → IsModal (P a) ⦄
---                  → ⦃ _ : Universal ((a : A) → P (η a)) 𝓦 ⦄
---                  → Universal ((a : ○ A) → P a) 𝓦
---     Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.methods = u .methods
---     Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.from
---       = ind (λ _ → mod .IsModal.has-is-modal) ∘ u .from
---     Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.from-is-equiv
---       = is-equiv-∘ (ind-is-equiv _) (u .from-is-equiv)
-
-
-
-
--- private
---   module test {α} {T : ∀ (n : ℕ) → GSU α}
---                      {Grf : ∀ {k} → Global-reflectors (T k)}
---                      {GΣ : ∀ {k} → is-globally-Σ-closed (T k)}
---                      {𝓤} {A : Type 𝓤}
---                      ⦃ _ : ∀ {k} → GRSUInstances.IsModal (T (suc k)) Grf A ⦄ where
---     module T n = GSU (T n)
---     open T
---     module R n = Global-reflectors (Grf {n})
---     open R
---     module I {n} = GRSUInstances (T n) Grf
---     open I
---     module In {n} = GlobalInduction {_} {T n} Grf GΣ
---     open In
-
---     tst : A ∈ S 1
---     tst = ∈S!
-
---     tst2 : ∀ {x y : A} → (x ＝ y) ∈ S 1
---     tst2 = ∈S!
-
---     tst3 : (A → A) ∈ S 1
---     tst3 = ∈S!
-
---     tst4 : ∀ {f g : 𝟙 → A} → (f ~ g) ∈ S 1
---     tst4 = ∈S!
-
---     tst5 : ∀ {𝓥} {B : Type 𝓥} → (f : B → A) → (x : ○ 1 B) → A
---     tst5 = ○-rec 1 ∈S!
-
---     tst6 : ∀ {𝓥} {B : Type 𝓥} → (f : B → A) → is-embedding f
---            → (x y : ○ 1 B) → tst5 f x ＝ tst5 f y → x ＝ y
---     tst6 f emb = ind! λ x y p → ap (η 1)
---                    (unap emb (sym (○-rec-β 1 ∈S! f x) ∙ p ∙ ○-rec-β 1 ∈S! f y))
-
---     postulate instance
---       ＝-suc : ∀ {𝓤} {A : Type 𝓤}
---                  {k}
---                  ⦃ _ : IsModal {suc k} A ⦄
---                → {x y : A}
---                → IsModal {k} (x ＝ y)
---     tst7 :  ∀ {x y : A} → (x ＝ y) ∈ S 0
---     tst7 = ∈S!
-}
-%```

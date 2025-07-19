@@ -57,6 +57,15 @@ equiv-seperated S e sep x y
 seperated-GSU : ∀ {α} (S : GSU α) → GSU  (λ 𝓤 → 𝓤 ⊔ α 𝓤)
 seperated-GSU S .GSU.S = seperated-SubU (SubU←global S)
 seperated-GSU S .GSU.S-equiv = equiv-seperated S
+
+
+is-seperated-SubU-equiv
+  : ∀ {𝓤 𝓥 𝓥'} (S : SubU 𝓤 𝓥) (K : SubU 𝓤 𝓥')
+      {A : Type 𝓤}
+    → Subtype-equiv S K
+    → is-seperated S A
+    → is-seperated K A
+is-seperated-SubU-equiv _ _ eq sep a b = eq _ .fst (sep a b)
 }
 %```
 }
@@ -125,40 +134,101 @@ module _ {𝓘 𝓤 𝓥} {I : Type 𝓘}
     Σf : (i : I) → Susp (A i) → Susp (B i)
     Σf i = Susp-map (f i)
 
+  is-seperated⇔is-Σ-local
+    : ∀ {𝓤} {X : Type 𝓤}
+    → is-local Σf X
+    ⇔ is-seperated (Local-SubU f 𝓤) X
+  is-seperated⇔is-Σ-local {X = X}
+    = ( (λ loc x y i → topmap⇔botmap-is-equiv i .snd (loc i) (x , y))
+       , λ sep i → topmap⇔botmap-is-equiv i .fst λ (x , y) → sep x y i) where
+    module _ i where
+      topmap : ∀ (ab : X × X)
+          → (B i → ab .fst ＝ ab .snd)
+          → (A i → ab .fst ＝ ab .snd)
+      topmap (x , y) = postcomp (x ＝ y) (f i)
+
+      eqvl : (Σ[ ab ∶ (X × X)] (B i → ab .fst ＝ ab .snd))
+           ≃ (Susp (B i) → X)
+      eqvl = Σ-assoc ∙≃ (Susp-UP≃ e⁻¹)
+
+      eqvr : (Susp (A i) → X)
+           ≃ (Σ[ ab ∶ (X × X)] (A i → ab .fst ＝ ab .snd))
+      eqvr = Susp-UP≃ ∙≃ Σ-assoc e⁻¹
+
+      botmap : (Susp (B i) → X) → (Susp (A i) → X)
+      botmap = postcomp X (Σf i)
+
+
+      F : Arrow-map (total-map topmap) botmap
+      F .Arrow-map.top = eqvl ._≃_.fwd
+      F .Arrow-map.bot = _≃_.bwd eqvr
+      F .Arrow-map.comm ((x , y) , H) = funext→ (pushout-ind _
+        (mk-coconeD
+          ~refl
+          ~refl
+          λ a → IdP-func←Square (glue a) refl refl
+                  (∙-reflr _ ∙ pushout-rec-apβ a
+                             ∙ sym (ap-∘ (pushout-rec (mk-cocone (λ _ → x) (λ _ → y) H))
+                                         (pushout-rec (mk-cocone ι₁ ι₂ (glue ∘ f i)))
+                                         (glue a)
+                                    ∙ ap (ap _) (pushout-rec-apβ a)
+                                    ∙ pushout-rec-apβ (f i a)
+                                    ))))
+
+      F-is-equiv : is-Arrow-equiv F
+      F-is-equiv = ( eqvl ._≃_.has-is-eqv
+                   , is-equiv⁻¹ (eqvr ._≃_.has-is-eqv))
+
+      topmap⇔botmap-is-equiv
+        : is-fibrewise-equiv topmap ⇔ is-equiv botmap
+      topmap⇔botmap-is-equiv
+        =    (fibrewise⇔total-is-equiv ⇔⁻¹)
+          ∙⇔ top⇔bot-is-equiv←Arrow-equiv F F-is-equiv
+
   is-seperated←is-Σ-local
     : ∀ {𝓤} {X : Type 𝓤}
     → is-local Σf X
     → is-seperated (Local-SubU f 𝓤) X
-  is-seperated←is-Σ-local {X = X} loc x y i
-    = fw-eqv (x , y) where
-    map : ∀ (ab : X × X)
-        → (B i → ab .fst ＝ ab .snd)
-        → (A i → ab .fst ＝ ab .snd)
-    map (x , y) = postcomp (x ＝ y) (f i)
+  is-seperated←is-Σ-local = is-seperated⇔is-Σ-local .fst
 
-    eqv : (Σ[ ab ∶ (X × X)] (B i → ab .fst ＝ ab .snd))
-        ≃ (Σ[ ab ∶ (X × X)] (A i → ab .fst ＝ ab .snd))
-    eqv =  Σ-assoc
-        ∙≃ (Susp-UP≃ e⁻¹)
-        ∙≃ mk≃ _ (loc i)
-        ∙≃ Susp-UP≃
-        ∙≃ (Σ-assoc e⁻¹)
+  is-Σ-local←is-seperated
+    : ∀ {𝓤} {X : Type 𝓤}
+    → is-seperated (Local-SubU f 𝓤) X
+    → is-local Σf X
+  is-Σ-local←is-seperated = is-seperated⇔is-Σ-local .snd
 
-    H : (_≃_.fwd eqv) ~ total-map map
-    H ((x , y) , K)
-      = Σ-path→
-        ( refl
-        , funext→ (λ a
-            →   ap-∘ (pushout-rec (mk-cocone (λ _ → x) (λ _ → y) K))
-                     (pushout-rec (mk-cocone ι₁ ι₂ (glue ∘ f i)))
-                     (glue a)
-              ∙ ap (ap _) (pushout-rec-apβ a)
-              ∙ pushout-rec-apβ (f i a)))
+module _ {𝓘 𝓤} {I : Type 𝓘} (A : I → Type 𝓤) where
+  is-seperated←is-Σ-null
+    : ∀ {𝓤} {X : Type 𝓤}
+      → is-null (Susp ∘ A) X
+      → is-seperated (Null-SubU A 𝓤) X
+  is-seperated←is-Σ-null null
+    = is-seperated-SubU-equiv (Local-SubU !A _) (Null-SubU A _)
+                              Null≃!Local
+                              (is-seperated←is-Σ-local !A
+                                (is-local-equiv
+                                  (λ i → Susp-!⁻¹)
+                                  (λ _ → Arrow⁻¹-is-equiv Susp-! Susp-!-is-equiv)
+                                  (is-local←is-null null))) where
+      !A : (i : I) → A i → 𝟙
+      !A i _ = tt
 
-    fw-eqv : is-fibrewise-equiv map
-    fw-eqv = is-fibrewise-equiv←is-total-equiv
-              (homotopy-is-equiv H (eqv ._≃_.has-is-eqv))
-
+  is-Σ-null←is-seperated
+    : ∀ {𝓤} {X : Type 𝓤}
+      → is-seperated (Null-SubU A 𝓤) X
+      → is-null (Susp ∘ A) X
+  is-Σ-null←is-seperated sep
+    = is-null←is-local
+       (is-local-equiv
+         (λ _ → Susp-!)
+         (λ _ → Susp-!-is-equiv)
+         (is-Σ-local←is-seperated
+           (λ _ _ → tt)
+           (is-seperated-SubU-equiv
+             (Null-SubU A _)
+             (Local-SubU (λ i _ → tt) _)
+             (_⇔⁻¹ ∘ Null≃!Local)
+             sep)))
 }
 %```
 }
@@ -180,6 +250,15 @@ is-n-seperated : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
 is-n-seperated {𝓤} S zero A = ULift 𝓤 (A ∈ S)
 is-n-seperated S (suc n) A
   = ∀ (x y : A) → is-n-seperated S n (x ＝ y)
+
+
+mk-is-seperated : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
+                 → (n : ℕ) (A : Type 𝓤)
+                 → is-n-seperated (seperated-SubU S) n A
+                 → is-n-seperated S (suc n) A
+mk-is-seperated S zero A (mk-lift sep) x y = mk-lift (sep x y)
+mk-is-seperated S (suc n) A sep a b = mk-is-seperated S n (a ＝ b) (sep a b)
+
 
 is-n-seperated-is-prop
   : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
@@ -218,6 +297,33 @@ n-seperated-GSU : ∀ {α} (S : GSU α)
                   → (n : ℕ) → GSU (λ 𝓤 → 𝓤 ⊔ α 𝓤)
 n-seperated-GSU S n .GSU.S = n-seperated-SubU (SubU←global S) n
 n-seperated-GSU S n .GSU.S-equiv = equiv-n-seperated S n
+}
+%```
+}
+
+\subtree[stt-007S]{
+\title{n-seperated subunverse with respect to localisation are reflective}
+\taxon{theorem}
+
+\p{Although the theorem is true in the more general setting of any
+reflective subuniverse, we detail the proof in the specific case of
+localisation. The general case also requires the modified join construction
+which we are yet to formalise.}
+
+%```agda
+\agda{
+
+-- local≃sep-GSU : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+--                   {B : I → Type 𝓥} (f : (i : I) → A i → B i)
+--                 → ∀ n → GSU-equiv (Local-GSU {!!}) (n-seperated-GSU (Local-GSU f) n)
+-- local≃sep-GSU = {!!}
+
+-- local-seperated-is-globally-reflective
+--   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+--       (f : (i : I) → A i → B i)
+--     → ∀ n → is-globally-reflective (n-seperated-GSU (Local-GSU f) n)
+-- local-seperated-is-globally-reflective f n
+--   = is-globally-reflective-subtype-equiv (local≃sep-GSU f n) {!Local-GSU-is-reflective!}
 }
 %```
 }

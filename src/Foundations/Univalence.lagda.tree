@@ -1,0 +1,118 @@
+\date{2025-02-24}
+\title{Univalence Universes}
+\author{samueltoth}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Foundations.Univalence where
+
+open import Foundations.Universes
+open import Foundations.Identity
+open import Foundations.FunctionInverses
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.Functions
+open import Foundations.Sigma
+open import Foundations.Embedding
+open import Foundations.EquivProp
+open import Foundations.FunExt
+
+}
+% ```
+
+\subtree[stt-000L]{
+\taxon{definition}
+\title{Univalence}
+\p{A universe #{\UU} is said to be univalent if for any types #{A, B : \UU}, the map #{A = B \to A \simeq B} is an equivalence.}
+
+% ```agda
+\agda{
+is-univalent : (𝓤 : Level) → Type (lsuc 𝓤)
+is-univalent 𝓤 = ∀ {A B : Type 𝓤} → is-equiv (equiv←Id {𝓤} {A} {B})
+}
+% ```
+
+\p{Global univalence (or just univalence) says that every universe is univalent. This can be stated in agda because it features a universe #{\omega}, containing all \em{small} universes.}
+
+
+% ```agda
+\agda{
+Univalence : Typeω
+Univalence = ∀ {𝓤} → is-univalent 𝓤
+}
+% ```
+}
+
+% ```agda
+\agda{
+}
+% ```
+
+\subtree{
+\title{Univalence implies the J rule for equivalences}
+\taxon{theorem}
+
+\p{}
+
+% ```agda
+\agda{
+module WithLocalUnivalence {𝓤} (UU : is-univalent 𝓤) where
+  ua : ∀ {A B : Type 𝓤} → A ≃ B → A ＝ B
+  ua e = is-equiv.bwd UU e
+  {-# DISPLAY is-equiv.bwd _ = ua #-}
+  {-# DISPLAY is-equiv.qiso _ .fst = ua #-}
+
+  ua-linv : ∀ {A B : Type 𝓤} → (p : A ≃ B) → equiv←Id (ua p) ＝ p
+  ua-linv p = is-equiv.section-fwd UU .snd p
+
+  ua-rinv : ∀ {A B : Type 𝓤} → (p : A ＝ B) → ua (equiv←Id p) ＝ p
+  ua-rinv p = is-equiv.retract-fwd UU .snd p
+
+  ua-idequiv : ∀ {A : Type 𝓤} → ua idequiv ＝ refl
+  ua-idequiv {A} = unap (is-embedding←is-equiv UU) I where
+    I : equiv←Id (ua {A} idequiv) ＝ equiv←Id refl
+    I = ua-linv idequiv
+
+  equiv-J : ∀ {𝓥} {A : Type 𝓤} (P : ∀ B (p : A ≃ B) → Type 𝓥) → P A idequiv → ∀ B (p : A ≃ B) → P B p
+  equiv-J P prefl B p  = tr (P B) (ua-linv p) (adj (ua p)) where
+    adj : ∀ p → P B (equiv←Id p)
+    adj refl = prefl
+
+
+  ≃-ind : ∀ {𝓥} {A : Type 𝓤} (P : ∀ B (p : A ≃ B) → Type 𝓥) → (∀ B p → P B (equiv←Id p)) → ∀ B p → P B p
+  ≃-ind P f B p = tr (P B) (ua-linv p) (f B (ua p))
+
+  -- ua-comp : ∀ {A B C : Type 𝓤} {e1 : A ≃ B} {e2 : B ≃ C} → ua  e1 ∙ ua e2 ＝ ua (equiv-comp e1 e2)
+  -- ua-comp {B = B} {e1 = e1} {e2} = ≃-univ (λ _ e2 → ua e1 ∙ ua e2 ＝ ua (equiv-comp e1 e2)) lem _ e2 where
+  --   lem : ∀ (B' : Type 𝓤) (p : B ＝ B') →
+  --           ua e1 ∙ ua (id→equiv p) ＝ ua (equiv-comp e1 (id→equiv p))
+  --   lem B' refl = {!!}
+
+--   ua-comp {e1 = e1} {e2} = help (ua e1) ∙ ap ua II where
+--     help : ∀ p → p ∙ ua e2 ＝ ua (equiv-comp (id→equiv p) e2)
+--     help refl = ap ua (sym (equiv-comp-l e2))
+
+--     II : equiv-comp (id→equiv (ua e1)) e2 ＝ equiv-comp e1 e2
+--     II = ap (λ p → equiv-comp p e2) (ua-linv e1)
+}
+% ```
+}
+
+
+\subtree{
+\tag{ergonomics}
+\title{An interface into univalence}
+
+\p{We want to make an ergonomic interface into univalence, in particular we make certain operations on identities compute on univalence}
+
+% ```agda
+\agda{
+module WithGlobalUnivalence (GU : Univalence) where
+  private module lu {𝓤} = WithLocalUnivalence {𝓤} GU
+
+  open lu public
+}
+% ```
+}

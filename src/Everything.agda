@@ -1,4 +1,6 @@
 module Everything where
+open import algebra.Lattice
+open import algebra.Poset
 open import axioms.FreeAlgInj
 open import core.Arrow
 open import core.ArrowEquiv

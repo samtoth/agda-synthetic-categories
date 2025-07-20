@@ -12,12 +12,14 @@ module algebra.Lattice where
 open import ufAxioms
 open import foundations.Prelude
 open import algebra.Poset
-open import Data.Bool
+open import modalities.instances.Truncation
+open import ergonomics.Universal
+-- open import Data.Bool
 
 }
 %```
 
-\subtree[stt-004T]{
+\subtree[stt-007U]{
 \title{Lattices}
 \taxon{definition}
 \p{A lattice #{L} is an algebraic strucutre with two operations #{\wedge,\vee : L \to L \to L}, satisfying absorption laws.
@@ -29,7 +31,7 @@ open import Data.Bool
 record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L) (_∨_ : L → L → L) : Type 𝓤 where
   no-eta-equality
   field
-    car-is-set  : is-set L
+    car-is-set  : is-truncated 2 L
     ∧-assoc : {x y z : L} → x ∧ (y ∧ z) ＝ (x ∧ y) ∧ z
     ∨-assoc : {x y z : L} → x ∨ (y ∨ z) ＝ (x ∨ y) ∨ z
     ∧-comm : {x y : L} → x ∧ y ＝ y ∧ x
@@ -61,7 +63,7 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
            ; ≤-antisym = ≤-antisym }
     where
       ≤-is-prop : {x y : L} → is-prop (x ≤ y)
-      ≤-is-prop {x} {y} = car-is-set (x ∧ y) x
+      ≤-is-prop {x} {y} = is-prop←is-truncated (car-is-set (x ∧ y) x)
 
       ≤-refl : {x : L} → x ≤ x
       ≤-refl {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
@@ -102,7 +104,7 @@ initial-lattice-algebra L .is-lattice-hom.pres-1 = refl
 %```
 
 
-\subtree[stt-004S]{
+\subtree[stt-007V]{
 \title{Congruences}
 \taxon{definition}
 \p{An equivalence relation #{\sim} on a lattice #{L} is a congruence if it respects all lattice operations}
@@ -127,7 +129,7 @@ record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) (_~_ : A �
 
   open Equivalence (~-equivalence) public
 
-{-
+
 module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
   open Lattice L
   data ⟪_⟫ (R : A → A → Type 𝓥) : A → A → Type (𝓤 ⊔ 𝓥) where
@@ -138,24 +140,40 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
     ⟪⟫-∨ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∨ a2) (b1 ∨ b2)
     ⟪⟫-∧ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∧ a2) (b1 ∧ b2)
 
-  ⟪⟫-congruence : {R : A → A → Type 𝓥} → LatticeCongruence L ⟪ R ⟫
-  ⟪⟫-congruence = record
-    { ~-equivalence = record
-      { ~-is-prop = {!!}
-      ; reflexive = ⟪⟫-refl
-      ; symmetric = ⟪⟫-sym
-      ; transitive = ⟪⟫-trans }
-    ; ~-∨ = ⟪⟫-∨
-    ; ~-∧ = ⟪⟫-∧ }
--}
+  ⟪⟫-congruence : {R : A → A → Type 𝓥}
+                → LatticeCongruence L (λ x y → ∥ ⟪ R ⟫ x y ∥)
+  ⟪⟫-congruence {R} = l-con where
+    open LatticeCongruence
+    open Trunc {1}
 
+    l-eq : Equivalence (λ x y → ∥ ⟪ R ⟫ x y ∥)
+    l-eq .Equivalence.~-is-prop = is-prop←is-truncated ○∈S
+    l-eq .Equivalence.reflexive = η ⟪⟫-refl
+    l-eq .Equivalence.symmetric a = do
+      rxy ← a
+      return (⟪⟫-sym rxy)
+    l-eq .Equivalence.transitive a b = do
+      rxy ← a
+      ryz ← b
+      return (⟪⟫-trans rxy ryz)
+
+    l-con : LatticeCongruence L (λ x y → ∥ ⟪ _ ⟫ x y ∥)
+    l-con .~-equivalence = l-eq
+    l-con .~-∨ p q = do
+      r1 ← p
+      r2 ← q
+      return (⟪⟫-∨ r1 r2)
+    l-con .~-∧ p q = do
+      r1 ← p
+      r2 ← q
+      return (⟪⟫-∧ r1 r2)
 }
 %```
 }
 
 }
 
-\subtree[stt-004U]{
+\subtree[stt-007W]{
 \title{Examples}
 \taxon{examples}
 \p{The subobject/subtype classifier #{\mathrm{Prop}} has a canonical lattice structure on it, given by logical and and or}
@@ -164,6 +182,4 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
 \agda{
 }
 %```
-}
-
 }

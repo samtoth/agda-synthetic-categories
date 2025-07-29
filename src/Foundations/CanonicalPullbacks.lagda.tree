@@ -1,0 +1,257 @@
+\date{2025-04-22}
+\title{Canonical pullbacks}
+\author{samueltoth}
+\taxon{module}
+\meta{module}{\startverb Foundations.CanonicalPullbacks \stopverb}
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Foundations.CanonicalPullbacks where
+
+open import Foundations.Universes
+open import Foundations.Span
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.Singleton
+open import Foundations.Homotopy
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.Pullbacks
+open import Foundations.Sigma
+open import Foundations.SigmaProperties
+open import Foundations.3for2
+open import Foundations.EquivProp
+open import Foundations.EquivHomotopy
+open import Foundations.FibrewiseEquiv
+open import Foundations.IdentityEquiv
+open import Foundations.EquivSingleton
+open import Foundations.Embedding
+import Foundations.FunExt as FE
+import Foundations.CompositionEquiv as CE
+}
+% ```
+
+
+\subtree[stt-003J]{
+\taxon{definition}
+\title{The canonical pullback of a cospan}
+\meta{defines}{\startverb ["Pullback", "pullback"] \stopverb}
+
+\p{For any cospan #{B \xrightarrow{f} A \xleftarrow{g} C}, there exists a pullback
+   cone defined as: #{(\Sigma_{(x : B)}\Sigma_{(y : C)}(f(x) = g(y)), \pi_1, \pi_2)}
+   which we call the canonical pullback of #{f} and #{g}. It is written #{B \times_A A}.}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         (f : B → A) (g : C → A) where
+ Pullback : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+ Pullback = Σ[ x ∶ B ] Σ[ y ∶ C ] (f x ＝ g y)
+
+ pullback : Cone (mk-cospan A f g) Pullback
+ pullback = mk-cone fst (fst ∘ snd) (snd ∘ snd)
+
+ module pb where open Cone pullback public renaming (i to π₁; j to π₂)
+}
+% ```
+}
+
+\subtree[stt-003L]{
+\taxon{definition}
+\title{The gap map}
+\meta{defines}{\startverb ["gap"] \stopverb}
+
+\p{
+Given a cone #{C} over a cospan #{S}, we can define a map called the gap-map from
+the apex of #{C} to the pullback of #{S}.
+}
+
+% ```agda
+\agda{
+gap : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : B → A} {g : C → A}
+        {𝓜} {D : Type 𝓜}
+      → Cone (mk-cospan A f g) D
+      → D → Pullback f g
+gap (mk-cone i j filler) d = (i d , j d , filler d)
+}
+% ```
+}
+
+\subtree[stt-003K]{
+\taxon{theorem}
+\title{Canonical pullbacks are pullbacks}
+
+\meta{defines}{\startverb ["pullback-is-pullback"] \stopverb}
+
+\p{This either follows from noticing that the gap map on the pullback cone itself
+is definitionally a section and a retraction of [cone-map](stt-003I), or from
+repeatedly applying the universal property of sigma types:}
+
+##{
+\begin{align*}
+  (Q \to \Sigma_{(x : B)}\Sigma_{(y : C)}(f(x) = g(y)))
+    &\simeq \Sigma_{(i : Q \to B)}((q : Q) \to (\Sigma_{(y : C)}(f(i(q)) = g(y)))) \\
+    &\simeq \Sigma_{(i : Q \to B)}\Sigma_{(j : Q \to C)}((q : Q) \to f(i(q)) = g(j(q))) \\
+    &\simeq \textrm{Cone}_S(Q)
+\end{align*}
+}
+
+% ```agda
+\agda{
+pullback-is-pullback : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                         {f : B → A} {g : C → A}
+                       → is-pullbackω (mk-cospan _ f g) (pullback f g)
+pullback-is-pullback {f = f} {g = g} Q
+  = is-equiv←qiso (gap , ~refl , ~refl)
+}
+% ```
+}
+
+% ```agda
+\agda{
+module WithFunExt (FE : FE.FunExt-global) where
+  open FE.WithFunExt-global FE
+  open CE FE
+}
+% ```
+
+\subtree[stt-003M]{
+\taxon{theorem}
+\title{Pullbacks via the gap map}
+\p{A cone #{D} is a pullback iff #{\textrm{gap}(D)} is an equivalence}
+\meta{defines}{\startverb ["is-pullback←gap", "gap-is-equiv←is-pullback"] \stopverb}
+
+\proof{
+\p{We need to show that for any #{Q}, #{\textrm{gap}(D) : D \toeq B \times_A C} is an
+equivalence iff
+#{\textrm{cone-map}(D) : (Q \to D) \to Cone_S(Q)} is.
+We know that #{- \circ \textrm{gap}(D) : (Q \to D) \to (Q \to B \times_A C)} is an equivalence
+iff the gap map is, so we use then use the fact canonical pullbacks are pullbacks and
+[[Foundations.3for2]] to finish the proof. The situation can be summarised as follows:
+}
+\quiver{
+\begin{tikzcd}
+        {Q \to D} && {Q \to B \times_A C} \\
+	\\
+	& {\textrm{Cone}_S(Q)}
+	\arrow["{- \circ \textrm{gap}(D)}", from=1-1, to=1-3]
+	\arrow["{\textrm{cone-map}(D)}"'{pos=0.4}, from=1-1, to=3-2]
+	\arrow["\sim", from=1-3, to=3-2]
+\end{tikzcd}
+}
+}
+
+% ```agda
+\agda{
+  is-pullback←gap : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                      {f : B → A} {g : C → A}
+                      {𝓜} {D : Type 𝓜}
+                      (C : Cone (mk-cospan _ f g) D)
+                    → is-equiv (gap C)
+                    → is-pullbackω (mk-cospan _ f g) C
+  is-pullback←gap C ge@(mk-eqv bwd qi) Q
+    = is-equiv-∘ (pullback-is-pullback Q) (precomp-equiv ge)
+
+  gap-is-equiv←is-pullback : ∀ {𝓤 𝓥 𝓦}
+                      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                      {f : B → A} {g : C → A}
+                      {𝓜} {D : Type 𝓜}
+                      (C : Cone (mk-cospan _ f g) D)
+                     → is-pullbackω (mk-cospan _ f g) C
+                     → is-equiv (gap C)
+  gap-is-equiv←is-pullback C Cpb
+    = is-equiv←precomp (gap C)
+      λ {_} {Q} → 3-for-2 (pullback-is-pullback Q) (Cpb Q)
+}
+% ```
+}
+
+\subtree[stt-003O]{
+\taxon{theorem}
+\title{Fibres of projections}
+
+\p{Given a cospan, #{A \xrightarrow{f} C \xleftarrow{g} B}, we can classify the fibres of maps #{\pi_1 : A \times_C B \to A} and #{\pi_2 : A \times_C B \to B}:}
+
+##{ \textrm{fib}_{\pi_1}(a) \simeq \textrm{fib}_{g}(f(a)) \\
+    \textrm{fib}_{\pi_2}(b) \simeq \textrm{fib}_{f}(g(a))
+}
+
+\proof{
+\p{This follows from [elementary properties of the #{\Sigma} type](Foundations.SigmaProperties): }
+% ```agda
+\agda{
+
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         (f : B → A) (g : C → A) where
+  open pb f g
+
+  fib-π₁ : ∀ b → fibre π₁ b ≃ fibre g (f b)
+  fib-π₁ b
+    = fibre π₁ b                                    ≃⟨⟩
+      Σ[ p ∶ Pullback _ _ ] ((π₁ p) ＝ b)            ≃⟨ Σ-assoc ⟩
+      (Σ[ b' ∶ B ]
+        ((Σ[ c ∶ C ] (f b' ＝ g c)) × (b' ＝ b)))    ≃⟨ Σ-ap-≃ (λ b → ×-swap) ⟩
+      Σ[ b' ∶ B ] ((b' ＝ b) ×
+        (Σ[ c ∶ C ] (f b' ＝ g c)))                  ≃⟨ Σ-＝singl ⟩
+      (Σ[ c ∶ C ] (f b ＝ g c))                      ≃⟨ Σ-ap-≃ (λ c → sym≃) ⟩
+      fibre g (f b) ≃∎
+
+  fib-π₂ : ∀ c → fibre π₂ c ≃ fibre f (g c)
+  fib-π₂ c
+    = fibre π₂ c                                    ≃⟨⟩
+      Σ[ p ∶ Pullback _ _ ] ((π₂ p) ＝ c)            ≃⟨ Σ-assoc ⟩
+      (Σ[ b ∶ B ]
+        ((Σ[ p ∶ (Σ[ c' ∶ C ] (f b ＝ g c')) ]
+          (fst p ＝ c))))                           ≃⟨ Σ-ap-≃ (λ b → Σ-assoc) ⟩
+      (Σ[ b ∶ B ]
+        ((Σ[ c' ∶ C ] ((f b ＝ g c') × (c' ＝ c)))))  ≃⟨ Σ-ap-≃ (λ b → Σ-ap-≃ (λ c → ×-swap)) ⟩
+      (Σ[ b ∶ B ]
+        ((Σ[ c' ∶ C ] ((c' ＝ c) × (f b ＝ g c')))))  ≃⟨ Σ-ap-≃ (λ b → Σ-＝singl) ⟩
+      (Σ[ b ∶ B ] (f b ＝ g c ))                     ≃⟨⟩
+      fibre f (g c) ≃∎
+}
+% ```
+}
+}
+
+\subtree[stt-005X]{
+\title{The diagonal map}
+\taxon{definition}
+
+\p{Given a map #{f : A \to B}, we can form a map #{\Delta_f : A \to A \times_B A}
+called the \em{diagonal map} of #{f}.}
+
+%```agda
+\agda{
+diagonal : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+             (f : A → B)
+           → A → Pullback f f
+diagonal f a = (a , a , refl)
+}
+%```
+}
+
+\subtree[stt-006B]{
+\date{2025-06-23}
+\title{Diagonal equivalence}
+\taxon{theorem}
+
+\p{The diagonal of map #{f} is an equivalence iff #{f} is.}
+
+%```agda
+\agda{
+diagonal-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                      {f : A → B}
+                    → is-equiv f
+                    → is-equiv (diagonal f)
+diagonal-is-equiv {f = f} feq
+  = is-equiv⁻¹ (singleton-fst-is-equiv λ x
+        → is-single←equiv-to-single
+            (Σ-ap-≃ λ a
+              → mk≃ (ap f) (is-embedding←is-equiv feq))
+            Sing-is-singleton)
+}
+%```
+}

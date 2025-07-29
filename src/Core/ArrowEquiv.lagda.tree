@@ -1,0 +1,209 @@
+\date{2025-06-03}
+\title{Equivalences of arrows}
+\author{samueltoth}
+\import{stt-macros}
+\taxon{module}
+\meta{module}{\startverb Core.ArrowEquiv \stopverb}
+
+%```agda
+\agda{
+module Core.ArrowEquiv where
+
+open import ufAxioms
+open import Foundations.Prelude
+
+open import Core.Arrow
+}
+%```
+
+\subtree[stt-004R]{
+\taxon{definition}
+\title{Arrow equivalences}
+
+\p{A pair of arrows #{A \xrightarrow{f} B} and #{X \xrightarrow{g} Y} are said
+to be equivalent if there exists an [arrow map](stt-003U) where both horizontal
+morphisms are themselves equivalences.}
+
+\quiver{
+\begin{tikzcd}
+	A && X \\
+	\\
+	B && Y
+	\arrow["\sim", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["g", from=1-3, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+is-Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                     → Arrow-map f g → Type _
+is-Arrow-equiv {f = f} {g} (mk-amap top bot comm)
+  = is-equiv top × is-equiv bot
+
+
+Arrow⁻¹←Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                     → (F : Arrow-map f g)
+                     → is-Arrow-equiv F
+                     → Arrow-map g f
+Arrow⁻¹←Arrow-equiv {f = f}{g} (mk-amap top bot comm) (teq , beq)
+  = mk-amap top.bwd bot.bwd
+    (beq ◂eqv (   bot.ε ▸ g ▸ top
+               ~∙ (comm ~⁻¹)
+               ~∙ (bot ◂ f ◂ top.η ~⁻¹))
+               ▸eqv teq) where
+  module top = is-equiv teq
+  module bot = is-equiv beq
+
+Arrow⁻¹-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                     → (F : Arrow-map f g)
+                     → (eq : is-Arrow-equiv F)
+                     → is-Arrow-equiv (Arrow⁻¹←Arrow-equiv F eq)
+Arrow⁻¹-is-equiv F (teq , beq) = (is-equiv⁻¹ teq  , is-equiv⁻¹ beq)
+}
+%```
+}
+
+\subtree[stt-004S]{
+\taxon{theorem}
+\title{Arrow equivalences preserve equivalences}
+
+\p{If there is an [arrow equivalence](stt-004R) from #{A \xrightarrow{f} B} to
+#{X \xrightarrow{g} Y}, then #{f} is an equivalence iff #{g} is.
+}
+
+\proof{This is a simple application of the [3-for-2](stt-003E) property of
+equivalences.}
+
+%```agda
+\agda{
+is-equiv←Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                       {F : Arrow-map f g}
+                       → is-Arrow-equiv F
+                       → is-equiv f → is-equiv g
+is-equiv←Arrow-equiv {F = mk-amap top bot comm} (teq , beq) feq
+  = 3-for-2~' comm teq (is-equiv-∘ beq feq)
+
+is-equiv←Arrow-equiv⁻¹ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                       {F : Arrow-map f g}
+                       → is-Arrow-equiv F
+                       → is-equiv g → is-equiv f
+is-equiv←Arrow-equiv⁻¹ {F = mk-amap top bot comm} (teq , beq) geq
+  = 3-for-2~ (comm ~⁻¹) beq (is-equiv-∘ geq teq)
+
+top⇔bot-is-equiv←Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                       (F : Arrow-map f g)
+                       → is-Arrow-equiv F
+                       → is-equiv f ⇔ is-equiv g
+top⇔bot-is-equiv←Arrow-equiv F eq = ( is-equiv←Arrow-equiv {F = F} eq
+                                    , is-equiv←Arrow-equiv⁻¹ {F = F} eq)
+}
+%```
+}
+
+\subtree[stt-0069]{
+\title{Arrow equivalences preserve sections}
+\taxon{theorem}
+
+\p{If there is an [arrow equivalence](stt-004R) from #{A \xrightarrow{f} B} to
+#{X \xrightarrow{g} Y}, then sections of #{f} are equivalent to sections of #{g}.
+}
+
+% TODO(sam): Look into why unification isn't working so well for arrow
+%            map
+
+%```agda
+\agda{
+section←Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                       {F : Arrow-map f g}
+                       → is-Arrow-equiv F
+                       → section f → section g
+section←Arrow-equiv {f = f} {g} {F = F} eq (secf , p) .fst
+  = top ∘ secf ∘ bot.bwd where
+  open Arrow-map F
+  module top = is-equiv (eq .fst)
+  module bot = is-equiv (eq .snd)
+section←Arrow-equiv {f = f} {g} {F} eq (secf , p) .snd
+  =  H ▸ top ▸ secf ▸ bot.bwd
+  ~∙ bot ◂ f ◂ top.η ▸ secf ▸ bot.bwd
+  ~∙ bot ◂ p ▸ bot.bwd
+  ~∙ bot.ε where
+  open Arrow-map F
+  module top = is-equiv (eq .fst)
+  module bot = is-equiv (eq .snd)
+  H : g ~ bot ∘ f ∘ top.bwd
+  H = comm ▸ top.bwd ~∙ g ◂ top.ε ~⁻¹
+
+section←Arrow-equiv⁻¹ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                       {Y : Type 𝓜} {f : A → B} {g : X → Y}
+                       {F : Arrow-map f g}
+                       → is-Arrow-equiv F
+                       → section g → section f
+section←Arrow-equiv⁻¹ {f = f}{g}{F} EF sec = section←Arrow-equiv {f = g}{f}
+                                               {Arrow⁻¹←Arrow-equiv F EF}
+                                               (Arrow⁻¹-is-equiv F EF) sec
+}
+%```
+}
+
+\subtree[stt-007M]{
+\taxon{theorem}
+\title{pre/post-composition of arrow equivalences}
+\p{Precomposition preserves arrow equivalences}
+
+%```agda
+\agda{
+precomp-Arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+    → (Q : Type 𝓠)
+    → Arrow-map f g
+    → Arrow-map (precomp Q f) (precomp Q g)
+precomp-Arrow-map Q F = mk-amap (top ∘_) (bot ∘_) (funext→ ∘ (comm ▸_)) where
+  open Arrow-map F
+
+
+is-Arrow-equiv-precomp
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+      {Q : Type 𝓠}
+    → is-Arrow-equiv F
+    → is-Arrow-equiv (precomp-Arrow-map Q F)
+is-Arrow-equiv-precomp F eq
+  = (precomp-equiv (eq .fst) , precomp-equiv (eq .snd))
+
+postcomp-Arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+    → (Q : Type 𝓠)
+    → Arrow-map f g
+    → Arrow-map (postcomp Q g) (postcomp Q f)
+postcomp-Arrow-map Q F = mk-amap (_∘ bot) (_∘ top) (funext→ ∘ (_◂ (comm ~⁻¹))) where
+  open Arrow-map F
+
+is-Arrow-equiv-postcomp
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+      {Q : Type 𝓠}
+    → is-Arrow-equiv F
+    → is-Arrow-equiv (postcomp-Arrow-map Q F)
+is-Arrow-equiv-postcomp F eq
+  = (postcomp-equiv (eq .snd) , postcomp-equiv (eq .fst))
+}
+%```
+}

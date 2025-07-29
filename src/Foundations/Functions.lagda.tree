@@ -1,0 +1,272 @@
+\date{2025-02-20}
+\title{Function types}
+\taxon{module}
+\import{stt-macros}
+\meta{module}{\startverb Foundations.Functions \stopverb}
+\meta{defines}{\startverb ["Π", "id", "_∘_", "happly"] \stopverb}
+
+% ```agda
+\agda{
+module Foundations.Functions where
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Singleton
+}
+% ```
+
+
+% ```agda
+\agda{
+Π : ∀ {𝓤 𝓥} (A : Type 𝓤) (B : A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+Π A B = (a : A) → B a
+
+id : ∀ {𝓤} {A : Type 𝓤} → A → A
+id a = a
+{-# INLINE id #-}
+
+ev : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → (a : A) → Π A B → B a
+ev a f = f a
+
+const : ∀ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) → A → B → A
+const _ _ a _ = a
+
+infixr 40 _∘_
+_∘_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : {a : A} → B a → Type 𝓦}
+      → (f : {a : A} → (b : B a) → C b) → (g : (a : A) → B a) → (a : A) → C (g a)
+f ∘ g = λ a → f (g a)
+
+happly : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
+       → f ＝ g → (a : A) → f a ＝ g a
+happly refl a = refl
+
+}
+% ```
+
+\subtree[stt-003Y]{
+\taxon{definition}
+\title{Explicit function composition}
+\meta{defines}{\startverb ["postcomp", "precomp"] \stopverb}
+\p{It is convenient to define post and pre composition functions
+   that take the non-fixed type argument explicitly}
+
+% TODO: Should pre/post comp switch????
+
+% ```agda
+\agda{
+postcomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+             {𝓦} (C : Type 𝓦) → (f : A → B)
+           → (B → C) → (A → C)
+postcomp C f = _∘ f
+
+precomp : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            {𝓦} (C : Type 𝓦) → (f : A → B)
+          → (C → A) → (C → B)
+precomp C f = f ∘_
+}
+% ```
+}
+
+\subtree[stt-0071]{
+\title{Functoriality of function composition}
+\taxon{theorem}
+\date{2025-07-13}
+%```agda
+\agda{
+postcomp-∘ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+               {𝓦} (X : Type 𝓦) (f : A → B)
+               {𝓜} {Q : Type 𝓜} (g : Q → A)
+             → ∀ h → postcomp X (f ∘ g) h ＝ (postcomp X g ∘ postcomp X f) h
+postcomp-∘ X f g h = refl
+
+precomp-∘ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+               {𝓦} (X : Type 𝓦) (f : A → B)
+               {𝓜} {Q : Type 𝓜} (g : Q → A)
+             → ∀ h → precomp X (f ∘ g) h ＝ (precomp X f ∘ precomp X g) h
+precomp-∘ X f g h = refl
+}
+%```
+}
+
+
+\subtree[stt-004M]{
+\taxon{definition}
+\title{Dependent function composition}
+\meta{defines}{\startverb ["postcomp-Π"] \stopverb}
+\p{We can define a dependent version of [function postcomposition](stt-003Y),
+that takes a family of types.}
+
+% ```agda
+\agda{
+postcomp-Π : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+             {𝓦} (C : B → Type 𝓦) → (f : A → B)
+           → (Π B C) → (Π A (C ∘ f))
+postcomp-Π C f = _∘ f
+}
+% ```
+}
+
+\subtree[stt-001F]{
+\title{Functions are functors}
+
+\meta{defines}{\startverb ["ap-refl", "ap-sym", "ap-∙", "ap-∙∙", "ap-id", "ap-∘", "ap₂", "tr∘", "ap₃" ] \stopverb}
+
+% ```agda
+\agda{
+ap-refl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x : A} → (f : A → B) → ap f (refl {a = x}) ＝ refl
+ap-refl f = refl
+
+
+ap-sym : ∀ {𝓤 𝓥} {A : Type 𝓤}{B : Type 𝓥}  (f : A → B) → {x y : A} → (p : x ＝ y) → ap f (sym p) ＝ sym (ap f p)
+ap-sym f refl = refl
+
+ap-∙ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y z : A} → (f : A → B) → (p : x ＝ y) → (q : y ＝ z) → ap f (p ∙ q) ＝ ap f p ∙ ap f q
+ap-∙ f refl p = refl
+
+ap-∙∙ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y z w : A} → (f : A → B)
+        → (p : x ＝ y) → (q : y ＝ z) → (r : z ＝ w)
+        → ap f (p ∙ q ∙ r) ＝ ap f p ∙ ap f q ∙ ap f r
+ap-∙∙ f refl q r = ap-∙ f q r
+
+ap-const : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A} {b}
+           → (p : x ＝ y) → ap (λ _ → b) p ＝ refl {_}{B}
+ap-const refl = refl
+
+tr-const : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A}
+           → (p : x ＝ y)
+           → {b : B}
+           → tr (λ _ → B) p b ＝ b
+tr-const refl = refl
+
+
+ap-id : ∀ {𝓤} {A : Type 𝓤} {x y : A} (p : x ＝ y) → ap id p ＝ p
+ap-id refl = refl
+
+ap-∘ : ∀ {𝓤 𝓥 𝓦}  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {x y : A}
+          (f : B → C) (g : A → B) (p : x ＝ y) → ap (f ∘ g) p ＝ ap f (ap g p)
+ap-∘ f g refl = refl
+
+ap₂ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {x y : A} {u v : B}
+      → (f : A → B → C) → x ＝ y → u ＝ v → f x u ＝ f y v
+ap₂ f refl refl = refl
+
+
+ap₃ : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓛}
+        {x y : A} {u v : B} {a b : C}
+      → (f : A → B → C → D)
+      → x ＝ y → u ＝ v → a ＝ b
+      → f x u a ＝ f y v b
+ap₃ f refl refl refl = refl
+
+tr∘ : ∀ {𝓤 𝓥 𝓦}  {A : Type 𝓤} (P : A → Type 𝓥)
+        {C : Type 𝓦} (f : C → A)
+        {x y} (p : x ＝ y) {b : P (f x)}
+      → tr (P ∘ f) p b ＝ tr P (ap f p) b
+tr∘ P f refl = refl
+}
+% ```
+
+}
+
+\subtree[stt-000M]{
+\taxon{definition}
+\title{Fibres}
+\meta{defines}{\startverb ["fibre", "total-fibre"] \stopverb}
+
+\p{Given a function #{f : A \to B}, we define the fibre of #{f} at #{b : B}, notated #{\fibre{f}{a}} to be the type
+#{\Sigma_{a : A}{f(a) = b}}. }
+
+\p{Note that this is subtly different to the preimage, as we can show that #{\Sigma_{(b : B)} \fibre{f}{b}} is equivalent to #{A} itself.}
+
+% ```agda
+\agda{
+
+fibre : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → B → Type (𝓤 ⊔ 𝓥)
+fibre f b = Σ _ λ a → f a ＝ b
+
+total-fibre : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Type (𝓤 ⊔ 𝓥)
+total-fibre f = Σ _ (fibre f)
+}
+% ```
+}
+
+\p{The fibre type gives us a useful tool for talking about properties of maps. Generally if we have a property of types for example being #{n}-connected, we reuse the same terminology on maps to mean all fibres of the map have the corresponding property.}
+
+
+\subtree[stt-001G]{
+\taxon{definition}
+\title{propositional maps}
+\meta{defines}{\startverb ["is-prop-map"] \stopverb}
+
+\p{We call a map propositional if the fibres are all sub-singletons. We will learn later that this is equivalent to the property of a map being an embedding.
+This notion is a generalisation of injective set functions, infact if we - for a moment - imagine fibre to mean preimage, then a function of sets is injecte if each preimage is either empty or has a unique inhabitant.}
+
+% ```agda
+\agda{
+is-prop-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-prop-map f = ∀ b → is-prop (fibre f b)
+}
+% ```
+}
+
+
+\subtree[stt-001H]{
+\taxon{definition}
+\title{contractible maps}
+\meta{defines}{\startverb ["is-contr-map"] \stopverb}
+
+\p{A map is said to be contractible if each of its fibres is a singleton (is contractible). We will see later that this is one of many notions of an equivalence of maps.}
+
+\agda{
+is-contr-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-contr-map f = ∀ b → is-singleton (fibre f b)
+}
+% ```
+}
+
+
+\subtree[stt-001I]{
+\taxon{theorem}
+\title{contractible maps are propositional maps}
+
+\meta{defines}{\startverb ["is-prop-map←is-contr-map"] \stopverb}
+
+% ```agda
+\agda{
+is-prop-map←is-contr-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                         → is-contr-map f → is-prop-map f
+is-prop-map←is-contr-map ctr b = is-prop←is-single (ctr b)
+}
+% ```
+}
+
+\subtree[stt-007O]{
+\title{Logical equivalence}
+\taxon{definition}
+
+\p{Given types #{P} and #{Q}, we say they are logically
+equivalent when there are functions #{P \to Q} and #{Q \to P}.
+We write #{P \iff Q} for the type of pairs #{(f : P \to Q,g : Q \to P)}.}
+
+\remark{
+Logical equivalence is also known as bi-implication as well as just equivalence.
+We avoid bi-implication, but use equivalence when it is understood that the types
+involved are [propositions](stt-0009).
+}
+
+%```agda
+\agda{
+_⇔_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+P ⇔ Q = (P → Q) × (Q → P)
+
+_∙⇔_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+       → A ⇔ B → B ⇔ C → A ⇔ C
+p ∙⇔ q = (q .fst ∘ p .fst , p .snd ∘ q .snd)
+
+_⇔⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ⇔ B → B ⇔ A
+(f , g) ⇔⁻¹ = (g , f)
+
+}
+%```
+}

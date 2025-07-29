@@ -1,12 +1,12 @@
 module ufAxioms where
 
-open import foundations.Prelude
+open import Foundations.Prelude
 
 -- !!CAUTION!! - this is not in general sound with --without-K - use with caution.
 primitive
   primEraseEquality : {𝓤 : Level} {A : Type 𝓤} {x y : A} → x ＝ y → x ＝ y
 
-open import foundations.FunExt
+open import Foundations.FunExt
 
 
 postulate
@@ -20,22 +20,22 @@ postulate
 private module fe = WithFunExt-global global-funext
 open fe public
 
-import foundations.CanonicalPullbacks
-open foundations.CanonicalPullbacks.WithFunExt global-funext public
-import foundations.PathSplit
-open foundations.PathSplit.PSWithFunExt global-funext public
-open import foundations.EquivProp global-funext public
-open import foundations.EmptyUP global-funext public
-open import foundations.SingletonClosure public hiding (Singleton-Π)
-open import foundations.PropClosure public hiding (is-prop-Π)
-open import foundations.SingletonProp global-funext public
-open import foundations.CompositionEquiv global-funext public
-open import foundations.CompositionFibres global-funext public
+import Foundations.CanonicalPullbacks
+open Foundations.CanonicalPullbacks.WithFunExt global-funext public
+import Foundations.PathSplit
+open Foundations.PathSplit.PSWithFunExt global-funext public
+open import Foundations.EquivProp global-funext public
+open import Foundations.EmptyUP global-funext public
+open import Foundations.SingletonClosure public hiding (Singleton-Π)
+open import Foundations.PropClosure public hiding (is-prop-Π)
+open import Foundations.SingletonProp global-funext public
+open import Foundations.CompositionEquiv global-funext public
+open import Foundations.CompositionFibres global-funext public
 Singleton-Π = weak-funext
 is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → ((a : A) → is-prop (B a))
             → is-prop (Π A B)
-is-prop-Π = foundations.PropClosure.is-prop-Π global-funext
+is-prop-Π = Foundations.PropClosure.is-prop-Π global-funext
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
@@ -45,7 +45,7 @@ funext-redex {p = p} = is-equiv.ε global-funext p
 {-# REWRITE funext-redex #-}
 
 
-open import foundations.Univalence
+open import Foundations.Univalence
 
 postulate
   UA : Univalence
@@ -55,14 +55,14 @@ open WithGlobalUnivalence UA public
 
 {-# REWRITE ua-linv #-}
 
-open import foundations.PropExt public using (PropExt)
-import foundations.PropExt as PE
+open import Foundations.PropExt public using (PropExt)
+import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤
 propExt = PE.PropExt←Univalence global-funext UA
 
-open import foundations.Pushout public
-import foundations.Span as Sp
+open import Foundations.Pushout public
+import Foundations.Span as Sp
 
 Cocone-path→ : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {X : Type 𝓛}
                → (c c' : Cocone S X)
@@ -74,7 +74,7 @@ Cocone-path→ : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {X : Type
 Cocone-path→ = Sp.Cocone-path→ global-funext
 
 
-open import foundations.DependentCocone
+open import Foundations.DependentCocone
 
 
 module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where

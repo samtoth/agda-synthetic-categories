@@ -1,0 +1,321 @@
+\date{2025-02-21}
+\title{Higher Modalities}
+\taxon{module}
+\meta{module}{\startverb Modalities.HigherModality \stopverb}
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Modalities.HigherModality where
+
+open import Foundations.Prelude
+open import Foundations.IdentitySystem
+open import ufAxioms
+open import Ergonomics.Universal
+open import Ergonomics.Extensionality
+}
+% ```
+
+\transclude{stt-000G}
+
+
+% ```agda
+\agda{
+record HigherModality 𝓤 : Type (lsuc 𝓤) where
+  field
+    ○_    : Type 𝓤 → Type 𝓤
+    η   : ∀ {A : Type 𝓤} → A → ○ A
+    ind : ∀ {A : Type 𝓤} (P : ○ A → Type 𝓤)
+            → (f : (a : A) → ○ P (η a))
+            → (ma : ○ A) → ○ (P ma)
+    ind-β   : ∀ {A : Type 𝓤} (P : ○ A → Type 𝓤)
+            → (f : (a : A) → ○ P (η a))
+            → (a : A) → ind P f (η a) ＝ f a
+
+  is-modal : Type 𝓤 → Type 𝓤
+  is-modal A = is-equiv (η {A = A})
+
+  field
+    ＝-○-is-modal : ∀ {A : Type 𝓤} {x y : ○ A} → is-modal (x ＝ y)
+
+  opaque
+    rec : ∀ {A : Type 𝓤} {B : Type 𝓤} → (A → ○ B) → (○ A → ○ B)
+    rec = ind (λ _ → _)
+
+    recβ :  ∀ {A : Type 𝓤} {B : Type 𝓤} (f : A → ○ B) (a : A)
+              → rec f (η a) ＝ f a
+    recβ = ind-β (λ _ → _)
+
+  unmod : ∀ {A : Type 𝓤} (m : is-modal A) → ○ A → A
+  unmod (mk-eqv (g , _) _) = g
+}
+% ```
+
+\subtree{
+\taxon{theorem}
+\title{#{\bigcirc A} is modal}
+
+% ```agda
+\agda{
+  elim : ∀ {A : Type 𝓤} → ○ (○ A) → ○ A
+  elim = rec λ x → x
+
+  ○-is-modal : ∀ {A : Type 𝓤} → is-modal (○ A)
+  ○-is-modal = is-equiv←qiso the-iso where
+    the-iso : quasi-iso η
+    the-iso .fst = ind _ id
+    the-iso .snd .fst = ind-β _ id
+    the-iso .snd .snd a = unmod
+                            ＝-○-is-modal
+                            (ind (λ a → (η (ind _ id a)) ＝ a)
+                            (λ a → η (ap η (ind-β _ _ a))) a)
+}
+% ```
+}
+
+\subtree{
+\taxon{lemma}
+\title{Equality on modal is modal}
+
+% ```agda
+\agda{
+  ≃-modal : ∀ {A B : Type 𝓤} → A ≃ B → is-modal A → is-modal B
+  ≃-modal e = tr is-modal (ua e)
+
+  ＝-is-modal : ∀ {A : Type 𝓤} → is-modal A  → {a b : A}
+                → is-modal (a ＝ b)
+  ＝-is-modal {A = A} H {a} {b} =
+    ≃-modal
+      (mk≃ (ap η) (is-embedding←is-equiv H) e⁻¹)
+      ＝-○-is-modal
+}
+% ```
+}
+
+\subtree{
+\taxon{definition}
+\title{Modal induction}
+
+% ```agda
+\agda{
+  opaque
+    ind' : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤} (P-mod : ∀ {a} → is-modal (P a))
+           → (f : (a : A) → P (η a)) → (ma : ○ A) → P ma
+    ind' {P = P} is-mod f = (unmod is-mod) ∘ ind P (η ∘ f)
+
+    ind-β' : ∀  {A : Type 𝓤} {P : ○ A → Type 𝓤}
+         → (P-mod : ∀ {a} → is-modal (P a))
+         → (f : (a : A) → P (η a)) → (a : A) → ind' (λ {a'} → P-mod {a'}) f (η a) ＝ f a
+    ind-β' is-mod f a = ap (unmod is-mod) (ind-β _ _ a) ∙ is-equiv.η is-mod (f a)
+
+    ind'-qiso : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤} {P-mod : ∀ {a} → is-modal (P a)}
+                 → quasi-iso {A = (a : A) → P (η a)} {B = (a : ○ A) → P a}
+                             (ind' P-mod)
+    ind'-qiso .fst = _∘ η
+    ind'-qiso {P-mod = is-mod} .snd .fst f = ext! (ind-β' is-mod f)
+    ind'-qiso {P = P} {P-mod = is-mod} .snd .snd f = ext! (ind' {P = λ a → _ ＝ f a}
+                   (λ {a} →  ＝-is-modal is-mod) (ind-β' is-mod (f ∘ η)))
+
+    ind'-is-equiv : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤}
+                     {P-mod : ∀ {a} → is-modal (P a)}
+                 → is-equiv {A = (a : A) → P (η a)} {B = (a : ○ A) → P a}
+                             (ind' P-mod)
+    ind'-is-equiv {P-mod = is-mod} = is-equiv←qiso (ind'-qiso {P-mod = is-mod})
+
+}
+% ```
+}
+
+
+\subtree{
+\taxon{universal property}
+% ```agda
+\agda{
+record Is-modal {𝓤} (M : HigherModality 𝓤) (A : Type 𝓤) : Type 𝓤 where
+  constructor mk-modal
+  open HigherModality M
+  field
+    has-is-modal : is-modal A
+
+module ModalUniversal {𝓤} (M : HigherModality 𝓤) where
+
+  open HigherModality M
+
+  ind-qiso : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤}
+                 → quasi-iso {A = (a : A) → ○ P (η a)} {B = (a : ○ A) → ○ (P a)}
+                            (ind P)
+  ind-qiso .fst = _∘ η
+  ind-qiso .snd .fst f = ext! (ind-β _ f)
+  ind-qiso {A = A} {P = P} .snd .snd f = ext! (ind' ＝-○-is-modal (ind-β _ (f ∘ η)))
+
+  ind-is-equiv : ∀ {A : Type 𝓤} {P : ○ A → Type 𝓤}
+                 → is-equiv {A = (a : A) → ○ P (η a)} {B = (a : ○ A) → ○ P a}
+                            (ind P)
+  ind-is-equiv = is-equiv←qiso ind-qiso
+
+
+  open Universal
+
+  instance
+    Universal-○ : ∀ {𝓦} {A : Type 𝓤} {P : ○ A → Type 𝓤}
+                 → ⦃ _ : ∀ {a} → Is-modal M (P a) ⦄
+                 → ⦃ _ : Universal ((a : A) → P (η a)) 𝓦 ⦄
+                 → Universal ((a : ○ A) → P a) 𝓦
+    Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.methods = u .methods
+    Universal-○ ⦃ mod ⦄ ⦃ u ⦄ .Universal.from
+      = ind' (λ {_} → mod .Is-modal.has-is-modal) ∘ u .from
+    Universal-○ ⦃ _ ⦄ ⦃ u ⦄ .Universal.from-is-equiv
+      = is-equiv-∘ ind'-is-equiv (u .from-is-equiv)
+}
+% ```
+}
+
+\subtree[stt-006Z]{
+
+\title{Instance resolution for is-modal}
+
+% ```agda
+\agda{
+
+
+module ModalInstances {𝓤} (M : HigherModality 𝓤) where
+
+  open HigherModality M
+  open ModalUniversal M
+
+  instance opaque
+    ○-Modal : ∀ {A : Type 𝓤} → Is-modal M (○ A)
+    ○-Modal = mk-modal ○-is-modal
+
+    ＝-Modal : ∀ {A : Type 𝓤} → ⦃ Is-modal M A ⦄ → {a b : A}  → Is-modal M (a ＝ b)
+    ＝-Modal ⦃ (mk-modal H) ⦄ = mk-modal (＝-is-modal H)
+
+    Π-Modal : ∀ {A : Type 𝓤} {B : A → Type 𝓤} → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
+              → Is-modal M (∀ x → B x)
+    Π-Modal = mk-modal (is-equiv←qiso λ where
+                .fst → λ f a → rec! (λ f → f a) f
+                .snd .fst → λ f → ext! (λ a → ind-β' _ _ _)
+                .snd .snd → λ f → ind! {B = λ f → η (λ x → ind' _ (λ f → f x) f) ＝ f}
+                                       (λ f → ap η (funext→ (λ a → ind-β' _ _ _))) f)
+
+
+
+  ○-elim! : ∀ {A : Type 𝓤} ⦃ _ : Is-modal M A ⦄
+            → ○ A → A
+  ○-elim! = rec! id
+
+  private module test where
+    test : ∀ {A : Type 𝓤} → ○ ○ A → ○ A
+    test = ○-elim!
+}
+% ```
+
+
+}
+
+\subtree{
+\taxon{theorem}
+\title{Higher modalities are #{\Sigma}-closed}
+
+% ```agda
+\agda{
+  ○-Σ-closed : ∀ {A : Type 𝓤} {B : A → Type 𝓤}
+            → ⦃ _ : Is-modal M A ⦄
+            → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
+            → is-modal (Σ A B)
+  ○-Σ-closed {A = A} {B = B} = is-equiv←qiso I where
+
+    f : ○ Σ A B → A
+    f = rec! (λ a _ → a)
+
+    f-β : ∀ {a : A} {b : B a} → f (η (a , b)) ＝ a
+    f-β = ind-β' _ _ _
+
+    g : (x : ○ Σ A B) → B (f x)
+    g = ind! (λ a b → tr B (sym f-β) b)
+
+    g-β : ∀ {a : A} {b : B a} → IdP (sym (ap B  f-β)) b (g (η (a , b)))
+    g-β {a} {b} =  tr (λ z → IdP z b (g (η (a , b)))) (ap-sym B f-β) (sym (ind-β' _ _ _))
+
+    I : quasi-iso η
+    I .fst x = f x , g x
+    I .snd .fst (a , b) = Σ-path→ (f-β ,  symP' g-β  )
+    I .snd .snd = ind! λ a b → ap η (Σ-path→ (f-β , symP' g-β))
+
+
+  instance opaque
+    Modal-Σ : ∀ {A : Type 𝓤} {B : A → Type 𝓤}
+            → ⦃ _ : Is-modal M A ⦄
+            → ⦃ _ : ∀ {x} → Is-modal M (B x) ⦄
+            → Is-modal M (Σ A B)
+    Modal-Σ = mk-modal ○-Σ-closed
+}
+% ```
+}
+
+
+\subtree[stt-0046]{
+\date{2025-05-10}
+\taxon{definition}
+\title{Modal connected types}
+
+\p{Given a higher modality #{\bigcirc}, We call a type #{A} #{\bigcirc}-connected when
+the type #{\bigcirc A} is a singleton.}
+
+% ```agda
+\agda{
+module _ {𝓤} {M : HigherModality 𝓤} where
+  open HigherModality M
+  is-connected : Type 𝓤 → Type 𝓤
+  is-connected A = is-singleton (○ A)
+}
+% ```
+}
+
+\subtree[stt-006U]{
+\title{Do notation for Higher Modalities}
+\taxon{notation}
+
+\p{Higher (monadic) modalities are in particular, monads. As such,
+we can use haskell style do notation to write terms and proof
+with modal types.}
+
+%```agda
+\agda{
+module Do {𝓤} (M : HigherModality 𝓤) where
+  open HigherModality M
+  open ModalUniversal M
+
+
+  _>>=_ : ∀ {A B : Type 𝓤}
+            ⦃ _ : Is-modal M B ⦄
+          → ○ A
+          → (A → B)
+          → B
+  x >>= f = rec! f x
+
+  return : ∀ {A : Type 𝓤} → A → ○ A
+  return = η
+}
+%```
+}
+
+% \subtree[stt-0047]{
+% \date{2025-05-10}
+% \taxon{definition}
+% \title{Modal seperated types}
+
+% \p{Given a higher modality #{\bigcirc}, We call a type #{A} #{\bigcirc}-seperated when
+% the map #{A \xrightarrow{\eta} \bigcirc A} is a surjection.}
+
+% ```agda
+% \agda{
+% module _ {M : HigherModality} where
+%
+%  open HigherModality M
+%  is-○-seperated : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+%  is-○-seperated A = is-embedding (○-η {_} {A})
+% }
+% ```
+
+% }

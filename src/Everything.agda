@@ -4,6 +4,7 @@ open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.CanonicalPushouts
 open import Core.CoSlice
+open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Join
 open import Core.Lifts
@@ -84,11 +85,11 @@ open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
+open import Ergonomics.Auto
 open import Ergonomics.Builtins
 open import Ergonomics.Extensionality
 open import Ergonomics.PushoutUniv
 open import Ergonomics.Universal
-open import Ergonomics.Auto
 open import Foundations.DependentHomotopy
 open import Foundations.Empty
 open import Foundations.Extension

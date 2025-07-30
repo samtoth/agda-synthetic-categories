@@ -12,6 +12,7 @@ open import Core.Orthogonal
 open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
+open import Core.PushoutEquiv
 open import Core.Slice
 open import Core.Spheres
 open import Core.Suspensions

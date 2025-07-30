@@ -1,0 +1,98 @@
+\date{2025-07-30}
+\title{Pushouts of equivalent types}
+\taxon{module}
+\meta{module}{Core.PushoutEquiv}
+\author{samueltoth}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Core.PushoutEquiv where
+
+open import Foundations.Prelude
+open import ufAxioms
+open import Core.CanonicalPushouts
+open import Core.Postwhisker
+
+}
+%```
+
+\subtree[stt-0083]{
+\date{2025-07-30}
+\title{Adjusting Pushouts by equivalences}
+\taxon{lemma}
+
+\p{Given #{A \simeq B}, a pushout under #{C \xleftarrow{} B
+\xrightarrow{} D}, gives rise to a pushout under the induced span #{C
+\xleftarrow{} A \xrightarrow{} D}.}
+
+\p{As a corollary, we also have that the canonical pushout of the span
+is equivalent to the pushout of the induced span.}
+
+%```agda
+\agda{
+precomp-span : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓜} → (S : Span 𝓤 𝓥 𝓦)
+               → (A → S .Span.Centre) → Span 𝓜 𝓥 𝓦
+precomp-span {A = A} S f = mk-span A (S.left ∘ f) (S.right ∘ f) where
+  module S = Span S
+
+precomp-cocone : ∀ {𝓤 𝓥 𝓦 𝓜 𝓛} {A : Type 𝓜}  {S : Span 𝓤 𝓥 𝓦}
+                   (f : A → Span.Centre S) {D : Type 𝓛}
+                 → Cocone S D
+                 → Cocone (precomp-span S f) D
+precomp-cocone f cc
+  = mk-cocone p q (filler ▸ f) where open Cocone cc
+
+precomp-cocone-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓛} {A : Type 𝓜}  {S : Span 𝓤 𝓥 𝓦}
+      (f : A → Span.Centre S) {D : Type 𝓛}
+    → is-equiv f
+    → is-equiv (precomp-cocone {S = S} f {D})
+precomp-cocone-is-equiv {S = S} f feq = is-equiv←qiso qiso where
+  module ▸f {𝓠}{C : Type 𝓠}{g}{h} =
+    is-equiv (postwhisker-equiv-is-equiv feq {C} {g} {h})
+
+  qiso : quasi-iso (precomp-cocone f)
+  qiso .fst (mk-cocone p q filler)
+    = mk-cocone p q (▸f.bwd filler)
+  qiso .snd .fst (mk-cocone p q filler)
+    = ap (mk-cocone p q) (▸f.η filler)
+  qiso .snd .snd (mk-cocone p q filler)
+    = ap (mk-cocone p q) (▸f.ε filler)
+
+
+precomp-cocone-is-pushout
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓛} {A : Type 𝓜}  {S : Span 𝓤 𝓥 𝓦}
+      (f : A → Span.Centre S) {D : Type 𝓛}
+      (feq : is-equiv f)
+      {C : Cocone S D}
+     → is-pushoutω _ C
+     → is-pushoutω _ (precomp-cocone f C)
+precomp-cocone-is-pushout {S = S} f feq {C = C} po
+  = is-pushout←cogap
+      (precomp-cocone f C)
+      (cogap-is-equiv←is-pushout _
+         (is-equiv-∘ (precomp-cocone-is-equiv f feq)
+                     po))
+
+Pushout-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                  {f : S → B} {g : S → C} {S' : Type 𝓜}
+                → (e : S' ≃ S)
+                → Pushout (f ∘ e ._≃_.fwd) (g ∘ e ._≃_.fwd)
+                ≃ Pushout f g
+Pushout-equiv {f = f} {g} e = mk≃ map map-is-eq where
+  module e = _≃_ e
+
+  map : Pushout _ _ → Pushout f g
+  map = cogap (precomp-cocone e.fwd (pushout {f = f} {g}))
+
+  map-is-eq : is-equiv map
+  map-is-eq = cogap-is-equiv←is-pushout _
+                (precomp-cocone-is-pushout
+                   e.fwd
+                   e.has-is-eqv
+                   Pushout-is-pushoutω)
+}
+%```
+}

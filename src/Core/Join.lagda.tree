@@ -14,6 +14,10 @@ module Core.Join where
 open import Foundations.Prelude
 open import ufAxioms
 open import Core.Suspensions
+open import Core.Arrow
+open import Core.CocartesianSquare
+open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
 open import Ergonomics.Universal
 open import Ergonomics.PushoutUniv
 open import Ergonomics.Auto
@@ -47,6 +51,8 @@ the pushout of the span
 
 % ```agda
 \agda{
+infixl 25 _*_
+
 _*_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
 A * B = Pushout {A = A × B} fst snd
 }
@@ -60,63 +66,97 @@ A * B = Pushout {A = A × B} fst snd
 
 \p{The join of a singleton with any type is also a singleton}
 
+\proof{
+\p{This follows from the fact that [pushing an equivalence out gives
+an equivalence](stt-0080).}
+}
+
 % ```agda
 \agda{
--- *-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---            → is-singleton A → is-singleton (A * B)
--- *-single sa = {!!}
+*-comm : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A * B ≃ B * A
+*-comm {A = A} {B} = pushout-comm ∙≃ (Pushout-equiv ×-swap)
 
--- *-single' : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---             → is-singleton B → is-singleton (A * B)
--- *-single' sb = {!!}
+
+
+*-single' : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            → is-singleton B → is-singleton (A * B)
+*-single' {A = A} {B} sb
+  = is-single←equiv-to-single (mk≃ _ ι₂-is-equiv) sb where
+  ι₂-is-equiv : is-equiv {B = A * B} ι₂
+  ι₂-is-equiv = dom-is-equiv←cocartesian
+                  (mk-amap snd ι₁ glue)
+                  (singleton-fst-is-equiv (λ _ → sb))
+                  (is-cocartesian←is-pushout Pushout-is-pushoutω)
+
+*-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+           → is-singleton A → is-singleton (A * B)
+*-single sa
+  = is-single←equiv-to-single *-comm (*-single' sa)
 }
 % ```
 }
 
 \subtree[stt-002W]{
+\taxon{theorem}
 \title{Joins of propositions}
+
+\p{The universal property for joins of propositions says that
+for propositions #{P} and #{Q}, to eliminate into a proposition #{R},
+it suffices to supply #{P \to R}, and #{Q \to R}}
+
+\p{As an easy corollary, we have that the join of two propositions
+is again a proposition.}
 
 % ```agda
 \agda{
--- *-prop-disj : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
---               {Q : Type 𝓦}
---            → is-prop A → is-prop B
---            → is-prop Q
---            → (A * B → Q) → (A → Q) × (B → Q)
--- *-prop-disj a b q f = (f ∘ ι₁ , f ∘ ι₂)
+*-prop-disj : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {Q : Type 𝓦}
+           → is-prop A → is-prop B
+           → is-prop Q
+           → (A * B → Q) → (A → Q) × (B → Q)
+*-prop-disj a b q f = (f ∘ ι₁ , f ∘ ι₂)
 
--- *-prop-disj≃ : ∀ {𝓤 𝓥 𝓦}
---               {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
---            → (pa : is-prop A) → (pb : is-prop B)
---            → (pq : is-prop Q)
---            → (A * B → Q) ≃ ((A → Q) × (B → Q))
--- *-prop-disj≃ {A = A} {B} {Q} pa pb pq
---  = (A * B → Q)                        ≃⟨ Univ≃' auto! ⟩
---    Coconeᵘ Q                          ≃⟨ {!!} ⟩
---    Σ[ f ∶ (A → Q) ]
---      Σ[ g ∶ (B → Q) ]
---       ((a : A) → (b : B) → f a ＝ g b) ≃⟨ Σ-ap-≃ (λ a
---                                            → Σ-singleton (λ x
---                                            → Singleton-Π λ b
---                                            → Singleton-Π (λ c
---                                            → ＝-singleton←is-prop pq _ _))) ⟩
---    ((A → Q) × (B → Q)) ≃∎
 
--- *-prop-rec : ∀ {𝓤 𝓥 𝓦}
---               {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
---            → (pa : is-prop A) → (pb : is-prop B)
---            → (pq : is-prop Q)
---            →  (A → Q) → (B → Q) → (A * B → Q)
--- *-prop-rec pa pb pq f g = _≃_.bwd (*-prop-disj≃ pa pb pq) (f , g) 
--- {-# NOINLINE *-prop-rec #-}
+*-prop-disj≃ : ∀ {𝓤 𝓥 𝓦}
+              {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+           → (pa : is-prop A) → (pb : is-prop B)
+           → (pq : is-prop Q)
+           → (A * B → Q) ≃ ((A → Q) × (B → Q))
+*-prop-disj≃ {A = A} {B} {Q} pa pb pq
+ = (A * B → Q)
+      ≃⟨ Pushout-UP≃ ⟩
+   Cocone (mk-span _ fst snd) Q
+      ≃⟨ cocone-repr≃ ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] (f ∘ fst ~ g ∘ snd)
+      ≃⟨ Σ-ap-≃ (λ f → Σ-ap-≃ (λ g → curry≃)) ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] ((a : A) → (b : B) → f a ＝ g b)
+      ≃⟨ Σ-ap-≃ (λ a → Σ-singleton (λ x → Singleton-Π λ
+                     b → Singleton-Π (λ
+                       c → ＝-singleton←is-prop pq _ _))) ⟩
+   ((A → Q) × (B → Q)) ≃∎
 
--- *-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---             → is-prop A → is-prop B
---             → is-prop (A * B)
--- *-is-prop aprop bprop = is-prop←is-single-if-inhabited
---   (*-prop-rec aprop bprop is-singleton-is-prop
---     (λ a → *-single (mk-singl a (aprop a)))
---     (λ b → *-single' (mk-singl b (bprop b))))
+*-prop-UP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {Q : Type 𝓦}
+              (ap : is-prop A) (bp : is-prop B)
+              (qp : is-prop Q)
+            → is-equiv (*-prop-disj ap bp qp)
+*-prop-UP ap bp qp = *-prop-disj≃ ap bp qp ._≃_.has-is-eqv
+
+*-prop-rec : ∀ {𝓤 𝓥 𝓦}
+              {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+           → (pa : is-prop A) → (pb : is-prop B)
+           → (pq : is-prop Q)
+           →  (A → Q) → (B → Q) → (A * B → Q)
+*-prop-rec pa pb pq f g = _≃_.bwd (*-prop-disj≃ pa pb pq) (f , g)
+{-# NOINLINE *-prop-rec #-}
+
+*-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            → is-prop A → is-prop B
+            → is-prop (A * B)
+*-is-prop aprop bprop = is-prop←is-single-if-inhabited
+  (*-prop-rec aprop bprop is-single-is-prop
+    (λ a → *-single (mk-singl a (aprop a)))
+    (λ b → *-single' (mk-singl b (bprop b))))
 }
 % ```
 

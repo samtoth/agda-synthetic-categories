@@ -44,6 +44,13 @@ pushout-rec-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
                        {𝓠} {Q : Type 𝓠}
                       → is-equiv (pushout-rec {f = f} {g} {Q = Q})
 pushout-rec-is-equiv {Q = Q} = is-equiv⁻¹ (Pushout-is-pushoutω)
+
+
+Pushout-UP≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {C : Type 𝓦} {f : A → B} {g : A → C}
+                {𝓠} {Q : Type 𝓠}
+                → (Pushout f g → Q) ≃ Cocone (mk-span A f g) Q
+Pushout-UP≃ = mk≃ _ (is-equiv⁻¹ pushout-rec-is-equiv)
 }
 % ```
 
@@ -101,26 +108,28 @@ construct the following triangle:}
 %```agda
 \agda{
 
-is-pushout←cogap : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-                     {f : A → B} {g : A → C}
-                     {𝓜} {D : Type 𝓜}
-                     (CD : Cocone (mk-span A f g) D)
-                   → is-equiv (cogap CD)
-                   → is-pushoutω _ CD
-is-pushout←cogap CD = fwd where
-    open Cocone CD
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         {f : A → B} {g : A → C} {𝓜} {D : Type 𝓜}
+         (CD : Cocone (mk-span A f g) D) where
+  open Cocone CD
 
+  private
     H : ∀ {𝓠} {Q : Type 𝓠}
         → cocone-map _ CD ~ cocone-map _ pushout ∘ postcomp Q (cogap CD)
     H f = ap (mk-cocone (f ∘ p) (f ∘ q)) (funext→ (λ a
       → sym (  ap-∘ f (pushout-rec CD) (glue a)
              ∙ ap (ap f) (pushout-rec-apβ a))))
 
+  is-pushout←cogap : is-equiv (cogap CD) → is-pushoutω _ CD
+  is-pushout←cogap cogap-eq {_} {Q}
+    = is-equiv~∘ H
+                 (Pushout-is-pushoutω {Q = Q})
+                 (postcomp-equiv cogap-eq)
 
-    fwd : is-equiv (cogap CD) → is-pushoutω _ CD
-    fwd cogap-eq {_} {Q} = is-equiv~∘ H
-               (Pushout-is-pushoutω {Q = Q})
-               (postcomp-equiv cogap-eq)
+  cogap-is-equiv←is-pushout
+    : is-pushoutω _ CD → is-equiv (cogap CD)
+  cogap-is-equiv←is-pushout po = is-equiv←postcomp _
+    λ {_} {Q} → 3-for-2~ H (Pushout-is-pushoutω {Q = Q}) po
 }
 %```
 }
@@ -196,7 +205,23 @@ is-pushout←postcomp-pullback C pb {Q = Q}
   = 3-for-2~ H
              (postcomp-cocone≃pb ._≃_.has-is-eqv)
              (gap-is-equiv←is-pullback (postcomp-cone C Q) (pb Q))
-  where
+  module pushout-postcomp where
+    H : gap (postcomp-cone C Q) ~
+         _≃_.fwd postcomp-cocone≃pb ∘ cocone-map _ C
+    H f = ap (λ p → _ , _ , p)
+          (ap funext→ (funext→ (λ a → ap-sym f (Cocone.filler C a))))
+
+
+postcomp-pullback←is-pushout
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {D : Type 𝓜}
+      (C : Cocone S D)
+    → is-pushoutω S C
+    → ∀ {𝓠}(Q : Type 𝓠)
+    → is-pullbackω (postcomp-cospan S Q)
+                   (postcomp-cone C Q)
+postcomp-pullback←is-pushout C pb Q
+  = is-pullback←gap (postcomp-cone C Q)
+      (is-equiv~∘ H (postcomp-cocone≃pb ._≃_.has-is-eqv) pb) where
     H : gap (postcomp-cone C Q) ~
          _≃_.fwd postcomp-cocone≃pb ∘ cocone-map _ C
     H f = ap (λ p → _ , _ , p)
@@ -204,3 +229,49 @@ is-pushout←postcomp-pullback C pb {Q = Q}
 }
 %```
 }
+
+
+\subtree[stt-0082]{
+\date{2025-07-30}
+\title{Pullback is commutative}
+\taxon{theorem}
+
+\p{There is an equivalence #{A \times_C B \simeq B \times_C A}.}
+
+
+%```agda
+\agda{
+
+pushout-flip : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                 {f : B → A} {g : B → C}
+               → Pushout f g → Pushout g f
+pushout-flip = pushout-rec (mk-cocone ι₂ ι₁ (sym ∘ glue))
+
+pushout-flip-inv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                     {f : B → A} {g : B → C}
+                   → pushout-flip {f = f} {g} ∘ pushout-flip ~ id
+pushout-flip-inv = pushout-ind _ (mk-coconeD ~refl ~refl λ
+                 b → IdP-func←Square (glue b) _ _
+                       ( ∙-reflr _
+                       ∙ ap-∘ pushout-flip pushout-flip (glue b)
+                       ∙ ap (ap pushout-flip) (pushout-rec-apβ b)
+                       ∙ ap-sym _ (glue b)
+                       ∙ ap sym (pushout-rec-apβ b)
+                       ∙ sym-sym
+                       ∙ sym (ap-id (glue b))))
+
+pushout-comm : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                 {f : B → A} {g : B → C}
+               → Pushout f g ≃ Pushout g f
+pushout-comm {f = f} {g = g} = mk≃ _ cogap-is-equiv where
+  po-cogap : Pushout f g → Pushout g f
+  po-cogap = pushout-flip
+
+  cogap-is-equiv : is-equiv po-cogap
+  cogap-is-equiv = is-equiv←qiso ( pushout-flip
+                                 , pushout-flip-inv
+                                 , pushout-flip-inv)
+}
+%```
+}
+

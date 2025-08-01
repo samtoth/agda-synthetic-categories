@@ -1,0 +1,100 @@
+\date{2025-08-01}
+\title{Descent for pushouts}
+\taxon{module}
+\meta{module}{Core.PushoutDescent}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.PushoutDescent where
+
+open import Foundations.Prelude
+open import ufAxioms
+open import Core.CanonicalPushouts
+open import Core.Arrow
+open import Core.ArrowEquiv
+}
+%```
+
+\subtree[stt-008D]{
+\title{Flattening lemma for pushouts}
+\taxon{theorem}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         (f : A → B) (g : A → C) where
+  total-span : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+               → Span _ _ _
+  total-span P .Span.Centre = Σ A (P ∘ ι₂ ∘ g)
+  total-span P .Span.Left = Σ B (P ∘ ι₁)
+  total-span P .Span.left (a , b) = (f a , tr P (sym (glue a)) b)
+  total-span P .Span.Right = Σ C (P ∘ ι₂)
+  total-span P .Span.right = total-map-fst g
+
+  total-cocone : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+                 → Cocone (total-span P) (Σ (Pushout f g) P)
+  total-cocone P .Cocone.p = total-map-fst ι₁
+  total-cocone P .Cocone.q = total-map-fst ι₂
+  total-cocone P .Cocone.filler (a , b)
+    = Σ-path→ ( glue a , tr∙tr-sym' (glue a) b)
+
+  total-is-pushout : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+                     → is-pushoutω (total-span P) (total-cocone P)
+  total-is-pushout P {𝓠} {Q} = eqv where
+    module S' = Span (total-span P)
+
+    Q' : Pushout f g → Type _
+    Q' x = P x → Q
+
+    cocone-tp : (Σ (Pushout f g) P → Q) → Cocone (total-span P) Q
+    cocone-tp = cocone-map _ (total-cocone P)
+
+    pushout-ind-tp : CoconeD (mk-span A f g) pushout Q'
+                   → (x : Pushout f g) → (P x → Q)
+    pushout-ind-tp = pushout-ind λ x → P x → Q
+
+    lem2 : ∀ {a b} (p : a ＝ b) {x} {f : P a → Q}
+           → (tr Q' p f) x ＝ f (tr P (sym p) x)
+    lem2 refl = refl
+
+    curry-cocone : Cocone (total-span P) Q
+           → CoconeD _ pushout Q'
+    curry-cocone (mk-cocone p q filler) = mk-coconeD (curry p) (curry q) λ
+      a → funext→ λ b → lem2 (glue a) ∙ curry filler a b
+
+    H : Arrow-map (cocone-map _ (total-cocone P) {Q})
+                  (coconeᵈ-map (mk-span _ f g) pushout {Q'})
+    H .Arrow-map.top = curry
+    H .Arrow-map.bot = curry-cocone
+    H .Arrow-map.comm h
+      = ap (mk-coconeD (λ a b → h (ι₁ a , b)) (λ a b → h (ι₂ a , b)))
+           (funext→ λ a → J {a = ι₁ (f a)} (λ z G →
+                 funext→ (λ b → lem2 G ∙ ap h (Σ-path→ (G , tr∙tr-sym' G b)))
+               ＝ apᵈ (curry h) G)
+           funext-refl
+           {ι₂ (g a)} (glue a))
+
+    curry-cocone-is-equiv : quasi-iso curry-cocone
+    curry-cocone-is-equiv .fst (mk-coconeD p q filler)
+      = mk-cocone (uncurry p) (uncurry q)
+          λ where (a , b) → sym (lem2 (glue a)) ∙ happly (filler a) b
+    curry-cocone-is-equiv .snd .fst (mk-cocone p q filler)
+      = Cocone-path→ _  _ (funext→ ~refl) (funext→ ~refl)
+          λ a → ∙-reflr _ ∙ sym'∙ (lem2 (glue (fst a))) (filler a)
+    curry-cocone-is-equiv .snd .snd (mk-coconeD p q filler)
+      = ap (mk-coconeD p q) (funext→ λ
+         a →   ap funext→ (funext→ (λ b → sym∙ (lem2 (glue a))
+                                            (happly (filler a) b)))
+             ∙ _≃_.η funext≃ (filler a))
+
+    arr-eq : is-Arrow-equiv H
+    arr-eq .fst = curry-is-equiv
+    arr-eq .snd = is-equiv←qiso curry-cocone-is-equiv
+
+    eqv : is-equiv (cocone-map _ (total-cocone P))
+    eqv = is-equiv←Arrow-equiv⁻¹ {F = H} arr-eq Pushout-is-pushoutωᵈ
+}
+%```
+}

@@ -7,6 +7,7 @@ open import Core.CanonicalSeqColims
 open import Core.CoSlice
 open import Core.CocartesianSquare
 open import Core.Codiagonal
+open import Core.Coequalisers
 open import Core.FibredJoin
 open import Core.Join
 open import Core.Lifts
@@ -14,6 +15,7 @@ open import Core.Orthogonal
 open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
+open import Core.PushoutDescent
 open import Core.PushoutEquiv
 open import Core.Slice
 open import Core.Spheres

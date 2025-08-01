@@ -41,3 +41,5 @@ open import Foundations.CanonicalPullbacks public
 open import Foundations.PullbackPath public
 open import Foundations.PathSplit public
 open import Foundations.Lift public
+open import Foundations.TypeSequence public
+open import Foundations.SequentialColimits public

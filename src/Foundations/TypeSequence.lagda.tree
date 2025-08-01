@@ -1,0 +1,168 @@
+\date{2025-07-30}
+\title{Type sequences}
+\taxon{module}
+\meta{module}{Foundations.TypeSequences}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Foundations.TypeSequence where
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Nat
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.Identity
+}
+%```
+
+\subtree[stt-0085]{
+\title{Type sequences}
+\taxon{definition}
+
+\p{An increasing type sequence is a diagram of the form:}
+
+\quiver{
+\begin{tikzcd}
+	{A_0} & {A_1} & {A_n} & {A_{n+1}} & {...}
+	\arrow["{f_0}"', from=1-1, to=1-2]
+	\arrow[dashed, from=1-2, to=1-3]
+	\arrow["{f_n}"', from=1-3, to=1-4]
+	\arrow[dashed, from=1-4, to=1-5]
+\end{tikzcd}
+}
+
+\p{Concretely, for each natural number #{n} we have a type #{A_n}
+and a map #{f_n : A_n \to A_{n+1}}.
+}
+
+%```agda
+\agda{
+record Incr-seq 𝓤 : Type (lsuc 𝓤) where
+  constructor mk-incr-seq
+  field
+    Point : ℕ → Type 𝓤
+    incr  : ∀ {n} → Point n → Point (suc n)
+
+  incrΣ : Σ ℕ Point → Σ ℕ Point
+  incrΣ (n , a) = (suc n , incr a)
+}
+%```
+
+\p{This trivially dualizes to decreasing sequences}
+
+%```agda
+\agda{
+record Decr-seq 𝓤 : Type (lsuc 𝓤) where
+  constructor mk-decr-seq
+  field
+    Point : ℕ → Type 𝓤
+    decr  : ∀ {n} → Point (suc n) → Point n
+}
+%```
+}
+
+
+\subtree[stt-0086]{
+\title{Maps of sequences}
+\taxon{definition}
+
+\p{A map of sequences #{A_{\dot} \to B_{\dot}} is a map of each type
+#{A_n \to B_n}, such that all the squares commute.}
+
+%```agda
+\agda{
+record Incr-seq-map {𝓤 𝓥}
+         (A : Incr-seq 𝓤) (B : Incr-seq 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-iseq-map
+  module A = Incr-seq A
+  module B = Incr-seq B
+  field
+    map  : ∀ {n} → A.Point n → B.Point n
+    comm : ∀ {n} → B.incr ∘ map {n} ~ map ∘ A.incr
+
+record Decr-seq-map {𝓤 𝓥}
+         (A : Decr-seq 𝓤) (B : Decr-seq 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-dseq-map
+  module A = Decr-seq A
+  module B = Decr-seq B
+  field
+    map  : ∀ {n} → A.Point n → B.Point n
+    comm : ∀ {n} → B.decr ∘ map {suc n} ~ map ∘ A.decr
+}
+%```
+}
+
+\subtree[stt-0087]{
+\title{Constant sequences}
+\taxon{definition}
+
+\p{We can define the constant sequence at a type. We write #{\Delta_A}
+for the constant sequence at #{A}.}
+
+%```agda
+\agda{
+const-incr-seq : ∀ {𝓤} → Type 𝓤 → Incr-seq 𝓤
+const-incr-seq A = mk-incr-seq (λ _ → A) id
+
+const-decr-seq : ∀ {𝓤} → Type 𝓤 → Decr-seq 𝓤
+const-decr-seq A = mk-decr-seq (λ _ → A) id
+}
+%```
+}
+
+\subtree[stt-0088]{
+\title{(Co)cones over a sequence}
+\taxon{definition}
+
+%```agda
+\agda{
+record Cone-seq {𝓤 𝓥} (S : Decr-seq 𝓤) (Apex : Type 𝓥)
+         : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-cone-seq
+  open Decr-seq S
+  field
+    π : ∀ {n} → Apex → Point n
+    comm : ∀ {n} → decr ∘ π ~ π {n}
+
+record Cocone-seq {𝓤 𝓥} (S : Incr-seq 𝓤) (Apex : Type 𝓥)
+         : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-cocone-seq
+  open Incr-seq S
+
+  field
+    ι    : ∀ {n} → Point n → Apex
+    comm : ∀ {n} → ι ~ ι ∘ incr {n}
+}
+%```
+}
+
+\subtree[stt-0089]{
+\title{(co)cones as sequence maps}
+\taxon{theorem}
+
+\p{A cone over a decreasing sequence #{B} at apex #{A} is a map
+#{\Delta_A \to B}}
+
+%```agda
+\agda{
+seq-map←cone : ∀ {𝓤 𝓥} {S : Decr-seq 𝓤} {Apex : Type 𝓥}
+               → Cone-seq S Apex
+               → Decr-seq-map (const-decr-seq Apex) S
+seq-map←cone (mk-cone-seq π comm) = mk-dseq-map π comm
+
+seq-map≃cone : ∀ {𝓤 𝓥} {S : Decr-seq 𝓤} {Apex : Type 𝓥}
+               → Cone-seq S Apex
+               ≃ Decr-seq-map (const-decr-seq Apex) S
+seq-map≃cone = mk≃ _ (is-equiv←qiso qiso) where
+  qiso : quasi-iso seq-map←cone
+  qiso .fst (mk-dseq-map map comm) = mk-cone-seq map comm
+  qiso .snd .fst (mk-cone-seq π comm) = refl
+  qiso .snd .snd (mk-dseq-map map comm) = refl
+}
+%```
+}

@@ -3,9 +3,11 @@ open import Axioms.FreeAlgInj
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.CanonicalPushouts
+open import Core.CanonicalSeqColims
 open import Core.CoSlice
 open import Core.CocartesianSquare
 open import Core.Codiagonal
+open import Core.FibredJoin
 open import Core.Join
 open import Core.Lifts
 open import Core.Orthogonal
@@ -61,6 +63,7 @@ open import Foundations.PullbackPath
 open import Foundations.Pullbacks
 open import Foundations.Pushout
 open import Foundations.QuasiIsomorphism
+open import Foundations.SequentialColimits
 open import Foundations.Sigma
 open import Foundations.SigmaPath
 open import Foundations.SigmaProperties
@@ -72,6 +75,7 @@ open import Foundations.Square
 open import Foundations.Subtypes
 open import Foundations.TheoremOfChoice
 open import Foundations.TotalEquiv
+open import Foundations.TypeSequence
 open import Foundations.Unit
 open import Foundations.UnitUP
 open import Foundations.Univalence

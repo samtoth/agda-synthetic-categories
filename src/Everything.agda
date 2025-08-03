@@ -9,6 +9,7 @@ open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Coequalisers
 open import Core.FibredJoin
+open import Core.Image
 open import Core.Join
 open import Core.Lifts
 open import Core.Orthogonal

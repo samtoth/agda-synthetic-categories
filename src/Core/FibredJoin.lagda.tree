@@ -1,5 +1,5 @@
 \date{2025-07-30}
-\title{Fibred joins}
+\title{Fibred joins and the modified image construction}
 \taxon{module}
 \meta{module}{Core.FibredJoin}
 \author{samueltoth}
@@ -11,6 +11,11 @@ module Core.FibredJoin where
 
 open import Foundations.Prelude
 open import ufAxioms
+
+open import Core.Slice
+open import Core.Coequalisers
+open import Core.CanonicalSeqColims
+open import Core.Image
 }
 %```
 
@@ -53,6 +58,268 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 
   Fibre-join-π : Fibre-join → B
   Fibre-join-π = pushout-rec (Cocone←Cone (_ , PB , pb) .snd .snd)
+}
+%```
+}
+
+\subtree[stt-008K]{
+\title{Fibred joins preserve universal embedding}
+\taxon{lemma}
+\citet{3.1}{rijke-2017}
+
+\p{Let #{f} be a map #{A \to B}, then given a map #{f' : A' \to B}
+together with a triangle #{f \to f'}, if #{f'} is a
+[universal embedding](stt-008H), then so is #{f * f'}.}
+
+\proof{
+
+\p{Let #{i : I' \hookrightarrow B} be an embedding.  To show #{f * f'}
+is universal, we need to show the map #{(f * f' \to i) \to (f \to i)}
+given by postcomposition is an equivalence, but because #{i} is an
+embedding this is a map between propositions, so it suffices to give a
+map in the opposite direction. Then let #{k} be a map #{k : f \to i},
+and by the assumption that #{f'} is a universal embedding, we
+also have a map #{\varphi^i(k) : f' \to i}. These maps are arranged
+in the diagram below:}
+
+\quiver{
+\begin{tikzcd}
+	{A\times_B A'} && {A'} \\
+	\\
+	A && {A *_B A'} \\
+	&&& {I'} \\
+	&&&&& B
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["{\varphi^i(k)}", curve={height=-6pt}, dashed, from=1-3, to=4-4]
+	\arrow["{f'}", curve={height=-24pt}, from=1-3, to=5-6]
+	\arrow[from=3-1, to=3-3]
+	\arrow["k"', from=3-1, to=4-4]
+	\arrow["f"', curve={height=18pt}, from=3-1, to=5-6]
+	\arrow[dashed, from=3-3, to=4-4]
+	\arrow["{f*f'}", curve={height=-12pt}, dashed, from=3-3, to=5-6]
+	\arrow["i"{description}, from=4-4, to=5-6]
+\end{tikzcd}
+}
+
+\p{To construct the map #{j : A *_B A' \to I'}, we need to show that the
+square with #{k} and #{\varphi^i(k)} commutes, but because #{i} is an
+embedding, it suffices to show the outer square commutes. Now, by
+pasting together triangles, we have #{f \sim ij\iota_1} and
+#{f' \sim ij\iota_2}, which by the universal property of pullbacks
+gives us #{ij \sim f * f'} as required.}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
+         (f : A → B) (f' : A' → B) (tri : Slice-map f f')
+         {PB : Type 𝓤}
+         (pb : Cone (mk-cospan B f f') PB)
+         (is-pb : is-pullbackω _ pb) where
+  open Cone pb renaming (i to π₁ ; j to π₂)
+
+  Fibre-join-slice-map : Slice-map f (Fibre-join-π f f' pb is-pb)
+  Fibre-join-slice-map .fst = ι₁
+  Fibre-join-slice-map .snd = ~refl
+
+  Fibre-join-is-universal-embedding
+    : is-universal-embedding f f' tri
+    → is-universal-embedding
+        f
+        (Fibre-join-π f f' pb is-pb)
+        Fibre-join-slice-map
+  Fibre-join-is-universal-embedding emb i iemb
+    = _≃_.has-is-eqv (is-equiv←logical
+                       (slice-embedding-is-prop iemb)
+                       (slice-embedding-is-prop iemb)
+                       (_ , map)) where
+
+    module φ = is-equiv (emb i iemb)
+
+    map : Slice-map f i → Slice-map (Fibre-join-π f f' pb is-pb) i
+    map k .fst = pushout-rec (mk-cocone
+      (k .fst)
+      (φ.bwd  k .fst)
+      (iemb ◂emb (k .snd ▸ π₁ ~∙ filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
+    map k .snd = pushout-ind _ (mk-coconeD
+      (k .snd)
+      (φ.bwd k .snd)
+      λ a → IdP-func←Square (glue a) _ _
+              (ap (_∙ φ.bwd k .snd (π₂ a))
+                  ( ap-∘ i _ (glue a)
+                  ∙ ap (ap i) (pushout-rec-apβ a)
+                  ∙ is-equiv.ε iemb _)
+              ∙ (ap (_∙ φ.bwd k .snd (π₂ a)) (sym (∙-assoc (k .snd _) (filler a) _))
+              ∙ ∙-assoc (k .snd _ ∙ filler a) (sym _) _
+              ∙ ap ((k .snd _ ∙ filler a) ∙_) (∙-sym' (φ.bwd k .snd _)))
+              ∙ ∙-reflr _
+              ∙ ap (k .snd (π₁ a) ∙_) (sym (pushout-rec-apβ a))))
+}
+%```
+}
+
+
+\subtree[stt-008F]{
+\title{Iterated fibred join}
+\taxon{definition}
+
+\p{Given a map #{f : A \to B}, we can mutually define the iterated
+fibred join as a [sequence of types](stt-0085) together with maps down
+into #{B}.}
+
+\quiver{
+\begin{tikzcd}
+	A && {A*^BA} && {(A *^B A) *^B A} && {...} \\
+	\\
+	&& B
+	\arrow["{\iota_2}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-3]
+	\arrow["{\iota_2}", from=1-3, to=1-5]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=1-5, to=1-7]
+	\arrow[from=1-5, to=3-3]
+	\arrow[from=1-7, to=3-3]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {PB : Type 𝓤 → Type 𝓤}
+         (pb : ∀ {A' : Type 𝓤} (g : A' → B) → Cone (mk-cospan B f g) (PB A'))
+         (is-pb : ∀ {A'} {g} →  is-pullbackω _ (pb {A'} g)) where
+
+  Im-aprox : ℕ → Type 𝓤
+  Im-cocone  : ∀ {n} → Im-aprox n → B
+
+  Im-aprox zero = A
+  Im-aprox (suc n) = Fibre-join f (Im-cocone {n}) (pb Im-cocone) is-pb
+
+  Im-cocone {zero} = f
+  Im-cocone {suc n} = Fibre-join-π f Im-cocone (pb Im-cocone) is-pb
+
+  Im-slice-map : ∀ {n} → Slice-map (Im-cocone {n}) (Im-cocone {suc n})
+  Im-slice-map .fst = ι₂
+  Im-slice-map .snd = ~refl
+
+  iterated-join : Incr-seq 𝓤
+  iterated-join .Incr-seq.Point = Im-aprox
+  iterated-join .Incr-seq.incr  = ι₂
+
+  iterated-join-cocone : Cocone-seq iterated-join B
+  iterated-join-cocone .Cocone-seq.ι = Im-cocone
+  iterated-join-cocone .Cocone-seq.comm = ~refl
+
+  Im-cone : ∀ {n} → A → Im-aprox n
+  Im-cone {zero} = id
+  Im-cone {suc n} = ι₁
+
+  Im-cone∘cocone : ∀ {n} → Im-cocone ∘ Im-cone {n} ~ f
+  Im-cone∘cocone {zero} = ~refl
+  Im-cone∘cocone {suc n} = ~refl
+}
+%```
+}
+
+\subtree[stt-008G]{
+\title{The modified image of a map}
+\taxon{construction}
+
+%```agda
+\agda{
+module Im' {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {PB : Type 𝓤 → Type 𝓤}
+         (pb : ∀ {A' : Type 𝓤} (g : A' → B) → Cone (mk-cospan B f g) (PB A'))
+         (is-pb : ∀ {A'} {g} →  is-pullbackω _ (pb {A'} g)) where
+
+  Im' : Type 𝓤
+  Im' = Seq-colimit (iterated-join f pb is-pb)
+
+  proj : A → Im'
+  proj = ι-seq _
+
+  incl : Im' → B
+  incl = seq-colim-rec (iterated-join-cocone f pb is-pb)
+
+  factors : Slice-map f incl
+  factors .fst = proj
+  factors .snd = ~refl
+
+  im-slice-map : ∀ n → Slice-map f (Im-cocone _ pb is-pb {n})
+  im-slice-map n = ( Im-cone _ pb is-pb
+                 , Im-cone∘cocone f pb is-pb {n})
+
+  all-univ : ∀ n
+             → is-universal-embedding
+                f
+                (Im-cocone _ pb is-pb)
+                (im-slice-map n)
+  all-univ zero
+    = is-universal-embedding←logical f _ _ λ _ _ → id
+  all-univ (suc n)
+    = Fibre-join-is-universal-embedding f _ (im-slice-map n)
+                                        _ is-pb (all-univ n)
+
+  universal : is-universal-embedding f incl factors
+  universal
+    = is-universal-embedding←logical f incl factors map where
+      map : ∀ {𝓦} {I' : Type 𝓦}
+              (i' : I' → B) → is-embedding i'
+            → Slice-map f i' → Slice-map incl i'
+      map i' iemb fi' .fst = seq-colim-rec (mk-cocone-seq
+        (λ {n} → is-equiv.bwd (all-univ n i' iemb) fi' .fst)
+        ~refl)
+      map i' iemb fi' .snd = pushout-ind _
+        (mk-coconeD
+          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+          (⊎-ind
+            ( (uncurry λ n a → IdP-func←Square (glue (inl (n , a))) _ _
+                      ( ap (_∙ (is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
+                           ( ap-∘ i' _ (glue (inl (n , a)))
+                           ∙ ap (ap i') (pushout-rec-apβ (inl (n , a))))
+                      ∙ sym (ap ((is-equiv.bwd (all-univ n i' iemb) fi' .snd a) ∙_)
+                                (pushout-rec-apβ (inl (n , a)))
+                      ∙ ∙-reflr _)))
+            , uncurry λ n a → IdP-func←Square (glue (inr (n , a))) _ _
+                 let e = is-equiv.bwd (all-univ n i' iemb) fi' .snd a
+                 in ap (_∙ e) ( ap-∘ i' _ (glue (inr _))
+                              ∙ ap (ap i') (pushout-rec-apβ _))
+                    ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
+                          ∙ ∙-reflr _))))
+
+  -- incl-is-embedding : is-embedding incl
+  -- incl-is-embedding
+  --   = is-embedding←is-prop-map λ
+  --      b → is-prop←is-single-if-inhabited λ f → lem b f where
+
+  --   fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥)
+  --   fib-seq b .Incr-seq.Point n = fibre (Im-cocone f pb is-pb {n}) b
+  --   fib-seq b .Incr-seq.incr = total-map-fst ι₂
+
+  --   all-constant : ∀ b (a : fibre f b) n
+  --                  → (fib-seq b .Incr-seq.incr {n}
+  --                     ~ λ _ → total-map-fst ι₁ a)
+  --   all-constant b (a , p) zero  = {!!}
+  --   all-constant b (a , p) (suc n) = {!!}
+
+  --   lem3 : (b : B) → fibre f b → is-singleton (Seq-colimit (fib-seq b))
+  --   lem3 x (y , p) = {!!}
+
+  --   lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
+  --   lem2 b p = {!!}
+
+  --   sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
+  --   sm = is-equiv.bwd (universal fst (is-embedding←is-prop-map
+  --                       (Σ̃-π-emb (mk-subtype (λ _ → is-single-is-prop)))))
+  --                     (total-map lem2 ∘ refl-fibre f , ~refl)
+
+  --   lem : ∀ (b : B) (f : fibre incl b)
+  --         → is-singleton (fibre (λ v → incl v) b)
+  --   lem = Slice-family {!sm!}
+
 }
 %```
 }

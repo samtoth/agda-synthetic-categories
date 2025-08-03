@@ -55,7 +55,8 @@ open WithGlobalUnivalence UA public
 
 {-# REWRITE ua-linv #-}
 
-open import Foundations.PropExt public using (PropExt)
+open import Foundations.PropExt public using
+  (PropExt; logical←is-equiv; is-equiv←logical)
 import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤

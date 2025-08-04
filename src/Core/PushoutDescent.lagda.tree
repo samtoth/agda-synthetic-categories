@@ -10,6 +10,7 @@
 module Core.PushoutDescent where
 
 open import Foundations.Prelude
+open import Ergonomics.Extensionality
 open import ufAxioms
 open import Core.CanonicalPushouts
 open import Core.Arrow
@@ -20,6 +21,38 @@ open import Core.ArrowEquiv
 \subtree[stt-008D]{
 \title{Flattening lemma for pushouts}
 \taxon{theorem}
+
+\p{The flattening theorem essentially states that for a family #{P}
+over a pushout #{A \times_C B}, the total type #{\tilde{P}} is
+equivalent to the pushout of total types: #{\Sigma_A P
++_{\Sigma_C P} \Sigma_B P}.}
+
+\proof{
+\p{Given a span #{S : A \leftarrow B \rightarrow C} and a family #{P}
+over the pushout of #{S}, we can define the total span #{\Sigma_{S}P}.
+We first note that for some arbitrary type #{Q}, dependent cones over
+#{S} at #{p \mapsto P(p) \to Q} are equivalent to cones over
+#{\Sigma_{S} P} at #{Q} - this is analogous to [currying
+functions](Foundations.PiProperties).  We then construct the following
+square:
+}
+
+\quiver{
+\begin{tikzcd}
+	{\Pi_{p : A+^C B} Q^{P(p)}} && {Q^{\Sigma_{p : A+^CB} P(p)}} \\
+	\\
+	{\rm{cocone}^d(S,p \mapsto Q^{P(p)})} && {\rm{cocone}(\Sigma_S P,Q)}
+	\arrow["{\rm{curry}}", from=1-1, to=1-3]
+	\arrow["{\rm{cocone}^d}"', from=1-1, to=3-1]
+	\arrow["{\rm{cocone}}", from=1-3, to=3-3]
+	\arrow["{\rm{curry}}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{Since, currying (functions or cocones) and the dependent cocone
+map are equivalences, then so is the cocone map on the right.}
+
+}
 
 %```agda
 \agda{
@@ -52,8 +85,8 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
            → (tr Q' p f) x ＝ f (tr P (sym p) x)
     lem2 refl = refl
 
-    curry-cocone : Cocone (total-span P) Q
-           → CoconeD _ pushout Q'
+    curry-cocone
+      : Cocone (total-span P) Q → CoconeD _ pushout Q'
     curry-cocone (mk-cocone p q filler) = mk-coconeD (curry p) (curry q) λ
       a → funext→ λ b → lem2 (glue a) ∙ curry filler a b
 
@@ -88,6 +121,299 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 
     eqv : is-equiv (cocone-map _ (total-cocone P))
     eqv = is-equiv←Arrow-equiv⁻¹ {F = H} arr-eq Pushout-is-pushoutωᵈ
+}
+%```
+}
+
+
+\p{Before introducing the main descent theorem, we need some auxiliary
+definitions.}
+
+
+\subtree[stt-008M]{
+\date{2025-08-03}
+\title{Maps of spans}
+\taxon{theorem}
+
+\p{A map between spans #{S} and #{S'} is a diagram as follows where
+all the squares commute:}
+
+\quiver{
+\begin{tikzcd}
+	A && S && B \\
+	\\
+	{A'} && {S'} && {B'}
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=1-1]
+	\arrow[from=1-3, to=1-5]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=1-5, to=3-5]
+	\arrow[from=3-3, to=3-1]
+	\arrow[from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{Equivalently, a span map is a pair of arrow maps between the
+left and right maps of each span, together with a homotopy between
+the two maps between the centre of the spans.}
+
+%```agda
+\agda{
+record Span-map {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
+                {𝓤' 𝓥' 𝓦'} (S' : Span 𝓤' 𝓥' 𝓦')
+                : Type (𝓤 ⊔ 𝓤' ⊔ 𝓥 ⊔ 𝓥' ⊔ 𝓦 ⊔ 𝓦') where
+   constructor mk-span-map
+   module S = Span S
+   module S' = Span S'
+   field
+     h₁ : S.Left → S'.Left
+     h₂ : S.Centre → S'.Centre
+     h₃ : S.Right → S'.Right
+     H  : h₁ ∘ S.left ~ S'.left ∘ h₂
+     K  : h₃ ∘ S.right ~ S'.right ∘ h₂
+
+   amap-l↓ : Arrow-map S.left S'.left
+   amap-l↓ = mk-amap h₂ h₁ H
+
+   amap-l : Arrow-map h₂ h₁
+   amap-l = mk-amap S.left S'.left (H ~⁻¹)
+
+   amap-r↓ : Arrow-map S.right S'.right
+   amap-r↓ = mk-amap h₂ h₃ K
+
+   amap-r : Arrow-map h₂ h₃
+   amap-r = mk-amap S.right S'.right (K ~⁻¹)
+}
+%```
+}
+
+\subtree[stt-008N]{
+\date{2025-08-03}
+\title{Cartesian maps of spans}
+\taxon{definition}
+
+\p{A map between spans is said to be cartesian when each square
+is [cartesian](stt-003V) (i.e. a pullback square).}
+
+%```agda
+\agda{
+is-cartesian-span-map
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+      {𝓤' 𝓥' 𝓦'} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-map S S' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+is-cartesian-span-map F = is-cartesian amap-l × is-cartesian amap-r
+  where open Span-map F
+
+is-cartesian-span-map-is-prop
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+      {𝓤' 𝓥' 𝓦'} {S' : Span 𝓤' 𝓥' 𝓦'}
+      {F : Span-map S S'}
+    → is-prop (is-cartesian-span-map F)
+is-cartesian-span-map-is-prop
+  = is-prop-Σ
+      is-cartesian-is-prop
+      (λ _ → is-cartesian-is-prop)
+}
+%```
+}
+
+
+\subtree[stt-008O]{
+\date{2025-08-03}
+\title{Pulling back squares}
+\taxon{construction}
+
+\p{Given span #{S}, and a cocone over #{S} centred at #{X}, we can
+'pull this square back' along any map #{X' \to X}, to obtain a
+span #{S'}, a cocone over #{S'} at #{X'} as well as a cartesian map
+of spans #{S' \to S}.
+}
+
+%```agda
+\agda{
+module SquarePB {𝓤 𝓥 𝓦 𝓜 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
+                (C : Cocone S X) {X' : Type 𝓛} (f : X' → X)
+                where
+  open Span S
+  open Cocone C
+
+  S' : Span (𝓤 ⊔ 𝓥 ⊔ 𝓜 ⊔ 𝓛) (𝓥 ⊔ 𝓜 ⊔ 𝓛) (𝓦 ⊔ 𝓜 ⊔ 𝓛)
+  S' .Span.Centre = Pullback {B = Pullback p f} fst left
+  S' .Span.Left = Pullback p f
+  S' .Span.left  = fst
+  S' .Span.Right = Pullback q f
+  S' .Span.right ((r , x , H) , c , K) = (right c  , x , sym (sym H ∙ ap p K ∙ filler c) )
+
+  C' : Cocone S' X'
+  C' .Cocone.p = pb.π₂ _ _
+  C' .Cocone.q = pb.π₂ _ _
+  C' .Cocone.filler _ = refl
+
+  proj : Span-map S' S
+  proj .Span-map.h₁ = pb.π₁ _ _
+  proj .Span-map.h₂ = pb.π₂ _ _
+  proj .Span-map.h₃ = pb.π₁ q f
+  proj .Span-map.H  = pb.filler _ _
+  proj .Span-map.K _ = refl
+
+  front-left : Arrow-map (pb.π₁ p f) f
+  front-left = mk-amap (pb.π₂ p f) p (pb.filler p f)
+
+  front-right : Arrow-map (pb.π₁ q f) f
+  front-right = mk-amap (pb.π₂ q f) q (pb.filler _ _)
+
+  front-right-is-cart : is-cartesian (front-right)
+  front-right-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  front-left-is-cart : is-cartesian front-left
+  front-left-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  amap-l↓-is-cart : is-cartesian (Span-map.amap-l↓ proj)
+  amap-l↓-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  amap-l-is-cart : is-cartesian (Span-map.amap-l proj)
+  amap-l-is-cart = rotate-is-cartesian _ amap-l↓-is-cart
+
+  square~ : Arrow-map-path
+              (paste-squares front-left (Span-map.amap-l proj))
+              (paste-squares front-right (Span-map.amap-r proj))
+  square~ .fst = ~refl
+  square~ .snd .fst = filler
+  square~ .snd .snd ((l , x' , H) , c , refl)
+    = ∙-reflr _
+    ∙ sym (ap (filler c ∙_) (∙-symsym (sym H) (filler c))
+          ∙ sym∙ (filler c) (sym (sym H))
+          ∙ sym-sym)
+
+  proj-is-cartesian : is-cartesian-span-map proj
+  proj-is-cartesian .fst = amap-l-is-cart
+  proj-is-cartesian .snd = 3-for-2-cartesian square~
+    (compose-cartesian front-left-is-cart amap-l-is-cart)
+    front-right-is-cart
+
+}
+%```
+}
+
+\subtree[stt-008P]{
+\title{Cartesian span maps are descent data}
+\taxon{lemma}
+
+\p{Given a span #{S}, we can define a map #{\rm{Cocone}(C,\UU) \to
+\rm{Cart}(S)} - where #{\rm{Cart}(S)} is the type of spans #{S'}
+together with a cartesian span map down into #{S}.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {Sp : Span 𝓤 𝓥 𝓦}  where
+  open Span Sp renaming (Centre to S;
+                         left to f;
+                         right to g;
+                         Left to A;
+                         Right to B) using ()
+
+  Cart : ∀ 𝓜 → Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜))
+  Cart 𝓜 = Σ[ S' ∶ Span (𝓤 ⊔ 𝓥 ⊔ 𝓜) (𝓥 ⊔ 𝓜) (𝓦 ⊔ 𝓜) ] Σ[ proj ∶ Span-map S' Sp ]
+            is-cartesian-span-map proj
+
+  Cart-path→ : ∀ {𝓜}
+              → {C C' : Cart 𝓜}
+              → (p : C .fst ＝ C' .fst)
+              → IdP (ap (λ p → Span-map p Sp) p) (C .snd .fst) (C' .snd .fst)
+              → C ＝ C'
+  Cart-path→ refl Q = Σ-path→ ( refl
+                              , Σ-path→
+                                 ( Q
+                                 , is-cartesian-span-map-is-prop _ _
+                                 )
+                               )
+
+  cart←cocone : ∀ {𝓜} → Cocone Sp (Type 𝓜) → Cart 𝓜
+  cart←cocone cc = ( span , proj , cart) where
+    open Cocone cc renaming (p to Pa; q to Pb)
+
+    span : Span _ _ _
+    span .Span.Centre = Σ[ s ∶ S ] Σ[ a ∶ A ] Σ[ p ∶ f s ＝ a ] Pa a -- we have to insert a singleton to make the universe lvl line up
+    span .Span.Left = Σ A Pa
+    span .Span.left (s , .(f s) , refl , pa) = (f s , pa)
+    span .Span.Right = Σ B Pb
+    span .Span.right (s , a , refl , pa) = (g s , coe (filler s) pa)
+
+    proj : Span-map span Sp
+    proj .Span-map.h₁ = fst
+    proj .Span-map.h₂ = fst
+    proj .Span-map.h₃ = fst
+    proj .Span-map.H (s , a , refl , pa) = refl
+    proj .Span-map.K (s , a , refl , pa) = refl
+
+    ramap : ∀ s → Arrow-map
+                    (λ (a : Pb (g s)) → a)
+                    (arrow-fibre (Span-map.amap-r proj) s)
+    ramap s .Arrow-map.top pb = ((s  , f s , refl , coe (sym (filler s)) pb ) ,  refl)
+    ramap s .Arrow-map.bot pb = (g s , pb) , refl
+    ramap s .Arrow-map.comm a
+      = fibre-path→
+          (  Σ-path→ (refl , (sym (coe-sym (filler s))))
+          , (∙-reflr _ ∙ Σ-path-ap-fst)
+          )
+
+    ramap-eq : ∀ s → is-Arrow-equiv (ramap s)
+    ramap-eq s .fst = is-equiv←qiso (λ where
+      .fst ((_ , _ , refl , pa) , refl) → coe (filler s) pa
+      .snd .fst a → coe-sym (filler s)
+      .snd .snd ((s , a , refl , pa) , refl) → fibre-path→ ((Σ-path→ (refl , (Σ-path→ (refl , (Σ-path→ (refl , coe-sym' (filler s)))))))
+                , ∙-reflr _ ∙ Σ-path-ap-fst ∙ refl))
+    ramap-eq s .snd = is-equiv←qiso (λ where
+      .fst ((b , pb) , refl) → pb
+      .snd .fst → ~refl
+      .snd .snd ((b , pb) , refl) → refl)
+
+    cart : is-cartesian-span-map proj
+    cart .fst = {!!}
+    cart .snd s = is-equiv←Arrow-equiv {F = ramap s} (ramap-eq s) id-is-equiv
+}
+%```
+}
+
+\subtree[stt-008L]{
+\date{2025-08-03}
+\title{Descent for pushouts}
+\taxon{theorem}
+
+\p{In the following, let #{S} be a span and #{C} be a cocone over #{S}
+centred at #{X}.}
+
+\p{Descent for pushouts states that if this cocone is a pushout, then
+the map that takes a type #{X'} and a map #{X' \to X} to a span
+together with a cartesian map down to #{S} is an equivalence.}
+
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
+         (C : Cocone S X) (C-pb : is-pushoutω _ C) where
+
+  cart-map : (Σ[ X' ∶ Type 𝓜 ] (X' → X)) → Cart 𝓜
+  cart-map (X' , f) = (S' , proj , proj-is-cartesian) where
+    open SquarePB C f
+
+
+  descent-pushout : is-equiv cart-map
+  descent-pushout = is-equiv←Arrow-equiv {F = amap} amap-eqv (C-pb) where
+    straighten : (X → Type 𝓜) → Σ[ X' ∶ Type 𝓜 ] (X' → X)
+    straighten B = (Σ _ B , fst)
+
+    straighten-equiv : is-equiv straighten
+    straighten-equiv = is-equiv←qiso {!!}
+
+    amap : Arrow-map (cocone-map _ C) cart-map
+    amap .Arrow-map.top = straighten
+    amap .Arrow-map.bot = cart←cocone
+    amap .Arrow-map.comm P = Cart-path→ {!!} {!!}
+
+    amap-eqv : is-Arrow-equiv amap
+    amap-eqv .fst = straighten-equiv
+    amap-eqv .snd = {!!}
 }
 %```
 }

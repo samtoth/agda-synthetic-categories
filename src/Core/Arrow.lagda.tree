@@ -122,27 +122,27 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
 
-  arrow-map-Path : ∀ (G H : Arrow-map f f') → Type _
-  arrow-map-Path (mk-amap t b H) (mk-amap t' b' H')
+  Arrow-map-path : ∀ (G H : Arrow-map f f') → Type _
+  Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
     = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
       (H ~∙ (f' ◂ p) ~ q ▸ f ~∙ H')
 
-  arrow-map-Path-refl : {G : Arrow-map f f'} → arrow-map-Path G G
-  arrow-map-Path-refl = ~refl , ~refl , ~∙-reflr _
+  Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
+  Arrow-map-path-refl = ~refl , ~refl , ~∙-reflr _
 
-  arrow-map-Path-is-Rppred : ∀ (G : Arrow-map f f')
+  Arrow-map-path-is-Rppred : ∀ (G : Arrow-map f f')
                              → Reflexive-ppred _ G _
-  arrow-map-Path-is-Rppred G = (arrow-map-Path G) , arrow-map-Path-refl
+  Arrow-map-path-is-Rppred G = (Arrow-map-path G) , Arrow-map-path-refl
 
-  arrow-map-path→ : ∀ {G H : Arrow-map f f'} → (G ＝ H) → arrow-map-Path G H
-  arrow-map-path→ = idtoppred (arrow-map-Path-is-Rppred _) _
+  Arrow-map-path←id : ∀ {G H : Arrow-map f f'} → (G ＝ H) → Arrow-map-path G H
+  Arrow-map-path←id = idtoppred (Arrow-map-path-is-Rppred _) _
 
-  arrow-map-path : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ arrow-map-Path G H
-  arrow-map-path G@(mk-amap t b h) H
-    = mk≃ arrow-map-path→
+  Arrow-map-path≃ : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ Arrow-map-path G H
+  Arrow-map-path≃ G@(mk-amap t b h) H
+    = mk≃ Arrow-map-path←id
           (is-identity-system←Sing-sing
-            (arrow-map-Path G)
-            arrow-map-Path-refl
+            (Arrow-map-path G)
+            Arrow-map-path-refl
             (is-single←equiv-to-single
               (Σ-ap-≃-fst (Arrow-map-repr≃ _ _ e⁻¹))
               (is-singleton-structure←parts (SingS-is-single t)
@@ -151,6 +151,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                   (b , ~refl)
                   (SingS-is-single λ a → h a ∙ refl))))
             H)
+
+  Arrow-map-path→ : ∀ {G H : Arrow-map f f'} → Arrow-map-path G H
+                    → (G ＝ H)
+  Arrow-map-path→ = _≃_.bwd (Arrow-map-path≃ _ _)
 }
 %```
 }
@@ -172,9 +176,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   paste-squares : Arrow-map f' f'' → Arrow-map f f'
                   → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
-    = mk-amap (g' ∘ g) (h' ∘ h) ( h' ∘ h ∘ f        ~⟨ h' ◂ comm ⟩
-                                  h' ∘ f' ∘ g       ~⟨ comm' ▸ g ⟩
-                                  f'' ∘ g' ∘ g      ~∎)
+    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ~∙ comm' ▸ g)
 }
 % ```
 }
@@ -199,9 +201,13 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                  → fibre f b → fibre f' (gs .Arrow-map.bot b)
   arrow-fibre (mk-amap g g' hom) b (a , p) = (g a , sym (hom a) ∙ ap g' p)
 
-
   is-cartesian : Arrow-map f f' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   is-cartesian a = is-fibrewise-equiv (arrow-fibre a)
+
+  is-cartesian-is-prop
+    : ∀ {F : Arrow-map f f'} → is-prop (is-cartesian F)
+  is-cartesian-is-prop
+    = is-prop-Π (λ a → is-equiv-is-prop)
 }
 % ```
 }
@@ -238,8 +244,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     II x (aa , p)
      = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p
          ＝⟨⟩
-       sym (ap (a .bot) (b .comm aa) ∙ ⌜ a .comm (b .top aa) ∙ refl ⌝) ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ap! (∙-reflr _) ⟩
        ⌜ sym (ap (a .bot) (b .comm aa) ∙ a .comm (b .top aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
          ＝⟨ ap! (∙-symsym (ap (a .bot) (b .comm aa)) _) ⟩
        (sym (a .comm (b .top aa)) ∙ sym (ap (a .bot) (b .comm aa))) ∙ ap (a .bot ∘ b .bot) p
@@ -260,6 +264,36 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
         ~
       arrow-fibre (paste-squares a b) x
     I x fib = fibre-path→ (refl , II x fib)
+
+  3-for-2-cartesian : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
+                        {H : Arrow-map f f''}
+                      → Arrow-map-path H (paste-squares a b)
+                      → is-cartesian H
+                      → is-cartesian a
+                      → is-cartesian b
+  3-for-2-cartesian {a = F@(mk-amap f f' fcomm)} {b = G@(mk-amap g g' gcomm)}
+                    K abcart bcart b
+    = 3-for-2~ H (bcart (g' b)) (tr is-cartesian (Arrow-map-path→ K) abcart b) where
+     H : arrow-fibre
+          (paste-squares F G) b
+          ~
+          arrow-fibre F (g' b) ∘
+          arrow-fibre G b
+     H (a , p) = Σ-path→ (refl , lem) where
+       lem : sym (ap f' (gcomm a) ∙ fcomm (g a)) ∙ ap (f' ∘ g') p ＝
+              sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p)
+       lem = ⌜ sym (ap f' (gcomm a) ∙ fcomm (g a)) ⌝ ∙ ap (f' ∘ g') p
+               ＝⟨ ap! (∙-symsym (ap f' (gcomm a)) _) ⟩
+             (sym (fcomm (g a)) ∙ ⌜ sym (ap f' (gcomm a)) ⌝) ∙ ap (f' ∘ g') p
+               ＝⟨ ap! (sym (ap-sym f' _)) ⟩
+             (sym (fcomm (g a)) ∙ ap f' (sym (gcomm a))) ∙ ap (f' ∘ g') p
+               ＝⟨ ∙-assoc (sym (fcomm (g a))) _ _ ⟩
+             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a)) ∙ ⌜ ap (f' ∘ g') p ⌝
+               ＝⟨ ap! (ap-∘ f' g' p) ⟩
+             sym (fcomm (g a)) ∙ ⌜ ap f' (sym (gcomm a)) ∙ (ap f' (ap g' p)) ⌝
+               ＝⟨ ap! (sym (ap-∙ f' (sym _) (ap g' p))) ⟩
+             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p) ∎
+
 }
 % ```
 }
@@ -607,3 +641,36 @@ precomp-cartesian {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
 % ```
 }
 }
+
+%```agda
+\agda{
+rotate-square : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+                  {C : Type 𝓦} {D : Type 𝓜}
+                  {f : A → B} {g : C → D}
+                → (F : Arrow-map f g)
+                → Arrow-map (F .Arrow-map.top) (F .Arrow-map.bot)
+rotate-square {f = f} {g = g} F
+  = mk-amap f g (F .Arrow-map.comm ~⁻¹)
+
+rotate-is-cartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓜}
+      {f : A → B} {g : C → D}
+      (F : Arrow-map f g)
+    → is-cartesian F
+    → is-cartesian (rotate-square F)
+rotate-is-cartesian {f = f} {g} F@(mk-amap top bot comm) fcart
+  = is-cartesian←is-pullback _
+      (is-pullback←gap (Cone←Arrow-map (rotate-square F) .snd)
+        (is-equiv-∘ (pullback-swap ._≃_.has-is-eqv)
+                    (gap-is-equiv←is-pullback _
+                      (is-pullback←is-cartesian _ fcart)))) where
+  pullback-swap : Pullback bot g ≃ Pullback g bot
+  pullback-swap
+    = Pullback bot g ≃⟨ Σ-comm ⟩
+      (Σ[ a ∶ _ ] Σ[ b ∶ _ ] (bot b ＝ g a))
+        ≃⟨ Σ-ap-≃ (λ _ → Σ-ap-≃ (λ _ → sym≃)) ⟩
+      Pullback g bot ≃∎
+
+}
+%```

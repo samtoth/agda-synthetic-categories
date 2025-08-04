@@ -112,4 +112,6 @@ open import Foundations.IdentitySystem
 open import Foundations.PathReasoning
 open import Foundations.Prelude
 open import Foundations.Reasoning
+open import Algebra.Lattice
+open import Algebra.Poset
 open import ufAxioms

@@ -46,7 +46,6 @@ open import Foundations.EquivHomotopy
 open import Foundations.EquivOfSingleton
 open import Foundations.EquivProp
 open import Foundations.EquivSingleton
-open import Foundations.FibrantReplacement
 open import Foundations.FibrePath
 open import Foundations.FibrewiseEquiv
 open import Foundations.FunExt
@@ -75,6 +74,7 @@ open import Foundations.SingletonClosure
 open import Foundations.SingletonProp
 open import Foundations.Span
 open import Foundations.Square
+open import Foundations.Straightening
 open import Foundations.Subtypes
 open import Foundations.TheoremOfChoice
 open import Foundations.TotalEquiv

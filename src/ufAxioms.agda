@@ -55,6 +55,11 @@ open WithGlobalUnivalence UA public
 
 {-# REWRITE ua-linv #-}
 
+import Foundations.Straightening
+
+module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-funext
+open Straightening public
+
 open import Foundations.PropExt public using
   (PropExt; logical←is-equiv; is-equiv←logical)
 import Foundations.PropExt as PE

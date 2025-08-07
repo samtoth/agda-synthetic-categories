@@ -14,7 +14,7 @@ open import Foundations.Coproducts public
 open import Foundations.Identity public
 open import Foundations.Singleton public
 open import Foundations.Functions public
-open import Foundations.FibrantReplacement public
+open import Foundations.Straightening public
 open import Foundations.FunctionInverses public
 open import Foundations.Homotopy public
 open import Foundations.QuasiIsomorphism public

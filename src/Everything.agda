@@ -4,10 +4,12 @@ open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.CanonicalPushouts
 open import Core.CanonicalSeqColims
+open import Core.CartesianStraightening
 open import Core.CoSlice
 open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Coequalisers
+open import Core.ExtPullbacks
 open import Core.FibredJoin
 open import Core.Image
 open import Core.Join

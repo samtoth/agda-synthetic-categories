@@ -12,6 +12,7 @@ open import Foundations.Universes
 open import Foundations.Sigma
 open import Foundations.SigmaPath
 open import Foundations.Identity
+open import Foundations.DependentIdentity
 open import Foundations.Functions
 open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
@@ -68,6 +69,26 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qiso the-iso where
   iso ._≅_.fwd-iso .snd .snd a = refl
 
 
+Σ-singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+          → is-singleton A
+          → (x : A) -- todo use @default to make it use singleton if not given
+          → Σ[ a ∶ A ] B a
+          ≃ B x
+Σ-singl {A = A} {B} sa x = equiv←qiso iso where
+  prp : is-prop A
+  prp = is-prop←is-single sa
+
+  iso : Σ A B ≅ B x
+  iso ._≅_.fwd (a , b) = tr B (prp a x) b
+  iso ._≅_.fwd-iso .fst b = (x , b)
+  iso ._≅_.fwd-iso .snd .fst (a , b)
+    = Σ-path→ ((prp x a) ,  IdP-inr {P = ap B (prp x a)}
+              (ap (λ p → coe p b)
+               (ap (ap B) (is-prop←is-single (＝-singleton←is-prop prp _ _) _ _)
+               ∙ ap-sym B (prp x a))))
+  iso ._≅_.fwd-iso .snd .snd bx
+    = ap (λ p → tr B p bx) (∙-sym' (sa .central x))
+
 Σ-＝singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
         → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
 Σ-＝singl {A = A} {a'} {B} = equiv←qiso iso where
@@ -110,19 +131,21 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qiso the-iso where
   qiso .snd .fst (a , b) = refl
   qiso .snd .snd (b , a) = refl
 
+⊗-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+               {C : Type 𝓦} {D : Type 𝓜}
+               {f : A → B} {g : C → D}
+             → is-equiv f → is-equiv g
+             → is-equiv (f ⊗ g)
+⊗-is-equiv {f = f}{g} feq geq = is-equiv←qiso the-iso where
+    open is-equiv
+    the-iso : quasi-iso (f ⊗ g)
+    the-iso .fst (b , d) = (bwd feq b , bwd geq d)
+    the-iso .snd .fst (a , c) = ×-path→ ((η feq a) , (η geq c))
+    the-iso .snd .snd (b , d) = ×-path→ ((ε feq b) , (ε geq d))
+
 _×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
        → A ≃ C → B ≃ D → (A × B) ≃ (C × D)
-(mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ map (is-equiv←qiso lem) where
-  module f = is-equiv ef
-  module g = is-equiv eg
-
-  map : _ → _
-  map (a , b) = (f a , g b)
-
-  lem : quasi-iso map
-  lem .fst (c , d) = (f.bwd c , g.bwd d)
-  lem .snd .fst (a , b) = ×-path→ (f.η a , g.η b)
-  lem .snd .snd (c , d) = ×-path→ (f.ε c , g.ε d)
+(mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ (f ⊗ g) (⊗-is-equiv ef eg)
 
 Σ-tr : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
          {a b : A} {p : a ＝ b} {b : B} {c : C a b}

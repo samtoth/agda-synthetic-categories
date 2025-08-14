@@ -118,6 +118,8 @@ module IdSReasoning {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) wh
          (Σ[ a ∶ A ] Σ[ p ∶ (a' ＝ a) ] B a (IdS←Id p))
     iso = Σ-ap-≃ (λ a → Σ-ap-≃-fst Id≃IdS e⁻¹)
 
+  -- Id←IdS-∙ : IdS←
+
 -- Reflexive-ppred : ∀ 𝓥 → Type _
 -- Reflexive-ppred 𝓥 = Σ[ R ∶ (A → Type 𝓥) ] R a₀
 

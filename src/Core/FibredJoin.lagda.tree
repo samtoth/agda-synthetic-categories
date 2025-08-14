@@ -15,7 +15,15 @@ open import ufAxioms
 open import Core.Slice
 open import Core.Coequalisers
 open import Core.CanonicalSeqColims
+open import Core.Join
 open import Core.Image
+open import Core.CanonicalPushouts
+open import Core.PushoutDescent
+open import Core.PushoutEquiv
+open import Core.ExtPullbacks
+
+open import Ergonomics.Marker
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -48,16 +56,89 @@ form the fibred join #{A *^B C \to B} as the following colimit:}
 %```agda
 \agda{
 module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-         (f : A → B) (g : C → B) {PB : Type 𝓜}
-         (pb : Cone (mk-cospan B f g) PB)
-         (PB-is-pb : is-pullbackω (mk-cospan _ f g) pb) where
-  open Cone pb renaming (i to π₁ ; j to π₂)
+         (f : A → B) (g : C → B) ⦃ s : Identity-system B 𝓜 ⦄ where
+  open pbₑ ⦃ s ⦄ {f} {g}
+
 
   Fibre-join : Type (𝓤 ⊔ 𝓦 ⊔ 𝓜)
   Fibre-join = Pushout π₁ π₂
 
   Fibre-join-π : Fibre-join → B
-  Fibre-join-π = pushout-rec (Cocone←Cone (_ , PB , pb) .snd .snd)
+  Fibre-join-π = pushout-rec (mk-cocone f g pbₑ.filler)
+}
+%```
+}
+
+\subtree[stt-008T]{
+\title{The fibre of the fibred join map}
+\taxon{lemma}
+\date{2025-08-10}
+
+\p{For maps #{f : A \to B} and #{f' : A' \to B}, the fibre of #{f * f'}
+at some #{x : B} is equivalent to the join of the fibre #{f} at #{x}
+with the fibre of #{f'} at #{x}.}
+
+%```agda
+\agda{
+  join-fibre≃ : ∀ x → fibre Fibre-join-π x ≃ fibre f x * fibre g x
+  join-fibre≃ x = cogap-fibre (mk-cocone f g filler) x
+                ∙≃ Pushout-equiv (mk≃ map
+                    (homotopy-is-equiv (map~map' ~⁻¹) map-is-equiv))
+    where
+    map : (Σ[ pb ∶ Pullbackₑ f g ] (g (π₂ pb) ＝ x))
+         → fibre f x × fibre g x
+    map ((a , c , p) , q)
+      = (a , tr (Fibre-family (mk-cocone f g filler) x)
+                (sym (glue (a , c , p))) q)
+        , c , q
+
+    map' : (Σ[ pb ∶ Pullbackₑ f g ] (g (π₂ pb) ＝ x))
+         → fibre f x × fibre g x
+    map' (pb , q) = (π₁ pb , filler pb ∙ q) , (π₂ pb , q)
+
+    H : ∀ pb → filler pb ＝  tr (Fibre-family (mk-cocone f g filler) (g (π₂ pb)))
+                                              (sym (glue pb)) refl
+    H pb = sym (IdP-func←Square {f = cogap (mk-cocone f g filler)}
+                (sym (glue pb)) refl (filler pb)
+                ((ap (_∙ filler pb) ( ap-sym _ (glue pb)
+                                    ∙ ap sym (pushout-rec-apβ pb))
+                 ∙ ∙-sym' (filler pb)) ∙ sym (ap-const _)))
+
+    map~map' : map ~ map'
+    map~map' (pb , refl)
+      = ×-path→ ( (fibre-path→ (refl , ∙-reflr _ ∙ H pb))
+                , refl)
+
+    H' : ∀ a (p : f a ＝ x) (c : C) (q : g c ＝ x) → ext! (IdS←Id (p ∙ sym q)) ∙ q ＝ p
+    H' a p c q = ap (_∙ q) (Id←IdS←Id (p ∙ sym q)) ∙ ∙.cancell _ (∙-sym' q)
+
+    II : ∀ (pb : Pullbackₑ f g) (q : g (π₂ pb) ＝ x)
+         → tr (f (π₁ pb) ＝ₑ_) ((ext! (pb .snd .snd) ∙ q) ∙ sym q) (IdS₀ ⦃ s ⦄) ＝ pb .snd .snd
+    II (a , c , p) q
+      = IdS←Id ((ext! p ∙ q) ∙ sym q) ＝⟨ ap IdS←Id (∙.cancell _ {h = sym q} {q} (∙-sym q)) ⟩
+        IdS←Id ⦃ s ⦄ (ext! p)          ＝⟨ IdS←Id←IdS ⦃ s ⦄ p ⟩
+        p ∎
+
+    III  : ∀ (pb : Pullbackₑ f g) q
+         → Square (ap (g ∘ π₂) (Σ-path→ (refl , Σ-path→ (refl , II pb q))))
+                  (ap (λ _ → x) (Σ-path→ (refl , Σ-path→ (refl , II pb q))))
+                  q q
+    III pb q
+      = ap (g ∘ π₂) (Σ-path→ (refl , Σ-path→ (refl , II pb q))) ∙ q
+                ＝⟨ ap (_∙ q) (ap-∘ g π₂ _ ∙ ap (ap g) (Σ-path-ap-fstsnd refl _))  ⟩
+        q       ＝⟨ sym (∙.eliml _ (ap-const _)) ⟩
+        q ∙ ap (λ _ → x) _    ∎
+
+    opaque
+      map-is-equiv : is-equiv map'
+      map-is-equiv = is-equiv←qiso λ where
+        .fst ((a , p) , (c , q)) → (a , (c , (IdS←Id (p ∙ sym q))))
+                                   , q
+        .snd .fst (pb , q) → Σ-path→ ((Σ-path→ (refl , (Σ-path→ (refl , II pb q))))
+                             , IdP-func←Square {f = g ∘ π₂} {g = λ _ → x}
+                                               (Σ-path→ (refl , Σ-path→ (refl , II pb q))) q q (III pb q))
+        .snd .snd ((a , p) , (c , q)) → ×-path→ ((Σ-path→ (refl , H' a p c q)) , refl)
+
 }
 %```
 }
@@ -113,14 +194,11 @@ gives us #{ij \sim f * f'} as required.}
 
 %```agda
 \agda{
-module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
+         ⦃ s : Identity-system B 𝓜 ⦄
          (f : A → B) (f' : A' → B) (tri : Slice-map f f')
-         {PB : Type 𝓤}
-         (pb : Cone (mk-cospan B f f') PB)
-         (is-pb : is-pullbackω _ pb) where
-  open Cone pb renaming (i to π₁ ; j to π₂)
-
-  Fibre-join-slice-map : Slice-map f (Fibre-join-π f f' pb is-pb)
+          where
+  Fibre-join-slice-map : Slice-map f (Fibre-join-π f f')
   Fibre-join-slice-map .fst = ι₁
   Fibre-join-slice-map .snd = ~refl
 
@@ -128,21 +206,21 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
     : is-universal-embedding f f' tri
     → is-universal-embedding
         f
-        (Fibre-join-π f f' pb is-pb)
+        (Fibre-join-π f f')
         Fibre-join-slice-map
   Fibre-join-is-universal-embedding emb i iemb
     = _≃_.has-is-eqv (is-equiv←logical
                        (slice-embedding-is-prop iemb)
                        (slice-embedding-is-prop iemb)
                        (_ , map)) where
-
+    open pbₑ {f = f} {f'}
     module φ = is-equiv (emb i iemb)
 
-    map : Slice-map f i → Slice-map (Fibre-join-π f f' pb is-pb) i
+    map : Slice-map f i → Slice-map (Fibre-join-π f f') i
     map k .fst = pushout-rec (mk-cocone
       (k .fst)
       (φ.bwd  k .fst)
-      (iemb ◂emb (k .snd ▸ π₁ ~∙ filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
+      (iemb ◂emb (k .snd ▸ π₁ ~∙ pbₑ.filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
     map k .snd = pushout-ind _ (mk-coconeD
       (k .snd)
       (φ.bwd k .snd)
@@ -186,25 +264,22 @@ into #{B}.}
 
 %```agda
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-         {PB : Type 𝓤 → Type 𝓤}
-         (pb : ∀ {A' : Type 𝓤} (g : A' → B) → Cone (mk-cospan B f g) (PB A'))
-         (is-pb : ∀ {A'} {g} →  is-pullbackω _ (pb {A'} g)) where
-
-  Im-aprox : ℕ → Type 𝓤
+module _ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         ⦃ s : Identity-system B 𝓜 ⦄ (f : A → B) where
+  Im-aprox : ℕ → Type (𝓤 ⊔ 𝓜)
   Im-cocone  : ∀ {n} → Im-aprox n → B
 
-  Im-aprox zero = A
-  Im-aprox (suc n) = Fibre-join f (Im-cocone {n}) (pb Im-cocone) is-pb
+  Im-aprox zero = ULift 𝓜 A
+  Im-aprox (suc n) = Fibre-join f (Im-cocone {n})
 
-  Im-cocone {zero} = f
-  Im-cocone {suc n} = Fibre-join-π f Im-cocone (pb Im-cocone) is-pb
+  Im-cocone {zero} = f ∘ unlift
+  Im-cocone {suc n} = Fibre-join-π f Im-cocone
 
   Im-slice-map : ∀ {n} → Slice-map (Im-cocone {n}) (Im-cocone {suc n})
   Im-slice-map .fst = ι₂
   Im-slice-map .snd = ~refl
 
-  iterated-join : Incr-seq 𝓤
+  iterated-join : Incr-seq (𝓤 ⊔ 𝓜)
   iterated-join .Incr-seq.Point = Im-aprox
   iterated-join .Incr-seq.incr  = ι₂
 
@@ -213,12 +288,144 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
   iterated-join-cocone .Cocone-seq.comm = ~refl
 
   Im-cone : ∀ {n} → A → Im-aprox n
-  Im-cone {zero} = id
+  Im-cone {zero} = mk-lift
   Im-cone {suc n} = ι₁
 
   Im-cone∘cocone : ∀ {n} → Im-cocone ∘ Im-cone {n} ~ f
   Im-cone∘cocone {zero} = ~refl
   Im-cone∘cocone {suc n} = ~refl
+}
+%```
+}
+
+\subtree[stt-008W]{
+\title{Iterated non-fibred join}
+\taxon{definition}
+\date{2025-08-14}
+
+\p{We define the type of iterated non-fibred joins, and show that
+as a result of \ref{stt-008T} we have an equivalence of type sequences
+between the iterated join of the fibres of a map and the iterated
+fibred join.}
+
+%```agda
+\agda{
+_*^_ : ∀ {𝓤} → Type 𝓤 → ℕ → Type 𝓤
+A *^ zero = A
+A *^ suc n = A * (A *^ n)
+
+it-join-seq : ∀ {𝓤} (A : Type 𝓤) → Incr-seq 𝓤
+it-join-seq A .Incr-seq.Point n = A *^ n
+it-join-seq A .Incr-seq.incr = ι₂
+
+
+_*₁_ : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+         {B : Type 𝓥} {B' : Type 𝓦}
+       → (A → A') → (B → B') → A * B → A' * B'
+f *₁ g = pushout-rec (mk-cocone (ι₁ ∘ f) (ι₂ ∘ g) (glue ∘ (f ⊗ g)))
+
+*₁-is-equiv : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+                {B : Type 𝓥} {B' : Type 𝓦}
+              → {f : A → A'} {g : B → B'}
+              → is-equiv f → is-equiv g
+              → is-equiv (f *₁ g)
+*₁-is-equiv {A = A}{B = B}{f = f} {g} feq geq = is-equiv←qiso iso where
+  module f = is-equiv feq
+  module g = is-equiv geq
+
+
+  opaque
+    sec : ∀ a →
+        Square (ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.ε) ∘ fst) a)
+               (((ι₂ ◂ g.ε) ∘ snd) a)
+    sec p@(a , b)
+      = ⌜ ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f *₁ g) ⌜ ap (f.bwd *₁ g.bwd) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f *₁ g) (glue (f.bwd a , g.bwd b)) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f.bwd ⊗ g.bwd) p)) ⟩
+        (glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) p ∙ (⌜ ι₂ ◂ g.ε ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.ε a , g.ε b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.ε , g.ε))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.ε , g.ε)) p    ＝⟨ switch-~∘ glue (×~ (f.ε , g.ε)) p ⟩
+        (glue ~∘' ×~ (f.ε , g.ε)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.ε , g.ε) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.ε , g.ε)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.ε a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.ε a) ∙ ap id (glue p) ∎
+
+    -- I wanted to generalise sec, and then give f.bwd and g.bwd
+    -- but because is-equiv⁻¹ goes via composing quasi-inverses it
+    -- messes with the ε
+    ret : ∀ a →
+        Square (ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.η) ∘ fst) a)
+               (((ι₂ ◂ g.η) ∘ snd) a)
+    ret p@(a , b)
+      = ⌜ ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f.bwd *₁ g.bwd) ⌜ ap (f *₁ g) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f.bwd *₁ g.bwd) (glue (f a , g b)) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f ⊗ g) p)) ⟩
+        (glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) p ∙ (⌜ ι₂ ◂ g.η ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.η a , g.η b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.η , g.η))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.η , g.η)) p    ＝⟨ switch-~∘ glue (×~ (f.η , g.η)) p ⟩
+        (glue ~∘' ×~ (f.η , g.η)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.η , g.η) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.η , g.η)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.η a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.η a) ∙ ap id (glue p) ∎
+
+  iso : quasi-iso (f *₁ g)
+  iso .fst = f.bwd *₁ g.bwd
+  iso .snd .fst = pushout-ind _ (mk-coconeD (ι₁ ◂ f.η) (ι₂ ◂ g.η)
+                    λ a → IdP-func←Square
+                           {f = (f.bwd *₁ g.bwd) ∘ (f *₁ g)}
+                           {id} (glue a)
+                           (ap ι₁ (f.η (fst a))) ((ι₂ ◂ g.η) (snd a))
+                           (ret a))
+  iso .snd .snd = pushout-ind _ (mk-coconeD (ι₁ ◂ f.ε) (ι₂ ◂ g.ε)
+                   (λ a →  IdP-func←Square {f = (f *₁ g) ∘ (f.bwd *₁ g.bwd)} {id}
+                               (glue a) _ _
+                               (sec a)))
+
+
+module _ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         ⦃ s : Identity-system B 𝓜 ⦄ where
+  fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥 ⊔ 𝓜)
+  fib-seq b .Incr-seq.Point n = fibre (Im-cocone f {n}) b
+  fib-seq b .Incr-seq.incr = total-map-fst ι₂
+
+
+  join-fibres←fibred-join
+    : ∀ b n → fibre (Im-cocone f {n}) b → (fibre f b *^ n)
+  join-fibres←fibred-join b zero = total-map-fst unlift
+  join-fibres←fibred-join b (suc n)
+    = (id *₁ join-fibres←fibred-join b n)
+    ∘ join-fibre≃ f (Im-cocone f {n}) b ._≃_.fwd
+
+  seq-map-join-fibres
+    : ∀ b → Incr-seq-map (fib-seq b) (it-join-seq (fibre f b))
+  seq-map-join-fibres b .Incr-seq-map.map {n} = join-fibres←fibred-join b n
+  seq-map-join-fibres b .Incr-seq-map.comm = ~refl
+
+  is-seq-equiv-join-fibres
+    : ∀ b → is-iseq-equiv (seq-map-join-fibres b)
+  is-seq-equiv-join-fibres b zero
+    = total-is-equiv←fst-is-equiv (is-equiv⁻¹ lift-is-equiv)
+  is-seq-equiv-join-fibres b (suc n)
+    = is-equiv-∘ (*₁-is-equiv id-is-equiv (is-seq-equiv-join-fibres b n))
+                 (join-fibre≃ f _ b ._≃_.has-is-eqv)
 }
 %```
 }
@@ -229,38 +436,36 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
 
 %```agda
 \agda{
-module Im' {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-         {PB : Type 𝓤 → Type 𝓤}
-         (pb : ∀ {A' : Type 𝓤} (g : A' → B) → Cone (mk-cospan B f g) (PB A'))
-         (is-pb : ∀ {A'} {g} →  is-pullbackω _ (pb {A'} g)) where
+module Im' {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+           ⦃ s : Identity-system B 𝓜 ⦄ (f : A → B)  where
 
-  Im' : Type 𝓤
-  Im' = Seq-colimit (iterated-join f pb is-pb)
+  Im' : Type (𝓤 ⊔ 𝓜)
+  Im' = Seq-colimit (iterated-join f)
 
   proj : A → Im'
-  proj = ι-seq _
+  proj = ι-seq _ ∘ mk-lift
 
   incl : Im' → B
-  incl = seq-colim-rec (iterated-join-cocone f pb is-pb)
+  incl = seq-colim-rec (iterated-join-cocone f)
 
   factors : Slice-map f incl
   factors .fst = proj
   factors .snd = ~refl
 
-  im-slice-map : ∀ n → Slice-map f (Im-cocone _ pb is-pb {n})
-  im-slice-map n = ( Im-cone _ pb is-pb
-                 , Im-cone∘cocone f pb is-pb {n})
+  im-slice-map : ∀ n → Slice-map f (Im-cocone _ {n})
+  im-slice-map n = ( Im-cone _
+                   , Im-cone∘cocone f {n})
 
   all-univ : ∀ n
              → is-universal-embedding
                 f
-                (Im-cocone _ pb is-pb)
+                (Im-cocone _)
                 (im-slice-map n)
   all-univ zero
-    = is-universal-embedding←logical f _ _ λ _ _ → id
+    = is-universal-embedding←logical f _ _ λ where
+       _ _ (f , ff) → (f ∘ unlift , ff ∘ unlift)
   all-univ (suc n)
-    = Fibre-join-is-universal-embedding f _ (im-slice-map n)
-                                        _ is-pb (all-univ n)
+    = Fibre-join-is-universal-embedding f _ (im-slice-map n) (all-univ n)
 
   universal : is-universal-embedding f incl factors
   universal
@@ -295,30 +500,40 @@ module Im' {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
   --   = is-embedding←is-prop-map λ
   --      b → is-prop←is-single-if-inhabited λ f → lem b f where
 
-  --   fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥)
-  --   fib-seq b .Incr-seq.Point n = fibre (Im-cocone f pb is-pb {n}) b
-  --   fib-seq b .Incr-seq.incr = total-map-fst ι₂
+  --   -- fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥)
+  --   -- fib-seq b .Incr-seq.Point n = fibre (Im-cocone f {n}) b
+  --   -- fib-seq b .Incr-seq.incr = total-map-fst ι₂
 
-  --   all-constant : ∀ b (a : fibre f b) n
-  --                  → (fib-seq b .Incr-seq.incr {n}
-  --                     ~ λ _ → total-map-fst ι₁ a)
-  --   all-constant b (a , p) zero  = {!!}
-  --   all-constant b (a , p) (suc n) = {!!}
+  --   fib-seq' : (a : A) → Incr-seq (𝓤 ⊔ 𝓥 ⊔ 𝓜)
+  --   fib-seq' a = it-join-seq (fibre incl (f a))
 
-  --   lem3 : (b : B) → fibre f b → is-singleton (Seq-colimit (fib-seq b))
-  --   lem3 x (y , p) = {!!}
+  --   all-constant : ∀ a n
+  --                  → (fib-seq' a .Incr-seq.incr {n}
+  --                     ~ λ _ → ι₁ (proj a , refl))
+  --   all-constant a zero    (im , p) = {!!}
+  --   all-constant a (suc n)  = {!!}
+
+  --   lem4 : ∀ a → is-singleton (Seq-colimit (fib-seq' a))
+  --   lem4 a = {!!}
+
+  --   lem3 : ∀ a → is-singleton (Seq-colimit (fib-seq (f a)))
+  --   lem3 a = is-single←equiv-to-single {!!} (lem4 a)
 
   --   lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
-  --   lem2 b p = {!!}
+  --   lem2 .(f a) (a , refl) = is-single←equiv-to-single {!!} (lem3 a)
 
   --   sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
   --   sm = is-equiv.bwd (universal fst (is-embedding←is-prop-map
   --                       (Σ̃-π-emb (mk-subtype (λ _ → is-single-is-prop)))))
   --                     (total-map lem2 ∘ refl-fibre f , ~refl)
 
+  --   sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
+  --   sm' .fst = sm .fst ∘ base←total-fibre _
+  --   sm' .snd = sm .snd ▸ base←total-fibre incl ~∙ (snd ∘ snd)
+
   --   lem : ∀ (b : B) (f : fibre incl b)
   --         → is-singleton (fibre (λ v → incl v) b)
-  --   lem = Slice-family {!sm!}
+  --   lem = Slice-family sm'
 
 }
 %```

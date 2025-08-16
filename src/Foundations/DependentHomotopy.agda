@@ -45,7 +45,7 @@ HomotopyP-const {f = f} {g} refl h = h
 --                  {g : Π A C}
 --                  {p : B ~ C}
 --                  → ~refl {f = f} ~[ {!!} ] ~refl {f = g}
--- HomotopyP-sq = {!!}                 
+-- HomotopyP-sq = {!!}                
 
 module _ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}   where
   happlyᵈ : ∀ {P : B ＝ C}

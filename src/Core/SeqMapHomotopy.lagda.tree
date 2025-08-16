@@ -1,0 +1,259 @@
+\title{Characterising the equality of sequence maps}
+\author{samueltoth}
+\date{2025-08-15}
+\taxon{module}
+\meta{module}{Core.SeqMapHomotopy}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.SeqMapHomotopy where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+open import Ergonomics.Marker
+}
+%```
+
+\subtree[stt-0092]{
+\title{Extensionality for maps of sequences}
+\taxon{theorem}
+
+\p{Homotopies of [sequential maps](??) are an [identity system](??).}
+
+%```agda
+\agda{
+unquoteDecl Incr-seq-map-repr≅ Incr-seq-map-repr≃
+  = make-record-repr Incr-seq-map-repr≅ Incr-seq-map-repr≃ (quote Incr-seq-map)
+
+module _ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+              {F : Incr-seq-map S S'} where
+  refl-iseq-map~ : iseq-map~ F F
+  refl-iseq-map~ .fst = ~refl
+  refl-iseq-map~ .snd _ = ∙-reflr _
+
+  iseq-map-Refl-pred : Reflexive-ppred (Incr-seq-map S S') F (𝓤 ⊔ 𝓥)
+  iseq-map-Refl-pred .fst = iseq-map~ F
+  iseq-map-Refl-pred .snd = refl-iseq-map~
+
+  iseq-map~-is-identity-system
+    : is-identity-system-at (Incr-seq-map S S') F iseq-map-Refl-pred
+  iseq-map~-is-identity-system
+    = is-identity-system←Sing-sing _ _
+        (is-single←equiv-to-single (Σ-ap-≃-fst (Incr-seq-map-repr≃ e⁻¹))
+          (is-singleton-structure←parts
+            (is-single←equiv-to-single Σ-Π-swapᵢ≃
+              (is-singleton-Πᵢ (SingS-is-single (F .map))))
+            (map F , λ {_} → ~refl )
+            (is-single←equiv-to-single (Σ-Π-swapᵢ≃ {P = λ H → comm F ~∙ ~refl ~ H})
+              (is-singleton-Πᵢ (is-single←equiv-to-single
+                (Σ-ap-≃ (λ a → precomp-Π-≃ (λ c → coe≃ (sym (∙-reflr _) ∙-))))
+                (SingS-is-single _))))))
+    where open Incr-seq-map
+
+instance
+  IdS-iseq-map
+    : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      → Identity-system (Incr-seq-map S S') (𝓤 ⊔ 𝓥)
+  IdS-iseq-map .Identity-system.IdS = iseq-map~
+  IdS-iseq-map .Identity-system.IdS₀ = refl-iseq-map~
+  IdS-iseq-map .Identity-system.has-is-ids F
+    = iseq-map~-is-identity-system
+}
+%```
+}
+
+
+\subtree[stt-0093]{
+\title{Extensionality for cocones under sequences}
+\taxon{corollary}
+
+\p{Since [cocones under sequences are sequence maps into a constant
+sequence](stt-0089), we can use \ref{stt-0092} to characterise the path
+type of sequential cocones.}
+
+%```agda
+\agda{
+instance
+  IdS-iseq-cocone
+    : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Type 𝓥}
+      → Identity-system (Cocone-seq S S') (𝓤 ⊔ 𝓥)
+  IdS-iseq-cocone = IdS←Equiv (seq-map≃cocone e⁻¹) IdS-iseq-map
+}
+%```
+}
+
+\subtree[stt-0095]{
+\title{sequential equivalence deserve the name}
+\taxon{theorem}
+\p{We have defined the proposition that a [map of sequences](stt-0086)
+[is an equivalence](stt-008X). We now show that the induced map in the
+opposite direction is a section and retraction of the original map.
+I.e an equivalence in the category of sequences.}
+
+\proof{
+\p{Whilst it is trivial to show the components of the composites
+are homotopic to the identity, because we aren't just working in
+set level foundations, we also have to show that the sqaures paste
+together to form the identity square. This is not difficult to show
+but does require a reasonable amount of somewhat tedious path algebra.}
+
+\todo{
+\p{Add diagrams like in the coherence of quasi isomorphism proof.}
+
+\p{Also consider generalising/refactoring this to \ref{Core.Arrow}.}
+}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+         {F : Incr-seq-map S S'} (Feq : is-iseq-equiv F) where
+  private
+    module F {n} = is-equiv (Feq n)
+  open Incr-seq-map
+  open Incr-seq
+
+  private
+    Fbwd = seq-map-inv←equiv {F = F} Feq
+    Fbwd∘F = compose-iseq-map Fbwd F
+
+    lemma : ∀ {n} → (F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd ▸ map F
+                        ~∙ (incr S' {n} ◂ F.ε ▸ map F))
+                     ~∙ F.bwd ◂ comm F)
+                   ~ F.bwd ◂ map F ◂ incr S ◂ F.η
+    lemma = (◂∙ F.bwd _ (comm F) ~⁻¹) ~∙ F.bwd ⟩~◂⟨
+        (((comm F ~⁻¹) ▸ F.bwd ▸ map F ~∙ incr S' ◂ F.ε ▸ map F) ~∙ comm F
+                  ~⟨ (~refl ⟩~∙⟨ incr S' ⟩~◂⟨ (F.coherent ~⁻¹)) ⟩~∙⟨ ~refl {f = comm F} ⟩
+        ((comm F ~⁻¹) ▸ F.bwd ▸ map F ~∙ incr S' ◂ map F ◂ F.η) ~∙ comm F
+                  ~⟨ (~refl ⟩~∙⟨ (◂∘ (incr S') (map F) F.η ~⁻¹)) ⟩~∙⟨ (~∙-reflr (comm F) ~⁻¹) ⟩
+        ((comm F ~⁻¹) ▸ F.bwd ▸ map F ~∙ incr S' ∘ map F ◂ F.η) ~∙ (comm F  ~∙ ~refl)
+                  ~⟨⟩
+        ((comm F ~⁻¹) ~∘ F.η)
+           ~∙ (comm F ~∘ ~refl)
+                 ~⟨ homotopy-interchange (comm F ~⁻¹) _ F.η ~refl ⟩
+        ((comm F ~⁻¹) ~∙ comm F) ~∘ (F.η ~∙ ~refl)
+                 ~⟨ ~∙-sym' (comm F) ⟩~∘⟨ ~∙-reflr _ ⟩
+        map F ∘ incr S ◂ (F.η) ~⟨ ◂∘ (map F) (incr S) _ ⟩
+        map F ◂ incr S ◂ F.η     ~∎)
+
+  inverse-seq-map-section
+    : iseq-map~
+        (compose-iseq-map (seq-map-inv←equiv {F = F} Feq) F)
+        id-iseq-map
+  inverse-seq-map-section .fst = F.η
+  inverse-seq-map-section .snd
+    = comm Fbwd∘F ~∙ F.η ▸ incr S ~⟨⟩
+      (comm Fbwd ▸ (map F) ~∙ (map Fbwd) ◂ comm F) ~∙ F.η ▸ incr S
+                                  ~⟨⟩
+
+      (((F.η ~⁻¹) ▸ incr S ▸ F.bwd ▸ map F
+         ~∙ F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd ▸ map F
+                    ~∙ (incr S' ◂ F.ε ▸ map F)) )
+       ~∙ F.bwd ◂ comm F)
+      ~∙ F.η ▸ incr S
+
+            ~⟨ ~∙-assoc ((F.η ~⁻¹) ▸ incr S ▸ F.bwd ▸ map F) _ (F.bwd ◂ comm F)  ⟩~∙⟨ ~refl {f = F.η ▸ incr S} ⟩
+
+      (((F.η ~⁻¹) ▸ incr S ▸ F.bwd ▸ map F
+         ~∙ (  F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd ▸ map F
+                        ~∙ (incr S' ◂ F.ε ▸ map F))
+            ~∙ F.bwd ◂ comm F)))
+      ~∙ F.η ▸ incr S
+
+            ~⟨ (~refl {f = (F.η ~⁻¹) ▸ incr S ▸ F.bwd ▸ map F} ⟩~∙⟨ lemma)  ⟩~∙⟨ ~refl {f = F.η ▸ incr S }⟩
+
+      ((F.η ~⁻¹) ▸ incr S ▸ F.bwd ▸ map F
+         ~∙ F.bwd ◂ map F ◂ incr S ◂ F.η)
+      ~∙ F.η ▸ incr S
+
+            ~⟨ (~refl ⟩~∙⟨ (◂∘∘ F.bwd (map F) (incr S) F.η ~⁻¹) ) ⟩~∙⟨ (~∙-reflr (F.η ▸ incr S) ~⁻¹) ⟩
+
+      ((F.η ~⁻¹) ▸ incr S ~∘ F.η)
+      ~∙ (F.η ▸ incr S ~∘ ~refl)
+
+             ~⟨ homotopy-interchange ((F.η ~⁻¹) ▸ incr S) _ (F.η) ~refl ⟩
+
+      ((F.η ~⁻¹) ▸ incr S ~∙ F.η ▸ incr S) ~∘ (F.η ~∙ ~refl)
+                                  ~⟨ ~∙-sym' (F.η ▸ incr S) ⟩~∘⟨ ~∙-reflr F.η ⟩
+      ~refl ~∘ F.η
+                                  ~⟨⟩
+      (incr S ◂ F.η)              ~⟨ (~∙-reflr (incr S ◂ F.η))  ~⁻¹ ⟩
+      (incr S ◂ F.η ~∙ comm (id-iseq-map {S = S})) ~∎
+
+  private
+    F∘Fbwd = compose-iseq-map F Fbwd
+
+    lemma2 : ∀ {n} →
+               (map F ◂ (((F.η ~⁻¹) ▸ incr S ▸ F.bwd
+                   ~∙ F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd
+                   ~∙ (incr S' ◂ F.ε)) )) ~∙ F.ε ▸ incr S' {n})
+             ~ (comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε
+
+    lemma2
+      = (map F ◂ (((F.η ~⁻¹) ▸ incr S ▸ F.bwd
+                   ~∙ F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd
+                   ~∙ (incr S' ◂ F.ε)) ))
+        ~∙ F.ε ▸ incr S')
+
+                  ~⟨ ◂∙ (map F) ((F.η ~⁻¹) ▸ incr S ▸ F.bwd) _ ⟩~∙⟨ ~refl ⟩
+
+           (map F ◂ F.η⁻¹ ▸ incr S ▸ F.bwd
+         ~∙ map F ◂ F.bwd ◂ ((comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε))
+         ~∙ F.ε ▸ incr S'
+
+                  ~⟨ (F.coh⁻¹ ∘ incr S ∘ F.bwd ⟩~∙⟨ ~refl) ⟩~∙⟨ ~refl {f = F.ε ▸ incr S'} ⟩
+
+           (F.ε⁻¹ ▸ map F ▸ incr S ▸ F.bwd
+         ~∙ map F ◂ F.bwd ◂ ((comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε))
+         ~∙ F.ε ▸ incr S'
+
+                  ~⟨ ( ~refl {f = F.ε⁻¹ ▸ map F ▸ incr S ▸ F.bwd} ⟩~∙⟨ (◂∘ (map F) F.bwd _ ~⁻¹)) ⟩~∙⟨ (~∙-reflr _ ~⁻¹) ⟩
+
+           ((F.ε ~⁻¹) ~∘ ((comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε))
+         ~∙ (F.ε ~∘ ~refl)
+                 ~⟨ homotopy-interchange (F.ε ~⁻¹) F.ε _ ~refl ⟩
+        ((F.ε ~⁻¹) ~∙ F.ε) ~∘ (((comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε) ~∙ ~refl)
+                 ~⟨ ~∙-sym' F.ε ⟩~∘⟨ ~∙-reflr _ ⟩
+         ~refl {f = id} ~∘ (((comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε))
+                 ~⟨ ap-id ∘ _ ⟩
+        (comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε ~∎
+
+  inverse-seq-map-retraction
+    : iseq-map~
+        (compose-iseq-map F Fbwd)
+        id-iseq-map
+  inverse-seq-map-retraction .fst = F.ε
+  inverse-seq-map-retraction .snd
+    = (comm F∘Fbwd ~∙ F.ε ▸ incr S')  ~⟨⟩
+      (comm F ▸ F.bwd ~∙ map F ◂ comm Fbwd) ~∙ F.ε ▸ incr S' ~⟨⟩
+      (comm F ▸ F.bwd
+        ~∙ map F ◂ (((F.η ~⁻¹) ▸ incr S ▸ F.bwd
+                   ~∙ F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd
+                   ~∙ (incr S' ◂ F.ε)) )))
+      ~∙ F.ε ▸ incr S'
+
+                  ~⟨ ~∙-assoc (comm F ▸ F.bwd) _ (F.ε ▸ incr S') ⟩
+
+      comm F ▸ F.bwd
+      ~∙ (map F ◂ (((F.η ~⁻¹) ▸ incr S ▸ F.bwd
+                   ~∙ F.bwd ◂ ( (comm F ~⁻¹) ▸ F.bwd
+                   ~∙ (incr S' ◂ F.ε)) ))
+          ~∙ F.ε ▸ incr S')
+
+                  ~⟨ ~refl {f = comm F ▸ F.bwd} ⟩~∙⟨ lemma2 ⟩
+
+      comm F ▸ F.bwd ~∙ (comm F ~⁻¹) ▸ F.bwd ~∙ incr S' ◂ F.ε
+                  ~⟨ ~∙-assoc (comm F ▸ F.bwd) _ (incr S' ◂ F.ε) ~⁻¹ ⟩
+      (comm F ▸ F.bwd ~∙ (comm F ~⁻¹) ▸ F.bwd) ~∙ incr S' ◂ F.ε
+                  ~⟨ ~∙-sym (comm F) ∘ F.bwd ⟩~∙⟨ ~refl ⟩
+      incr S' ◂ F.ε
+                  ~⟨ ~∙-reflr _ ~⁻¹ ⟩
+      incr S' ◂ F.ε ~∙ comm (id-iseq-map {S = S'})  ~∎
+
+}
+%```
+}

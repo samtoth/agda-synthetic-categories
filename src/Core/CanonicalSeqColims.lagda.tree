@@ -13,6 +13,10 @@ open import Foundations.Prelude
 open import ufAxioms
 open import Core.CanonicalPushouts
 open import Core.Coequalisers
+open import Core.SeqMapHomotopy
+
+open import Ergonomics.Marker
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -33,6 +37,10 @@ seq-colimit S = mk-cocone-seq (λ {n} a → ι₂ (n , a))
 ι-seq : ∀ {𝓤} (S : Incr-seq 𝓤) {n}
         → S .Incr-seq.Point n → Seq-colimit S
 ι-seq S a = coeq _ _ .fst (_ , a)
+
+seq-incr : ∀ {𝓤} (S : Incr-seq 𝓤) {n}
+           → ι-seq S {n} ~ ι-seq S {suc n} ∘ Incr-seq.incr S
+seq-incr S = Cocone-seq.comm (seq-colimit S)
 }
 %```
 }
@@ -84,6 +92,203 @@ seq-colim-is-colim Q = is-equiv-∘ (seq-cocone≃fork ._≃_.has-is-eqv)
 seq-colim-rec : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Type 𝓥}
                   → Cocone-seq S Q → (Seq-colimit S → Q)
 seq-colim-rec = is-equiv.bwd (seq-colim-is-colim _)
+
+{-# DISPLAY is-equiv.bwd (seq-colim-is-colim _) f x = seq-colim-rec f x #-}
+
+seq-colim-apβ : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Type 𝓥}
+                → (CC : Cocone-seq S Q)
+                → ∀ a → ap (seq-colim-rec CC) (seq-incr S (a .snd))
+                ＝ CC .Cocone-seq.comm (a .snd)
+seq-colim-apβ CC a = let cocone = (cocone←fork (_≃_.bwd seq-cocone≃fork CC))
+  in ap (seq-colim-rec CC) (sym (glue (inl a)) ∙ glue (inr a))
+                          ＝⟨ ap-∙ (seq-colim-rec CC) (sym (glue (inl a))) (glue (inr a)) ⟩
+     ap (seq-colim-rec CC) (sym (glue (inl a))) ∙ ap (seq-colim-rec CC) (glue (inr a))
+                          ＝⟨ ap₂ _∙_ (ap-sym (seq-colim-rec CC) _ ∙ ap sym (pushout-rec-apβ (inl a))) (pushout-rec-apβ (inr a)) ⟩
+     sym (Cocone.filler cocone (inl a)) ∙ Cocone.filler cocone (inr a)  ＝⟨⟩
+     CC .Cocone-seq.comm (a .snd) ∎
+}
+%```
+}
+
+
+\subtree[stt-008Z]{
+\title{Taking the sequential colimit is functorial}
+\taxon{theorem}
+\date{2025-08-15}
+
+%```agda
+\agda{
+seq-colimit-map
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      (F : Incr-seq-map S S')
+    → Seq-colimit S → Seq-colimit S'
+seq-colimit-map {S = S} {S'} F = seq-colim-rec cc module seq-colim-map where
+  open Incr-seq-map F
+
+  cc : Cocone-seq _ (Seq-colimit _)
+  cc .Cocone-seq.ι = ι-seq S' ∘ map
+  cc .Cocone-seq.comm = seq-incr S' ▸ map ~∙ ι-seq S' ◂ comm
+
+ap-seq-colimit-map-seq-incr
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      (F : Incr-seq-map S S')
+    → ∀ {n} (a : Incr-seq.Point S n)
+    → ap (seq-colimit-map F) (seq-incr S a)
+    ＝ seq-incr S' (Incr-seq-map.map F a) ∙ ap (ι-seq S') (Incr-seq-map.comm F a)
+ap-seq-colimit-map-seq-incr {S = S} {S'} F a
+  = ap (seq-colim-rec (seq-colim-map.cc F)) (seq-incr _ a)
+                      ＝⟨ seq-colim-apβ (seq-colim-map.cc F) (_ , a) ⟩
+    seq-colim-map.cc F .Cocone-seq.comm a
+                                        ＝⟨⟩
+    seq-incr S' (Incr-seq-map.map F a)
+      ∙ ap (ι-seq S') (Incr-seq-map.comm F a) ∎
+
+
+seq-colimit-map~
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {F G : Incr-seq-map S S'}
+    → iseq-map~ F G → seq-colimit-map F ~ seq-colimit-map G
+seq-colimit-map~ H = happly (ap (seq-colimit-map) (ext! H))
+
+seq-colimit-rec~
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {f g : Seq-colimit S → Seq-colimit S'}
+    → seq-cocone-map (seq-colimit S) f
+        ＝ₑ
+      seq-cocone-map (seq-colimit S) g
+    → f ＝ g
+seq-colimit-rec~ {S = S}{S'} p
+  = unap-equiv {f = seq-cocone-map (seq-colimit S)}
+               (seq-colim-is-colim (Seq-colimit S'))
+               (ext! p)
+
+seq-colimit-map-id
+  : ∀ {𝓤} {S : Incr-seq 𝓤}
+  → seq-colimit-map (id-iseq-map {S = S}) ＝ id
+seq-colimit-map-id {S = S} = seq-colimit-rec~ H where
+  open Incr-seq
+
+  H : IdS
+       (seq-cocone-map _ (seq-colimit-map (id-iseq-map)))
+       (seq-cocone-map _ id)
+  H .fst = ~refl
+  H .snd {n}
+    = {- (seq-colimit-map id-iseq-map) ◂ (seq-incr S)
+          ~∙ ~refl ▸ incr S        ~⟨⟩ -}
+      (seq-colimit-map id-iseq-map) ◂ (seq-incr S) ~∙ ~refl
+                          ~⟨ ~∙-reflr _ ⟩
+      (seq-colimit-map id-iseq-map) ◂ (seq-incr S)
+                          ~⟨ ap-seq-colimit-map-seq-incr id-iseq-map ⟩
+      seq-incr S ~∙ ~refl ~⟨ ~∙-reflr _ ⟩
+      seq-incr S          ~⟨ sym ∘ ap-id ∘ seq-incr S ⟩
+      id ◂ seq-incr S     ~∎
+
+seq-colimit-map∘
+  : ∀ {𝓤 𝓥 𝓦} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {S'' : Incr-seq 𝓦}
+      (f : Incr-seq-map S S') (g : Incr-seq-map S'' S)
+    →  seq-colimit-map f ∘ seq-colimit-map g
+    ＝ seq-colimit-map (compose-iseq-map f g)
+seq-colimit-map∘ {S = S} {S'}{S''} f g = seq-colimit-rec~ H where
+  open Incr-seq-map
+
+  opaque
+    lem2 : ∀ {n} (a : A.Point g n)
+           → ap (seq-colimit-map f) (ap (ι-seq S) (comm g a)) ＝ ap (ι-seq S') (ap (map f) (comm g a))
+    lem2 a
+      = ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+             ＝⟨ sym (ap-∘ (seq-colimit-map f) (ι-seq S) (comm g a)) ⟩
+        ap (seq-colimit-map f ∘ ι-seq S) (comm g a) ＝⟨⟩
+        ap (ι-seq S' ∘ map f) (comm g a)
+             ＝⟨ ap-∘ (ι-seq S') (map f) (comm g a) ⟩
+        ap (ι-seq S') (ap (map f) (comm g a)) ∎
+
+    lemma : ∀ {n} (a : A.Point g n)
+            →   ap (ι-seq S') (comm f (map g a))
+              ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+            ＝ ap (ι-seq S') (comm f (map g a) ∙ ap (map f) (comm g a))
+    lemma {n} a
+      = ap (ι-seq S') (comm f (map g a)) ∙
+         ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+              ＝⟨ ap (ap (ι-seq S') (comm f (map g a)) ∙_) (lem2 a) ⟩
+        ap (ι-seq S') (comm f (map g a)) ∙ ap (ι-seq S') (ap (map f) (comm g a))
+              ＝⟨ sym (ap-∙ (ι-seq S') (comm f (map g a)) (ap (map f) (comm g a))) ⟩
+        ap (ι-seq S') (comm f (map g a) ∙ ap (map f) (comm g a))    ∎
+
+  H : IdS
+       (seq-cocone-map _ (seq-colimit-map f ∘ seq-colimit-map g))
+       (seq-cocone-map _ (seq-colimit-map (compose-iseq-map f g)))
+  H .fst = ~refl
+  H .snd {n = n} a
+    = ap (seq-colimit-map f ∘ seq-colimit-map g) (seq-incr S'' a) ∙ refl
+               ＝⟨ ∙-reflr _ ⟩
+      ap (seq-colimit-map f ∘ seq-colimit-map g) (seq-incr S'' a)
+               ＝⟨ ap-∘ (seq-colimit-map f) (seq-colimit-map g) (seq-incr S'' a) ⟩
+      ap (seq-colimit-map f) (ap (seq-colimit-map g) (seq-incr S'' a))
+               ＝⟨ ap (ap (seq-colimit-map f)) (ap-seq-colimit-map-seq-incr g a) ⟩
+      ap (seq-colimit-map f)
+        (seq-incr S (map g a) ∙ ap (ι-seq S) (comm g a))
+               ＝⟨ ap-∙ (seq-colimit-map f) (seq-incr S (map g a)) (ap (ι-seq S) (comm g a)) ⟩
+      ap (seq-colimit-map f) (seq-incr S (map g a))
+        ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+               ＝⟨ ap (_∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))) (ap-seq-colimit-map-seq-incr f (map g a)) ⟩
+      (seq-incr S' (map f (map g a)) ∙ ap (ι-seq S') (comm f (map g a)))
+        ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a)) ＝⟨ ∙.pulll _ (lemma a) ⟩
+      seq-incr S' (map f (map g a)) ∙  ap (ι-seq S') (comm (compose-iseq-map f g) a)
+               ＝⟨⟩
+      Cocone-seq.comm (seq-colim-map.cc (compose-iseq-map f g)) a
+               ＝⟨ sym (seq-colim-apβ _ (n , a)) ⟩
+      Cocone-seq.comm
+        (seq-cocone-map
+          (mk-cocone-seq (λ {n = n₁} z → ι₂ (n₁ , z)) (seq-incr S''))
+          (seq-colim-rec (seq-colim-map.cc (compose-iseq-map f g))))
+         a
+               ＝⟨⟩
+      comm
+       (seq-map←cocone
+        (seq-cocone-map
+         (mk-cocone-seq (λ {n} z → ι₂ (n , z))
+          (seq-incr S''))
+         (seq-colimit-map (compose-iseq-map f g))))
+       a ∎
+}
+%```
+}
+
+\subtree[stt-008Y]{
+\title{Sequential colimits of equivalent sequences}
+\taxon{corollary}
+\date{2025-08-15}
+
+\p{[Equivalent](stt-008X) sequences gives rise to equivalent sequential
+colimits.}
+
+\proof{
+\p{This follows from the [functoriality of taking the colimit](stt-008Z)
+and \ref{stt-0095}.}
+}
+
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+         (F : Incr-seq-map S S')  where
+  open Incr-seq-map F
+
+  seq-colimit-map-is-equiv
+    : is-iseq-equiv F → is-equiv (seq-colimit-map F)
+  seq-colimit-map-is-equiv Feq = is-equiv←qiso iso where
+    module F {n} = is-equiv (Feq n)
+    Fbwd = seq-map-inv←equiv {F = F} Feq
+
+    iso : quasi-iso (seq-colimit-map F)
+    iso .fst = seq-colimit-map Fbwd
+    iso .snd .fst =  happly (seq-colimit-map∘ Fbwd F)
+                  ~∙ seq-colimit-map~ (inverse-seq-map-section Feq)
+                  ~∙ happly seq-colimit-map-id
+    iso .snd .snd = happly (seq-colimit-map∘ F Fbwd)
+                  ~∙ seq-colimit-map~ (inverse-seq-map-retraction {F = F} Feq)
+                  ~∙ happly seq-colimit-map-id
 }
 %```
 }

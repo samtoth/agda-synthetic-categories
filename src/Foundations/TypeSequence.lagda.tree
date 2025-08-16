@@ -17,6 +17,10 @@ open import Foundations.Homotopy
 open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
 open import Foundations.Identity
+open import Foundations.Embedding
+open import Foundations.Singleton
+open import Foundations.EquivSingleton
+open import Foundations.IdentitySystem
 }
 %```
 
@@ -97,6 +101,53 @@ record Decr-seq-map {𝓤 𝓥}
 %```
 }
 
+\subtree[stt-0090]{
+\title{Composing sequence maps}
+\taxon{construction}
+
+\p{We compose sequence maps in the obvious way by composing their
+components and pasting together squares.}
+
+%```agda
+\agda{
+compose-iseq-map
+  : ∀ {𝓤 𝓥 𝓦} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {S'' : Incr-seq 𝓦}
+    → Incr-seq-map S' S'' → Incr-seq-map S S'
+    → Incr-seq-map S S''
+compose-iseq-map F G = map where
+  module F = Incr-seq-map F
+  module G = Incr-seq-map G
+
+  map : Incr-seq-map _ _
+  map .Incr-seq-map.map = F.map ∘ G.map
+  map .Incr-seq-map.comm = F.comm ▸ G.map ~∙ F.map ◂ G.comm
+
+id-iseq-map
+  : ∀ {𝓤} {S : Incr-seq 𝓤} → Incr-seq-map S S
+id-iseq-map .Incr-seq-map.map = id
+id-iseq-map .Incr-seq-map.comm = ~refl
+}
+%```
+}
+
+\subtree[stt-0091]{
+\title{Homotopies of sequential cocone maps}
+\taxon{definition}
+
+%```agda
+\agda{
+iseq-map~ : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+              (F G : Incr-seq-map S S')
+            → Type (𝓤 ⊔ 𝓥)
+iseq-map~ F G = Σ[ α ∶ (∀ {n} → map F {n} ~ map G)]
+                  (∀ {n} →  comm F ~∙ α ▸ A.incr G
+                       ~ (B.incr F ◂ α) ~∙ comm G {n})
+  where open Incr-seq-map
+}
+%```
+}
+
 
 \subtree[stt-008X]{
 \title{Equivalences of sequences}
@@ -111,6 +162,19 @@ is an equivalence.}
 is-iseq-equiv : ∀ {𝓤 𝓥} {A : Incr-seq 𝓤} {B : Incr-seq 𝓥}
                   (F : Incr-seq-map A B) → Type (𝓤 ⊔ 𝓥)
 is-iseq-equiv F = ∀ n → is-equiv (F .Incr-seq-map.map {n})
+
+
+seq-map-inv←equiv : ∀ {𝓤 𝓥} {A : Incr-seq 𝓤} {B : Incr-seq 𝓥}
+                      {F : Incr-seq-map A B} (Feq : is-iseq-equiv F)
+                    → Incr-seq-map B A
+seq-map-inv←equiv {A = A}{B}{F} Feq = imap where
+  open Incr-seq-map
+  module F {n} = is-equiv (Feq n)
+  imap : Incr-seq-map B A
+  imap .map = F.bwd
+  imap .comm =   (F.η ~⁻¹) ▸ Incr-seq.incr A ▸ F.bwd
+               ~∙ F.bwd ◂ (  (comm F ~⁻¹) ▸ F.bwd
+                          ~∙ Incr-seq.incr B ◂ F.ε)
 }
 %```
 }
@@ -181,6 +245,20 @@ seq-map≃cone = mk≃ _ (is-equiv←qiso qiso) where
   qiso .fst (mk-dseq-map map comm) = mk-cone-seq map comm
   qiso .snd .fst (mk-cone-seq π comm) = refl
   qiso .snd .snd (mk-dseq-map map comm) = refl
+
+seq-map←cocone : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Apex : Type 𝓥}
+               → Cocone-seq S Apex
+               → Incr-seq-map S (const-incr-seq Apex)
+seq-map←cocone (mk-cocone-seq ι comm) = mk-iseq-map ι comm
+
+seq-map≃cocone : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Apex : Type 𝓥}
+               → Cocone-seq S Apex
+               ≃ Incr-seq-map S (const-incr-seq Apex)
+seq-map≃cocone = mk≃ _ (is-equiv←qiso qiso) where
+  qiso : quasi-iso seq-map←cocone
+  qiso .fst (mk-iseq-map map comm) = mk-cocone-seq map comm
+  qiso .snd .fst (mk-cocone-seq π comm) = refl
+  qiso .snd .snd (mk-iseq-map map comm) = refl
 }
 %```
 }

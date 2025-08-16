@@ -13,6 +13,7 @@ module Core.Coequalisers where
 open import Foundations.Prelude
 open import ufAxioms
 open import Core.CanonicalPushouts
+open import Ergonomics.Representation
 
 Fork : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
        → (f g : A → B) → (C : Type 𝓦) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
@@ -44,6 +45,8 @@ Coeq {_} {_} {A} {B} f g
 
   span : Span _ _ _
   span = mk-span _ l r
+
+{-# DISPLAY Pushout (Coeq.l f g) (Coeq.r f g) = Coeq f g #-}
 
 coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
        → (f g : A → B) → Fork f g (Coeq f g)
@@ -89,5 +92,80 @@ coeq-is-coeq {f = f} {g} {Q = Q}
     (inl x) → sym ( ap (_∙ ap f (glue (inl x))) (ap-sym f (glue (inl x)))
                    ∙ ∙-sym' (ap f (glue _)))
     (inr x) → ∙-reflr _ ∙ ap-∙ f (sym (glue _)) (glue (inr x))
+}
+%```
+
+%```agda
+\agda{
+ForkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+          (f g : A → B) (C : Coeq f g → Type 𝓦)
+        → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+ForkP {A = A} {B} f g C
+  =  Σ[ p ∶ ((b : B) →  C (ι₂ b))]
+      (∀ a → IdP (ap C (coeq f g .snd a)) (p (f a)) (p (g a)))
+
+cocone←forkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Coeq f g → Type 𝓦}
+              → ForkP f g C
+              → CoconeD (Coeq.span f g) (cocone←fork (coeq f g)) C
+cocone←forkP {f = f} {g} (p , H)
+  = mk-coconeD p p (⊎-ind (~refl , H))
+
+unquoteDecl coconeD-repr≅ coconeD-repr≃
+  = make-record-repr coconeD-repr≅ coconeD-repr≃ (quote CoconeD)
+
+cocone≃forkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Coeq f g → Type 𝓦}
+              → ForkP f g C ≃ CoconeD (Coeq.span f g) (cocone←fork (coeq f g)) C
+cocone≃forkP {B = B} {f} {g}{C}
+  = ForkP f g C
+      ≃⟨⟩
+    (Σ[ p ∶ (Π B (C ∘ ι₂))] (p ∘ f ~[ (C ◂ (coeq f g .snd)) ] p ∘ g))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-＝singl') e⁻¹ ⟩
+    (Σ[ p ∶ (Π B (C ∘ ι₂))] Σ[ q ∶ Π B (C ∘ ι₂)] ((p ＝ q) × (p ∘ f ~[ C ◂ (coeq f g .snd) ] q ∘ g)))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → Σ-ap-≃-fst funext≃))  ⟩
+    (Σ[ p ∶ Π B (C ∘ ι₂)] Σ[ q ∶ Π B (C ∘ ι₂)] ((p ~ q) × (p ∘ f ~[ C ◂ (coeq f g .snd) ] q ∘ g)))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → ⊎-UP≃ global-funext)) ⟩
+    (Σ[ p ∶ Π B (C ∘ ι₂)] Σ[ q ∶ Π B (C ∘ ι₂)] (p ∘ Coeq.l f g ~[ (C ◂ ⊎-ind (~refl , coeq f g .snd)) ] q ∘ Coeq.r f g))
+      ≃⟨ coconeD-repr≃ e⁻¹ ⟩
+    CoconeD (Coeq.span f g) _ C ≃∎
+
+cocone←forkP-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B} {C : Coeq f g → Type 𝓦}
+    → is-equiv (cocone←forkP {f = f} {g} {C})
+cocone←forkP-is-equiv = cocone≃forkP ._≃_.has-is-eqv
+
+forkP-map : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {f g : A → B} {C : Coeq f g → Type 𝓦}
+            → Π _ C → ForkP f g C
+forkP-map {C = C} f = (f ∘ ι₂ , f ◂ᵈ coeq _ _ .snd)
+
+is-coeqᵈ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Coeq f g → Type 𝓦}
+           → is-equiv (forkP-map {C = C})
+is-coeqᵈ {f = f}{g}{Q} = 3-for-2~ (H ~⁻¹) cocone←forkP-is-equiv coeq-is-po where
+  H : cocone←forkP ∘ forkP-map {C = Q}
+    ~ coconeᵈ-map (Coeq.span f g) (cocone←fork (coeq f g))  {Q = Q}
+  H f = from-coconeᵈ-path (record {
+      p＝ = refl
+    ; q＝ = refl
+    ; filler＝ = funext→ (⊎-ind (~refl , ~refl)) })
+
+  lem : cocone←fork (coeq f g) ＝ pushout
+  lem = Cocone-path→ _ _ (funext→ (λ b → sym (glue (inl b)))) refl
+          (⊎-ind ((λ b → sym (∙-sym' (glue (inl b)))) , λ a → ∙-reflr _))
+
+  coeq-is-po : is-pushoutωᵈ (Coeq.span f g) (cocone←fork (coeq f g))
+  coeq-is-po {𝓜} = tr (λ x → ∀ {Q : Coeq f g → Type 𝓜} → is-equiv (coconeᵈ-map (Coeq.span f g) x {Q}))
+                       (sym lem) Pushout-is-pushoutωᵈ
+
+coeq-ind : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Coeq f g → Type 𝓦}
+           → ForkP f g C
+           → (x : Coeq f g) → C x
+coeq-ind = is-equiv.bwd is-coeqᵈ
+
+{-# DISPLAY is-equiv.bwd is-coeqᵈ x = coeq-ind x #-}
 }
 %```

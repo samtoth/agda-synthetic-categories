@@ -20,7 +20,7 @@ private variable
 
 
 _⟩⊙⟨_ : f ＝ h → g ＝ i → f ⊙ g ＝ h ⊙ i
-_⟩⊙⟨_ = ap₂ _⊙_ 
+_⟩⊙⟨_ = ap₂ _⊙_
 
 infixr 20 _⟩⊙⟨_
 
@@ -66,6 +66,13 @@ module _ (ab＝c : a ⊙ b ＝ c) where abstract
   pull-inner : (f ⊙ a) ⊙ (b ⊙ g) ＝ f ⊙ (c ⊙ g)
   pull-inner {f = f} = sym (assoc _ _ _) ∙ ap (f ⊙_) pulll
 
+module _ (ab＝cd : a ⊙ b ＝ c ⊙ d) where
+  extendl : a ⊙ (b ⊙ e) ＝ c ⊙ (d ⊙ e)
+  extendl {e = e} = assoc _ _ _ ∙ ap (_⊙ e) ab＝cd ∙ sym (assoc _ _ _)
+
+  extendr : (e ⊙ a) ⊙ b ＝ (e ⊙ c) ⊙ d
+  extendr {e = e} = sym (assoc _ _ _) ∙ ap (e ⊙_) ab＝cd ∙ assoc _ _ _
+
 module _ (inv : h ⊙ i ＝ Id) where abstract
   cancell : h ⊙ (i ⊙ f) ＝ f
   cancell {f = f} =
@@ -78,6 +85,9 @@ module _ (inv : h ⊙ i ＝ Id) where abstract
     (f ⊙ h) ⊙ i ＝⟨ pullr inv ⟩
     f ⊙ Id      ＝⟨ rid f ⟩
     f           ∎
+
+  cancel-inner : (f ⊙ h) ⊙ (i ⊙ g) ＝ f ⊙ g
+  cancel-inner = pull-inner inv ∙ elim-inner refl
 
   insertl : f ＝ h ⊙ (i ⊙ f)
   insertl = sym cancell

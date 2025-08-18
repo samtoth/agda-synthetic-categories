@@ -1,0 +1,139 @@
+\date{2025-08-17}
+\author{samueltoth}
+\title{The flattening lemma for coequalisers}
+\taxon{module}
+\meta{module}{Core.FlatteningCoequalisers}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.FlatteningCoequalisers where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.Coequalisers
+open import Core.CanonicalPushouts
+open import Core.PushoutDescent
+open import Core.PushoutEquiv
+}
+%```
+
+\subtree[stt-009A]{
+\title{Flattening for coequalisers}
+\taxon{lemma}
+
+\p{
+In \ref{Core.PushoutDescent}, we showed that [pushouts preserve sigma
+types](stt-stt-008D) in the sense that the total type of a family over
+a pushout is given by a pushout of the total types of each component.
+Here we prove an analogous theorem for coequalisers.
+}
+
+\p{Given a pair of maps #{f,g : A \to B}, and a type family #{P} over
+the coequaliser of #{f} and #{g}, we define a fork at #{\tidle{P}}
+over the pair of maps #{\tidle{f}, \tidle{g} : \Sigma_{(a : A)}
+P(\iota(f a)) \to \Sigma{(b : B)}(P(b))}, flattening states that this
+fork is a coequaliser.}
+
+\proof{
+\p{Since we defined coequalisers in terms of pushouts, we can reuse
+the result we have already shown. To be precise, the coequaliser of
+#{f} and #{g} is given by the following pushout:}
+
+\quiver{
+\begin{tikzcd}
+	{A+B} && B \\
+	\\
+	B && {\rm{Coeq}_{f,g}}
+	\arrow["{[f,\id]}", from=1-1, to=1-3]
+	\arrow["{[g,\id]}"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{Consider the following diagram:}
+
+\quiver{
+\begin{tikzcd}
+	{\Sigma_A(P\iota g) + \Sigma_B(P\iota)} \\
+	& {\Sigma_{A+B}(P\iota[g,\id])} && {\Sigma_BP\iota} \\
+	\\
+	& {\Sigma_B P \iota} && {\Sigma_{\rm{Coeq}_{f,g}} P}
+	\arrow[from=1-1, to=2-2]
+	\arrow[curve={height=-24pt}, from=1-1, to=2-4]
+	\arrow["{[\rm{total}_g,id]}"', curve={height=24pt}, from=1-1, to=4-2]
+	\arrow[from=2-2, to=2-4]
+	\arrow["{[g,\id]}"', from=2-2, to=4-2]
+	\arrow[from=2-4, to=4-4]
+	\arrow[from=4-2, to=4-4]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=4-4, to=2-2]
+\end{tikzcd}
+}
+
+\p{The flattening lemma for pushouts states that the inner square is a
+pushout quare.  Then, sinse the top right map is an equivalence, we
+get that the outer square is a pushout.}
+
+}
+
+%```agda
+\agda{
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+         (f : A → B) (g : A → B) where
+
+  total-maps : ∀ {𝓜} (P : Coeq f g → Type 𝓜)
+               → (Σ A (P ∘ ι-coeq ∘ g ) → Σ B (P ∘ ι-coeq))
+               × (Σ A (P ∘ ι-coeq ∘ g ) → Σ B (P ∘ ι-coeq))
+  total-maps P .fst (a , p) = (f a , tr P (sym (glue-coeq a)) p)
+  total-maps P .snd = total-map-fst g
+
+  total-fork : ∀ {𝓜} (P : Coeq f g → Type 𝓜)
+               → Fork (total-maps P .fst) (total-maps P .snd) (Σ _ P)
+  total-fork P .fst = total-map-fst ι-coeq
+  total-fork P .snd (a , p) = Σ-path→ (glue-coeq a , tr∙tr-sym' (glue-coeq a) p)
+
+  -- total-fork-is-coeq
+  --   : ∀ {𝓜} (P : Coeq f g → Type 𝓜) → is-coeq (total-fork P)
+  -- total-fork-is-coeq P = {!is-coeq←is-pushout!}
+
+  total-fork≃ : ∀ {𝓜} (P : Coeq f g → Type 𝓜)
+                → Σ _ P
+                ≃ Coeq (total-maps P .fst) (total-maps P .snd)
+  total-fork≃ P
+    = Σ (Coeq f g) P ≃⟨ mk≃ _ ((cogap-is-equiv←is-pushout _ (total-is-pushout (Coeq.l f g) (Coeq.r f g) P))) e⁻¹ ⟩
+      Pushout (Span.left (total-span _ _ P)) (total-map-fst (Coeq.r f g))
+              ≃⟨ Pushout-adjust-equiv~ {f = (Span.left (total-span _ _ P))} eq H K e⁻¹ ⟩
+      Pushout (total-map (tr P ∘ sym ∘ glue ∘ inl) ∘ Coeq.l (total-maps P .fst) (total-maps P .snd))
+              (Coeq.r (total-maps P .fst) (total-maps P .snd))
+              ≃⟨ Pushout-vert-extend≃ (is-total-equiv←is-fibrewise-equiv
+                    (tr-is-equiv ∘ sym ∘ glue ∘ inl)) _ _ e⁻¹ ⟩
+      Coeq (total-maps P .fst) (total-maps P .snd)    ≃∎ where
+    eq : Coeq.span (total-maps P .fst) (total-maps P .snd) .Span.Centre
+       ≃ total-span (Coeq.l f g) (Coeq.r f g) P .Span.Centre
+    eq = Σ-⊎≃ (P ∘ _)
+
+    H : total-span _ _ P .Span.left ∘ _≃_.fwd eq ~  total-map (tr P ∘ sym ∘ glue ∘ inl) ∘ Coeq.l (total-maps P .fst) (total-maps P .snd)
+    H (inl x) = refl
+    H (inr (a , p)) = Σ-path→ (refl ,
+      sym (tr∙tr {P = P} (sym (glue-coeq a)) (sym (glue (inl (f a)))) p
+      ∙ ap (λ x → tr P x p)
+         (sym (sym (glue (inl (f a))) ∙ glue (inr a)) ∙ sym (glue (inl (f a)))
+
+               ＝⟨ ∙-symsym _ (glue (inr a)) ⟩∙⟨ refl ⟩
+
+         (sym (glue (inr a)) ∙ sym (sym (glue (inl (f a)))))
+                    ∙ sym (glue (inl (f a)))
+
+               ＝⟨ ∙.cancell _ (∙-sym' (sym (glue (inl (f a))))) ⟩
+
+         sym (glue (inr a)) ∎)))
+
+    K : total-map-fst (Coeq.r f g) {P ∘ ι₂} ∘ _≃_.fwd eq ~  Coeq.r (total-maps P .fst) (total-maps P .snd)
+    K (inl x) = refl
+    K (inr x) = refl
+}
+%```
+}

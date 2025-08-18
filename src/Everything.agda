@@ -11,6 +11,7 @@ open import Core.Codiagonal
 open import Core.Coequalisers
 open import Core.ExtPullbacks
 open import Core.FibredJoin
+open import Core.FlatteningCoequalisers
 open import Core.Image
 open import Core.Join
 open import Core.Lifts
@@ -20,6 +21,7 @@ open import Core.Postwhisker
 open import Core.PullbackPower
 open import Core.PushoutDescent
 open import Core.PushoutEquiv
+open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.Spheres
 open import Core.Suspensions
@@ -55,6 +57,7 @@ open import Foundations.FunctionInverses
 open import Foundations.Functions
 open import Foundations.FunextUnivalence
 open import Foundations.Homotopy
+open import Foundations.HomotopyEquiv
 open import Foundations.Identity
 open import Foundations.Lift
 open import Foundations.Nat

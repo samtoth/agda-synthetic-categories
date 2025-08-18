@@ -10,7 +10,6 @@ open import Foundations.FunExt
 
 
 postulate
-
   global-funext : FunExt-global
 
 
@@ -28,6 +27,9 @@ open import Foundations.PropClosure public hiding (is-prop-Π)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
+import Foundations.HomotopyEquiv
+module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
+open HE public
 
 weak-funext : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
               → (∀ a → is-singleton (B a))

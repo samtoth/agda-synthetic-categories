@@ -21,6 +21,7 @@ open import Core.CanonicalPushouts
 open import Core.PushoutDescent
 open import Core.PushoutEquiv
 open import Core.ExtPullbacks
+open import Core.FlatteningSeqColims
 
 open import Ergonomics.Marker
 open import Ergonomics.Extensionality
@@ -494,47 +495,86 @@ module Im' {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
                               ∙ ap (ap i') (pushout-rec-apβ _))
                     ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
                           ∙ ∙-reflr _))))
+}
+%```
 
-  -- incl-is-embedding : is-embedding incl
-  -- incl-is-embedding
-  --   = is-embedding←is-prop-map λ
-  --      b → is-prop←is-single-if-inhabited λ f → lem b f where
+\p{Now we show that that the inclusion #{i : Im' \to B} is an
+embedding.  To show the fibres of #{i} at each #{b : B} are
+propositions, it suffices to show that they are singleton assuming an
+inhabitant. Giving a fibrewise map #{\Pi_{(b : B)} \fibre{i}{b} \to
+\rm{is-single}(\fibre{i}{b})} is equivalent to a map in the slice over
+#{b}, #{\Sigma_{(b : B)}(\fibre{i}{b}) \to \Sigma_{(b :
+B)}(\rm{is-single}(\fibre{i}{b}))}, but becuase [being a singleton is
+a proposition](Foundations.SingletonProp), the projection to #{b} in
+the codomain is an equivalence, and we can make use of the [universal
+property of the image with respect to embeddings](stt-008H) that we
+have just proved to show that we can just give a map #{\fibre{f}{b}
+\to \rm{is-single}(\fibre{i}{b})}. }
 
-  --   -- fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥)
-  --   -- fib-seq b .Incr-seq.Point n = fibre (Im-cocone f {n}) b
-  --   -- fib-seq b .Incr-seq.incr = total-map-fst ι₂
+\p{Using the [flattening lemma](stt-009K), we can show that the fibre
+of the map #{i} is equivalently the sequential colimit of fibres of
+each #{f^{*n}}, but then [we have characterised the fibres of the
+iterated join](stt-008W) as the iterated join of the fibres. Finally
+we show that the sequence of iterated joins of fibres all factor through
+#{1} so are constant and thus [the colimit is a singleton](stt-0096).}
 
-  --   fib-seq' : (a : A) → Incr-seq (𝓤 ⊔ 𝓥 ⊔ 𝓜)
-  --   fib-seq' a = it-join-seq (fibre incl (f a))
+%```agda
+\agda{
+  incl-is-embedding : is-embedding incl
+  incl-is-embedding
+    = is-embedding←is-prop-map λ
+       b → is-prop←is-single-if-inhabited λ f → lem b f where
+    fib-seq' : (a : A) → Incr-seq (𝓤 ⊔ 𝓥)
+    fib-seq' a = it-join-seq (fibre f (f a))
 
-  --   all-constant : ∀ a n
-  --                  → (fib-seq' a .Incr-seq.incr {n}
-  --                     ~ λ _ → ι₁ (proj a , refl))
-  --   all-constant a zero    (im , p) = {!!}
-  --   all-constant a (suc n)  = {!!}
+    fib-seq←fibre-seq : ∀ b → Incr-seq-map (fibre-seq incl b) (fib-seq f b)
+    fib-seq←fibre-seq b .Incr-seq-map.map = id
+    fib-seq←fibre-seq b .Incr-seq-map.comm (i , refl)
+      = Σ-path→ (refl
+        , sym ( ∙-reflr _
+              ∙ ap-sym incl _ ∙ ap sym (seq-colim-apβ _ (_ , i))))
 
-  --   lem4 : ∀ a → is-singleton (Seq-colimit (fib-seq' a))
-  --   lem4 a = {!!}
+    all-constant : ∀ a n
+                   → (fib-seq' a .Incr-seq.incr {n}
+                      ~ λ _ → ι₁ (a , refl))
+    all-constant a n f = sym (glue ((a , refl) , f))
 
-  --   lem3 : ∀ a → is-singleton (Seq-colimit (fib-seq (f a)))
-  --   lem3 a = is-single←equiv-to-single {!!} (lem4 a)
+    a' : ∀ a n → Incr-seq.Point (fib-seq' a ) n
+    a' a zero = (a , refl)
+    a' a (suc n) = ι₁ (a , refl)
 
-  --   lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
-  --   lem2 .(f a) (a , refl) = is-single←equiv-to-single {!!} (lem3 a)
+    lem4 : ∀ a → is-singleton (Seq-colimit (fib-seq' a))
+    lem4 a = colim-const-seq-is-single (a' a) (all-constant a)
 
-  --   sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
-  --   sm = is-equiv.bwd (universal fst (is-embedding←is-prop-map
-  --                       (Σ̃-π-emb (mk-subtype (λ _ → is-single-is-prop)))))
-  --                     (total-map lem2 ∘ refl-fibre f , ~refl)
+    lem3,5 : ∀ a → Seq-colimit (fibre-seq incl (f a)) ≃ Seq-colimit (fib-seq' a)
+    lem3,5 a
+      = Seq-colimit (fibre-seq incl (f a)) ≃⟨ mk≃ _ (seq-colimit-map-is-equiv (fib-seq←fibre-seq (f a)) (λ n → id-is-equiv)) ⟩
+        Seq-colimit (fib-seq f (f a))      ≃⟨ mk≃ _ (seq-colimit-map-is-equiv (seq-map-join-fibres f (f a)) (is-seq-equiv-join-fibres f (f a))) ⟩
+        Seq-colimit (fib-seq' a)           ≃∎
 
-  --   sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
-  --   sm' .fst = sm .fst ∘ base←total-fibre _
-  --   sm' .snd = sm .snd ▸ base←total-fibre incl ~∙ (snd ∘ snd)
+    lem3 : ∀ a → is-singleton (Seq-colimit (fibre-seq incl (f a)))
+    lem3 a = is-single←equiv-to-single (lem3,5 a e⁻¹) (lem4 a)
 
-  --   lem : ∀ (b : B) (f : fibre incl b)
-  --         → is-singleton (fibre (λ v → incl v) b)
-  --   lem = Slice-family sm'
+    lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
+    lem2 .(f a) (a , refl) = is-single←equiv-to-single (fibre-seq-cogap≃ incl (f a) e⁻¹) (lem3 a)
 
+    sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
+    sm = is-equiv.bwd (universal fst (is-embedding←is-prop-map
+                        (Σ̃-π-emb (mk-subtype (λ _ → is-single-is-prop)))))
+                      (total-map lem2 ∘ refl-fibre f , ~refl)
+
+    sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
+    sm' .fst = sm .fst ∘ base←total-fibre _
+    sm' .snd = sm .snd ▸ base←total-fibre incl ~∙ (snd ∘ snd)
+
+    lem : ∀ (b : B) (f : fibre incl b)
+          → is-singleton (fibre (λ v → incl v) b)
+    lem = Slice-family sm'
+
+  Im-is-image : is-image f incl
+  Im-is-image .is-image.has-is-emb = incl-is-embedding
+  Im-is-image .is-image.factors = factors
+  Im-is-image .is-image.has-is-image = universal
 }
 %```
 }

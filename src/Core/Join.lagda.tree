@@ -22,6 +22,7 @@ open import Ergonomics.Universal
 open import Ergonomics.PushoutUniv
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
+open import Ergonomics.Marker
 
 }
 % ```
@@ -159,4 +160,99 @@ is again a proposition.}
 }
 % ```
 
+}
+
+\subtree[stt-009L]{
+\title{Functoriality of the join}
+\taxon{theorem}
+
+\p{The join operator on types defines a functor
+#{\SS \times \SS \to \SS}. We define the action of #{*} on functions,
+and show that it preserves equivalences.}
+
+%```agda
+\agda{
+_*₁_ : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+         {B : Type 𝓥} {B' : Type 𝓦}
+       → (A → A') → (B → B') → A * B → A' * B'
+f *₁ g = pushout-rec (mk-cocone (ι₁ ∘ f) (ι₂ ∘ g) (glue ∘ (f ⊗ g)))
+
+*₁-is-equiv : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+                {B : Type 𝓥} {B' : Type 𝓦}
+              → {f : A → A'} {g : B → B'}
+              → is-equiv f → is-equiv g
+              → is-equiv (f *₁ g)
+*₁-is-equiv {A = A}{B = B}{f = f} {g} feq geq = is-equiv←qiso iso where
+  module f = is-equiv feq
+  module g = is-equiv geq
+
+
+  opaque
+    sec : ∀ a →
+        Square (ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.ε) ∘ fst) a)
+               (((ι₂ ◂ g.ε) ∘ snd) a)
+    sec p@(a , b)
+      = ⌜ ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f *₁ g) ⌜ ap (f.bwd *₁ g.bwd) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f *₁ g) (glue (f.bwd a , g.bwd b)) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f.bwd ⊗ g.bwd) p)) ⟩
+        (glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) p ∙ (⌜ ι₂ ◂ g.ε ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.ε a , g.ε b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.ε , g.ε))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.ε , g.ε)) p    ＝⟨ switch-~∘ glue (×~ (f.ε , g.ε)) p ⟩
+        (glue ~∘' ×~ (f.ε , g.ε)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.ε , g.ε) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.ε , g.ε)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.ε a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.ε a) ∙ ap id (glue p) ∎
+
+    -- I wanted to generalise sec, and then give f.bwd and g.bwd
+    -- but because is-equiv⁻¹ goes via composing quasi-inverses it
+    -- messes with the ε
+    ret : ∀ a →
+        Square (ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.η) ∘ fst) a)
+               (((ι₂ ◂ g.η) ∘ snd) a)
+    ret p@(a , b)
+      = ⌜ ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f.bwd *₁ g.bwd) ⌜ ap (f *₁ g) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f.bwd *₁ g.bwd) (glue (f a , g b)) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f ⊗ g) p)) ⟩
+        (glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) p ∙ (⌜ ι₂ ◂ g.η ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.η a , g.η b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.η , g.η))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.η , g.η)) p    ＝⟨ switch-~∘ glue (×~ (f.η , g.η)) p ⟩
+        (glue ~∘' ×~ (f.η , g.η)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.η , g.η) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.η , g.η)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.η a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.η a) ∙ ap id (glue p) ∎
+
+  iso : quasi-iso (f *₁ g)
+  iso .fst = f.bwd *₁ g.bwd
+  iso .snd .fst = pushout-ind _ (mk-coconeD (ι₁ ◂ f.η) (ι₂ ◂ g.η)
+                    λ a → IdP-func←Square
+                           {f = (f.bwd *₁ g.bwd) ∘ (f *₁ g)}
+                           {id} (glue a)
+                           (ap ι₁ (f.η (fst a))) ((ι₂ ◂ g.η) (snd a))
+                           (ret a))
+  iso .snd .snd = pushout-ind _ (mk-coconeD (ι₁ ◂ f.ε) (ι₂ ◂ g.ε)
+                   (λ a →  IdP-func←Square {f = (f *₁ g) ∘ (f.bwd *₁ g.bwd)} {id}
+                               (glue a) _ _
+                               (sec a)))
+
+
+}
+%```
 }

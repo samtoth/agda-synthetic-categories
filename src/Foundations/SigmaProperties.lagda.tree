@@ -12,12 +12,15 @@ open import Foundations.Universes
 open import Foundations.Sigma
 open import Foundations.SigmaPath
 open import Foundations.Identity
+open import Foundations.DependentIdentity
 open import Foundations.Functions
 open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
 open import Foundations.Singleton
 open import Foundations.EquivContrFibre
 open import Foundations.EquivSingleton
+open import Foundations.Coproducts
+open import Foundations.Homotopy
 }
 % ```
 
@@ -25,25 +28,34 @@ open import Foundations.EquivSingleton
 
 % ```agda
 \agda{
-Σ-ap-≃-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦} → ((mk≃ f _) : A' ≃ A) → Σ A' (B ∘ f) ≃ Σ A B
-Σ-ap-≃-fst {A = A} {A'} {B} eq = mk≃ func (is-equiv←qiso the-iso) where
-  open _≃_ eq
+total-map-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} (f : A' → A)
+                → {B : A → Type 𝓦} → Σ A' (B ∘ f) → Σ A B
+total-map-fst f (a , b) = (f a , b)
 
-  func : Σ _ (B ∘ fwd) → Σ _ B
-  func (a , b) = fwd a , b
+total-is-equiv←fst-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+    {f : A' → A} → is-equiv f → is-equiv (total-map-fst f {B})
+total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qiso the-iso where
+  open is-equiv feq
 
-  lem : {a : A'} {b : (B ∘ fwd) a} →
-      tr (B ∘ fwd) (η a) (tr B (sym (ε (fwd a))) b) ＝ b
-  lem {a} {b} = tr (B ∘ fwd) (η a) _                    ＝⟨ tr∘ B fwd (η a) ⟩
-                tr B (ap fwd (η a)) _                   ＝⟨ ap (λ p → tr B p (tr B (sym (ε (fwd a))) b)) (coherent a) ⟩
-                tr B (ε (fwd a)) _                      ＝⟨ tr∙tr-sym' {P = B} (ε (fwd a)) b ⟩
+  lem : ∀ {a} {b : (B ∘ f) a} →
+      tr (B ∘ f) (η a) (tr B (sym (ε (f a))) b) ＝ b
+  lem {a} {b} = tr (B ∘ f ) (η a) _   ＝⟨ tr∘ B f (η a) ⟩
+                tr B (ap f (η a)) _   ＝⟨ ap (λ p → tr B p (tr B (sym (ε (f a))) b))
+                                             (coherent a) ⟩
+                tr B (ε (f a)) _      ＝⟨ tr∙tr-sym' {P = B} (ε (f a)) b ⟩
                 b ∎
 
-  the-iso : quasi-iso func
+  the-iso : quasi-iso (total-map-fst f)
   the-iso .fst (a , b) = (bwd a , tr B (sym (ε a)) b)
   the-iso .snd .fst (a , b) = Σ-path→ (η a ,  lem)
   the-iso .snd .snd (a , b) = Σ-path→ (ε a ,  tr∙tr-sym' (ε a) b)
 
+Σ-ap-≃-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+             → ((mk≃ f _) : A' ≃ A) → Σ A' (B ∘ f) ≃ Σ A B
+Σ-ap-≃-fst {A = A} {A'} {B} eq
+  = mk≃ (total-map-fst fwd) (total-is-equiv←fst-is-equiv has-is-eqv)
+  where open _≃_ eq
 
 
 Σ-assoc : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
@@ -58,6 +70,26 @@ open import Foundations.EquivSingleton
   iso ._≅_.fwd-iso .snd .fst a = refl
   iso ._≅_.fwd-iso .snd .snd a = refl
 
+
+Σ-singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+          → is-singleton A
+          → (x : A) -- todo use @default to make it use singleton if not given
+          → Σ[ a ∶ A ] B a
+          ≃ B x
+Σ-singl {A = A} {B} sa x = equiv←qiso iso where
+  prp : is-prop A
+  prp = is-prop←is-single sa
+
+  iso : Σ A B ≅ B x
+  iso ._≅_.fwd (a , b) = tr B (prp a x) b
+  iso ._≅_.fwd-iso .fst b = (x , b)
+  iso ._≅_.fwd-iso .snd .fst (a , b)
+    = Σ-path→ ((prp x a) ,  IdP-inr {P = ap B (prp x a)}
+              (ap (λ p → coe p b)
+               (ap (ap B) (is-prop←is-single (＝-singleton←is-prop prp _ _) _ _)
+               ∙ ap-sym B (prp x a))))
+  iso ._≅_.fwd-iso .snd .snd bx
+    = ap (λ p → tr B p bx) (∙-sym' (sa .central x))
 
 Σ-＝singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
         → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
@@ -100,6 +132,22 @@ open import Foundations.EquivSingleton
   qiso .fst (b , a) = (a , b)
   qiso .snd .fst (a , b) = refl
   qiso .snd .snd (b , a) = refl
+
+⊗-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+               {C : Type 𝓦} {D : Type 𝓜}
+               {f : A → B} {g : C → D}
+             → is-equiv f → is-equiv g
+             → is-equiv (f ⊗ g)
+⊗-is-equiv {f = f}{g} feq geq = is-equiv←qiso the-iso where
+    open is-equiv
+    the-iso : quasi-iso (f ⊗ g)
+    the-iso .fst (b , d) = (bwd feq b , bwd geq d)
+    the-iso .snd .fst (a , c) = ×-path→ ((η feq a) , (η geq c))
+    the-iso .snd .snd (b , d) = ×-path→ ((ε feq b) , (ε geq d))
+
+_×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+       → A ≃ C → B ≃ D → (A × B) ≃ (C × D)
+(mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ (f ⊗ g) (⊗-is-equiv ef eg)
 
 Σ-tr : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
          {a b : A} {p : a ＝ b} {b : B} {c : C a b}
@@ -161,4 +209,27 @@ singleton-fst-is-equiv {P = P} sngl
 }
 % ```
 }
+}
+
+\subtree[stt-009B]{
+\title{Commuting coproducts with dependent sums}
+\taxon{theorem}
+
+\p{There is an equivalence #{\Sigma_{A + B} (Q[f,g]) \simeq
+\Sigma_A(Qf) + \Sigma_B(Qg)}}
+
+%```agda
+\agda{
+Σ-⊎≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P  : A ⊎ B → Type 𝓦)
+      → (Σ _ (P ∘ inl)) ⊎ (Σ _ (P ∘ inr)) ≃ Σ (A ⊎ B) P
+Σ-⊎≃ P = mk≃ ⊎[ total-map-fst inl , total-map-fst inr ]
+            (is-equiv←qiso iso) where
+  iso : quasi-iso ⊎[ total-map-fst inl , total-map-fst inr ]
+  iso .fst (inl x , p) = inl (x , p)
+  iso .fst (inr x , p) = inr (x , p)
+  iso .snd .fst = ⊎-ind (~refl , ~refl)
+  iso .snd .snd (inl x , p) = refl
+  iso .snd .snd (inr x , p) = refl
+}
+%```
 }

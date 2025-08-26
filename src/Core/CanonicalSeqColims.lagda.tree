@@ -1,0 +1,544 @@
+\date{2025-07-30}
+\title{Canonical Sequential Colimits}
+\taxon{module}
+\meta{module}{Core.CanonicalSeqColims}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.CanonicalSeqColims where
+
+open import Foundations.Prelude
+open import ufAxioms
+open import Core.CanonicalPushouts
+open import Core.Coequalisers
+open import Core.SeqMapHomotopy
+
+open import Ergonomics.Marker
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[stt-008B]{
+\title{Canonical Sequential Colimits}
+\taxon{construction}
+
+\p{Let #{A} be an [increasing sequence](stt-0085), and write #{\tilde{A}}
+for the type #{\Sigma_{n : \mathbb{N}}A_n}.}
+
+\p{We define the sequential colimit of #{A} to be the coequaliser of
+#{\textit{incr} : \tilde{A} \to \tilde{A}} with #{\id}. We note that
+this gives us a sequential cocone under #{A} which we write #{\iota_n}
+and homotopies #{\textit{gl-suc}_n : \iota_n
+\sim \iota_{n+1} \rm{incr}}, which we can extend to homotopies
+#{\textit{gl}_{m,n} : \iota_n \sim \iota_{n+m} \rm{incr}_m}}
+
+%```agda
+\agda{
+Seq-colimit : ∀ {𝓤} → Incr-seq 𝓤 → Type 𝓤
+Seq-colimit S = Coeq id incrΣ where open Incr-seq S
+
+seq-colimit : ∀ {𝓤} (S : Incr-seq 𝓤) → Cocone-seq S (Seq-colimit S)
+seq-colimit S = mk-cocone-seq (λ {n} a → ι₂ (n , a))
+                              λ {n} a → sym (glue (inl (n , a)))
+                                      ∙ glue (inr (n , a))
+
+ι-seq : ∀ {𝓤} (S : Incr-seq 𝓤) {n}
+        → S .Incr-seq.Point n → Seq-colimit S
+ι-seq S a = coeq _ _ .fst (_ , a)
+
+{-# NOINLINE ι-seq #-}
+
+glue-suc : ∀ {𝓤} (S : Incr-seq 𝓤) {n}
+           → ι-seq S {n} ~ ι-seq S {suc n} ∘ Incr-seq.incr S
+glue-suc S = Cocone-seq.comm (seq-colimit S)
+{-# NOINLINE glue-suc #-}
+
+glue-n : ∀ {𝓤} (S : Incr-seq 𝓤) n
+         → ι-seq S {0} ~ ι-seq S {n} ∘ Incr-seq.incrℕ S n
+glue-n S zero = ~refl
+glue-n S (suc n) = glue-n S n ~∙ glue-suc S ▸ Incr-seq.incrℕ S n
+
+glue-+ : ∀ {𝓤} (S : Incr-seq 𝓤) {n} m
+         → ι-seq S {n} ~ ι-seq S {n + m} ∘ Incr-seq.incr-+ S m
+glue-+ S zero = ~refl
+glue-+ S (suc m) = glue-+ S m ~∙ glue-suc S ▸ Incr-seq.incr-+ S m
+}
+%```
+}
+
+\subtree[stt-008C]{
+\title{Cocones of canonical sequential colimits}
+\taxon{lemma}
+
+\p{Coforks over the pair of arrows in \ref{stt-008B} defining the
+canonical sequential colimits are equivalent to
+[sequential cocones](stt-0088)}
+
+\proof{
+\p{This follows from the [curry/uncurry
+equivalence](Foundations.PiProperties).}
+}
+
+%```agda
+\agda{
+seq-cocone≃cofork : ∀ {𝓤 𝓠} {S : Incr-seq 𝓤} {Q : Type 𝓠}
+                  → Cofork id (Incr-seq.incrΣ S) Q
+                  ≃ Cocone-seq S Q
+seq-cocone≃cofork {_} {_} {S} {Q}
+  = mk≃ map (is-equiv←qiso map-qiso) where
+    open Incr-seq S
+
+    map : Cofork id incrΣ Q → Cocone-seq S Q
+    map (p , H) = mk-cocone-seq (curry p _) (curry H _)
+
+    map-qiso : quasi-iso map
+    map-qiso .fst (mk-cocone-seq ι comm)
+      = (λ (_ , a) → ι a) , (λ (_ , a) → comm a)
+    map-qiso .snd .fst = ~refl
+    map-qiso .snd .snd = ~refl
+}
+%```
+
+\p{As a consequence, we then have that the canonical sequential colimit
+is a sequential colimit and has a recursion principal.}
+
+%```agda
+\agda{
+seq-colim-is-colim :  ∀ {𝓤} {S : Incr-seq 𝓤}
+                      → is-seq-colim S (seq-colimit S)
+seq-colim-is-colim Q = is-equiv-∘ (seq-cocone≃cofork ._≃_.has-is-eqv)
+                                  coeq-is-coeq
+
+seq-colim-rec : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Type 𝓥}
+                  → Cocone-seq S Q → (Seq-colimit S → Q)
+seq-colim-rec = is-equiv.bwd (seq-colim-is-colim _)
+
+{-# DISPLAY is-equiv.bwd (seq-colim-is-colim _) f x = seq-colim-rec f x #-}
+
+seq-colim-apβ : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Type 𝓥}
+                → (CC : Cocone-seq S Q)
+                → ∀ a → ap (seq-colim-rec CC) (glue-suc S (a .snd))
+                ＝ CC .Cocone-seq.comm (a .snd)
+seq-colim-apβ CC a = let cocone = (cocone←cofork (_≃_.bwd seq-cocone≃cofork CC))
+  in ap (seq-colim-rec CC) (sym (glue (inl a)) ∙ glue (inr a))
+                          ＝⟨ ap-∙ (seq-colim-rec CC) (sym (glue (inl a))) (glue (inr a)) ⟩
+     ap (seq-colim-rec CC) (sym (glue (inl a))) ∙ ap (seq-colim-rec CC) (glue (inr a))
+                          ＝⟨ ap₂ _∙_ (ap-sym (seq-colim-rec CC) _ ∙ ap sym (pushout-rec-apβ (inl a))) (pushout-rec-apβ (inr a)) ⟩
+     sym (Cocone.filler cocone (inl a)) ∙ Cocone.filler cocone (inr a)  ＝⟨⟩
+     CC .Cocone-seq.comm (a .snd) ∎
+}
+%```
+}
+
+\subtree[stt-0099]{
+\title{Induction for sequential colimits}
+\taxon{theorem}
+
+\p{We can also define an induction principal for sequential colimits
+directly via the [induction principal for coequalisers](stt-009O).}
+
+%```agda
+\agda{
+seq-CoconeP : ∀ {𝓤 𝓥} (S : Incr-seq 𝓤) → (Q : Seq-colimit S → Type 𝓥)
+              → Type (𝓤 ⊔ 𝓥)
+seq-CoconeP S Q = Σ[ f ∶ (∀ {n} → (p : Point n) → Q (ι-seq S p))]
+                     (∀ {n} (a : Point n)
+                        → IdP (ap Q (glue-suc S a)) (f a) (f (incr a)))
+  where open Incr-seq S
+
+
+forkP←coconeP : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Seq-colimit S → Type 𝓥}
+                  → seq-CoconeP S Q → CoforkP _ _ Q
+forkP←coconeP scc .fst (n , p) = scc .fst p
+forkP←coconeP scc .snd (n , p) = scc .snd p
+
+seq-colimit-ind : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {Q : Seq-colimit S → Type 𝓥}
+                  → seq-CoconeP S Q → Π (Seq-colimit S) Q
+seq-colimit-ind cc = coeq-ind (forkP←coconeP cc)
+}
+%```
+}
+
+\subtree[stt-008Z]{
+\title{Taking the sequential colimit is functorial}
+\taxon{theorem}
+\date{2025-08-15}
+
+\p{Taking sequential colimits defines a functor between the category
+of sequences and the category of types. Given a map between sequences
+#{F : S \to S'}, we can define a map between their colimits
+#{\rm{colim}(F) : \rm{colim}(S) \to \rm{colim}(S')}.}
+
+\p{We then show that this map preserves the identity, composition and
+homotopies of sequence maps.}
+
+%```agda
+\agda{
+seq-colimit-map
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      (F : Incr-seq-map S S')
+    → Seq-colimit S → Seq-colimit S'
+seq-colimit-map {S = S} {S'} F = seq-colim-rec cc module seq-colim-map where
+  open Incr-seq-map F
+
+  cc : Cocone-seq _ (Seq-colimit _)
+  cc .Cocone-seq.ι = ι-seq S' ∘ map
+  cc .Cocone-seq.comm = glue-suc S' ▸ map ~∙ ι-seq S' ◂ comm
+
+ap-seq-colimit-map-glue-suc
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      (F : Incr-seq-map S S')
+    → ∀ {n} (a : Incr-seq.Point S n)
+    → ap (seq-colimit-map F) (glue-suc S a)
+    ＝ glue-suc S' (Incr-seq-map.map F a) ∙ ap (ι-seq S') (Incr-seq-map.comm F a)
+ap-seq-colimit-map-glue-suc {S = S} {S'} F a
+  = ap (seq-colim-rec (seq-colim-map.cc F)) (glue-suc _ a)
+                      ＝⟨ seq-colim-apβ (seq-colim-map.cc F) (_ , a) ⟩
+    seq-colim-map.cc F .Cocone-seq.comm a
+                                        ＝⟨⟩
+    glue-suc S' (Incr-seq-map.map F a)
+      ∙ ap (ι-seq S') (Incr-seq-map.comm F a) ∎
+
+
+seq-colimit-map~
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {F G : Incr-seq-map S S'}
+    → iseq-map~ F G → seq-colimit-map F ~ seq-colimit-map G
+seq-colimit-map~ H = happly (ap (seq-colimit-map) (ext! H))
+
+seq-colimit-rec~
+  : ∀ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {f g : Seq-colimit S → Seq-colimit S'}
+    → seq-cocone-map (seq-colimit S) f
+        ＝ₑ
+      seq-cocone-map (seq-colimit S) g
+    → f ＝ g
+seq-colimit-rec~ {S = S}{S'} p
+  = unap-equiv {f = seq-cocone-map (seq-colimit S)}
+               (seq-colim-is-colim (Seq-colimit S'))
+               (ext! p)
+
+seq-colimit-map-id
+  : ∀ {𝓤} {S : Incr-seq 𝓤}
+  → seq-colimit-map (id-iseq-map {S = S}) ＝ id
+seq-colimit-map-id {S = S} = seq-colimit-rec~ H where
+  open Incr-seq
+
+  H : IdS
+       (seq-cocone-map _ (seq-colimit-map (id-iseq-map)))
+       (seq-cocone-map _ id)
+  H .fst = ~refl
+  H .snd {n}
+    = {- (seq-colimit-map id-iseq-map) ◂ (seq-incr S)
+          ~∙ ~refl ▸ incr S        ~⟨⟩ -}
+      (seq-colimit-map id-iseq-map) ◂ (glue-suc S) ~∙ ~refl
+                          ~⟨ ~∙-reflr _ ⟩
+      (seq-colimit-map id-iseq-map) ◂ (glue-suc S)
+                          ~⟨ ap-seq-colimit-map-glue-suc id-iseq-map ⟩
+      glue-suc S ~∙ ~refl ~⟨ ~∙-reflr _ ⟩
+      glue-suc S          ~⟨ sym ∘ ap-id ∘ glue-suc S ⟩
+      id ◂ glue-suc S     ~∎
+
+seq-colimit-map∘
+  : ∀ {𝓤 𝓥 𝓦} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+      {S'' : Incr-seq 𝓦}
+      (f : Incr-seq-map S S') (g : Incr-seq-map S'' S)
+    →  seq-colimit-map f ∘ seq-colimit-map g
+    ＝ seq-colimit-map (compose-iseq-map f g)
+seq-colimit-map∘ {S = S} {S'}{S''} f g = seq-colimit-rec~ H where
+  open Incr-seq-map
+
+  opaque
+    lem2 : ∀ {n} (a : A.Point g n)
+           → ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+           ＝ ap (ι-seq S') (ap (map f) (comm g a))
+    lem2 a
+      = ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+             ＝⟨ sym (ap-∘ (seq-colimit-map f) (ι-seq S) (comm g a)) ⟩
+        ap (seq-colimit-map f ∘ ι-seq S) (comm g a) ＝⟨⟩
+        ap (ι-seq S' ∘ map f) (comm g a)
+             ＝⟨ ap-∘ (ι-seq S') (map f) (comm g a) ⟩
+        ap (ι-seq S') (ap (map f) (comm g a)) ∎
+
+    lemma : ∀ {n} (a : A.Point g n)
+            →   ap (ι-seq S') (comm f (map g a))
+              ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+            ＝ ap (ι-seq S') (comm f (map g a) ∙ ap (map f) (comm g a))
+    lemma {n} a
+      = ap (ι-seq S') (comm f (map g a)) ∙
+         ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+              ＝⟨ ap (ap (ι-seq S') (comm f (map g a)) ∙_) (lem2 a) ⟩
+        ap (ι-seq S') (comm f (map g a)) ∙ ap (ι-seq S') (ap (map f) (comm g a))
+              ＝⟨ sym (ap-∙ (ι-seq S') (comm f (map g a)) (ap (map f) (comm g a))) ⟩
+        ap (ι-seq S') (comm f (map g a) ∙ ap (map f) (comm g a))    ∎
+
+  H : IdS
+       (seq-cocone-map _ (seq-colimit-map f ∘ seq-colimit-map g))
+       (seq-cocone-map _ (seq-colimit-map (compose-iseq-map f g)))
+  H .fst = ~refl
+  H .snd {n = n} a
+    = ap (seq-colimit-map f ∘ seq-colimit-map g) (glue-suc S'' a) ∙ refl
+               ＝⟨ ∙-reflr _ ⟩
+      ap (seq-colimit-map f ∘ seq-colimit-map g) (glue-suc S'' a)
+               ＝⟨ ap-∘ (seq-colimit-map f) (seq-colimit-map g) (glue-suc S'' a) ⟩
+      ap (seq-colimit-map f) (ap (seq-colimit-map g) (glue-suc S'' a))
+               ＝⟨ ap (ap (seq-colimit-map f)) (ap-seq-colimit-map-glue-suc g a) ⟩
+      ap (seq-colimit-map f)
+        (glue-suc S (map g a) ∙ ap (ι-seq S) (comm g a))
+               ＝⟨ ap-∙ (seq-colimit-map f) (glue-suc S (map g a)) (ap (ι-seq S) (comm g a)) ⟩
+      ap (seq-colimit-map f) (glue-suc S (map g a))
+        ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))
+               ＝⟨ ap (_∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a))) (ap-seq-colimit-map-glue-suc f (map g a)) ⟩
+      (glue-suc S' (map f (map g a)) ∙ ap (ι-seq S') (comm f (map g a)))
+        ∙ ap (seq-colimit-map f) (ap (ι-seq S) (comm g a)) ＝⟨ ∙.pulll _ (lemma a) ⟩
+      glue-suc S' (map f (map g a)) ∙  ap (ι-seq S') (comm (compose-iseq-map f g) a)
+               ＝⟨⟩
+      Cocone-seq.comm (seq-colim-map.cc (compose-iseq-map f g)) a
+               ＝⟨ sym (seq-colim-apβ _ (n , a)) ⟩
+      Cocone-seq.comm
+        (seq-cocone-map
+          (mk-cocone-seq (λ {n = n₁} z → ι₂ (n₁ , z)) (glue-suc S''))
+          (seq-colim-rec (seq-colim-map.cc (compose-iseq-map f g))))
+         a
+               ＝⟨⟩
+      comm
+       (seq-map←cocone
+        (seq-cocone-map
+         (mk-cocone-seq (λ {n} z → ι₂ (n , z))
+          (glue-suc S''))
+         (seq-colimit-map (compose-iseq-map f g))))
+       a ∎
+}
+%```
+}
+
+\subtree[stt-008Y]{
+\title{Sequential colimits of equivalent sequences}
+\taxon{corollary}
+\date{2025-08-15}
+
+\p{[Equivalent](stt-008X) sequences gives rise to equivalent sequential
+colimits.}
+
+\proof{
+\p{This follows from the [functoriality of taking the colimit](stt-008Z)
+and \ref{stt-0095}.}
+}
+
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {S : Incr-seq 𝓤} {S' : Incr-seq 𝓥}
+         (F : Incr-seq-map S S')  where
+  open Incr-seq-map F
+
+  seq-colimit-map-is-equiv
+    : is-iseq-equiv F → is-equiv (seq-colimit-map F)
+  seq-colimit-map-is-equiv Feq = is-equiv←qiso iso where
+    module F {n} = is-equiv (Feq n)
+    Fbwd = seq-map-inv←equiv {F = F} Feq
+
+    iso : quasi-iso (seq-colimit-map F)
+    iso .fst = seq-colimit-map Fbwd
+    iso .snd .fst =  happly (seq-colimit-map∘ Fbwd F)
+                  ~∙ seq-colimit-map~ (inverse-seq-map-section Feq)
+                  ~∙ happly seq-colimit-map-id
+    iso .snd .snd = happly (seq-colimit-map∘ F Fbwd)
+                  ~∙ seq-colimit-map~ (inverse-seq-map-retraction {F = F} Feq)
+                  ~∙ happly seq-colimit-map-id
+}
+%```
+}
+
+\subtree[stt-0097]{
+\title{Colimit of the unit sequence}
+\taxon{lemma}
+
+\p{The colimit of the constant sequence at the unit type is a
+singleton.}
+
+\proof{
+Choose the centre of contraction to be #{\iota_0(*)}, and then
+each #{\iota_{n}(x)} has a path given by glueing #{n} times.
+}
+
+%```agda
+\agda{
+
+𝟙-iseq : Incr-seq lzero
+𝟙-iseq = const-incr-seq 𝟙
+
+colim𝟙 : is-singleton (Seq-colimit 𝟙-iseq)
+colim𝟙 = mk-singl (ι-seq _ {0} tt)
+         (seq-colimit-ind ((λ {n} p → glue-n _ n tt)
+                          , λ a → IdP-func←Square
+                                      {f = λ _ → ι-seq _ {0} tt}
+                                      {g = id}
+                                      (glue-suc _ a) _ _ sq)) where
+  sq : ∀ {n} {a : Incr-seq.Point (const-incr-seq 𝟙) n} →
+      Square
+      (ap (λ z → ι-seq _ tt) (glue-suc _ a))
+      (ap id (glue-suc _ a))
+      (glue-n _ n tt)
+      (glue-n _ (suc n) tt)
+  sq {n} {a}
+    = ap (λ _ → ι-seq _ tt) (glue-suc _ a) ∙ (glue-n _ (suc n) tt)
+                            ＝⟨ ap-const  (glue-suc _ a)  ⟩∙⟨ refl ⟩
+      (glue-n _ (suc n) tt) ＝⟨⟩
+      glue-n _ n tt ∙ glue-suc _ a
+                            ＝⟨ refl ⟩∙⟨ sym (ap-id (glue-suc _ a)) ⟩
+      glue-n _ n tt ∙ ap id (glue-suc _ a)    ∎
+}
+%```
+}
+
+\subtree[stt-0096]{
+\title{Sequential colimits of constant sequences are singletons}
+\taxon{theorem}
+\date{2025-08-16}
+
+\p{Given a sequence #{A} with points #{a_n : A_n}, the colimit of
+#{A} is a singleton if each map #{A_n \to A_{n+1}} is homotopic
+to the constant map at #{a_{n+1}}.}
+
+\proof{
+\p{We take #{\iota_0(a_0)} to be the centre of contraction, then to
+show there is a path #{\iota_0(a_0) = x} for any #{x} in the colimit,
+we use induction. This we need the following data:}
+
+\ul{
+\li{Homotopies #{H_n : \Delta_{\iota(a_0)} \sim \iota_n}}
+\li{A homotopy between #{H_{n+1}\rm{incr}} and #{H_{n} \cdot gl_n}}
+}
+
+
+\p{The homotopy #{H_n} is constructed as follows:
+##{gl_{0,n+1} \cdot K(\rm{incr}_n(a_0)) \cdot
+  K(p)^{-1} \cdot gl_{n}^{-1}}
+Where #{K} is the homotopy expressing the constancy of the sequence.}
+
+\p{The second homotopy follows via naturality of #{gl} and #{K}, modulo
+some slightly awkward path algebra.}
+}
+
+%```agda
+\agda{
+module _ {𝓤} {A : Incr-seq 𝓤} (a : Π ℕ (Incr-seq.Point A)) where
+  open Incr-seq A
+  open Incr-seq-map
+
+  colim-map←const
+    : (∀ n → incr {n} ~ const _ _ (a (suc n))) → Incr-seq-map 𝟙-iseq A
+  colim-map←const is-const .map _ = a _
+  colim-map←const is-const .comm _ = is-const _ _
+
+  colim-point←const
+    : (∀ n → incr {n} ~ const _ _ (a (suc n))) → Seq-colimit A
+  colim-point←const is-const = seq-colimit-map
+                                 (colim-map←const is-const)
+                                 (centre colim𝟙)
+
+  colim-const-seq-is-single : (∀ n → incr {n} ~ const _ _ (a (suc n)))
+                              → is-singleton (Seq-colimit A)
+  colim-const-seq-is-single is-const
+    = mk-singl (colim-point←const is-const) (seq-colimit-ind cc) where
+
+
+    glue-up : ∀ {n} (p : Point n) → ι-seq A (a 0) ＝ ι-seq A p
+    glue-up {n} p = (glue-n A (suc n) (a 0)
+                     ∙ ap (ι-seq A) (is-const n (incrℕ n (a 0))
+                                    ∙ sym (is-const n p)))
+                   ∙ sym (glue-suc A p)
+
+    const-nat : ∀ {n} (p : Point n)
+        → is-const _ (incr p)
+        ＝ ap incr (is-const _ p) ∙ is-const _ (a (suc n))
+    const-nat p = sym (∙.eliml _ (ap-const _))
+                ∙ homotopy-natural (is-const _) (is-const _ p)
+
+
+    lemma : ∀ {n} (p : Point n)
+           → (is-const _ (incrℕ (suc n) (a 0)) ∙ sym (is-const _ (incr p)))
+          ＝ ap incr (is-const _ (incrℕ n (a 0)) ∙ sym (is-const _ p))
+    lemma p
+      = is-const (suc _) (incrℕ (suc _) (a 0))
+         ∙ sym (is-const (suc _) (incr p))
+               ＝⟨ const-nat (incrℕ _ (a 0))  ⟩∙⟨ ap sym (const-nat p) ∙ ∙-symsym (ap incr (is-const _ p)) _ ⟩
+
+        (ap incr (is-const _ (incrℕ _ (a 0))) ∙ is-const (suc _) (a (suc _)))
+         ∙ (sym (is-const (suc _) (a (suc _))) ∙ sym (ap incr (is-const _ p)))
+
+               ＝⟨ ∙.cancel-inner _ (∙-sym (is-const _ (a (suc _)))) {f = sym (ap (incr) (is-const _ p))}  ⟩
+
+        ap incr (is-const _ (incrℕ _ (a 0)))
+          ∙ sym (ap incr (is-const _ p))
+                ＝⟨ ap (ap incr _ ∙_) (sym (ap-sym incr (is-const _ p)))
+                  ∙ sym (ap-∙ incr _ (sym (is-const _ p)))  ⟩
+        ap incr (is-const _ (incrℕ _ (a 0)) ∙ sym (is-const _ p))    ∎
+
+    glue-up-suc : ∀ {n} (p : Point n)
+                → glue-up (incr p) ＝ glue-up p ∙ glue-suc A p
+    glue-up-suc {n} p =
+      ((glue-n A (suc n) (a 0) ∙ glue-suc A (incrℕ (suc n) (a 0)))
+        ∙ ⌜ ap (ι-seq A) ( is-const _ (incrℕ (suc n) (a 0))
+                         ∙ sym (is-const _ (incr p))) ⌝)
+      ∙ sym (glue-suc A (incr p))
+
+            ＝⟨ ap! (ap (ap (ι-seq A)) (lemma p)
+                ∙ sym (ap-∘ (ι-seq A) incr _)) ⟩
+
+      (⌜ (glue-n A (suc n) (a 0) ∙ glue-suc A (incrℕ (suc n) (a 0)))
+        ∙ ap (ι-seq A ∘ incr) (is-const _ (incrℕ n (a 0))
+                              ∙ sym (is-const _ p)) ⌝)
+      ∙ sym (glue-suc A (incr p))
+
+            ＝⟨ ap! (∙.extendl _
+                      (homotopy-natural (glue-suc A)
+                        (is-const n (incrℕ n (a 0))
+                        ∙ sym (is-const n p)))
+                    {e = glue-n A (suc n) (a 0)}) ⟩
+
+      ((glue-n A (suc n) (a 0)
+        ∙ ap (ι-seq A) (is-const n (incrℕ n (a 0))
+        ∙ sym (is-const n p)))
+      ∙ glue-suc A (incr p))
+      ∙ sym (glue-suc A (incr p))
+
+            ＝⟨  ∙.cancell _ (∙-sym (glue-suc A (incr p))) ⟩
+
+       glue-n A (suc n) (a 0)
+       ∙ ap (ι-seq A) (is-const n (incrℕ n (a 0)) ∙ sym (is-const n p))
+
+            ＝⟨ sym (∙.cancell _ (∙-sym' (glue-suc A p))) ⟩
+
+       ((glue-n A (suc n) (a 0)
+         ∙ ap (ι-seq A) (is-const n (incrℕ n (a 0)) ∙ sym (is-const n p)))
+       ∙ sym (glue-suc A p))
+      ∙ glue-suc A p ∎
+
+
+
+    sq : ∀ {n} {p : Point n}
+         → Square (ap (λ _ → ι-seq A (a 0)) (glue-suc A p))
+                  (ap id (glue-suc A p))
+                  (glue-up p)
+                  (glue-up (incr p))
+    sq {n} {p}
+     = ap (λ _ → ι-seq A (a 0)) (glue-suc A p) ∙ glue-up (incr p)
+                  ＝⟨ ap-const (glue-suc A p) ⟩∙⟨ refl ⟩
+       glue-up (incr p)
+                  ＝⟨ glue-up-suc p ⟩
+       glue-up p ∙ glue-suc A p
+                  ＝⟨ refl ⟩∙⟨ sym (ap-id (glue-suc A p)) ⟩
+       glue-up p ∙ ap id (glue-suc A p)    ∎
+
+    cc : seq-CoconeP A (colim-point←const is-const ＝_)
+    cc .fst = glue-up
+    cc .snd p = IdP-func←Square {f = λ _ → ι-seq A (a 0)} {g = id}
+                  (glue-suc A p) _ _
+                  sq
+}
+%```
+}

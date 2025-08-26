@@ -1,0 +1,581 @@
+\date{2025-07-30}
+\title{Fibred joins and the modified image construction}
+\taxon{module}
+\meta{module}{Core.FibredJoin}
+\author{samueltoth}
+\import{stt-macros}
+
+\p{ In this module we construct the fibred join relative to an
+arbitrary identity system. This then allows us to
+construct a small [image](stt-008H) of a map with an only locally
+small codomain.}
+
+
+%```agda
+\agda{
+module Core.FibredJoin where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.Slice
+open import Core.Coequalisers
+open import Core.CanonicalSeqColims
+open import Core.Join
+open import Core.Image
+open import Core.CanonicalPushouts
+open import Core.PushoutDescent
+open import Core.PushoutEquiv
+open import Core.ExtPullbacks
+open import Core.FlatteningSeqColims
+
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[stt-0084]{
+\title{The Fibred Join}
+\taxon{definition}
+
+\p{Given a cospan #{A \xrightarrow{f} B \xleftarrow{g} C}, and a
+particular choice of pullback over this span #{A \times'_B C}, we can
+form the fibred join #{A *^B C \xrightarrow{f * g} B} as the following colimit:}
+
+\quiver{
+\begin{tikzcd}
+	{A \times'_B C} &&& A \\
+	\\
+	&& {A *^BC} \\
+	C &&& B
+	\arrow[from=1-1, to=1-4]
+	\arrow[from=1-1, to=4-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=1-1, to=4-4]
+	\arrow[from=1-4, to=3-3]
+	\arrow["f", from=1-4, to=4-4]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+	\arrow[dashed, from=3-3, to=4-4]
+	\arrow[from=4-1, to=3-3]
+	\arrow["g"', from=4-1, to=4-4]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         (f : A → B) (g : C → B) ⦃ s : Identity-system B 𝓜 ⦄ where
+  open pbₑ ⦃ s ⦄ {f} {g}
+
+
+  Fibre-join : Type (𝓤 ⊔ 𝓦 ⊔ 𝓜)
+  Fibre-join = Pushout π₁ π₂
+
+  fibre-join : Fibre-join → B
+  fibre-join = pushout-rec (mk-cocone f g pbₑ.filler)
+}
+%```
+}
+
+\subtree[stt-008T]{
+\title{The fibre of the fibred join map}
+\taxon{lemma}
+\date{2025-08-10}
+
+\p{For maps #{f : A \to B} and #{f' : A' \to B}, the fibre of #{f * f'}
+at some #{x : B} is equivalent to the join of the fibre of #{f} at #{x}
+with the fibre of #{f'} at #{x}.}
+
+%```agda
+\agda{
+  fibre-fibre-join≃ : ∀ x → fibre fibre-join x ≃ fibre f x * fibre g x
+  fibre-fibre-join≃ x = cogap-fibre (mk-cocone f g filler) x
+                     ∙≃ Pushout-adjust-equiv (mk≃ map
+                        (homotopy-is-equiv (map~map' ~⁻¹) map-is-equiv))
+    where
+    map : (Σ[ pb ∶ Pullbackₑ f g ] (g (π₂ pb) ＝ x))
+         → fibre f x × fibre g x
+    map ((a , c , p) , q)
+      = (a , tr (Fibre-family (mk-cocone f g filler) x)
+                (sym (glue (a , c , p))) q)
+        , c , q
+
+    map' : (Σ[ pb ∶ Pullbackₑ f g ] (g (π₂ pb) ＝ x))
+         → fibre f x × fibre g x
+    map' (pb , q) = (π₁ pb , filler pb ∙ q) , (π₂ pb , q)
+
+    H : ∀ pb
+        → filler pb
+        ＝ tr (Fibre-family (mk-cocone f g filler) (g (π₂ pb)))
+                            (sym (glue pb)) refl
+    H pb = sym (IdP-func←Square {f = cogap (mk-cocone f g filler)}
+                (sym (glue pb)) refl (filler pb)
+                ((ap (_∙ filler pb) ( ap-sym _ (glue pb)
+                                    ∙ ap sym (pushout-rec-apβ pb))
+                 ∙ ∙-sym' (filler pb)) ∙ sym (ap-const _)))
+
+    map~map' : map ~ map'
+    map~map' (pb , refl)
+      = ×-path→ ( (fibre-path→ (refl , ∙-reflr _ ∙ H pb))
+                , refl)
+
+    H' : ∀ a (p : f a ＝ x) (c : C) (q : g c ＝ x)
+         → ext! (IdS←Id (p ∙ sym q)) ∙ q ＝ p
+    H' a p c q = ap (_∙ q) (Id←IdS←Id (p ∙ sym q))
+               ∙ ∙.cancell _ (∙-sym' q)
+
+    II : ∀ (pb : Pullbackₑ f g) (q : g (π₂ pb) ＝ x)
+         → tr (f (π₁ pb) ＝ₑ_) ((ext! (pb .snd .snd) ∙ q) ∙ sym q)
+              (IdS₀ ⦃ s ⦄)
+         ＝ pb .snd .snd
+    II (a , c , p) q
+      = IdS←Id ((ext! p ∙ q) ∙ sym q)
+               ＝⟨ ap IdS←Id (∙.cancell _ {h = sym q} {q} (∙-sym q)) ⟩
+        IdS←Id ⦃ s ⦄ (ext! p)
+               ＝⟨ IdS←Id←IdS ⦃ s ⦄ p ⟩
+        p ∎
+
+    III  : ∀ (pb : Pullbackₑ f g) q
+         → Square (ap (g ∘ π₂) (Σ-path→ (refl , Σ-path→ (refl , II pb q))))
+                  (ap (λ _ → x) (Σ-path→ (refl , Σ-path→ (refl , II pb q))))
+                  q q
+    III pb q
+      = ap (g ∘ π₂) (Σ-path→ (refl , Σ-path→ (refl , II pb q))) ∙ q
+                ＝⟨ ap (_∙ q) (ap-∘ g π₂ _
+                              ∙ ap (ap g) (Σ-path-ap-fstsnd refl _))  ⟩
+        q       ＝⟨ sym (∙.eliml _ (ap-const _)) ⟩
+        q ∙ ap (λ _ → x) _    ∎
+
+    opaque
+      map-is-equiv : is-equiv map'
+      map-is-equiv = is-equiv←qiso λ where
+        .fst ((a , p) , (c , q)) → (a , (c , (IdS←Id (p ∙ sym q))))
+                                   , q
+        .snd .fst (pb , q)
+          → Σ-path→ ((Σ-path→ (refl , (Σ-path→ (refl , II pb q))))
+                    , IdP-func←Square {f = g ∘ π₂} {g = λ _ → x}
+                         (Σ-path→ (refl
+                                  , Σ-path→ (refl , II pb q)))
+                         q q (III pb q))
+        .snd .snd ((a , p) , (c , q))
+          → ×-path→ ((Σ-path→ (refl , H' a p c q)) , refl)
+}
+%```
+}
+
+\subtree[stt-008K]{
+\title{Fibred joins preserve universal embedding}
+\taxon{lemma}
+\citet{3.1}{rijke-2017}
+
+\p{Let #{f} be a map #{A \to B}, then given a map #{f' : A' \to B}
+together with a triangle #{f \to f'}, if #{f'} is a [universal
+embedding](stt-008H), then so is #{f * f'}.}
+
+\proof{
+
+\p{Let #{i : I' \hookrightarrow B} be an embedding.  To show #{f * f'}
+is universal, we need to show the map #{(f * f' \to i) \to (f \to i)}
+given by postcomposition is an equivalence, but because #{i} is an
+embedding [this is a map between propositions](stt-008J), so it
+suffices to give a map in the opposite direction. Then let #{k} be a
+map #{f \to i}, and by the assumption that #{f'} is a universal
+embedding, we also have a map #{\varphi^i(k) : f' \to i}. These maps
+are arranged in the diagram below:}
+
+\quiver{
+\begin{tikzcd}
+	{A\times_B A'} && {A'} \\
+	\\
+	A && {A *_B A'} \\
+	&&& {I'} \\
+	&&&&& B
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["{\varphi^i(k)}", curve={height=-6pt}, dashed, from=1-3, to=4-4]
+	\arrow["{f'}", curve={height=-24pt}, from=1-3, to=5-6]
+	\arrow[from=3-1, to=3-3]
+	\arrow["k"', from=3-1, to=4-4]
+	\arrow["f"', curve={height=18pt}, from=3-1, to=5-6]
+	\arrow[dashed, from=3-3, to=4-4]
+	\arrow["{f*f'}", curve={height=-12pt}, dashed, from=3-3, to=5-6]
+	\arrow["i"{description}, from=4-4, to=5-6]
+\end{tikzcd}
+}
+
+\p{To construct the map #{j : A *_B A' \to I'}, we need to show that the
+square with #{k} and #{\varphi^i(k)} commutes, but because #{i} is an
+embedding, it suffices to show the outer square commutes. Now, by
+pasting together triangles, we have #{f \sim ij\iota_1} and
+#{f' \sim ij\iota_2}, which by the universal property of pullbacks
+gives us #{ij \sim f * f'} as required.}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
+         ⦃ s : Identity-system B 𝓜 ⦄
+         (f : A → B) (f' : A' → B) (tri : Slice-map f f')
+          where
+  Fibre-join-slice-map : Slice-map f (fibre-join f f')
+  Fibre-join-slice-map .fst = ι₁
+  Fibre-join-slice-map .snd = ~refl
+
+  Fibre-join-is-universal-embedding
+    : is-universal-embedding f f' tri
+    → is-universal-embedding
+        f
+        (fibre-join f f')
+        Fibre-join-slice-map
+  Fibre-join-is-universal-embedding emb i iemb
+    = _≃_.has-is-eqv (is-equiv←logical
+                       (slice-embedding-is-prop iemb)
+                       (slice-embedding-is-prop iemb)
+                       (_ , map)) where
+    open pbₑ {f = f} {f'}
+    module φ = is-equiv (emb i iemb)
+
+    map : Slice-map f i → Slice-map (fibre-join f f') i
+    map k .fst = pushout-rec (mk-cocone
+      (k .fst)
+      (φ.bwd  k .fst)
+      (iemb ◂emb (k .snd ▸ π₁ ~∙ pbₑ.filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
+    map k .snd = pushout-ind _ (mk-coconeD
+      (k .snd)
+      (φ.bwd k .snd)
+      λ a → IdP-func←Square (glue a) _ _
+              (ap (_∙ φ.bwd k .snd (π₂ a))
+                  ( ap-∘ i _ (glue a)
+                  ∙ ap (ap i) (pushout-rec-apβ a)
+                  ∙ is-equiv.ε iemb _)
+              ∙ (ap (_∙ φ.bwd k .snd (π₂ a))
+                    (sym (∙-assoc (k .snd _) (filler a) _))
+              ∙ ∙-assoc (k .snd _ ∙ filler a) (sym _) _
+              ∙ ap ((k .snd _ ∙ filler a) ∙_) (∙-sym' (φ.bwd k .snd _)))
+              ∙ ∙-reflr _
+              ∙ ap (k .snd (π₁ a) ∙_) (sym (pushout-rec-apβ a))))
+}
+%```
+}
+
+
+\subtree[stt-008F]{
+\title{Iterated fibred join}
+\taxon{definition}
+
+\p{Given a map #{f : A \to B}, we can mutually define the iterated
+fibred join as a [sequence of types](stt-0085) together with maps down
+into #{B}.}
+
+\quiver{
+\begin{tikzcd}
+	A && {A*^BA} && {A *^B (A *^B A)} && {...} \\
+	\\
+	&& B
+	\arrow["{\iota_2}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-3]
+	\arrow["{\iota_2}", from=1-3, to=1-5]
+	\arrow["f^*", from=1-3, to=3-3]
+	\arrow[from=1-5, to=1-7]
+	\arrow["f^*2"', from=1-5, to=3-3]
+	\arrow[from=1-7, to=3-3]
+\end{tikzcd}
+}
+
+\p{We note that this data gives us a [cocone](stt-0088) under the
+sequence at #{B}, as well as a cone over the sequence at #{A}, such
+that the composition of the cone with the cocone gives the original
+map #{f}.
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         ⦃ s : Identity-system B 𝓜 ⦄ (f : A → B) where
+  Im-aprox : ℕ → Type (𝓤 ⊔ 𝓜)
+  Im-cocone  : ∀ {n} → Im-aprox n → B
+
+  Im-aprox zero = ULift 𝓜 A
+  Im-aprox (suc n) = Fibre-join f (Im-cocone {n})
+
+  Im-cocone {zero} = f ∘ unlift
+  Im-cocone {suc n} = fibre-join f Im-cocone
+
+  Im-slice-map : ∀ {n} → Slice-map (Im-cocone {n}) (Im-cocone {suc n})
+  Im-slice-map .fst = ι₂
+  Im-slice-map .snd = ~refl
+
+  iterated-join : Incr-seq (𝓤 ⊔ 𝓜)
+  iterated-join .Incr-seq.Point = Im-aprox
+  iterated-join .Incr-seq.incr  = ι₂
+
+  iterated-join-cocone : Cocone-seq iterated-join B
+  iterated-join-cocone .Cocone-seq.ι = Im-cocone
+  iterated-join-cocone .Cocone-seq.comm = ~refl
+
+  Im-cone : ∀ {n} → A → Im-aprox n
+  Im-cone {zero} = mk-lift
+  Im-cone {suc n} = ι₁
+
+  Im-cocone∘cone : ∀ {n} → Im-cocone ∘ Im-cone {n} ~ f
+  Im-cocone∘cone {zero} = ~refl
+  Im-cocone∘cone {suc n} = ~refl
+}
+%```
+}
+
+\subtree[stt-008W]{
+\title{Iterated non-fibred join}
+\taxon{definition}
+\date{2025-08-14}
+
+\p{We define the type of iterated non-fibred joins, and show that
+as a result of \ref{stt-008T} we have an equivalence of type sequences
+between the iterated join of the fibres of a map and the iterated
+fibred join of the map itself.}
+
+%```agda
+\agda{
+_*^_ : ∀ {𝓤} → Type 𝓤 → ℕ → Type 𝓤
+A *^ zero = A
+A *^ suc n = A * (A *^ n)
+
+it-join-seq : ∀ {𝓤} (A : Type 𝓤) → Incr-seq 𝓤
+it-join-seq A .Incr-seq.Point n = A *^ n
+it-join-seq A .Incr-seq.incr = ι₂
+
+
+module _ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         ⦃ s : Identity-system B 𝓜 ⦄ where
+  fib-seq : (b : B) → Incr-seq (𝓤 ⊔ 𝓥 ⊔ 𝓜)
+  fib-seq b .Incr-seq.Point n = fibre (Im-cocone f {n}) b
+  fib-seq b .Incr-seq.incr = total-map-fst ι₂
+
+
+  join-fibres←fibred-join
+    : ∀ b n → fibre (Im-cocone f {n}) b → (fibre f b *^ n)
+  join-fibres←fibred-join b zero = total-map-fst unlift
+  join-fibres←fibred-join b (suc n)
+    = (id *₁ join-fibres←fibred-join b n)
+    ∘ fibre-fibre-join≃ f (Im-cocone f {n}) b ._≃_.fwd
+
+  seq-map-join-fibres
+    : ∀ b → Incr-seq-map (fib-seq b) (it-join-seq (fibre f b))
+  seq-map-join-fibres b .Incr-seq-map.map {n} = join-fibres←fibred-join b n
+  seq-map-join-fibres b .Incr-seq-map.comm = ~refl
+
+  is-seq-equiv-join-fibres
+    : ∀ b → is-iseq-equiv (seq-map-join-fibres b)
+  is-seq-equiv-join-fibres b zero
+    = total-is-equiv←fst-is-equiv (is-equiv⁻¹ lift-is-equiv)
+  is-seq-equiv-join-fibres b (suc n)
+    = is-equiv-∘ (*₁-is-equiv id-is-equiv (is-seq-equiv-join-fibres b n))
+                 (fibre-fibre-join≃ f _ b ._≃_.has-is-eqv)
+}
+%```
+}
+
+\subtree[stt-008G]{
+\title{The modified image of a map}
+\taxon{construction}
+
+\citet{3.3}{rijke-2017}
+
+\p{We are finally ready to construct the image of a map. Paying
+particular care to universe levels, we can state that given a type
+#{A} in #{\UU} and any type #{B} which is locally #{\UV} small and a
+map #{f : A \to B} we can construct an image #{\rm{Im}'(f)} that lives in
+#{\UU \cup \UV}.  The modified image is defined as the
+[colimit](stt-008B) of the [iterated fibred join](stt-008F). From
+this, we get a projection map #{A \to \rm{Im}'(f)} and the inclusion
+#{i_f : \rm{Im}'(f) \to B} which assembles into a commuting triangle
+#{f \to_B i_f}.  }
+
+%```agda
+\agda{
+module Im' {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+           ⦃ s : Identity-system B 𝓜 ⦄ (f : A → B)  where
+
+  Im' : Type (𝓤 ⊔ 𝓜)
+  Im' = Seq-colimit (iterated-join f)
+
+  proj : A → Im'
+  proj = ι-seq _ ∘ mk-lift
+
+  incl : Im' → B
+  incl = seq-colim-rec (iterated-join-cocone f)
+
+  factors : Slice-map f incl
+  factors .fst = proj
+  factors .snd = ~refl
+
+  im-slice-map : ∀ n → Slice-map f (Im-cocone _ {n})
+  im-slice-map n = ( Im-cone _
+                   , Im-cocone∘cone f {n})
+}
+%```
+
+\p{
+We first note that each map #{f^*n} in the cocone has the universal
+embedding property - this follows via induction and the fact that
+[joining maps preserves the universal property](stt-008K).}
+
+\p{Then, to show the image inclusion has the universal embedding
+property it suffices to give a map #{(f \to_B i') \to (i_f \to_B i')}
+for each embedding #{i'}. That is, we need to give the dotted map
+in the following diagram and show that the corresponding triangle
+commutes:}
+
+\quiver{
+\begin{tikzcd}
+	&& {\rm{Im'}(f)} \\
+	A &&& {I'} \\
+	\\
+	& B
+	\arrow[dashed, from=1-3, to=2-4]
+	\arrow["i", from=1-3, to=4-2]
+	\arrow["{\rm{proj}}", from=2-1, to=1-3]
+	\arrow[from=2-1, to=2-4]
+	\arrow["f"', from=2-1, to=4-2]
+	\arrow["{i'}", hook', from=2-4, to=4-2]
+\end{tikzcd}
+}
+
+\p{We construct the map via the recursion principal of the sequential
+colimit, so we require a cocone under the iterated fibred join
+sequence.  But we already have such a map for each point in the
+sequence because we have just shown that each #{f^{*n}} is a universal
+embedding. We show that the triangle commutes in the same way,
+first applying induction on the sequential colimit and then using the
+universal embedding property for each approximation.  }
+
+%```agda
+\agda{
+  all-univ : ∀ n
+             → is-universal-embedding
+                f
+                (Im-cocone _)
+                (im-slice-map n)
+  all-univ zero
+    = is-universal-embedding←logical f _ _ λ where
+       _ _ (f , ff) → (f ∘ unlift , ff ∘ unlift)
+  all-univ (suc n)
+    = Fibre-join-is-universal-embedding f _ (im-slice-map n) (all-univ n)
+
+  universal : is-universal-embedding f incl factors
+  universal
+    = is-universal-embedding←logical f incl factors map where
+      map : ∀ {𝓦} {I' : Type 𝓦}
+              (i' : I' → B) → is-embedding i'
+            → Slice-map f i' → Slice-map incl i'
+      map i' iemb fi' .fst = seq-colim-rec (mk-cocone-seq
+        (λ {n} → is-equiv.bwd (all-univ n i' iemb) fi' .fst)
+        ~refl)
+      map i' iemb fi' .snd = pushout-ind _
+        (mk-coconeD
+          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+          (⊎-ind
+            ( (uncurry λ n a → IdP-func←Square (glue (inl (n , a))) _ _
+                      ( ap (_∙ (is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
+                           ( ap-∘ i' _ (glue (inl (n , a)))
+                           ∙ ap (ap i') (pushout-rec-apβ (inl (n , a))))
+                      ∙ sym (ap ((is-equiv.bwd (all-univ n i' iemb) fi' .snd a) ∙_)
+                                (pushout-rec-apβ (inl (n , a)))
+                      ∙ ∙-reflr _)))
+            , uncurry λ n a → IdP-func←Square (glue (inr (n , a))) _ _
+                 let e = is-equiv.bwd (all-univ n i' iemb) fi' .snd a
+                 in ap (_∙ e) ( ap-∘ i' _ (glue (inr _))
+                              ∙ ap (ap i') (pushout-rec-apβ _))
+                    ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
+                          ∙ ∙-reflr _))))
+}
+%```
+
+\p{Now we show that that the inclusion #{i : \rm{Im}' \to B} is an
+embedding.  To show the fibres of #{i} at each #{b : B} are
+propositions, it suffices to show that they are singleton assuming an
+inhabitant. Giving a fibrewise map #{\Pi_{(b : B)} \fibre{i}{b} \to
+\rm{is-single}(\fibre{i}{b})} is equivalent to giving a map in the
+slice over #{b}, #{\Sigma_{(b : B)}(\fibre{i}{b}) \to \Sigma_{(b :
+B)}(\rm{is-single}(\fibre{i}{b}))}, but becuase [being a singleton is
+a proposition](Foundations.SingletonProp), the projection to #{b} in
+the codomain is an equivalence, and we can make use of the [universal
+property of the image with respect to embeddings](stt-008H) that we
+have just proved to show that we can just give a map #{\fibre{f}{b}
+\to \rm{is-single}(\fibre{i}{b})}. }
+
+\p{Using the [flattening lemma](stt-009K), we can show that the fibre
+of the map #{i} is equivalently the sequential colimit of fibres of
+each #{f^{*n}}, but then [we have characterised the fibres of the
+iterated join](stt-008W) as the iterated join of the fibres. Finally
+we show that the sequence of iterated joins of fibres all factor through
+#{1} so are constant and thus [the colimit is a singleton](stt-0096).}
+
+%```agda
+\agda{
+  incl-is-embedding : is-embedding incl
+  incl-is-embedding
+    = is-embedding←is-prop-map λ
+       b → is-prop←is-single-if-inhabited λ f → lem b f where
+    fib-seq' : (a : A) → Incr-seq (𝓤 ⊔ 𝓥)
+    fib-seq' a = it-join-seq (fibre f (f a))
+
+    fib-seq←fibre-seq : ∀ b → Incr-seq-map (fibre-seq incl b) (fib-seq f b)
+    fib-seq←fibre-seq b .Incr-seq-map.map = id
+    fib-seq←fibre-seq b .Incr-seq-map.comm (i , refl)
+      = Σ-path→ (refl
+        , sym ( ∙-reflr _
+              ∙ ap-sym incl _ ∙ ap sym (seq-colim-apβ _ (_ , i))))
+
+    all-constant : ∀ a n
+                   → (fib-seq' a .Incr-seq.incr {n}
+                      ~ λ _ → ι₁ (a , refl))
+    all-constant a n f = sym (glue ((a , refl) , f))
+
+    a' : ∀ a n → Incr-seq.Point (fib-seq' a ) n
+    a' a zero = (a , refl)
+    a' a (suc n) = ι₁ (a , refl)
+
+    lem4 : ∀ a → is-singleton (Seq-colimit (fib-seq' a))
+    lem4 a = colim-const-seq-is-single (a' a) (all-constant a)
+
+    lem3,5 : ∀ a → Seq-colimit (fibre-seq incl (f a))
+                 ≃ Seq-colimit (fib-seq' a)
+    lem3,5 a
+      = Seq-colimit (fibre-seq incl (f a))
+          ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
+                     (fib-seq←fibre-seq (f a)) (λ n → id-is-equiv)) ⟩
+        Seq-colimit (fib-seq f (f a))
+          ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
+                     (seq-map-join-fibres f (f a))
+                     (is-seq-equiv-join-fibres f (f a))) ⟩
+        Seq-colimit (fib-seq' a)           ≃∎
+
+    lem3 : ∀ a → is-singleton (Seq-colimit (fibre-seq incl (f a)))
+    lem3 a = is-single←equiv-to-single (lem3,5 a e⁻¹) (lem4 a)
+
+    lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
+    lem2 .(f a) (a , refl)
+      = is-single←equiv-to-single (fibre-seq-cogap≃ incl (f a) e⁻¹)
+                                  (lem3 a)
+
+    sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
+    sm = is-equiv.bwd (universal fst (is-embedding←is-prop-map
+                        (Σ̃-π-emb (mk-subtype (λ _ → is-single-is-prop)))))
+                      (total-map lem2 ∘ refl-fibre f , ~refl)
+
+    sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
+    sm' .fst = sm .fst ∘ total←total-fibre _
+    sm' .snd = sm .snd ▸ total←total-fibre incl ~∙ (snd ∘ snd)
+
+    lem : ∀ (b : B) (f : fibre incl b)
+          → is-singleton (fibre (λ v → incl v) b)
+    lem = Slice-family sm'
+
+  Im-is-image : is-image f incl
+  Im-is-image .is-image.has-is-emb = incl-is-embedding
+  Im-is-image .is-image.factors = factors
+  Im-is-image .is-image.has-is-image = universal
+}
+%```
+}

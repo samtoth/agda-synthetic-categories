@@ -10,10 +10,6 @@ open import Foundations.FunExt
 
 
 postulate
-  weak-funext : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-                → (∀ a → is-singleton (B a))
-                → is-singleton ((a : A) → B a)
-
   global-funext : FunExt-global
 
 
@@ -31,7 +27,28 @@ open import Foundations.PropClosure public hiding (is-prop-Π)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
-Singleton-Π = weak-funext
+import Foundations.HomotopyEquiv
+module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
+open HE public
+
+weak-funext : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+              → (∀ a → is-singleton (B a))
+              → is-singleton ((a : A) → B a)
+weak-funext sb = mk-singl (centre ∘ sb) (λ x → funext→ (λ a → sb a .central (x a)))
+
+is-singleton-Π = weak-funext
+
+is-singleton-Πᵢ
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+  → ({a : A} → is-singleton (B a)) → is-singleton ({a : A} → B a)
+is-singleton-Πᵢ {A = A}{B} sa
+  = is-single←equiv-to-single (equiv←qiso Π-implicit≃) (is-singleton-Π (λ _ → sa)) where
+  Π-implicit≃ :  Π A B ≅ ({a : A} → B a)
+  Π-implicit≃ ._≅_.fwd f = f _
+  Π-implicit≃ ._≅_.fwd-iso .fst f _ = f
+  Π-implicit≃ ._≅_.fwd-iso .snd .fst = ~refl
+  Π-implicit≃ ._≅_.fwd-iso .snd .snd = ~refl
+
 is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → ((a : A) → is-prop (B a))
             → is-prop (Π A B)
@@ -55,7 +72,13 @@ open WithGlobalUnivalence UA public
 
 {-# REWRITE ua-linv #-}
 
-open import Foundations.PropExt public using (PropExt)
+import Foundations.Straightening
+
+module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-funext
+open Straightening public
+
+open import Foundations.PropExt public using
+  (PropExt; logical←is-equiv; is-equiv←logical)
 import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤

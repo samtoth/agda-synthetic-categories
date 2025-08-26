@@ -13,11 +13,16 @@ module Core.Join where
 
 open import Foundations.Prelude
 open import ufAxioms
-open import Core.Suspensions 
+open import Core.Suspensions
+open import Core.Arrow
+open import Core.CocartesianSquare
+open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
 open import Ergonomics.Universal
 open import Ergonomics.PushoutUniv
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
+open import Ergonomics.Marker
 
 }
 % ```
@@ -28,8 +33,27 @@ open import Ergonomics.Extensionality
 \title{Joins of types}
 \meta{defines}{\startverb ["_*_"] \stopverb}
 
+\p{The join of types #{A} and #{B}, written #{A * B} is
+the pushout of the span
+#{A \xleftarrow{\pi_1} A \times B \xrightarrow{pi_2} B}}
+
+\quiver{
+\begin{tikzcd}
+	{A \times B} && A \\
+	\\
+	B && {A * B}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+\end{tikzcd}
+}
+
 % ```agda
 \agda{
+infixl 25 _*_
+
 _*_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
 A * B = Pushout {A = A × B} fst snd
 }
@@ -43,64 +67,192 @@ A * B = Pushout {A = A × B} fst snd
 
 \p{The join of a singleton with any type is also a singleton}
 
+\proof{
+\p{This follows from the fact that [pushing an equivalence out gives
+an equivalence](stt-0080).}
+}
+
 % ```agda
 \agda{
--- *-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---            → is-singleton A → is-singleton (A * B)
--- *-single sa = {!!}
+*-comm : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A * B ≃ B * A
+*-comm {A = A} {B} = pushout-comm ∙≃ (Pushout-adjust-equiv ×-swap)
 
--- *-single' : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---             → is-singleton B → is-singleton (A * B)
--- *-single' sb = {!!}
+
+*-single' : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            → is-singleton B → is-singleton (A * B)
+*-single' {A = A} {B} sb
+  = is-single←equiv-to-single (mk≃ _ ι₂-is-equiv) sb where
+  ι₂-is-equiv : is-equiv {B = A * B} ι₂
+  ι₂-is-equiv = dom-is-equiv←cocartesian
+                  (mk-amap snd ι₁ glue)
+                  (singleton-fst-is-equiv (λ _ → sb))
+                  (is-cocartesian←is-pushout Pushout-is-pushoutω)
+
+*-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+           → is-singleton A → is-singleton (A * B)
+*-single sa
+  = is-single←equiv-to-single *-comm (*-single' sa)
 }
 % ```
 }
 
 \subtree[stt-002W]{
+\taxon{theorem}
 \title{Joins of propositions}
+
+\p{The universal property for joins of propositions says that
+for propositions #{P} and #{Q}, to eliminate into a proposition #{R},
+it suffices to supply #{P \to R}, and #{Q \to R}}
+
+\p{As an easy corollary, we have that the join of two propositions
+is again a proposition.}
 
 % ```agda
 \agda{
--- *-prop-disj : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
---               {Q : Type 𝓦}
---            → is-prop A → is-prop B
---            → is-prop Q
---            → (A * B → Q) → (A → Q) × (B → Q)
--- *-prop-disj a b q f = (f ∘ ι₁ , f ∘ ι₂)
+*-prop-disj : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {Q : Type 𝓦}
+           → is-prop A → is-prop B
+           → is-prop Q
+           → (A * B → Q) → (A → Q) × (B → Q)
+*-prop-disj a b q f = (f ∘ ι₁ , f ∘ ι₂)
 
--- *-prop-disj≃ : ∀ {𝓤 𝓥 𝓦}
---               {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
---            → (pa : is-prop A) → (pb : is-prop B)
---            → (pq : is-prop Q)
---            → (A * B → Q) ≃ ((A → Q) × (B → Q))
--- *-prop-disj≃ {A = A} {B} {Q} pa pb pq
---  = (A * B → Q)                        ≃⟨ Univ≃' auto! ⟩
---    Coconeᵘ Q                          ≃⟨ {!!} ⟩
---    Σ[ f ∶ (A → Q) ]
---      Σ[ g ∶ (B → Q) ]
---       ((a : A) → (b : B) → f a ＝ g b) ≃⟨ Σ-ap-≃ (λ a
---                                            → Σ-singleton (λ x
---                                            → Singleton-Π λ b
---                                            → Singleton-Π (λ c
---                                            → ＝-singleton←is-prop pq _ _))) ⟩
---    ((A → Q) × (B → Q)) ≃∎
 
--- *-prop-rec : ∀ {𝓤 𝓥 𝓦}
---               {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
---            → (pa : is-prop A) → (pb : is-prop B)
---            → (pq : is-prop Q)
---            →  (A → Q) → (B → Q) → (A * B → Q)
--- *-prop-rec pa pb pq f g = _≃_.bwd (*-prop-disj≃ pa pb pq) (f , g) 
--- {-# NOINLINE *-prop-rec #-}
+*-prop-disj≃ : ∀ {𝓤 𝓥 𝓦}
+              {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+           → (pa : is-prop A) → (pb : is-prop B)
+           → (pq : is-prop Q)
+           → (A * B → Q) ≃ ((A → Q) × (B → Q))
+*-prop-disj≃ {A = A} {B} {Q} pa pb pq
+ = (A * B → Q)
+      ≃⟨ Pushout-UP≃ ⟩
+   Cocone (mk-span _ fst snd) Q
+      ≃⟨ cocone-repr≃ ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] (f ∘ fst ~ g ∘ snd)
+      ≃⟨ Σ-ap-≃ (λ f → Σ-ap-≃ (λ g → curry≃)) ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] ((a : A) → (b : B) → f a ＝ g b)
+      ≃⟨ Σ-ap-≃ (λ a → Σ-singleton (λ x → is-singleton-Π λ
+                     b → is-singleton-Π (λ
+                       c → ＝-singleton←is-prop pq _ _))) ⟩
+   ((A → Q) × (B → Q)) ≃∎
 
--- *-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
---             → is-prop A → is-prop B
---             → is-prop (A * B)
--- *-is-prop aprop bprop = is-prop←is-single-if-inhabited
---   (*-prop-rec aprop bprop is-singleton-is-prop
---     (λ a → *-single (mk-singl a (aprop a)))
---     (λ b → *-single' (mk-singl b (bprop b))))
+*-prop-UP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {Q : Type 𝓦}
+              (ap : is-prop A) (bp : is-prop B)
+              (qp : is-prop Q)
+            → is-equiv (*-prop-disj ap bp qp)
+*-prop-UP ap bp qp = *-prop-disj≃ ap bp qp ._≃_.has-is-eqv
+
+*-prop-rec : ∀ {𝓤 𝓥 𝓦}
+              {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+           → (pa : is-prop A) → (pb : is-prop B)
+           → (pq : is-prop Q)
+           →  (A → Q) → (B → Q) → (A * B → Q)
+*-prop-rec pa pb pq f g = _≃_.bwd (*-prop-disj≃ pa pb pq) (f , g)
+{-# NOINLINE *-prop-rec #-}
+
+*-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            → is-prop A → is-prop B
+            → is-prop (A * B)
+*-is-prop aprop bprop = is-prop←is-single-if-inhabited
+  (*-prop-rec aprop bprop is-single-is-prop
+    (λ a → *-single (mk-singl a (aprop a)))
+    (λ b → *-single' (mk-singl b (bprop b))))
 }
 % ```
 
+}
+
+\subtree[stt-009L]{
+\title{Functoriality of the join}
+\taxon{theorem}
+
+\p{The join operator on types defines a functor
+#{\SS \times \SS \to \SS}. We define the action of #{*} on functions,
+and show that it preserves equivalences.}
+
+%```agda
+\agda{
+_*₁_ : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+         {B : Type 𝓥} {B' : Type 𝓦}
+       → (A → A') → (B → B') → A * B → A' * B'
+f *₁ g = pushout-rec (mk-cocone (ι₁ ∘ f) (ι₂ ∘ g) (glue ∘ (f ⊗ g)))
+
+*₁-is-equiv : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+                {B : Type 𝓥} {B' : Type 𝓦}
+              → {f : A → A'} {g : B → B'}
+              → is-equiv f → is-equiv g
+              → is-equiv (f *₁ g)
+*₁-is-equiv {A = A}{B = B}{f = f} {g} feq geq = is-equiv←qiso iso where
+  module f = is-equiv feq
+  module g = is-equiv geq
+
+
+  opaque
+    sec : ∀ a →
+        Square (ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.ε) ∘ fst) a)
+               (((ι₂ ◂ g.ε) ∘ snd) a)
+    sec p@(a , b)
+      = ⌜ ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f *₁ g) ⌜ ap (f.bwd *₁ g.bwd) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f *₁ g) (glue (f.bwd a , g.bwd b)) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f.bwd ⊗ g.bwd) p)) ⟩
+        (glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) p ∙ (⌜ ι₂ ◂ g.ε ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.ε a , g.ε b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.ε , g.ε))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.ε , g.ε)) p    ＝⟨ switch-~∘ glue (×~ (f.ε , g.ε)) p ⟩
+        (glue ~∘' ×~ (f.ε , g.ε)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.ε , g.ε) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.ε , g.ε)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.ε a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.ε a) ∙ ap id (glue p) ∎
+
+    -- I wanted to generalise sec, and then give f.bwd and g.bwd
+    -- but because is-equiv⁻¹ goes via composing quasi-inverses it
+    -- messes with the ε
+    ret : ∀ a →
+        Square (ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.η) ∘ fst) a)
+               (((ι₂ ◂ g.η) ∘ snd) a)
+    ret p@(a , b)
+      = ⌜ ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f.bwd *₁ g.bwd) ⌜ ap (f *₁ g) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f.bwd *₁ g.bwd) (glue (f a , g b)) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f ⊗ g) p)) ⟩
+        (glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) p ∙ (⌜ ι₂ ◂ g.η ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.η a , g.η b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.η , g.η))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.η , g.η)) p    ＝⟨ switch-~∘ glue (×~ (f.η , g.η)) p ⟩
+        (glue ~∘' ×~ (f.η , g.η)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.η , g.η) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.η , g.η)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.η a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.η a) ∙ ap id (glue p) ∎
+
+  iso : quasi-iso (f *₁ g)
+  iso .fst = f.bwd *₁ g.bwd
+  iso .snd .fst = pushout-ind _ (mk-coconeD (ι₁ ◂ f.η) (ι₂ ◂ g.η)
+                    λ a → IdP-func←Square
+                           {f = (f.bwd *₁ g.bwd) ∘ (f *₁ g)}
+                           {id} (glue a)
+                           (ap ι₁ (f.η (fst a))) ((ι₂ ◂ g.η) (snd a))
+                           (ret a))
+  iso .snd .snd = pushout-ind _ (mk-coconeD (ι₁ ◂ f.ε) (ι₂ ◂ g.ε)
+                   (λ a →  IdP-func←Square {f = (f *₁ g) ∘ (f.bwd *₁ g.bwd)} {id}
+                               (glue a) _ _
+                               (sec a)))
+
+
+}
+%```
 }

@@ -29,19 +29,25 @@ instance
   IdS-Π ⦃ s ⦄ .IdS₀ _ = s .IdS₀
   IdS-Π {A = A} {B = B} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
     (is-single←equiv-to-single (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
-      (weak-funext (λ a → SingS-is-single ⦃ s ⦄ (f a))))
+      (weak-funext (λ a → SingS-is-single (f a))))
 
 {-# OVERLAPPABLE IdS-Π #-}
 
--- instance
---   IdS-Πi : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
---           → ⦃ _ : ∀ {a} → Identity-system (B a) 𝓦 ⦄
---           → Identity-system ({a : A} → B a) (𝓤 ⊔ 𝓦)
---   IdS-Πi ⦃ s ⦄ .IdS f g = ∀ {a} → s .IdS (f {a}) g 
---   IdS-Πi ⦃ s ⦄ .IdS₀ = s .IdS₀
---   IdS-Πi {A = A} {B} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
---          {!!}
+instance
+  IdS-Πi : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+          → ⦃ _ : ∀ {a} → Identity-system (B a) 𝓦 ⦄
+          → Identity-system ({a : A} → B a) (𝓤 ⊔ 𝓦)
+  IdS-Πi ⦃ s ⦄ .IdS f g = ∀ {a} → s .IdS (f {a}) g
+  IdS-Πi ⦃ s ⦄ .IdS₀ = s .IdS₀
+  IdS-Πi {A = A} {B} ⦃ s ⦄ .has-is-ids f
+    = is-identity-system←Sing-sing _ _
+         (is-single←equiv-to-single (Σ-Π-swapᵢ≃ {P = IdS ⦃ s ⦄ f})
+           (is-singleton-Πᵢ (SingS-is-single f)))
 
+_＝ₑ_ : ∀ {𝓤 : Level} {A : Type 𝓤} {𝓥 : Level}
+          ⦃ r : Identity-system A 𝓥 ⦄
+        → A → A → Type 𝓥
+_＝ₑ_ = IdS
 
 instance
   IdS-uncurry
@@ -53,9 +59,15 @@ instance
   IdS-uncurry {A = A} {B} {C} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
     (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃) (SingS-is-single ⦃ s ⦄ (curry f)) )
 
-ext! : ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
+ext! : ∀ {𝓤 𝓥} {A : Type 𝓤} ⦃ s : Identity-system A 𝓥 ⦄ {x y : A}
      → s .IdS x y → x ＝ y
 ext! = Id←IdS
+
+ext!-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A}
+                  ⦃ s : Identity-system A 𝓥 ⦄
+                → is-equiv (ext! ⦃ s ⦄ {x} {y})
+ext!-is-equiv = is-equiv⁻¹ (has-is-ids _ _)
+
 
 ext!≃ :  ∀ {𝓤 𝓥} {A : Type 𝓤} {x y : A} ⦃ s : Identity-system A 𝓥 ⦄
      → Id A x y ≃ IdS x y

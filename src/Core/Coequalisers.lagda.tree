@@ -1,0 +1,411 @@
+\date{2025-07-30}
+\title{Coequalisers}
+\taxon{module}
+\meta{module}{Core.Coequalisers}
+\author{samueltoth}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Core.Coequalisers where
+
+open import Foundations.Prelude
+open import ufAxioms
+open import Core.CanonicalPushouts
+open import Core.Postwhisker
+open import Core.PushoutEquiv
+open import Ergonomics.Representation
+}
+%```
+
+\subtree[stt-009M]{
+\title{Coequalisers}
+\taxon{definition}
+
+\p{Given a pair of maps #{f,g : A \to B}, we define a \em{cofork} under
+#{f} and #{g} at a particular type #{C} to be a map #{h : B \to C}
+together with an homotopy #{hf \sim hg}. Given a particular cofork
+centred at #{C}, we can define a map #{Q^C \to \rm{cofork}_{f,g}(Q)}
+for each type #{Q}. The given cofork is said to be a \em{coequaliser}
+if the aforementioned cofork-map is an equivalence.}
+
+%```agda
+\agda{
+Cofork : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+       → (f g : A → B) → (C : Type 𝓦) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Cofork {B = B} f g C = Σ[ p ∶ (B → C) ] (p ∘ f ~ p ∘ g)
+
+cofork-map : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+         → {f g : A → B} → {C : Type 𝓦}
+         → Cofork f g C → ∀ {𝓠} {Q : Type 𝓠}
+         → (C → Q) → Cofork f g Q
+cofork-map (p , H) f = (f ∘ p , f ◂ H)
+
+is-coeq : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+            {f g : A → B} {C : Type 𝓦}
+          → Cofork f g C → Typeω
+is-coeq f = ∀ {𝓠} {Q : Type 𝓠} → is-equiv (cofork-map f {𝓠} {Q})
+}
+%```
+}
+
+\subtree[stt-009N]{
+\taxon{theorem}
+\title{Coequalisers are pushouts}
+
+\p{Given a pair of maps #{f,g : A \to B} we can define a span
+#{B \xleftarrow{[id,f]} B + A \xrightarrow{[id,g]} B} and show the
+following:}
+
+\ul{
+\li{There is an equivalence between coforks over #{f,g} and
+[cocones](stt-0016) over the induced span.}
+\li{A cofork is a coequaliser iff the corresponding cocone is a
+pushout}
+\li{We can construct canonical coequalisers via
+[canonical pushouts](Core.CanonicalPushouts)}
+}
+}
+
+%```agda
+\agda{
+Coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+       → (f g : A → B) → Type (𝓤 ⊔ 𝓥)
+Coeq {_} {_} {A} {B} f g
+  = Pushout l r  module Coeq where
+  l : B ⊎ A → B
+  l (inl x) = x
+  l (inr x) = f x
+
+  r : B ⊎ A → B
+  r (inl x) = x
+  r (inr x) = g x
+
+  span : Span _ _ _
+  span = mk-span _ l r
+
+{-# DISPLAY Pushout (Coeq.l f g) (Coeq.r f g) = Coeq f g #-}
+
+coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+       → (f g : A → B) → Cofork f g (Coeq f g)
+coeq f g = (ι₂ , λ x → sym (glue (inl (f x))) ∙ glue (inr x))
+
+ι-coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+         → {f g : A → B}
+         → B → Coeq f g
+ι-coeq = coeq _ _ .fst
+
+glue-coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+            → {f g : A → B}
+            → ι-coeq ∘ f ~ ι-coeq ∘ g
+glue-coeq = coeq _ _ .snd
+
+
+cocone←cofork : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Type 𝓦}
+              → Cofork f g C → Cocone (Coeq.span f g) C
+cocone←cofork {f = f} {g} (p , H) = mk-cocone p p (⊎-ind (~refl , H))
+
+cofork←cocone : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Type 𝓦}
+              → Cocone (Coeq.span f g) C → Cofork f g C
+cofork←cocone {f = f} {g} (mk-cocone p q filler)
+  = p , λ a → filler (inr a) ∙ sym (filler (inl (g a)))
+
+cocone≃fork : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Type 𝓦}
+              → Cofork f g C ≃ Cocone (Coeq.span f g) C
+cocone≃fork {B = B} {f} {g}{C}
+  = Cofork f g C
+      ≃⟨⟩
+    (Σ[ p ∶ (B → C)] (p ∘ f ~ p ∘ g))
+      ≃⟨ Σ-ap-≃ (λ _ → Σ-＝singl') e⁻¹ ⟩
+    (Σ[ p ∶ (B → C)] Σ[ q ∶ (B → C)] ((p ＝ q) × (p ∘ f ~ q ∘ g)))
+      ≃⟨ Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → Σ-ap-≃-fst funext≃)) ⟩
+    (Σ[ p ∶ (B → C)] Σ[ q ∶ (B → C)] ((p ~ q) × (p ∘ f ~ q ∘ g)))
+      ≃⟨ Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → ⊎-UP≃ global-funext)) ⟩
+    (Σ[ p ∶ (B → C)] Σ[ q ∶ (B → C)] (p ∘ Coeq.l f g ~ q ∘ Coeq.r f g))
+      ≃⟨ cocone-repr≃ e⁻¹ ⟩
+    Cocone (Coeq.span f g) C ≃∎
+
+cocone←fork-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Type 𝓦}
+                → is-equiv (cocone←cofork {f = f} {g} {C})
+cocone←fork-is-equiv = cocone≃fork ._≃_.has-is-eqv
+
+coeq-is-coeq : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+                 {f g : A → B} → is-coeq (coeq f g)
+coeq-is-coeq {f = f} {g} {Q = Q}
+  = 3-for-2~ (H ~⁻¹)
+             (cocone≃fork ._≃_.has-is-eqv)
+             (Pushout-is-pushoutω) where
+  H : cocone←cofork ∘ cofork-map (coeq f g) {Q = Q}
+    ~ cocone-map (Coeq.span f g) pushout
+  H f = Cocone-path→ _ _ (funext→ (f ◂ (glue ~⁻¹) ▸ inl)) refl λ where
+    (inl x) → sym ( ap (_∙ ap f (glue (inl x))) (ap-sym f (glue (inl x)))
+                   ∙ ∙-sym' (ap f (glue _)))
+    (inr x) → ∙-reflr _ ∙ ap-∙ f (sym (glue _)) (glue (inr x))
+
+
+coeq-rec : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Type 𝓦}
+           → Cofork f g C
+           → Coeq f g → C
+coeq-rec = is-equiv.bwd coeq-is-coeq
+
+coeq-rec-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B} {C : Type 𝓦}
+    → is-equiv (coeq-rec {f = f}{g}{C})
+coeq-rec-is-equiv
+  = is-equiv-∘ pushout-rec-is-equiv cocone←fork-is-equiv
+
+
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+         {C : Type 𝓦} (cf : Cofork f g C) where
+  private
+    H : ∀ {𝓠}{Q : Type 𝓠}
+      → cocone-map (Coeq.span f g) (cocone←cofork cf) {Q}
+      ~ cocone←cofork ∘ cofork-map cf
+    H f = Cocone-path→ _ _ refl refl (⊎-ind (~refl , (~∙-reflr _)))
+
+  is-coeq←is-pushout : is-pushoutω (Coeq.span f g) (cocone←cofork cf)
+                       → is-coeq cf
+  is-coeq←is-pushout po = 3-for-2~ H (cocone≃fork ._≃_.has-is-eqv) po
+
+  is-pushout←is-coeq : is-coeq cf
+                     → is-pushoutω (Coeq.span f g) (cocone←cofork cf)
+  is-pushout←is-coeq coe
+    = is-equiv~∘ H (cocone≃fork ._≃_.has-is-eqv) coe
+
+cogap-is-equiv←is-coeq
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} {C : Type 𝓦}
+      {cf : Cofork f g C} → is-coeq cf → is-equiv (coeq-rec cf)
+cogap-is-equiv←is-coeq {cf = cf} ce
+  = cogap-is-equiv←is-pushout (cocone←cofork cf)
+                              (is-pushout←is-coeq cf ce)
+
+is-coeq←cogap-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} {C : Type 𝓦}
+      {cf : Cofork f g C} → is-equiv (coeq-rec cf) → is-coeq cf
+is-coeq←cogap-is-equiv {cf = cf} ce
+  = is-coeq←is-pushout cf (is-pushout←cogap _ ce)
+}
+%```
+
+\subtree[stt-009O]{
+\title{Induction for coequalisers}
+\taxon{theorem}
+
+\p{Coequalisers satisfy an induction principal: given maps
+#{f,g : A \to B}, and a family of types #{P} over the coequaliser
+of #{f} and #{g}, we can give a section #{\Pi_{(a : \rm{Coeq}_{f,g})} P(a)}
+by giving a section #{p : \Pi_{(b:B)}(P(\iota(b)))} and for each #{a},
+a dependent identification #{p(f(a)) =_P^{gl} p(g(a))}. This data
+is called a dependent cofork or \code{CoforkP} in code.}
+
+%```agda
+\agda{
+CoforkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+          (f g : A → B) (C : Coeq f g → Type 𝓦)
+        → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+CoforkP {A = A} {B} f g C
+  =  Σ[ p ∶ ((b : B) →  C (ι₂ b))]
+      (∀ a → IdP (ap C (coeq f g .snd a)) (p (f a)) (p (g a)))
+
+cocone←coforkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Coeq f g → Type 𝓦}
+              → CoforkP f g C
+              → CoconeD (Coeq.span f g) (cocone←cofork (coeq f g)) C
+cocone←coforkP {f = f} {g} (p , H)
+  = mk-coconeD p p (⊎-ind (~refl , H))
+
+unquoteDecl coconeD-repr≅ coconeD-repr≃
+  = make-record-repr coconeD-repr≅ coconeD-repr≃ (quote CoconeD)
+
+cocone≃forkP : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {f g : A → B} {C : Coeq f g → Type 𝓦}
+              → CoforkP f g C
+              ≃ CoconeD (Coeq.span f g) (cocone←cofork (coeq f g)) C
+cocone≃forkP {B = B} {f} {g}{C}
+  = CoforkP f g C
+      ≃⟨⟩
+    (Σ[ p ∶ (Π B (C ∘ ι₂))] (p ∘ f ~[ (C ◂ (coeq f g .snd)) ] p ∘ g))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-＝singl') e⁻¹ ⟩
+    (Σ[ p ∶ (Π B (C ∘ ι₂))] Σ[ q ∶ Π B (C ∘ ι₂)] ((p ＝ q) × (p ∘ f ~[ C ◂ (coeq f g .snd) ] q ∘ g)))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → Σ-ap-≃-fst funext≃))  ⟩
+    (Σ[ p ∶ Π B (C ∘ ι₂)] Σ[ q ∶ Π B (C ∘ ι₂)] ((p ~ q) × (p ∘ f ~[ C ◂ (coeq f g .snd) ] q ∘ g)))
+      ≃⟨  Σ-ap-≃ (λ p → Σ-ap-≃ (λ q → ⊎-UP≃ global-funext)) ⟩
+    (Σ[ p ∶ Π B (C ∘ ι₂)] Σ[ q ∶ Π B (C ∘ ι₂)] (p ∘ Coeq.l f g ~[ (C ◂ ⊎-ind (~refl , coeq f g .snd)) ] q ∘ Coeq.r f g))
+      ≃⟨ coconeD-repr≃ e⁻¹ ⟩
+    CoconeD (Coeq.span f g) _ C ≃∎
+
+cocone←coforkP-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B} {C : Coeq f g → Type 𝓦}
+    → is-equiv (cocone←coforkP {f = f} {g} {C})
+cocone←coforkP-is-equiv = cocone≃forkP ._≃_.has-is-eqv
+
+coforkP-map : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+              {f g : A → B} {C : Coeq f g → Type 𝓦}
+            → Π _ C → CoforkP f g C
+coforkP-map {C = C} f = (f ∘ ι₂ , f ◂ᵈ coeq _ _ .snd)
+
+coeq-is-coeqᵈ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Coeq f g → Type 𝓦}
+           → is-equiv (coforkP-map {C = C})
+coeq-is-coeqᵈ {f = f}{g}{Q}
+  = 3-for-2~ (H ~⁻¹) cocone←coforkP-is-equiv coeq-is-po where
+  H : cocone←coforkP ∘ coforkP-map {C = Q}
+    ~ coconeᵈ-map (Coeq.span f g) (cocone←cofork (coeq f g))  {Q = Q}
+  H f = from-coconeᵈ-path (record {
+      p＝ = refl
+    ; q＝ = refl
+    ; filler＝ = funext→ (⊎-ind (~refl , ~refl)) })
+
+  lem : cocone←cofork (coeq f g) ＝ pushout
+  lem = Cocone-path→ _ _ (funext→ (λ b → sym (glue (inl b)))) refl
+          (⊎-ind ((λ b → sym (∙-sym' (glue (inl b)))) , λ a → ∙-reflr _))
+
+  coeq-is-po : is-pushoutωᵈ (Coeq.span f g) (cocone←cofork (coeq f g))
+  coeq-is-po {𝓜} = tr (λ x → ∀ {Q : Coeq f g → Type 𝓜} → is-equiv (coconeᵈ-map (Coeq.span f g) x {Q}))
+                       (sym lem) Pushout-is-pushoutωᵈ
+
+coeq-ind : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Coeq f g → Type 𝓦}
+           → CoforkP f g C
+           → (x : Coeq f g) → C x
+coeq-ind = is-equiv.bwd coeq-is-coeqᵈ
+
+{-# DISPLAY is-equiv.bwd coeq-is-coeqᵈ x = coeq-ind x #-}
+}
+%```
+}
+
+\subtree[stt-009D]{
+\title{Adjusting coequalizers by equivalences}
+
+\p{We mirror the results in \ref{stt-0083} about pushouts.
+
+Given a pair of maps #{f g : A \to B} and an equivalence #{e : A' \to A},
+we show that a cofork coequalises #{(f,g)} iff it coequalises
+#{(fe,ge)}.}
+
+%```agda
+\agda{
+
+precomp-cofork : ∀ {𝓤 𝓥 𝓦 𝓛} {A' : Type 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                   (f g : A → B)
+                   (h : A' → A) {D : Type 𝓛}
+                 → Cofork f g D
+                 → Cofork (f ∘ h) (g ∘ h) D
+precomp-cofork _ _ h = total-map λ f → _▸ h
+
+
+precomp-cofork-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A' : Type 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      (f g : A → B) {h : A' → A} → is-equiv h
+    → {D : Type 𝓛} → is-equiv (precomp-cofork f g h {D})
+precomp-cofork-is-equiv f g heq {D}
+  = is-total-equiv←is-fibrewise-equiv λ a → postwhisker-equiv-is-equiv heq
+
+precomp-cofork-is-coeq
+ : ∀ {𝓤 𝓥 𝓦 𝓛} {A' : Type 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+     {f g : A → B}
+     {h : A' → A} → is-equiv h
+   → {D : Type 𝓛}
+   → {cf : Cofork f g D}
+   → is-coeq cf
+   → is-coeq (precomp-cofork _ _ h cf)
+precomp-cofork-is-coeq {f = f}{g}{h} heq {D} {cf} coeq
+  = is-equiv-∘ (precomp-cofork-is-equiv _ _ heq) coeq
+
+
+precomp-coeq≃ : ∀ {𝓤 𝓥 𝓦} {A' : Type 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                  {f g : A → B} {h : A' → A} → is-equiv h
+                → Coeq (f ∘ h) (g ∘ h) ≃ Coeq f g
+precomp-coeq≃ {f = f}{g}{h} heq
+  = mk≃ map (cogap-is-equiv←is-coeq
+              (precomp-cofork-is-coeq heq coeq-is-coeq)) where
+  map : Coeq (f ∘ h) (g ∘ h) → Coeq f g
+  map = coeq-rec (precomp-cofork f g h (coeq _ _))
+}
+%```
+
+\p{We dualise this to postcomposing coforks.}
+
+%```agda
+\agda{
+postcomp-cofork : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥} {B' : Type 𝓦}
+                   (f g : A → B)
+                   (h : B → B') {D : Type 𝓛}
+                 → Cofork (h ∘ f) (h ∘ g) D
+                 → Cofork f g D
+postcomp-cofork f g h = total-map-fst (_∘ h)
+
+postcomp-cofork-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥} {B' : Type 𝓦}
+      (f g : A → B) {h : B → B'} → (heq : is-equiv h)
+    → {D : Type 𝓛} → is-equiv (postcomp-cofork f g h {D})
+postcomp-cofork-is-equiv f g {h} heq {D}
+  = total-is-equiv←fst-is-equiv (postcomp-equiv heq)
+
+postcomp-cofork-is-coeq
+ : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥} {B' : Type 𝓦}
+     {f g : A → B} {h : B → B'} → is-equiv h
+   → {D : Type 𝓛}
+   → {cf : Cofork (h ∘ f) (h ∘ g) D}
+   → is-coeq cf
+   → is-coeq (postcomp-cofork _ _ h cf)
+postcomp-cofork-is-coeq {f = f}{g}{h} heq {D} {cf} coeq
+  = is-equiv-∘ (postcomp-cofork-is-equiv _ _ heq) coeq
+
+postcomp-coeq≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {B' : Type 𝓦}
+                  {f g : A → B} {h : B → B'} → is-equiv h
+                → Coeq f g ≃ Coeq (h ∘ f) (h ∘ g)
+postcomp-coeq≃ {f = f}{g}{h} heq
+  = mk≃ map (cogap-is-equiv←is-coeq
+              (postcomp-cofork-is-coeq heq coeq-is-coeq)) where
+  map : Coeq f g → Coeq (h ∘ f) (h ∘ g)
+  map = coeq-rec (postcomp-cofork f g h (coeq _ _))
+}
+%```
+}
+
+\subtree[stt-009J]{
+\title{Coequalisers of homotopic maps}
+\taxon{lemma}
+
+\p{Given maps #{f,g,f',g' : A \to B} if #{f ~ f'} and #{g ~ g'} then
+the coequaliser of #{f} and #{g} is equivalent to the coequalisers of
+#{f'} and #{g'}.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g h k : A → B}
+         (H : f ~ h) (K : g ~ k) where
+  Coeq≃←homotopy : Coeq h k ≃ Coeq f g
+  Coeq≃←homotopy = Pushout≃←homotopy (⊎-ind (~refl , H))
+                                     (⊎-ind (~refl , K))
+
+precomp-coeq≃~ : ∀ {𝓤 𝓥 𝓦} {A' : Type 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                  {f g : A → B} {h : A' → A} (heq : is-equiv h)
+                  {f' g' : A' → B} (H : f ∘ h ~ f') (K : g ∘ h ~ g')
+                → Coeq f' g' ≃ Coeq f g
+precomp-coeq≃~ {f = f}{g}{h} heq {f'}{g'} H K
+  = Coeq f' g'           ≃⟨ Coeq≃←homotopy H K ⟩
+    Coeq (f ∘ h) (g ∘ h) ≃⟨ precomp-coeq≃ heq ⟩
+    Coeq f g ≃∎
+
+postcomp-coeq≃~ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {B' : Type 𝓦}
+                  {f g : A → B} {h : B → B'} (heq : is-equiv h)
+                  {f' g' : A → B'} (H : f' ~ h ∘ f) (K : g' ~ h ∘ g)
+                → Coeq f g ≃ Coeq f' g'
+postcomp-coeq≃~ {f = f}{g}{h} heq {f'}{g'} H K
+  = Coeq f g             ≃⟨ postcomp-coeq≃ heq ⟩
+    Coeq (h ∘ f) (h ∘ g) ≃⟨ Coeq≃←homotopy H K ⟩
+    Coeq f' g' ≃∎
+}
+%```
+}

@@ -14,6 +14,8 @@
 module Core.Slice where
 
 open import Foundations.Prelude
+open import ufAxioms
+open import Ergonomics.Extensionality
 }
 % ```
 
@@ -29,14 +31,33 @@ Slice-id : ∀ {𝓤} {A : Type 𝓤}
              {𝓥} {B : Type 𝓥}
              (p : B → A)
              → Slice-map p p
-Slice-id p = id , ~refl             
-    
+Slice-id p = id , ~refl
+
 Slice-fibre : ∀ {𝓤} {A : Type 𝓤}
               {𝓥} {B : Type 𝓥} {p : B → A}
               {𝓦} {C : Type 𝓦} {q : C → A}
               → Slice-map p q →
               (∀ a → fibre p a → fibre q a)
 Slice-fibre (f , comm) a (b , fib) = (f b , comm b ∙ fib)
+
+Slice-family : ∀ {𝓤} {A : Type 𝓤}
+                 {𝓥} {B : A → Type 𝓥}
+                 {𝓦} {C : A → Type 𝓦}
+               → Slice-map (fst {B = B}) (fst {B = C})
+               → (∀ a → B a → C a)
+Slice-family {C = C} (f , comm) a b
+  = tr C (comm (a , b)) (f (a , b) .snd)
+
+Slice-fibre-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : Type 𝓥} {p : B → A}
+      {𝓦} {C : Type 𝓦} {q : C → A}
+    → is-equiv (Slice-fibre {p = p} {q = q})
+Slice-fibre-is-equiv {p = p} {q = q} = is-equiv←qiso (λ where
+  .fst fmap → (λ b → fmap (p b) (b , refl) .fst)
+              , λ b → fmap (p b) (b , refl) .snd
+  .snd .fst f → ext! (~refl , (λ a → ∙-reflr _))
+  .snd .snd f → ext! (λ where .(p b) b refl → refl , ∙-reflr _))
 }
 % ```
 
@@ -78,8 +99,8 @@ is-equiv←on-fibres : ∀ {𝓤} {C : Type 𝓤}
                     → (is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F))
                     → is-equiv f
 is-equiv←on-fibres {p = p} {q = q} (f , h) fw
-  = 3-for-2' ((base≃total-fibre p) ._≃_.has-is-eqv)
-             (is-equiv-∘ ((base≃total-fibre q) ._≃_.has-is-eqv)
+  = 3-for-2' ((total≃total-fibre p) ._≃_.has-is-eqv)
+             (is-equiv-∘ ((total≃total-fibre q) ._≃_.has-is-eqv)
                           (is-total-equiv←is-fibrewise-equiv fw))
 
 fibre-equiv←is-equiv : ∀ {𝓤} {C : Type 𝓤}
@@ -90,11 +111,41 @@ fibre-equiv←is-equiv : ∀ {𝓤} {C : Type 𝓤}
                     → (is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F))
 fibre-equiv←is-equiv {p = p} {q = q} F@(f , h) feq
   = is-fibrewise-equiv←is-total-equiv
-     (3-for-2 {f = base←total-fibre q}
-       (base≃total-fibre q ._≃_.has-is-eqv)
-       (is-equiv-∘ feq ((base≃total-fibre p) ._≃_.has-is-eqv)))
-  
+     (3-for-2 {f = total←total-fibre q}
+       (total≃total-fibre q ._≃_.has-is-eqv)
+       (is-equiv-∘ feq ((total≃total-fibre p) ._≃_.has-is-eqv)))
+
 }
 % ```
 
+}
+
+\subtree[stt-008J]{
+\date{2025-08-02}
+\title{Slice maps into embeddings}
+\taxon{theorem}
+
+\p{Let #{f : A \to B} and #{g} be an [embedding](stt-008I) #{A'
+\hookrightarrow B}. The type of slice maps #{f \to g} is a
+proposition.}
+
+\proof{
+\p{Maps in the slice category are equivalent to fibrewise maps on the
+fibres, but since #{g} is an embedding, it is a [propositional
+map](Foundations.PropMapEmbedding).}
+}
+
+%```agda
+\agda{
+slice-embedding-is-prop
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : A → C} {g : B → C} → is-embedding g
+    → is-prop (Slice-map f g)
+slice-embedding-is-prop {f = f} {g = g} emb
+  = is-prop←equiv-to-prop
+       (mk≃ _ (is-equiv⁻¹ (Slice-fibre-is-equiv {p = f} {q = g})))
+       (is-prop-Π (λ
+         a → is-prop-Π λ _ → is-prop-map←is-embedding emb a))
+}
+%```
 }

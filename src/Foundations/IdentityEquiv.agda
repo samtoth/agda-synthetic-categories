@@ -21,3 +21,14 @@ sym≃ = mk≃ sym sym-is-equiv
 ＝-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → {a b : A}
           → (e : A ≃ B) → (a ＝ b) ≃ (e ._≃_.fwd a ＝ e ._≃_.fwd b)
 ＝-equiv (mk≃ fwd has-is-eqv) = mk≃ (ap fwd) (is-embedding←is-equiv has-is-eqv)
+
+
+∙-is-equiv : ∀ {𝓤} {A : Type 𝓤} {a b c : A} (p : a ＝ b)
+             → is-equiv (λ (q : b ＝ c) → p ∙ q)
+∙-is-equiv refl = id-is-equiv
+
+
+tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+                {a b : A} (p : a ＝ b)
+              → is-equiv (tr B p)
+tr-is-equiv refl = id-is-equiv

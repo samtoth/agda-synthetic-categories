@@ -13,6 +13,7 @@ module Core.CanonicalPushouts where
 open import Foundations.Prelude
 open import ufAxioms
 open import Ergonomics.Extensionality
+open import Ergonomics.Representation
 }
 % ```
 
@@ -43,10 +44,63 @@ pushout-rec-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
                        {𝓠} {Q : Type 𝓠}
                       → is-equiv (pushout-rec {f = f} {g} {Q = Q})
 pushout-rec-is-equiv {Q = Q} = is-equiv⁻¹ (Pushout-is-pushoutω)
+
+pushout-rec-unique : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                       {C : Type 𝓦} {f : A → B} {g : A → C}
+                       {𝓠} {Q : Type 𝓠}
+                       (C : Cocone (mk-span _ f g) Q)
+                       (F' : Pushout f g → Q)
+                     → let open Cocone C
+                     in (H : F' ∘ ι₁ ~ p)
+                     →  (K : F' ∘ ι₂ ~ q)
+                     →  (M : F' ◂ glue ~∙ K ▸ g ~ H ▸ f ~∙ filler)
+                     → F' ＝ pushout-rec C
+pushout-rec-unique {f = f} CC F' H K M
+  = funext→ (pushout-ind _
+      (mk-coconeD H K
+        λ a → IdP-func←Square (glue a) _ _
+                ( M a
+                ∙ ap (H (f a) ∙_)
+                     (sym (pushout-rec-apβ a)))))
+
+Pushout-UP≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                {C : Type 𝓦} {f : A → B} {g : A → C}
+                {𝓠} {Q : Type 𝓠}
+                → (Pushout f g → Q) ≃ Cocone (mk-span A f g) Q
+Pushout-UP≃ = mk≃ _ (is-equiv⁻¹ pushout-rec-is-equiv)
 }
 % ```
-
 }
+
+\subtree[stt-008E]{
+\title{Canonical pushouts satisfy the dependent universal property}
+\taxon{theorem}
+
+%```agda
+\agda{
+Pushout-is-pushoutωᵈ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                         {C : Type 𝓦} {f : A → B} {g : A → C}
+                       → is-pushoutωᵈ (mk-span A f g) pushout
+Pushout-is-pushoutωᵈ {f = f} {g} = is-equiv←qiso iso where
+  iso : quasi-iso (coconeᵈ-map _ pushout)
+  iso .fst = pushout-ind _
+  iso .snd .fst h = funext→ (pushout-ind _
+    (mk-coconeD
+      ~refl
+      ~refl
+      λ a → IdP-Π←Square (glue a) (∙-reflr _ ∙ pushout-ind-apβ _)))
+  iso .snd .snd (mk-coconeD p q filler)
+    = ap (mk-coconeD p q) (funext→ pushout-ind-apβ)
+
+pushout-ind-is-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+                         {C : Type 𝓦} {f : A → B} {g : A → C}
+                         {𝓠} {Q : Pushout f g → Type 𝓠}
+                       → is-equiv (pushout-ind {f = f} {g} Q)
+pushout-ind-is-equiv = is-equiv⁻¹ Pushout-is-pushoutωᵈ
+}
+%```
+}
+
 
 \subtree[stt-004G]{
 \taxon{definition}
@@ -55,7 +109,7 @@ pushout-rec-is-equiv {Q = Q} = is-equiv⁻¹ (Pushout-is-pushoutω)
 \meta{defines}{\startverb ["cogap"] \stopverb}
 
 \p{
-In paralel to pullbacks, we sometimes call pushout-rec the cogap map.
+Analogously to pullbacks, we sometimes call pushout-rec the cogap map.
 Given a cocone #{C} under a span #{S}, we can define a the
 cogap-map from the pushout of #{S} and the apex of #{C}.
 }
@@ -71,3 +125,202 @@ cogap = pushout-rec
 }
 % ```
 }
+
+\subtree[stt-007X]{
+\date{2025-07-29}
+\title{Pushouts via the cogap map}
+\taxon{theorem}
+
+\p{A cocone #{D} over #{B \xleftarrow{f} A \xrightarrow{g} C}
+is a pushout iff the cogap map #{B +^A C \to D} is an equivalence.}
+
+\proof{
+\p{We would like to show for any #{Q}, that the cogap map i
+construct the following triangle:}
+
+\quiver{
+\begin{tikzcd}
+        {D \to Q} && {B +^A C \to Q} \\
+	\\
+	& {\textrm{Cocone}_S(Q)}
+	\arrow["{\textrm{cogap}(D) \circ -}", from=1-1, to=1-3]
+	\arrow["{\textrm{cocone-map}(D)}"'{pos=0.4}, from=1-1, to=3-2]
+	\arrow["\sim", from=1-3, to=3-2]
+\end{tikzcd}
+}
+}
+
+
+%```agda
+\agda{
+
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         {f : A → B} {g : A → C} {𝓜} {D : Type 𝓜}
+         (CD : Cocone (mk-span A f g) D) where
+  open Cocone CD
+
+  private
+    H : ∀ {𝓠} {Q : Type 𝓠}
+        → cocone-map _ CD ~ cocone-map _ pushout ∘ postcomp Q (cogap CD)
+    H f = ap (mk-cocone (f ∘ p) (f ∘ q)) (funext→ (λ a
+      → sym (  ap-∘ f (pushout-rec CD) (glue a)
+             ∙ ap (ap f) (pushout-rec-apβ a))))
+
+  is-pushout←cogap : is-equiv (cogap CD) → is-pushoutω _ CD
+  is-pushout←cogap cogap-eq {_} {Q}
+    = is-equiv~∘ H
+                 (Pushout-is-pushoutω {Q = Q})
+                 (postcomp-equiv cogap-eq)
+
+  cogap-is-equiv←is-pushout
+    : is-pushoutω _ CD → is-equiv (cogap CD)
+  cogap-is-equiv←is-pushout po = is-equiv←postcomp _
+    λ {_} {Q} → 3-for-2~ H (Pushout-is-pushoutω {Q = Q}) po
+}
+%```
+}
+
+
+\subtree[stt-007Y]{
+\date{2025-07-29}
+\title{Pushouts from pullbacks}
+\taxon{theorem}
+\p{A cocone #{D} over a span #{C \xleftarrow{f} A \xrightarrow{g} B}
+is a pushout iff for all types #{Q}, the cone #{Q^A} over the cospan
+#{Q^B \xrightarrow{f} Q^D \xleftarrow{g} Q^C} is a pullback.}
+
+\proof{
+
+\p{There is an equivalence between cocones at #{Q} over a span and
+the pullback #{Q^X \times_{Q^A} Q^B}. We then construct the following
+triangle which, via the [3 for 2](stt-003E) property, completes the
+proof.}
+
+\quiver{
+\begin{tikzcd}
+	& {Q^Y} \\
+	{\rm{Cocone}} && {Q^X\times_{Q^A}Q^B}
+	\arrow["{\rm{cocone-map}}"', from=1-2, to=2-1]
+	\arrow["{\rm{gap}}", from=1-2, to=2-3]
+	\arrow["\sim"', from=2-1, to=2-3]
+\end{tikzcd}
+}
+}
+
+%```agda
+\agda{
+unquoteDecl cocone-repr≅ cocone-repr≃
+  = make-record-repr cocone-repr≅ cocone-repr≃ (quote Cocone)
+
+unquoteDecl Span-repr≅ Span-repr≃
+  = make-record-repr Span-repr≅ Span-repr≃ (quote Span)
+
+postcomp-cocone≃pb
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {f : B → A}
+      {g : B → C} {D : Type 𝓜}
+    → Cocone (mk-span _ f g) D ≃ Pullback (postcomp D g) (postcomp D f)
+postcomp-cocone≃pb {f = f} {g} {D}
+  = Cocone (mk-span _ f g) D                ≃⟨ cocone-repr≃ ⟩
+    (Σ[ f' ∶ (_ → D)] Σ[ g' ∶ (_ → D)] (f' ∘ f ~ g' ∘ g))
+      ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ (λ e → precomp-Π-≃ (λ _ → sym≃) ∙≃ funext≃ e⁻¹))⟩
+    (Σ[ f' ∶ (_ → D)] Σ[ g' ∶ (_ → D)] (g' ∘ g ＝ f' ∘ f))
+      ≃⟨ Σ-comm ⟩
+    Pullback (postcomp D g) (postcomp D f) ≃∎
+
+postcomp-cospan : ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
+                    {𝓠} (Q : Type 𝓠)
+                  → Cospan (𝓤 ⊔ 𝓠) (𝓦 ⊔ 𝓠) (𝓥 ⊔ 𝓠)
+postcomp-cospan (mk-span Centre l r) Q
+  = mk-cospan (Centre → Q) (postcomp Q r) (postcomp Q l)
+
+postcomp-cone : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+                  {𝓜} {D : Type 𝓜}
+                  (C : Cocone S D)
+                  {𝓠} (Q : Type 𝓠)
+                → Cone (postcomp-cospan S Q) (D → Q)
+postcomp-cone (mk-cocone p q filler) Q
+  = mk-cone  (postcomp Q q) (postcomp Q p) λ
+    f → (funext→ (f ◂ sym ∘ filler))
+
+is-pushout←postcomp-pullback
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {D : Type 𝓜}
+      (C : Cocone S D)
+    → (∀ {𝓠}(Q : Type 𝓠) → is-pullbackω (postcomp-cospan S Q)
+                                  (postcomp-cone C Q))
+    → is-pushoutω S C
+is-pushout←postcomp-pullback C pb {Q = Q}
+  = 3-for-2~ H
+             (postcomp-cocone≃pb ._≃_.has-is-eqv)
+             (gap-is-equiv←is-pullback (postcomp-cone C Q) (pb Q))
+  module pushout-postcomp where
+    H : gap (postcomp-cone C Q) ~
+         _≃_.fwd postcomp-cocone≃pb ∘ cocone-map _ C
+    H f = ap (λ p → _ , _ , p)
+          (ap funext→ (funext→ (λ a → ap-sym f (Cocone.filler C a))))
+
+
+postcomp-pullback←is-pushout
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {D : Type 𝓜}
+      (C : Cocone S D)
+    → is-pushoutω S C
+    → ∀ {𝓠}(Q : Type 𝓠)
+    → is-pullbackω (postcomp-cospan S Q)
+                   (postcomp-cone C Q)
+postcomp-pullback←is-pushout C pb Q
+  = is-pullback←gap (postcomp-cone C Q)
+      (is-equiv~∘ H (postcomp-cocone≃pb ._≃_.has-is-eqv) pb) where
+    H : gap (postcomp-cone C Q) ~
+         _≃_.fwd postcomp-cocone≃pb ∘ cocone-map _ C
+    H f = ap (λ p → _ , _ , p)
+          (ap funext→ (funext→ (λ a → ap-sym f (Cocone.filler C a))))
+}
+%```
+}
+
+
+\subtree[stt-0082]{
+\date{2025-07-30}
+\title{Pushout is commutative}
+\taxon{theorem}
+
+\p{There is an equivalence #{A \times_C B \simeq B \times_C A}.}
+
+
+%```agda
+\agda{
+
+pushout-flip : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                 {f : B → A} {g : B → C}
+               → Pushout f g → Pushout g f
+pushout-flip = pushout-rec (mk-cocone ι₂ ι₁ (sym ∘ glue))
+
+pushout-flip-inv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                     {f : B → A} {g : B → C}
+                   → pushout-flip {f = f} {g} ∘ pushout-flip ~ id
+pushout-flip-inv = pushout-ind _ (mk-coconeD ~refl ~refl λ
+                 b → IdP-func←Square (glue b) _ _
+                       ( ∙-reflr _
+                       ∙ ap-∘ pushout-flip pushout-flip (glue b)
+                       ∙ ap (ap pushout-flip) (pushout-rec-apβ b)
+                       ∙ ap-sym _ (glue b)
+                       ∙ ap sym (pushout-rec-apβ b)
+                       ∙ sym-sym
+                       ∙ sym (ap-id (glue b))))
+
+pushout-comm : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                 {f : B → A} {g : B → C}
+               → Pushout f g ≃ Pushout g f
+pushout-comm {f = f} {g = g} = mk≃ _ cogap-is-equiv where
+  po-cogap : Pushout f g → Pushout g f
+  po-cogap = pushout-flip
+
+  cogap-is-equiv : is-equiv po-cogap
+  cogap-is-equiv = is-equiv←qiso ( pushout-flip
+                                 , pushout-flip-inv
+                                 , pushout-flip-inv)
+}
+%```
+}
+

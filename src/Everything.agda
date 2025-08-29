@@ -1,4 +1,6 @@
 module Everything where
+open import Algebra.Lattice
+open import Algebra.Poset
 open import Axioms.FreeAlgInj
 open import Core.Arrow
 open import Core.ArrowEquiv
@@ -112,6 +114,4 @@ open import Foundations.IdentitySystem
 open import Foundations.PathReasoning
 open import Foundations.Prelude
 open import Foundations.Reasoning
-open import Algebra.Lattice
-open import Algebra.Poset
 open import ufAxioms

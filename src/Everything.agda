@@ -12,6 +12,7 @@ open import Core.Coequalisers
 open import Core.ExtPullbacks
 open import Core.FibredJoin
 open import Core.FlatteningCoequalisers
+open import Core.FlatteningPushouts
 open import Core.FlatteningSeqColims
 open import Core.Image
 open import Core.Join
@@ -20,7 +21,6 @@ open import Core.Orthogonal
 open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
-open import Core.PushoutDescent
 open import Core.PushoutEquiv
 open import Core.SeqMapHomotopy
 open import Core.Slice

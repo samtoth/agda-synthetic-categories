@@ -693,3 +693,82 @@ module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤}  where
 }
 %```
 }
+
+
+
+\subtree[stt-008O]{
+\date{2025-08-03}
+\title{Pulling back squares}
+\taxon{construction}
+
+\p{Given span #{S}, and a cocone over #{S} centred at #{X}, we can
+\em{'pull this square back'} along any map #{X' \to X}, to obtain a
+span #{S'}, a cocone over #{S'} at #{X'} as well as a cartesian map
+of spans #{S' \to S}.
+}
+
+%```agda
+\agda{
+module SquarePB {𝓤 𝓥 𝓦 𝓜 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
+                (C : Cocone S X) {X' : Type 𝓛} (f : X' → X)
+                where
+  open Span S
+  open Cocone C
+
+  S' : Span (𝓤 ⊔ 𝓥 ⊔ 𝓜 ⊔ 𝓛) (𝓥 ⊔ 𝓜 ⊔ 𝓛) (𝓦 ⊔ 𝓜 ⊔ 𝓛)
+  S' .Span.Centre = Pullback {B = Pullback p f} fst left
+  S' .Span.Left = Pullback p f
+  S' .Span.left  = fst
+  S' .Span.Right = Pullback q f
+  S' .Span.right ((r , x , H) , c , K) = (right c  , x , sym (sym H ∙ ap p K ∙ filler c) )
+
+  C' : Cocone S' X'
+  C' .Cocone.p = pb.π₂
+  C' .Cocone.q = pb.π₂
+  C' .Cocone.filler _ = refl
+
+  proj : Span-map S' S
+  proj .Span-map.h₁ = pb.π₁
+  proj .Span-map.h₂ = pb.π₂
+  proj .Span-map.h₃ = pb.π₁
+  proj .Span-map.H  = pb.filler
+  proj .Span-map.K _ = refl
+
+  front-left : Arrow-map pb.π₁ f
+  front-left = mk-amap pb.π₂ p pb.filler
+
+  front-right : Arrow-map pb.π₁ f
+  front-right = mk-amap pb.π₂ q pb.filler
+
+  front-right-is-cart : is-cartesian (front-right)
+  front-right-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  front-left-is-cart : is-cartesian front-left
+  front-left-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  amap-l↓-is-cart : is-cartesian (Span-map.amap-l↓ proj)
+  amap-l↓-is-cart = is-cartesian←is-pullback _ pullback-is-pullback
+
+  amap-l-is-cart : is-cartesian (Span-map.amap-l proj)
+  amap-l-is-cart = rotate-is-cartesian _ amap-l↓-is-cart
+
+  square~ : Arrow-map-path
+              (paste-squares front-left (Span-map.amap-l proj))
+              (paste-squares front-right (Span-map.amap-r proj))
+  square~ .fst = ~refl
+  square~ .snd .fst = filler
+  square~ .snd .snd ((l , x' , H) , c , refl)
+    = ∙-reflr _
+    ∙ sym (ap (filler c ∙_) (∙-symsym (sym H) (filler c))
+          ∙ sym∙ (filler c) (sym (sym H))
+          ∙ sym-sym)
+
+  proj-is-cartesian : is-cartesian-span-map proj
+  proj-is-cartesian .fst = amap-l-is-cart
+  proj-is-cartesian .snd = 3-for-2-cartesian square~
+    (compose-cartesian front-left-is-cart amap-l-is-cart)
+    front-right-is-cart
+
+}
+%```
+}

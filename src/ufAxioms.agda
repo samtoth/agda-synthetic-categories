@@ -78,11 +78,14 @@ module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-
 open Straightening public
 
 open import Foundations.PropExt public using
-  (PropExt; logical←is-equiv; is-equiv←logical)
+  (PropExt; logical←is-equiv; is-equiv←logical; logical←Id; weak-PropExt; weak-PropExt←FunExt)
 import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤
 propExt = PE.PropExt←Univalence global-funext UA
+
+weakPropExt : ∀ {𝓤} → weak-PropExt 𝓤 𝓤
+weakPropExt = weak-PropExt←FunExt global-funext
 
 open import Foundations.Pushout public
 import Foundations.Span as Sp

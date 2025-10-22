@@ -13,22 +13,28 @@ open import ufAxioms
 open import Foundations.Prelude
 open import Algebra.Poset
 open import Modalities.Instances.Truncation
+open import Ergonomics.Auto
 open import Ergonomics.Universal
--- open import Data.Bool
-
+open import Ergonomics.Marker
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 }
 %```
 
 \subtree[stt-009T]{
 \title{Lattices}
 \taxon{definition}
-\p{A lattice #{L} is an algebraic strucutre with two operations #{\wedge,\vee : L \to L \to L}, satisfying absorption laws.
-   Equivalently this structure can be described by a poset, with operations taking binary meets and joins for each pair of elements.}
+\p{A lattice #{L} is an algebraic strucutre with two operations
+   #{\wedge,\vee : L \to L \to L}, satisfying absorption laws.
+   Equivalently this structure can be described by a poset, with
+   operations taking binary meets and joins for each pair of
+   elements.}
 
 %```agda
 \agda{
 
-record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L) (_∨_ : L → L → L) : Type 𝓤 where
+record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L)
+                  (_∨_ : L → L → L) : Type 𝓤 where
   no-eta-equality
   field
     car-is-set  : is-truncated 2 L
@@ -54,6 +60,14 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   x ≤ y = x ∧ y ＝ x
 
   open is-lattice str-is-lattice public
+
+  0-init : ∀ {x} → 0l ∧ x ＝ 0l
+  0-init {x}
+    =   0l ∧ x
+      ＝⟨ ap (0l ∧_) (sym (∨-comm ∙ 0-bottom)) ⟩
+        (0l ∧ (0l ∨ x))
+      ＝⟨ ∧-∨-abs ⟩
+        0l ∎
 
   ≤-is-poset : is-poset (_≤_)
   ≤-is-poset =
@@ -92,10 +106,13 @@ record is-lattice-hom
     pres-0 : f A.0l ＝ B.0l
     pres-1 : f A.1l ＝ B.1l
 
-is-lattice-algebra : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (L : Lattice A) (M : Lattice B) (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-lattice-algebra : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+                       (L : Lattice A) (M : Lattice B) (f : A → B)
+                     → Type (𝓤 ⊔ 𝓥)
 is-lattice-algebra = is-lattice-hom
 
-initial-lattice-algebra : {𝓤 : Level} {A : Type 𝓤} (L : Lattice A) → is-lattice-algebra L L id
+initial-lattice-algebra : ∀ {𝓤 : Level} {A : Type 𝓤} (L : Lattice A)
+                          → is-lattice-algebra L L id
 initial-lattice-algebra L .is-lattice-hom.pres-∨ = refl
 initial-lattice-algebra L .is-lattice-hom.pres-∧ = refl
 initial-lattice-algebra L .is-lattice-hom.pres-0 = refl
@@ -120,7 +137,8 @@ record Equivalence {𝓤 𝓥} {A : Type 𝓤} (_~_ : A → A → Type 𝓥) : T
     symmetric : {x y : A} → x ~ y → y ~ x
     transitive : {x y z : A} → x ~ y → y ~ z → x ~ z
 
-record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A)
+                         (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
   open Lattice L
   field
     ~-equivalence : Equivalence (_~_)
@@ -170,16 +188,40 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
 }
 %```
 }
-
 }
 
-\subtree[stt-009R]{
-\title{Examples}
-\taxon{examples}
-\p{The subobject/subtype classifier #{\mathrm{Prop}} has a canonical lattice structure on it, given by logical and and or}
+
+\subtree[stt-007X]{
+\title{Distributive lattices}
+\taxon{definition}
 
 %```agda
 \agda{
+module _ {𝓤} {L : Type 𝓤} (Lat : Lattice L) where
+  open Lattice Lat
+
+  is-distributive : Type 𝓤
+  is-distributive = ∀ {x y z} → x ∨ (y ∧ z) ＝ (x ∨ y) ∧ (x ∨ z)
+
+  distrib-∨-∧' : is-distributive
+               → ∀ {x y z} → (x ∧ y) ∨ z ＝ (x ∨ z) ∧ (y ∨ z)
+  distrib-∨-∧' d = ∨-comm ∙ d ∙ ap₂ _∧_ ∨-comm ∨-comm
+
+  distrib-∧-∨ : is-distributive
+            → ∀ {x y z} → x ∧ (y ∨ z) ＝ (x ∧ y) ∨ (x ∧ z)
+  distrib-∧-∨ dist {x} {y} {z}
+    = ⌜ x ⌝ ∧ y ∨ z               ＝⟨ ap! (sym ∧-∨-abs) ⟩
+      ((x ∧ x ∨ z) ∧ y ∨ z )      ＝⟨ sym ∧-assoc ⟩
+      (x ∧ x ∨ z ∧ y ∨ z)         ＝⟨ ap₂ _∧_
+                                         (sym ∨-∧-abs ∙ ∨-comm)
+                                         (sym (distrib-∨-∧' dist)) ⟩
+      ((x ∧ y) ∨ x ∧ (x ∧ y) ∨ z) ＝⟨ sym dist ⟩
+      ((x ∧ y) ∨ (x ∧ z)) ∎
+
+  distrib-∧-∨' : is-distributive
+            → ∀ {x y z} → (x ∨ y) ∧ z ＝ (x ∧ z) ∨ (y ∧ z)
+  distrib-∧-∨' d = ∧-comm ∙ distrib-∧-∨ d ∙ ap₂ _∨_ ∧-comm ∧-comm
+
 }
 %```
 }

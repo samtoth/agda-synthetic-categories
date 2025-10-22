@@ -15,9 +15,8 @@ open Reasoning public
 instance
   IdS-default : ∀ {𝓤} {A : Type 𝓤} → Identity-system A 𝓤
   IdS-default .IdS = _＝_
-  IdS-default .IdS₀ = refl
-  IdS-default .has-is-ids a
-    = is-identity-system←Sing-sing (a ＝_) refl Sing-is-singleton
+  IdS-default .IdS←Id = id
+  IdS-default .has-is-ids a _ = id-is-equiv
 
 {-# INCOHERENT IdS-default #-}
 
@@ -26,10 +25,12 @@ instance
           → ⦃ _ : ∀ {a} → Identity-system (B a) 𝓦 ⦄
           → Identity-system ((a : A) → B a) (𝓤 ⊔ 𝓦)
   IdS-Π ⦃ s ⦄ .IdS f g = ∀ a → s .IdS (f a) (g a)
-  IdS-Π ⦃ s ⦄ .IdS₀ _ = s .IdS₀
-  IdS-Π {A = A} {B = B} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
-    (is-single←equiv-to-single (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
-      (weak-funext (λ a → SingS-is-single (f a))))
+  IdS-Π ⦃ s ⦄ .IdS←Id p a = IdS←Id (happly p a)
+  IdS-Π {A = A} {B = B} ⦃ s ⦄ .has-is-ids f
+    = fundamental-Id _
+        ((is-single←equiv-to-single (Σ-Π-swap≃ B (λ x bx → s .IdS (f _) bx) )
+                                    (weak-funext (λ a → SingS-is-single (f a)
+                                    )))) _
 
 {-# OVERLAPPABLE IdS-Π #-}
 
@@ -38,11 +39,11 @@ instance
           → ⦃ _ : ∀ {a} → Identity-system (B a) 𝓦 ⦄
           → Identity-system ({a : A} → B a) (𝓤 ⊔ 𝓦)
   IdS-Πi ⦃ s ⦄ .IdS f g = ∀ {a} → s .IdS (f {a}) g
-  IdS-Πi ⦃ s ⦄ .IdS₀ = s .IdS₀
+  IdS-Πi ⦃ s ⦄ .IdS←Id p = IdS←Id ⦃ s ⦄ (happlyᵢ p)
   IdS-Πi {A = A} {B} ⦃ s ⦄ .has-is-ids f
-    = is-identity-system←Sing-sing _ _
+    = fundamental-Id _
          (is-single←equiv-to-single (Σ-Π-swapᵢ≃ {P = IdS ⦃ s ⦄ f})
-           (is-singleton-Πᵢ (SingS-is-single f)))
+           (is-singleton-Πᵢ (SingS-is-single f))) _
 
 _＝ₑ_ : ∀ {𝓤 : Level} {A : Type 𝓤} {𝓥 : Level}
           ⦃ r : Identity-system A 𝓥 ⦄
@@ -55,9 +56,11 @@ instance
     → ⦃ sb : Identity-system ((x : A) (y : B x) → C x y) 𝓛 ⦄
     → Identity-system ((p : Σ A B) → C (p .fst) (p .snd)) 𝓛
   IdS-uncurry ⦃ s ⦄ .IdS f g =  s .IdS (curry f) (curry g)
-  IdS-uncurry ⦃ s ⦄ .IdS₀ = s .IdS₀
-  IdS-uncurry {A = A} {B} {C} ⦃ s ⦄ .has-is-ids f = is-identity-system←Sing-sing _ _
-    (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃) (SingS-is-single ⦃ s ⦄ (curry f)) )
+  IdS-uncurry ⦃ s ⦄ .IdS←Id refl = IdS←Id ⦃ s ⦄ refl
+  IdS-uncurry {A = A} {B} {C} ⦃ s ⦄ .has-is-ids f
+    = fundamental-Id _
+      (is-single←equiv-to-single (Σ-ap-≃-fst uncurry≃)
+                                 (SingS-is-single ⦃ s ⦄ (curry f))) _
 
 ext! : ∀ {𝓤 𝓥} {A : Type 𝓤} ⦃ s : Identity-system A 𝓥 ⦄ {x y : A}
      → s .IdS x y → x ＝ y
@@ -83,9 +86,12 @@ IdS←Embedding
   → Identity-system B 𝓦
   → Identity-system A 𝓦
 IdS←Embedding {f = f} pm s .IdS a b = IdS ⦃ s ⦄ (f a) (f b)
-IdS←Embedding pm s .IdS₀ = IdS₀ ⦃ s ⦄
-IdS←Embedding {f = f} pm s .has-is-ids a = is-identity-system←Sing-sing _ _
-  (mk-singl (a , IdS₀ ⦃ s ⦄) (is-ss (a , IdS₀ ⦃ s ⦄))) where
+IdS←Embedding pm s .IdS←Id refl = IdS←Id ⦃ s ⦄ refl
+IdS←Embedding {f = f} pm s .has-is-ids a
+  = fundamental-Id _
+                   ((mk-singl (a , IdS₀ ⦃ s ⦄) (is-ss (a , IdS₀ ⦃ s ⦄))))
+                   _
+   where
    is-ss : is-prop (Σ[ z ∶ _ ] IdS ⦃ s ⦄ (f a) (f z))
    is-ss = is-prop←equiv-to-prop (Σ-ap-≃ (λ z → sym≃ ∙≃ Id≃IdS ⦃ s ⦄)) (pm (f a))
 
@@ -127,10 +133,10 @@ instance
               → Identity-system (Σ A B) (𝓦 ⊔ 𝓜)
   IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS (a , b) (a' , b')
     = Σ[ p ∶ IdS a a' ] IdS (trS ⦃ A ⦄ p b) b'
-  IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS₀ {(a , b)} = IdS₀ ⦃ A ⦄ , IdS₀ ⦃ B ⦄
+  IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS←Id {(a , b)} refl = IdS₀ ⦃ A ⦄ , IdS₀ ⦃ B ⦄
   IdS-Sigma {A = A}{B}⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
-    = is-identity-system←Sing-sing _ _
-      (is-single←equiv-to-single (lem e⁻¹) (SingS-is-single ⦃ Bs ⦄ b)) where
+    = fundamental-Id _
+      (is-single←equiv-to-single (lem e⁻¹) (SingS-is-single ⦃ Bs ⦄ b)) _ where
     lem : Σ (Σ A B) (λ where (a' , b') → Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b')
            ≃
           SingS ⦃ Bs ⦄ b
@@ -156,3 +162,8 @@ instance
           SingS ⦃ Bs ⦄ b ≃∎
 
 {-# OVERLAPPABLE IdS-Sigma #-}
+
+
+instance
+  IdS-ua : ∀ {𝓤} → Identity-system (Type 𝓤) 𝓤
+  IdS-ua = mk-identity-system _≃_ ua≃

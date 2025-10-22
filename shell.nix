@@ -10,9 +10,8 @@ in pkgs.mkShell {
     name = "agda-forester-shell";
 
     buildInputs = [
-      af
       (forester-server.packages.${system}.default)
-    ];
+    ] ++ drv.buildInputs;
 
     shellHook = ''
     echo "Welcome to the dev shell!"

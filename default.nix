@@ -17,6 +17,7 @@ let
       babel
       mathtools
       dvisvgm
+      mathpartir
       standalone;
   };
 in

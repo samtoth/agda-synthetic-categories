@@ -54,6 +54,13 @@ is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → is-prop (Π A B)
 is-prop-Π = Foundations.PropClosure.is-prop-Π global-funext
 
+is-prop-Πᵢ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+             → (∀ {a} → is-prop (B a))
+             → is-prop (∀ {a} → B a)
+is-prop-Πᵢ ap = is-prop←is-single-if-inhabited
+                  (λ f → is-singleton-Πᵢ
+                   (λ {a} → mk-singl (f {a}) (ap f)))
+
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
                → happly (funext→ p) ＝ p
@@ -78,7 +85,7 @@ module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-
 open Straightening public
 
 open import Foundations.PropExt public using
-  (PropExt; logical←is-equiv; is-equiv←logical; logical←Id; weak-PropExt; weak-PropExt←FunExt)
+  (PropExt; logical←equiv; equiv←logical; is-equiv←inverse; logical←Id; weak-PropExt; weak-PropExt←FunExt)
 import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤

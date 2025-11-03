@@ -54,13 +54,24 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
     _∧_ : L → L → L
     _∨_ : L → L → L
     str-is-lattice : is-lattice 0l 1l (_∧_) (_∨_)
-  infixr 24 _∧_
-  infixr 25 _∨_
+  infixr 25 _∧_
+  infixr 24 _∨_
 
   _≤_ : L → L → Type ℓ
   x ≤ y = x ∧ y ＝ x
 
   open is-lattice str-is-lattice public
+
+  is-set-separated : ∀ x y → is-prop (x ＝ y)
+  is-set-separated x y = is-prop←is-truncated (car-is-set x y)
+
+  1-coinit : ∀ {x} → x ∨ 1l ＝ 1l
+  1-coinit {x}
+    =   x ∨ 1l
+      ＝⟨ ap (_∨ 1l) (sym 1-top ∙ ∧-comm) ⟩
+        (1l ∧ x) ∨ 1l
+      ＝⟨ ∨-comm ∙ ∨-∧-abs ⟩
+        1l ∎
 
   0-init : ∀ {x} → 0l ∧ x ＝ 0l
   0-init {x}
@@ -70,6 +81,19 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
       ＝⟨ ∧-∨-abs ⟩
         0l ∎
 
+  ∧-idem : ∀ {x : L} → x ∧ x ＝ x
+  ∧-idem {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
+               x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
+               x ∎
+
+  ∨-idem : ∀ {x : L} → x ∨ x ＝ x
+  ∨-idem {x} = (x ∨ x)        ＝⟨ ap (x ∨_) (sym 1-top) ⟩
+               (x ∨ (x ∧ 1l)) ＝⟨ ∨-∧-abs ⟩
+               x ∎
+
+  ∨-∧-abs' : ∀ {a b} → (a ∨ b) ∧ b ＝ b
+  ∨-∧-abs' = ap (_∧ _) ∨-comm ∙ ∧-comm ∙ ∧-∨-abs
+
   ≤-is-poset : is-poset (_≤_)
   ≤-is-poset =
     record { ≤-is-prop = ≤-is-prop
@@ -78,12 +102,10 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
            ; ≤-antisym = ≤-antisym }
     where
       ≤-is-prop : {x y : L} → is-prop (x ≤ y)
-      ≤-is-prop {x} {y} = is-prop←is-truncated (car-is-set (x ∧ y) x)
+      ≤-is-prop = is-set-separated _ _
 
       ≤-refl : {x : L} → x ≤ x
-      ≤-refl {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
-                   x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
-                   x ∎
+      ≤-refl = ∧-idem
 
       ≤-trans : {x y z : L} → x ≤ y → y ≤ z → x ≤ z
       ≤-trans {x} {y} {z} p q =  x ∧ z        ＝⟨  ap (_∧ z) (sym p)  ⟩
@@ -106,6 +128,25 @@ record is-lattice-hom
     pres-∧ : {x y : A} → f (x A.∧ y) ＝ f x B.∧ f y
     pres-0 : f A.0l ＝ B.0l
     pres-1 : f A.1l ＝ B.1l
+
+unquoteDecl lattice-hom-repr≅ lattice-hom-repr≃
+  = make-record-repr lattice-hom-repr≅ lattice-hom-repr≃
+                     (quote is-lattice-hom)
+
+is-lattice-hom-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (L : Lattice A) (M : Lattice B) (f : A → B)
+    → is-prop (is-lattice-hom L M f)
+is-lattice-hom-is-prop L M f
+  = is-prop←equiv-to-prop
+      (lattice-hom-repr≃ e⁻¹)
+      (is-prop-Σ (is-prop-Πᵢ (is-prop-Πᵢ (is-set-separated _ _)))
+        λ _ → is-prop-Σ
+               ((is-prop-Πᵢ (is-prop-Πᵢ (is-set-separated _ _))))
+               λ _ → is-prop-Σ
+                 (is-set-separated _ _)
+                   λ _ → is-set-separated _ _) where
+   open Lattice M
 
 is-lattice-algebra : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
                        (L : Lattice A) (M : Lattice B) (f : A → B)
@@ -141,22 +182,16 @@ respects all lattice operations}
 \agda{
 module Congruence where
 
-record Equivalence {𝓤 𝓥} {A : Type 𝓤} (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
-  field
-    ~-is-prop : {x y : A} → is-prop (x ~ y)
-    reflexive : {x : A} → x ~ x
-    symmetric : {x y : A} → x ~ y → y ~ x
-    transitive : {x y z : A} → x ~ y → y ~ z → x ~ z
 
 record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A)
                          (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
   open Lattice L
   field
-    ~-equivalence : Equivalence (_~_)
+    ~-equivalence : is-equivalence-relation (_~_)
     ~-∨ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∨ a2 ~ b1 ∨ b2
     ~-∧ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∧ a2 ~ b1 ∧ b2
 
-  open Equivalence (~-equivalence) public
+  open is-equivalence-relation (~-equivalence) public
 
 
 module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
@@ -174,14 +209,15 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
   ⟪⟫-congruence {R} = l-con where
     open LatticeCongruence
     open Trunc {1}
+    module E = is-equivalence-relation
 
-    l-eq : Equivalence (λ x y → ∥ ⟪ R ⟫ x y ∥)
-    l-eq .Equivalence.~-is-prop = is-prop←is-truncated ○∈S
-    l-eq .Equivalence.reflexive = η ⟪⟫-refl
-    l-eq .Equivalence.symmetric a = do
+    l-eq : is-equivalence-relation (λ x y → ∥ ⟪ R ⟫ x y ∥)
+    l-eq .E.~-is-prop = is-prop←is-truncated ○∈S
+    l-eq .E.reflexive = η ⟪⟫-refl
+    l-eq .E.symmetric a = do
       rxy ← a
       return (⟪⟫-sym rxy)
-    l-eq .Equivalence.transitive a b = do
+    l-eq .E.transitive a b = do
       rxy ← a
       ryz ← b
       return (⟪⟫-trans rxy ryz)
@@ -208,31 +244,72 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
 
 %```agda
 \agda{
-module _ {𝓤} {L : Type 𝓤} (Lat : Lattice L) where
+record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 where
   open Lattice Lat
 
-  is-distributive : Type 𝓤
-  is-distributive = ∀ {x y z} → x ∨ (y ∧ z) ＝ (x ∨ y) ∧ (x ∨ z)
+  field
+    has-is-distrib : ∀ {x y z} → x ∨ (y ∧ z) ＝ (x ∨ y) ∧ (x ∨ z)
 
-  distrib-∨-∧' : is-distributive
-               → ∀ {x y z} → (x ∧ y) ∨ z ＝ (x ∨ z) ∧ (y ∨ z)
-  distrib-∨-∧' d = ∨-comm ∙ d ∙ ap₂ _∧_ ∨-comm ∨-comm
+  distrib-∨-∧ = has-is-distrib
 
-  distrib-∧-∨ : is-distributive
-            → ∀ {x y z} → x ∧ (y ∨ z) ＝ (x ∧ y) ∨ (x ∧ z)
-  distrib-∧-∨ dist {x} {y} {z}
-    = ⌜ x ⌝ ∧ y ∨ z               ＝⟨ ap! (sym ∧-∨-abs) ⟩
-      ((x ∧ x ∨ z) ∧ y ∨ z )      ＝⟨ sym ∧-assoc ⟩
-      (x ∧ x ∨ z ∧ y ∨ z)         ＝⟨ ap₂ _∧_
+  distrib-∨-∧' : ∀ {x y z} → (x ∧ y) ∨ z ＝ (x ∨ z) ∧ (y ∨ z)
+  distrib-∨-∧' = ∨-comm ∙ distrib-∨-∧ ∙ ap₂ _∧_ ∨-comm ∨-comm
+
+  distrib-∧-∨ : ∀ {x y z} → x ∧ (y ∨ z) ＝ (x ∧ y) ∨ (x ∧ z)
+  distrib-∧-∨ {x} {y} {z}
+    = ⌜ x ⌝ ∧ (y ∨ z)             ＝⟨ ap! (sym ∧-∨-abs) ⟩
+      ((x ∧ (x ∨ z)) ∧ (y ∨ z) )  ＝⟨ sym ∧-assoc ⟩
+      (x ∧ (x ∨ z) ∧ (y ∨ z))     ＝⟨ ap₂ _∧_
                                          (sym ∨-∧-abs ∙ ∨-comm)
-                                         (sym (distrib-∨-∧' dist)) ⟩
-      ((x ∧ y) ∨ x ∧ (x ∧ y) ∨ z) ＝⟨ sym dist ⟩
+                                         (sym (distrib-∨-∧')) ⟩
+      ((x ∧ y ∨ x) ∧ (x ∧ y ∨ z)) ＝⟨ sym distrib-∨-∧ ⟩
       ((x ∧ y) ∨ (x ∧ z)) ∎
 
-  distrib-∧-∨' : is-distributive
-            → ∀ {x y z} → (x ∨ y) ∧ z ＝ (x ∧ z) ∨ (y ∧ z)
-  distrib-∧-∨' d = ∧-comm ∙ distrib-∧-∨ d ∙ ap₂ _∨_ ∧-comm ∧-comm
+  distrib-∧-∨' : ∀ {x y z} → (x ∨ y) ∧ z ＝ (x ∧ z) ∨ (y ∧ z)
+  distrib-∧-∨' = ∧-comm ∙ distrib-∧-∨ ∙ ap₂ _∨_ ∧-comm ∧-comm
 
+
+  ∨-∧-assoc : ∀ {a b c} → a ≤ c → a ∨ b ∧ c ＝ (a ∨ b) ∧ c
+  ∨-∧-assoc {a}{b}{c} p
+    = (a ∨ b ∧ c)                     ＝⟨ sym (ap (_∨ b ∧ c) p) ⟩
+      ((a ∧ c) ∨ (b ∧ c))             ＝⟨ sym (distrib-∧-∨') ⟩
+      ((a ∨ b) ∧ c)    ∎
+
+  -- ∧-∨-assoc : is-distributive
+  --           → ∀ {a b c} → a ≤ c → (a ∧ b) ∨ c ＝ a ∧ (b ∨ c)
+  -- ∧-∨-assoc distr {a}{b}{c} p
+  --   = (a ∧ b ∨ c) ＝⟨ {!!} ⟩
+  --     ((a ∨ c) ∧ (b ∨ c)) ＝⟨ {!!} ⟩
+  --     (a ∧ (b ∨ c)) ∎
+
+
+  -- ((a ∨ b) ∧ (a ∨ c))             ＝⟨ {!!} ⟩
+  -- (((a ∨ b) ∧ a) ∨ ((a ∨ b) ∧ c)) ＝⟨ {!!} ⟩
+
+
+
+  opaque
+    polynomial-mult
+      : ∀ {a₀ a₁ b₀ b₁} x →
+          (a₀ ∨ (a₁ ∧ x)) ∧ (b₀ ∨ (b₁ ∧ x))
+        ＝ (a₀ ∧ b₀) ∨ (((a₁ ∧ b₀) ∨ (a₀ ∧ b₁) ∨ (a₁ ∧ b₁)) ∧ x)
+    polynomial-mult {a₀} {a₁} {b₀} {b₁} x
+      = (a₀ ∨ a₁ ∧ x) ∧ (b₀ ∨ b₁ ∧ x)
+          ＝⟨ distrib-∧-∨ ⟩
+        ((a₀ ∨ a₁ ∧ x) ∧ b₀ ∨ ⌜ (a₀ ∨ a₁ ∧ x) ∧ b₁ ∧ x ⌝)
+          ＝⟨ ap! (∧-assoc ∙ ap (_∧ x) distrib-∧-∨' ∙ distrib-∧-∨' ) ⟩
+        ((a₀ ∨ a₁ ∧ x) ∧ b₀ ∨ (a₀ ∧ b₁) ∧ x ∨ ⌜ ((a₁ ∧ x) ∧ b₁) ∧ x ⌝)
+          ＝⟨ ap! (ap (_∧ x) (sym ∧-assoc ∙ ap (a₁ ∧_) ∧-comm) ∙ sym ∧-assoc
+                     ∙ ap (a₁ ∧_) (sym ∧-assoc ∙ ap (b₁ ∧_) ∧-idem)) ⟩
+        (⌜ (a₀ ∨ a₁ ∧ x) ∧ b₀ ⌝ ∨ (a₀ ∧ b₁) ∧ x ∨ a₁ ∧ b₁ ∧ x)
+          ＝⟨ ap! (distrib-∧-∨'
+                 ∙ ap (a₀ ∧ b₀ ∨_) (sym ∧-assoc ∙ ap (a₁ ∧_) ∧-comm)) ⟩
+        ((a₀ ∧ b₀ ∨ (a₁ ∧ b₀ ∧ x)) ∨ (a₀ ∧ b₁) ∧ x ∨ a₁ ∧ b₁ ∧ x)
+          ＝⟨ ap₂ _∨_ (ap (a₀ ∧ b₀ ∨_) ∧-assoc)
+                      (ap ((a₀ ∧ b₁) ∧ x ∨_) ∧-assoc ∙ sym distrib-∧-∨') ⟩
+        ((a₀ ∧ b₀) ∨ ((a₁ ∧ b₀) ∧ x)) ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x
+          ＝⟨ sym ∨-assoc ∙ ap (a₀ ∧ b₀ ∨_) (sym distrib-∧-∨') ⟩
+        (a₀ ∧ b₀ ∨ (a₁ ∧ b₀ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x) ∎
 }
 %```
 }

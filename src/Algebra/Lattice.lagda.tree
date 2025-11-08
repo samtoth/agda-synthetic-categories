@@ -94,6 +94,9 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   ∨-∧-abs' : ∀ {a b} → (a ∨ b) ∧ b ＝ b
   ∨-∧-abs' = ap (_∧ _) ∨-comm ∙ ∧-comm ∙ ∧-∨-abs
 
+  ∧-∨-abs' : ∀ {a b} → (a ∧ b) ∨ b ＝ b
+  ∧-∨-abs' = ap (_∨ _) ∧-comm ∙ ∨-comm ∙ ∨-∧-abs
+
   ≤-is-poset : is-poset (_≤_)
   ≤-is-poset =
     record { ≤-is-prop = ≤-is-prop
@@ -116,6 +119,72 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
 
       ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
       ≤-antisym {x} {y} p q = sym p ∙ ∧-comm ∙ q
+
+
+  open is-poset ≤-is-poset public
+
+  ≤-max : ∀ {a b} → a ≤ b → a ∨ b ＝ b
+  ≤-max {a} {b} p
+    = a ∨ b             ＝⟨ ap (_∨ b) (sym p) ⟩
+      (a ∧ b) ∨ b       ＝⟨ ∧-∨-abs' ⟩
+      b ∎
+
+  ≤←∨ : ∀ {a b} → a ∨ b ＝ b → a ≤ b
+  ≤←∨ {a} {b} p
+    = a ∧ b           ＝⟨ ap (a ∧_) (sym p) ⟩
+      a ∧ (a ∨ b)     ＝⟨ ∧-∨-abs ⟩
+      a ∎
+
+  ∨-UP : ∀ {a b c} → a ≤ c × b ≤ c → (a ∨ b ≤ c)
+  ∨-UP {a} {b} {c} (f , g)
+    = ≤←∨ (sym ∨-assoc ∙ ≤-max (ap (a ∧_) (≤-max g) ∙ f) ∙ ≤-max g)
+
+  ∨-UP-is-equiv : ∀ {a b c} → is-equiv (∨-UP {a}{b}{c})
+  ∨-UP-is-equiv {a} {b} {c} = is-equiv←inverse
+                    (is-prop-Σ (is-set-separated _ _) λ _ → is-set-separated _ _)
+                    (is-set-separated _ _)
+                    λ x → ap (_∧ _) (sym (∧-∨-abs {a}{b}) )
+                          ∙ sym ∧-assoc ∙ ap (a ∧_) x
+                          ∙ ∧-∨-abs
+                        , ap (_∧ _) (sym (∧-∨-abs {b} {a}))
+                          ∙ sym ∧-assoc
+                          ∙ ap (b ∧_) (ap (_∧ c) ∨-comm ∙ x ∙ ∨-comm)
+                          ∙ ∧-∨-abs
+
+  ∨-≤-introl : ∀ {a b c} → a ≤ b → a ≤ (b ∨ c)
+  ∨-≤-introl p = ≤-trans p ∧-∨-abs
+
+  ∨-≤-intror : ∀ {a b c} → a ≤ c → a ≤ (b ∨ c)
+  ∨-≤-intror p = ≤-trans p (ap (_ ∧_) ∨-comm ∙ ∧-∨-abs)
+
+  ∧-UP : ∀ {a b c} → a ≤ b × a ≤ c → a ≤ b ∧ c
+  ∧-UP (p , q) = ∧-assoc ∙ ap (_∧ _) p ∙ q
+
+  ∧-≤-eliml : ∀ {a b c} → a ≤ c → (a ∧ b) ≤ c
+  ∧-≤-eliml {a}{b}{c} p = ∧-comm ∙ ∧-assoc ∙ ap (_∧ b) (∧-comm ∙ p)
+
+  ∧-≤-elimr : ∀ {a b c} → b ≤ c → (a ∧ b) ≤ c
+  ∧-≤-elimr {a}{b}{c} q = sym ∧-assoc ∙ ap (a ∧_) q
+
+  instance
+    ≤-bot : ∀ {i} → 0l ≤ i
+    ≤-bot = 0-init
+
+    ≤-refl-inst : ∀ {i} → i ≤ i
+    ≤-refl-inst = ≤-refl
+
+    ≤-top = 1-top
+    {-# INCOHERENT ≤-refl-inst ≤-top #-}
+
+    ≤-∧ : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
+          → (a ∧ c) ≤ (b ∧ d)
+    ≤-∧ = ∧-UP (∧-≤-eliml auto! , ∧-≤-elimr auto!)
+
+    ≤-∨ : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
+          → (a ∨ c) ≤ (b ∨ d)
+    ≤-∨ = ∨-UP (∨-≤-introl auto! , ∨-≤-intror auto!)
+
+
 
 record is-lattice-hom
         {𝓤} {𝓤'} {A : Type 𝓤} {B : Type 𝓤'}
@@ -268,25 +337,15 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
   distrib-∧-∨' : ∀ {x y z} → (x ∨ y) ∧ z ＝ (x ∧ z) ∨ (y ∧ z)
   distrib-∧-∨' = ∧-comm ∙ distrib-∧-∨ ∙ ap₂ _∨_ ∧-comm ∧-comm
 
+  distrib₂-∧-∨ : ∀ {x y z w}
+                 → x ∧ (y ∨ z ∨ w) ＝ x ∧ y ∨ x ∧ z ∨ x ∧ w
+  distrib₂-∧-∨ {x} {y}{z}{w}
+    = distrib-∧-∨ ∙ ap (x ∧ y ∨_) distrib-∧-∨
 
-  ∨-∧-assoc : ∀ {a b c} → a ≤ c → a ∨ b ∧ c ＝ (a ∨ b) ∧ c
-  ∨-∧-assoc {a}{b}{c} p
-    = (a ∨ b ∧ c)                     ＝⟨ sym (ap (_∨ b ∧ c) p) ⟩
-      ((a ∧ c) ∨ (b ∧ c))             ＝⟨ sym (distrib-∧-∨') ⟩
-      ((a ∨ b) ∧ c)    ∎
-
-  -- ∧-∨-assoc : is-distributive
-  --           → ∀ {a b c} → a ≤ c → (a ∧ b) ∨ c ＝ a ∧ (b ∨ c)
-  -- ∧-∨-assoc distr {a}{b}{c} p
-  --   = (a ∧ b ∨ c) ＝⟨ {!!} ⟩
-  --     ((a ∨ c) ∧ (b ∨ c)) ＝⟨ {!!} ⟩
-  --     (a ∧ (b ∨ c)) ∎
-
-
-  -- ((a ∨ b) ∧ (a ∨ c))             ＝⟨ {!!} ⟩
-  -- (((a ∨ b) ∧ a) ∨ ((a ∨ b) ∧ c)) ＝⟨ {!!} ⟩
-
-
+  distrib₂-∧-∨' : ∀ {x y z w}
+                 → (y ∨ z ∨ w) ∧ x ＝ y ∧ x ∨ z ∧ x ∨ w ∧ x
+  distrib₂-∧-∨' {x} {y}{z}{w}
+    = ∧-comm ∙ distrib₂-∧-∨ ∙ ap₃ (λ x y z → x ∨ (y ∨ z)) ∧-comm ∧-comm ∧-comm
 
   opaque
     polynomial-mult
@@ -310,6 +369,19 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
         ((a₀ ∧ b₀) ∨ ((a₁ ∧ b₀) ∧ x)) ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x
           ＝⟨ sym ∨-assoc ∙ ap (a₀ ∧ b₀ ∨_) (sym distrib-∧-∨') ⟩
         (a₀ ∧ b₀ ∨ (a₁ ∧ b₀ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x) ∎
+
+    polynomial-mult'
+      : ∀ {a₀ a₁ b₀ b₁} x →
+           ((a₀ ∧ x) ∨ a₁) ∧ ((b₀ ∧ x) ∨ b₁)
+        ＝ (((a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀)) ∧ x) ∨ (a₁ ∧ b₁)
+    polynomial-mult' {a₀} {a₁} {b₀} {b₁} x
+      = ((a₀ ∧ x ∨ a₁) ∧ (b₀ ∧ x ∨ b₁))
+          ＝⟨ ap₂ _∧_ ∨-comm ∨-comm ⟩
+        ((a₁ ∨ a₀ ∧ x) ∧ (b₁ ∨ b₀ ∧ x))
+          ＝⟨ polynomial-mult x ⟩
+        (a₁ ∧ b₁ ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x)
+          ＝⟨ ∨-comm ⟩
+        ((a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x ∨ a₁ ∧ b₁) ∎
 }
 %```
 }

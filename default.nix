@@ -41,12 +41,13 @@ in
       LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html src/Everything.agda
       echo "Generated trees"
       forester build
-      cp ./output/Agda.css ./output/html/Agda.css
+      cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css
     '';
 
     installPhase = ''
       echo $out
       mkdir -p $out
-      cp -Lrvf output/* "$out"/
+      cp -Lrvf output/agda-synthetic-categories/* "$out"/
+      cp -Lrvf output/html "$out"/
     '';
   }

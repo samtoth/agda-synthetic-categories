@@ -35,9 +35,13 @@ in
       mkdir -p trees/stt/autogen
       ./generateEverything.sh
       echo "Generated everything file"
-      LC_ALL=C.UTF-8 agda-forester --forest -otrees/stt/autogen src/Everything.agda
+      mkdir -p ./output
+      mkdir -p ./output/html
+      echo "made /output/html dir"
+      LC_ALL=C.UTF-8 agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html src/Everything.agda
       echo "Generated trees"
       forester build
+      cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css
     '';
 
     installPhase = ''

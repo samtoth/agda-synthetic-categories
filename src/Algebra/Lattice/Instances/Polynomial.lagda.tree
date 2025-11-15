@@ -25,10 +25,80 @@ open import Data.Bool
 }
 %```
 
+\subtree[stt-00A5]{
+\title{Idea}
 
-\subtree[stt-009V]{
+\p{We use our intuition for rings to define the free algebras of distributive
+lattices as the polynomials. For a first approximation then, we  write a polynomial
+as a sequence of terms (where #{x^n} is the n-fold join of x):}
+
+##{
+a_n \land x^n \lor a_{n-1}\land x^{n-1} \lor ... \lor a_0
+}
+
+\p{In this setting we have idempotence of meet and join, so all terms #{a_n x^n} with
+#{n>2} reduce to #{a_n \land x}.}
+
+\p{Finally, we note that for any #{x,a,b} in the lattice,
+##{a \land x \lor b = (a \lor b) \land x \lor b}. With these two observation,
+we can now see that polynomials in one variable (#{x}) can be represented
+uniquely as #{a \land x \lor b} with #{a \ge b}. }
+}
+
+\subtree[stt-009X]{
+\taxon{Definition}
+\title{The 2-simplex}
+
+\p{We give a geometrically-suggestive name to the underlying set of the [free
+distributive lattice algebra](stt-009W)}
+
+%```agda
+\agda{
+
+record Δ² {𝓤} {A : Type 𝓤} (L : Lattice A) : Type 𝓤 where
+  constructor _,_
+  open Lattice L
+  field
+    s t : A
+    ⦃ mono ⦄ : t ≤ s
+
+module _ {𝓤} {A : Type 𝓤} {L : Lattice A} where
+  open Lattice L
+
+  unquoteDecl Δ²-repr≅ Δ²-repr≃ = make-record-repr Δ²-repr≅ Δ²-repr≃ (quote Δ²)
+
+  Δ₁-is-set : is-truncated 2 (Δ² L)
+  Δ₁-is-set = Trunc.is-truncated←equiv (Δ²-repr≃ e⁻¹)
+                 (Trunc.Σ-is-truncated
+                   car-is-set
+                   λ a → Trunc.Σ-is-truncated
+                          car-is-set
+                            λ b → suc-is-truncated _ (car-is-set _ _))
+
+  Δ₁-ext : ∀ {a b : Δ² L} → ((a .Δ².s ＝ b .Δ².s) × (a .Δ².t ＝ b .Δ².t)) → a ＝ b
+  Δ₁-ext {x@((a , b) ⦃ m ⦄)} {y@(a , b)} (refl , refl)
+    = unap-equiv (Δ²-repr≃ ._≃_.has-is-eqv)
+       (Σ-path→ (refl
+                , (Σ-path→ (refl
+                , (((unlift (car-is-set _ _ _ _)) .centre))))))
+
+  Δ₁-ext-is-equiv : ∀ {a b : Δ² L} → is-equiv (Δ₁-ext {a} {b})
+  Δ₁-ext-is-equiv = is-equiv←inverse
+                      (is-prop-Σ (is-set-separated _ _) λ _ → is-set-separated _ _)
+                      (is-prop←is-truncated (Δ₁-is-set _ _))
+                      λ where refl → (refl , refl)
+}
+%```
+}
+
+
+\subtree[stt-009W]{
 \title{The algbera of polynomials over a distributive lattice}
 \taxon{Definition}
+
+\p{We now construct the free [distributive](stt-00A4) [lattice](stt-009T)
+[algebra](stt-009Z)}
+
 
 %```agda
 \agda{
@@ -36,36 +106,7 @@ module _ {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L) wher
   open Lattice L
   open is-distributive distr
 
-  record Δ₁ : Type 𝓤 where
-    constructor _,_
-    field
-      s t : A
-      ⦃ mono ⦄ : t ≤ s
-
-  unquoteDecl Δ₁-repr≅ Δ₁-repr≃ = make-record-repr Δ₁-repr≅ Δ₁-repr≃ (quote Δ₁)
-
-  Δ₁-is-set : is-truncated 2 Δ₁
-  Δ₁-is-set = Trunc.is-truncated←equiv (Δ₁-repr≃ e⁻¹)
-                 (Trunc.Σ-is-truncated
-                   car-is-set
-                   λ a → Trunc.Σ-is-truncated
-                          car-is-set
-                            λ b → suc-is-truncated _ (car-is-set _ _))
-
-  Δ₁-ext : ∀ {a b : Δ₁} → ((a .Δ₁.s ＝ b .Δ₁.s) × (a .Δ₁.t ＝ b .Δ₁.t)) → a ＝ b
-  Δ₁-ext {x@((a , b) ⦃ m ⦄)} {y@(a , b)} (refl , refl)
-    = unap-equiv (Δ₁-repr≃ ._≃_.has-is-eqv)
-       (Σ-path→ (refl
-                , (Σ-path→ (refl
-                , (((unlift (car-is-set _ _ _ _)) .centre))))))
-
-  Δ₁-ext-is-equiv : ∀ {a b : Δ₁} → is-equiv (Δ₁-ext {a} {b})
-  Δ₁-ext-is-equiv = is-equiv←inverse
-                      (is-prop-Σ (is-set-separated _ _) λ _ → is-set-separated _ _)
-                      (is-prop←is-truncated (Δ₁-is-set _ _))
-                      λ where refl → (refl , refl)
-
-  L[x] : Lattice Δ₁ -- a ∧ x ∨ b ∈ L[x]
+  L[x] : Lattice (Δ² L) -- a ∧ x ∨ b ∈ L[x]
   L[x] .Lattice.0l = (0l , 0l)
   L[x] .Lattice.1l = (1l , 1l)
   L[x] .Lattice._∨_ (a₀ , a₁) (b₀ , b₁)
@@ -73,76 +114,77 @@ module _ {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L) wher
   L[x] .Lattice._∧_ (a₀ , a₁) (b₀ , b₁)
     = ((a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀), a₁ ∧ b₁) ⦃ ∨-≤-introl auto! ⦄
   L[x] .Lattice.str-is-lattice = l where
-    lemma1 : ∀ {a₀ a₁ : A} ⦃ p : a₁ ≤ a₀ ⦄ →
-             (a₀ ∧ 1l) ∨
-             (a₁ ∧ 1l) ∨ (a₀ ∧ 1l)
-             ＝ a₀
-    lemma1 {a₀} {a₁}
-      = ((a₀ ∧ 1l) ∨ (a₁ ∧ 1l) ∨ (a₀ ∧ 1l))
-          ＝⟨ ap₂ _∨_ 1-top (ap₂ _∨_ 1-top 1-top) ⟩
-        a₀ ∨ a₁ ∨ a₀
-          ＝⟨ ∨-assoc ∙ ∨-comm ∙ ∨-assoc ∙ ap (_∨ a₁) ∨-idem ⟩
-        a₀ ∨ a₁
-          ＝⟨ ∨-comm ∙ ≤-max auto! ⟩
-        a₀ ∎
+    opaque
+      lemma1 : ∀ {a₀ a₁ : A} ⦃ p : a₁ ≤ a₀ ⦄ →
+               (a₀ ∧ 1l) ∨
+               (a₁ ∧ 1l) ∨ (a₀ ∧ 1l)
+               ＝ a₀
+      lemma1 {a₀} {a₁}
+        = ((a₀ ∧ 1l) ∨ (a₁ ∧ 1l) ∨ (a₀ ∧ 1l))
+            ＝⟨ ap₂ _∨_ 1-top (ap₂ _∨_ 1-top 1-top) ⟩
+          a₀ ∨ a₁ ∨ a₀
+            ＝⟨ ∨-assoc ∙ ∨-comm ∙ ∨-assoc ∙ ap (_∨ a₁) ∨-idem ⟩
+          a₀ ∨ a₁
+            ＝⟨ ∨-comm ∙ ≤-max auto! ⟩
+          a₀ ∎
 
-    lemma2 : ∀ {a₀ a₁ b₀ b₁} ⦃ p : a₀ ≤ a₁ ⦄ ⦃ q : b₀ ≤ b₁ ⦄
-             → a₁ ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₁) ∨ (a₁ ∧ b₁) ＝ a₁
-    lemma2 {a₀} {a₁} {b₀} {b₁} ⦃ p ⦄
-      = (a₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁) ＝⟨ ∨-assoc ∙ ap₂ _∨_ ∨-∧-abs refl ⟩
-        (a₁ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁)           ＝⟨ ∨-assoc ∙ ∨-comm ∙ ∨-assoc
-                                             ∙ ap₂ _∨_ (∨-comm ∙ ∨-∧-abs) refl ⟩
-        (a₁ ∨ a₀ ∧ b₁)                     ＝⟨ distrib-∨-∧ ⟩
-        ((a₁ ∨ a₀) ∧ (a₁ ∨ b₁))            ＝⟨ ap (_∧ (a₁ ∨ b₁))
-                                                  (∨-comm ∙ ≤-max p) ⟩
-        a₁ ∧ (a₁ ∨ b₁)                     ＝⟨ ∧-∨-abs ⟩
-        a₁    ∎
+      lemma2 : ∀ {a₀ a₁ b₀ b₁} ⦃ p : a₀ ≤ a₁ ⦄ ⦃ q : b₀ ≤ b₁ ⦄
+               → a₁ ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₁) ∨ (a₁ ∧ b₁) ＝ a₁
+      lemma2 {a₀} {a₁} {b₀} {b₁} ⦃ p ⦄
+        = (a₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁) ＝⟨ ∨-assoc ∙ ap₂ _∨_ ∨-∧-abs refl ⟩
+          (a₁ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁)           ＝⟨ ∨-assoc ∙ ∨-comm ∙ ∨-assoc
+                                               ∙ ap₂ _∨_ (∨-comm ∙ ∨-∧-abs) refl ⟩
+          (a₁ ∨ a₀ ∧ b₁)                     ＝⟨ distrib-∨-∧ ⟩
+          ((a₁ ∨ a₀) ∧ (a₁ ∨ b₁))            ＝⟨ ap (_∧ (a₁ ∨ b₁))
+                                                    (∨-comm ∙ ≤-max p) ⟩
+          a₁ ∧ (a₁ ∨ b₁)                     ＝⟨ ∧-∨-abs ⟩
+          a₁    ∎
 
-    lemma3 : ∀ {a₀ a₁ b₀ b₁} ⦃ m : a₀ ≤ a₁ ⦄ ⦃ n : b₀ ≤ b₁ ⦄
-             → a₁ ∧ (a₀ ∨ b₀) ∨ a₀ ∧ (a₁ ∨ b₁) ∨ a₁ ∧ (a₁ ∨ b₁) ＝ a₁
-    lemma3 {a₀} {a₁} {b₀} {b₁} ⦃ m ⦄ ⦃ n ⦄
-      = (a₁ ∧ (a₀ ∨ b₀) ∨ a₀ ∧ (a₁ ∨ b₁) ∨ a₁ ∧ (a₁ ∨ b₁))
-          ＝⟨ ap₂ _∨_ refl (ap₂ _∨_ (∨-≤-introl m) ∧-∨-abs) ⟩
-        ((a₁ ∧ (a₀ ∨ b₀)) ∨ a₀ ∨ a₁)
-          ＝⟨ ap₂ _∨_ distrib-∧-∨ (≤-max m) ⟩
-        ((a₁ ∧ a₀ ∨ a₁ ∧ b₀) ∨ a₁)
-          ＝⟨ sym ∨-assoc ∙ ap (_ ∨_) (∨-comm ∙ ∨-∧-abs) ⟩
-        (a₁ ∧ a₀ ∨ a₁)
-          ＝⟨ ap (_∨ a₁) (∧-comm ∙ m) ∙ ≤-max m ⟩
-        a₁ ∎
+      lemma3 : ∀ {a₀ a₁ b₀ b₁} ⦃ m : a₀ ≤ a₁ ⦄ ⦃ n : b₀ ≤ b₁ ⦄
+               → a₁ ∧ (a₀ ∨ b₀) ∨ a₀ ∧ (a₁ ∨ b₁) ∨ a₁ ∧ (a₁ ∨ b₁) ＝ a₁
+      lemma3 {a₀} {a₁} {b₀} {b₁} ⦃ m ⦄ ⦃ n ⦄
+        = (a₁ ∧ (a₀ ∨ b₀) ∨ a₀ ∧ (a₁ ∨ b₁) ∨ a₁ ∧ (a₁ ∨ b₁))
+            ＝⟨ ap₂ _∨_ refl (ap₂ _∨_ (∨-≤-introl m) ∧-∨-abs) ⟩
+          ((a₁ ∧ (a₀ ∨ b₀)) ∨ a₀ ∨ a₁)
+            ＝⟨ ap₂ _∨_ distrib-∧-∨ (≤-max m) ⟩
+          ((a₁ ∧ a₀ ∨ a₁ ∧ b₀) ∨ a₁)
+            ＝⟨ sym ∨-assoc ∙ ap (_ ∨_) (∨-comm ∙ ∨-∧-abs) ⟩
+          (a₁ ∧ a₀ ∨ a₁)
+            ＝⟨ ap (_∨ a₁) (∧-comm ∙ m) ∙ ≤-max m ⟩
+          a₁ ∎
 
-    lemma-assoc : ∀ {a b c d e f}
-                  → a ∧ d ∧ f ∨
-                    b ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e) ∨ a ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e)
-                  ＝
-                      (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ f
-                    ∨ (b ∧ d) ∧ e
-                    ∨ (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ e
-    lemma-assoc {a} {b} {c} {d} {e} {f}
-      = (a ∧ d ∧ f ∨
-         b ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e) ∨ a ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e))
-           ＝⟨ ap (a ∧ d ∧ f ∨_)
-                (ap₂ _∨_ distrib₂-∧-∨ distrib₂-∧-∨) ⟩
-         (a ∧ d ∧ f ∨ ((b ∧ c ∧ f) ∨ (b ∧ d ∧ e) ∨ (b ∧ c ∧ e))
-           ∨ ((a ∧ c ∧ f) ∨ (a ∧ d ∧ e) ∨ a ∧ c ∧ e))
-           ＝⟨ ap (_ ∨_) (sym ∨-assoc ∙ ap (_ ∨_) (∨-assoc
-                                                  ∙ ap (_∨ (a ∧ d ∧ e ∨ a ∧ c ∧ e))
-                                                       ∨-comm
-                                                  ∙ sym ∨-assoc))
-             ∙ ∨-assoc ∙ ∨-assoc
-             ∙ ap₂ _∨_ (sym ∨-assoc ∙ ap₃ (λ x y z → x ∨ (y ∨ z)) ∧-assoc ∧-assoc ∧-assoc)
-                       (ap₂ _∨_ (ap₂ _∨_ ∧-assoc ∧-assoc)
-                                (ap₂ _∨_ ∧-assoc ∧-assoc)
-                       ∙ sym ∨-assoc ∙ ap ((b ∧ d) ∧ e ∨_)
-                                          (∨-assoc
-                                          ∙ ap (_∨ (a ∧ c) ∧ e) ∨-comm
-                                          ∙ sym ∨-assoc)) ⟩
-         (((a ∧ d) ∧ f ∨ (b ∧ c) ∧ f ∨ (a ∧ c) ∧ f) ∨
-          (b ∧ d) ∧ e ∨ (a ∧ d) ∧ e ∨ (b ∧ c) ∧ e ∨ (a ∧ c) ∧ e)
-           ＝⟨ sym (ap₃ (λ x y z → x ∨ (y ∨ z)) distrib₂-∧-∨' refl distrib₂-∧-∨') ⟩
-         ((a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ f
-          ∨ (b ∧ d) ∧ e
-          ∨ (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ e)    ∎
+      lemma-assoc : ∀ {a b c d e f}
+                    → a ∧ d ∧ f ∨
+                      b ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e) ∨ a ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e)
+                    ＝
+                        (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ f
+                      ∨ (b ∧ d) ∧ e
+                      ∨ (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ e
+      lemma-assoc {a} {b} {c} {d} {e} {f}
+        = (a ∧ d ∧ f ∨
+           b ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e) ∨ a ∧ (c ∧ f ∨ d ∧ e ∨ c ∧ e))
+             ＝⟨ ap (a ∧ d ∧ f ∨_)
+                  (ap₂ _∨_ distrib₂-∧-∨ distrib₂-∧-∨) ⟩
+           (a ∧ d ∧ f ∨ ((b ∧ c ∧ f) ∨ (b ∧ d ∧ e) ∨ (b ∧ c ∧ e))
+             ∨ ((a ∧ c ∧ f) ∨ (a ∧ d ∧ e) ∨ a ∧ c ∧ e))
+             ＝⟨ ap (_ ∨_) (sym ∨-assoc ∙ ap (_ ∨_) (∨-assoc
+                                                    ∙ ap (_∨ (a ∧ d ∧ e ∨ a ∧ c ∧ e))
+                                                         ∨-comm
+                                                    ∙ sym ∨-assoc))
+               ∙ ∨-assoc ∙ ∨-assoc
+               ∙ ap₂ _∨_ (sym ∨-assoc ∙ ap₃ (λ x y z → x ∨ (y ∨ z)) ∧-assoc ∧-assoc ∧-assoc)
+                         (ap₂ _∨_ (ap₂ _∨_ ∧-assoc ∧-assoc)
+                                  (ap₂ _∨_ ∧-assoc ∧-assoc)
+                         ∙ sym ∨-assoc ∙ ap ((b ∧ d) ∧ e ∨_)
+                                            (∨-assoc
+                                            ∙ ap (_∨ (a ∧ c) ∧ e) ∨-comm
+                                            ∙ sym ∨-assoc)) ⟩
+           (((a ∧ d) ∧ f ∨ (b ∧ c) ∧ f ∨ (a ∧ c) ∧ f) ∨
+            (b ∧ d) ∧ e ∨ (a ∧ d) ∧ e ∨ (b ∧ c) ∧ e ∨ (a ∧ c) ∧ e)
+             ＝⟨ sym (ap₃ (λ x y z → x ∨ (y ∨ z)) distrib₂-∧-∨' refl distrib₂-∧-∨') ⟩
+           ((a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ f
+            ∨ (b ∧ d) ∧ e
+            ∨ (a ∧ d ∨ b ∧ c ∨ a ∧ c) ∧ e)    ∎
 
 
     l : is-lattice (Lattice.0l L[x]) (Lattice.1l L[x])
@@ -167,7 +209,7 @@ module _ {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L) wher
     l .is-lattice.1-top {(a₀ , a₁) ⦃ m ⦄}
       = Δ₁-ext (lemma1 , auto!)
 
-  ι-const : A → Δ₁
+  ι-const : A → Δ² L
   ι-const x = (x , x)
 
   L[x]-is-lattice-algebra : is-lattice-hom L L[x] ι-const
@@ -251,7 +293,7 @@ module _ {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L) wher
       = Σ-path→ (Σ-path→ (funext→ H
               , funext→ (λ _ → M.is-set-separated _ _ _ _))
               , (is-lattice-hom-is-prop L[x] M f _ _)) where
-      H : ((a , b) : Δ₁) →
+      H : ((a , b) : Δ² L) →
            i a M.∧ f (1l , 0l) M.∨ i b ＝ f (a , b)
       H ((a , b) ⦃ p ⦄)
         = (i a M.∧ f (1l , 0l) M.∨ i b)

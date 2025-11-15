@@ -1,5 +1,9 @@
 module Everything where
 open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Bool
+open import Algebra.Lattice.Instances.Pointwise
+open import Algebra.Lattice.Instances.Polynomial
+open import Algebra.Lattice.Instances.Prop
 open import Algebra.Poset
 open import Axioms.FreeAlgInj
 open import Core.Arrow
@@ -28,6 +32,7 @@ open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.Spheres
 open import Core.Suspensions
+open import Data.Bool
 open import Ergonomics.Fixity
 open import Ergonomics.Literal
 open import Ergonomics.Marker
@@ -53,6 +58,7 @@ open import Foundations.EquivHomotopy
 open import Foundations.EquivOfSingleton
 open import Foundations.EquivProp
 open import Foundations.EquivSingleton
+open import Foundations.EquivalenceRelation
 open import Foundations.FibrePath
 open import Foundations.FibrewiseEquiv
 open import Foundations.FunExt

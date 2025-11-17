@@ -1,0 +1,437 @@
+\title{Lattices}
+\date{2025-06-19}
+\taxon{Module}
+\author{markwilliams}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Algebra.Lattice where
+
+open import ufAxioms
+open import Foundations.Prelude
+open import Algebra.Poset
+open import Modalities.Instances.Truncation
+open import Core.CoSlice
+open import Ergonomics.Auto
+open import Ergonomics.Universal
+open import Ergonomics.Marker
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[stt-009T]{
+\title{Lattices}
+\taxon{Definition}
+\p{A lattice #{L} is an algebraic structure with a pair of commutative monoids
+#{\wedge,\vee}, satisfying absorption laws.  Equivalently this
+structure can be described by a poset, with operations taking binary meets
+(#{\land}) and joins (#{\lor}) for each pair of elements.}
+
+%```agda
+\agda{
+record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L)
+                  (_∨_ : L → L → L) : Type 𝓤 where
+  no-eta-equality
+  field
+    car-is-set  : is-truncated 2 L
+    ∧-assoc : {x y z : L} → x ∧ (y ∧ z) ＝ (x ∧ y) ∧ z
+    ∨-assoc : {x y z : L} → x ∨ (y ∨ z) ＝ (x ∨ y) ∨ z
+    ∧-comm : {x y : L} → x ∧ y ＝ y ∧ x
+    ∨-comm : {x y : L} → x ∨ y ＝ y ∨ x
+    ∨-∧-abs : {x y : L} → x ∨ (x ∧ y) ＝ x
+    ∧-∨-abs : {x y : L} → x ∧ (x ∨ y) ＝ x
+    0-bottom : {x : L} → x ∨ 0l ＝ x
+    1-top    : {x : L} → x ∧ 1l ＝ x
+
+record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
+  field
+    0l 1l : L
+    _∧_ : L → L → L
+    _∨_ : L → L → L
+    str-is-lattice : is-lattice 0l 1l (_∧_) (_∨_)
+  infixr 25 _∧_
+  infixr 24 _∨_
+
+  _≤_ : L → L → Type ℓ
+  x ≤ y = x ∧ y ＝ x
+
+  open is-lattice str-is-lattice public
+
+  is-prop-separated : ∀ x y → is-prop (x ＝ y)
+  is-prop-separated x y = is-prop←is-truncated (car-is-set x y)
+
+  1-coinit : ∀ {x} → x ∨ 1l ＝ 1l
+  1-coinit {x}
+    =   x ∨ 1l
+      ＝⟨ ap (_∨ 1l) (sym 1-top ∙ ∧-comm) ⟩
+        (1l ∧ x) ∨ 1l
+      ＝⟨ ∨-comm ∙ ∨-∧-abs ⟩
+        1l ∎
+
+  0-init : ∀ {x} → 0l ∧ x ＝ 0l
+  0-init {x}
+    =   0l ∧ x
+      ＝⟨ ap (0l ∧_) (sym (∨-comm ∙ 0-bottom)) ⟩
+        (0l ∧ (0l ∨ x))
+      ＝⟨ ∧-∨-abs ⟩
+        0l ∎
+
+  ∧-idem : ∀ {x : L} → x ∧ x ＝ x
+  ∧-idem {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
+               x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
+               x ∎
+
+  ∨-idem : ∀ {x : L} → x ∨ x ＝ x
+  ∨-idem {x} = (x ∨ x)        ＝⟨ ap (x ∨_) (sym 1-top) ⟩
+               (x ∨ (x ∧ 1l)) ＝⟨ ∨-∧-abs ⟩
+               x ∎
+
+  ∨-∧-abs' : ∀ {a b} → (a ∨ b) ∧ b ＝ b
+  ∨-∧-abs' = ap (_∧ _) ∨-comm ∙ ∧-comm ∙ ∧-∨-abs
+
+  ∧-∨-abs' : ∀ {a b} → (a ∧ b) ∨ b ＝ b
+  ∧-∨-abs' = ap (_∨ _) ∧-comm ∙ ∨-comm ∙ ∨-∧-abs
+
+  ≤-is-poset : is-poset (_≤_)
+  ≤-is-poset =
+    record { ≤-is-prop = ≤-is-prop
+           ; ≤-refl = ≤-refl
+           ; ≤-trans = ≤-trans
+           ; ≤-antisym = ≤-antisym }
+    where
+      ≤-is-prop : {x y : L} → is-prop (x ≤ y)
+      ≤-is-prop = is-prop-separated _ _
+
+      ≤-refl : {x : L} → x ≤ x
+      ≤-refl = ∧-idem
+
+      ≤-trans : {x y z : L} → x ≤ y → y ≤ z → x ≤ z
+      ≤-trans {x} {y} {z} p q =  x ∧ z        ＝⟨  ap (_∧ z) (sym p)  ⟩
+                                  (x ∧ y) ∧ z ＝⟨ sym ∧-assoc ⟩
+                                  x ∧ (y ∧ z) ＝⟨ ap (x ∧_) q ⟩
+                                  x ∧ y       ＝⟨ p ⟩
+                                  x ∎
+
+      ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
+      ≤-antisym {x} {y} p q = sym p ∙ ∧-comm ∙ q
+
+
+  open is-poset ≤-is-poset public
+
+  ≤-max : ∀ {a b} → a ≤ b → a ∨ b ＝ b
+  ≤-max {a} {b} p
+    = a ∨ b             ＝⟨ ap (_∨ b) (sym p) ⟩
+      (a ∧ b) ∨ b       ＝⟨ ∧-∨-abs' ⟩
+      b ∎
+
+  ≤←∨ : ∀ {a b} → a ∨ b ＝ b → a ≤ b
+  ≤←∨ {a} {b} p
+    = a ∧ b           ＝⟨ ap (a ∧_) (sym p) ⟩
+      a ∧ (a ∨ b)     ＝⟨ ∧-∨-abs ⟩
+      a ∎
+
+  ∨-UP : ∀ {a b c} → a ≤ c × b ≤ c → (a ∨ b ≤ c)
+  ∨-UP {a} {b} {c} (f , g)
+    = ≤←∨ (sym ∨-assoc ∙ ≤-max (ap (a ∧_) (≤-max g) ∙ f) ∙ ≤-max g)
+
+  ∨-UP-is-equiv : ∀ {a b c} → is-equiv (∨-UP {a}{b}{c})
+  ∨-UP-is-equiv {a} {b} {c} = is-equiv←inverse
+                    (is-prop-Σ (is-prop-separated _ _) λ _ → is-prop-separated _ _)
+                    (is-prop-separated _ _)
+                    λ x → ap (_∧ _) (sym (∧-∨-abs {a}{b}) )
+                          ∙ sym ∧-assoc ∙ ap (a ∧_) x
+                          ∙ ∧-∨-abs
+                        , ap (_∧ _) (sym (∧-∨-abs {b} {a}))
+                          ∙ sym ∧-assoc
+                          ∙ ap (b ∧_) (ap (_∧ c) ∨-comm ∙ x ∙ ∨-comm)
+                          ∙ ∧-∨-abs
+
+  ∨-≤-introl : ∀ {a b c} → a ≤ b → a ≤ (b ∨ c)
+  ∨-≤-introl p = ≤-trans p ∧-∨-abs
+
+  ∨-≤-intror : ∀ {a b c} → a ≤ c → a ≤ (b ∨ c)
+  ∨-≤-intror p = ≤-trans p (ap (_ ∧_) ∨-comm ∙ ∧-∨-abs)
+
+  ∧-UP : ∀ {a b c} → a ≤ b × a ≤ c → a ≤ b ∧ c
+  ∧-UP (p , q) = ∧-assoc ∙ ap (_∧ _) p ∙ q
+
+  ∧-≤-eliml : ∀ {a b c} → a ≤ c → (a ∧ b) ≤ c
+  ∧-≤-eliml {a}{b}{c} p = ∧-comm ∙ ∧-assoc ∙ ap (_∧ b) (∧-comm ∙ p)
+
+  ∧-≤-elimr : ∀ {a b c} → b ≤ c → (a ∧ b) ≤ c
+  ∧-≤-elimr {a}{b}{c} q = sym ∧-assoc ∙ ap (a ∧_) q
+
+  instance
+    ≤-bot : ∀ {i} → 0l ≤ i
+    ≤-bot = 0-init
+
+    ≤-refl-inst : ∀ {i} → i ≤ i
+    ≤-refl-inst = ≤-refl
+
+    ≤-top = 1-top
+    {-# INCOHERENT ≤-refl-inst ≤-top #-}
+
+    ≤-∧ : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
+          → (a ∧ c) ≤ (b ∧ d)
+    ≤-∧ = ∧-UP (∧-≤-eliml auto! , ∧-≤-elimr auto!)
+
+    ≤-∨ : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
+          → (a ∨ c) ≤ (b ∨ d)
+    ≤-∨ = ∨-UP (∨-≤-introl auto! , ∨-≤-intror auto!)
+}
+%```
+}
+
+\subtree[stt-00A4]{
+\title{Lattice homomorphisms}
+\taxon{Definition}
+
+\p{Given [lattice structures](stt-009T) #{L} and #{M} over sets #{A} and #{B}, we say
+that a function #{f : A \to B} is a \strong{lattice homomorphism} when it
+preserves the lattice operations. Being a lattice homomorphisms is a
+[property](stt-0009) of a function.}
+
+%```agda
+\agda{
+record is-lattice-hom
+        {𝓤} {𝓤'} {A : Type 𝓤} {B : Type 𝓤'}
+        (L : Lattice A) (M : Lattice B) (f : A → B) : Type (𝓤 ⊔ 𝓤') where
+  private
+    module A = Lattice L
+    module B = Lattice M
+  field
+    pres-∨ : {x y : A} → f (x A.∨ y) ＝ f x B.∨ f y
+    pres-∧ : {x y : A} → f (x A.∧ y) ＝ f x B.∧ f y
+    pres-0 : f A.0l ＝ B.0l
+    pres-1 : f A.1l ＝ B.1l
+
+unquoteDecl lattice-hom-repr≅ lattice-hom-repr≃
+  = make-record-repr lattice-hom-repr≅ lattice-hom-repr≃
+                     (quote is-lattice-hom)
+
+is-lattice-hom-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (L : Lattice A) (M : Lattice B) (f : A → B)
+    → is-prop (is-lattice-hom L M f)
+is-lattice-hom-is-prop L M f
+  = is-prop←equiv-to-prop
+      (lattice-hom-repr≃ e⁻¹)
+      (is-prop-Σ (is-prop-Πᵢ (is-prop-Πᵢ (is-prop-separated _ _)))
+        λ _ → is-prop-Σ
+               ((is-prop-Πᵢ (is-prop-Πᵢ (is-prop-separated _ _))))
+               λ _ → is-prop-Σ
+                 (is-prop-separated _ _)
+                   λ _ → is-prop-separated _ _) where
+   open Lattice M
+}
+%```
+}
+
+\subtree[stt-009Z]{
+\taxon{Definition}
+\title{Lattice algebras and algebra morphisms}
+
+\p{Fixing a lattice #{L}, we say that a lattice #{M} with a map of sets from
+#{L} (that is - an object of the [coslice category](stt-0062) under #{L}) is a
+lattice algebra if the underlying function is a
+[lattice homomorphism](stt-009Y). Given a pair of coslices #{f} and #{g} under
+#{L} which are lattice algebras, we say that a [coslice map](stt-0062) #{f \to
+g} is a lattice algebra homomorphism if the underlying map is a
+[lattice homomorphism](stt-009Y). }
+
+%```agda
+\agda{
+is-lattice-algebra : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+                       (L : Lattice A) (M : Lattice B) (f : A → B)
+                     → Type (𝓤 ⊔ 𝓥)
+is-lattice-algebra = is-lattice-hom
+
+is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                        (L : Lattice A)
+                        (M : Lattice B) {f : A → B}
+                      → is-lattice-algebra L M f
+                      → (N : Lattice C) {g : A → C}
+                      → is-lattice-algebra L N g
+                      → Coslice-map f g → Type (𝓥 ⊔ 𝓦)
+is-lattice-alg-hom L M _ N _ (h , H) = is-lattice-hom M N h
+
+}
+%```
+}
+
+\subtree[stt-00A0]{
+\taxon{Theorem}
+\title{The initial lattice algebra}
+
+\p{The initial coslice (the identity function) is also the initial lattice
+algebra.}
+
+%```agda
+\agda{
+initial-lattice-algebra : ∀ {𝓤 : Level} {A : Type 𝓤} (L : Lattice A)
+                          → is-lattice-algebra L L id
+initial-lattice-algebra L .is-lattice-hom.pres-∨ = refl
+initial-lattice-algebra L .is-lattice-hom.pres-∧ = refl
+initial-lattice-algebra L .is-lattice-hom.pres-0 = refl
+initial-lattice-algebra L .is-lattice-hom.pres-1 = refl
+
+initial-lattice-algebra-is-initial
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) {X : Type 𝓥} (M : Lattice X)
+      {f : A → X}
+    → (falg : is-lattice-algebra L M f)
+    → is-singleton
+        (Σ _ (is-lattice-alg-hom L L (initial-lattice-algebra L) M falg))
+initial-lattice-algebra-is-initial L M {f} falg
+  = mk-singl (initial-coslice f .centre , falg)
+             (is-prop-Σ (is-prop←is-single (initial-coslice f))
+                        (λ a → is-lattice-hom-is-prop _ _ _) _)
+}
+%```
+}
+
+\subtree[stt-009S]{
+\title{Congruences}
+\taxon{Definition}
+\p{An equivalence relation #{\sim} on a lattice #{L} is a congruence if it
+respects all lattice operations}
+
+%```agda
+\agda{
+module Congruence where
+
+
+record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A)
+                         (_~_ : A → A → Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  open Lattice L
+  field
+    ~-equivalence : is-equivalence-relation (_~_)
+    ~-∨ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∨ a2 ~ b1 ∨ b2
+    ~-∧ : {a1 a2 b1 b2 : A} → a1 ~ b1 → a2 ~ b2 → a1 ∧ a2 ~ b1 ∧ b2
+
+  open is-equivalence-relation (~-equivalence) public
+
+
+module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
+  open Lattice L
+  data ⟪_⟫ (R : A → A → Type 𝓥) : A → A → Type (𝓤 ⊔ 𝓥) where
+    ⟪⟫-inc  : {a b : A} → R a b → ⟪ R ⟫ a b
+    ⟪⟫-refl : {a : A} → ⟪ R ⟫ a a
+    ⟪⟫-sym  : {a b : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b a
+    ⟪⟫-trans : {a b c : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b c → ⟪ R ⟫ a c
+    ⟪⟫-∨ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∨ a2) (b1 ∨ b2)
+    ⟪⟫-∧ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∧ a2) (b1 ∧ b2)
+
+  ⟪⟫-congruence : {R : A → A → Type 𝓥}
+                → LatticeCongruence L (λ x y → ∥ ⟪ R ⟫ x y ∥)
+  ⟪⟫-congruence {R} = l-con where
+    open LatticeCongruence
+    open Trunc {1}
+    module E = is-equivalence-relation
+
+    l-eq : is-equivalence-relation (λ x y → ∥ ⟪ R ⟫ x y ∥)
+    l-eq .E.~-is-prop = is-prop←is-truncated ○∈S
+    l-eq .E.reflexive = η ⟪⟫-refl
+    l-eq .E.symmetric a = do
+      rxy ← a
+      return (⟪⟫-sym rxy)
+    l-eq .E.transitive a b = do
+      rxy ← a
+      ryz ← b
+      return (⟪⟫-trans rxy ryz)
+
+    l-con : LatticeCongruence L (λ x y → ∥ ⟪ _ ⟫ x y ∥)
+    l-con .~-equivalence = l-eq
+    l-con .~-∨ p q = do
+      r1 ← p
+      r2 ← q
+      return (⟪⟫-∨ r1 r2)
+    l-con .~-∧ p q = do
+      r1 ← p
+      r2 ← q
+      return (⟪⟫-∧ r1 r2)
+}
+%```
+}
+
+
+\subtree[stt-00A3]{
+\title{Distributive lattices}
+\taxon{Definition}
+
+%```agda
+\agda{
+record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 where
+  open Lattice Lat
+
+  field
+    has-is-distrib : ∀ {x y z} → x ∨ (y ∧ z) ＝ (x ∨ y) ∧ (x ∨ z)
+
+  distrib-∨-∧ = has-is-distrib
+
+  distrib-∨-∧' : ∀ {x y z} → (x ∧ y) ∨ z ＝ (x ∨ z) ∧ (y ∨ z)
+  distrib-∨-∧' = ∨-comm ∙ distrib-∨-∧ ∙ ap₂ _∧_ ∨-comm ∨-comm
+
+  distrib-∧-∨ : ∀ {x y z} → x ∧ (y ∨ z) ＝ (x ∧ y) ∨ (x ∧ z)
+  distrib-∧-∨ {x} {y} {z}
+    = ⌜ x ⌝ ∧ (y ∨ z)             ＝⟨ ap! (sym ∧-∨-abs) ⟩
+      ((x ∧ (x ∨ z)) ∧ (y ∨ z) )  ＝⟨ sym ∧-assoc ⟩
+      (x ∧ (x ∨ z) ∧ (y ∨ z))     ＝⟨ ap₂ _∧_
+                                         (sym ∨-∧-abs ∙ ∨-comm)
+                                         (sym (distrib-∨-∧')) ⟩
+      ((x ∧ y ∨ x) ∧ (x ∧ y ∨ z)) ＝⟨ sym distrib-∨-∧ ⟩
+      ((x ∧ y) ∨ (x ∧ z)) ∎
+
+  distrib-∧-∨' : ∀ {x y z} → (x ∨ y) ∧ z ＝ (x ∧ z) ∨ (y ∧ z)
+  distrib-∧-∨' = ∧-comm ∙ distrib-∧-∨ ∙ ap₂ _∨_ ∧-comm ∧-comm
+
+  distrib₂-∧-∨ : ∀ {x y z w}
+                 → x ∧ (y ∨ z ∨ w) ＝ x ∧ y ∨ x ∧ z ∨ x ∧ w
+  distrib₂-∧-∨ {x} {y}{z}{w}
+    = distrib-∧-∨ ∙ ap (x ∧ y ∨_) distrib-∧-∨
+
+  distrib₂-∧-∨' : ∀ {x y z w}
+                 → (y ∨ z ∨ w) ∧ x ＝ y ∧ x ∨ z ∧ x ∨ w ∧ x
+  distrib₂-∧-∨' {x} {y}{z}{w}
+    = ∧-comm ∙ distrib₂-∧-∨ ∙ ap₃ (λ x y z → x ∨ (y ∨ z)) ∧-comm ∧-comm ∧-comm
+
+  opaque
+    polynomial-mult
+      : ∀ {a₀ a₁ b₀ b₁} x →
+          (a₀ ∨ (a₁ ∧ x)) ∧ (b₀ ∨ (b₁ ∧ x))
+        ＝ (a₀ ∧ b₀) ∨ (((a₁ ∧ b₀) ∨ (a₀ ∧ b₁) ∨ (a₁ ∧ b₁)) ∧ x)
+    polynomial-mult {a₀} {a₁} {b₀} {b₁} x
+      = (a₀ ∨ a₁ ∧ x) ∧ (b₀ ∨ b₁ ∧ x)
+          ＝⟨ distrib-∧-∨ ⟩
+        ((a₀ ∨ a₁ ∧ x) ∧ b₀ ∨ ⌜ (a₀ ∨ a₁ ∧ x) ∧ b₁ ∧ x ⌝)
+          ＝⟨ ap! (∧-assoc ∙ ap (_∧ x) distrib-∧-∨' ∙ distrib-∧-∨' ) ⟩
+        ((a₀ ∨ a₁ ∧ x) ∧ b₀ ∨ (a₀ ∧ b₁) ∧ x ∨ ⌜ ((a₁ ∧ x) ∧ b₁) ∧ x ⌝)
+          ＝⟨ ap! (ap (_∧ x) (sym ∧-assoc ∙ ap (a₁ ∧_) ∧-comm) ∙ sym ∧-assoc
+                     ∙ ap (a₁ ∧_) (sym ∧-assoc ∙ ap (b₁ ∧_) ∧-idem)) ⟩
+        (⌜ (a₀ ∨ a₁ ∧ x) ∧ b₀ ⌝ ∨ (a₀ ∧ b₁) ∧ x ∨ a₁ ∧ b₁ ∧ x)
+          ＝⟨ ap! (distrib-∧-∨'
+                 ∙ ap (a₀ ∧ b₀ ∨_) (sym ∧-assoc ∙ ap (a₁ ∧_) ∧-comm)) ⟩
+        ((a₀ ∧ b₀ ∨ (a₁ ∧ b₀ ∧ x)) ∨ (a₀ ∧ b₁) ∧ x ∨ a₁ ∧ b₁ ∧ x)
+          ＝⟨ ap₂ _∨_ (ap (a₀ ∧ b₀ ∨_) ∧-assoc)
+                      (ap ((a₀ ∧ b₁) ∧ x ∨_) ∧-assoc ∙ sym distrib-∧-∨') ⟩
+        ((a₀ ∧ b₀) ∨ ((a₁ ∧ b₀) ∧ x)) ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x
+          ＝⟨ sym ∨-assoc ∙ ap (a₀ ∧ b₀ ∨_) (sym distrib-∧-∨') ⟩
+        (a₀ ∧ b₀ ∨ (a₁ ∧ b₀ ∨ a₀ ∧ b₁ ∨ a₁ ∧ b₁) ∧ x) ∎
+
+    polynomial-mult'
+      : ∀ {a₀ a₁ b₀ b₁} x →
+           ((a₀ ∧ x) ∨ a₁) ∧ ((b₀ ∧ x) ∨ b₁)
+        ＝ (((a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀)) ∧ x) ∨ (a₁ ∧ b₁)
+    polynomial-mult' {a₀} {a₁} {b₀} {b₁} x
+      = ((a₀ ∧ x ∨ a₁) ∧ (b₀ ∧ x ∨ b₁))
+          ＝⟨ ap₂ _∧_ ∨-comm ∨-comm ⟩
+        ((a₁ ∨ a₀ ∧ x) ∧ (b₁ ∨ b₀ ∧ x))
+          ＝⟨ polynomial-mult x ⟩
+        (a₁ ∧ b₁ ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x)
+          ＝⟨ ∨-comm ⟩
+        ((a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x ∨ a₁ ∧ b₁) ∎
+}
+%```
+}

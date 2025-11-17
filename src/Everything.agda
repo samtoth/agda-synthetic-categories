@@ -107,6 +107,8 @@ open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
+open import Synthetic.Hom
+open import Synthetic.Tiny
 open import Ergonomics.Auto
 open import Ergonomics.Builtins
 open import Ergonomics.Extensionality

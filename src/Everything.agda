@@ -20,6 +20,7 @@ open import Core.FibredJoin
 open import Core.FlatteningCoequalisers
 open import Core.FlatteningPushouts
 open import Core.FlatteningSeqColims
+open import Core.FunctorialPushout
 open import Core.Image
 open import Core.Join
 open import Core.Lifts
@@ -30,6 +31,7 @@ open import Core.PullbackPower
 open import Core.PushoutEquiv
 open import Core.SeqMapHomotopy
 open import Core.Slice
+open import Core.SpanMap
 open import Core.Spheres
 open import Core.Suspensions
 open import Data.Bool

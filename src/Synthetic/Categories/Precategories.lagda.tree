@@ -16,8 +16,6 @@ module Synthetic.Categories.Precategories
   where
 
 open import ufAxioms
-open import Foundations.IdentitySystem
-open import Ergonomics.Extensionality
 
 open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
@@ -32,6 +30,7 @@ open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Truncation
+open import Modalities.ModalMaps
 
 open import Core.Join
 open import Core.CanonicalPushouts
@@ -44,6 +43,20 @@ open import Synthetic.Hom Δ¹ i0 i1
 
 
 \subtree[stt-00AI]{
+\title{Precategories}
+\taxon{Definition}
+
+
+\p{We say that a type is a \strong{precategory} or that it is a \strong{Segal}
+type if it is local with respect to the inclusion of the [#{(2,1)} horn](stt-00AD)
+into the 2-simplex. We can use the fact that [being local with respect to some
+class of maps forms a global reflective subuniverse](stt-0066) to bootstrap some
+useful notions, such as preservation under identity and pi types as well as the
+localisation operation. Note that unlike in the case of [simplicial types](stt-00AC)
+this subuniverse is neither #{\Sigma}-closed nor lex.}
+
+\p{We call maps which are local to the inner horn inclusion \strong{inner maps}.}
+
 %```agda
 \agda{
 open Subtype
@@ -67,61 +80,34 @@ module Precat where
 
   open is-globally-reflective Precats-is-globally-reflective
 
--- _⊙_ : ∀ {𝓤} {A : Type 𝓤} → is-precategory A
---         → {x y z : A}
---         → Hom A y z → Hom A x y → Hom A x z
--- _⊙_ {A = A} pc f g = mk-hom (λ i → simplex (i , i))
---                             (adjust ∙ happly (ε comp) (ι₁ i0) ∙ g .hom0)
---                             (adjust ∙ happly (ε comp) (ι₂ i1) ∙ f .hom1) where
---     open is-equiv (pc tt)
---     open HomP
+  is-inner : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-inner = is-modal-map Precats-SubU
+}
+%```
+}
 
---     comp : Λ[2,1]' → A
---     comp = pushout-rec
---             (mk-cocone
---               (g .hom)
---               (f .hom)
---               λ _ → g .hom1 ∙ sym (f .hom0))
+\subtree[stt-00AK]{
+\title{Composite morphisms}
+\taxon{Definition}
 
---     simplex : Δ² → A
---     simplex = bwd comp
+\p{Given the data of the boundary of a 2-simplex:}
 
---     adjust : ∀ {i p q} → simplex ((i , i) ⦃ p ⦄) ＝ simplex ((i , i) ⦃ q ⦄)
---     adjust = ap simplex (Δ²-ext (refl , refl))
+\quiver{
+\begin{tikzcd}
+        x && y \\
+	\\
+	&& z
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["h"', from=1-1, to=3-3]
+	\arrow["f", from=1-3, to=3-3]
+\end{tikzcd}
+}
 
+\p{We define the type of fillers, written #{\Hom 2(f,g;h)}, which we say witnesses
+that #{fg \sim h}.}
 
-
-Hom-path : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
-           → Type (𝓘 ⊔ 𝓤)
-Hom-path (mk-hom f p q) (mk-hom g r s)
-  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
-
-opaque
-  Hom-path-torsorial : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
-                       → is-singleton (Σ[ g ∶ Hom A x y ] Hom-path f g)
-  Hom-path-torsorial f
-    = is-single←equiv-to-single (Σ-ap-≃-fst (HomP-repr≃ e⁻¹))
-        (is-singleton-structure←parts
-          (SingS-is-single (f .HomP.hom))
-          (f .HomP.hom , ~refl)
-          (is-singleton-structure←parts
-            Sing'-is-singleton
-            (_ , refl)
-            Sing'-is-singleton))
-
-instance
-  IdS-Hom : ∀ {𝓤}{A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
-  IdS-Hom .Identity-system.IdS = Hom-path
-  IdS-Hom .Identity-system.IdS←Id refl = (~refl , refl , refl)
-  IdS-Hom .Identity-system.has-is-ids f
-    = fundamental-Id (Hom-path f) (Hom-path-torsorial f) _
-
-
-Hom-ext→ : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
-          → Hom-path f g → f ＝ g
-Hom-ext→ = ext!
-
--- Hom2 f g h ~> f ∘ g ~ h
+%```agda
+\agda{
 Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
          (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
        → Type (𝓘 ⊔ 𝓤)
@@ -130,8 +116,29 @@ Hom2 {A = A} f g h
       (∀ i → H (i , i0) ＝ g .HomP.hom i)
     × (∀ i → H (i1 , i) ＝ f .HomP.hom i)
     × (∀ i → H (i , i)  ＝ h .HomP.hom i))
+}
+%```
+}
 
 
+\subtree[stt-00AL]{
+\title{Morphisms have unique composites in a precategory}
+\taxon{Theorem}
+
+\p{Given a pair of composable morphisms, we can naturally define a map
+#{\Delta^2_1 \to C}. We show that there is a unique 2-simplex that extends
+#{f} and #{g}.}
+
+
+\proof{
+\p{[Precategories](stt-00AI) are defined to be those types which are local
+with respect to the inclusion #{i : \Lambda^2_1 \hookrightarrow \Delta^2}. The
+fibres of #{i^* : (\Delta^2 \to C) \to (\Lambda^2_1 \to C)} are exactly the maps
+#{\Delta^2 \to C} which extend the boundary #{f,g}.}
+}
+
+%```agda
+\agda{
 precategory-unique-composite : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-precategory A
                              → (f : Hom A y z) (g : Hom A x y)
                              → is-singleton (Σ[ H ∶ (Δ² → A)]

@@ -1,0 +1,160 @@
+\date{2025-11-17}
+\title{Precategories}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Precategories
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+open import Foundations.IdentitySystem
+open import Ergonomics.Extensionality
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Core.Join
+open import Core.CanonicalPushouts
+
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+\subtree[stt-00AI]{
+%```agda
+\agda{
+open Subtype
+
+is-precategory : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
+is-precategory = is-local λ (tt : 𝟙) → Λ[2,1]-incl
+
+Precats-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Precats-SubU = Local-SubU (λ (tt : 𝟙) → Λ[2,1]-incl) _
+
+Precats-GSU : GSU (_⊔ 𝓘)
+Precats-GSU = Local-GSU (λ (tt : 𝟙) → Λ[2,1]-incl)
+
+Precats-is-globally-reflective
+   : is-globally-reflective Precats-GSU
+Precats-is-globally-reflective
+  = Local-global-reflectors (λ (tt : 𝟙) → Λ[2,1]-incl)
+
+module Precat where
+  open GSU Precats-GSU public renaming (S-equiv to is-precategory←equiv)
+
+  open is-globally-reflective Precats-is-globally-reflective
+
+-- _⊙_ : ∀ {𝓤} {A : Type 𝓤} → is-precategory A
+--         → {x y z : A}
+--         → Hom A y z → Hom A x y → Hom A x z
+-- _⊙_ {A = A} pc f g = mk-hom (λ i → simplex (i , i))
+--                             (adjust ∙ happly (ε comp) (ι₁ i0) ∙ g .hom0)
+--                             (adjust ∙ happly (ε comp) (ι₂ i1) ∙ f .hom1) where
+--     open is-equiv (pc tt)
+--     open HomP
+
+--     comp : Λ[2,1]' → A
+--     comp = pushout-rec
+--             (mk-cocone
+--               (g .hom)
+--               (f .hom)
+--               λ _ → g .hom1 ∙ sym (f .hom0))
+
+--     simplex : Δ² → A
+--     simplex = bwd comp
+
+--     adjust : ∀ {i p q} → simplex ((i , i) ⦃ p ⦄) ＝ simplex ((i , i) ⦃ q ⦄)
+--     adjust = ap simplex (Δ²-ext (refl , refl))
+
+
+
+Hom-path : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
+           → Type (𝓘 ⊔ 𝓤)
+Hom-path (mk-hom f p q) (mk-hom g r s)
+  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+
+opaque
+  Hom-path-torsorial : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
+                       → is-singleton (Σ[ g ∶ Hom A x y ] Hom-path f g)
+  Hom-path-torsorial f
+    = is-single←equiv-to-single (Σ-ap-≃-fst (HomP-repr≃ e⁻¹))
+        (is-singleton-structure←parts
+          (SingS-is-single (f .HomP.hom))
+          (f .HomP.hom , ~refl)
+          (is-singleton-structure←parts
+            Sing'-is-singleton
+            (_ , refl)
+            Sing'-is-singleton))
+
+instance
+  IdS-Hom : ∀ {𝓤}{A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
+  IdS-Hom .Identity-system.IdS = Hom-path
+  IdS-Hom .Identity-system.IdS←Id refl = (~refl , refl , refl)
+  IdS-Hom .Identity-system.has-is-ids f
+    = fundamental-Id (Hom-path f) (Hom-path-torsorial f) _
+
+
+Hom-ext→ : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
+          → Hom-path f g → f ＝ g
+Hom-ext→ = ext!
+
+-- Hom2 f g h ~> f ∘ g ~ h
+Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
+         (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
+       → Type (𝓘 ⊔ 𝓤)
+Hom2 {A = A} f g h
+  = Σ[ H ∶ (Δ² → A) ] (
+      (∀ i → H (i , i0) ＝ g .HomP.hom i)
+    × (∀ i → H (i1 , i) ＝ f .HomP.hom i)
+    × (∀ i → H (i , i)  ＝ h .HomP.hom i))
+
+
+precategory-unique-composite : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-precategory A
+                             → (f : Hom A y z) (g : Hom A x y)
+                             → is-singleton (Σ[ H ∶ (Δ² → A)]
+                                               (H ∘ Λ[2,1]-incl ＝ make-horn f g))
+precategory-unique-composite Apc f g
+  = is-contr-map←is-equiv (Apc tt) (make-horn f g)
+
+composite←horn-extension
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+    → Σ[ H ∶ (Δ² → A)] (H ∘ Λ[2,1]-incl ＝ make-horn f g)
+    → Σ[ h ∶ Hom A x z ] (Hom2 f g h)
+composite←horn-extension f g (H , extends)
+  = (mk-hom (H ∘ Δ²-diagonal)
+            (ap H Δ²-refl ∙ happly extends (ι₁ i0) ∙ g .HomP.hom0)
+            (ap H Δ²-refl ∙ happly extends (ι₂ i1) ∙ f .HomP.hom1)
+    , (H , happly extends ∘ ι₁ , happly extends ∘ ι₂ , ~refl)
+    )
+
+_⊙[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
+          → Hom A x y → Hom A x z
+f ⊙[ apc ] g = fst (composite←horn-extension f g
+                    (centre (precategory-unique-composite apc f g)))
+
+}
+%```
+}

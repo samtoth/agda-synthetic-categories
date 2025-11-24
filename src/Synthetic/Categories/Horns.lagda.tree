@@ -1,0 +1,149 @@
+\date{2025-11-17}
+\title{Simplicial horns}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Horns
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Core.Join
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.SpanMap
+open import Core.FunctorialPushout
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+\subtree[stt-00AD]{
+\taxon{Definition}
+\title{The inner 2 horn}
+
+
+%```agda
+\agda{
+open Subtype
+
+
+Λ[2,1] : Type 𝓘
+Λ[2,1] = Pushout (const _ 𝟙 i1) (const _ 𝟙 i0)
+
+Λ[2,1]-Δ²-cocone : Cocone (mk-span 𝟙 (const Δ¹ 𝟙 i1) (const Δ¹ 𝟙 i0)) Δ²
+Λ[2,1]-Δ²-cocone = mk-cocone (λ i → (i , i0)) (λ i → i1 , i)
+                          λ _ →  Δ²-ext (refl , refl)
+
+Λ[2,1]-incl : Λ[2,1] → Δ²
+Λ[2,1]-incl = cogap Λ[2,1]-Δ²-cocone
+
+Λ[2,1]Sub : Subtype Δ² 𝓘
+Λ[2,1]Sub .family (i , j) = (i0 ＝ j) * (i1 ＝ i)
+Λ[2,1]Sub .has-is-subtype (i , j)
+  = *-is-prop (is-prop-separated _ _) (is-prop-separated _ _)
+
+Λ[2,1]-as-subtype : ∀ a → fibre Λ[2,1]-incl a ≃ a ∈ Λ[2,1]Sub
+Λ[2,1]-as-subtype s =
+  fibre Λ[2,1]-incl s ≃⟨ cogap-fibre _ s ⟩
+  Pushout (total-fibre-span .left) (total-fibre-span .right)
+    ≃⟨ mk≃ (Pushout-functorial-span span-map)
+           (Pushout-map-is-equiv span-map span-map-is-equiv) e⁻¹ ⟩
+  Pushout (intended-span .left) (intended-span .right)
+    ≃⟨⟩
+  (s ∈ Λ[2,1]Sub) ≃∎ where
+  open Span
+
+  total-fibre-span : Span 𝓘 𝓘 𝓘
+  total-fibre-span = total-span (const _ 𝟙 i1) (const _ 𝟙 i0)
+                                (Fibre-family Λ[2,1]-Δ²-cocone s)
+
+
+  intended-span : Span 𝓘 𝓘 𝓘
+  intended-span = mk-span ((i0 ＝ s .Poly.Δ².t) × (i1 ＝ s .Poly.Δ².s)) fst snd
+
+  span-map : Span-map intended-span total-fibre-span
+  span-map .Span-map.h₁ p = (s .Poly.Δ².s , Δ²-ext (refl , p))
+  span-map .Span-map.h₂ (p , q) = (tt , Δ²-ext (q , p))
+  span-map .Span-map.h₃ q = (s .Poly.Δ².t , Δ²-ext (q , refl))
+  span-map .Span-map.H (p , q) = Σ-path→ (sym q , is-prop←is-truncated (Δ²-is-set _ _) _ _)
+  span-map .Span-map.K (p , q) = Σ-path→ (sym p , is-prop←is-truncated (Δ²-is-set _ _) _ _)
+
+
+  opaque
+    h1-eq : quasi-iso (Span-map.h₁ span-map)
+    h1-eq .fst (x , p) = ap Poly.Δ².t p
+    h1-eq .snd .fst p = is-prop-separated i0 _ _ _
+    h1-eq .snd .snd (p , q) = Σ-path→ (ap Poly.Δ².s (sym q)
+                                      , is-prop←is-truncated (Δ²-is-set _ _)
+                                                             _ _)
+    h2-eq : quasi-iso (Span-map.h₂ span-map)
+    h2-eq .fst (_ , p) = (ap Poly.Δ².t p , ap Poly.Δ².s p)
+    h2-eq .snd .fst (p , q) = is-prop-Σ (is-prop-separated _ _)
+                                        (λ _ → is-prop-separated _ _)
+                                        _ _
+    h2-eq .snd .snd (_ , p) = Σ-path→ (refl , is-prop←is-truncated
+                                                (Δ²-is-set _ _) _ _)
+
+    h3-eq : quasi-iso (Span-map.h₃ span-map)
+    h3-eq .fst x = ap Poly.Δ².s (snd x)
+    h3-eq .snd .fst p = is-prop-separated _ _ _ _
+    h3-eq .snd .snd (x , p) = Σ-path→ (sym (ap Poly.Δ².t p)
+                                      , is-prop←is-truncated (Δ²-is-set _ _)
+                                        _ _)
+
+  span-map-is-equiv : is-Span-equiv span-map
+  span-map-is-equiv .fst = is-equiv←qiso h1-eq
+  span-map-is-equiv .snd .fst = is-equiv←qiso h2-eq
+  span-map-is-equiv .snd .snd = is-equiv←qiso h3-eq
+
+Λ[2,1]≃Sub : Λ[2,1] ≃ Σ̃ Λ[2,1]Sub
+Λ[2,1]≃Sub
+  = Λ[2,1]                            ≃⟨ total≃total-fibre Λ[2,1]-incl e⁻¹ ⟩
+    total-fibre Λ[2,1]-incl           ≃⟨⟩
+    (Σ[ a ∶ Δ² ] fibre Λ[2,1]-incl a) ≃⟨ Σ-ap-≃ Λ[2,1]-as-subtype ⟩
+    (Σ[ a ∶ Δ² ] (a ∈ Λ[2,1]Sub))     ≃⟨⟩
+    Σ̃ Λ[2,1]Sub                       ≃∎
+
+Λ[2,1]-is-set : is-truncated 2 Λ[2,1]
+Λ[2,1]-is-set = Trunc.is-truncated←equiv (Λ[2,1]≃Sub e⁻¹)
+                  (Trunc.Σ-is-truncated Δ²-is-set
+                    λ a → suc-is-truncated 1
+                           (is-truncated←is-prop (∈-is-prop Λ[2,1]Sub a)))
+
+[2,1]-hom : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
+[2,1]-hom C = Σ[ f ∶ (Δ¹ → C) ] Σ[ g ∶ (Δ¹ → C)] (f i1 ＝ g i0)
+
+make-horn : ∀ {𝓤} {C : Type 𝓤} {x y z} → Hom C y z → Hom C x y → Λ[2,1] → C
+make-horn f g = pushout-rec (mk-cocone (g .HomP.hom) (f .HomP.hom)
+                              λ _ → g .HomP.hom1 ∙ sym (f .HomP.hom0))
+
+Δ²-diagonal : Δ¹ → Δ²
+Δ²-diagonal i = i , i
+}
+%```
+}

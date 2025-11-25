@@ -289,6 +289,44 @@ module LOPS where
 %```
 }
 
+\subtree[stt-00AO]{
+\title{Relative notions of fibrancy}
+\taxon{Definition}
+
+\p{Fixing a type #{I}, and given #{\mathcal{F}} a family of predicates over
+families of types #{A \to \UU}, we say that #{\mathcal{F}} is #{I}-relative for
+some type #{I} if #{P} is fibrant iff for any map #{x : I \to A} #{P \circ x}
+is fibrant.
+}
+
+%```agda
+\agda{
+is-relative : ∀ {α : Level → Level → Level}
+              → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+              → Typeω
+is-relative is-fib
+  = ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+    → (is-fib P ⇔ (∀ (x : I → A) → is-fib (P ∘ x) ))
+
+
+is-pullback-stable : ∀ {α : Level → Level → Level}
+                     → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+                     → Typeω
+is-pullback-stable is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {Γ : Type 𝓤'} {A : Type 𝓤} (P : A → Type 𝓥) (σ : Γ → A)
+    → is-fib P → is-fib (P ∘ σ)
+
+is-pullback-stable←is-relative
+  : ∀ {α : Level → Level → Level}
+    → (P : ∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → is-relative P → is-pullback-stable P
+is-pullback-stable←is-relative is-fib rel P σ fib
+  = rel (P ∘ σ) .snd (λ x → rel P .fst fib (σ ∘ x))
+}
+%```
+}
+
+
 \subtree[stt-00AH]{
 \taxon{Construction}
 \title{A fibrant universe}
@@ -324,22 +362,25 @@ module AFib
   UFib∙ : ∀ (@♭ 𝓤) → Type (𝓘 ⊔ lsuc 𝓤)
   UFib∙ 𝓤 = Σ (UFib 𝓤) fst
 
-  UFib-fib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} → (@♭ P : A → UFib 𝓥)
-             → is-fib (fst ∘ P)
-  UFib-fib {A = A} P = rel-fib (fst ∘ P) .snd ϕ̃ where
+  F-π-is-fib : ∀ {@♭ 𝓤} → is-fib (fst {B = is-afib {𝓤}})
+  F-π-is-fib {𝓤} = rel-fib _ .snd ϕ̃ where
     opaque
       unfolding _[_]
-      ϕ : A ⊢ tm ((√ is-fib) [ fst ∘ P ])
-      ϕ = snd ∘ P
+      ϕ : UFib 𝓤 ⊢ tm ((√ is-fib) [ fst ])
+      ϕ = snd
 
-    ϕ' : A ⊢ tm √ (is-fib [ 𝓟₁ (fst ∘ P) ])
-    ϕ' =  ϕ
+    ϕ' : UFib 𝓤 ⊢ tm √ (is-fib [ 𝓟₁ fst ])
+    ϕ' = ϕ
 
     opaque
       unfolding _[_]
-      ϕ̃ : (x : 𝓟 A) → is-fib (fst ∘ P ∘ x)
+      ϕ̃ : (x : 𝓟 (UFib 𝓤)) → is-fib (fst ∘ x)
       ϕ̃ = L' ϕ'
 
+  UFib-fib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} → (P : A → UFib 𝓥)
+             → is-fib (fst ∘ P)
+  UFib-fib {A = A} P
+    = is-pullback-stable←is-relative is-fib rel-fib _ P F-π-is-fib
 
   opaque
     unfolding _[_]

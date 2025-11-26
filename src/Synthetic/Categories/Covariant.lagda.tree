@@ -1,0 +1,220 @@
+\date{2025-11-24}
+\title{Covariant families}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Covariant
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Core.Orthogonal
+open import Core.Arrow
+open import Core.Lifts
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+
+\subtree[stt-00AO]{
+\title{Covariant families}
+
+%```agda
+\agda{
+is-left : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-left = is-local (λ (_ _ : 𝟙) → i0)
+
+is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-groupoid = is-null (λ (_ : 𝟙) → Δ¹)
+
+is-groupoid←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left A → is-groupoid A
+is-groupoid←is-left {_}{A} il x
+  = is-equiv~∘ lem (is-equiv⁻¹ (il x))
+                   unit-const-is-equiv where
+  open is-equiv (il x)
+
+  lem : const A Δ¹ ~ bwd ∘ const A 𝟙
+  lem = il x ◂eqv ((ε ▸ const A 𝟙) ~⁻¹)
+
+
+is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left A
+is-left←is-groupoid {_} {A} gp x
+  =  is-equiv~∘ H unit-const-is-equiv (is-equiv⁻¹ (gp x)) where
+  open is-equiv (gp x)
+
+  H : postcomp A (λ (_ : 𝟙) → i0) ~ const A 𝟙 ∘ bwd
+  H = ((const A 𝟙 ◂ η) ~⁻¹) ▸eqv (gp x)
+
+
+is-covariant : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+               → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-covariant {A = A} B
+    = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
+      → is-singleton (Σ[ x₁ ∶ B (x i1)] HomP (B ∘ x) x₀ x₁)
+
+tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+       → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
+tr-cov cov h = fst ∘ centre ∘ cov h
+}
+%```
+}
+
+
+\subtree[stt-00AQ]{
+\title{Left fibrations}
+\taxon{Definition}
+
+%```agda
+\agda{
+is-left-fibration : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
+                    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+is-left-fibration f = (λ (_ : 𝟙) → i0) ⊥ f
+}
+%```
+}
+
+
+\subtree[stt-00AR]{
+\title{Covariant families straighten to left fibrations}
+\taxon{Theorem}
+
+\p{We show that some family #{P : A \to \UU} is [covariant](stt-00AO) iff the map
+#{\pi : \tilde{P} \to A} is a [left fibration](stt-00AQ).}
+
+%```agda
+\agda{
+is-covariant⇔is-left-fibration
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant B ⇔ is-left-fibration (fst {B = B})
+is-covariant⇔is-left-fibration {A = A} B
+  = (fwd , bwd) where
+  opaque
+    arrow-map-snd : (F : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B}))
+                    → B (F .Arrow-map.bot i0)
+    arrow-map-snd (mk-amap top bot comm) = tr B (sym (comm tt)) (top tt .snd)
+
+    Σ←arrow-map : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B})
+                → Σ[ f ∶ (Δ¹ → A)] (B (f i0))
+    Σ←arrow-map F = F .bot , arrow-map-snd F where open Arrow-map
+
+  fwd : is-covariant B → is-left-fibration (λ r → fst r)
+  fwd cov a@(mk-amap top bot comm)
+    = is-single←equiv-to-single {!!} (cov bot (arrow-map-snd a))
+
+  bwd : is-left-fibration (λ r → fst r) → is-covariant B
+  bwd lfib f x₀
+    = is-single←equiv-to-single
+       {!!}
+       (lfib (mk-amap (λ _ → (f i0 , x₀)) f ~refl))
+}
+%```
+}
+
+\subtree[stt-00AS]{
+\title{There is a universe of amazingly covariant types}
+\taxon{Cosntruction}
+
+\p{Assuming that the interval is [tiny](Synthetic.Tiny), there is a universe of
+\em{amazingly covariant types}, which weakly classify the left fibrations.
+We denote it #{\mathcal{s}}.}
+
+\proof{
+\p{Since being covariant is equivalent to being a left fibration, it is stable
+under base change, and so is a [relative notion of fibrancy](stt-00AO). By the machinery
+developed for [amazing right adjoints](stt-00AA) we can construct a universe.
+}
+}
+
+%```agda
+\agda{
+module UCov where
+  open import Synthetic.Tiny Δ¹
+
+  is-covariant-is-relative : is-relative is-covariant
+  is-covariant-is-relative {A = A} P = (fwd , bwd) where
+    fwd : is-covariant P → (x : Δ¹ → A) → is-covariant (P ∘ x)
+    fwd cov f h = cov (f ∘ h)
+
+    bwd : ((x : Δ¹ → A) → is-covariant (P ∘ x)) → is-covariant P
+    bwd cov h x₀ = cov h id x₀
+
+  open AFib is-covariant is-covariant-is-relative public
+    renaming (is-afib to is-acov;
+              UFib to 𝓢;
+              UFib∙ to 𝓢∙;
+              F-π-is-fib to 𝓢-π-is-covariant
+              )
+}
+%```
+}
+
+\subtree[stt-00AU]{
+\title{The objects of #{\mathcal{S}} are groupoids}
+\taxon{Theorem}
+
+\p{If #{A :^\flat \UU} is a groupoid, then #{A} is amazing covariant and so
+factors through #{\mathcal{S}}.}
+
+%```agda
+\agda{
+  groupoids-in-𝓢 : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-groupoid A → is-acov A
+  groupoids-in-𝓢 A gpd
+    = ε♭ (liftFib .fst
+           (mod♭ (is-covariant⇔is-left-fibration
+                   (λ _ → A) .snd
+                     (is-orthogonal⇔orthogonal-! .snd
+                       (is-left←is-groupoid
+                         (Null-globally-Σ-closed
+                           (λ _ → {!!})
+                           (λ _ → gpd)) tt))))) tt
+}
+%```
+}
+
+
+\subtree[stt-00AT]{
+\title{#{\mathcal{S}} is directed univalent}
+\taxon{Theorem}
+
+\p{We show that #{\mathcal{S}} is directed univalent. That is, arrows in
+#{\mathcal{S}} correspond exactly to pairs of groupoids, together with a function
+between them.}
+
+%```agda
+\agda{
+  tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → 𝓢 𝓤) → fst (f i0) → fst (f i1)
+  tr-𝓢 = tr-cov {P = fst} 𝓢-π-is-covariant
+
+  dua→ : ∀ {@♭ 𝓤} → (Δ¹ → 𝓢 𝓤) → Σ[ A ∶ 𝓢 𝓤 ] Σ[ B ∶ 𝓢 𝓤 ] (fst A → fst B)
+  dua→ h = (h i0 , h i1 , tr-𝓢 h)
+}
+%```
+}

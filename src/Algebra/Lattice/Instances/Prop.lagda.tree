@@ -1,0 +1,100 @@
+\date{2025-10-22}
+\title{The lattice of propositions}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Algebra.Lattice.Instances.Prop where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Ergonomics.Representation
+
+open import Core.Join
+open import Modalities.Instances.Truncation
+open import Algebra.Lattice
+}
+%```
+
+
+\subtree[stt-009R]{
+\title{The lattice of propositions}
+\taxon{Example}
+\p{The subobject/subtype classifier #{\mathrm{Prop}}
+has a canonical lattice structure on it, given by logical and and or}
+
+%```agda
+\agda{
+
+Prop-ua : ∀ {𝓤} {P Q : PropU 𝓤} → (P .fst ⇔ Q .fst) → P ＝ Q
+Prop-ua {_} {P} {Q} eq
+  = Σ-path→ (is-equiv.bwd
+              (propExt (is-prop←is-truncated (P .snd))
+                       (is-prop←is-truncated (Q .snd))) eq
+            , (Trunc.S .Subtype.has-is-subtype _ _ _))
+
+PropU-ext : ∀ {𝓤} {P Q : PropU 𝓤} → (P .fst ≃ Q .fst) → P ＝ Q
+PropU-ext e = Σ-path→ (ua e , (Trunc.S .Subtype.has-is-subtype _ _ _))
+
+Prop-Lattice : ∀ 𝓤 → Lattice (PropU 𝓤)
+Prop-Lattice 𝓤 = l where
+  l : Lattice (PropU 𝓤)
+  l .Lattice.0l = TULift 1 𝓤 (∅ , λ ())
+  l .Lattice.1l = TULift 1 𝓤 (𝟙 , is-truncated←is-prop (is-prop←is-single 𝟙-is-singleton))
+  l .Lattice._∧_ (A , p) (B , q) = (A × B , Trunc.Σ-is-truncated p λ _ → q)
+  l .Lattice._∨_ (A , p) (B , q)
+    = (A * B , is-truncated←is-prop (*-is-prop
+                (is-prop←is-truncated p)
+                (is-prop←is-truncated q)))
+  l .Lattice.str-is-lattice .is-lattice.car-is-set = Trunc-U-is-truncated 1
+  l .Lattice.str-is-lattice .is-lattice.∧-assoc
+    = Prop-ua ((λ x → (x .fst , x .snd .fst) , x .snd .snd)
+              , λ x → x .fst .fst , x .fst .snd , x .snd)
+  -- todo formalize untruncated *-assoc
+  l .Lattice.str-is-lattice .is-lattice.∨-assoc {x} {y} {z}
+    = Prop-ua (*-prop-rec xyzprp
+                          (ι₁ ∘ ι₁)
+                          (*-prop-rec xyzprp (ι₁ ∘ ι₂) ι₂)
+              , *-prop-rec xyzprp'
+                          (*-prop-rec xyzprp' ι₁ (ι₂ ∘ ι₁))
+                          (ι₂ ∘ ι₂)) where
+      xprp = is-prop←is-truncated (x .snd)
+      yprp = is-prop←is-truncated (y .snd)
+      zprp = is-prop←is-truncated (z .snd)
+      xyzprp = *-is-prop (*-is-prop xprp yprp) zprp
+      xyzprp' = *-is-prop xprp (*-is-prop yprp zprp)
+
+  l .Lattice.str-is-lattice .is-lattice.∧-comm
+    = PropU-ext ×-swap
+  l .Lattice.str-is-lattice .is-lattice.∨-comm
+    = PropU-ext *-comm
+  l .Lattice.str-is-lattice .is-lattice.∨-∧-abs {x}
+    = Prop-ua ((*-prop-rec (is-prop←is-truncated (x .snd)) id fst) , ι₁)
+  l .Lattice.str-is-lattice .is-lattice.∧-∨-abs {x}
+    = Prop-ua (fst , λ x → x , (ι₁ x))
+  l .Lattice.str-is-lattice .is-lattice.0-bottom {x}
+    = Prop-ua (*-prop-rec (is-prop←is-truncated (x .snd)) id (¡_ ∘ unlift)
+              , ι₁)
+  l .Lattice.str-is-lattice .is-lattice.1-top
+    = Prop-ua ((λ z → z .fst) , (λ z → z , mk-lift tt))
+
+Prop-Lattice-is-distributive
+  : ∀ {𝓤} → is-distributive (Prop-Lattice 𝓤)
+Prop-Lattice-is-distributive .is-distributive.has-is-distrib {x = x} {y} {z}
+  = Prop-ua ((*-prop-rec (is-prop-Σ (*-is-prop xprp yprp) λ _ → *-is-prop xprp zprp)
+                         (λ x → (ι₁ x , ι₁ x))
+                         (λ (y , z) → (ι₂ y , ι₂ z)))
+            , λ (xy , xz) → *-prop-rec xyzprp
+                                       ι₁
+                            (λ y → *-prop-rec xyzprp
+                                              ι₁
+                                              (λ z → ι₂ (y , z)) xz) xy) where
+  xprp = is-prop←is-truncated (x .snd)
+  yprp = is-prop←is-truncated (y .snd)
+  zprp = is-prop←is-truncated (z .snd)
+  xyzprp = *-is-prop xprp (is-prop-Σ yprp (λ _ → zprp))
+}
+%```
+}

@@ -44,3 +44,4 @@ open import Foundations.Lift public
 open import Foundations.TypeSequence public
 open import Foundations.SequentialColimits public
 open import Foundations.PropMapEmbedding public
+open import Foundations.EquivalenceRelation public

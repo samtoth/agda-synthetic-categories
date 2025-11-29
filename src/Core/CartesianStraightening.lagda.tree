@@ -11,6 +11,7 @@ suffers from very slow type checking. Use with caution.}
 
 %```agda
 \agda{
+{-# OPTIONS --lossy-unification #-}
 module Core.CartesianStraightening where
 
 open import Foundations.Prelude
@@ -19,92 +20,10 @@ open import Core.CanonicalPushouts
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Ergonomics.Representation
+open import Core.SpanMap
 }
 %```
 
-\subtree[stt-008M]{
-\date{2025-08-03}
-\title{Maps of spans}
-\taxon{Theorem}
-
-\p{A map between spans #{S} and #{S'} is a diagram as follows where
-all the squares commute:}
-
-\quiver{
-\begin{tikzcd}
-	A && S && B \\
-	\\
-	{A'} && {S'} && {B'}
-	\arrow[from=1-1, to=3-1]
-	\arrow[from=1-3, to=1-1]
-	\arrow[from=1-3, to=1-5]
-	\arrow[from=1-3, to=3-3]
-	\arrow[from=1-5, to=3-5]
-	\arrow[from=3-3, to=3-1]
-	\arrow[from=3-3, to=3-5]
-\end{tikzcd}
-}
-
-\p{Equivalently, a span map is a pair of arrow maps between the
-left and right maps of each span, together with a homotopy between
-the two maps between the centre of the spans.}
-
-%```agda
-\agda{
-record Span-map {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
-                {𝓤' 𝓥' 𝓦'} (S' : Span 𝓤' 𝓥' 𝓦')
-                : Type (𝓤 ⊔ 𝓤' ⊔ 𝓥 ⊔ 𝓥' ⊔ 𝓦 ⊔ 𝓦') where
-   constructor mk-span-map
-   module S = Span S
-   module S' = Span S'
-   field
-     h₁ : S.Left → S'.Left
-     h₂ : S.Centre → S'.Centre
-     h₃ : S.Right → S'.Right
-     H  : h₁ ∘ S.left ~ S'.left ∘ h₂
-     K  : h₃ ∘ S.right ~ S'.right ∘ h₂
-
-   amap-l↓ : Arrow-map S.left S'.left
-   amap-l↓ = mk-amap h₂ h₁ H
-
-   amap-l : Arrow-map h₂ h₁
-   amap-l = mk-amap S.left S'.left (H ~⁻¹)
-
-   amap-r↓ : Arrow-map S.right S'.right
-   amap-r↓ = mk-amap h₂ h₃ K
-
-   amap-r : Arrow-map h₂ h₃
-   amap-r = mk-amap S.right S'.right (K ~⁻¹)
-
-
-span-map-pathP→
-  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦}
-      {S' : Span 𝓤' 𝓥' 𝓦'}
-      {S'' : Span 𝓤' 𝓥' 𝓦'}
-      {f : Span-map S' S} {g : Span-map S'' S}
-    → let module S = Span S
-          module S' = Span S'
-          module S'' = Span S''
-          module f = Span-map f
-          module g = Span-map g
-    in (p : S'.Centre ＝ S''.Centre)
-    → (q : S'.Left ＝ S''.Left)
-    → (r : S'.Right ＝ S''.Right)
-    → (h : coe r ∘ S'.right ＝ S''.right ∘ coe p)
-    → (k : coe q ∘ S'.left ＝ S''.left ∘ coe p)
-    → (Q : f.h₁ ＝ g.h₁ ∘ coe q)
-    → (P : f.h₂ ＝ g.h₂ ∘ coe p)
-    → (R : f.h₃ ＝ g.h₃ ∘ coe r)
-    → (H : f.H ＝ (happly Q ▸ S'.left) ~∙ (g.h₁ ◂ happly k) ~∙ (g.H ▸ coe p) ~∙ (S.left ◂ happly (sym P)))
-    → (K : f.K ＝ (happly R ▸ S'.right) ~∙ (g.h₃ ◂ happly h) ~∙ (g.K ▸ coe p) ~∙ S.right ◂ (happly (sym P)))
-    → IdP (ap (λ P → Span-map P S) (Span-path→ p q r h k)) f g
-span-map-pathP→ refl refl refl refl refl refl refl refl refl refl
-  = ap₂ (λ P Q → mk-span-map _ _ _ P Q)
-        (funext→ (λ a → ∙-reflr _))
-        (funext→ (λ a → ∙-reflr _))
-}
-%```
-}
 
 \subtree[stt-008N]{
 \date{2025-08-03}
@@ -230,10 +149,7 @@ module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} where
     : ∀ {𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
         {S' : Cart S 𝓤' 𝓥' 𝓦'} {S'' : Cart S 𝓤'' 𝓥'' 𝓦''}
       → Cart-map S' S'' → Type (𝓤' ⊔ 𝓥' ⊔ 𝓦' ⊔ 𝓤'' ⊔ 𝓥'' ⊔ 𝓦'')
-  Cart-map-is-equiv F = is-equiv map.h₁
-                      × is-equiv map.h₂
-                      × is-equiv map.h₃ where
-    open Cart-map F
+  Cart-map-is-equiv F = is-Span-equiv map where open Cart-map F
 
   -- Cart-ua→ F (feq , geq , heq)
   --   = Cart-path→ (Span-path→ (ua (mk≃ _ geq)) (ua (mk≃ _ feq)) (ua (mk≃ _ heq))
@@ -607,7 +523,6 @@ module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤}  where
         (is-equiv-∘  intermap2-is-equiv
         (is-equiv-∘  intermap-is-equiv
                     (is-equiv⁻¹ (unshuffle ._≃_.has-is-eqv))))
-
 
     H : cart←cocone' ~ cart←cocone
     H (mk-cocone Pa Pb filler)

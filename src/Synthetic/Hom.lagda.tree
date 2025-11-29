@@ -1,0 +1,367 @@
+\date{2025-09-11}
+\title{Synthetic Hom Types}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+open import Foundations.Prelude
+
+module Synthetic.Hom {𝓘} (I : Type 𝓘) (i0 i1 : I) where
+
+open import Foundations.IdentitySystem
+
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[stt-00A9]{
+\title{Hom types}
+\taxon{Definition}
+
+\p{For any bi-pointed type #{I}, we can define the type of synthetic
+homomorphisms, which are just (possibly-dependent) functions with specified
+end-points.}
+
+\remark{
+\p{In this generality, there is not a lot of motivation to call these types
+\strong{hom} types. They admit identity homs, but in general not composition.
+The idea is that this module will be instantiated with an interval for which
+certain types have a notion of fibrancy, and for those fibrant types, the hom
+type will deserve it's name.}
+}
+
+%```agda
+\agda{
+record HomP {𝓤} (A : I → Type 𝓤) (a : A i0) (b : A i1) : Type (𝓤 ⊔ 𝓘) where
+  constructor mk-hom
+  field
+    hom  : Π I A
+    hom0 : hom i0 ＝ a
+    hom1 : hom i1 ＝ b
+
+
+unquoteDecl HomP-repr≅ HomP-repr≃
+  = make-record-repr HomP-repr≅ HomP-repr≃ (quote HomP)
+
+λhom : ∀ {𝓤} {A : I → Type 𝓤} (f : Π I A) → HomP A (f i0) (f i1)
+λhom f = mk-hom f refl refl
+
+Hom : ∀ {𝓤} (A : Type 𝓤) (a b : A) → Type (𝓤 ⊔ 𝓘)
+Hom A a b = HomP (λ _ → A) a b
+
+{-# NOINLINE Hom #-}
+
+idH : ∀ {𝓤} {A : Type 𝓤} → (a : A) → Hom A a a
+idH a = λhom λ _ → a
+}
+%```
+
+\remark{
+\p{Unlike in [Cubical Agda](https://agda.readthedocs.io/en/latest/language/cubical.html)
+or the [Rzk proof assistant](https://rzk-lang.github.io/rzk/en/latest/),
+these hom types do not require their endpoints to be definitionally equal, but only
+equal up to a path. It is possible to simulate the \em{definitional} path types
+with an indexed-inductive type but this pushes Agda's elaboration beyond what it
+is really designed for, and the usability suffers.
+}
+
+}
+}
+
+\subtree[stt-00AN]{
+\title{Extensionality for homs}
+\taxon{Theorem}
+
+\p{A homorphism #{\Hom_A(x,y)} constist of the data of a map #{C^{\Delta^2}}
+together with a pair of identifications. To define a path in #{\Hom_A(x,y)}
+between #{f} and #{g}, we need a homotopy #{H} of the underlying maps, but also
+coherence data: #{H_{0} \sim g_0 \sim f_0} for #{i = 0,1}.}
+
+%```agda
+\agda{
+Hom-path : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
+           → Type (𝓘 ⊔ 𝓤)
+Hom-path (mk-hom f p q) (mk-hom g r s)
+  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+
+opaque
+  Hom-path-torsorial : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
+                       → is-singleton (Σ[ g ∶ Hom A x y ] Hom-path f g)
+  Hom-path-torsorial f
+    = is-single←equiv-to-single (Σ-ap-≃-fst (HomP-repr≃ e⁻¹))
+        (is-singleton-structure←parts
+          (SingS-is-single (f .HomP.hom))
+          (f .HomP.hom , ~refl)
+          (is-singleton-structure←parts
+            Sing'-is-singleton
+            (_ , refl)
+            Sing'-is-singleton))
+
+instance
+  IdS-Hom : ∀ {𝓤}{A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
+  IdS-Hom .Identity-system.IdS = Hom-path
+  IdS-Hom .Identity-system.IdS←Id refl = (~refl , refl , refl)
+  IdS-Hom .Identity-system.has-is-ids f
+    = fundamental-Id (Hom-path f) (Hom-path-torsorial f) _
+
+
+Hom-ext→ : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
+          → Hom-path f g → f ＝ g
+Hom-ext→ = ext!
+}
+%```
+}
+
+%```agda
+\agda{
+-- module _ (_∧_ : I → I → I) (_∨_ : I → I → I)
+--          (L : is-lattice i0 i1 _∧_ _∨_) where
+--
+-- open import ufAxioms
+-- open import Modalities.Instances.Truncation
+-- open import Modalities.Instances.Localisation
+-- open import Algebra.Lattice
+-- open import Algebra.Poset
+-- open import Core.Orthogonal
+-- open import Core.CanonicalPushouts
+-- open import Core.Coequalisers
+-- open import Core.Join
+-- open import Foundations.IdentitySystem
+--
+--   open Lattice (record
+--                 { 0l = i0
+--                 ; 1l = i1
+--                 ; _∧_ = _∧_
+--                 ; _∨_ = _∨_
+--                 ; str-is-lattice = L })
+
+--   open is-poset ≤-is-poset
+
+--   Δ₁ : Type 𝓘
+--   Δ₁ = I
+
+--   is-simplicial : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+--   is-simplicial = is-null {I = I × I} λ (i , j) → (i ≤ j) * (j ≤ i)
+
+--   -- Hom2 f g h ~> f ∘ g ~ h
+--   Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
+--            (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
+--          → Type (𝓘 ⊔ 𝓤)
+--   Hom2 {A = A} f g h
+--     = Σ[ H ∶ (Δ₂ → A) ] (
+--         (∀ i → H (mk-Δ₂ i0 i) ＝ g .HomP.hom i)
+--       × (∀ i → H (mk-Δ₂ i i1) ＝ f .HomP.hom i)
+--       × (∀ i → H (mk-Δ₂ i i)  ＝ h .HomP.hom i))
+
+--   composite-simplex : Δ₁ → Δ₂
+--   composite-simplex i = mk-Δ₂ i i
+
+--   is-covariant : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+--                → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+--   is-covariant {A = A} B
+--     = ∀ (x : I → A) (x₀ : B (x i0))
+--       → is-singleton (Σ[ x₁ ∶ B (x i1)] HomP (B ∘ x) x₀ x₁)
+
+--   homotopy : ∀ {𝓤} {𝓒 : Type 𝓤} {X Y : 𝓒}
+--                (f g : Hom 𝓒 X Y)
+--              → Type (𝓘 ⊔ 𝓤)
+--   homotopy {𝓒 = 𝓒} f g = Hom _ f g
+
+--   incl-horn : Λ[2,1] → Δ₂
+--   incl-horn = pushout-rec (mk-cocone
+--     (λ i → mk-Δ₂ i0 i)
+--     (λ i → mk-Δ₂ i i1)
+--     λ a → refl)
+
+
+--   is-precategory : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+--   is-precategory = is-local {I = 𝟙} λ _ → incl-horn
+
+
+
+--   record is-precategory-I {𝓤} (A : Type 𝓤) : Type (𝓘 ⊔ 𝓤) where
+--     field has-is-precat : is-precategory A
+
+--     open is-equiv (has-is-precat tt) public
+
+--   instance
+--     hom-IdS : ∀ {𝓤} {A : Type 𝓤} ⦃ _ : is-precategory-I A ⦄
+--               → {x y : A}
+--               → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
+--     hom-IdS .Identity-system.IdS f g = Hom2 (idH _) f g
+--     hom-IdS .Identity-system.IdS₀ {a = f} .fst (mk-Δ₂ _ j) = f .HomP.hom j
+--     hom-IdS .Identity-system.IdS₀ {a = f} .snd = (~refl , (λ _ → f .HomP.hom1) , ~refl)
+--     hom-IdS .Identity-system.has-is-ids f = is-identity-system←Sing-sing _ _
+--       {!is-precategory!}
+
+--   _⊙_ : ∀ {𝓤} {A : Type 𝓤} ⦃ pc : is-precategory-I A ⦄
+--         → {x y z : A}
+--         → Hom A y z → Hom A x y → Hom A x z
+--   _⊙_ {A = A} ⦃ pc ⦄ f g = mk-hom (λ i → simplex (mk-Δ₂ i i))
+--                                 (happly (ε comp) (ι₁ i0) ∙ g .hom0)
+--                                 (happly (ε comp) (ι₂ i1) ∙ f .hom1) where
+--     open is-precategory-I pc
+--     open HomP
+
+--     comp : Λ[2,1] → A
+--     comp = pushout-rec
+--       (mk-cocone
+--         (g .hom)
+--         (f .hom)
+--         λ _ → g .hom1 ∙ sym (f .hom0))
+
+--     simplex : Δ₂ → A
+--     simplex = bwd comp
+
+--   record _^Δ₂ {𝓤} (A : Type 𝓤) : Type (𝓘 ⊔ 𝓤) where
+--     field
+--       {x y z} : A
+--       f : Hom A y z
+--       g : Hom A x y
+--       h : Hom A x z
+--       H : Hom2 f g h
+
+--   Δ₂-repr≃ : ∀ {𝓤} {A : Type 𝓤} → (Δ₂ → A) ≃ A ^Δ₂
+--   Δ₂-repr≃ = {!!}
+
+--   precategory-unique-composite
+--     : ∀ {𝓤} {A : Type 𝓤} ⦃ pc : is-precategory-I A ⦄
+--       → {X Y Z : A} (f : Hom A Y Z) (g : Hom A X Y)
+--       → is-singleton (Σ[ h ∶ Hom A X Z ] Hom2 f g h)
+--   precategory-unique-composite {_} {A} ⦃ pc ⦄ f g
+--     = is-single←equiv-to-single
+--         fibre-pcomp
+--         (is-contr-map←is-equiv (has-is-precat tt) comp) where
+--     open is-precategory-I pc
+--     open HomP
+
+--     comp : Λ[2,1] → A
+--     comp = pushout-rec
+--       (mk-cocone
+--         (g .hom)
+--         (f .hom)
+--         λ a → g .hom1 ∙ sym (f .hom0))
+
+--     splex : Δ₂ → A
+--     splex = bwd comp
+
+--     ctr1 : Hom A _ _
+--     ctr1 .hom i = splex (mk-Δ₂ i i)
+--     ctr1 .hom0 = happly (ε comp) (ι₁ i0) ∙ g .hom0
+--     ctr1 .hom1 = happly (ε comp) (ι₂ i1) ∙ f .hom1
+
+--     ctr2 : Hom2 f g ctr1
+--     ctr2 .fst = splex
+--     ctr2 .snd .fst i = happly (ε comp) (ι₁ i)
+--     ctr2 .snd .snd .fst i = happly (ε comp) (ι₂ i)
+--     ctr2 .snd .snd .snd = ~refl
+
+--     fibre-pcomp : fibre (postcomp _ incl-horn) comp
+--                   ≃ Σ[ h ∶ Hom A _ _ ] Hom2 f g h
+--     fibre-pcomp =
+--         fibre (postcomp A incl-horn) comp
+--       ≃⟨⟩
+--        (Σ[ s ∶ (Δ₂ → A)] (postcomp A incl-horn s ＝ comp))
+--       ≃⟨ Σ-ap-≃ (λ a → funext≃) ⟩
+--        (Σ[ s ∶ (Δ₂ → A)] (postcomp A incl-horn s ~ comp))
+--       ≃⟨ Σ-ap-≃ (λ a → (mk≃ _ Pushout-is-pushoutωᵈ ∙≃ coconeD-repr≃)) ⟩
+--        (Σ[ s ∶ (Δ₂ → A)] {!!})
+--       ≃⟨  Σ-ap-≃-fst {B = {!!}} Δ₂-repr≃   ⟩
+--        Σ[ s ∶ A ^Δ₂ ] _
+--       ≃⟨ {!!} ⟩
+--        Σ (Hom A _ _) (λ h → Hom2 f g h) ≃∎
+
+--   hom←Id : ∀ {𝓤} {A : Type 𝓤} {x y : A} → x ＝ y → Hom A x y
+--   hom←Id refl = λhom _
+
+--   is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+--   is-groupoid A = ∀ (x y : A) → is-equiv {A = x ＝ y} hom←Id
+
+--   Hom-is-cov : ∀ {𝓤} {A : Type 𝓤} {a : A}
+--              → is-precategory A
+--              → is-covariant (Hom A a)
+--   Hom-is-cov {_} {A} {x} pc p dh
+--     = is-single←equiv-to-single fibreChar
+--         (is-contr-map←is-equiv (pc tt) horn) where
+--     open HomP
+--     a : A
+--     a = p i0
+--     b = p i1
+
+--     f : Hom A a b
+--     f .HomP.hom = p
+--     f .HomP.hom0 = refl
+--     f .HomP.hom1 = refl
+
+--     horn : Λ[2,1] → A
+--     horn = pushout-rec
+--       (mk-cocone
+--         (dh .hom)
+--         p
+--         λ _ → dh .hom1)
+
+--     {-
+--     a₀  -- f ---> b₀
+--     ^
+--     | diag
+--     |
+--     x
+
+
+--     Out goal is a unique inhabitant of
+--     Hom A b₀ b₁, HomP
+--     -}
+
+
+--     fibreChar : fibre (postcomp _ incl-horn) horn
+--               ≃ (Σ[ h ∶ Hom A x b ] HomP (λ i → Hom A x (f .hom i)) dh h)
+--     fibreChar
+--       =    fibre (postcomp A incl-horn) horn
+--         ≃⟨⟩
+--            (Σ[ k ∶ (Δ₂ → A)] (postcomp A incl-horn k ＝ horn))
+--         ≃⟨ Σ-ap-≃ (λ k → funext≃) ⟩
+--            (Σ[ k ∶ (Δ₂ → A)] ∀ i → k (incl-horn i) ＝ horn i)
+--         ≃⟨ Σ-ap-≃ (λ k → mk≃ _ Pushout-is-pushoutωᵈ ∙≃ coconeD-repr≃)⟩
+--            (Σ[ k ∶ (Δ₂ → A)]
+--                Σ[ P ∶ ((i : I) → k (mk-Δ₂ i0 i) ＝ dh .hom i) ]
+--                 Σ[ Q ∶ ((i : I) → k (mk-Δ₂ i i1) ＝ p i) ]
+--                  ((x : 𝟙) → IdP
+--                       (ap (λ z → k (incl-horn z) ＝ horn z) (glue x))
+--                       (P i1)
+--                       (Q i0)))
+--         ≃⟨ {!!} ⟩
+--            (Σ[ k ∶ (Δ₂ → A)]
+--                Σ[ P ∶ ((i : I) → k (mk-Δ₂ i0 i) ＝ dh .hom i) ]
+--                 Σ[ Q ∶ ((i : I) → k (mk-Δ₂ i i1) ＝ p i) ]
+--                     ((ap (k ∘ incl-horn) (glue tt)) ∙ (Q i0)
+--                      ＝ (P i1) ∙ ap (horn) (glue tt)))
+--         ≃⟨ {!!} ⟩
+--            (Σ[ k ∶ (Δ₂ → A)]
+--                Σ[ P ∶ ((i : I) → k (mk-Δ₂ i0 i) ＝ dh .hom i) ]
+--                 Σ[ Q ∶ ((i : I) → k (mk-Δ₂ i i1) ＝ p i) ]
+--                     (Q i0
+--                      ＝ (P i1) ∙ dh .hom1))
+--         ≃⟨ {!!} ⟩
+--            (Σ[ k ∶ (Δ₂ → A)]
+--                Σ[ Q ∶ ((i : I) → k (mk-Δ₂ i0 i) ＝ dh .hom i) ]
+--                 Σ[ P ∶ ((i : I) → k (mk-Δ₂ i i1) ＝ p i) ]
+--                     (P i0
+--                      ＝ (Q i1) ∙ dh .hom1))
+--         ≃⟨ {!!} ⟩
+--            (Σ[ h ∶ (Hom A x b)]
+--              Σ[ K ∶ Σ[ K ∶ ((i j : I) → A) ] ((∀ i → K i i0 ＝ x) ×
+--                                               (∀ i → K i i1 ＝ f .hom i)) ]
+--                ((K .fst i0 ＝ dh .hom) × (K .fst i1 ＝ h .hom)))
+--         ≃⟨ {!!} ⟩
+--            (Σ[ h ∶ (Hom A x b)]
+--              Σ[ K ∶ ((i : I) → Hom A x (f .hom i))]
+--                ((K i0 ＝ dh) × (K i1 ＝ h)))
+--         ≃⟨ {!!} ⟩
+--           Σ (Hom A x b) (λ h → HomP (λ i → Hom A x (f .hom i)) dh h) ≃∎
+
+}
+%```

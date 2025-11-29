@@ -27,6 +27,9 @@ sym≃ = mk≃ sym sym-is-equiv
              → is-equiv (λ (q : b ＝ c) → p ∙ q)
 ∙-is-equiv refl = id-is-equiv
 
+＝-postcomp-≃ : ∀ {𝓤} {A : Type 𝓤} {a b c : A} (p : a ＝ b)
+               → (b ＝ c) ≃ (a ＝ c)
+＝-postcomp-≃ p = mk≃ (λ q → p ∙ q) (∙-is-equiv p)
 
 tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)

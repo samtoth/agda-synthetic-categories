@@ -1,0 +1,410 @@
+\date{2025-07-02}
+\title{Synthetic Tiny objects}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+open import Foundations.Prelude
+
+module Synthetic.Tiny {@♭ 𝓘} (@♭ I : Type 𝓘) where
+
+open import Modalities.Flat.Flat
+open import ufAxioms
+}
+%```
+
+
+\subtree[stt-00A9]{
+\title{Internally Tiny Object}
+\date{2025-11-17}
+\taxon{Definition}
+
+\p{In a cartesian closed category #{\CC}, for each object #{I}, there is an
+adjunction #{- \times I \dashv -^I}. The object is called (internally)-\em{tiny}
+or sometimes \em{atomic} if #{-^I} has a further right adjoint, which we will
+call #{\sqrt[I]{-}}. This right adjoint is also referred to as \em{the amazing
+right adjoint} - terminology which stems from synthetic differential geometry.}
+}
+
+\subtree{
+\title{Idea}
+
+\p{In type theory, we can represent the situation where a type #{I} has a right
+adjoint using with the following judgement (Where #{\mathcal{P}} represents
+exponentiating the context by #{I}):}
+
+##{
+\frac{\mathcal{P}(\Gamma) \vdash A}{\Gamma \vdash \sqrt[I]{A}}
+}
+
+\p{In addition, you need rules expressing the unit and counit of the adjunction.
+It is clearly not possible to introduce this type as an axiom inside of type
+theory; but there have been structural extensions to type theory that allow this
+type to be represented. Firstly, it fits within the general framework of
+[multimode type theory](GKNB21) and this aproach is taken in \citek{GWB2024} to
+define the category of spaces. Secondly, Mitchel Riley \citek{MR2024} introduced a
+bespoke type theory that encorporates a tiny object.}
+
+\p{Seperately, \citek{LOPS2018} make use of the [flat
+modality](Modalities.Flat.Flat) to postulate an amazing right adjoint. In this
+module we formalise a similar construction, except instead of postulating the
+adjunction directly, we postulate a type former with #{\beta} and #{\eta} laws
+roughly based off Mitchel Riley's work.  }
+}
+
+\subtree[stt-00AG]{
+\taxon{Notation}
+
+\p{We first define some notation that allows the posulate rules for the
+[root type](stt-00A8) to appear close to how they would be presented in the
+description of a type theory.}
+
+\subtree{
+\title{Technical remark}
+
+\p{We make the substitution operation (which is just function composition)
+opaque, so that we can make use of rewriting to make substitution commute with
+new type formers computationally (via rewrite-rules). We prove functoriality of
+substitution inside the opaque block, and then \em{re-expose} this computational
+behaviour using rewrite rules.}
+}
+
+%```agda
+\agda{
+module LFNotation where
+  infixl 20 _⊢_
+  _⊢_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+  A ⊢ B = A → B
+  ty-syntax : ∀ {@♭ 𝓤} (@♭ Γ : Type 𝓤) 𝓥 → Type (𝓤 ⊔ lsuc 𝓥)
+  ty-syntax Γ 𝓥 = Γ → Type 𝓥
+
+  syntax ty-syntax Γ 𝓥 = Γ ⊢ ty 𝓥
+  tm-syntax : ∀ {@♭ 𝓤 𝓥} (@♭ Γ : Type 𝓤) (A : Γ ⊢ ty 𝓥)
+              → Type (𝓤 ⊔ 𝓥)
+  tm-syntax Γ A = Π _ A
+
+  syntax tm-syntax Γ A = Γ ⊢ tm A
+
+  infixl 20 _⨾_
+  _⨾_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+  Γ ⨾ A = Γ × A
+
+
+  opaque
+   _[_] : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
+        → (Δ ⊢ ty 𝓦)
+        → (Γ → Δ)
+        → Γ ⊢ ty 𝓦
+   A [ σ ] = A ∘ σ
+
+   _[_]tm : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
+               {A : Δ ⊢ ty 𝓦}
+               (a : Δ ⊢ tm A)
+               (σ : Γ → Δ)
+             → Γ ⊢ tm (A [ σ ])
+   a [ σ ]tm = a ∘ σ
+
+   subst-functorial
+     : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥} {@♭ Θ : Type 𝓦}
+         (A : Θ ⊢ ty 𝓜)
+         (σ : Δ → Θ) (δ : Γ → Δ)
+       → (A [ σ ]) [ δ ] ＝ (A [ σ ∘ δ ])
+   subst-functorial _ _ _ = refl
+
+   subst-id
+     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+         (A : Γ ⊢ ty 𝓥)
+       → A [ id ] ＝ A
+   subst-id = ~refl
+
+  wk-ty : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (A : Type 𝓥) → Γ ⊢ ty 𝓥
+  wk-ty = const _ _
+
+  {-# REWRITE subst-functorial subst-id #-}
+}
+%```
+
+}
+
+\subtree[stt-00AF]{
+\title{The Root type former}
+\taxon{Definition}
+
+%```agda
+\agda{
+open LFNotation
+}
+%```
+
+\p{We also expose notation for exponentiating a context by #{I}, and show that
+this has a functorial action by substution, as well as the unit and counit of
+the adjunction #{-;I \dashv \mathcal{P}(-)}.}
+
+%```agda
+\agda{
+private
+  𝓟 : ∀ {𝓤} (A : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
+  𝓟 A = I → A
+
+  𝓟₁ : ∀ {𝓤 𝓥} {Γ : Type 𝓤} {Δ : Type 𝓥}
+     → (Γ → Δ) → (𝓟 Γ → 𝓟 Δ)
+  𝓟₁ = precomp _
+
+  unit : ∀ {𝓤} {Γ : Type 𝓤} → Γ → (𝓟 (Γ ⨾ I))
+  unit g i = g , i
+
+  counit : ∀ {𝓤} {Γ : Type 𝓤} → (𝓟 Γ ⨾ I) → Γ
+  counit (g , i) = g i
+}
+%```
+
+
+\p{With this notation in hand, we can write the formation, introduction and
+elimination rules as well as their laws in Agda in a readable way. We also make
+as many things as possible commute using rewriting (whilst keeping the confluence
+checker happy).}
+
+%```agda
+\agda{
+postulate
+  √ : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → @♭ (𝓟 Γ) ⊢ ty 𝓥
+      ---------------------
+      →  Γ ⊢ ty 𝓥
+
+  √-nat
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
+        (@♭ σ : Γ → Δ)
+        (@♭ A : 𝓟 Δ ⊢ ty 𝓦)
+      → (√ A) [ σ ] ＝ √ (A [ 𝓟₁ σ ])
+
+
+{-# REWRITE √-nat #-}
+
+postulate
+  rintro
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} →
+          {@♭ A : 𝓟 Γ ⊢ ty 𝓥} → (@♭ a : 𝓟 Γ ⊢ tm A)
+      → ----------------------------------------------
+                    Γ ⊢ tm (√ A)
+
+  relim
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (𝓟 (Γ ⨾ I)) ⊢ ty 𝓥} →
+         @♭ ((Γ ⨾ I) ⊢ tm (√ A))
+      → ------------------------
+          Γ ⊢ tm (A [ unit ])
+
+  relim-β
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : 𝓟 (Γ ⨾ I) ⊢ ty 𝓥} →
+            (@♭ a : 𝓟 (Γ ⨾ I) ⊢ tm A)
+     → ------------------------------------------
+          relim (rintro a) ~ (a [ unit ]tm)
+
+  relim-η
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : 𝓟 Γ ⊢ ty 𝓥} →
+            (@♭ a : Γ ⊢ tm √ A)
+      → --------------------------------------
+          a ~ rintro (relim  (a [ counit ]tm))
+
+
+  R-nat
+   : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
+       {@♭ A : 𝓟 Δ ⊢ ty 𝓦} (@♭ σ : Γ → Δ)
+     → (@♭ f : (𝓟 Δ) ⊢ tm A)
+     → rintro f [ σ ]tm ＝ rintro (f [ 𝓟₁ σ ]tm)
+
+{-# REWRITE R-nat relim-β #-}
+
+
+opaque
+   unfolding _[_]
+   tm-subst-functorial
+     : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥} {@♭ Θ : Type 𝓦}
+         {A : Θ ⊢ ty 𝓜}
+         (a : Θ ⊢ tm A)
+         (σ : Δ → Θ) (δ : Γ → Δ)
+       → (a [ σ ]tm) [ δ ]tm ＝ (a [ σ ∘ δ ]tm)
+   tm-subst-functorial _ _ _ = refl
+
+   tm-subst-id
+     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+         {A : Γ ⊢ ty 𝓥}
+         (a : Γ ⊢ tm A)
+       → a [ id ]tm ＝ a
+   tm-subst-id = ~refl
+}
+%```
+}
+
+\subtree[stt-00AA]{
+\title{Root is a right adjoint}
+\taxon{Theorem}
+
+\p{We can now derive the adjunction as it is presented in \citek{LOPS2024} -
+including a dependent version of the left adjoint.}
+
+%```agda
+\agda{
+module LOPS where
+  L : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → @♭ ( A ⊢ tm (√ (wk-ty B))) → (𝓟 A → B)
+  L f = relim (f [ counit ]tm)
+
+  R : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → @♭ (𝓟 A → B) → Π A (√ (wk-ty B))
+  R = rintro
+
+  LR : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+           {@♭ f : 𝓟 A → B}
+         → L (R f) ＝ f
+  LR {f = f}
+      =    L (R f)
+         ＝⟨⟩
+           relim ((rintro f) [ counit ]tm)
+         ＝⟨⟩
+           relim (rintro (f [ 𝓟₁ counit ]tm))
+         ＝⟨⟩ -- ⟨ funext→ (relim-β (f [ 𝓟₁ counit ]tm)) ⟩
+           (f [ 𝓟₁ counit ]tm) [ unit ]tm
+         ＝⟨ lem ⟩
+           f ∎ where
+    opaque
+      unfolding _[_]
+      lem : ((f [ 𝓟₁ counit ]tm) [ unit ]tm) ＝ f
+      lem = refl
+
+
+  RL : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+         {@♭ f : Π A (√ (wk-ty B))}
+       → R (L f) ＝ f
+  RL {f = f} = sym (funext→ (relim-η f))
+
+
+  L' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : 𝓟 A → Type 𝓥}
+      → @♭ ( A ⊢ tm (√ B)) → (Π (𝓟 A) B)
+  L' f = relim (f [ counit ]tm)
+}
+%```
+}
+
+\subtree[stt-00AO]{
+\title{Relative notions of fibrancy}
+\taxon{Definition}
+
+\p{Fixing a type #{I}, and given #{\mathcal{F}} a family of predicates over
+families of types #{A \to \UU}, we say that #{\mathcal{F}} is #{I}-relative for
+some type #{I} if #{P} is fibrant iff for any map #{x : I \to A}, #{P \circ x}
+is fibrant.
+}
+
+%```agda
+\agda{
+is-relative : ∀ {α : Level → Level → Level}
+              → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+              → Typeω
+is-relative is-fib
+  = ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+    → (is-fib P ⇔ (∀ (x : I → A) → is-fib (P ∘ x) ))
+
+
+is-pullback-stable : ∀ {α : Level → Level → Level}
+                     → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+                     → Typeω
+is-pullback-stable is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {Γ : Type 𝓤'} {A : Type 𝓤} (P : A → Type 𝓥) (σ : Γ → A)
+    → is-fib P → is-fib (P ∘ σ)
+
+is-pullback-stable←is-relative
+  : ∀ {α : Level → Level → Level}
+    → (P : ∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → is-relative P → is-pullback-stable P
+is-pullback-stable←is-relative is-fib rel P σ fib
+  = rel (P ∘ σ) .snd (λ x → rel P .fst fib (σ ∘ x))
+}
+%```
+}
+
+
+\subtree[stt-00AH]{
+\taxon{Construction}
+\title{A universe that weakly classifies relative fibrations}
+
+\p{We first fix a notion of fibrancy, which is predicate on type families, and
+ask that it is relative in the sense that a type family #{B} over #{A} is
+fibrant if and only if it's precomposition with any #{I \to A} is fibrant.}
+
+\p{From this we can define the notation of \em{amazing fibrancy}, which is a
+predicate on a type - not a type family. Informally, amazing fibrancy says that
+a type is fibrant over any arbritary context.}
+
+\p{The universe of fibrant types can then be defined to be the types which are
+amazingly fibrant. There is a map #{\pi : \UU_{fib} \to \UU}, and \UU_{fib} is
+defined by the property that a map #{A \to \UU} factors through #{\pi} iff it is
+fibrant.}
+
+%```agda
+\agda{
+module AFib
+       {@♭ α : Level → Level → Level}
+       (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+       (@♭ rel-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+                     → is-fib B ⇔ (∀ (x : I → A) → is-fib (B ∘ x)))
+       where
+  open LOPS
+
+  is-afib : ∀ {@♭ 𝓤} (A : Type 𝓤) → Type (α 𝓘 𝓤)
+  is-afib {𝓤} = √ is-fib
+
+  UFib : ∀ (@♭ 𝓤) → Type (α 𝓘 𝓤 ⊔ lsuc 𝓤)
+  UFib 𝓤 = Σ[ A ∶ Type 𝓤 ] is-afib A
+
+  UFib∙ : ∀ (@♭ 𝓤) → Type (α 𝓘 𝓤 ⊔ lsuc 𝓤)
+  UFib∙ 𝓤 = Σ (UFib 𝓤) fst
+
+  F-π-is-fib : ∀ {@♭ 𝓤} → is-fib (fst {B = is-afib {𝓤}})
+  F-π-is-fib {𝓤} = rel-fib _ .snd ϕ̃ where
+    opaque
+      unfolding _[_]
+      ϕ : UFib 𝓤 ⊢ tm ((√ is-fib) [ fst ])
+      ϕ = snd
+
+    ϕ' : UFib 𝓤 ⊢ tm √ (is-fib [ 𝓟₁ fst ])
+    ϕ' = ϕ
+
+    opaque
+      unfolding _[_]
+      ϕ̃ : (x : 𝓟 (UFib 𝓤)) → is-fib (fst ∘ x)
+      ϕ̃ = L' ϕ'
+
+  UFib-fib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} → (P : A → UFib 𝓥)
+             → is-fib (fst ∘ P)
+  UFib-fib {A = A} P
+    = is-pullback-stable←is-relative is-fib rel-fib _ P F-π-is-fib
+
+  opaque
+    unfolding _[_]
+    rel-fib♭ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+               → is-fib B ⇔ (𝓟 A ⊢ tm (is-fib [ 𝓟₁ B ]))
+    rel-fib♭ B = rel-fib B
+
+  liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
+              → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
+  liftFib {A = A} {P = P} .fst (mod♭ fib)
+    = mod♭ x' where
+      x : (a : A) → (is-afib [ P ]) a
+      x = rintro {Γ = A} {is-fib [ 𝓟₁ P ]} (rel-fib♭ P .fst fib)
+
+      opaque
+       unfolding _[_]
+       x' : (a : A) → is-afib (P a)
+       x' = x
+  liftFib {P = P} .snd (mod♭ afib) = mod♭ (UFib-fib (λ a → _ , afib a))
+
+  U-classifies : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
+                 → @♭ is-fib P → A → UFib 𝓥
+  U-classifies {P = P} ifib a = (P a , ε (liftFib .fst (mod♭ ifib)) a)
+}
+%```
+}

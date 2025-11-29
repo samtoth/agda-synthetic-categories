@@ -5,6 +5,7 @@
 
 % ```agda
 \agda{
+{-# OPTIONS --lossy-unification #-}
 module Core.Arrow where
 
 open import Foundations.Prelude
@@ -129,25 +130,32 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map-path-is-Rppred G = (Arrow-map-path G) , Arrow-map-path-refl
 
   Arrow-map-path←id : ∀ {G H : Arrow-map f f'} → (G ＝ H) → Arrow-map-path G H
-  Arrow-map-path←id = idtoppred (Arrow-map-path-is-Rppred _) _
+  Arrow-map-path←id refl = Arrow-map-path-refl
 
-  Arrow-map-path≃ : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ Arrow-map-path G H
-  Arrow-map-path≃ G@(mk-amap t b h) H
-    = mk≃ Arrow-map-path←id
-          (fundamental-Id
-            (Arrow-map-path G)
-            (is-single←equiv-to-single
-              (Σ-ap-≃-fst (Arrow-map-repr≃ _ _ e⁻¹))
-              (is-singleton-structure←parts (SingS-is-single t)
-                (t , ~refl)
-                (is-singleton-structure←parts (SingS-is-single b)
-                  (b , ~refl)
-                  (SingS-is-single λ a → h a ∙ refl))))
-            (λ _ → Arrow-map-path←id) H)
+  opaque
+    Arrow-map-path≃ : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ Arrow-map-path G H
+    Arrow-map-path≃ G@(mk-amap t b h) H
+      = mk≃ Arrow-map-path←id
+            (fundamental-Id
+              (Arrow-map-path G)
+              (is-single←equiv-to-single
+                (Σ-ap-≃-fst (Arrow-map-repr≃ _ _ e⁻¹))
+                (is-singleton-structure←parts (SingS-is-single t)
+                  (t , ~refl)
+                  (is-singleton-structure←parts (SingS-is-single b)
+                    (b , ~refl)
+                    (SingS-is-single λ a → h a ∙ refl))))
+              (λ _ → Arrow-map-path←id) H)
 
-  Arrow-map-path→ : ∀ {G H : Arrow-map f f'} → Arrow-map-path G H
-                    → (G ＝ H)
-  Arrow-map-path→ = _≃_.bwd (Arrow-map-path≃ _ _)
+    Arrow-map-path→ : ∀ {G H : Arrow-map f f'} → Arrow-map-path G H
+                      → (G ＝ H)
+    Arrow-map-path→ = _≃_.bwd (Arrow-map-path≃ _ _)
+
+    Arrow-map-path→-refl : ∀ {G : Arrow-map f f'}
+                          → Arrow-map-path→ (Arrow-map-path-refl {G = G}) ＝ refl
+    Arrow-map-path→-refl
+      = unap-equiv (Arrow-map-path≃ _ _ ._≃_.has-is-eqv)
+                   (is-equiv.ε (Arrow-map-path≃ _ _ ._≃_.has-is-eqv) _)
 }
 %```
 }
@@ -656,3 +664,31 @@ rotate-is-cartesian {f = f} {g} F@(mk-amap top bot comm) fcart
 
 }
 %```
+
+\subtree[stt-00AQ]{
+\title{The fibre of maps as a cartesian square}
+\taxon{Example}
+
+%```agda
+\agda{
+fibre-square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
+             → Arrow-map (! {A = fibre f b}) f
+fibre-square f b .Arrow-map.top = fst
+fibre-square f b .Arrow-map.bot = const _ 𝟙 b
+fibre-square f b .Arrow-map.comm (x , p) = sym p
+
+
+fibre-square-is-cartesian : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
+                            → is-cartesian (fibre-square f b)
+fibre-square-is-cartesian f b = is-cartesian←is-pullback _
+                                  (is-pullback←gap _ eq) where
+  map : fibre f b → Pullback (const _ 𝟙 b) f
+  map (x , p) = (tt , x , sym p)
+
+  eq : is-equiv map
+  eq = is-equiv←qiso ((λ (_ , x , p) → (x , sym p))
+                     , (λ where (_ , refl) → refl)
+                     , λ where (_ , _ , refl) → refl)
+}
+%```
+}

@@ -7,15 +7,18 @@
 
 % ```agda
 \agda{
-{-# OPTIONS --allow-unsolved-metas #-}
 module Core.Orthogonal where
 
 open import ufAxioms
 open import Foundations.Prelude
+
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.Lifts
 open import Core.PullbackPower
+open import Core.Postwhisker
+open import Core.Cube
+
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 }
@@ -147,6 +150,25 @@ postcomp-Π←orthogonal {f = f}{g} h orth
   = postcomp-Π←is-pullback-power
       (power-hom-cartesian←pullback-power f g
         (pb-power-is-equiv←orthogonal orth)) h
+
+
+orthogonal←is-cartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+      → is-cartesian (power-hom f g)
+      → are-orthogonal f g
+orthogonal←is-cartesian cart
+  = orthogonal←postcomp-Π (postcomp-Π←is-pullback-power cart)
+
+is-cartesian←orthogonal
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+      → are-orthogonal f g
+      → is-cartesian (power-hom f g)
+is-cartesian←orthogonal orth
+  = is-pullback-power←postcomp-Π λ h → postcomp-Π←orthogonal h orth
 }
 %```
 }
@@ -285,6 +307,36 @@ is-orthogonal⇔orthogonal-! {X = X}{Y}{f}{A}
 \p{Given a [cartesian square](stt-003V) between maps #{g} and #{h}, then if
 #{f \perp h}, #{f \perp g}.}
 
+
+\proof{
+\p{Consider the following [cube](stt-00B2):}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	& {C^Y} && {C^X} \\
+	{A^Y} && {A^X} \\
+	& {D^Y} && {D^X} \\
+	{B^Y} && {B^X}
+	\arrow[from=1-2, to=1-4]
+	\arrow["{h_*}"'{pos=0.6}, from=1-2, to=3-2]
+	\arrow[from=1-4, to=3-4]
+	\arrow[from=2-1, to=1-2]
+	\arrow[from=2-1, to=2-3]
+	\arrow["{g_*}"', from=2-1, to=4-1]
+	\arrow[from=2-3, to=1-4]
+	\arrow[from=2-3, to=4-3]
+	\arrow["{f^*}"{pos=0.3}, from=3-2, to=3-4]
+	\arrow[from=4-1, to=3-2]
+	\arrow["{f^*}"', from=4-1, to=4-3]
+	\arrow[from=4-3, to=3-4]
+\end{tikzcd}
+}
+
+\p{The left and right faces are cartesian since [precomposing a cartesian square
+gives a cartesian square](stt-003R), then by our assumption the back square is
+cartesian, [so the front square is cartesian](stt-00B3).}
+}
+
 %```agda
 \agda{
 orthogonal←pullback
@@ -293,8 +345,23 @@ orthogonal←pullback
       {g : A → B} {h : C → D}
     → (F : Arrow-map g h) → is-cartesian F
     → are-orthogonal f h → are-orthogonal f g
-orthogonal←pullback {X = X} {Y} f {A} {g = g}{h} F cart orth = {!!} where
+orthogonal←pullback {X = X} {Y} f {A} {g = g}{h} F cart orth
+  = orthogonal←is-cartesian
+     (front-cartesian←cartesian-cube
+       (power-hom f g) (power-hom f h)
+       the-cube
+       (precomp-cartesian F cart)
+       (precomp-cartesian F cart)
+       (is-cartesian←orthogonal orth)) where
   module F = Arrow-map F
+
+  the-cube : Cube (power-hom f g) (power-hom f h)
+  the-cube .Cube.left = precomp-square F Y
+  the-cube .Cube.right = precomp-square F X
+  the-cube .Cube.comm .fst = ~refl
+  the-cube .Cube.comm .snd .fst = ~refl
+  the-cube .Cube.comm .snd .snd a
+    = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-postwhisker-funext _)
 }
 %```
 }

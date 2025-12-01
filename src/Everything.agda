@@ -15,6 +15,7 @@ open import Core.CoSlice
 open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Coequalisers
+open import Core.Cube
 open import Core.ExtPullbacks
 open import Core.FibredJoin
 open import Core.FlatteningCoequalisers

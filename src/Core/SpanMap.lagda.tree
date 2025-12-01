@@ -7,16 +7,18 @@
 
 %```agda
 \agda{
-{-# OPTIONS --allow-unsolved-metas #-}
 module Core.SpanMap where
 
 open import Foundations.Prelude
 open import ufAxioms
 
 open import Ergonomics.Marker
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 
 open import Core.Arrow
 open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
 }
 %```
 
@@ -24,7 +26,7 @@ open import Core.ArrowEquiv
 \subtree[stt-008M]{
 \date{2025-08-03}
 \title{Maps of spans}
-\taxon{Theorem}
+\taxon{Definition}
 
 \p{A map between spans #{S} and #{S'} is a diagram as follows where
 all the squares commute:}
@@ -71,6 +73,9 @@ record Span-map {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
 
    amap-r : Arrow-map h₂ h₃
    amap-r = mk-amap S.right S'.right (K ~⁻¹)
+
+unquoteDecl Span-map-repr≅ Span-map-repr≃
+  = make-record-repr Span-map-repr≅ Span-map-repr≃ (quote Span-map)
 }
 %```
 
@@ -211,7 +216,6 @@ Span⁻¹←Span-equiv F (e1 , e2 , e3)
 
   H2 : F₃.bwd ∘ S'.right ~ S.right ∘ F₂.bwd
   H2 = e3 ◂eqv K2 ▸eqv e2
-
 }
 %```
 }
@@ -243,12 +247,89 @@ id-span-map
   : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
   → Span-map S S
 id-span-map = mk-span-map id id id ~refl ~refl
+
+id-span-map-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+    → is-Span-equiv (id-span-map {S = S})
+id-span-map-is-equiv = (id-is-equiv , id-is-equiv , id-is-equiv)
+}
+%```
+}
+
+\subtree[stt-00AZ]{
+\title{Univalence for spans}
+\taxon{Theorem}
+
+%```
+\agda{
+Span-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} (S : Span  𝓤 𝓥 𝓦) (S' : Span 𝓤' 𝓥' 𝓦')
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+Span-equiv S S' = Σ[ F ∶ Span-map S S' ] is-Span-equiv F
+
+Span-equiv-lemma
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span  𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → let module S = Span S; module S' = Span S'
+    in Span-equiv S S'
+    ≃ Σ[ F ∶ (S.Centre ≃ S'.Centre) ]
+       Σ[ L ∶ (S.Left ≃ S'.Left)] Σ[ _ ∶ (L ._≃_.fwd ∘ S.left ~ S'.left ∘ F ._≃_.fwd)]
+         Σ[ R ∶ (S.Right ≃ S'.Right)] (R ._≃_.fwd ∘ S.right ~ S'.right ∘ F ._≃_.fwd)
+Span-equiv-lemma = equiv←qiso qiso where
+  open Span-map
+  qiso : _
+  qiso ._≅_.fwd (smap , (leq , ceq , req))
+    =
+    ( mk≃ (smap .h₂) ceq
+    , mk≃ (smap .h₁) leq
+    , smap .H
+    , mk≃ (smap .h₃) req
+    , smap .K)
+  qiso ._≅_.fwd-iso .fst (mk≃ c ceq , mk≃ l leq , H , mk≃ r req , K)
+    = (mk-span-map l c r H K , leq , ceq , req)
+  qiso ._≅_.fwd-iso .snd .fst = ~refl
+  qiso ._≅_.fwd-iso .snd .snd = ~refl
+
+Span-equiv←Id
+  : ∀ {𝓤 𝓥 𝓦} {S S' : Span 𝓤 𝓥 𝓦}
+    → S ＝ S' → Span-equiv S S'
+Span-equiv←Id {S = S} refl = (id-span-map , id-span-map-is-equiv {S = S})
+
+opaque
+  Span-equiv←Id-is-equiv
+    : ∀ {𝓤 𝓥 𝓦} {S S' : Span 𝓤 𝓥 𝓦} → is-equiv (Span-equiv←Id {S = S}{S'})
+  Span-equiv←Id-is-equiv {S = S} {S'}
+    = fundamental-Id
+       (Span-equiv S)
+       (is-single←equiv-to-single
+         ((Σ-ap-≃-fst
+            {B = λ (C , _ , f , _ , g) → Span-equiv S (mk-span C f g) }
+            Span-repr≃ ∙≃ Σ-ap-≃ (λ a → Span-equiv-lemma)) e⁻¹)
+         (is-singleton-structure←parts (SingS-is-single (Centre S))
+          (S .Centre , idequiv)
+          (is-singleton-structure←parts
+           (SingS-is-single (Left S))
+           (Left S , idequiv)
+           (is-singleton-structure←parts
+            (SingS-is-single (left S))
+            (left S , ~refl)
+            (is-singleton-structure←parts
+              (SingS-is-single (Right S))
+              (Right S , idequiv)
+              (SingS-is-single (right S)))))))
+       (λ _ → Span-equiv←Id)
+       S' where open Span
+
+instance
+  SpanIdS : ∀ {𝓤 𝓥 𝓦} → Identity-system (Span 𝓤 𝓥 𝓦) (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  SpanIdS .Identity-system.IdS = Span-equiv
+  SpanIdS .Identity-system.IdS←Id = Span-equiv←Id
+  SpanIdS .Identity-system.has-is-ids _ _ = Span-equiv←Id-is-equiv
 }
 %```
 }
 
 
-\subtree[stt-00AL]{
+\subtree[stt-00B0]{
 \title{Homotopy of span maps}
 \taxon{Definition}
 
@@ -284,63 +365,12 @@ Span-map-funext→ {S = S} {S'} {F} {G} (p , q , r , s , t)
 }
 
 \subtree[stt-00AM]{
-\title{Equivalences of spans}
-\taxon{definition}
+\title{Isomorphisms of spans}
+\taxon{Theorem}
 
-%```agda
-\agda{
-
-Span-equiv-ret
-  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
-  → (F : Span-map S S') (Fe : is-Span-equiv F)
-  → Span-map-homotopy id-span-map
-                      (compose-span-map (Span⁻¹←Span-equiv F Fe) F)
-Span-equiv-ret {S = S} F Fe@(e1 , e2 , e3) = hom where
-  module F₁ = is-equiv e1
-  module F₂ = is-equiv e2
-  module F₃ = is-equiv e3
-  module F = Span-map F
-  F⁻¹ = Span⁻¹←Span-equiv F Fe
-  module F⁻¹ = Span-map F⁻¹
-
-  opaque
-    unfolding Arrow⁻¹.H
-
-    HH : (F₁.η ~⁻¹) ▸ Span.left S ~∙
-         Span-map.H (compose-span-map (Span⁻¹←Span-equiv F Fe) F) ~∙
-         Span.left S ◂ ((F₂.η ~⁻¹) ~⁻¹)
-         ~ ~refl
-    HH = ((F₁.η ~⁻¹) ▸ Span.left S ~∙
-         Span-map.H (compose-span-map (Span⁻¹←Span-equiv F Fe) F) ~∙
-         Span.left S ◂ ((F₂.η ~⁻¹) ~⁻¹)) ~⟨⟩
-
-         ((F₁.η ~⁻¹) ▸ Span.left S ~∙
-         ((F⁻¹.h₁ ◂ F.H) ~∙ (F⁻¹.H ▸ F.h₂)) ~∙
-         Span.left S ◂ ((F₂.η ~⁻¹) ~⁻¹)) ~⟨⟩
-
-         ((F₁.η ~⁻¹) ▸ Span.left S ~∙
-         ((F⁻¹.h₁ ◂ F.H) ~∙ ((e1 ◂eqv Span-inv.K1 F e1 e2 e3 ▸eqv e2) ▸ F.h₂)) ~∙
-         Span.left S ◂ ((F₂.η ~⁻¹) ~⁻¹)) ~⟨ {!!} ⟩
-
-         {!!} ~∎
-
-    hom : Span-map-homotopy
-           id-span-map
-           (compose-span-map (Span⁻¹←Span-equiv F Fe) F)
-    hom =
-       F₁.η ~⁻¹
-     , F₂.η ~⁻¹
-     , F₃.η ~⁻¹
-     , HH ~⁻¹
-     , {!KK!}
+\p{An equivalence of spans gives rise to a quasi-isomorphism in span. I.e. we
+get a pair of span maps whose composition is homotopic to the identity span map.}
 
 
-Span-equiv-sec
-  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
-  → (F : Span-map S S') (Fe : is-Span-equiv F)
-  → Span-map-homotopy (compose-span-map F (Span⁻¹←Span-equiv F Fe))
-                       id-span-map
-Span-equiv-sec = {!!}
-}
-%```
+\remark{This remains to be formalised.}
 }

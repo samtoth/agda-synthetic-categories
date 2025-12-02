@@ -1,0 +1,167 @@
+\date{2025-11-17}
+\title{Precategories}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Precategories
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.ModalMaps
+
+open import Core.Join
+open import Core.CanonicalPushouts
+
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+\subtree[stt-00AI]{
+\title{Precategories}
+\taxon{Definition}
+
+
+\p{We say that a type is a \strong{precategory} or that it is a \strong{Segal}
+type if it is local with respect to the inclusion of the [#{(2,1)} horn](stt-00AD)
+into the 2-simplex. We can use the fact that [being local with respect to some
+class of maps forms a global reflective subuniverse](stt-0066) to bootstrap some
+useful notions, such as preservation under identity and pi types as well as the
+localisation operation. Note that unlike in the case of [simplicial types](stt-00AC)
+this subuniverse is neither #{\Sigma}-closed nor lex.}
+
+\p{We call maps which are local to the inner horn inclusion \strong{inner maps}.}
+
+%```agda
+\agda{
+open Subtype
+
+is-precategory : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
+is-precategory = is-local λ (tt : 𝟙) → Λ[2,1]-incl
+
+Precats-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Precats-SubU = Local-SubU (λ (tt : 𝟙) → Λ[2,1]-incl) _
+
+Precats-GSU : GSU (_⊔ 𝓘)
+Precats-GSU = Local-GSU (λ (tt : 𝟙) → Λ[2,1]-incl)
+
+Precats-is-globally-reflective
+   : is-globally-reflective Precats-GSU
+Precats-is-globally-reflective
+  = Local-global-reflectors (λ (tt : 𝟙) → Λ[2,1]-incl)
+
+module Precat where
+  open GSU Precats-GSU public renaming (S-equiv to is-precategory←equiv)
+
+  open is-globally-reflective Precats-is-globally-reflective
+
+  is-inner : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-inner = is-modal-map Precats-SubU
+}
+%```
+}
+
+\subtree[stt-00AK]{
+\title{Composite morphisms}
+\taxon{Definition}
+
+\p{Given the data of the boundary of a 2-simplex:}
+
+\quiver{
+\begin{tikzcd}
+        x && y \\
+	\\
+	&& z
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["h"', from=1-1, to=3-3]
+	\arrow["f", from=1-3, to=3-3]
+\end{tikzcd}
+}
+
+\p{We define the type of fillers, written #{\Hom 2(f,g;h)}, which we say witnesses
+that #{fg \sim h}.}
+
+%```agda
+\agda{
+Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
+         (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
+       → Type (𝓘 ⊔ 𝓤)
+Hom2 {A = A} f g h
+  = Σ[ H ∶ (Δ² → A) ] (
+      (∀ i → H (i , i0) ＝ g .HomP.hom i)
+    × (∀ i → H (i1 , i) ＝ f .HomP.hom i)
+    × (∀ i → H (i , i)  ＝ h .HomP.hom i))
+}
+%```
+}
+
+
+\subtree[stt-00AL]{
+\title{Morphisms have unique composites in a precategory}
+\taxon{Theorem}
+
+\p{Given a pair of composable morphisms, we can naturally define a map
+#{\Delta^2_1 \to C}. We show that there is a unique 2-simplex that extends
+#{f} and #{g}.}
+
+
+\proof{
+\p{[Precategories](stt-00AI) are defined to be those types which are local
+with respect to the inclusion #{i : \Lambda^2_1 \hookrightarrow \Delta^2}. The
+fibres of #{i^* : (\Delta^2 \to C) \to (\Lambda^2_1 \to C)} are exactly the maps
+#{\Delta^2 \to C} which extend the boundary #{f,g}.}
+}
+
+%```agda
+\agda{
+precategory-unique-composite : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-precategory A
+                             → (f : Hom A y z) (g : Hom A x y)
+                             → is-singleton (Σ[ H ∶ (Δ² → A)]
+                                               (H ∘ Λ[2,1]-incl ＝ make-horn f g))
+precategory-unique-composite Apc f g
+  = is-contr-map←is-equiv (Apc tt) (make-horn f g)
+
+composite←horn-extension
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+    → Σ[ H ∶ (Δ² → A)] (H ∘ Λ[2,1]-incl ＝ make-horn f g)
+    → Σ[ h ∶ Hom A x z ] (Hom2 f g h)
+composite←horn-extension f g (H , extends)
+  = (mk-hom (H ∘ Δ²-diagonal)
+            (ap H Δ²-refl ∙ happly extends (ι₁ i0) ∙ g .HomP.hom0)
+            (ap H Δ²-refl ∙ happly extends (ι₂ i1) ∙ f .HomP.hom1)
+    , (H , happly extends ∘ ι₁ , happly extends ∘ ι₂ , ~refl)
+    )
+
+_⊙[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
+          → Hom A x y → Hom A x z
+f ⊙[ apc ] g = fst (composite←horn-extension f g
+                    (centre (precategory-unique-composite apc f g)))
+
+}
+%```
+}

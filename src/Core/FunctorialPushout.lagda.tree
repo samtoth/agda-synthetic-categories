@@ -1,0 +1,143 @@
+\title{Pushouts are functorial over the span diagram}
+\author{samueltoth}
+\date{2025-11-20}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.FunctorialPushout where
+
+open import ufAxioms
+open import Foundations.Prelude
+open import Core.CanonicalPushouts
+open import Core.SpanMap
+}
+%```
+
+
+\subtree[stt-00B1]{
+\title{Span maps induce functors of pushouts}
+\taxon{Theorem}
+
+%```agda
+\agda{
+Pushout-functorial-cocone
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓛}
+      {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → let module S = Span S; module S' = Span S'
+      in (F : Span-map S S')
+      → {P' : Type 𝓛} (Pc' : Cocone S' P')
+      → Cocone S P'
+Pushout-functorial-cocone F Pc'
+  = mk-cocone (Pc'.p ∘ F.h₁) (Pc'.q ∘ F.h₃)
+              (  Pc'.p ◂ F.H
+              ~∙ Pc'.filler ▸ F.h₂
+              ~∙ Pc'.q ◂ (F.K ~⁻¹)) where
+  module Pc' = Cocone Pc'
+  module F = Span-map F
+
+Pushout-map←span-map : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓜 𝓛}
+                {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+              → let module S = Span S; module S' = Span S'
+                in (F : Span-map S S')
+                → {P : Type 𝓜} (Pc : Cocone S P)
+                  (Po : is-pushoutω S Pc)
+                  {P' : Type 𝓛} (Pc' : Cocone S' P')
+                → P → P'
+Pushout-map←span-map F pcc po pcc'
+  = is-equiv.bwd po (Pushout-functorial-cocone F pcc')
+
+Pushout-map-id
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {P : Type 𝓜} {Pc : Cocone S P}
+      (Po : is-pushoutω S Pc)
+    → Pushout-map←span-map id-span-map Pc Po
+                           (Pushout-functorial-cocone id-span-map Pc)
+    ＝ id
+Pushout-map-id po
+  = ap (is-equiv.bwd po) (ap (mk-cocone _ _)
+                         (funext→ (λ a → ∙-reflr _ ∙ ∙-reflr _ ∙ sym (ap-id _))))
+  ∙ is-equiv.η po id
+
+Pushout-functorial-span
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'}
+      {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → let module S = Span S; module S' = Span S'
+      in (F : Span-map S S')
+    → Pushout S.left S.right → Pushout S'.left S'.right
+Pushout-functorial-span F = cogap (Pushout-functorial-cocone F pushout)
+
+Canonical-pushout-map-id
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+  → Pushout-functorial-span (id-span-map {S = S}) ＝ id
+Canonical-pushout-map-id
+  = sym (pushout-rec-unique _ _ ~refl ~refl λ a → ap (_∙ refl) (ap-id (glue a)))
+
+Canonical-Pushout-map-compose
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
+      {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'} {S'' : Span 𝓤'' 𝓥'' 𝓦''}
+      (F : Span-map S' S'') (G : Span-map S S')
+    → Pushout-functorial-span (compose-span-map F G)
+    ＝ Pushout-functorial-span F ∘ Pushout-functorial-span G
+Canonical-Pushout-map-compose {S = S} F G
+  = sym (pushout-rec-unique
+          (Pushout-functorial-cocone (compose-span-map F G) pushout)
+          (Pushout-functorial-span F ∘ Pushout-functorial-span G)
+          ~refl
+          ~refl
+          (~∙-reflr _
+          ~∙ ap-∘ (Pushout-functorial-span F) (Pushout-functorial-span G) ∘ glue
+          ~∙ (λ x → ap (ap (Pushout-functorial-span F)) (pushout-rec-apβ x))
+          ~∙ λ x → ap-∙∙ (Pushout-functorial-span F)
+                         (ap ι₁ (G.H x)) (glue (G.h₂ x)) (ap ι₂ (sym (G.K x)))
+                  ∙   ap₃ (λ x y z → x ∙ y ∙ z)
+                         (sym (ap-∘ (Pushout-functorial-span F) ι₁ (G.H x)))
+                         (pushout-rec-apβ (G.h₂ x))
+                         (sym (ap-∘ (Pushout-functorial-span F) ι₂ (sym (G.K x))))
+                  ∙ lem)) where
+    module F = Span-map F
+    module G = Span-map G
+    lem : {x : G.S.Centre} →
+      ap (λ a → ι₁ (F.h₁ a)) (G.H x) ∙
+      (ap ι₁ (F.H (G.h₂ x)) ∙
+       glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
+      ∙ ap (λ a → ι₂ (F.h₃ a)) (sym (G.K x))
+      ＝
+      ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
+      glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (ap F.h₃ (G.K x) ∙ F.K (G.h₂ x)))
+    lem {x}
+      = ap (ι₁ ∘ F.h₁) (G.H x) ∙
+         (ap ι₁ (F.H (G.h₂ x)) ∙
+          glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
+         ∙ ap (ι₂ ∘ F.h₃) (sym (G.K x))
+
+          ＝⟨ ap₂ _∙_ (ap-∘ ι₁ F.h₁ (G.H x))
+                     (∙-assoc (ap ι₁ (F.H (G.h₂ x)))
+                              (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
+                              (ap (ι₂ ∘ F.h₃) (sym (G.K x)))) ⟩
+        ap ι₁ (ap F.h₁ (G.H x)) ∙
+         ap ι₁ (F.H (G.h₂ x)) ∙
+         (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x)))) ∙
+         ap (ι₂ ∘ F.h₃) (sym (G.K x))
+
+         ＝⟨ sym (∙-assoc (ap ι₁ (ap F.h₁ (G.H x))) (ap ι₁ (F.H (G.h₂ x))) _)
+             ∙ ap (_∙ _) (sym (ap-∙ ι₁ (ap F.h₁ (G.H x)) (F.H (G.h₂ x)))) ⟩
+
+        ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
+         (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x)))) ∙
+         ap (ι₂ ∘ F.h₃) (sym (G.K x))
+
+         ＝⟨ ap (ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙_)
+              (∙-assoc (glue (F.h₂ (G.h₂ x))) _ _
+              ∙ ap (glue (F.h₂ (G.h₂ x)) ∙_)
+                   (ap (ap ι₂ _ ∙_) (ap-∘ ι₂ F.h₃ (sym (G.K x))
+                                    ∙ ap (ap ι₂) (ap-sym F.h₃ (G.K x)))
+                   ∙ sym (ap-∙ ι₂ (sym (F.K (G.h₂ x))) _)
+                   ∙ ap (ap ι₂) ( sym (∙-symsym (ap F.h₃ (G.K x)) (F.K (G.h₂ x)))))) ⟩
+
+        ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
+         glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (ap F.h₃ (G.K _) ∙ F.K (G.h₂ _))) ∎
+
+}
+%```
+}

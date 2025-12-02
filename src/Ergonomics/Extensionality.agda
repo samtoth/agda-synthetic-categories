@@ -108,7 +108,8 @@ IdS←Subtype : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
              → is-subtype B
              → Identity-system A 𝓦
              → Identity-system (Σ A B) 𝓦
-IdS←Subtype p s = IdS←Embedding {f = fst} (Σ̃-π-emb (mk-subtype p)) s
+IdS←Subtype p s = IdS←Embedding {f = fst} Σ̃-π-is-prop-map s
+  where open Subtype (mk-subtype p)
 
 instance
   IdS-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}

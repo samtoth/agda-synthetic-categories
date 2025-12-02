@@ -1,0 +1,470 @@
+\date{2025-11-24}
+\title{Covariant families}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Covariant
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Core.Orthogonal
+open import Core.Arrow
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.ExtPullbacks
+open import Core.PiSection
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+\subtree[stt-00B6]{
+\title{Groupoids}
+\taxon{Definition}
+
+\p{A type is a groupoid, or simplicially discrete if it is local with respect
+to #{\Delta^1}. This forms a sigma closed reflective subuniverse.}
+
+%```agda
+\agda{
+is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-groupoid = is-null (λ (_ : 𝟙) → Δ¹)
+
+module Grpd where
+  Grpd-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+  Grpd-SubU = Null-SubU (λ (_ : 𝟙) → Δ¹) _
+
+  Grpd-GSU : GSU (_⊔ 𝓘)
+  Grpd-GSU = Null-GSU (λ (_ : 𝟙) → Δ¹)
+
+  Grpd-is-globally-reflective
+    : is-globally-reflective Grpd-GSU
+  Grpd-is-globally-reflective = Null-globally-reflective
+
+  open GRSUInduction Grpd-is-globally-reflective
+                     Null-globally-Σ-closed public
+
+  open GSU Grpd-GSU public renaming (S-equiv to is-simplicial←equiv)
+
+  open GPiClosure Grpd-is-globally-reflective public
+
+  open is-globally-reflective Grpd-is-globally-reflective
+
+  Σ-is-groupoid = Null-globally-Σ-closed
+}
+%```
+}
+
+
+\subtree[stt-00B7]{
+\title{Groupoids are left-local types}
+\taxon{Theorem}
+
+\p{A type is a groupoid iff it is local with respect to the map #{1 \to \Delta^1}
+which picks out the left endpoint.}
+
+%```agda
+\agda{
+is-left-local : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-left-local = is-local (λ (_ _ : 𝟙) → i0)
+
+is-groupoid←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left-local A → is-groupoid A
+is-groupoid←is-left {_}{A} il x
+  = is-equiv~∘ lem (is-equiv⁻¹ (il x))
+                   unit-const-is-equiv where
+  open is-equiv (il x)
+
+  lem : const A Δ¹ ~ bwd ∘ const A 𝟙
+  lem = il x ◂eqv ((ε ▸ const A 𝟙) ~⁻¹)
+
+
+is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left-local A
+is-left←is-groupoid {_} {A} gp x
+  =  is-equiv~∘ H unit-const-is-equiv (is-equiv⁻¹ (gp x)) where
+  open is-equiv (gp x)
+
+  H : postcomp A (λ (_ : 𝟙) → i0) ~ const A 𝟙 ∘ bwd
+  H = ((const A 𝟙 ◂ η) ~⁻¹) ▸eqv (gp x)
+
+}
+%```
+}
+
+\subtree[stt-00AY]{
+\taxon{Definition}
+\title{Covariant families}
+
+\p{We say that a type family #{P : A \to \UU} is covariant if for any arrow #{f}
+in #{A}, and term #{x_0} at #{P_{f(0)}}, the type of homs over #{f} which extend
+#{x_0} is a singleton type.}
+
+\p{Covariant families admit a directed transport.}
+
+%```agda
+\agda{
+is-covariant : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+               → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-covariant {A = A} B
+    = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
+      → is-singleton (Σ[ x₁ ∶ B (x i1)] HomP (B ∘ x) x₀ x₁)
+
+tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+       → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
+tr-cov cov h = fst ∘ centre ∘ cov h
+}
+%```
+}
+
+
+\subtree[stt-00AV]{
+\title{Left fibrations}
+\taxon{Definition}
+
+\p{A map is a left fibration if it is [right orthogonal](stt-0048) to the left
+endpoint of #{\Delta^1}.}
+
+%```agda
+\agda{
+is-left-fibration : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
+                    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+is-left-fibration f = (λ (_ : 𝟙) → i0) ⊥ f
+}
+%```
+}
+
+
+\subtree[stt-00AW]{
+\taxon{Lemma}
+
+\p{Given some family #{B : A \to \UU}, an arrow #{f} in #{A} and a point over the
+base #{x_0 : B(f(0))}, the type of dependent homs over #{f} based an #{x_0} is
+equivalent to the type of lifts of the following square:}
+
+
+\quiver{
+\begin{tikzcd}
+	1 && {\tilde{B}} \\
+	\\
+	{\Delta^1} && A
+	\arrow["{x_0}", from=1-1, to=1-3]
+	\arrow["0"', from=1-1, to=3-1]
+	\arrow["\pi", from=1-3, to=3-3]
+	\arrow["f"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+
+%```agda
+\agda{
+lifts-of-based-arrow : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+          (f : Δ¹ → A) (x₀ : B (f i0))
+        → let F = mk-amap {f = λ (_ : 𝟙) → i0} {f' = fst {B = B}}
+                          (λ _ → f i0 , x₀) f ~refl
+        in Σ (B (f i1)) (HomP (B ∘ f) x₀)
+        ≃ Lift F
+lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
+  F : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B})
+  F = mk-amap (λ _ → f i0 , x₀) f ~refl
+
+  open Arrow-map F
+  open HomP
+}
+%```
+
+\closedScope{
+\subtree[stt-00AX]{
+\title{Details}
+%```agda
+\agda{
+  by-contracting-singletons : (Σ[ x₁ ∶  (B (f i1)) ] Σ[ h ∶ Π Δ¹ (B ∘ f)]
+            ((h i0 ＝ x₀) × (h i1 ＝ x₁)))
+          ≅ (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
+  by-contracting-singletons ._≅_.fwd (_ , h , p , refl) = (h , p)
+  by-contracting-singletons ._≅_.fwd-iso .fst (h , p) = (h i1 , h , p , refl)
+  by-contracting-singletons ._≅_.fwd-iso .snd .fst (_ , h , p , refl) = refl
+  by-contracting-singletons ._≅_.fwd-iso .snd .snd = ~refl
+
+  because-pi-types-are-extensions
+    : (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
+       ≃
+      (Σ[ (f , p) ∶ fibre (precomp Δ¹ (λ r → fst r)) f ]
+       (tr B (happly p i0) (snd (f i0)) ＝ x₀))
+  because-pi-types-are-extensions
+    = Σ-ap-≃-fst
+        {B = λ where (f , p) → tr B (happly p i0) (snd (f i0)) ＝ x₀}
+        (mk≃ (extension←Π {B = B} f) (extension←Π-is-equiv f))
+
+  by-funext
+    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ＝ f) ]
+          (tr B (happly H i0) (snd (f' i0)) ＝ x₀)
+    ≃ Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+          (tr B (H i0) (snd (f' i0)) ＝ x₀)
+  by-funext
+    = Σ-ap-≃
+       (λ f' → Σ-ap-≃-fst
+                {B = λ H → tr B (H i0) (snd (f' i0)) ＝ x₀}
+                funext≃)
+
+  inserting-singleton
+    :   Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+          (tr B (H i0) (snd (f' i0)) ＝ x₀)
+     ≃  Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+        Σ[ K1 ∶ fst (f' i0) ＝ _ ] Σ[ K2 ∶ IdP (ap B K1) (snd (f' i0)) x₀ ]
+          (K1 ＝ H i0)
+  inserting-singleton
+    = Σ-ap-≃
+       (λ f' → Σ-ap-≃
+         (λ H → Σ-singl
+                  {B = λ (K , _) → tr B K (snd (f' i0)) ＝ x₀ }
+                  Sing-is-singleton
+                  (H i0 , refl) e⁻¹
+                ∙≃ Σ-assoc ∙≃ Σ-ap-≃ (λ K → ×-swap ∙≃ Σ-ap-≃ (λ _ → sym≃) )))
+
+  by-characterising-Σ-path
+    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+        Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
+      ≃
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+          Σ[ K1 ∶ fst (f' i0) ＝ _ ] Σ[ K2 ∶ IdP (ap B K1) (snd (f' i0)) x₀ ]
+           (K1 ＝ H i0)
+  by-characterising-Σ-path
+    = Σ-ap-≃
+       (λ f' → Σ-ap-≃
+         (λ H → Σ-ap-≃-fst
+                {B = λ (K , _) → K ＝ H i0}
+                (  Σ-path {x = f' i0} {y = _ , x₀} e⁻¹)
+                ∙≃ Σ-assoc))
+
+
+  by-UP-of-unit
+    :  Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+        Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
+      ≃
+       Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
+         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
+  by-UP-of-unit
+    = Σ-ap-≃
+       (λ f' → Σ-ap-≃
+                (λ H → Σ-ap-≃-fst {B = λ K → ap fst K ＝ H i0} (unit-UP≃) e⁻¹
+                       ∙≃ Σ-ap-≃ (λ K → unit-UP≃ e⁻¹))
+               ∙≃ Σ-comm)
+
+  postcomposing-reflr-is-equiv
+    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
+         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
+      ≃
+      Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
+         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0) ~∙ ~refl )
+  postcomposing-reflr-is-equiv
+    = Σ-ap-≃
+       (λ f' → Σ-ap-≃
+         (λ K → Σ-ap-≃ (λ H → ~reflr≃ {f = const _ _ (f i0)} _ _)))
+}
+%```
+}
+}
+
+\proof{
+%```agda
+\agda{
+  opaque
+    eqv : Σ (B (f i1)) (HomP (B ∘ f) x₀) ≃ Lift F
+    eqv
+      = Σ (B (f i1)) (HomP (B ∘ f) x₀) ≃⟨ Σ-ap-≃ (λ _ → HomP-repr≃) ⟩
+
+        Σ[ x₁ ∶  (B (f i1)) ] Σ[ h ∶ Π Δ¹ (B ∘ f)]
+          ((h i0 ＝ x₀) × (h i1 ＝ x₁))
+                                       ≃⟨ equiv←qiso by-contracting-singletons ⟩
+
+        (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
+                                       ≃⟨ because-pi-types-are-extensions ⟩
+
+        (Σ[ (f , p) ∶ fibre (precomp Δ¹ (λ r → fst r)) f ]
+         (tr B (happly p i0) (snd (f i0)) ＝ x₀))
+                                       ≃⟨ Σ-assoc ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ＝ f) ]
+            (tr B (happly H i0) (snd (f' i0)) ＝ x₀)
+                                       ≃⟨ by-funext ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+            (tr B (H i0) (snd (f' i0)) ＝ x₀)
+                                       ≃⟨ inserting-singleton ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+          Σ[ K1 ∶ fst (f' i0) ＝ f i0 ] Σ[ K2 ∶ IdP (ap B K1) (snd (f' i0)) x₀ ]
+            (K1 ＝ H i0)
+                                       ≃⟨ by-characterising-Σ-path e⁻¹ ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
+          Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
+                                       ≃⟨ by-UP-of-unit ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
+           Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
+                                       ≃⟨ postcomposing-reflr-is-equiv ⟩
+
+        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
+           Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0) ~∙ ~refl )
+                                       ≃⟨ Lift-repr≃ F e⁻¹ ⟩
+
+        Lift F                         ≃∎
+}
+%```
+}
+}
+
+\subtree[stt-00AR]{
+\title{Covariant families straighten to left fibrations}
+\taxon{Corollary}
+
+\p{We show that some family #{P : A \to \UU} is [covariant](stt-00AO) iff the map
+#{\pi : \tilde{P} \to A} is a [left fibration](stt-00AV).}
+
+%```agda
+\agda{
+is-covariant⇔is-left-fibration
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant B ⇔ is-left-fibration (fst {B = B})
+is-covariant⇔is-left-fibration {A = A} B
+  = (fwd , bwd) where
+  opaque
+    arrow-map-snd : (F : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B}))
+                    → B (F .Arrow-map.bot i0)
+    arrow-map-snd (mk-amap top bot comm) = tr B (sym (comm tt)) (top tt .snd)
+
+    Σ←arrow-map : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B})
+                → Σ[ f ∶ (Δ¹ → A)] (B (f i0))
+    Σ←arrow-map F = F .bot , arrow-map-snd F where open Arrow-map
+
+    fwd : is-covariant B → is-left-fibration (fst {B = B})
+    fwd cov a@(mk-amap top bot comm)
+      = is-single←equiv-to-single
+          ( lifts-of-based-arrow bot (tr B (sym (comm tt)) (snd (top tt)))
+          ∙≃ coe≃ (ap Lift
+              (Arrow-map-path→
+                ((λ a₁ → Σ-path→ ((comm tt)
+                                 , tr∙tr-sym' (comm tt) (snd (top tt))))
+                , (~refl , (λ _ → Σ-path-ap-fst))))))
+          (cov bot (arrow-map-snd a))
+
+    bwd : is-left-fibration (fst {B = B}) → is-covariant B
+    bwd lfib f x₀ = is-single←equiv-to-single
+         (lifts-of-based-arrow f x₀  e⁻¹)
+         (lfib (mk-amap (λ _ → (f i0 , x₀)) f ~refl))
+}
+%```
+}
+
+\subtree[stt-00AS]{
+\title{There is a universe of amazingly covariant types}
+\taxon{Cosntruction}
+
+\p{Assuming that the interval is [tiny](Synthetic.Tiny), there is a universe of
+\em{amazingly covariant types}, which weakly classify the left fibrations.
+We denote it #{\mathcal{s}}.}
+
+\proof{
+\p{Since being covariant is equivalent to being a left fibration, it is stable
+under base change, and so is a [relative notion of fibrancy](stt-00AO). By the machinery
+developed for [amazing right adjoints](stt-00AA) we can construct a universe.
+}
+}
+
+%```agda
+\agda{
+module UCov where
+  open import Synthetic.Tiny Δ¹
+
+  is-covariant-is-relative : is-relative is-covariant
+  is-covariant-is-relative {A = A} P = (fwd , bwd) where
+    fwd : is-covariant P → (x : Δ¹ → A) → is-covariant (P ∘ x)
+    fwd cov f h = cov (f ∘ h)
+
+    bwd : ((x : Δ¹ → A) → is-covariant (P ∘ x)) → is-covariant P
+    bwd cov h x₀ = cov h id x₀
+
+  open AFib is-covariant is-covariant-is-relative public
+    renaming (is-afib to is-acov;
+              UFib to 𝓢;
+              UFib∙ to 𝓢∙;
+              F-π-is-fib to 𝓢-π-is-covariant)
+}
+%```
+}
+
+\subtree[stt-00AU]{
+\title{The objects of #{\mathcal{S}} are groupoids}
+\taxon{Theorem}
+
+\p{If #{A :^\flat \UU} is a groupoid, then #{A} is amazing covariant and so
+factors through #{\mathcal{S}}.}
+
+%```agda
+\agda{
+  groupoids-in-𝓢 : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-groupoid A → is-acov A
+  groupoids-in-𝓢 A gpd
+    = ε♭ (liftFib .fst
+           (mod♭ (is-covariant⇔is-left-fibration
+                   (λ _ → A) .snd
+                     (is-orthogonal⇔orthogonal-! .snd
+                       (is-left←is-groupoid
+                         (Null-globally-Σ-closed
+                           (Grpd.𝟙∈S)
+                           (λ _ → gpd)) tt))))) tt
+}
+%```
+}
+
+
+\subtree[stt-00AT]{
+\title{#{\mathcal{S}} is directed univalent}
+\taxon{Theorem}
+
+\p{We show that #{\mathcal{S}} is directed univalent. That is, arrows in
+#{\mathcal{S}} correspond exactly to pairs of groupoids, together with a function
+between them.}
+
+%```agda
+\agda{
+  tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → 𝓢 𝓤) → fst (f i0) → fst (f i1)
+  tr-𝓢 = tr-cov {P = fst} 𝓢-π-is-covariant
+
+  dua→ : ∀ {@♭ 𝓤} → (Δ¹ → 𝓢 𝓤) → Σ[ A ∶ 𝓢 𝓤 ] Σ[ B ∶ 𝓢 𝓤 ] (fst A → fst B)
+  dua→ h = (h i0 , h i1 , tr-𝓢 h)
+}
+%```
+
+
+\remark{It remains to be shown that this map is an equivalence.}
+}

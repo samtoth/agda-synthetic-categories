@@ -15,11 +15,13 @@ open import Core.CoSlice
 open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Coequalisers
+open import Core.Cube
 open import Core.ExtPullbacks
 open import Core.FibredJoin
 open import Core.FlatteningCoequalisers
 open import Core.FlatteningPushouts
 open import Core.FlatteningSeqColims
+open import Core.FunctorialPushout
 open import Core.Image
 open import Core.Join
 open import Core.Lifts
@@ -30,6 +32,7 @@ open import Core.PullbackPower
 open import Core.PushoutEquiv
 open import Core.SeqMapHomotopy
 open import Core.Slice
+open import Core.SpanMap
 open import Core.Spheres
 open import Core.Suspensions
 open import Data.Bool
@@ -107,6 +110,12 @@ open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
+open import Synthetic.Categories.Covariant
+open import Synthetic.Categories.Horns
+open import Synthetic.Categories.Precategories
+open import Synthetic.Categories.Simplicial
+open import Synthetic.Hom
+open import Synthetic.Tiny
 open import Ergonomics.Auto
 open import Ergonomics.Builtins
 open import Ergonomics.Extensionality

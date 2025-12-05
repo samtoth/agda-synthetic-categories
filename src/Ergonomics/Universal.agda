@@ -30,7 +30,7 @@ record Universal {𝓤} (A : Type 𝓤) 𝓥 : Type (𝓤 ⊔ lsuc 𝓥) where
 
   module Univ≃ = _≃_ (mk≃ from from-is-equiv)
 
-open Universal 
+open Universal
 
 Universal←Equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
                 → B ≃ A → Universal A 𝓥

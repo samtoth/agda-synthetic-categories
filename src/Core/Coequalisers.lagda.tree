@@ -153,6 +153,42 @@ coeq-rec : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
            → Coeq f g → C
 coeq-rec = is-equiv.bwd coeq-is-coeq
 
+
+{-
+    pushout-recβ1 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                    → {c : Cocone (mk-span _ f g) Q}
+                    → ∀ x → pushout-rec c (ι₁ x) ＝ c .Cocone.p x
+    pushout-recβ1 _ = refl
+
+    pushout-recβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                    → {c : Cocone (mk-span _ f g) Q}
+                    → ∀ x → pushout-rec c (ι₂ x) ＝ c .Cocone.q x
+    pushout-recβ2 _ = refl
+
+
+    pushout-rec-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
+                      {c : Cocone (mk-span _ f g)  Q} →
+                       ∀ x → ap (pushout-rec c) (glue x) ＝ c .Cocone.filler x
+    -}
+
+
+coeq-rec-apβ :  ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+            → {f g : A → B} {C : Type 𝓦}
+            → {c : Cofork f g C}
+            → (∀ x → ap (coeq-rec c) (glue-coeq x) ＝ c .snd x  )
+coeq-rec-apβ {f = f} {c = c} x =
+  ap (pushout-rec _ ) (sym (glue (inl (f x))) ∙ glue (inr x))
+    ＝⟨ ap-∙ (pushout-rec _) (sym (glue (inl (f x)))) (glue (inr x)) ⟩
+  ap (pushout-rec cocone-data) (sym (glue (inl (f x)))) ∙ ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨  ap (_∙ ap (pushout-rec cocone-data) (glue (inr x))) (ap-sym (pushout-rec cocone-data) (glue (inl (f x))))⟩
+  sym (ap (pushout-rec cocone-data) (glue (inl (f x)))) ∙ ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨  ap (_∙ ap (pushout-rec cocone-data) (glue (inr x))) (ap sym (pushout-rec-apβ (inl (f x)))) ⟩
+  ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨ pushout-rec-apβ (inr x) ⟩
+  (c .snd x) ∎ where
+    cocone-data =  (_≅_.fwd-iso cocone-repr≅ .fst
+        (c .fst , c .fst , ⊎-ind ((λ a → refl) , c .snd)))
+
 coeq-rec-is-equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
       {f g : A → B} {C : Type 𝓦}
@@ -276,6 +312,23 @@ coeq-ind : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
            → CoforkP f g C
            → (x : Coeq f g) → C x
 coeq-ind = is-equiv.bwd coeq-is-coeqᵈ
+
+coeq-rec₂ : ∀  {𝓤₁ 𝓤₂ 𝓥₁ 𝓥₂ 𝓦} {A₁ : Type 𝓤₁} {A₂ : Type 𝓤₂} {B₁ : Type 𝓥₁} {B₂ : Type 𝓥₂}
+             {f₁ g₁ : A₁ → B₁} {f₂ g₂ : A₂ → B₂} {C : Type 𝓦}
+             → (c : B₁ → B₂ → C)
+             → (H : ∀ a b  → c (f₁ a) b ＝ c (g₁ a) b)
+             → (K : ∀ b a → c b (f₂ a) ＝ c b (g₂ a))
+             → (S : ∀ a₁ a₂ → Square (K (f₁ a₁) a₂) (K (g₁ a₁) a₂) (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂)))
+             → Coeq f₁ g₁ → Coeq f₂ g₂ → C
+coeq-rec₂ {f₁ = f₁} {g₁} {f₂} {g₂} c H K S = coeq-rec ((λ b₁ → coeq-rec ((c b₁) ,  K b₁)) ,
+              λ a₁ → funext→ (coeq-ind ((H a₁)
+                , λ a₂ → IdP-func←Square
+                         {f = coeq-rec (c (f₁ a₁) , K (f₁ a₁))}
+                         {g = coeq-rec (c (g₁ a₁) , K (g₁ a₁))}
+                         (coeq f₂ g₂ .snd a₂) (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))
+                           (coe (sym (ap (λ x → Square x _ (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))) (coeq-rec-apβ _)
+                                     ∙ ap (λ x → Square _ x (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))) (coeq-rec-apβ _)))
+                                (S a₁ a₂)))))
 
 {-# DISPLAY is-equiv.bwd coeq-is-coeqᵈ x = coeq-ind x #-}
 }

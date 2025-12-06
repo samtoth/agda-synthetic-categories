@@ -1,0 +1,97 @@
+\title{Quotients of a lattice}
+\taxon{Module}
+\author{markwilliams}
+\date{2025-10-24}
+\import{stt-macros}
+
+%```agda
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Prelude
+open import ufAxioms
+open import Core.Coequalisers
+
+open import Modalities.Instances.Truncation
+open import Algebra.Lattice
+
+open import Ergonomics.Universal
+open import Ergonomics.Extensionality
+
+module Algebra.Lattice.Instances.Quotient where
+
+
+is-reflexive : ∀ {𝓤 𝓥} {A : Type 𝓤} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+is-reflexive R = ∀ x → R x x
+
+equiv-classes : ∀ {𝓤 𝓥} {A : Type 𝓤} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+equiv-classes {A = A} R = Σ A (λ x → Σ A (R x))
+
+_/_ : ∀ {𝓤 𝓥} (A : Type 𝓤) (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+X / R = Trunc 2 (Coeq {A = equiv-classes R} (fst) (fst ∘ snd))
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
+  ι-quot : A → A / R
+  ι-quot a = Trunc.η (ι-coeq a)
+
+  quot : (x : equiv-classes R ) → ι-quot (fst x) ＝ ι-quot (fst (snd x))
+  quot = ap Trunc.η ∘ glue-coeq
+
+  glue-quot : {x y : A} (r : R x y) → ι-quot x ＝ ι-quot y
+  glue-quot {x} {y} r = quot (x , (y , r))
+
+  Quot-elim : ∀ {𝓦} {B : A / R  → Type 𝓦}
+            → ⦃ ∀ { x } → Is-truncated 2 (B x) ⦄
+            → (f : ∀ x → B (ι-quot x))
+            → (∀ a → IdP (ap B (quot a)) (f (fst a)) (f (fst (snd a)))  )
+            → ∀ x → B x
+  Quot-elim {B = B} f p =
+    Trunc.ind (λ _ → trunc!) (coeq-ind (f , λ a →
+                             ap (λ h → coe  h (f (fst a)))
+                             ((ap-∘ B Trunc.η ) (glue-coeq a))  ∙  p a))
+  Quot-rec : ∀ {𝓦} {B : Type 𝓦}
+           → ⦃ Is-truncated 2 B ⦄
+           → (f : A → B)
+           → (∀ (x : equiv-classes R) → f (fst x) ＝ f (fst (snd x)))
+           → A / R → B
+  Quot-rec f p = Trunc.ind (λ _ → trunc!) (coeq-rec (f , p))
+
+  Quot-rec₂ : ∀ {𝓦} {B : Type 𝓦}
+           → ⦃ Is-truncated 2 B ⦄
+           → (f : A → A → B)
+           → (∀ (x : equiv-classes R) y → f (fst x) y ＝ f (fst (snd x)) y)
+           → (∀ x (y : equiv-classes R)  → f x (fst y) ＝ f x (fst (snd y)))
+           → A / R → A / R → B
+  Quot-rec₂ f p q  = Trunc.ind (λ _ → trunc!)
+                       λ x → Trunc.ind (λ _ → trunc!)
+                         λ y → coeq-rec₂ f p q
+                                         (λ _ _ →  (is-set←is-truncated trunc! _ _) _ _)  x y
+
+
+module _ {𝓤 𝓥} (A : Type 𝓤) {L : Lattice A} (R : A → A → Type 𝓥) {C : LatticeCongruence L R} where
+  open Lattice L
+  open LatticeCongruence C
+
+  QuotLattice :  Lattice (A / R)
+  QuotLattice .Lattice.0l = ι-quot 0l
+  QuotLattice .Lattice.1l = ι-quot 1l
+  QuotLattice .Lattice._∧_ = Quot-rec₂ (λ x y → ι-quot (x ∧ y))
+                                       (λ where (x , (y , r)) z → glue-quot (~-∧ r reflexive))
+                                       (λ where x (y , (z , r)) → glue-quot (~-∧ reflexive r))
+  QuotLattice .Lattice._∨_ =  Quot-rec₂ (λ x y → ι-quot (x ∨ y))
+                                        (λ where (x , (y , r)) z → glue-quot (~-∨ r reflexive))
+                                        (λ where x (y , (z , r)) → glue-quot (~-∨ reflexive r))
+ 
+
+  QuotLattice .Lattice.str-is-lattice .is-lattice.car-is-set = trunc!
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∧-assoc {x} {y} {z} =  {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∨-assoc = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∧-comm = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∨-comm = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∨-∧-abs = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.∧-∨-abs = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.0-bottom = {!!}
+  QuotLattice .Lattice.str-is-lattice .is-lattice.1-top = {!!}
+
+}
+%```

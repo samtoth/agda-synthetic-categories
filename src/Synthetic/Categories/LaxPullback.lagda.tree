@@ -1,0 +1,183 @@
+\title{Lax pullbacks}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.LaxPullback
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Core.Orthogonal
+open import Core.Arrow
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.ExtPullbacks
+open import Core.PiSection
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
+}
+%```
+
+\subtree[stt-00BE]{
+\title{Lax cones over a cospan}
+\taxon{Definition}
+
+\p{Given a [cospan diagram](stt-0039) #{S}, we consider the lax cones over #{S}.
+This is analogous to the type of [cones over #{S}](stt-003A) but with the filler now
+being a morphism, not a path.}
+
+%```agda
+\agda{
+record Lax-cone {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) {𝓛} (Carrier : Type 𝓛)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛) where
+  constructor mk-lax-cone
+  open Cospan S
+  field
+    p : Carrier → Left
+    q : Carrier → Right
+    filler : ∀ (a : Carrier) → Hom Centre (left (p a)) (right (q a))
+}
+%```
+}
+
+
+\subtree[stt-00BF]{
+\title{Lax pullback}
+\taxon{Definition}
+
+\p{Again analogously to undirected pullbacks, for any lax cone #{C} over a cospan
+#{S}, we can define a canonical map #{(Q \to C) \to \mathrm{Lax-cone}_S(Q)}.
+We call #{C} a lax pullback cone when this map is an equivalence.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {S : Cospan 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛} where
+  lax-cone-map : Lax-cone S Carrier
+               → ∀ {𝓠} {Q : Type 𝓠} → (Q → Carrier) → Lax-cone S Q
+  lax-cone-map cone f = mk-lax-cone (p ∘ f) (q ∘ f) (filler ∘ f) where
+    open Lax-cone cone
+
+  is-lax-pullback : Lax-cone S Carrier → Typeω
+  is-lax-pullback cone
+    = ∀ {𝓠} {Q : Type 𝓠} → is-equiv (lax-cone-map cone {𝓠}{Q})
+}
+%```
+}
+
+\subtree[stt-00BG]{
+\title{Canonical lax pullbacks}
+\taxon{Construction}
+
+\p{The lax pullback of a [cospan diagram](stt-0039) (called the comma category
+when type involved are all [(pre)categories](stt-00AI)) is written
+#{f \downarrow g}. It can be constructed as the type:}
+
+##{\Sigma_{a : A} \Sigma_{c : C} \Hom_B(f(a), g(c))}
+
+
+%```agda
+\agda{
+_↓_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : A → B) (g : C → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+f ↓ g = Σ[ a ∶ _ ] Σ[ c ∶ _ ] Hom _ (f a) (g c)
+
+↓-cone : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : A → B) (g : C → B) → Lax-cone (mk-cospan _ f g) (f ↓ g)
+↓-cone f g = mk-lax-cone fst (fst ∘ snd) (snd ∘ snd)
+
+↓-is-lax-pullback
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : A → B} {g : C → B}
+    → is-lax-pullback (↓-cone f g)
+↓-is-lax-pullback = is-equiv←qiso qiso where
+  open Lax-cone
+  qiso : quasi-iso (lax-cone-map (↓-cone _ _))
+  qiso .fst cone x = (cone .p x , cone .q x , cone .filler x)
+  qiso .snd .fst = ~refl
+  qiso .snd .snd = ~refl
+}
+%```
+}
+
+\subtree[stt-00BH]{
+\title{Slice categories as lax pullbacks}
+\taxon{Example}
+
+\p{A common example of a comma category is a slice category. Given a type
+#{C} and #{c}, an object of #{C}, we consider the category #{C/c} of which
+the objects consists of pairs of objects of #{C} together with maps into #{c}.
+}
+
+\p{We generalise this notation slightly, to consider any diagram
+#{F : \mathcal{I}\to C}, which gives rise to the slice category #{C/F} for which
+the objects consists of pairs of objects of #{c}, now with a natural transformation
+#{\Delta_c \to F}. This type #{C/F} is the lax pullback of the following diagram:}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	{C/F} && C \\
+	\\
+	1 && {C^I}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=1-1, to=3-3]
+	\arrow["\Delta", from=1-3, to=3-3]
+	\arrow["F"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{We retain the original notion of slice category by taking the slice of an
+object #{c} considered as a function #{1 \to C}.}
+
+%```agda
+\agda{
+Slice : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Slice f = Σ[ c ∶ _ ] ∀ i → Hom _ c (f i)
+
+Slice-cone : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
+           (F : I → C) → Lax-cone (mk-cospan _ (const C I) (const _ 𝟙 F)) (Slice F)
+Slice-cone F .Lax-cone.p (c , _) = c
+Slice-cone F .Lax-cone.q (c , g) = tt
+Slice-cone F .Lax-cone.filler (_ , f) = Hom←NT f
+
+Slice-is-lax-pullback : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
+                    → is-lax-pullback (Slice-cone F)
+Slice-is-lax-pullback F = is-equiv←qiso qiso where
+  qiso : quasi-iso (lax-cone-map (Slice-cone F))
+  qiso .fst cone x = (cone .Lax-cone.p x , NT←Hom (cone .Lax-cone.filler x))
+  qiso .snd .fst f = funext→ (λ q → Σ-path→ (refl , _≃_.ε NT≃Hom (f q .snd)))
+  qiso .snd .snd c = ap (mk-lax-cone (Lax-cone.p c) (λ _ → tt))
+                        (funext→ (_≃_.η NT≃Hom ∘ Lax-cone.filler c))
+}
+%```
+}

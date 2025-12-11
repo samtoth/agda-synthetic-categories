@@ -153,6 +153,29 @@ coeq-rec : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
            → Coeq f g → C
 coeq-rec = is-equiv.bwd coeq-is-coeq
 
+coeq-recβ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Type 𝓦}
+           → (C : Cofork f g C)
+           → coeq-rec C ∘ ι-coeq ~ (fst C)
+coeq-recβ c = happly (ap fst (snd (is-equiv.retract-bwd coeq-is-coeq) c))
+
+coeq-rec-apβ :  ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+            → {f g : A → B} {C : Type 𝓦}
+            → {c : Cofork f g C}
+            → (∀ x → ap (coeq-rec c) (glue-coeq x) ＝ c .snd x  )
+coeq-rec-apβ {f = f} {c = c} x =
+  ap (pushout-rec _ ) (sym (glue (inl (f x))) ∙ glue (inr x))
+    ＝⟨ ap-∙ (pushout-rec _) (sym (glue (inl (f x)))) (glue (inr x)) ⟩
+  ap (pushout-rec cocone-data) (sym (glue (inl (f x)))) ∙ ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨  ap (_∙ ap (pushout-rec cocone-data) (glue (inr x))) (ap-sym (pushout-rec cocone-data) (glue (inl (f x))))⟩
+  sym (ap (pushout-rec cocone-data) (glue (inl (f x)))) ∙ ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨  ap (_∙ ap (pushout-rec cocone-data) (glue (inr x))) (ap sym (pushout-rec-apβ (inl (f x)))) ⟩
+  ap (pushout-rec cocone-data) (glue (inr x))
+    ＝⟨ pushout-rec-apβ (inr x) ⟩
+  (c .snd x) ∎ where
+    cocone-data =  (_≅_.fwd-iso cocone-repr≅ .fst
+        (c .fst , c .fst , ⊎-ind ((λ a → refl) , c .snd)))
+
 coeq-rec-is-equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
       {f g : A → B} {C : Type 𝓦}
@@ -277,10 +300,73 @@ coeq-ind : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
            → (x : Coeq f g) → C x
 coeq-ind = is-equiv.bwd coeq-is-coeqᵈ
 
+coeq-indβ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+             {f g : A → B} {C : Coeq f g → Type 𝓦}
+           → (c : CoforkP f g C)
+           → coeq-ind c ∘ ι-coeq ~ fst c
+coeq-indβ c = happly (ap fst (snd (is-equiv.retract-bwd coeq-is-coeqᵈ) c))
+
+
+
+
 {-# DISPLAY is-equiv.bwd coeq-is-coeqᵈ x = coeq-ind x #-}
 }
 %```
+
 }
+
+
+\subtree[wil-0003]{
+\title{Bi-recursion principle for coequalisers}
+
+\p{We prove a Bi-recursion principle for maps out of two coequalisers.}
+
+%```agda
+\agda{
+module _  {𝓤₁ 𝓤₂ 𝓥₁ 𝓥₂ 𝓦} {A₁ : Type 𝓤₁} {A₂ : Type 𝓤₂} {B₁ : Type 𝓥₁} {B₂ : Type 𝓥₂} where
+
+  BiCofork : (f₁ g₁ : A₁ → B₁) (f₂ g₂ : A₂ → B₂) (C : Type 𝓦) → Type (𝓤₁ ⊔ 𝓤₂ ⊔ 𝓥₁ ⊔ 𝓥₂ ⊔ 𝓦)
+  BiCofork f₁ g₁ f₂ g₂ C =
+    Σ[ c ∶ (B₁ → B₂ → C) ]
+    Σ[ H ∶ (∀ a b → c (f₁ a) b ＝ c (g₁ a) b) ]
+    Σ[ K ∶ (∀ b a → c b (f₂ a) ＝ c b (g₂ a)) ]
+    ∀ a₁ a₂ → Square (K (f₁ a₁) a₂) (K (g₁ a₁) a₂) (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))
+
+
+  inner-Cofork←BiCofork : {f₁ g₁ : A₁ → B₁} {f₂ g₂ : A₂ → B₂} {C : Type 𝓦}
+                        → BiCofork f₁ g₁ f₂ g₂ C
+                        → (b₁ : B₁) → Cofork f₂ g₂ C
+  inner-Cofork←BiCofork  (c , (H , (K , S))) b₁ = c b₁ ,  K b₁
+
+  Cofork←BiCofork :  {f₁ g₁ : A₁ → B₁} {f₂ g₂ : A₂ → B₂} {C : Type 𝓦}
+                  → BiCofork f₁ g₁ f₂ g₂ C
+                  → Cofork f₁ g₁ ((Coeq f₂ g₂) → C)
+  Cofork←BiCofork {f₁ = f₁} {g₁} {f₂} {g₂} (c , (H , (K , S)))
+    = (λ b₁ → coeq-rec (inner-Cofork←BiCofork (c , (H , (K , S))) b₁)) ,
+         λ a₁ → funext→ (coeq-ind ((H a₁)
+                        , λ a₂ → IdP-func←Square
+                           {f = coeq-rec (c (f₁ a₁) , K (f₁ a₁))}
+                           {g = coeq-rec (c (g₁ a₁) , K (g₁ a₁))}
+                           (coeq f₂ g₂ .snd a₂) (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))
+                             (coe (sym (ap (λ x → Square x _ (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))) (coeq-rec-apβ _)
+                                       ∙ ap (λ x → Square _ x (H a₁ (f₂ a₂)) (H a₁ (g₂ a₂))) (coeq-rec-apβ _)))
+                                  (S a₁ a₂))))
+
+  coeq-rec₂ : {f₁ g₁ : A₁ → B₁} {f₂ g₂ : A₂ → B₂} {C : Type 𝓦}
+            → BiCofork f₁ g₁ f₂ g₂ C → Coeq f₁ g₁ → Coeq f₂ g₂ → C
+  coeq-rec₂ = coeq-rec ∘ Cofork←BiCofork
+
+  coeq-rec₂β : {f₁ g₁ : A₁ → B₁} {f₂ g₂ : A₂ → B₂} {C : Type 𝓦}
+               → (BC : BiCofork f₁ g₁ f₂ g₂ C)
+               → ∀ b₁ b₂ → coeq-rec₂ BC (ι-coeq b₁) (ι-coeq b₂) ＝ (fst BC) b₁ b₂
+  coeq-rec₂β BC b₁ b₂ =
+    coeq-rec₂ BC (ι-coeq b₁) (ι-coeq b₂)                  ＝⟨  happly (coeq-recβ (Cofork←BiCofork BC) b₁) (ι-coeq b₂) ⟩
+    coeq-rec (inner-Cofork←BiCofork BC b₁ )  (ι-coeq b₂)  ＝⟨  coeq-recβ (inner-Cofork←BiCofork BC b₁) b₂ ⟩
+      (fst BC) b₁ b₂ ∎
+}
+%```
+}
+
 
 \subtree[stt-009D]{
 \title{Adjusting coequalizers by equivalences}

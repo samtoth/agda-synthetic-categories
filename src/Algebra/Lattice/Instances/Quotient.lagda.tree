@@ -7,128 +7,25 @@
 %```agda
 \agda{
 {-# OPTIONS --lossy-unification #-}
+module Algebra.Lattice.Instances.Quotient where
 
 open import Foundations.Prelude
 open import ufAxioms
-open import Core.Coequalisers
-
+open import Core.SetQuotients
 open import Modalities.Instances.Truncation
 open import Algebra.Lattice
+}
+%```
 
-open import Ergonomics.Universal
-open import Ergonomics.Extensionality
+\subtree[wil-0002]{
+\title{Quotient Lattices}
+\taxon{Definition}
 
-module Algebra.Lattice.Instances.Quotient where
+\p{Given a lattice #{L} and a congruence #{\sim} on #{L}, the set
+  quotient #{L / \sim} has an induced lattice structure.}
 
-
-is-reflexive : ∀ {𝓤 𝓥} {A : Type 𝓤} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-is-reflexive R = ∀ x → R x x
-
-equiv-classes : ∀ {𝓤 𝓥} {A : Type 𝓤} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-equiv-classes {A = A} R = Σ A (λ x → Σ A (R x))
-
-_/_ : ∀ {𝓤 𝓥} (A : Type 𝓤) (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-X / R = Trunc 2 (Coeq {A = equiv-classes R} (fst) (fst ∘ snd))
-
-module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
-  ι-quot : A → A / R
-  ι-quot a = Trunc.η (ι-coeq a)
-
-  quot : (x : equiv-classes R ) → ι-quot (fst x) ＝ ι-quot (fst (snd x))
-  quot = ap Trunc.η ∘ glue-coeq
-
-  glue-quot : {x y : A} (r : R x y) → ι-quot x ＝ ι-quot y
-  glue-quot {x} {y} r = quot (x , (y , r))
-
-  opaque
-    CoforkP←Quot-elim-data : ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (∀ a → IdP (ap B (quot a)) (f (fst a)) (f (fst (snd a)))  )
-              → CoforkP fst (fst ∘ snd) (B ∘ Trunc.η)
-    CoforkP←Quot-elim-data {B = B} f f-R .fst = f
-    CoforkP←Quot-elim-data {B = B} f f-R .snd =
-      λ a → ap (λ h → coe  h (f (fst a))) ((ap-∘ B Trunc.η ) (glue-coeq a)) ∙  f-R a
-
-
-    Quot-elim : ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (∀ a → IdP (ap B (quot a)) (f (fst a)) (f (fst (snd a)))  )
-              → ∀ x → B x
-    Quot-elim f f-R =
-      Trunc.ind (λ _ → trunc!) (coeq-ind (CoforkP←Quot-elim-data f f-R))
-
-    Quot-elimβ :  ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ H : ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (f-R : ∀ a → IdP (ap B (quot a)) (f (fst a)) (f (fst (snd a)))  )
-              → Quot-elim f f-R ∘ ι-quot ~ f
-    Quot-elimβ {B = B} f f-R x =
-      Quot-elim f f-R (ι-quot x)                           ＝⟨ Trunc.ind-β (λ _ → trunc!) (coeq-ind (CoforkP←Quot-elim-data f f-R) )  (ι-coeq x) ⟩
-      (coeq-ind (CoforkP←Quot-elim-data f f-R)) (ι-coeq x) ＝⟨ coeq-indβ  (CoforkP←Quot-elim-data f f-R) x ⟩
-      f x ∎
-
-
-    Quot-elim-prop : ∀ {𝓦} {B : A / R  → Type 𝓦}
-                   → ⦃ ∀ { x } → Is-truncated 1 (B x) ⦄
-                   → (f : ∀ x → B (ι-quot x))
-                   → ∀ x → B x
-    Quot-elim-prop f = Quot-elim {{ mk-trunc (suc-is-truncated 1 trunc!) }} f λ a → is-prop←is-truncated trunc! _ _
-
-    Quot-elim-propβ : ∀ {𝓦} {B : A / R  → Type 𝓦}
-                   → ⦃ H : ∀ { x } → Is-truncated 1 (B x) ⦄
-                   → (f : ∀ x → B (ι-quot x))
-                   →  Quot-elim-prop {B = B} f ∘ ι-quot ~ f
-    Quot-elim-propβ f =  Quot-elimβ {{ mk-trunc (suc-is-truncated 1 trunc!) }} f _
-
-
-    Quot-rec : ∀ {𝓦} {B : Type 𝓦}
-             → ⦃ Is-truncated 2 B ⦄
-             → (f : A → B)
-             → (∀ (x : equiv-classes R) → f (fst x) ＝ f (fst (snd x)))
-             → A / R → B
-    Quot-rec f p = Trunc.ind (λ _ → trunc!) (coeq-rec (f , p))
-
-    Quot-rec₂ : ∀ {𝓦} {B : Type 𝓦}
-              → ⦃ Is-truncated 2 B ⦄
-              → (f : A → A → B)
-              → (∀ (x : equiv-classes R) y → f (fst x) y ＝ f (fst (snd x)) y)
-              → (∀ x (y : equiv-classes R)  → f x (fst y) ＝ f x (fst (snd y)))
-              → A / R → A / R → B
-    Quot-rec₂ f p q  = Trunc.ind (λ _ → trunc!)
-                                 λ x → Trunc.ind (λ _ → trunc!)
-                                 λ y → coeq-rec₂ (f , (p ,  (q ,
-                                                 (λ _ _ →  (is-set←is-truncated trunc! _ _) _ _))))  x y
-
-    Quot-rec₂β : ∀ {𝓦} {B : Type 𝓦}
-              → ⦃ H : Is-truncated 2 B ⦄
-              → (f : A → A → B)
-              → (p : ∀ (x : equiv-classes R) y → f (fst x) y ＝ f (fst (snd x)) y)
-              → (q : ∀ x (y : equiv-classes R)  → f x (fst y) ＝ f x (fst (snd y)))
-              → ∀ x y → Quot-rec₂ f p q (ι-quot x) (ι-quot y) ＝ f x y
-    Quot-rec₂β {B = B} f p q x y =
-      Quot-rec₂ f p q (ι-quot x) (ι-quot y)
-        ＝⟨  happly  (Trunc.ind-β _ _ (ι-coeq x)) (ι-quot y) ⟩
-      (Trunc.ind (λ _ → trunc!)
-        λ y → coeq-rec₂ BC (ι-coeq x) y) (ι-quot y)
-        ＝⟨ Trunc.ind-β _ _ (ι-coeq y) ⟩
-      coeq-rec₂ BC (ι-coeq x) (ι-coeq y) ＝⟨ coeq-rec₂β BC x y ⟩
-        (f x y) ∎
-        where
-          BC : BiCofork {A₁ = equiv-classes R} {A₂ = equiv-classes R} fst (fst ∘ snd) fst (fst ∘ snd) B
-          BC = f , (p , q , λ _ _ → (is-set←is-truncated trunc! _ _) _ _)
-                                   
-
-
-
-      {- Trunc.ind (λ _ → trunc!)
-                                 λ x → Trunc.ind (λ _ → trunc!)
-                                 λ y → coeq-rec₂ f p q
-                                                 (λ _ _ →  (is-set←is-truncated trunc! _ _) _ _)  x y -}
-
-
-
+%```agda
+\agda{
 module _ {𝓤 𝓥} (A : Type 𝓤) {L : Lattice A} (R : A → A → Type 𝓥) {C : LatticeCongruence L R} where
   open Lattice L
   open LatticeCongruence C
@@ -136,12 +33,12 @@ module _ {𝓤 𝓥} (A : Type 𝓤) {L : Lattice A} (R : A → A → Type 𝓥)
   private
     _Q∧_ : A / R → A / R → A / R
     (_Q∧_) = Quot-rec₂ (λ x y → ι-quot (x ∧ y))
-                                       (λ where (x , (y , r)) z → glue-quot (~-∧ r reflexive))
-                                       (λ where x (y , (z , r)) → glue-quot (~-∧ reflexive r))
+                       (λ where (x , y , r) z → glue-quot (~-∧ r reflexive))
+                       (λ where x (y , z , r) → glue-quot (~-∧ reflexive r))
     _Q∨_ : A / R → A / R → A / R
     (_Q∨_) = Quot-rec₂ (λ x y → ι-quot (x ∨ y))
-                                        (λ where (x , (y , r)) z → glue-quot (~-∨ r reflexive))
-                                        (λ where x (y , (z , r)) → glue-quot (~-∨ reflexive r))
+                       (λ where (x , y , r) z → glue-quot (~-∨ r reflexive))
+                       (λ where x (y , z , r) → glue-quot (~-∨ reflexive r))
 
   QuotLattice :  Lattice (A / R)
   QuotLattice .Lattice.0l = ι-quot 0l
@@ -212,6 +109,7 @@ module _ {𝓤 𝓥} (A : Type 𝓤) {L : Lattice A} (R : A → A → Type 𝓥)
       ι-quot x' Q∧ ι-quot 1l ＝⟨ Quot-rec₂β _ _ _ x' 1l ⟩
       ι-quot (x' ∧ 1l) ＝⟨ ap ι-quot 1-top ⟩
       ι-quot x' ∎) x
-
 }
 %```
+
+}

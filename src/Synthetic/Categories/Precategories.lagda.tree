@@ -35,8 +35,11 @@ open import Modalities.ModalMaps
 open import Core.Join
 open import Core.CanonicalPushouts
 
+open import Data.Bool
+
 open import Synthetic.Categories.Simplicial Δ¹ I I-distr
 open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Hom Δ¹ i0 i1
 }
 %```
@@ -79,6 +82,8 @@ module Precat where
   open GSU Precats-GSU public renaming (S-equiv to is-precategory←equiv)
 
   open is-globally-reflective Precats-is-globally-reflective
+  open GPiClosure Precats-is-globally-reflective public
+    renaming (Π∈S to Π-is-precategory; ×∈S to ×-is-precategory)
 
   is-inner : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
   is-inner = is-modal-map Precats-SubU
@@ -112,10 +117,7 @@ Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
          (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
        → Type (𝓘 ⊔ 𝓤)
 Hom2 {A = A} f g h
-  = Σ[ H ∶ (Δ² → A) ] (
-      (∀ i → H (i , i0) ＝ g .HomP.hom i)
-    × (∀ i → H (i1 , i) ＝ f .HomP.hom i)
-    × (∀ i → H (i , i)  ＝ h .HomP.hom i))
+  = Σ[ H ∶ (Δ² → A) ] (H ∘ δΔ²-incl ＝ make-δΔ² f g h)
 }
 %```
 }
@@ -139,29 +141,118 @@ fibres of #{i^* : (\Delta^2 \to C) \to (\Lambda^2_1 \to C)} are exactly the maps
 
 %```agda
 \agda{
-precategory-unique-composite : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-precategory A
-                             → (f : Hom A y z) (g : Hom A x y)
-                             → is-singleton (Σ[ H ∶ (Δ² → A)]
-                                               (H ∘ Λ[2,1]-incl ＝ make-horn f g))
-precategory-unique-composite Apc f g
-  = is-contr-map←is-equiv (Apc tt) (make-horn f g)
+opaque
+  precategory-unique-composite : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-precategory A
+                               → (f : Hom A y z) (g : Hom A x y)
+                               → is-singleton (Σ[ H ∶ (Δ² → A)]
+                                                 (H ∘ Λ[2,1]-incl ＝ make-horn f g))
+  precategory-unique-composite Apc f g
+    = is-contr-map←is-equiv (Apc tt) (make-horn f g)
+
+ext-Λ[2,1] : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+             → Ext δΔ²←Λ[2,1] {λ _ → A} (make-horn f g) → Hom A x z
+ext-Λ[2,1] f g (h , k)
+    = mk-hom (h ∘ ι₂)
+             (ap h (sym (glue δΔ¹-0)) ∙ happly k (ι₁ i0) ∙ g .HomP.hom0)
+             (ap h (sym (glue δΔ¹-1)) ∙ happly k (ι₂ i1) ∙ f .HomP.hom1)
+
+ext-Λ[2,1]-is-equiv : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+                    → is-equiv (ext-Λ[2,1] f g)
+ext-Λ[2,1]-is-equiv f g = is-equiv←qiso qiso where
+  qiso : quasi-iso (ext-Λ[2,1] f g)
+  qiso .fst h@(mk-hom hh h0 h1) =  make-δΔ² f g h , refl
+  qiso .snd .fst h
+    = fibre-path→ (sym (pushout-rec-unique _ _
+                         (happly (pushout-rec-unique _ _
+                                   (happly (h .snd) ∘ ι₁)
+                                   (happly (h .snd) ∘ ι₂)
+                                   {!!}))
+                       ~refl
+                       λ { (mk-lift true) → {!!} ; (mk-lift false) → {!!}})
+                  , {!!})
+  qiso .snd .snd b
+    = Hom-ext→
+        ( ~refl
+        , sym (ap (_∙ g .HomP.hom0) ( ap-sym (pushout-rec _) (glue δΔ¹-0)
+                                     ∙ ap sym (pushout-rec-apβ (mk-lift false)))
+              ∙ {!!} )
+        , sym (ap (_∙ f .HomP.hom1) ( ap-sym (pushout-rec _) (glue δΔ¹-1)
+                                     ∙ ap sym (pushout-rec-apβ (mk-lift true)))
+              ∙ {!!}))
 
 composite←horn-extension
   : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
     → Σ[ H ∶ (Δ² → A)] (H ∘ Λ[2,1]-incl ＝ make-horn f g)
     → Σ[ h ∶ Hom A x z ] (Hom2 f g h)
-composite←horn-extension f g (H , extends)
-  = (mk-hom (H ∘ Δ²-diagonal)
-            (ap H Δ²-refl ∙ happly extends (ι₁ i0) ∙ g .HomP.hom0)
-            (ap H Δ²-refl ∙ happly extends (ι₂ i1) ∙ f .HomP.hom1)
-    , (H , happly extends ∘ ι₁ , happly extends ∘ ι₂ , ~refl)
-    )
+composite←horn-extension {A = A} {x} {y} {z} f g
+  = total-map-fst (ext-Λ[2,1] f g)
+  ∘ total-map (λ e → tr (Ext δΔ²-incl)
+                        (ap fst ((is-equiv.η⁻¹ (ext-Λ[2,1]-is-equiv f g)) e)))
+  ∘ Ext-compose δΔ²-incl δΔ²←Λ[2,1] (make-horn f g) ._≃_.fwd
 
-_⊙[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
+
+composite←horn-extension-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+    → is-equiv (composite←horn-extension f g)
+composite←horn-extension-is-equiv f g
+  = is-equiv-∘ (total-is-equiv←fst-is-equiv (ext-Λ[2,1]-is-equiv f g))
+               (is-equiv-∘ (is-total-equiv←is-fibrewise-equiv
+                 (λ e → tr-is-equiv {B = Ext δΔ²-incl}
+                         ((ap fst ((is-equiv.η⁻¹ (ext-Λ[2,1]-is-equiv f g)) e)))))
+               (Ext-compose δΔ²-incl δΔ²←Λ[2,1] (make-horn f g) ._≃_.has-is-eqv))
+
+Δ²-UP→ : ∀ {𝓤} {A : Type 𝓤}
+        → (Δ² → A)
+        → Σ[ g ∶ (Δ¹ → A) ]
+           Σ[ z ∶ A ] Σ[ f ∶ Hom A (g i1) z ]
+             Σ[ h ∶ Hom A (g i0) z ] Hom2 f (λhom g) h
+Δ²-UP→ H = (H ∘ (_, i0)
+           , (H (i1 , i1))
+           , mk-hom (H ∘ (i1 ,_)) (ap H Δ²-refl) (ap H Δ²-refl)
+           , mk-hom (H ∘ Δ²-diagonal) (ap H Δ²-refl) refl
+           , (H , pushout-rec-unique _ _
+                   (pushout-ind _
+                     (mk-coconeD ~refl ~refl λ _
+                      → IdP-func←Square (glue tt) refl refl
+                          (∙-reflr _
+                          ∙ ap-∘ H _ (glue tt)
+                          ∙ ap (ap H) (is-prop←is-truncated (Δ²-is-set _ _) _ _) ∙ ap-sym _ _ ∙ sym (pushout-rec-apβ tt))))
+                   ~refl
+               λ { (mk-lift true) → ∙-reflr _ ∙ ap-∘ H _ (glue δΔ¹-1)
+                                    ∙ ap (ap H) (is-prop←is-truncated (Δ²-is-set _ _) _ _)
+                                    ∙ sym (∙-reflr _)
+               ; (mk-lift false) → ∙-reflr _
+                                   ∙ ap-∘ H _ (glue δΔ¹-0)
+                                   ∙ ap (ap H) (is-prop←is-truncated (Δ²-is-set _ _) _ _)
+                                   ∙ ap-sym _ _ }))
+
+Δ²-UP-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-equiv (Δ²-UP→ {A = A})
+Δ²-UP-is-equiv = {!!}
+
+
+_∘[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
           → Hom A x y → Hom A x z
-f ⊙[ apc ] g = fst (composite←horn-extension f g
+f ∘[ apc ] g = fst (composite←horn-extension f g
                     (centre (precategory-unique-composite apc f g)))
 
+∘[_]-is-composite
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} {f : Hom A y z} {g : Hom A x y}
+    → (apc : is-precategory A) → Hom2 f g (f ∘[ apc ] g)
+∘[_]-is-composite {f = f} {g} apc
+  = snd (composite←horn-extension _ _
+          (centre (precategory-unique-composite apc f g)))
+
+opaque
+  unique-composite : ∀ {𝓤} {A : Type 𝓤} (apc : is-precategory A)
+                       {x y z} (f : Hom A y z) (g : Hom A x y)
+                    → (h : Hom A x z) → Hom2 f g h → h ＝ (f ∘[ apc ] g)
+  unique-composite apc f g h K
+    = sym (ap fst
+             ((is-single←equiv-to-single
+                (mk≃ (composite←horn-extension f g)
+                     (composite←horn-extension-is-equiv f g))
+                (precategory-unique-composite apc f g))
+               .central (h , K)))
 }
 %```
 }

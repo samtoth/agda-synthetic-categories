@@ -62,6 +62,7 @@ open import Foundations.EquivOfSingleton
 open import Foundations.EquivProp
 open import Foundations.EquivSingleton
 open import Foundations.EquivalenceRelation
+open import Foundations.Extension
 open import Foundations.FibrePath
 open import Foundations.FibrewiseEquiv
 open import Foundations.FunExt
@@ -110,7 +111,10 @@ open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
+open import Synthetic.Categories.Boundaries
 open import Synthetic.Categories.Covariant
+open import Synthetic.Categories.HomFamilies
+open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns
 open import Synthetic.Categories.LaxPullback
 open import Synthetic.Categories.NaturalTransformation
@@ -125,7 +129,6 @@ open import Ergonomics.PushoutUniv
 open import Ergonomics.Universal
 open import Foundations.DependentHomotopy
 open import Foundations.Empty
-open import Foundations.Extension
 open import Foundations.IdentityEquiv
 open import Foundations.IdentitySystem
 open import Foundations.PathReasoning

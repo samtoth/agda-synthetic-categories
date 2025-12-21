@@ -33,17 +33,23 @@ open import Modalities.Instances.Truncation
 open import Modalities.Flat.Flat renaming (ε to ε♭)
 
 open import Core.Orthogonal
+open import Core.CanonicalPushouts
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.Lifts
-open import Core.PullbackPower
-open import Core.ExtPullbacks
+open import Core.FlatteningPushouts
 open import Core.PiSection
+open import Core.CocartesianSquare
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Tiny Δ¹
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
 }
 %```
 
@@ -141,6 +147,18 @@ is-covariant {A = A} B
 tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
        → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
 tr-cov cov h = fst ∘ centre ∘ cov h
+}
+%```
+}
+
+\subtree[stt-00BL]{
+\title{Being covariant is stable under pullback}
+\taxon{Lemma}
+
+%```agda
+\agda{
+is-covariant-is-pullback-stable : is-pullback-stable is-covariant
+is-covariant-is-pullback-stable {A = A} P σ co x = co (σ ∘ x)
 }
 %```
 }
@@ -386,6 +404,187 @@ is-covariant⇔is-left-fibration {A = A} B
 %```
 }
 
+
+\subtree[stt-00BK]{
+\title{The total type of a covariant family is a precategory}
+\taxon{Theorem}
+
+\p{Being a precategory is not #{\Sigma} closed, but if the base is a precategory
+and the family is covariant, then the total type is a precategory.}
+
+\proof{
+\p{Fix a precategory #{A}, and a covariant family #{B} over #{A}. We aim to show
+that the precomposition map #{\tilde{B}^{\Delta^2} \to \tilde{B}^{\Lambda^2_1}}
+is an equivalence.}
+
+##{
+\begin{align*}
+  \tilde{B}^{\Delta^2}
+\end{align*}
+}
+}
+
+%```agda
+\agda{
+Λ[2,1]-UP : ∀ {𝓤} (B : Λ[2,1] → Type 𝓤)
+       → Π Λ[2,1] B
+       ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)]
+            HomP (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+Λ[2,1]-UP B = mk≃ (map2 ._≃_.fwd ∘ coconeᵈ-map span pushout {Q = B})
+              (is-equiv-∘ (_≃_.has-is-eqv map2) Pushout-is-pushoutωᵈ) where
+  span : Span lzero 𝓘 𝓘
+  span = mk-span _ (const Δ¹ 𝟙 i1) (const Δ¹ 𝟙 i0)
+
+  by-inserting-singleton
+    : (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+          Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+    ≃ (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+               (h i1 ＝ z) )
+  by-inserting-singleton = equiv←qiso qiso where
+    qiso : _
+    qiso ._≅_.fwd (f , g , h) = (f , g i1 , g , h , refl)
+    qiso ._≅_.fwd-iso .fst (f , _ , g , h , refl) = (f , g , h)
+    qiso ._≅_.fwd-iso .snd .fst = ~refl
+    qiso ._≅_.fwd-iso .snd .snd (f , _ , g , h , refl) = refl
+
+  map2 : CoconeD span pushout B
+       ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)]
+            HomP (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+
+  map2
+    = CoconeD span pushout B ≃⟨ coconeD-repr≃ ⟩
+
+      (Σ[ f ∶ ((l : Δ¹) → B (ι₁ l)) ]
+        Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+          ((a : 𝟙) → f i1 ＝[ ap B (glue a) ] g i0))
+
+                          ≃⟨ Σ-ap-≃ (λ f → Σ-ap-≃ (λ g → unit-UP≃ ∙≃ sym≃)) ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+          Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+
+                         ≃⟨ by-inserting-singleton ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+               (h i1 ＝ z) )
+
+                          ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ (λ b → HomP-repr≃ e⁻¹)) ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)]
+            HomP (B ∘ ι₂) (tr B (glue tt) (f i1)) z)    ≃∎
+
+Σ-is-precategory-lemma : ∀ {𝓤 𝓥} {A : Type 𝓤} → is-precategory A
+                   → {B : A → Type 𝓥}
+                   → is-covariant B
+                   → is-precategory (Σ A B) ⇔ ((id {A = Δ¹ → Δ²} (_, i0)) ⊥ fst {B = B})
+Σ-is-precategory-lemma {A = A} apc {B} bcv
+  =  ((λ pc → pc tt) , (λ e _ → e))
+  ∙⇔ top⇔bot-is-equiv←Arrow-equiv sq1 sq1-is-equiv
+  ∙⇔ map2-is-equiv where
+
+  map2 : (Σ[ ϕ ∶ (Δ² → A)] Π Δ² (B ∘ ϕ)) → Σ[ ϕ ∶ (Λ[2,1] → A)] Π Λ[2,1] (B ∘ ϕ)
+  map2 (x , y) = (postcomp _ (Λ[2,1]-incl) x , postcomp-Π _ Λ[2,1]-incl y)
+
+  sq1 : Arrow-map (postcomp (Σ A B) (Λ[2,1]-incl)) map2
+  sq1 .Arrow-map.top = Σ-Π-swap _ _
+  sq1 .Arrow-map.bot = Σ-Π-swap _ _
+  sq1 .Arrow-map.comm = ~refl
+
+  sq1-is-equiv : is-Arrow-equiv sq1
+  sq1-is-equiv .fst = Σ-Π-swap-is-equiv
+  sq1-is-equiv .snd = Σ-Π-swap-is-equiv
+
+  map2-triangle
+    : map2
+    ~   total-map-fst (postcomp _ Λ[2,1]-incl) {λ ϕ → Π Λ[2,1] (B ∘ ϕ)}
+      ∘ total-map (λ a → postcomp-Π _ Λ[2,1]-incl)
+  map2-triangle = ~refl
+
+  fibrewise : (∀ (H : Δ² → A) → is-equiv (postcomp-Π _ Λ[2,1]-incl))
+            ⇔ ((id {A = Δ¹ → Δ²} (_, i0)) ⊥ fst {B = B})
+  fibrewise
+    = ( (λ e → lem .snd
+          λ H → is-equiv-∘ {f = fst ∘ Λ[2,1]-UP _ ._≃_.fwd}
+                  (is-equiv-∘
+                     {f = fst}
+                     (singleton-fst-is-equiv
+                       (λ f → bch-cov H ι₂
+                                (tr (B ∘ H ∘ Λ[2,1]-incl) (glue tt) (f i1))))
+                       (Λ[2,1]-UP (B ∘ H ∘ Λ[2,1]-incl) ._≃_.has-is-eqv))
+                  (e H))
+      , λ orth H → 3-for-2
+                   (is-equiv-∘ {f = fst}
+                     (singleton-fst-is-equiv
+                       (λ f → bch-cov H ι₂ (tr (B ∘ H ∘ Λ[2,1]-incl) (glue tt) (f i1)) ))
+                     (Λ[2,1]-UP (B ∘ H ∘ Λ[2,1]-incl) ._≃_.has-is-eqv))
+                   (lem .fst orth H)) where
+    K : ∀ H
+      → fst ∘ Λ[2,1]-UP (B ∘ H ∘ Λ[2,1]-incl) ._≃_.fwd
+           ∘ postcomp-Π (B ∘ H) Λ[2,1]-incl
+        ~
+        (postcomp-Π (B ∘ H) (_, i0))
+    K _ = ~refl
+
+    bch-cov : ∀ H → is-covariant (B ∘ H ∘ Λ[2,1]-incl)
+    bch-cov H = is-covariant-is-pullback-stable B (H ∘ Λ[2,1]-incl) bcv
+
+    fst-is-left-local : ∀ H → is-left-fibration fst
+    fst-is-left-local H = is-covariant⇔is-left-fibration
+                            (B ∘ H ∘ Λ[2,1]-incl) .fst (bch-cov H)
+
+    lem : (id {A = Δ¹ → Δ²} (_, i0) ⊥ fst {B = B})
+        ⇔ (∀ H → is-equiv (postcomp-Π (B ∘ H) (_, i0)))
+    lem = x ∙⇔ y where
+      x : (id {A = Δ¹ → Δ²} (_, i0) ⊥ fst)
+        ⇔ (∀ H → is-equiv (postcomp-Π (fibre (fst {B = B}) ∘ H) (_, i0)))
+      x = ((λ o h → postcomp-Π←orthogonal h o) , orthogonal←postcomp-Π)
+
+      SQ3,2 : ∀ H → Arrow-map (postcomp-Π (fibre (fst {B = B}) ∘ H) (_, i0))
+                     (postcomp-Π (B ∘ H) (_, i0))
+      SQ3,2 H .Arrow-map.top = precomp-Π-≃ (fibre-straighten B ∘ H) ._≃_.fwd
+      SQ3,2 H .Arrow-map.bot = precomp-Π-≃ (fibre-straighten B ∘ H ∘ (_, i0)) ._≃_.fwd
+      SQ3,2 H .Arrow-map.comm = ~refl
+
+      SQ3,2-is-equiv : ∀ H → is-Arrow-equiv (SQ3,2 H)
+      SQ3,2-is-equiv H .fst = precomp-Π-≃ (fibre-straighten B ∘ H) ._≃_.has-is-eqv
+      SQ3,2-is-equiv H .snd = precomp-Π-≃ (fibre-straighten B ∘ H ∘ (_, i0)) ._≃_.has-is-eqv
+
+      y' : ∀ H → (is-equiv (postcomp-Π (fibre (fst {B = B}) ∘ H) (_, i0)))
+          ⇔ (is-equiv (postcomp-Π (B ∘ H) (_, i0)))
+      y' H = top⇔bot-is-equiv←Arrow-equiv (SQ3,2 H) (SQ3,2-is-equiv H)
+
+      y : (∀ H → is-equiv (postcomp-Π (fibre (fst {B = B}) ∘ H) (_, i0)))
+        ⇔ (∀ H → is-equiv (postcomp-Π (B ∘ H) (_, i0)))
+      y = ((λ eq H → y' H .fst (eq H) ) , λ eq H → y' H .snd (eq H))
+
+  map2-is-equiv : is-equiv map2 ⇔ ((_, i0) ⊥ fst)
+  map2-is-equiv .fst e
+    = fibrewise .fst
+       (is-fibrewise-equiv←is-total-equiv
+         (3-for-2
+           {f = total-map-fst (postcomp _ Λ[2,1]-incl) {λ ϕ → Π Λ[2,1] (B ∘ ϕ)}}
+           {g = total-map (λ a → postcomp-Π _ Λ[2,1]-incl)}
+           (total-is-equiv←fst-is-equiv (apc tt))
+           e))
+  map2-is-equiv .snd orth
+    = is-equiv-∘ {f = total-map-fst (postcomp _ Λ[2,1]-incl) {λ ϕ → Π Λ[2,1] (B ∘ ϕ)}}
+                 {g = total-map (λ a → postcomp-Π _ Λ[2,1]-incl)}
+                 (total-is-equiv←fst-is-equiv (apc tt))
+                 (is-total-equiv←is-fibrewise-equiv (fibrewise .snd orth))
+}
+%```
+}
+
+
 \subtree[stt-00AS]{
 \title{There is a universe of amazingly covariant types}
 \taxon{Cosntruction}
@@ -404,7 +603,6 @@ developed for [amazing right adjoints](stt-00AA) we can construct a universe.
 %```agda
 \agda{
 module UCov where
-  open import Synthetic.Tiny Δ¹
 
   is-covariant-is-relative : is-relative is-covariant
   is-covariant-is-relative {A = A} P = (fwd , bwd) where
@@ -418,7 +616,8 @@ module UCov where
     renaming (is-afib to is-acov;
               UFib to 𝓢;
               UFib∙ to 𝓢∙;
-              F-π-is-fib to 𝓢-π-is-covariant)
+              F-π-is-fib to 𝓢-π-is-covariant;
+              U-classifies to 𝓢-classifies)
 }
 %```
 }

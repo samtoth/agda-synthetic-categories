@@ -1,0 +1,232 @@
+\date{2025-12-18}
+\title{The boundary of simplices}
+\author{samueltoth}
+\taxon{module}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Boundaries
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+
+open import Ergonomics.Extensionality
+
+open import Modalities.Instances.Truncation
+
+open import Data.Bool
+
+open import Core.Join
+open import Core.FlatteningPushouts
+open import Core.SpanMap
+}
+%```
+
+\subtree[tot-000O]{
+\taxon{Definition}
+\title{The boundary of the interval}
+
+\p{The boundary of the interval, written #{\delta \Delta^1}, is just the two
+pointed type #{\{0,1\}}. Specifically, we use a copy of the booleans living in
+the same universe as the interval.}
+
+\p{We record the universal property (that of the booleans), as well as it's
+inclusion into the interval, as well as into the [inner horn](stt-00AD).
+Finally we note that this inclusion is an embedding, as long as #{I} is not
+the trivial lattice.}
+
+%```agda
+\agda{
+δΔ¹ : Type 𝓘
+δΔ¹ = ULift _ Bool
+
+δΔ¹-0 δΔ¹-1 : δΔ¹
+δΔ¹-0 = mk-lift false
+δΔ¹-1 = mk-lift true
+
+make-δΔ¹ : ∀ {𝓤} {A : Type 𝓤} → A → A → δΔ¹ → A
+make-δΔ¹ a b (mk-lift true) = a
+make-δΔ¹ a b (mk-lift false) = b
+
+δΔ¹-UP→ : ∀ {𝓤} {A : δΔ¹ → Type 𝓤} → (A δΔ¹-0 × A δΔ¹-1) → Π _ A
+δΔ¹-UP→ x (mk-lift false) = x .fst
+δΔ¹-UP→ x (mk-lift true)  = x .snd
+
+δΔ¹-UP : ∀ {𝓤} {A : δΔ¹ → Type 𝓤} → (A δΔ¹-0 × A δΔ¹-1) ≃ Π _ A
+δΔ¹-UP = mk≃ δΔ¹-UP→ (is-equiv←qiso ((λ x → (x δΔ¹-0 , x δΔ¹-1))
+                                    , ~refl
+                                    , (λ f → funext→ (δΔ¹-UP→ (refl , refl)))))
+
+δΔ¹-incl : δΔ¹ → Δ¹
+δΔ¹-incl (mk-lift false) = i0
+δΔ¹-incl (mk-lift true) = i1
+
+δΔ¹-embeds : ((i0 ＝ i1) → ∅) → is-embedding (δΔ¹-incl)
+δΔ¹-embeds nt = is-equiv←inverse
+                  (is-prop←is-truncated
+                    (Trunc.ULift-is-truncated
+                      (is-truncated←is-set Bool-is-set) _ _))
+                  (is-prop←is-truncated (car-is-set _ _))
+                  map where
+  map : ∀ {x y} → δΔ¹-incl x ＝ δΔ¹-incl y → x ＝ y
+  map {mk-lift true} {mk-lift true} _ = refl
+  map {mk-lift true} {mk-lift false} p = ¡ nt (sym p)
+  map {mk-lift false} {mk-lift true} p = ¡ nt p
+  map {mk-lift false} {mk-lift false} _ = refl
+
+δΛ[2,1]-incl : δΔ¹ → Λ[2,1]
+δΛ[2,1]-incl (mk-lift false) = ι₁ i0
+δΛ[2,1]-incl (mk-lift true ) = ι₂ i1
+}
+%```
+}
+
+\subtree[tot-000S]{
+\title{The boundary of the 2-simplex}
+\taxon{Definition}
+
+\p{
+We construct the boundary of the [2 simplex](stt-009X) on the interval as the
+result of gluing a copy of the interval along the boundary of the
+[inner horn](stt-00AD). There are many choices of this construction, but we use
+one which is particularly useful when dealing with the segal condition for
+precategories.
+}
+
+\p{Just as above, and in \ref{stt-00B8}, we record that there is an inclusion
+#{\delta \Delta^2 \to \Delta^2}, and that this is an embedding as long as #{I}
+is not the trivial lattice. Even better, we show that the image of this inclusion
+determines #{\delta \Delta^2} as the subset of the 2-simplex #{(i,j)} where
+#{(i,j) \in \Lambda^2_1 \lor i = j}.
+}
+
+%```agda
+\agda{
+δΔ² : Type 𝓘
+δΔ² = Pushout {A = δΔ¹} {B = Λ[2,1]} {C = Δ¹} δΛ[2,1]-incl δΔ¹-incl
+
+δΔ²-Δ²-cocone : Cocone (mk-span _ δΛ[2,1]-incl δΔ¹-incl) Δ²
+δΔ²-Δ²-cocone = (mk-cocone Λ[2,1]-incl Δ²-diagonal λ where
+                         (mk-lift true) → Δ²-refl
+                         (mk-lift false) → Δ²-refl)
+
+δΔ²-incl : δΔ² → Δ²
+δΔ²-incl = pushout-rec δΔ²-Δ²-cocone
+
+δΔ²←Λ[2,1] : Λ[2,1] → δΔ²
+δΔ²←Λ[2,1] = ι₁
+
+module _ (non-triv : (I .Lattice.0l ＝ I .Lattice.1l) → ∅) where
+  δΔ²-sub : Subtype Δ² 𝓘
+  δΔ²-sub .Subtype.family t@(i , j) = (t ∈ Λ[2,1]Sub) * (j ＝ i)
+  δΔ²-sub .Subtype.has-is-subtype a@(i , j)
+    = *-is-prop (∈-is-prop Λ[2,1]Sub a) (is-prop-separated _ _)
+
+  δΔ²-as-subtype : ∀ a → fibre δΔ²-incl a ≃ a ∈ δΔ²-sub
+  δΔ²-as-subtype a@(i , j)
+    = fibre δΔ²-incl a ≃⟨ cogap-fibre _ a ⟩
+      Pushout (total-fibre-span .left) (total-fibre-span .right)
+          ≃⟨  coe≃ (ap (λ x → Pushout (left x) (right x))
+                             (ext! (span-map' , span-map-is-equiv))) ⟩
+      Pushout (intended-span .left) (intended-span .right)
+                                ≃⟨⟩
+      (a ∈ δΔ²-sub)             ≃∎ where
+    open Span
+
+    total-fibre-span : Span 𝓘 𝓘 𝓘
+    total-fibre-span = total-span δΛ[2,1]-incl δΔ¹-incl
+                                  (Fibre-family δΔ²-Δ²-cocone a)
+
+    intended-span : Span 𝓘 𝓘 𝓘
+    intended-span = mk-span ((a ∈ Λ[2,1]Sub) × (j ＝ i)) fst snd
+
+    span-map' : Span-map total-fibre-span intended-span
+    span-map' .Span-map.h₁ = _≃_.fwd (Λ[2,1]-as-subtype a)
+    span-map' .Span-map.h₂ (mk-lift true , p)
+       = (ι₂ (ap Poly.Δ².s p) , sym (ap Poly.Δ².t p) ∙ ap Poly.Δ².s p)
+    span-map' .Span-map.h₂ (mk-lift false , p)
+       = (ι₁ (ap Poly.Δ².t p) , sym (ap Poly.Δ².t p) ∙ ap Poly.Δ².s p)
+    span-map' .Span-map.h₃ (b , refl) = refl
+    span-map' .Span-map.H (mk-lift true , _)
+      = ∈-is-prop Λ[2,1]Sub a _ _
+    span-map' .Span-map.H (mk-lift false , _)
+      = ∈-is-prop Λ[2,1]Sub a _ _
+    span-map' .Span-map.K (mk-lift true , refl) = refl
+    span-map' .Span-map.K (mk-lift false , refl) = refl
+
+    test : ((i1 ＝ i) × (i1 ＝ j)) ⊎ ((i0 ＝ i) × (i0 ＝ j))
+         → Σ[ t ∶ δΔ¹ ] ((δΔ¹-incl t , δΔ¹-incl t) ＝ (i , j))
+    test (inl x) = (mk-lift true , Δ²-ext x)
+    test (inr x) = (mk-lift false , Δ²-ext x)
+
+    inv : Centre intended-span → Σ[ t ∶ δΔ¹ ] ((δΔ¹-incl t , δΔ¹-incl t) ＝ (i , j))
+    inv (horn , refl) = test (pushout-rec
+                               (mk-cocone
+                                 (λ where refl → inr (refl , refl))
+                                 (λ where refl → inl (refl , refl))
+                                 λ where (p , refl) → ¡ non-triv p)
+                               horn)
+
+    linv : retract-witness (Span-map.h₂ span-map') inv
+    linv (mk-lift false , refl)
+      = Σ-path→ (refl , is-prop←is-truncated (Δ²-is-set _ _) _ _)
+    linv (mk-lift true , refl)
+      = Σ-path→ (refl , is-prop←is-truncated (Δ²-is-set _ _) _ _)
+
+    rinv : section-witness (Span-map.h₂ span-map') inv
+    rinv (horn , refl) = p horn where
+      p : ∀ (P : (i , i) ∈ Λ[2,1]Sub)
+        → (Span-map.h₂ span-map' ∘ inv) (P , refl) ＝ (P , refl)
+      p = pushout-ind _ (mk-coconeD
+           (λ where refl → Σ-path→ ( ap ι₁ (Δ²-ext-ap-t refl refl)
+                                   , is-prop-separated _ _ _ _))
+           (λ where refl → Σ-path→ ( ap ι₂ (Δ²-ext-ap-s refl refl)
+                                   , is-prop-separated _ _ _ _))
+           λ where (p , refl) → ¡ non-triv p)
+
+    span-map-is-equiv : is-Span-equiv span-map'
+    span-map-is-equiv .fst = _≃_.has-is-eqv (Λ[2,1]-as-subtype a)
+    span-map-is-equiv .snd .fst
+      = is-equiv←qiso (inv , linv , rinv)
+    span-map-is-equiv .snd .snd
+      = is-equiv←qiso ((λ p → (j , Δ²-ext (p , refl)))
+                      , (λ {(k , refl) → Σ-path→ (refl ,
+                                     (is-prop←is-truncated (Δ²-is-set _ _) _ _))})
+                      , λ p → is-prop←is-truncated (car-is-set _ _) _ _ )
+
+  δΔ²≃Sub : δΔ² ≃ Subtype.Σ̃ δΔ²-sub
+  δΔ²≃Sub
+    = δΔ²                               ≃⟨ total≃total-fibre δΔ²-incl e⁻¹ ⟩
+      total-fibre δΔ²-incl              ≃⟨⟩
+      (Σ[ a ∶ Δ² ] fibre δΔ²-incl a)    ≃⟨ Σ-ap-≃ δΔ²-as-subtype ⟩
+      (Σ[ a ∶ Δ² ] (a ∈ δΔ²-sub))       ≃⟨⟩
+      Subtype.Σ̃ δΔ²-sub                 ≃∎
+
+make-δΔ² : ∀ {𝓤} {A : Type 𝓤} {x y z}
+          → Hom A y z → Hom A x y → Hom A x z
+          → δΔ² → A
+make-δΔ² f@(mk-hom fh f0 f1) g@(mk-hom gh g0 g1) h@(mk-hom hh h0 h1)
+  = pushout-rec (mk-cocone (make-horn f g) (h .HomP.hom) λ where
+                               (mk-lift false) → g0 ∙ sym h0
+                               (mk-lift true ) → f1 ∙ sym h1)
+}
+%```
+}

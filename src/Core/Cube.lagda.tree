@@ -7,10 +7,21 @@
 
 %```agda
 \agda{
+{-# OPTIONS --lossy-unification #-}
 module Core.Cube where
 
 open import Foundations.Prelude
+
+open import ufAxioms
+
 open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Postwhisker
+open import Core.FunctorialPullback
+
+open import Ergonomics.Marker
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -56,12 +67,16 @@ record Cube {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
             {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
             {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
             (G : Arrow-map h k) : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞) where
+  constructor mk-cube
   module F = Arrow-map F
   module G = Arrow-map G
   field
     left : Arrow-map f h
     right : Arrow-map g k
     comm : Arrow-map-path (paste-squares G left) (paste-squares right F)
+
+  module left = Arrow-map left
+  module right = Arrow-map right
 
   topl : A → X
   topl = left .Arrow-map.top
@@ -91,6 +106,14 @@ record Cube {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
   bot-amap .Arrow-map.top = botl
   bot-amap .Arrow-map.bot = botr
   bot-amap .Arrow-map.comm = bot ~⁻¹
+
+  fill-hex
+    : ∀ a → Hexagon
+              (ap G.bot (left.comm a)) (G.comm (left.top a)) (ap k (top a))
+              (bot (f a)) (ap right.bot (F.comm a)) (right.comm (F.top a))
+  fill-hex a .Hexagon.un-hex
+    = sym (∙-assoc (ap G.bot (left.comm a)) _ (ap k (top a)))
+    ∙ comm .snd .snd a
 }
 %```
 }
@@ -148,6 +171,243 @@ front-cartesian←cartesian-cube {f = f} F {k = k} G cube leftCart rightCart GCa
       (compose-cartesian GCart leftCart)
       rightCart where
   open Cube cube
+}
+%```
+}
+
+\subtree[tot-000U]{
+\taxon{Construction}
+
+\p{A map of squares induces a map between their respective gap maps.}
+
+%```agda
+\agda{
+
+module _ where
+  open Cube
+  cospan-map←cube
+    : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+        {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+        {F : Arrow-map f g}
+        {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+        {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+        {G : Arrow-map h k}
+      → (cube : Cube F G)
+      → Cospan-map (Cone←Arrow-map F .fst) (Cone←Arrow-map G .fst)
+  cospan-map←cube α .Cospan-map.h₁ = botl α
+  cospan-map←cube α .Cospan-map.h₂ = botr α
+  cospan-map←cube α .Cospan-map.h₃ = topr α
+  cospan-map←cube α .Cospan-map.H = bot α ~⁻¹
+  cospan-map←cube α .Cospan-map.K = right.comm α
+
+
+gap-map-square←cube
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+      (F : Arrow-map f g)
+      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+      (G : Arrow-map h k)
+    → (cube : Cube F G)
+    → Arrow-map (gap-map←square F) (gap-map←square G)
+gap-map-square←cube F G α .Arrow-map.top = α .Cube.left.top
+gap-map-square←cube F G α .Arrow-map.bot = Pullback₁ (cospan-map←cube α)
+gap-map-square←cube {f = f} F {k = k} G
+   α@(mk-cube L R (lc , rc , fill)) .Arrow-map.comm a
+  = pullback-path→ ( α .Cube.left.comm a
+                   , sym (Cube.top α a)
+                   , un-square
+                       (coe
+                         (ap (λ p → Square _ p _ _) (sym (ap-sym k (lc a))))
+                         (Hexagon.Square-compress-left
+                          (tr
+                           (λ p →
+                             Hexagon (ap (Arrow-map.bot G) (Arrow-map.comm L a))
+                                     (Arrow-map.comm G (Arrow-map.top L a))
+                                     (ap k (lc a))
+                                     p
+                                     (ap (Arrow-map.bot R) (Arrow-map.comm F a))
+                                     (Arrow-map.comm R (Arrow-map.top F a)))
+                           (sym sym-sym)
+                           (Cube.fill-hex α a)))))
+
+postcomp-retract-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      (F : Arrow-map f g)
+      ((G , _) : retract-arrow-map F)
+      {𝓓} {D : Type 𝓓}
+     → retract-arrow-map (postcomp-square G D)
+postcomp-retract-square F (G , _) .fst = postcomp-square F _
+postcomp-retract-square F (G , tr , br , _) .snd .fst a = ap (a ∘_) (funext→ br)
+postcomp-retract-square F (G , tr , _) .snd .snd .fst a = ap (a ∘_) (funext→ tr)
+postcomp-retract-square {f = f} F (G , lr , rr , coh) .snd .snd .snd j
+  = ap (_∘ _) (funext→ (j ◂ (Arrow-map.comm G ~⁻¹)))
+  ∙ funext→ (Arrow-map.top (postcomp-square G _) j  ◂ (Arrow-map.comm F ~⁻¹))
+  ∙ ap (_∘ f) (ap (j ∘_) (funext→ rr))
+      ＝⟨ ap₃ (λ p q r → p ∙ q ∙ r) (sym (commutes-postwhisker-funext _)) refl
+                      (ap (ap (_∘ f)) (sym (commutes-prewhisker-funext _))
+                        ∙ sym (commutes-postwhisker-funext _)) ⟩
+   funext→ (prewhisker j _ _ ((Arrow-map.comm G ~⁻¹) ▸ Arrow-map.top F))
+ ∙ funext→ ((Arrow-map.top (postcomp-square G _) j  ◂ (Arrow-map.comm F ~⁻¹)))
+ ∙ funext→ (postwhisker f (j ∘ Arrow-map.bot G ∘ Arrow-map.bot F) j
+             (prewhisker j (Arrow-map.bot G ∘ Arrow-map.bot F) id
+               rr))
+     ＝⟨ sym (funext-∙∙ _ _ _) ⟩
+   funext→ (λ a →
+              ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+              ap (j ∘ (Arrow-map.bot G)) (sym (Arrow-map.comm F a)) ∙
+              ap j (rr (f a)))
+      ＝⟨ ap funext→ (funext→ p) ⟩
+   funext→ (prewhisker (j ∘ f) (Arrow-map.top G ∘ Arrow-map.top F)
+              id lr) ＝⟨ commutes-prewhisker-funext lr ⟩
+   ap ((j ∘ f) ∘_) (funext→ lr) ∎ where
+
+  q : ∀ a →
+      sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+      ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+      ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+      Arrow-map.comm G (Arrow-map.top F a) ∙ ap f (lr a) ⌝
+      ＝
+      sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+      ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+       ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+       Arrow-map.comm G (Arrow-map.top F a) ⌝
+      ∙ ap f (lr a)
+  q a = let
+         X = ap f (lr a)
+         Y = Arrow-map.comm G (Arrow-map.top F a)
+         Z = ap (Arrow-map.bot G) (Arrow-map.comm F a)
+         W = sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+       in ap!
+         (sym (∙.assoc-4 _ X Y Z W)
+         ∙ ap (_∙ ap f (lr a)) (∙-assoc W Z Y ))
+
+
+  p : ∀ a →
+          ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+          ap (j ∘ Arrow-map.bot G) (sym (Arrow-map.comm F a)) ∙
+          ap j (rr (f a))
+       ＝
+        ap (j ∘ f) (lr a)
+  p a
+    = ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+       ⌜ ap (j ∘ Arrow-map.bot G) (sym (Arrow-map.comm F a)) ⌝ ∙
+       ap j (rr (f a)) ＝⟨ ap! (ap-∘ j (Arrow-map.bot G) _ ∙ ap (ap j) (ap-sym _ _)) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+      ap j (sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))) ∙
+      ap j (rr (f a)) ＝⟨ sym (ap-∙∙ j (sym (Arrow-map.comm G (Arrow-map.top F a)))
+                                      _ (rr (f a))) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+            ∙ ⌜ rr (f a) ⌝) ＝⟨ ap! (sym (coh a)) ∙ ap (ap j) (q a) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+            ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+            Arrow-map.comm G (Arrow-map.top F a) ⌝ ∙ ap f (lr a))
+          ＝⟨ ap! (sym'∙ (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+                         (Arrow-map.comm G (Arrow-map.top F a))) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            Arrow-map.comm G (Arrow-map.top F a) ∙ ap f (lr a))
+          ＝⟨ ap (ap j) (sym'∙ (Arrow-map.comm G (Arrow-map.top F a)) (ap f (lr a))) ⟩
+      ap j (ap f (lr a)) ＝⟨ sym (ap-∘ j f (lr a)) ⟩
+      ap (j ∘ f) (lr a) ∎
+
+is-equiv←retract-equiv
+   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → (F : Arrow-map f g)
+    → incoherent-retract-arrow-map F
+    → is-equiv g
+    → is-equiv f
+is-equiv←retract-equiv {f = f}{g = g} F (G , tr , br) feq
+  = is-equiv←qiso iso where
+  open Arrow-map
+  open is-equiv feq
+
+  iso : quasi-iso f
+  iso .fst = top G ∘ bwd ∘ bot F
+  iso .snd .fst = (top G ∘ bwd) ◂ comm F ~∙ top G ◂ η ▸ top F ~∙ tr
+  iso .snd .snd = (comm G ▸ bwd ▸ bot F ~⁻¹) ~∙ bot G ◂ ε ▸ bot F ~∙ br
+
+1-coherent-retract-cube
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+    {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+    {F : Arrow-map f g}
+    {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+    {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+    {G : Arrow-map h k}
+  → Cube F G
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
+1-coherent-retract-cube {F = F} {G = G} α@(mk-cube L R p)
+  = Σ[ β ∶ Cube G F ]
+     (retract-witness (Cube.topl α) (Cube.topl β)
+      ×
+     retract-witness-cospan (cospan-map←cube α) (cospan-map←cube β))
+
+gap-map-square-ret←cube-partial-ret
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+      (F : Arrow-map f g)
+      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+      (G : Arrow-map h k)
+    → (cube : Cube F G)
+    → (ret : Cube G F)
+    → retract-witness (Cube.topl cube) (Cube.topl ret)
+    → retract-witness-cospan (cospan-map←cube cube) (cospan-map←cube ret)
+    → incoherent-retract-arrow-map (gap-map-square←cube F G cube)
+gap-map-square-ret←cube-partial-ret {g = g} F G α β tlr cspr
+  = (ret  , tlr ,  ret2) where
+  open Cube
+  ret : Arrow-map (gap-map←square G) (gap-map←square F)
+  ret = gap-map-square←cube _ _ β
+
+
+  ret-cspn : Pullback₁
+            (cospan-map-compose (cospan-map←cube β) (cospan-map←cube α)
+              )
+         ~ Pullback₁ (id-cospan-map)
+  ret-cspn
+    = happly
+        (ap Pullback₁ {cospan-map-compose (cospan-map←cube β) _} {id-cospan-map}
+          (ext! (cospan-retract-is-cospan-retract (cospan-map←cube α)
+                                                  (cospan-map←cube β , cspr))))
+
+  ret2 : retract-witness
+           (gap-map-square←cube _ _ α .Arrow-map.bot)
+           (ret .Arrow-map.bot)
+  ret2 = Pullback₁-∘ (cospan-map←cube β) (cospan-map←cube α)
+       ~∙ ret-cspn
+       ~∙ Pullback₁-id
+
+
+opaque
+  retract-is-cartesian
+    : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+        {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+        {F : Arrow-map f g}
+        {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+        {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+        {G : Arrow-map h k}
+      → (cube : Cube F G)
+      → 1-coherent-retract-cube cube
+      → is-cartesian G
+      → is-cartesian F
+  retract-is-cartesian α (β , tlr , cspr) gcart
+    = is-cartesian←is-pullback _
+        (is-pullback←gap _
+          (is-equiv←retract-equiv
+            (gap-map-square←cube _ _ α)
+            (gap-map-square-ret←cube-partial-ret _ _ α β tlr cspr)
+            (gap-is-equiv←is-pullback _
+              (is-pullback←is-cartesian _ gcart))))
+
 }
 %```
 }

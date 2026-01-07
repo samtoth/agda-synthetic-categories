@@ -94,3 +94,10 @@ module _ (inv : h ⊙ i ＝ Id) where abstract
 
   insertr : f ＝ (f ⊙ h) ⊙ i
   insertr = sym cancelr
+
+
+assoc-4 : ∀ (f : Hom u v) (g : Hom z u)
+            (h : Hom y z) (i : Hom x y)
+          → f ⊙ (g ⊙ (h ⊙ i)) ＝ ((f ⊙ g) ⊙ h) ⊙ i
+assoc-4 f g h i
+  = assoc f g _ ∙ assoc (f ⊙ g) h _

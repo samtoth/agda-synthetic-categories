@@ -21,6 +21,7 @@ open import Core.FibredJoin
 open import Core.FlatteningCoequalisers
 open import Core.FlatteningPushouts
 open import Core.FlatteningSeqColims
+open import Core.FunctorialPullback
 open import Core.FunctorialPushout
 open import Core.Image
 open import Core.Join

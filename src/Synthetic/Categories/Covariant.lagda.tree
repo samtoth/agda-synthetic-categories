@@ -36,11 +36,13 @@ open import Core.Orthogonal
 open import Core.CanonicalPushouts
 open import Core.Arrow
 open import Core.ArrowEquiv
+open import Core.Cube
 open import Core.Lifts
 open import Core.FlatteningPushouts
 open import Core.PiSection
 open import Core.CocartesianSquare
 open import Core.PullbackPower
+open import Core.Postwhisker
 
 open import Data.Bool
 
@@ -586,41 +588,73 @@ is an equivalence.}
                  (is-total-equiv←is-fibrewise-equiv (fibrewise .snd orth))
 
 
-retract-arrow-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
-    → Arrow-map f g
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
-retract-arrow-map f g F
-  = Σ[ G ∶ Arrow-map g f ]
-     ( retract-witness (F .Arrow-map.top) (G .Arrow-map.top)
-     × retract-witness (F .Arrow-map.bot) (G .Arrow-map.bot))
-
 left-orthogonal-retract
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
       {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
-      (F : Arrow-map f f') (R : retract-arrow-map f f' F)
+      (F : Arrow-map f f') (R : retract-arrow-map F)
       {C : Type 𝓝} {D : Type 𝓛} (g : C → D)
       → (f' ⊥ g) → (f ⊥ g)
-left-orthogonal-retract f f' F r orth
-  = {!!}
+left-orthogonal-retract {A = A}{B} f f' F ret {C}{D} h f'h
+  = orthogonal←is-cartesian
+      (rotate-is-cartesian _
+        (retract-is-cartesian cube cube-ret
+          (rotate-is-cartesian _ (is-cartesian←orthogonal f'h)))) where
+  cube : Cube (rotate-square (power-hom f h)) (rotate-square (power-hom f' h))
+  cube .Cube.left = postcomp-square (ret .fst) C
+  cube .Cube.right = postcomp-square (ret .fst) D
+  cube .Cube.comm .fst = ~refl
+  cube .Cube.comm .snd .fst = ~refl
+  cube .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
+                              ∙ sym (commutes-prewhisker-funext {h = h} _)
+                              ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
+
+  cube' : Cube (rotate-square (power-hom f' h)) (rotate-square (power-hom f h))
+  cube' .Cube.left = postcomp-square F C
+  cube' .Cube.right = postcomp-square F D
+  cube' .Cube.comm .fst = ~refl
+  cube' .Cube.comm .snd .fst = ~refl
+  cube' .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
+                               ∙ sym (commutes-prewhisker-funext {h = h} _)
+                               ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
+
+  cube-ret : 1-coherent-retract-cube cube
+  cube-ret .fst = cube'
+  cube-ret .snd .fst x = funext→ (x ◂ ret .snd .snd .fst)
+  cube-ret .snd .snd
+    = (ret-left .snd .fst
+    ,  ret-right .snd .fst
+    ,  ret-right .fst
+    ,  (λ f → sym (ap-∘  (h ∘_) (f ∘_) (funext→ (ret .snd .fst))))
+    ,  λ a → sym
+              (∙-assoc
+                (ap (_∘ Arrow-map.top F) (funext→ (a ◂ _)))
+                (funext→ ( a ∘ Arrow-map.bot (ret .fst) ◂ (Arrow-map.comm F ~⁻¹)))
+                ((postcomp D f ◂ ret-right .fst) a))
+              ∙ ret-right .snd .snd a ∙ ∙-reflr _) where
+    ret-left : Arrow-map-path
+                (paste-squares (postcomp-retract-square F ret .fst)
+                               (postcomp-square (ret .fst) C))
+                id-square
+    ret-left = retract-arrow-map-is-retract
+                         (postcomp-square (ret .fst) C)
+                         (postcomp-retract-square F ret)
+
+
+    ret-right : Arrow-map-path
+                (paste-squares (postcomp-retract-square F ret .fst)
+                               (postcomp-square (ret .fst) D))
+                id-square
+    ret-right = retract-arrow-map-is-retract
+                         (postcomp-square (ret .fst) D)
+                         (postcomp-retract-square F ret)
 
 left-end-retract : is-simplicial Δ²
    → Σ (Arrow-map {A = Δ¹} {B = Δ²} (_, i0) {C = Δ¹} {D = Δ¹ × Δ¹} (_, i0))
-       (retract-arrow-map _ _)
+       (retract-arrow-map)
 left-end-retract sp
   = ( mk-amap id □←Δ ~refl
-    , mk-amap id (retract-□ sp .fst) ret-filler
-    , (~refl , (retract-□ sp .snd))) where
-  ret-filler : retract-□ sp .fst ∘ (_, i0) ~ (_, i0)
-  ret-filler a = unap-equiv (sp (a , i0))
-                   ( is-equiv.ε (sp (a , i0)) _
-                   ∙ sym (funext→
-                           (pushout-rec-unique _ _
-                             (λ p → let eq = sym p ∙ ∧-comm ∙ 0-init
-                                    in Δ²-ext (eq , sym eq))
-                             (λ _ → Δ²-refl)
-                             λ _ → is-prop←is-truncated (Δ²-is-set _ _) _ _)))
+    , mk-amap id (retract-□ sp .fst) (retract-□ sp .snd ∘ (_, i0) )
+    , (~refl , (retract-□ sp .snd) , ~∙-reflr _))
 
 left-orthogonal-∘
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {B : Type 𝓤} {C : Type 𝓥} (f : B → C)
@@ -658,6 +692,7 @@ left-orthogonal-× {𝓤} {𝓥}{𝓦}{𝓜}{𝓝}{𝓛}{A} {B} f {X} {Y} g h fh
         (mk-amap (×-swap ._≃_.fwd) (×-swap ._≃_.fwd) ~refl)
         (   mk-amap (×-swap ._≃_.fwd) (×-swap ._≃_.fwd) ~refl
           , ~refl
+          , ~refl
           , ~refl)
         h
         (left-orthogonal-Σ (λ _ → f) h (λ _ → fh)))
@@ -681,7 +716,7 @@ abstract
            (left-orthogonal-retract
              (_, i0) (id ⊗ const _ 𝟙 i0)
              (mk-amap (λ a → (a , tt)) id ~refl)
-             (mk-amap fst id ~refl , (~refl , ~refl))
+             (mk-amap fst id ~refl , (~refl , ~refl , ~refl))
              fst
              (left-orthogonal-Σ (λ _ → const Δ¹ 𝟙 i0) fst
                λ _ → is-covariant⇔is-left-fibration _ .fst bc)))

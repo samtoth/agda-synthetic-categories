@@ -8,6 +8,7 @@ open import Algebra.Poset
 open import Axioms.FreeAlgInj
 open import Core.Arrow
 open import Core.ArrowEquiv
+open import Core.ArrowRetract
 open import Core.CanonicalPushouts
 open import Core.CanonicalSeqColims
 open import Core.CartesianStraightening

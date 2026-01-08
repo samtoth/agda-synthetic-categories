@@ -54,7 +54,7 @@ def get_forester_json() -> list:
 
 def find_next_tree(prefix, all_trees: list, gap: int) -> int:
     """Return the next available STT number as int."""
-    stt_re = re.compile(rf"{prefix}-(\w{{4}})$", re.IGNORECASE)
+    stt_re = re.compile(rf"{prefix}-(\w{{4}})$")
     stt_numbers = []
 
     for tree in all_trees:
@@ -68,11 +68,11 @@ def find_next_tree(prefix, all_trees: list, gap: int) -> int:
 
     stt_numbers.sort()
     # Find the first gap that is at least `gap` long
-    i = 1
-    while i < len(stt_numbers) and (stt_numbers[i] - stt_numbers[i-1] < gap):
+    i = 0
+    while i < len(stt_numbers) and (stt_numbers[i+1] - stt_numbers[i] < gap):
         i += 1
 
-    next_val = stt_numbers[i-1] + 1
+    next_val = stt_numbers[i-1] + 2
     return next_val
 
 

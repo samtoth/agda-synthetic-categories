@@ -692,3 +692,92 @@ fibre-square-is-cartesian f b = is-cartesian←is-pullback _
 }
 %```
 }
+
+\subtree[tot-000D]{
+\title{Total squares}
+\taxon{Construction}
+
+\p{Given a family of squares, we can define the total square by taking the
+sum types and total maps between them.}
+
+%```agda
+\agda{
+total-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (total-map f) (total-map g)
+total-square F .Arrow-map.top = total-map (Arrow-map.top ∘ F)
+total-square F .Arrow-map.bot = total-map (Arrow-map.bot ∘ F)
+total-square F .Arrow-map.comm (i , a)
+  = Σ-path→ (refl , Arrow-map.comm (F i) a)
+
+precomp-Π
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+      (f : (i : I) → A i → B i)
+    → Π I A → Π I B
+precomp-Π f g i = f i (g i)
+
+Π-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (precomp-Π f) (precomp-Π g)
+Π-square F .Arrow-map.top h i = Arrow-map.top (F i) (h i)
+Π-square F .Arrow-map.bot h i = Arrow-map.bot (F i) (h i)
+Π-square F .Arrow-map.comm h  = funext→ (λ a → Arrow-map.comm (F a) (h a))
+
+
+is-cartesian←gap-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+    → (F : Arrow-map f g)
+    → is-equiv (gap (Cone←Arrow-map F .snd))
+    → is-cartesian F
+is-cartesian←gap-is-equiv F gap
+  = is-cartesian←is-pullback F (is-pullback←gap _ gap)
+
+opaque
+  Π-square-is-cartesian
+    : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+        {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+        {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+      → (F : (i : I) → Arrow-map (f i) (g i))
+      → (∀ i → is-cartesian (F i))
+      → is-cartesian (Π-square F)
+  Π-square-is-cartesian {I = I} {g = g} F cart
+    = is-cartesian←gap-is-equiv _ eq where
+    curry-pb : Pullback (Arrow-map.bot (Π-square F)) (precomp-Π g)
+          → Π I (λ z → Pullback (Arrow-map.bot (F z)) (g z))
+    curry-pb (f , g , H) i = (f i , g i , happly H i)
+
+    curry-pb-qiso : quasi-iso curry-pb
+    curry-pb-qiso .fst f = (pb.π₁ ∘ f , pb.π₂ ∘ f , funext→ (pb.filler ∘ f))
+    curry-pb-qiso .snd .fst (f , g , p)
+      = pullback-path→ (refl , refl , sym (funext.η p) ∙ sym (∙-reflr _))
+    curry-pb-qiso .snd .snd = ~refl
+
+    eq : is-equiv (gap (Cone←Arrow-map (Π-square F) .snd))
+    eq = (3-for-2~
+            {f = curry-pb}
+            {g = gap (Cone←Arrow-map (Π-square F) .snd)}
+            {k = precomp-Π (λ i → gap (Cone←Arrow-map (F i) .snd))}
+            ~refl
+            (is-equiv←qiso curry-pb-qiso)
+            (precomp-Π-equiv
+              (λ {i} → gap-is-equiv←is-pullback _
+                (is-pullback←is-cartesian _ (cart i)))))
+
+-- total-square-is-cartesian
+--   : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+--       {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+--       {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+--     → (F : (i : I) → Arrow-map (f i) (g i))
+--     → (∀ i → is-cartesian (F i))
+--     → is-cartesian (total-square F)
+-- total-square-is-cartesian F cart = {!!}
+}
+%```
+}

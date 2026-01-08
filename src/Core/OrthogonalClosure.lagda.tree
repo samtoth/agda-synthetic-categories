@@ -1,0 +1,283 @@
+\title{Closure properties of orthogonal maps}
+\date{2025-12}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.OrthogonalClosure where
+
+open import Foundations.Prelude
+
+open import ufAxioms
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.ArrowRetract
+open import Core.Orthogonal
+open import Core.Cube
+open import Core.PullbackPower
+open import Core.Postwhisker
+open import Core.CocartesianSquare
+open import Core.PushoutProduct
+
+open notation
+open import Ergonomics.Notations.Orthogonality
+}
+%```
+
+
+\subtree[tot-000H]{
+\title{Being right orthogonal is preserved under pullback}
+\taxon{Theorem}
+\date{2025-11-26}
+
+\p{Given a [cartesian square](stt-003V) between maps #{g} and #{h}, then if
+#{f \perp h}, #{f \perp g}.}
+
+
+\proof{
+\p{Consider the following [cube](stt-00B2):}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	& {C^Y} && {C^X} \\
+	{A^Y} && {A^X} \\
+	& {D^Y} && {D^X} \\
+	{B^Y} && {B^X}
+	\arrow[from=1-2, to=1-4]
+	\arrow["{h_*}"'{pos=0.6}, from=1-2, to=3-2]
+	\arrow[from=1-4, to=3-4]
+	\arrow[from=2-1, to=1-2]
+	\arrow[from=2-1, to=2-3]
+	\arrow["{g_*}"', from=2-1, to=4-1]
+	\arrow[from=2-3, to=1-4]
+	\arrow[from=2-3, to=4-3]
+	\arrow["{f^*}"{pos=0.3}, from=3-2, to=3-4]
+	\arrow[from=4-1, to=3-2]
+	\arrow["{f^*}"', from=4-1, to=4-3]
+	\arrow[from=4-3, to=3-4]
+\end{tikzcd}
+}
+
+\p{The left and right faces are cartesian since [precomposing a cartesian square
+gives a cartesian square](stt-003R), then by our assumption the back square is
+cartesian, [so the front square is cartesian](stt-00B3).}
+}
+
+%```agda
+\agda{
+orthogonal←pullback
+  : ∀ {𝓤 𝓥 𝓐 𝓑 𝓒 𝓓} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+      {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
+      {g : A → B} {h : C → D}
+    → (F : Arrow-map g h) → is-cartesian F
+    → are-orthogonal f h → are-orthogonal f g
+orthogonal←pullback {X = X} {Y} f {A} {g = g}{h} F cart orth
+  = orthogonal←is-cartesian
+     (front-cartesian←cartesian-cube
+       (power-hom f g) (power-hom f h)
+       the-cube
+       (precomp-cartesian F cart)
+       (precomp-cartesian F cart)
+       (is-cartesian←orthogonal orth)) where
+  module F = Arrow-map F
+
+  the-cube : Cube (power-hom f g) (power-hom f h)
+  the-cube .Cube.left = precomp-square F Y
+  the-cube .Cube.right = precomp-square F X
+  the-cube .Cube.comm .fst = ~refl
+  the-cube .Cube.comm .snd .fst = ~refl
+  the-cube .Cube.comm .snd .snd a
+    = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-postwhisker-funext _)
+}
+%```
+}
+
+
+%```agda
+\agda{
+
+left-orthogonal-retract
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
+      (F : Arrow-map f f') (R : retract-arrow-map F)
+      {C : Type 𝓝} {D : Type 𝓛} (g : C → D)
+      → (f' ⊥ g) → (f ⊥ g)
+left-orthogonal-retract {A = A}{B} f f' F ret {C}{D} h f'h
+  = orthogonal←is-cartesian
+      (rotate-is-cartesian _
+        (retract-is-cartesian cube cube-ret
+          (rotate-is-cartesian _ (is-cartesian←orthogonal f'h)))) where
+  cube : Cube (rotate-square (power-hom f h)) (rotate-square (power-hom f' h))
+  cube .Cube.left = postcomp-square (ret .fst) C
+  cube .Cube.right = postcomp-square (ret .fst) D
+  cube .Cube.comm .fst = ~refl
+  cube .Cube.comm .snd .fst = ~refl
+  cube .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
+                              ∙ sym (commutes-prewhisker-funext {h = h} _)
+                              ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
+
+  cube' : Cube (rotate-square (power-hom f' h)) (rotate-square (power-hom f h))
+  cube' .Cube.left = postcomp-square F C
+  cube' .Cube.right = postcomp-square F D
+  cube' .Cube.comm .fst = ~refl
+  cube' .Cube.comm .snd .fst = ~refl
+  cube' .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
+                               ∙ sym (commutes-prewhisker-funext {h = h} _)
+                               ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
+
+  cube-ret : 1-coherent-retract-cube cube
+  cube-ret .fst = cube'
+  cube-ret .snd .fst x = funext→ (x ◂ ret .snd .snd .fst)
+  cube-ret .snd .snd
+    = (ret-left .snd .fst
+    ,  ret-right .snd .fst
+    ,  ret-right .fst
+    ,  (λ f → sym (ap-∘  (h ∘_) (f ∘_) (funext→ (ret .snd .fst))))
+    ,  λ a → sym
+              (∙-assoc
+                (ap (_∘ Arrow-map.top F) (funext→ (a ◂ _)))
+                (funext→ ( a ∘ Arrow-map.bot (ret .fst) ◂ (Arrow-map.comm F ~⁻¹)))
+                ((postcomp D f ◂ ret-right .fst) a))
+              ∙ ret-right .snd .snd a ∙ ∙-reflr _) where
+    ret-left : Arrow-map-path
+                (paste-squares (postcomp-retract-square F ret .fst)
+                               (postcomp-square (ret .fst) C))
+                id-square
+    ret-left = retract-arrow-map-is-retract
+                         (postcomp-square (ret .fst) C)
+                         (postcomp-retract-square F ret)
+
+
+    ret-right : Arrow-map-path
+                (paste-squares (postcomp-retract-square F ret .fst)
+                               (postcomp-square (ret .fst) D))
+                id-square
+    ret-right = retract-arrow-map-is-retract
+                         (postcomp-square (ret .fst) D)
+                         (postcomp-retract-square F ret)
+
+
+left-orthogonal-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {B : Type 𝓤} {C : Type 𝓥} (f : B → C)
+      {A : Type 𝓦} (g : A → B)
+      {X : Type 𝓜} {Y : Type 𝓝} (h : X → Y)
+    → (f ⊥ h) → (g ⊥ h) → (f ∘ g) ⊥ h
+left-orthogonal-∘ f g h fh gh
+  = orthogonal←is-cartesian
+      (compose-cartesian
+        (is-cartesian←orthogonal gh)
+        (is-cartesian←orthogonal fh))
+
+left-orthogonal-right-cancel
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {B : Type 𝓤} {C : Type 𝓥} {f : B → C}
+      {A : Type 𝓦} {g : A → B}
+      {X : Type 𝓜} {Y : Type 𝓝} {h : X → Y}
+    → (g ⊥ h) → (f ∘ g) ⊥ h → (f ⊥ h)
+left-orthogonal-right-cancel gh fgh
+  = orthogonal←is-cartesian
+      (3-for-2-cartesian
+         Arrow-map-path-refl
+         (is-cartesian←orthogonal fgh)
+         (is-cartesian←orthogonal gh))
+
+left-orthogonal-homotopy
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      {X : Type 𝓜} {Y : Type 𝓝} (h : X → Y)
+      (H : f ~ g)
+    → (f ⊥ h) → (g ⊥ h)
+left-orthogonal-homotopy h = funext-rec _ λ where refl → id
+
+left-orthogonal-Σ
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤}
+      {B : A → Type 𝓥} {C : A → Type 𝓦} (f : ∀ a → B a → C a)
+      {X : Type 𝓜} {Y : Type 𝓝} (g : X → Y)
+      → (∀ a → f a ⊥ g) → (total-map f) ⊥ g
+left-orthogonal-Σ {A = A} {B} {C} f {Y = Y} g fg
+  = orthogonal←is-cartesian
+      (front-cartesian←equiv-cube
+        cube
+        cube-is-equiv
+        (Π-square-is-cartesian _ (is-cartesian←orthogonal ∘ fg))) where
+  cube : Cube (power-hom (total-map f) g) (Π-square (λ i → power-hom (f i) g))
+  cube .Cube.left .Arrow-map.top = curry
+  cube .Cube.left .Arrow-map.bot = curry
+  cube .Cube.left .Arrow-map.comm = ~refl
+  cube .Cube.right .Arrow-map.top = curry
+  cube .Cube.right .Arrow-map.bot = curry
+  cube .Cube.right .Arrow-map.comm = ~refl
+  cube .Cube.comm .fst = ~refl
+  cube .Cube.comm .snd .fst = ~refl
+  cube .Cube.comm .snd .snd a = ∙-reflr _ ∙ funext-refl
+
+  cube-is-equiv : is-Cube-equiv cube
+  cube-is-equiv .fst .fst = curry-is-equiv
+  cube-is-equiv .fst .snd = curry-is-equiv
+  cube-is-equiv .snd .fst = curry-is-equiv
+  cube-is-equiv .snd .snd = curry-is-equiv
+
+
+left-orthogonal-×
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
+      {C : Type 𝓝} {D : Type 𝓛} (g : C → D)
+      → (f ⊥ g) → (f' ⊥ g) → (f ⊗ f') ⊥ g
+left-orthogonal-× {𝓤} {𝓥}{𝓦}{𝓜}{𝓝}{𝓛}{A} {B} f {X} {Y} g h fh gh
+  = left-orthogonal-∘ (f ⊗ id) (id ⊗ g) h
+      (left-orthogonal-retract (f ⊗ id) (id ⊗ f)
+        (mk-amap (×-swap ._≃_.fwd) (×-swap ._≃_.fwd) ~refl)
+        ( mk-amap (×-swap ._≃_.fwd) (×-swap ._≃_.fwd) ~refl
+        , ~refl
+        , ~refl
+        , ~refl)
+        h
+        (left-orthogonal-Σ (λ _ → f) h (λ _ → fh)))
+      (left-orthogonal-Σ (λ _ → g) h λ _ → gh )
+
+id⊥_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} (f : B → C)
+       → id{A = A} ⊥ f
+id⊥ f = orthogonal←postcomp-Π (λ _ → id-is-equiv)
+
+left-orthogonal-pushout
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      (F : Arrow-map f g)
+    → is-cocartesianω F
+    → {C : Type 𝓝} {D : Type 𝓛} (h : C → D)
+    → (f ⊥ h) → (g ⊥ h)
+left-orthogonal-pushout {f = f} {g = g} F cocart h fh
+  = orthogonal←is-cartesian
+      (rotate-is-cartesian
+        _
+        (front-cartesian←cartesian-cube
+        _ _ the-cube
+        (cocart _)
+        (cocart _)
+        (rotate-is-cartesian _ (is-cartesian←orthogonal fh)))) where
+
+  the-cube : Cube (rotate-square (power-hom g h)) (rotate-square (power-hom f h))
+  the-cube .Cube.left = postcomp-square F _
+  the-cube .Cube.right = postcomp-square F _
+  the-cube .Cube.comm .fst = ~refl
+  the-cube .Cube.comm .snd .fst = ~refl
+  the-cube .Cube.comm .snd .snd k
+    = ∙-reflr _ ∙ ∙-reflr _
+    ∙ sym (commutes-prewhisker-funext {h = h} (ap k ∘ sym ∘ Arrow-map.comm F))
+    ∙ ap funext→ (funext→ (λ a → sym (ap-∘ h k _)))
+
+left-orthogonal-pushout-product
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓝} {Y : Type 𝓛} (h : X → Y)
+  → f ⊥ h
+  → {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
+  → pushout-product f g ⊥ h
+left-orthogonal-pushout-product f h fh g
+  = left-orthogonal-right-cancel
+      (left-orthogonal-pushout _
+        (Pushout-square-is-cocartesian (mk-span _ (f ⊗1 _) (_ 1⊗ g)))
+        h (left-orthogonal-× f id h fh (id⊥ h)))
+        (left-orthogonal-× f id h fh (id⊥ h))
+}
+%```

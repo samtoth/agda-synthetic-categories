@@ -28,6 +28,7 @@ open import Core.Image
 open import Core.Join
 open import Core.Lifts
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower

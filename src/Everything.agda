@@ -116,11 +116,10 @@ open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
 open import Synthetic.Categories.Boundaries
+open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
-open import Synthetic.Categories.HomFamilies
 open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns
-open import Synthetic.Categories.LaxPullback
 open import Synthetic.Categories.NaturalTransformation
 open import Synthetic.Categories.Precategories
 open import Synthetic.Categories.Simplicial

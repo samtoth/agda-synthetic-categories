@@ -8,6 +8,7 @@ open import Algebra.Poset
 open import Axioms.FreeAlgInj
 open import Core.Arrow
 open import Core.ArrowEquiv
+open import Core.ArrowRetract
 open import Core.CanonicalPushouts
 open import Core.CanonicalSeqColims
 open import Core.CartesianStraightening
@@ -21,15 +22,18 @@ open import Core.FibredJoin
 open import Core.FlatteningCoequalisers
 open import Core.FlatteningPushouts
 open import Core.FlatteningSeqColims
+open import Core.FunctorialPullback
 open import Core.FunctorialPushout
 open import Core.Image
 open import Core.Join
 open import Core.Lifts
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
 open import Core.PushoutEquiv
+open import Core.PushoutProduct
 open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.SpanMap

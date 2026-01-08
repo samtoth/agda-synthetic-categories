@@ -355,7 +355,7 @@ cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
 \subtree[stt-003C]{
 \title{Pullback squares from cartesian arrow maps}
 \taxon{Theorem}
-\p{We show that a [cartesian](stt-003V) arrow map gives is a pullback square.
+\p{We show that a [cartesian](stt-003V) arrow map gives a pullback square.
  That is, a square is cartesian iff the corrosponding cone is a pullback cone.}
 
 \proof{
@@ -462,6 +462,16 @@ is-cartesian←is-pullback {f = f} {f' = f'} g pb b
       Slice-fibre slice-map b
       ~ arrow-fibre g b
   lem (a , refl) = Σ-path→ (refl , sym (∙-reflr _))
+
+
+is-cartesian←gap-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+    → (F : Arrow-map f g)
+    → is-equiv (gap (Cone←Arrow-map F .snd))
+    → is-cartesian F
+is-cartesian←gap-is-equiv F gap
+  = is-cartesian←is-pullback F (is-pullback←gap _ gap)
 }
 % ```
 }
@@ -656,16 +666,15 @@ rotate-is-cartesian
     → is-cartesian F
     → is-cartesian (rotate-square F)
 rotate-is-cartesian {f = f} {g} F@(mk-amap top bot comm) fcart
-  = is-cartesian←is-pullback _
-      (is-pullback←gap (Cone←Arrow-map (rotate-square F) .snd)
+  = is-cartesian←gap-is-equiv _
         (is-equiv-∘ (pullback-swap ._≃_.has-is-eqv)
                     (gap-is-equiv←is-pullback _
-                      (is-pullback←is-cartesian _ fcart))))
+                      (is-pullback←is-cartesian _ fcart)))
 
 }
 %```
 
-\subtree[stt-00BD]{
+\subtree[stt-00BX]{
 \title{The fibre of maps as a cartesian square}
 \taxon{Example}
 
@@ -680,8 +689,7 @@ fibre-square f b .Arrow-map.comm (x , p) = sym p
 
 fibre-square-is-cartesian : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
                             → is-cartesian (fibre-square f b)
-fibre-square-is-cartesian f b = is-cartesian←is-pullback _
-                                  (is-pullback←gap _ eq) where
+fibre-square-is-cartesian f b = is-cartesian←gap-is-equiv _ eq where
   map : fibre f b → Pullback (const _ 𝟙 b) f
   map (x , p) = (tt , x , sym p)
 
@@ -689,6 +697,113 @@ fibre-square-is-cartesian f b = is-cartesian←is-pullback _
   eq = is-equiv←qiso ((λ (_ , x , p) → (x , sym p))
                      , (λ where (_ , refl) → refl)
                      , λ where (_ , _ , refl) → refl)
+}
+%```
+}
+
+\subtree[stt-00BR]{
+\title{Total squares}
+\taxon{Construction}
+
+\p{Given a family of squares, we can define the total square by taking the
+sum types and total maps between them.}
+
+%```agda
+\agda{
+total-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (total-map f) (total-map g)
+total-square F .Arrow-map.top = total-map (Arrow-map.top ∘ F)
+total-square F .Arrow-map.bot = total-map (Arrow-map.bot ∘ F)
+total-square F .Arrow-map.comm (i , a)
+  = Σ-path→ (refl , Arrow-map.comm (F i) a)
+}
+%```agda
+}
+
+\subtree[stt-00BY]{
+\title{Dependent precomposition square}
+\taxon{Construction}
+
+\p{Given a family of squares #{F_i : f_i \to g_i}, we can form the product square
+#{\Pi_i F_i : \Pi_i f_i \to \Pi_i g_i}}
+
+%```agda
+\agda{
+Π-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (precomp-Π f) (precomp-Π g)
+Π-square F .Arrow-map.top h i = Arrow-map.top (F i) (h i)
+Π-square F .Arrow-map.bot h i = Arrow-map.bot (F i) (h i)
+Π-square F .Arrow-map.comm h  = funext→ (λ a → Arrow-map.comm (F a) (h a))
+}
+%```
+
+\p{#{\Pi_i F_i} is cartesian iff each square #{F_i} is.}
+
+\proof{
+
+\p{We use 3-for-2 in the red triangle of the following diagram:}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	& {\Pi_i(B_i\times_{D_i}C_i)} \\
+	{\Pi_i A_i} &&& {\Pi_iC_i} \\
+	& {\Pi_iB_i\times_{\Pi_i D_i}\Pi_i c_i} \\
+	\\
+	{\Pi_iB_i} &&& {\Pi_iD_i}
+	\arrow["\sim"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=1-2, to=3-2]
+	\arrow["{\Pi_i(\textrm{gap})}"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=1-2]
+	\arrow[from=2-1, to=2-4]
+	\arrow[color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=3-2]
+	\arrow[from=2-1, to=5-1]
+	\arrow[from=2-4, to=5-4]
+	\arrow[from=3-2, to=2-4]
+	\arrow[from=3-2, to=5-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=3-2, to=5-4]
+	\arrow[from=5-1, to=5-4]
+\end{tikzcd}
+}
+}
+
+%```agda
+\agda{
+opaque
+  Π-square-is-cartesian
+    : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+        {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+        {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+      → (F : (i : I) → Arrow-map (f i) (g i))
+      → (∀ i → is-cartesian (F i))
+      → is-cartesian (Π-square F)
+  Π-square-is-cartesian {I = I} {g = g} F cart
+    = is-cartesian←gap-is-equiv _ eq where
+    curry-pb : Pullback (Arrow-map.bot (Π-square F)) (precomp-Π g)
+          → Π I (λ z → Pullback (Arrow-map.bot (F z)) (g z))
+    curry-pb (f , g , H) i = (f i , g i , happly H i)
+
+    curry-pb-qiso : quasi-iso curry-pb
+    curry-pb-qiso .fst f = (pb.π₁ ∘ f , pb.π₂ ∘ f , funext→ (pb.filler ∘ f))
+    curry-pb-qiso .snd .fst (f , g , p)
+      = pullback-path→ (refl , refl , sym (funext.η p) ∙ sym (∙-reflr _))
+    curry-pb-qiso .snd .snd = ~refl
+
+    eq : is-equiv (gap (Cone←Arrow-map (Π-square F) .snd))
+    eq = (3-for-2~
+            {f = curry-pb}
+            {g = gap-map←square (Π-square F)}
+            {k = precomp-Π (λ i → gap-map←square (F i))}
+            ~refl
+            (is-equiv←qiso curry-pb-qiso)
+            (precomp-Π-equiv
+              (λ {i} → gap-is-equiv←is-pullback _
+                (is-pullback←is-cartesian _ (cart i)))))
 }
 %```
 }

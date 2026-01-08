@@ -33,6 +33,7 @@ open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
 open import Core.PushoutEquiv
+open import Core.PushoutProduct
 open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.SpanMap

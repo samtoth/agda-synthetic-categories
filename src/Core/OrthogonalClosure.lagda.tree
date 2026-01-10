@@ -149,6 +149,21 @@ Suppose any map labeled with an #{f} is left orthogonal to #{h}, then:}
 
 %```agda
 \agda{
+power-hom-cube←arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
+      (F : Arrow-map f f')
+      {C : Type 𝓝} {D : Type 𝓛} (g : C → D)
+    → Cube (rotate-square (power-hom f' g)) (rotate-square (power-hom f g))
+power-hom-cube←arrow-map f f' F g .Cube.left = postcomp-square F _
+power-hom-cube←arrow-map f f' F g .Cube.right = postcomp-square F _
+power-hom-cube←arrow-map f f' F g .Cube.comm .fst = ~refl
+power-hom-cube←arrow-map f f' F g .Cube.comm .snd .fst = ~refl
+power-hom-cube←arrow-map f f' F g .Cube.comm .snd .snd k
+  = ∙-reflr _ ∙ ∙-reflr _
+  ∙ sym (commutes-prewhisker-funext {h = g} _)
+  ∙ ap funext→ (funext→ (◂∘ g k _ ~⁻¹))
+
 left-orthogonal-retract
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
       {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
@@ -161,25 +176,10 @@ left-orthogonal-retract {A = A}{B} f f' F ret {C}{D} h f'h
         (retract-is-cartesian cube cube-ret
           (rotate-is-cartesian _ (is-cartesian←orthogonal f'h)))) where
   cube : Cube (rotate-square (power-hom f h)) (rotate-square (power-hom f' h))
-  cube .Cube.left = postcomp-square (ret .fst) C
-  cube .Cube.right = postcomp-square (ret .fst) D
-  cube .Cube.comm .fst = ~refl
-  cube .Cube.comm .snd .fst = ~refl
-  cube .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
-                              ∙ sym (commutes-prewhisker-funext {h = h} _)
-                              ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
-
-  cube' : Cube (rotate-square (power-hom f' h)) (rotate-square (power-hom f h))
-  cube' .Cube.left = postcomp-square F C
-  cube' .Cube.right = postcomp-square F D
-  cube' .Cube.comm .fst = ~refl
-  cube' .Cube.comm .snd .fst = ~refl
-  cube' .Cube.comm .snd .snd k = ∙-reflr _ ∙ ∙-reflr _
-                               ∙ sym (commutes-prewhisker-funext {h = h} _)
-                               ∙ ap funext→ (funext→ (◂∘ h k _ ~⁻¹))
+  cube = power-hom-cube←arrow-map _ _ (ret .fst) h
 
   cube-ret : 1-coherent-retract-cube cube
-  cube-ret .fst = cube'
+  cube-ret .fst = power-hom-cube←arrow-map _ _ F h
   cube-ret .snd .fst x = funext→ (x ◂ ret .snd .snd .fst)
   cube-ret .snd .snd
     = (ret-left .snd .fst
@@ -209,6 +209,18 @@ left-orthogonal-retract {A = A}{B} f f' F ret {C}{D} h f'h
                          (postcomp-square (ret .fst) D)
                          (postcomp-retract-square F ret)
 
+left-orthogonal-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
+      (F : Arrow-map f f') → is-Arrow-equiv F
+    → {C : Type 𝓝} {D : Type 𝓛} (g : C → D)
+    → f ⊥ g → f' ⊥ g
+left-orthogonal-equiv f f' F Feq g fperp
+  = orthogonal←is-cartesian
+      (rotate-is-cartesian _
+        (front-cartesian←equiv-cube (power-hom-cube←arrow-map _ _ F g)
+          (is-Arrow-equiv-postcomp F Feq , is-Arrow-equiv-postcomp F Feq)
+          (rotate-is-cartesian _ (is-cartesian←orthogonal fperp))))
 
 left-orthogonal-∘
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {B : Type 𝓤} {C : Type 𝓥} (f : B → C)
@@ -329,7 +341,22 @@ left-orthogonal-pushout-product f h fh g
       (left-orthogonal-pushout _
         (Pushout-square-is-cocartesian (mk-span _ (f ⊗1 _) (_ 1⊗ g)))
         h (left-orthogonal-× f id h fh (id⊥ h)))
-        (left-orthogonal-× f id h fh (id⊥ h))
+      (left-orthogonal-× f id h fh (id⊥ h))
+
+left-orthogonal-pushout-product'
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓝} {Y : Type 𝓛} (h : X → Y)
+  → f ⊥ h
+  → {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
+  → pushout-product g f ⊥ h
+left-orthogonal-pushout-product' f h fh g
+  = left-orthogonal-right-cancel {g = ι₁}
+      (left-orthogonal-pushout _
+        (rotate-square-is-cocartesian _ (Pushout-square-is-cocartesian _))
+        h
+        (left-orthogonal-× id f h (id⊥ h) fh))
+      (left-orthogonal-× id f h (id⊥ h) fh)
 }
 %```
 }

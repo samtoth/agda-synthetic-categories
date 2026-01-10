@@ -20,6 +20,8 @@ module Synthetic.Categories.Simplicial
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   where
 
+open import ufAxioms
+
 open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
 open Poly  hiding (L[x]; Δ²)
@@ -32,8 +34,24 @@ private
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
 
 open import Core.Join
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
+open import Core.FunctorialPushout
+open import Core.SpanMap
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.FlatteningPushouts
+open import Core.SubtypeEquiv
+
+open import Ergonomics.Extensionality
+open import Ergonomics.Auto
+
+open import Synthetic.Cubes Δ¹ i0 i1
 }
 %```
 
@@ -81,6 +99,186 @@ module Simp where
   open is-globally-reflective Simplicial-is-globally-reflective
 
   Σ-is-simplicial = Null-globally-Σ-closed
+
+Δ²-≤-rec : ∀ {𝓤} {A : Type 𝓤} {i j} → is-simplicial A
+           → (l : i ≤ j → A) → (r : j ≤ i → A) → (l ∘ ≤←＝ ~ r ∘ ≥←＝) → A
+Δ²-≤-rec {i = i} {j} asimp l u eq
+  = is-equiv.bwd (asimp (i , j)) (cogap (mk-cocone l u
+      λ where (p , q) → ap l (is-prop-separated _ _ _ _)
+                      ∙ eq (≤-antisym p q)
+                      ∙ ap u (is-prop-separated _ _ _ _)))
+
+Δ²-≤-rec! : ∀ {𝓤} {A : Type 𝓤} i j → is-simplicial A
+            → (l : ⦃ i ≤ j ⦄ → A) → (r : ⦃ j ≤ i ⦄ → A)
+            → (∀ (q : i ＝ j) → l ⦃ ≤←＝ q ⦄ ＝ r ⦃ ≥←＝ q ⦄)
+            → A
+Δ²-≤-rec! i j simp l r eq = Δ²-≤-rec simp (λ p → l ⦃ p ⦄) (λ q → r ⦃ q ⦄) eq
+}
+%```
+}
+
+\subtree[tot-000E]{
+\title{Triangulated squares}
+\taxon{Lemma}
+
+\p{The following square is simplicial-cocartesian. I.e. precomposition at any
+simplicial type gives a [cartesian square](stt-003V):}
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^1} && {\Delta^2} \\
+	\\
+	{\Delta^2} && {\square^2}
+	\arrow["\delta", from=1-1, to=1-3]
+	\arrow["\delta"', from=1-1, to=3-1]
+	\arrow["{(x,y)\mapsto(y,x)}", from=1-3, to=3-3]
+	\arrow["{(x,y)\mapsto(x,y)}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\proof{
+\p{We have that for all #{(i,j) : \square}, #{(i \leq j * j \leq i) \perp A}.
+   By closure of left ortgogonality under #{\Sigma}, this gives us
+   #{\Sigma_{i,j}(i \leq j * j \leq i) \perp A}. But this sigma type is exactly
+   the triangulated square.
+}
+}
+
+%```agda
+\agda{
+□\ : Type 𝓘
+□\ = Pushout {B = Δ²} {C = Δ²} (ι-const I I-distr) (ι-const I I-distr)
+
+Δ²-ι-upper : Δ² → □^ 2
+Δ²-ι-upper (x , y) = (x , y)
+
+Δ²-ι-lower : Δ² → □^ 2
+Δ²-ι-lower (x , y) = (y , x)
+
+□\-square : Arrow-map (ι-const I I-distr) Δ²-ι-upper
+□\-square .Arrow-map.top = ι-const I I-distr
+□\-square .Arrow-map.bot = Δ²-ι-lower
+□\-square .Arrow-map.comm = ~refl
+
+□\-incl : □\ → □^ 2
+□\-incl = cogap-map←square □\-square
+
+□\-Sub : Subtype (□^ 2) 𝓘
+□\-Sub .Subtype.family (i , j) = (i ≤ j) * (j ≤ i)
+□\-Sub .Subtype.has-is-subtype (i , j) = *-is-prop ≤-is-prop ≤-is-prop
+
+fibre-□\-incl : ∀ x → fibre □\-incl x ≃ x ∈ □\-Sub
+fibre-□\-incl x@(i , j)
+  = fibre □\-incl x    ≃⟨ cogap-fibre _ x ⟩
+    Pushout _ _        ≃⟨ mk≃ pushout-map pushout-map-is-eqv ⟩
+    Pushout fst snd   ≃⟨⟩
+    (i ≤ j) * (j ≤ i) ≃∎ where
+  open Span
+
+  total-fibre-span : Span 𝓘 𝓘 𝓘
+  total-fibre-span = total-span _ _ (Fibre-family (Cocone←Arrow-map □\-square .snd) x)
+
+  intended-span : Span 𝓘 𝓘 𝓘
+  intended-span = mk-span ((i ≤ j) × (j ≤ i)) fst snd
+
+  span-map : Span-map _ _
+  span-map .Span-map.h₁ (x , refl) = auto!
+  span-map .Span-map.h₂ (x , refl) = (auto! , auto!)
+  span-map .Span-map.h₃ (x , refl) = auto!
+  span-map .Span-map.H _ = is-prop-separated _ _ _ _
+  span-map .Span-map.K _ = is-prop-separated _ _ _ _
+
+  pushout-map : Pushout (total-fibre-span .left) (total-fibre-span .right)
+              → Pushout fst snd
+  pushout-map = Pushout-functorial-span span-map
+
+  inv-span-map : Span-map _ _
+  inv-span-map .Span-map.h₁ ij = (j , i) ⦃ ij ⦄ , refl
+  inv-span-map .Span-map.h₂ (p , q) = j , ×-path→ ((≤-antisym q p) , refl)
+  inv-span-map .Span-map.h₃ ij = ((i , j) ⦃ ij ⦄ , refl)
+  inv-span-map .Span-map.H (p , q) = Σ-path→ (Δ²-ext (refl , (≤-antisym p q))
+    , is-prop←is-truncated (Trunc.×∈S car-is-set car-is-set _ _) _ _)
+  inv-span-map .Span-map.K (p , q) = Σ-path→ ((Δ²-ext ((≤-antisym p q) , refl))
+    , is-prop←is-truncated (Trunc.×∈S car-is-set car-is-set _ _) _ _)
+
+  inverse-pushout-map
+    : Pushout fst snd
+    → Pushout (total-fibre-span .left) (total-fibre-span .right)
+  inverse-pushout-map = Pushout-functorial-span inv-span-map
+
+  span-hom : Span-map-homotopy (compose-span-map inv-span-map span-map) id-span-map
+  span-hom .fst (a , refl) = refl
+  span-hom .snd .fst (a , refl) = Σ-path→ (refl
+    , (is-prop←is-truncated (Trunc.×∈S car-is-set car-is-set _ _) _ _))
+  span-hom .snd .snd .fst (a , refl) = refl
+  span-hom .snd .snd .snd .fst a
+    = (is-prop←is-truncated
+        (Trunc.Σ-is-truncated Δ²-is-set
+          (λ a → Trunc.×∈S
+            (suc-is-truncated _ car-is-set)
+            (suc-is-truncated _ car-is-set) _ _) _ _) _ _)
+  span-hom .snd .snd .snd .snd a
+    = is-prop←is-truncated
+        (Trunc.Σ-is-truncated Δ²-is-set
+          (λ b → Trunc.×∈S
+           (suc-is-truncated _ car-is-set)
+           (suc-is-truncated _ car-is-set) _ _) _ _) _ _
+
+
+  span-eq : compose-span-map inv-span-map span-map ＝ id-span-map
+  span-eq = Span-map-funext→ span-hom
+
+  abstract
+   ret : retract-witness pushout-map inverse-pushout-map
+   ret a = sym (happly
+             (sym (ap Pushout-functorial-span span-eq ∙ Canonical-pushout-map-id)
+               ∙ (Canonical-Pushout-map-compose inv-span-map span-map)) a)
+
+
+  span-hom' : Span-map-homotopy (compose-span-map span-map inv-span-map) id-span-map
+  span-hom' .fst = ~refl
+  span-hom' .snd .fst (p , q)
+    = ×-path→ (is-prop-separated _ _ _ _ , is-prop-separated _ _ _ _)
+  span-hom' .snd .snd .fst = ~refl
+  span-hom' .snd .snd .snd .fst a
+    = is-prop←is-truncated (suc-is-truncated _ car-is-set _ _ _ _) _ _
+  span-hom' .snd .snd .snd .snd a
+    = is-prop←is-truncated (suc-is-truncated _ car-is-set _ _ _ _) _ _
+
+  span-eq' : compose-span-map span-map inv-span-map ＝ id-span-map
+  span-eq' = Span-map-funext→ span-hom'
+
+  abstract
+   sec : section-witness pushout-map inverse-pushout-map
+   sec a = sym (happly
+             (sym (ap Pushout-functorial-span span-eq' ∙ Canonical-pushout-map-id)
+               ∙ (Canonical-Pushout-map-compose span-map inv-span-map)) a)
+
+  pushout-map-is-eqv : is-equiv pushout-map
+  pushout-map-is-eqv = is-equiv←qiso (inverse-pushout-map , ret , sec)
+
+open FromFibreSubtype □\-Sub □\-incl fibre-□\-incl public renaming
+  (equiv-to-subtype to □\-as-subtype;
+   incl-is-embedding to □\-incl-is-embedding;
+   pres-carr to □\-pres-carrier;
+   pres-carr' to □\-pres-carrier')
+
+simp-is-triangulated : ∀ {𝓤} {A : Type 𝓤}
+                     → is-simplicial A → is-local (λ (_ : 𝟙) → □\-incl) A
+simp-is-triangulated {_}{A} simp tt
+  = is-orthogonal⇔orthogonal-! .fst
+      (left-orthogonal-equiv _ _ amap amap-is-eqv !
+        (left-orthogonal-Σ _ !
+          (is-orthogonal⇔orthogonal-! .snd
+          ∘ (is-local←is-null simp)))) where
+  amap : Arrow-map (total-map (λ _ → !)) □\-incl
+  amap .Arrow-map.top = _≃_.bwd □\-as-subtype
+  amap .Arrow-map.bot = fst
+  amap .Arrow-map.comm = □\-pres-carrier' ~⁻¹
+
+  amap-is-eqv : is-Arrow-equiv amap
+  amap-is-eqv .fst = is-equiv⁻¹ (_≃_.has-is-eqv □\-as-subtype)
+  amap-is-eqv .snd = singleton-fst-is-equiv (λ _ → 𝟙-is-singleton)
 }
 %```
 }

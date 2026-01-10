@@ -45,3 +45,4 @@ open import Foundations.TypeSequence public
 open import Foundations.SequentialColimits public
 open import Foundations.PropMapEmbedding public
 open import Foundations.EquivalenceRelation public
+open import Foundations.Extension public

@@ -118,7 +118,6 @@ open import Modalities.Subuniverses
 open import Synthetic.Categories.Boundaries
 open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
-open import Synthetic.Categories.HomFamilies
 open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns
 open import Synthetic.Categories.NaturalTransformation

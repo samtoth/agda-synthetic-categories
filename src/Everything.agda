@@ -38,6 +38,7 @@ open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.SpanMap
 open import Core.Spheres
+open import Core.SubtypeEquiv
 open import Core.Suspensions
 open import Data.Bool
 open import Ergonomics.Fixity
@@ -116,6 +117,7 @@ open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
 open import Synthetic.Categories.Boundaries
+open import Synthetic.Categories.CoComma
 open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
 open import Synthetic.Categories.Homotopies

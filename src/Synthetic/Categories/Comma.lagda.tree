@@ -39,6 +39,8 @@ open import Core.Lifts
 open import Core.PullbackPower
 open import Core.ExtPullbacks
 open import Core.PiSection
+open import Core.FunctorialPullback
+open import Core.Slice
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
@@ -116,10 +118,10 @@ f ↓ g = Σ[ a ∶ _ ] Σ[ c ∶ _ ] Hom _ (f a) (g c)
         (f : A → B) (g : C → B) → Right-cone (mk-cospan _ f g) (f ↓ g)
 ↓-cone f g = mk-right-cone fst (fst ∘ snd) (snd ∘ snd)
 
-↓-is-lax-pullback
+↓-is-comma-cone
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : A → B} {g : C → B}
     → is-comma-cone (↓-cone f g)
-↓-is-lax-pullback = is-equiv←qiso qiso where
+↓-is-comma-cone = is-equiv←qiso qiso where
   open Right-cone
   qiso : quasi-iso (right-cone-map (↓-cone _ _))
   qiso .fst cone x = (cone .p x , cone .q x , cone .filler x)
@@ -130,7 +132,7 @@ f ↓ g = Σ[ a ∶ _ ] Σ[ c ∶ _ ] Hom _ (f a) (g c)
 }
 
 \subtree[tot-0004]{
-\title{Slice categories as lax pullbacks}
+\title{Slice and coslice categories as lax pullbacks}
 \taxon{Example}
 
 \p{A common example of a comma category is a slice category. Given a type
@@ -161,11 +163,11 @@ object #{c} considered as a function #{1 \to C}.}
 
 %```agda
 \agda{
-Slice : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Slice f = Σ[ c ∶ _ ] ∀ i → Hom _ c (f i)
+Slice : ∀ {𝓤 𝓥} (C : Type 𝓤) {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Slice C f = Σ[ c ∶ C ] ∀ i → Hom _ c (f i)
 
 Slice-cone : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
-           (F : I → C) → Right-cone (mk-cospan _ (const C I) (const _ 𝟙 F)) (Slice F)
+           (F : I → C) → Right-cone (mk-cospan _ (const C I) (const _ 𝟙 F)) (Slice _ F)
 Slice-cone F .Right-cone.p (c , _) = c
 Slice-cone F .Right-cone.q (c , g) = tt
 Slice-cone F .Right-cone.filler (_ , f) = Hom←NT f
@@ -178,6 +180,188 @@ Slice-is-comma F = is-equiv←qiso qiso where
   qiso .snd .fst f = funext→ (λ q → Σ-path→ (refl , _≃_.ε NT≃Hom (f q .snd)))
   qiso .snd .snd c = ap (mk-right-cone (Right-cone.p c) (λ _ → tt))
                         (funext→ (_≃_.η NT≃Hom ∘ Right-cone.filler c))
+
+
+Coslice : ∀ {𝓤 𝓥} (C : Type 𝓤) {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Coslice C f = Σ[ c ∶ C ] ∀ i → Hom _ (f i) c
+
+Coslice-cone
+  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
+      (F : I → C)
+    → Right-cone (mk-cospan _ (const _ 𝟙 F) (const C I)) (Coslice C F)
+Coslice-cone F .Right-cone.p = !
+Coslice-cone F .Right-cone.q (c , _) = c
+Coslice-cone F .Right-cone.filler (_ , α) = Hom←NT α
+
+Coslice-is-comma : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
+                    → is-comma-cone (Coslice-cone F)
+Coslice-is-comma F = is-equiv←qiso qiso where
+  qiso : quasi-iso (right-cone-map (Coslice-cone F))
+  qiso .fst cone x = (cone .Right-cone.q x , NT←Hom (cone .Right-cone.filler x))
+  qiso .snd .fst f =  funext→ (λ q → Σ-path→ (refl , _≃_.ε NT≃Hom (f q .snd)))
+  qiso .snd .snd c =  ap (mk-right-cone _ (Right-cone.q c))
+                        (funext→ (_≃_.η NT≃Hom ∘ Right-cone.filler c))
+}
+%```
+}
+
+\subtree[tot-000K]{
+\title{Paths in comma types}
+
+%```agda
+\agda{
+Comma-path
+  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+      {f : a → b} {g : c → b}
+    → (x y : f ↓ g) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓘)
+Comma-path {f = F} {g = G} (a , b , f) (a' , b' , f')
+  = Σ[ p ∶ a ＝ a' ] Σ[ q ∶ b ＝ b' ] Hom-pathP (ap F p) (ap G q) f f'
+
+Comma-path-refl
+  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+      {f : a → b} {g : c → b}
+    → {x : f ↓ g} → Comma-path x x
+Comma-path-refl = (refl , refl , Hom-pathP-refl)
+
+opaque
+  Comma-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+        {f : a → b} {g : c → b}
+      → {x : f ↓ g} → is-singleton (Σ (f ↓ g) (Comma-path x))
+  Comma-path-is-torsorial
+    = is-singleton-structure←parts
+        Sing-is-singleton
+        (_ , refl)
+        (is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          Hom-pathP-is-torsorial)
+
+instance
+  IdS-Comma
+    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+        {F : a → b} {G : c → b} → Identity-system (F ↓ G) (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  IdS-Comma .Identity-system.IdS = Comma-path
+  IdS-Comma .Identity-system.IdS←Id refl = Comma-path-refl
+  IdS-Comma .Identity-system.has-is-ids x
+    = fundamental-Id _ Comma-path-is-torsorial _
+}
+%```
+}
+
+\subtree[tot-000J]{
+\title{Comma types are functorial in their cospan}
+\taxon{Construction}
+
+
+%```agda
+\agda{
+Comma₀ : ∀ {𝓤 𝓥 𝓦} → Cospan 𝓤 𝓥 𝓦 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓘)
+Comma₀ C = left ↓ right where open Cospan C
+
+Comma₁ : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'}
+           {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+         → Cospan-map S T → Comma₀ S → Comma₀ T
+Comma₁ F (x , y , h)
+  = (h₁ x , h₃ y , adjust-hom (H x) (K y) (ap-hom h₂ h))
+  where open Cospan-map F
+
+Comma-id
+  : ∀ {𝓤 𝓥 𝓦} {S : Cospan 𝓤 𝓥 𝓦}
+    → Comma₁ (id-cospan-map {S = S}) ~ id
+Comma-id (x , y , f) = ext!
+  (refl , refl
+  , (~refl
+    , Square-degen-vert _ _ (∙-reflr _ ∙ ap-id _)
+    , Square-degen-vert _ _ (∙-reflr _ ∙ ap-id _)))
+
+Comma-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
+      {A : Cospan 𝓤 𝓥 𝓦} {B : Cospan 𝓤' 𝓥' 𝓦'} {C : Cospan 𝓤'' 𝓥'' 𝓦''}
+      (F : Cospan-map B C) (G : Cospan-map A B)
+    → Comma₁ (cospan-map-compose F G) ~ Comma₁ F ∘ Comma₁ G
+Comma-∘ F G (x , y , f) = ext!
+  (refl , refl
+  , ( ~refl
+    , (Square-degen-vert _ _
+        (∙.pullr _
+          {a = ap (F .h₂) (G .H x)}
+          {b = ap (F .h₂ ∘ G .h₂) (f .hom0)}
+          {c = ap (F .h₂) _}
+          (ap (_∙ ap (F .h₂) (G .H x)) (ap-∘ (F .h₂) (G .h₂) (f .hom0))
+          ∙ sym (ap-∙ (F .h₂) _ (G .H x)))))
+    , Square-degen-vert _ _
+        (∙.pullr _
+          {a = ap (h₂ F) (G .K y)}
+          {b = ap (F .h₂ ∘ G .h₂) (f .hom1)}
+          {c = ap (F .h₂) (ap (G .h₂) _ ∙ G .K y)}
+          ((ap (_∙ ap (F .h₂) (G .K y)) (ap-∘ (F .h₂) (G .h₂) (f .hom1))
+          ∙ sym (ap-∙ (F .h₂) _ (G .K y)))))))
+  where
+  open Cospan-map
+  open HomP
+}
+%```
+}
+
+\subtree[tot-000K]{
+\title{Functoriality of the slice construction}
+\taxon{Corollary}
+
+\p{The functoriality of somewhat of the (co)slice construction is somewhat
+more subtle to express. The operation #{-_{/-}} can be considered a functor
+#{\Sigma_{A : \UU}((\UU_{/A})^op) \to \UU}. In the first argument, we can express
+functoriality as follows: given a map #{f : A \to B}, there is a function
+#{f_{/p} : A_{/p} \to B_{/fp}}. In the second argument, we fix a type #{A},
+and consider a pair of arrows into #{A}, #{p} and #{q}. Now a
+[map in the slice](Core.Slice) #{t : p \to q} determines a function #{A_{/q} \to A_{/p}}
+(note the contravariance). We also provide a bespoke function for the trivial
+slice map, with #{(pt \xrightarrow{t} p) \to #{A_{/p} \to A_{/pt}}}, we also
+refer to this as (co)slice postcomposition.}
+
+%```agda
+\agda{
+precompose-slice
+  : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {K : Type 𝓚} (p : K → A)
+      {B : Type 𝓥} (f : A → B)
+    → Slice A p → Slice B (f ∘ p)
+precompose-slice p f (a , h) = (f a , ap-hom f ∘ h)
+
+precompose-coslice
+  : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {K : Type 𝓚} (p : K → A)
+      {B : Type 𝓥} (f : A → B)
+    → Coslice A p → Coslice B (f ∘ p)
+precompose-coslice p f (a , h) = (f a , ap-hom f ∘ h)
+
+slice-map-slice
+  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+      {K : Type 𝓚} (p : K → A)
+      {K' : Type 𝓚'} (q : K' → A)
+      (t : Slice-map p q)
+    → Slice A q → Slice A p
+slice-map-slice p q (t , H) (a , h) = (a , adjust-hom refl (H _) ∘ h ∘ t)
+
+postcompose-slice
+  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+      {K : Type 𝓚} (p : K → A)
+      {K' : Type 𝓚'} (t : K' → K)
+    → Slice A p → Slice A (p ∘ t)
+postcompose-slice p t (a , h) = (a , h ∘ t)
+
+coslice-map-slice
+  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+      {K : Type 𝓚} (p : K → A)
+      {K' : Type 𝓚'} (q : K' → A)
+      (t : Slice-map q p)
+    → Coslice A p → Coslice A q
+coslice-map-slice p q (t , H) (a , h) = (a , adjust-hom (H _) refl ∘ h ∘ t)
+
+postcompose-coslice
+  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+      {K : Type 𝓚} (p : K → A)
+      {K' : Type 𝓚'} (t : K' → K)
+    → Coslice A p → Coslice A (p ∘ t)
+postcompose-coslice p t (a , h) = (a , h ∘ t)
 }
 %```
 }

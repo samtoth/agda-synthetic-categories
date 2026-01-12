@@ -39,6 +39,7 @@ open import Data.Bool
 open import Core.CanonicalPushouts
 open import Core.Join
 open import Core.FlatteningPushouts
+open import Core.FunctorialPushout
 open import Core.SpanMap
 }
 %```
@@ -106,89 +107,72 @@ make-δΔ¹ a b (mk-lift false) = b
 δδΛ[2,1]-incl (mk-lift true) = Δ²-refl
 δδΛ[2,1]-incl (mk-lift false) = Δ²-refl
 
-
 δΔ²-sub : Subtype Δ² 𝓘
 δΔ²-sub .Subtype.family t@(i , j) = (t ∈ Λ[2,1]Sub) * (j ＝ i)
 δΔ²-sub .Subtype.has-is-subtype a@(i , j)
   = *-is-prop (∈-is-prop Λ[2,1]Sub a) (is-prop-separated _ _)
 
--- δΔ²-as-subtype : (i0 ＝ i1 → ∅) → ∀ a → fibre δΔ²-incl a ≃ a ∈ δΔ²-sub
--- δΔ²-as-subtype non-triv a@(i , j)
---   = fibre δΔ²-incl a ≃⟨ cogap-fibre _ a ⟩
---     Pushout (total-fibre-span .left) (total-fibre-span .right)
---         ≃⟨  coe≃ (ap (λ x → Pushout (left x) (right x))
---                            (ext! (span-map' , span-map-is-equiv))) ⟩
---     Pushout (intended-span .left) (intended-span .right)
---                               ≃⟨⟩
---     (a ∈ δΔ²-sub)             ≃∎ where
---   open Span
+δΔ²-as-subtype : (i0 ＝ i1 → ∅) → ∀ a → fibre δΔ²-incl a ≃ a ∈ δΔ²-sub
+δΔ²-as-subtype non-triv a@(i , j)
+  = fibre δΔ²-incl a ≃⟨ cogap-fibre _ a ⟩
+    Pushout (total-fibre-span .left) (total-fibre-span .right)
+        ≃⟨ Pushout-equiv←logical total-span-is-prop intended-span-is-prop sle ⟩
+    Pushout (intended-span .left) (intended-span .right)
+                              ≃⟨⟩
+    (a ∈ δΔ²-sub)             ≃∎ where
+  open Span
 
---   total-fibre-span : Span 𝓘 𝓘 𝓘
---   total-fibre-span = total-span δΛ[2,1]-incl δΔ¹-incl
---                                 (Fibre-family δΔ²-Δ²-cocone a)
+  total-fibre-span : Span 𝓘 𝓘 𝓘
+  total-fibre-span = total-span δΛ[2,1]-incl δΔ¹-incl
+                                (Fibre-family δΔ²-Δ²-cocone a)
 
---   intended-span : Span 𝓘 𝓘 𝓘
---   intended-span = mk-span ((a ∈ Λ[2,1]Sub) × (j ＝ i)) fst snd
+  intended-span : Span 𝓘 𝓘 𝓘
+  intended-span = mk-span ((a ∈ Λ[2,1]Sub) × (j ＝ i)) fst snd
 
---   total-fibre-span' : Span 𝓘 𝓘 𝓘
---   total-fibre-span' = mk-span (Σ[ x ∶ δΔ¹ ] (Δ²-diagonal (δΔ¹-incl x) ＝ (i , j)))
---                               {Left = Σ[ x ∶ Λ[2,1] ] (Λ[2,1]-incl x ＝ (i , j))}
---                               _
---                               {Right = Σ[ x ∶ Δ¹ ] ((x , x) ＝ (i , j))}
---                               (total-map-fst δΔ¹-incl)
+  intended-span-is-prop : is-prop-span intended-span
+  intended-span-is-prop .fst = ∈-is-prop Λ[2,1]Sub (i , j)
+  intended-span-is-prop .snd .fst
+    = is-prop-Σ (∈-is-prop Λ[2,1]Sub (i , j)) λ _ → is-prop-separated _ _
+  intended-span-is-prop .snd .snd = is-prop-separated _ _
 
---   _ : total-fibre-span ＝ total-fibre-span'
---   _ = refl
+  total-fibre-span' : Span 𝓘 𝓘 𝓘
+  total-fibre-span' = mk-span (fibre (Δ²-diagonal ∘ δΔ¹-incl) (i , j))
+                              {Left = fibre Λ[2,1]-incl (i , j)}
+                              _
+                              {Right = fibre Δ²-diagonal (i , j)}
+                              (total-map-fst δΔ¹-incl)
 
---   span-map' : Span-map total-fibre-span intended-span
---   span-map' .Span-map.h₁ = _≃_.fwd (Λ[2,1]-as-subtype a)
---   span-map' .Span-map.h₂ (mk-lift true , refl)
---      = (ι₂ refl , refl)
---   span-map' .Span-map.h₂ (mk-lift false , refl)
---      = (ι₁ refl , refl)
---   span-map' .Span-map.h₃ (b , refl) = refl
---   span-map' .Span-map.H (mk-lift true , refl)
---     = ∈-is-prop Λ[2,1]Sub a _ _
---   span-map' .Span-map.H (mk-lift false , refl)
---     = ∈-is-prop Λ[2,1]Sub a _ _
---   span-map' .Span-map.K (mk-lift true , refl) = refl
---   span-map' .Span-map.K (mk-lift false , refl) = refl
+  _ : total-fibre-span ＝ total-fibre-span'
+  _ = refl
 
---   span-map : Span-map intended-span total-fibre-span
---   span-map .Span-map.h₁ p =  _≃_.bwd (Λ[2,1]-as-subtype a) p
---   span-map .Span-map.h₂ (asub , refl)
---     = pushout-rec (mk-cocone (λ {refl → (δΔ¹-0 , Δ²-refl)})
---                              (λ {refl → (δΔ¹-1 , Δ²-refl)})
---                              λ {(p , q) → ¡ non-triv (p ∙ sym q) })
---                   asub
---   span-map .Span-map.h₃ p = (j , Δ²-ext (p , refl))
---   span-map .Span-map.H = {!!}
---   span-map .Span-map.K = {!!}
+  total-span-is-prop : is-prop-span total-fibre-span
+  total-span-is-prop .fst = Λ[2,1]-is-prop-map (i , j)
+  total-span-is-prop .snd .fst
+    = is-prop-map←is-embedding
+        (is-embedding-∘ Δ²-diagonal-is-embedding (δΔ¹-embeds non-triv))
+        (i , j)
+  total-span-is-prop .snd .snd
+    = is-prop-map←is-embedding Δ²-diagonal-is-embedding (i , j)
 
---   span-map-is-equiv : is-Span-equiv span-map'
---   span-map-is-equiv .fst = _≃_.has-is-eqv (Λ[2,1]-as-subtype a)
---   span-map-is-equiv .snd .fst
---     = is-equiv←qiso (span-map .Span-map.h₂
---                     , (λ { (mk-lift true , refl)
---                            → Σ-path→ (refl , is-prop←is-truncated (Δ²-is-set _ _) _ _)
---                          ; (mk-lift false , refl)
---                            → Σ-path→ (refl , is-prop←is-truncated (Δ²-is-set _ _) _ _)})
---                     , λ { (x , refl) →  pushout-ind
---               (λ x → Span-map.h₂ span-map' (Span-map.h₂ span-map (x , refl)) ＝ (x , refl))
---                                            (mk-coconeD (λ {refl → {!!}}) {!!} {!!}) x })
---   span-map-is-equiv .snd .snd
---     = is-equiv←qiso (span-map .Span-map.h₃
---                     , (λ {(k , refl) → Σ-path→ (refl ,
---                                    (is-prop←is-truncated (Δ²-is-set _ _) _ _))})
---                     , λ p → is-prop←is-truncated (car-is-set _ _) _ _ )
 
--- δΔ²≃Sub : (i0 ＝ i1 → ∅) → δΔ² ≃ Subtype.Σ̃ δΔ²-sub
--- δΔ²≃Sub nt
---   = δΔ²                               ≃⟨ total≃total-fibre δΔ²-incl e⁻¹ ⟩
---     total-fibre δΔ²-incl              ≃⟨⟩
---     (Σ[ a ∶ Δ² ] fibre δΔ²-incl a)    ≃⟨ Σ-ap-≃ (δΔ²-as-subtype nt) ⟩
---     (Σ[ a ∶ Δ² ] (a ∈ δΔ²-sub))       ≃⟨⟩
---     Subtype.Σ̃ δΔ²-sub                 ≃∎
+  sle : Span-logical-equiv total-fibre-span intended-span
+  sle .fst = logical←equiv (Λ[2,1]-as-subtype (i , j))
+  sle .snd .fst .fst (mk-lift true , refl) = (ι₂ refl , refl)
+  sle .snd .fst .fst (mk-lift false , refl) = (ι₁ refl , refl)
+  sle .snd .fst .snd (x , refl)
+    = pushout-rec (mk-cocone (λ {refl → (δΔ¹-0 , Δ²-refl)})
+                             (λ {refl → (δΔ¹-1 , Δ²-refl)})
+                             λ {(p , q) → ¡ non-triv (p ∙ sym q) }) x
+  sle .snd .snd .fst (x , refl) = refl
+  sle .snd .snd .snd refl = (i , Δ²-refl)
+
+δΔ²≃Sub : (i0 ＝ i1 → ∅) → δΔ² ≃ Subtype.Σ̃ δΔ²-sub
+δΔ²≃Sub nt
+  = δΔ²                               ≃⟨ total≃total-fibre δΔ²-incl e⁻¹ ⟩
+    total-fibre δΔ²-incl              ≃⟨⟩
+    (Σ[ a ∶ Δ² ] fibre δΔ²-incl a)    ≃⟨ Σ-ap-≃ (δΔ²-as-subtype nt) ⟩
+    (Σ[ a ∶ Δ² ] (a ∈ δΔ²-sub))       ≃⟨⟩
+    Subtype.Σ̃ δΔ²-sub                 ≃∎
 
 make-δΔ² : ∀ {𝓤} {A : Type 𝓤} {x y z}
           → Hom A y z → Hom A x y → Hom A x z
@@ -215,7 +199,7 @@ make-δΔ² f@(mk-hom fh f0 f1) g@(mk-hom gh g0 g1) h@(mk-hom hh h0 h1)
 
 δ□²-incl : δ□² → □^ 2
 δ□²-incl
-  = cogap (mk-cocone (Δ²-ι-upper ∘ Λ[2,1]-incl) (Δ²-ι-lower ∘ Λ[2,1]-incl)
+  = cogap (mk-cocone (□←Δ²-upper ∘ Λ[2,1]-incl) (□←Δ²-lower ∘ Λ[2,1]-incl)
                      λ { (mk-lift true)  → refl
                        ; (mk-lift false) → refl})
 

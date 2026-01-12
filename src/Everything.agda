@@ -38,7 +38,6 @@ open import Core.SeqMapHomotopy
 open import Core.Slice
 open import Core.SpanMap
 open import Core.Spheres
-open import Core.SubtypeEquiv
 open import Core.Suspensions
 open import Data.Bool
 open import Ergonomics.Fixity
@@ -98,6 +97,7 @@ open import Foundations.SingletonProp
 open import Foundations.Span
 open import Foundations.Square
 open import Foundations.Straightening
+open import Foundations.SubtypeEquiv
 open import Foundations.Subtypes
 open import Foundations.TheoremOfChoice
 open import Foundations.TotalEquiv

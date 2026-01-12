@@ -27,6 +27,7 @@ open import Foundations.EquivContrFibre public
 open import Foundations.EquivHomotopy public
 open import Foundations.Embedding public
 open import Foundations.Subtypes public
+open import Foundations.SubtypeEquiv public
 open import Foundations.DependentIdentity public
 open import Foundations.DependentHomotopy public
 open import Foundations.DependentCocone public

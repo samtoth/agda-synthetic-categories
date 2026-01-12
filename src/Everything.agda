@@ -66,6 +66,7 @@ open import Foundations.EquivOfSingleton
 open import Foundations.EquivProp
 open import Foundations.EquivSingleton
 open import Foundations.EquivalenceRelation
+open import Foundations.Extension
 open import Foundations.FibrePath
 open import Foundations.FibrewiseEquiv
 open import Foundations.FunExt
@@ -96,6 +97,7 @@ open import Foundations.SingletonProp
 open import Foundations.Span
 open import Foundations.Square
 open import Foundations.Straightening
+open import Foundations.SubtypeEquiv
 open import Foundations.Subtypes
 open import Foundations.TheoremOfChoice
 open import Foundations.TotalEquiv
@@ -114,10 +116,16 @@ open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 open import Modalities.Separated
 open import Modalities.Subuniverses
+open import Synthetic.Categories.Boundaries
+open import Synthetic.Categories.CoComma
+open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
+open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns
+open import Synthetic.Categories.NaturalTransformation
 open import Synthetic.Categories.Precategories
 open import Synthetic.Categories.Simplicial
+open import Synthetic.Cubes
 open import Synthetic.Hom
 open import Synthetic.Tiny
 open import Ergonomics.Auto
@@ -127,7 +135,6 @@ open import Ergonomics.PushoutUniv
 open import Ergonomics.Universal
 open import Foundations.DependentHomotopy
 open import Foundations.Empty
-open import Foundations.Extension
 open import Foundations.IdentityEquiv
 open import Foundations.IdentitySystem
 open import Foundations.PathReasoning

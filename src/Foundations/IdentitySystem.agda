@@ -153,6 +153,18 @@ fundamental-Id {a₀ = a₀} R Sing-sing f
                                       (is-prop←is-single Sing-sing)
                                       (total-map f))
 
+remove-singleton-structure
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+      {Ra : A → Type 𝓦}
+    → is-singleton  (Σ A Ra)
+    → ((a , _) : Σ A Ra)
+    → (Σ[ (a , _) ∶ Σ A B ] Ra a) ≃ B a
+remove-singleton-structure ars a
+  = Σ-assoc
+  ∙≃ Σ-ap-≃ (λ _ → ×-swap)
+  ∙≃ Σ-assoc e⁻¹
+  ∙≃ Σ-singl ars a
+
 -- TODO: Find special place for this
 --    creds to Egbert/agda-unimath
 --  The idea is that we have some type of the form Σ A ...,

@@ -1,0 +1,132 @@
+\date{2025-12-12}
+\title{Homotopies of morphisms}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Homotopies
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Lifts
+open import Core.FlatteningPushouts
+open import Core.PiSection
+open import Core.CocartesianSquare
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Tiny Δ¹
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+}
+%```
+
+
+\subtree[stt-00CH]{
+\title{Homotopies of synthetic morphisms}
+\taxon{Definition}
+
+%```agda
+\agda{
+_~▵_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (f g : Hom A a b) → Type (𝓘 ⊔ 𝓤)
+f ~▵ g = Hom2 f (idH _) g
+
+refl~▵ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (f : Hom A a b) → f ~▵ f
+refl~▵ f = (f .HomP.hom ∘ Poly.Δ².t , funext→
+           (pushout-rec-unique _ _
+             (pushout-rec-unique _ _
+               (λ _ → f .HomP.hom0)
+               ~refl
+               λ _ → ∙-reflr _
+                   ∙ ap-∘ (f .HomP.hom ∘ Poly.Δ².t) (pushout-rec _) (glue tt)
+                   ∙ ap (ap _) (pushout-rec-apβ _)
+                   ∙ ap-∘ (f .HomP.hom) _ Δ²-refl
+                   ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+                   ∙ sym (∙-sym (f .HomP.hom0)))
+             ~refl
+             (~∙-reflr _
+             ~∙ δΔ¹-UP→ ( ap-∘ (f .HomP.hom ∘ Poly.Δ².t) (pushout-rec _) (glue _)
+                        ∙ ap (ap _) (pushout-rec-apβ _)
+                        ∙ ap-∘ (f .HomP.hom) _ Δ²-refl
+                        ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+                        ∙ sym (∙-sym (f .HomP.hom0))
+                        , ap-∘ (f .HomP.hom ∘ Poly.Δ².t) (pushout-rec _) (glue _)
+                        ∙ ap (ap _) (pushout-rec-apβ _)
+                        ∙ ap-∘ (f .HomP.hom) _ Δ²-refl
+                        ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+                        ∙ sym (∙-sym (f .HomP.hom1))))))
+
+
+~▵←＝ : ∀ {𝓤} {A : Type 𝓤} {a b : A} {f g : Hom A a b} → f ＝ g → f ~▵ g
+~▵←＝ {a = a} {_} {f} refl = refl~▵ f
+
+
+}
+%```
+}
+
+\subtree[stt-00CI]{
+\title{Homotopies are an identity system for morphisms}
+\taxon{Theorem}
+
+\p{We show that when #{A} is a precategery, #{\sim_{\Delta}} is torsorial,
+and thus forms an identity system for morphisms in #{A}}
+
+%```agda
+\agda{
+opaque
+  ~▵-is-torsorial
+    : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-precategory A
+      → ∀ (f : Hom A a b) → is-singleton (Σ[ g ∶ Hom A a b ] (f ~▵ g))
+  ~▵-is-torsorial apc f
+    = is-single←equiv-to-single
+        (mk≃ _ (composite←horn-extension-is-equiv f (idH _)))
+        (precategory-unique-composite apc f (idH _))
+
+Hom-homotopy-IdS : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-precategory A
+                   → Identity-system (Hom A a b) (𝓤 ⊔ 𝓘)
+Hom-homotopy-IdS apc .Identity-system.IdS = _~▵_
+Hom-homotopy-IdS apc .Identity-system.IdS←Id = ~▵←＝
+Hom-homotopy-IdS apc .Identity-system.has-is-ids f
+  = fundamental-Id _ (~▵-is-torsorial apc f) _
+
+_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (apc : is-precategory A)
+              → is-equiv (λ (f : Hom A a b) → (f , f , refl~▵ f))
+_ = λ apc → is-equiv⁻¹ (singleton-fst-is-equiv
+                          (SingS-is-single ⦃ Hom-homotopy-IdS apc ⦄))
+}
+%```
+}
+

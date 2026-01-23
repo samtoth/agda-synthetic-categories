@@ -207,6 +207,9 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     : ∀ {F : Arrow-map f f'} → is-prop (is-cartesian F)
   is-cartesian-is-prop
     = is-prop-Π (λ a → is-equiv-is-prop)
+
+
+
 }
 % ```
 }
@@ -220,11 +223,34 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
         {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
+
+
+  arrow-fibre-∘
+    : ∀ (F : Arrow-map f' f'') (G : Arrow-map f f')
+      → ∀ b 
+      → arrow-fibre (paste-squares F G) b
+      ~ arrow-fibre F (Arrow-map.bot G b) ∘ arrow-fibre G b
+  arrow-fibre-∘ F@(mk-amap f f' fcomm) G@(mk-amap g g' gcomm) b (a , p)
+    = Σ-path→ (refl , lem) where
+       lem : sym (ap f' (gcomm a) ∙ fcomm (g a)) ∙ ap (f' ∘ g') p ＝
+              sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p)
+       lem = ⌜ sym (ap f' (gcomm a) ∙ fcomm (g a)) ⌝ ∙ ap (f' ∘ g') p
+               ＝⟨ ap! (∙-symsym (ap f' (gcomm a)) _) ⟩
+             (sym (fcomm (g a)) ∙ ⌜ sym (ap f' (gcomm a)) ⌝) ∙ ap (f' ∘ g') p
+               ＝⟨ ap! (sym (ap-sym f' _)) ⟩
+             (sym (fcomm (g a)) ∙ ap f' (sym (gcomm a))) ∙ ap (f' ∘ g') p
+               ＝⟨ ∙-assoc (sym (fcomm (g a))) _ _ ⟩
+             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a)) ∙ ⌜ ap (f' ∘ g') p ⌝
+               ＝⟨ ap! (ap-∘ f' g' p) ⟩
+             sym (fcomm (g a)) ∙ ⌜ ap f' (sym (gcomm a)) ∙ (ap f' (ap g' p)) ⌝
+               ＝⟨ ap! (sym (ap-∙ f' (sym _) (ap g' p))) ⟩
+             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p) ∎
+
   compose-cartesian :  ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
                      → (ae : is-cartesian a) → (be : is-cartesian b)
                      →  is-cartesian (paste-squares a b)
   compose-cartesian {a} {b} ae be x
-    = tr is-equiv (funext→ (I x))
+    = tr is-equiv (funext→ (arrow-fibre-∘ a b x ~⁻¹))
        (is-equiv-∘ {f = arrow-fibre a (b .Arrow-map.bot x)} {g = arrow-fibre b x}
          (ae (b .Arrow-map.bot x))
          (be x)) where
@@ -257,12 +283,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
        (arrow-fibre a (b .bot x) ∘ arrow-fibre b x) (aa , p) .snd ∎
 
 
-    I : (x : B) →
-      arrow-fibre a (b .Arrow-map.bot x) ∘ arrow-fibre b x
-        ~
-      arrow-fibre (paste-squares a b) x
-    I x fib = fibre-path→ (refl , II x fib)
-
   3-for-2-cartesian : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
                         {H : Arrow-map f f''}
                       → Arrow-map-path H (paste-squares a b)
@@ -271,27 +291,9 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                       → is-cartesian b
   3-for-2-cartesian {a = F@(mk-amap f f' fcomm)} {b = G@(mk-amap g g' gcomm)}
                     K abcart bcart b
-    = 3-for-2~ H (bcart (g' b)) (tr is-cartesian (Arrow-map-path→ K) abcart b) where
-     H : arrow-fibre
-          (paste-squares F G) b
-          ~
-          arrow-fibre F (g' b) ∘
-          arrow-fibre G b
-     H (a , p) = Σ-path→ (refl , lem) where
-       lem : sym (ap f' (gcomm a) ∙ fcomm (g a)) ∙ ap (f' ∘ g') p ＝
-              sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p)
-       lem = ⌜ sym (ap f' (gcomm a) ∙ fcomm (g a)) ⌝ ∙ ap (f' ∘ g') p
-               ＝⟨ ap! (∙-symsym (ap f' (gcomm a)) _) ⟩
-             (sym (fcomm (g a)) ∙ ⌜ sym (ap f' (gcomm a)) ⌝) ∙ ap (f' ∘ g') p
-               ＝⟨ ap! (sym (ap-sym f' _)) ⟩
-             (sym (fcomm (g a)) ∙ ap f' (sym (gcomm a))) ∙ ap (f' ∘ g') p
-               ＝⟨ ∙-assoc (sym (fcomm (g a))) _ _ ⟩
-             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a)) ∙ ⌜ ap (f' ∘ g') p ⌝
-               ＝⟨ ap! (ap-∘ f' g' p) ⟩
-             sym (fcomm (g a)) ∙ ⌜ ap f' (sym (gcomm a)) ∙ (ap f' (ap g' p)) ⌝
-               ＝⟨ ap! (sym (ap-∙ f' (sym _) (ap g' p))) ⟩
-             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p) ∎
-
+    = 3-for-2~ (arrow-fibre-∘ F G b)
+               (bcart (g' b))
+               (tr is-cartesian (Arrow-map-path→ K) abcart b)
 }
 % ```
 }

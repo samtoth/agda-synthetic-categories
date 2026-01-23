@@ -1,0 +1,226 @@
+\title{Hom families}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+
+\import{stt-macros}
+
+
+\subtree[tot-000R]{
+\title{Idea}
+
+
+}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.HomFamilies
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.CoSlice
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.ExtPullbacks
+open import Core.PiSection
+open import Core.CanonicalPushouts
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.CoComma Δ¹ I I-distr
+open import Synthetic.Categories.JoinSlice Δ¹ I I-distr
+}
+%```
+
+
+
+\subtree[tot-0002]{
+\title{Unstraightening hom families}
+\taxon{Remark}
+
+\p{The unstraightening of the family #{\Hom(x,-)} is #{X_{x/} \to X}. Thus
+representable families are covariant iff #{X_{x/} \to X} are all left fibrations.}
+
+
+%```agda
+\agda{
+hom-fam-is-cov⇔is-left-fibration
+  : ∀ {𝓤} {X : Type 𝓤} x
+  → is-covariant (λ a → Hom X x a)
+  ⇔ is-left-fibration {A = Coslice X (λ (_ : 𝟙) → x)} fst
+hom-fam-is-cov⇔is-left-fibration x
+  = is-covariant⇔is-left-fibration (λ a → Hom _ x a)
+  ∙⇔ right-orthogonal-iff←equiv (λ _ → i0) amap amap-eq where
+  amap : Arrow-map (fst {B = λ c → (i : 𝟙) → Hom _ x c})
+                   (fst {B = λ a → Hom _ x a})
+  amap .Arrow-map.top = total-map (λ a → ev tt)
+  amap .Arrow-map.bot = id
+  amap .Arrow-map.comm = ~refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = is-total-equiv←is-fibrewise-equiv (λ a → unit-ev-is-equiv)
+  amap-eq .snd = id-is-equiv
+}
+%```
+}
+
+
+\subtree[tot-0005]{
+\taxon{Therem}
+\title{Representable families are covariant}
+
+\p{We show that a type #{A} is [Segal](stt-00AI) iff the family #{\Hom(-,x)} is
+covariant for each #{x}.}
+
+\proof{
+We will show that every #{A_{/x} \to A} is a left fibration iff A is right
+orthogonal to the map #{\Lambda^2_1 \to \Delta^2}.
+
+
+}
+
+%```agda
+\agda{
+
+precat-orth-lemma
+  : ∀ {𝓤} {A : Type 𝓤} (i : Δ¹)
+  → (Λ[2,1]-incl ⊥ A)
+  ⇔ (∀ x → is-equiv (total-map-fst (postcomp A Λ[2,1]-incl)
+                                   {λ f → f (ι₂ i) ＝ x}))
+precat-orth-lemma {A = A} i
+  =  top⇔bot-is-equiv←Arrow-equiv amap2 eq
+  ∙⇔ fibrewise⇔total-is-equiv where
+
+  add-singleton : ∀ {Q : Type 𝓘} (j : Δ¹ → Q)
+                → (Q → A) → Σ[ x ∶ A ] Σ[ f ∶ (Q → A)] (f (j i) ＝ x)
+  add-singleton j f = (f _ , f , refl)
+
+  add-singleton-eq : ∀ {Q : Type 𝓘} (j : Δ¹ → Q)
+                → quasi-iso (add-singleton j)
+  add-singleton-eq j .fst (a , f , refl) = f
+  add-singleton-eq j .snd .fst = ~refl
+  add-singleton-eq j .snd .snd (a , f , refl) = refl
+
+  amap2 : Arrow-map (postcomp A Λ[2,1]-incl)
+                    (total-map (λ a → total-map-fst (postcomp A Λ[2,1]-incl)))
+  amap2 .Arrow-map.top f = add-singleton (i1 ,_) f
+  amap2 .Arrow-map.bot f = add-singleton ι₂ f
+  amap2 .Arrow-map.comm _ = refl
+
+  eq : is-Arrow-equiv amap2
+  eq .fst = is-equiv←qiso (add-singleton-eq (i1 ,_))
+  eq .snd = is-equiv←qiso (add-singleton-eq ι₂)
+
+weird-horn-inclusion : Λ[2,1] → 𝟙 ⋉ Δ¹
+weird-horn-inclusion = cogap (mk-cocone (↑-hom (tt , i0) .HomP.hom) ↑-ι₂
+                             λ a → glue (δΔ¹-1 , tt , i0))
+
+weird-horn-inclusion∙ : Coslice-map (λ (_ : 𝟙) → ι₁ i0) λ _ → ↑-ι₁ tt
+weird-horn-inclusion∙ = (weird-horn-inclusion , λ _ → glue (δΔ¹-0 , tt , i0))
+
+LEM : ∀ {𝓤} {A : Type 𝓤} x
+      → Arrow-map (λ (_ : 𝟙) → i0) {C = Coslice A (λ (_ : 𝟙) → x)} (fst) →
+      Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (λ (_ : 𝟙) → x)
+LEM x (mk-amap top bot comm)
+  = cogap (mk-cocone (top tt .snd tt .HomP.hom)
+                     bot
+                     (λ c → top tt .snd tt .HomP.hom1 ∙ sym (comm c)))
+  , λ _ → HomP.hom0 (top tt .snd tt)
+
+opaque
+  LEM-is-equiv
+    : ∀ {𝓤} {A : Type 𝓤} x
+    → is-equiv (LEM {A = A} x)
+  LEM-is-equiv x = is-equiv←qiso qiso where
+    qiso : quasi-iso (LEM x)
+    qiso .fst (a , b) = mk-amap (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
+                                (a ∘ ι₂)
+                                (ap a ∘ sym ∘ glue)
+    qiso .snd .fst (mk-amap top bot comm)
+      = let pth = ( top tt .snd tt .HomP.hom1
+                  , λ i → ~refl , ((Square-degen-vert _ _ refl) , (Square-flatten-hor refl)))
+        in Arrow-map-path→
+          ( (λ a → Coslice-path→ pth)
+          , (~refl , λ _ → ap (_∙ ap fst (Coslice-path→ pth)) (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
+                         ∙ ap (sym (HomP.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
+                              (Coslice-path-ap-fst pth)
+                         ∙ ap (_∙ top tt .snd tt .HomP.hom1) (∙-symsym _ (sym (comm tt)))
+                         ∙ ∙.cancell _  (∙-sym' (HomP.hom1 (top tt .snd tt)))
+                                        {f = sym (sym (comm tt))}
+                         ∙ sym-sym ))
+    qiso .snd .snd (a , p)
+      = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+                      (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
+             , ~refl)
+
+
+coslice-is-left⇔weird-inner
+  : ∀ {𝓤} {A : Type 𝓤} x
+  → is-left-fibration {A = Coslice A (λ (_ : 𝟙) → x)} fst
+  ⇔ (is-equiv (Coslice-map-postcompose (λ (_ : 𝟙) → x) weird-horn-inclusion∙))
+coslice-is-left⇔weird-inner x
+  = (orthogonal⇔pb-power-is-equiv ⇔⁻¹)
+  ∙⇔ top⇔bot-is-equiv←Arrow-equiv amap amap-eq where
+  amap : Arrow-map (pullback-power (λ _ → i0) (λ r → fst r))
+                   (Coslice-map-postcompose (λ _ → x) weird-horn-inclusion∙)
+  amap .Arrow-map.top = join←coslice-map (λ _ → x)
+  amap .Arrow-map.bot = LEM x
+  amap .Arrow-map.comm f = ext!
+    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+          (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
+                              ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
+                              ∙ pushout-rec-apβ _))
+    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
+  amap-eq .snd = LEM-is-equiv x
+
+hom-fam-is-cov⇔is-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (∀ x → is-covariant (λ a → Hom A x a))
+    ⇔ is-precategory A
+hom-fam-is-cov⇔is-segal {A = A}
+  =  precomp-Π-⇔ (λ
+       x →  hom-fam-is-cov⇔is-left-fibration x
+         ∙⇔ coslice-is-left⇔weird-inner x
+         ∙⇔ {!!})
+  ∙⇔ (precat-orth-lemma {A = A} i0 ⇔⁻¹)
+  ∙⇔ logical←equiv (unit-UP≃ {A = λ _ → Λ[2,1]-incl ⊥ A} e⁻¹)
+}
+%```
+}

@@ -101,53 +101,15 @@ hom-fam-is-cov⇔is-left-fibration x
 %```
 }
 
+\subtree[tot-0006]{
+\taxon{Definition}
 
-\subtree[tot-0005]{
-\taxon{Therem}
-\title{Representable families are covariant}
-
-\p{We show that a type #{A} is [Segal](stt-00AI) iff the family #{\Hom(-,x)} is
-covariant for each #{x}.}
-
-\proof{
-We will show that every #{A_{/x} \to A} is a left fibration iff A is right
-orthogonal to the map #{\Lambda^2_1 \to \Delta^2}.
-
-
+\p{We call a type \em{strongly} Segal if it is local with respect to the map
+#{\Lambda^2_1 \to 1 \rtimes \Delta^1}.
 }
 
 %```agda
 \agda{
-
-precat-orth-lemma
-  : ∀ {𝓤} {A : Type 𝓤} (i : Δ¹)
-  → (Λ[2,1]-incl ⊥ A)
-  ⇔ (∀ x → is-equiv (total-map-fst (postcomp A Λ[2,1]-incl)
-                                   {λ f → f (ι₂ i) ＝ x}))
-precat-orth-lemma {A = A} i
-  =  top⇔bot-is-equiv←Arrow-equiv amap2 eq
-  ∙⇔ fibrewise⇔total-is-equiv where
-
-  add-singleton : ∀ {Q : Type 𝓘} (j : Δ¹ → Q)
-                → (Q → A) → Σ[ x ∶ A ] Σ[ f ∶ (Q → A)] (f (j i) ＝ x)
-  add-singleton j f = (f _ , f , refl)
-
-  add-singleton-eq : ∀ {Q : Type 𝓘} (j : Δ¹ → Q)
-                → quasi-iso (add-singleton j)
-  add-singleton-eq j .fst (a , f , refl) = f
-  add-singleton-eq j .snd .fst = ~refl
-  add-singleton-eq j .snd .snd (a , f , refl) = refl
-
-  amap2 : Arrow-map (postcomp A Λ[2,1]-incl)
-                    (total-map (λ a → total-map-fst (postcomp A Λ[2,1]-incl)))
-  amap2 .Arrow-map.top f = add-singleton (i1 ,_) f
-  amap2 .Arrow-map.bot f = add-singleton ι₂ f
-  amap2 .Arrow-map.comm _ = refl
-
-  eq : is-Arrow-equiv amap2
-  eq .fst = is-equiv←qiso (add-singleton-eq (i1 ,_))
-  eq .snd = is-equiv←qiso (add-singleton-eq ι₂)
-
 weird-horn-inclusion : Λ[2,1] → 𝟙 ⋉ Δ¹
 weird-horn-inclusion = cogap (mk-cocone (↑-hom (tt , i0) .HomP.hom) ↑-ι₂
                              λ a → glue (δΔ¹-1 , tt , i0))
@@ -155,110 +117,27 @@ weird-horn-inclusion = cogap (mk-cocone (↑-hom (tt , i0) .HomP.hom) ↑-ι₂
 weird-horn-inclusion∙ : Coslice-map (λ (_ : 𝟙) → ι₁ i0) λ _ → ↑-ι₁ tt
 weird-horn-inclusion∙ = (weird-horn-inclusion , λ _ → glue (δΔ¹-0 , tt , i0))
 
-LEM : ∀ {𝓤} {A : Type 𝓤} x
-      → Arrow-map (λ (_ : 𝟙) → i0) {C = Coslice A (λ (_ : 𝟙) → x)} (fst) →
-      Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (λ (_ : 𝟙) → x)
-LEM x (mk-amap top bot comm)
-  = cogap (mk-cocone (top tt .snd tt .HomP.hom)
-                     bot
-                     (λ c → top tt .snd tt .HomP.hom1 ∙ sym (comm c)))
-  , λ _ → HomP.hom0 (top tt .snd tt)
+is-strongly-segal : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-strongly-segal A = is-local (λ (_ : 𝟙) → weird-horn-inclusion) A
+}
+%```
+}
 
-opaque
-  LEM-is-equiv
-    : ∀ {𝓤} {A : Type 𝓤} x
-    → is-equiv (LEM {A = A} x)
-  LEM-is-equiv x = is-equiv←qiso qiso where
-    qiso : quasi-iso (LEM x)
-    qiso .fst (a , b) = mk-amap (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
-                                (a ∘ ι₂)
-                                (ap a ∘ sym ∘ glue)
-    qiso .snd .fst (mk-amap top bot comm)
-      = let pth = ( top tt .snd tt .HomP.hom1
-                  , λ i → ~refl , ((Square-degen-vert _ _ refl) , (Square-flatten-hor refl)))
-        in Arrow-map-path→
-          ( (λ a → Coslice-path→ pth)
-          , (~refl , λ _ → ap (_∙ ap fst (Coslice-path→ pth)) (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
-                         ∙ ap (sym (HomP.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
-                              (Coslice-path-ap-fst pth)
-                         ∙ ap (_∙ top tt .snd tt .HomP.hom1) (∙-symsym _ (sym (comm tt)))
-                         ∙ ∙.cancell _  (∙-sym' (HomP.hom1 (top tt .snd tt)))
-                                        {f = sym (sym (comm tt))}
-                         ∙ sym-sym ))
-    qiso .snd .snd (a , p)
-      = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
-                      (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
-             , ~refl)
+\subtree[tot-0007]{
+\title{Strongly Segal types are Segal}
+\taxon{Lemma}
 
+\p{Any [strongly Segal](tot-0006) type is [Segal](stt-00AI).}
 
-coslice-is-left⇔weird-inner
-  : ∀ {𝓤} {A : Type 𝓤} x
-  → is-left-fibration {A = Coslice A (λ (_ : 𝟙) → x)} fst
-  ⇔ (is-equiv (Coslice-map-postcompose (λ (_ : 𝟙) → x) weird-horn-inclusion∙))
-coslice-is-left⇔weird-inner x
-  = (orthogonal⇔pb-power-is-equiv ⇔⁻¹)
-  ∙⇔ top⇔bot-is-equiv←Arrow-equiv amap amap-eq where
-  amap : Arrow-map (pullback-power (λ _ → i0) (λ r → fst r))
-                   (Coslice-map-postcompose (λ _ → x) weird-horn-inclusion∙)
-  amap .Arrow-map.top = join←coslice-map (λ _ → x)
-  amap .Arrow-map.bot = LEM x
-  amap .Arrow-map.comm f = ext!
-    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
-          (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
-                              ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
-                              ∙ pushout-rec-apβ _))
-    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
+\proof{
+\p{We give a retraction #{\Delta^2 \hookrightarrow 1 \rtimes \Delta^1},
+   which furthermore preserves the inner horn inclusion.
+   (Note the retraction #{\Delta^2 \hookrightarrow \square^2} in \ref{stt-00C7}
+   factors through this map.)}
+}
 
-  amap-eq : is-Arrow-equiv amap
-  amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
-  amap-eq .snd = LEM-is-equiv x
-
-
-coslice-orth-lemma
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-      {p : X → A} {q : X → B} (f : Coslice-map p q)
-    → (f .fst ⊥ Y)
-    ⇔ (∀ (x : X → Y) → is-equiv (Coslice-map-postcompose x f))
-coslice-orth-lemma {A = A}{B}{X}{Y}{p}{q} (f , H)
-  = top⇔bot-is-equiv←Arrow-equiv (amap (funext→ H)) eq ∙⇔ fibrewise⇔total-is-equiv where
-
-  add-singleton : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
-                  → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
-  add-singleton f g = (g ∘ f , g , ~refl)
-
-  add-singleton-eq : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
-                     → quasi-iso (add-singleton p)
-  add-singleton-eq p .fst (a , f , H) = f
-  add-singleton-eq p .snd .fst x = refl
-  add-singleton-eq p .snd .snd (a , f , H)
-    = funext-rec
-        (λ H → ((f ∘ p) , (f , ~refl)) ＝ (a , (f , H)))
-        (λ where refl → refl)
-        H
-
-  amap : ∀ (H : f ∘ p ＝ q)
-         → Arrow-map (postcomp Y f)
-                     (total-map (λ a → Coslice-map-postcompose a (f , happly H)))
-  amap H .Arrow-map.top = add-singleton q
-  amap H .Arrow-map.bot = add-singleton p
-  amap refl .Arrow-map.comm x = refl
-
-  eq : is-Arrow-equiv (amap (funext→ H))
-  eq .fst = is-equiv←qiso (add-singleton-eq q)
-  eq .snd = is-equiv←qiso (add-singleton-eq p)
-
-hom-fam-is-cov⇔is-weird-segal
-  : ∀ {𝓤} {A : Type 𝓤}
-    → (∀ x → is-covariant (λ a → Hom A x a))
-    ⇔ (weird-horn-inclusion ⊥ A)
-hom-fam-is-cov⇔is-weird-segal {A = A}
-  =  precomp-Π-⇔ (λ
-       x →  hom-fam-is-cov⇔is-left-fibration x
-         ∙⇔ coslice-is-left⇔weird-inner x)
-  ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
-  ∙⇔ (coslice-orth-lemma (weird-horn-inclusion∙) ⇔⁻¹)
-
-
+%```agda
+\agda{
 retract-weird : 𝟙 ⋉ Δ¹ → Δ²
 retract-weird
   = cogap (mk-cocone
@@ -309,6 +188,169 @@ strongly-segal-type-is-segal orth tt
           , λ _ → is-prop←is-truncated (Δ²-is-set _ _) _ _)))
         !
         (is-orthogonal⇔orthogonal-! .snd orth))
+}
+%```
+}
+
+\subtree[tot-0008]{
+\title{Orthogonality from equivalence of postcomposition maps}
+\taxon{Lemma}
+
+\p{Given a map #{f} in the [coslice](stt-0062) #{p \to_X q}, postcomposition
+at every map #{X \to Y} is an equivalence iff #{f} is left orthogonal to #{Y}.
+}
+
+%```agda
+\agda{
+coslice-orth-lemma
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+      {p : X → A} {q : X → B} (f : Coslice-map p q)
+    → (f .fst ⊥ Y)
+    ⇔ (∀ (x : X → Y) → is-equiv (Coslice-map-postcompose x f))
+coslice-orth-lemma {A = A}{B}{X}{Y}{p}{q} (f , H)
+  = top⇔bot-is-equiv←Arrow-equiv (amap (funext→ H)) eq ∙⇔ fibrewise⇔total-is-equiv where
+
+  add-singleton : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
+                  → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
+  add-singleton f g = (g ∘ f , g , ~refl)
+
+  add-singleton-eq : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
+                     → quasi-iso (add-singleton p)
+  add-singleton-eq p .fst (a , f , H) = f
+  add-singleton-eq p .snd .fst x = refl
+  add-singleton-eq p .snd .snd (a , f , H)
+    = funext-rec
+        (λ H → ((f ∘ p) , (f , ~refl)) ＝ (a , (f , H)))
+        (λ where refl → refl)
+        H
+
+  amap : ∀ (H : f ∘ p ＝ q)
+         → Arrow-map (postcomp Y f)
+                     (total-map (λ a → Coslice-map-postcompose a (f , happly H)))
+  amap H .Arrow-map.top = add-singleton q
+  amap H .Arrow-map.bot = add-singleton p
+  amap refl .Arrow-map.comm x = refl
+
+  eq : is-Arrow-equiv (amap (funext→ H))
+  eq .fst = is-equiv←qiso (add-singleton-eq q)
+  eq .snd = is-equiv←qiso (add-singleton-eq p)
+
+}
+%```
+}
+
+\subtree[tot-0005]{
+\taxon{Therem}
+\title{Covariance of representable families}
+
+\p{We show that a type #{A} is [strongly Segal](tot-0006) iff the family
+#{\Hom(-,x)} is covariant for each #{x}.}
+
+\proof{
+We will show that every #{A_{/x} \to A} is a left fibration iff A is right
+orthogonal to the map #{\Lambda^2_1 \to 1 \rtimes \Delta^1}.
+
+\p{First we give an equivalence of arrows:}
+
+\quiver{
+\begin{tikzcd}
+	{1\rtimes \Delta^1 \to_\bullet A} && {{A_{x/}}^{\Delta^1}} \\
+	\\
+	{\Lambda^2_1 \to_\bullet A} && {A^{\Delta^1} \times_A A_{x/}}
+	\arrow["\sim", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{The top equivalence is given by the [join-coslice adjunction](tot-0001), and
+the bottom via the universal property of the horn.}
+
+
+\p{Now we use \ref{tot-0008} to finish the proof.}
+}
+
+\closedScope{
+\subtree[tot-000A]{
+\title{The bottom equivalence}
+%```agda
+\agda{
+char-coslice-lift : ∀ {𝓤} {A : Type 𝓤} x
+      → Arrow-map (λ (_ : 𝟙) → i0) {C = Coslice A (λ (_ : 𝟙) → x)} (fst) →
+      Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (λ (_ : 𝟙) → x)
+char-coslice-lift x (mk-amap top bot comm)
+  = cogap (mk-cocone (top tt .snd tt .HomP.hom)
+                     bot
+                     (λ c → top tt .snd tt .HomP.hom1 ∙ sym (comm c)))
+  , λ _ → HomP.hom0 (top tt .snd tt)
+
+opaque
+  char-coslice-lift-is-equiv
+    : ∀ {𝓤} {A : Type 𝓤} x
+    → is-equiv (char-coslice-lift {A = A} x)
+  char-coslice-lift-is-equiv x = is-equiv←qiso qiso where
+    qiso : quasi-iso (char-coslice-lift x)
+    qiso .fst (a , b) = mk-amap (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
+                                (a ∘ ι₂)
+                                (ap a ∘ sym ∘ glue)
+    qiso .snd .fst (mk-amap top bot comm)
+      = let pth = ( top tt .snd tt .HomP.hom1
+                  , λ i → ~refl , ((Square-degen-vert _ _ refl) , (Square-flatten-hor refl)))
+        in Arrow-map-path→
+          ( (λ a → Coslice-path→ pth)
+          , (~refl , λ _ → ap (_∙ ap fst (Coslice-path→ pth)) (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
+                         ∙ ap (sym (HomP.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
+                              (Coslice-path-ap-fst pth)
+                         ∙ ap (_∙ top tt .snd tt .HomP.hom1) (∙-symsym _ (sym (comm tt)))
+                         ∙ ∙.cancell _  (∙-sym' (HomP.hom1 (top tt .snd tt)))
+                                        {f = sym (sym (comm tt))}
+                         ∙ sym-sym ))
+    qiso .snd .snd (a , p)
+      = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+                      (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
+             , ~refl)
+}
+%```
+}
+}
+
+%```agda
+\agda{
+coslice-is-left⇔strongly-inner-coslice
+  : ∀ {𝓤} {A : Type 𝓤} x
+  → is-left-fibration {A = Coslice A (λ (_ : 𝟙) → x)} fst
+  ⇔ (is-equiv (Coslice-map-postcompose (λ (_ : 𝟙) → x) weird-horn-inclusion∙))
+coslice-is-left⇔strongly-inner-coslice x
+  = (orthogonal⇔pb-power-is-equiv ⇔⁻¹)
+  ∙⇔ top⇔bot-is-equiv←Arrow-equiv amap amap-eq where
+  amap : Arrow-map (pullback-power (λ _ → i0) (λ r → fst r))
+                   (Coslice-map-postcompose (λ _ → x) weird-horn-inclusion∙)
+  amap .Arrow-map.top = join←coslice-map (λ _ → x)
+  amap .Arrow-map.bot = char-coslice-lift x
+  amap .Arrow-map.comm f = ext!
+    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+          (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
+                              ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
+                              ∙ pushout-rec-apβ _))
+    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
+  amap-eq .snd = char-coslice-lift-is-equiv x
+
+
+hom-fam-is-cov⇔is-strongly-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (∀ x → is-covariant (λ a → Hom A x a))
+    ⇔ is-strongly-segal A
+hom-fam-is-cov⇔is-strongly-segal {𝓤}{A}
+  =  precomp-Π-⇔ (λ
+       x →  hom-fam-is-cov⇔is-left-fibration x
+         ∙⇔ coslice-is-left⇔strongly-inner-coslice x)
+  ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
+  ∙⇔ (coslice-orth-lemma (weird-horn-inclusion∙) ⇔⁻¹)
+  ∙⇔ logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
 }
 %```
 }

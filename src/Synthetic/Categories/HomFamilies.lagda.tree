@@ -40,6 +40,8 @@ open import Modalities.Instances.Localisation
 open import Modalities.Instances.Truncation
 open import Modalities.Flat.Flat renaming (ε to ε♭)
 
+open import Data.Bool
+
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.Arrow
@@ -53,6 +55,7 @@ open import Core.CanonicalPushouts
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
+open import Ergonomics.Auto
 open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
@@ -210,17 +213,102 @@ coslice-is-left⇔weird-inner x
   amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
   amap-eq .snd = LEM-is-equiv x
 
-hom-fam-is-cov⇔is-segal
+
+coslice-orth-lemma
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+      {p : X → A} {q : X → B} (f : Coslice-map p q)
+    → (f .fst ⊥ Y)
+    ⇔ (∀ (x : X → Y) → is-equiv (Coslice-map-postcompose x f))
+coslice-orth-lemma {A = A}{B}{X}{Y}{p}{q} (f , H)
+  = top⇔bot-is-equiv←Arrow-equiv (amap (funext→ H)) eq ∙⇔ fibrewise⇔total-is-equiv where
+
+  add-singleton : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
+                  → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
+  add-singleton f g = (g ∘ f , g , ~refl)
+
+  add-singleton-eq : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
+                     → quasi-iso (add-singleton p)
+  add-singleton-eq p .fst (a , f , H) = f
+  add-singleton-eq p .snd .fst x = refl
+  add-singleton-eq p .snd .snd (a , f , H)
+    = funext-rec
+        (λ H → ((f ∘ p) , (f , ~refl)) ＝ (a , (f , H)))
+        (λ where refl → refl)
+        H
+
+  amap : ∀ (H : f ∘ p ＝ q)
+         → Arrow-map (postcomp Y f)
+                     (total-map (λ a → Coslice-map-postcompose a (f , happly H)))
+  amap H .Arrow-map.top = add-singleton q
+  amap H .Arrow-map.bot = add-singleton p
+  amap refl .Arrow-map.comm x = refl
+
+  eq : is-Arrow-equiv (amap (funext→ H))
+  eq .fst = is-equiv←qiso (add-singleton-eq q)
+  eq .snd = is-equiv←qiso (add-singleton-eq p)
+
+hom-fam-is-cov⇔is-weird-segal
   : ∀ {𝓤} {A : Type 𝓤}
     → (∀ x → is-covariant (λ a → Hom A x a))
-    ⇔ is-precategory A
-hom-fam-is-cov⇔is-segal {A = A}
+    ⇔ (weird-horn-inclusion ⊥ A)
+hom-fam-is-cov⇔is-weird-segal {A = A}
   =  precomp-Π-⇔ (λ
        x →  hom-fam-is-cov⇔is-left-fibration x
-         ∙⇔ coslice-is-left⇔weird-inner x
-         ∙⇔ {!!})
-  ∙⇔ (precat-orth-lemma {A = A} i0 ⇔⁻¹)
-  ∙⇔ logical←equiv (unit-UP≃ {A = λ _ → Λ[2,1]-incl ⊥ A} e⁻¹)
+         ∙⇔ coslice-is-left⇔weird-inner x)
+  ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
+  ∙⇔ (coslice-orth-lemma (weird-horn-inclusion∙) ⇔⁻¹)
+
+
+retract-weird : 𝟙 ⋉ Δ¹ → Δ²
+retract-weird
+  = cogap (mk-cocone
+            (λ {(i , tt , j) → (i , i ∧ j) ⦃ ∧-≤-eliml auto! ⦄})
+            ⊎[ (λ _ → (i0 , i0)) , (i1 ,_) ]
+            λ { (mk-lift true  , tt , b) → Δ²-ext (refl , ∧-comm ∙ 1-top)
+              ; (mk-lift false , tt , b) → Δ²-ext (refl , 0-init) })
+
+retract-weird-resp-horn
+  : retract-weird ∘ weird-horn-inclusion ~ Λ[2,1]-incl
+retract-weird-resp-horn = pushout-ind _
+  (mk-coconeD
+    (λ l → Δ²-ext (refl , ∧-comm ∙ 0-init))
+    (λ r → refl)
+    (λ _ → is-prop←is-truncated (Δ²-is-set _ _) _ _))
+
+section-weird : Δ² → 𝟙 ⋉ Δ¹
+section-weird a = ι₁ (Poly.Δ².s a , tt , Poly.Δ².t a)
+
+section-weird-resp-horn
+  : section-weird ∘ Λ[2,1]-incl ~ weird-horn-inclusion
+section-weird-resp-horn = pushout-rec-unique _ _
+  ~refl
+  (λ a → glue (δΔ¹-1 , tt , a))
+  λ a → ap (_∙ glue (δΔ¹-1 , tt , i0))
+         ( ap-∘ section-weird Λ[2,1]-incl (glue a)
+         ∙ ap (ap section-weird) (pushout-rec-apβ _)
+         ∙ lem) where
+  lem : ap (section-weird) Δ²-refl ＝ refl
+  lem = ap-∘ ι₁ (λ where (i , j) → (i , tt , j)) Δ²-refl
+      ∙ ap (ap ι₁) (is-prop←is-truncated
+                     (Trunc.×∈S car-is-set (Trunc.×∈S Trunc.𝟙∈S car-is-set) _ _)
+                     _ _)
+
+sec-weird-is-sec : retract-weird ∘ section-weird ~ id
+sec-weird-is-sec (a , b) = Δ²-ext (refl , (∧-comm ∙ auto!))
+
+strongly-segal-type-is-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (weird-horn-inclusion ⊥ A)
+    → is-precategory A
+strongly-segal-type-is-segal orth tt
+  = is-orthogonal⇔orthogonal-! .fst
+      (left-orthogonal-retract Λ[2,1]-incl weird-horn-inclusion
+        (mk-amap id section-weird section-weird-resp-horn)
+        ((mk-amap id retract-weird retract-weird-resp-horn) ,
+          (~refl , ((λ (i , j) → Δ²-ext (refl , ∧-comm ∙ auto!))
+          , λ _ → is-prop←is-truncated (Δ²-is-set _ _) _ _)))
+        !
+        (is-orthogonal⇔orthogonal-! .snd orth))
 }
 %```
 }

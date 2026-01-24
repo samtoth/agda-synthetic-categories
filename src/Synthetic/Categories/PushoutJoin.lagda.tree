@@ -1,0 +1,442 @@
+\title{The pushout join}
+\taxon{Module}
+\date{2026-01-12}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.PushoutJoin
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Data.Bool
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrow
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.PushoutProduct
+open import Core.FunctorialPullback
+open import Core.FunctorialPushout
+open import Core.SpanMap
+open import Core.CoSlice
+open import Core.Slice
+open import Core.Cube
+open import Core.ArrowEquiv
+open import Core.ArrowRetract
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+open import Ergonomics.Extensionality
+open import Ergonomics.Representation
+open import Ergonomics.Auto
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
+open import Synthetic.Categories.CoComma Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.JoinSlice Δ¹ I I-distr
+}
+%```
+
+\subtree[tot-000B]{
+\taxon{Definition}
+\title{Pushout joins}
+
+\p{Just as we could [extend the product bifunctor to an operation on
+arrows](stt-00BS), we can do the same for the [directed join](stt-00CW)
+bifunctor. Given maps #{f : A \to B} and #{g : C \to D}, we define
+#{f \hat{rtimes} g} to be the cogap map of the following square.}
+
+\quiver{
+\begin{tikzcd}
+	{A \rtimes C} && {A \rtimes D} \\
+	& \bullet \\
+	{B \rtimes C} && {B \rtimes D}
+	\arrow["{A \rtimes g}", from=1-1, to=1-3]
+	\arrow["{f\rtimes C}"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=2-2]
+	\arrow["{f \rtimes D}", from=1-3, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=2-2, to=1-1]
+	\arrow["{f \hat{\rtimes}g}", from=2-2, to=3-3]
+	\arrow[from=3-1, to=2-2]
+	\arrow["{B \rtimes g}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{We also note that this map can be considered a map in the slice over #{D}.}
+
+%```agda
+\agda{
+Join-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Arrow-map (f ⋉₁ id {A = X}) (f ⋉₁ id {A = Y})
+Join-square f g .Arrow-map.top = id ⋉₁ g
+Join-square f g .Arrow-map.bot = id ⋉₁ g
+Join-square f g .Arrow-map.comm = (⋉₁-∘ id f g id ~⁻¹) ~∙ ⋉₁-∘ f id id g
+
+Pushout-join
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Pushout₀ (Cocone←Arrow-map (Join-square f g) .fst) → B ⋉ Y
+Pushout-join f g = cogap-map←square (Join-square f g)
+
+Pushout-join-coslice
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Coslice-map {X = Pushout₀ (Cocone←Arrow-map (Join-square f g) .fst)}
+                  (ι₂ ∘ ↑-ι₂)
+                  {Y = B ⋉ Y} ↑-ι₂
+Pushout-join-coslice f g .fst = Pushout-join f g
+Pushout-join-coslice f g .snd = ~refl
+}
+%```
+}
+
+\subtree[tot-000C]{
+\title{Pullback Slices}
+
+
+%```agda
+\agda{
+extend-slice-map
+  : ∀ {𝓤 𝓥 𝓦 𝓧} {P : Type 𝓤} {Q : Type 𝓥} {A : Type 𝓦} {B : Type 𝓧}
+      (p : P → A) (q : Q → A) (f : A → B)
+    → Slice-map p q → Slice-map (f ∘ p) (f ∘ q)
+extend-slice-map p q f = total-map (λ _ → f ◂_)
+
+slice-square
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜} {p : K → A}
+       {S : Type 𝓝} {q : S → A} (g : Slice-map p q)
+    → Arrow-map (precompose-slice q f) (precompose-slice p f)
+slice-square f {p = p} {q = q} G .Arrow-map.top
+  = slice-map-slice p q G
+slice-square f {p = p} {q = q} G .Arrow-map.bot
+  = slice-map-slice (f ∘ p) (f ∘ q) (extend-slice-map p q f G)
+slice-square f G .Arrow-map.comm a
+  = Σ-path→ (refl , (funext→
+      (λ k → Hom-ext→ (~refl , ap-∙ f _ refl , ap-∙ f _ (G .snd k)))))
+
+pullback-slice
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜} {p : K → A}
+       {S : Type 𝓝} {q : S → A} (g : Slice-map p q)
+    → Slice A q
+    → Pullback (slice-map-slice (f ∘ p) (f ∘ q) (extend-slice-map _ q f g))
+               (precompose-slice p f)
+pullback-slice f g = gap-map←square (slice-square f g)
+
+slice-hom
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜}
+       {S : Type 𝓝} {q : S → A} (t : K → S)
+     → Arrow-map (precompose-slice q f) (precompose-slice (q ∘ t) f)
+slice-hom f t .Arrow-map.top = postcompose-slice _ t
+slice-hom f t .Arrow-map.bot = postcompose-slice _ t
+slice-hom f t .Arrow-map.comm a = refl
+
+pullback-slice'
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜}
+       {S : Type 𝓝} (q : S → A) (t : K → S)
+    → Slice A q → Pullback (postcompose-slice (f ∘ q) t)
+                           (precompose-slice (q ∘ t) f)
+pullback-slice' f q t = gap-map←square (slice-hom f t)
+
+hom-fam-as-slice : ∀ {𝓤} {A : Type 𝓤} →
+  ∀ x → Arrow-map (pullback-slice (! {A = A}) {p = ¡_} {q = λ (_ : 𝟙) → x}
+                                  (¡_ , (λ ())))
+                  (fst {B = (λ y → Hom A y x)})
+hom-fam-as-slice x .Arrow-map.top (a , b) = a , b tt
+hom-fam-as-slice x .Arrow-map.bot (a , b , p) = b .fst
+hom-fam-as-slice x .Arrow-map.comm = ~refl
+}
+%```
+}
+
+%```agda
+\agda{
+module L[x] = Lattice I[x]
+
+-- power-hom-coslice
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+--       {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+--       {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+--     → Arrow-map (Coslice-map-postcompose r F) (Coslice-map-postcompose s F)
+-- power-hom-coslice p q F r s G .Arrow-map.top = Coslice-map-precompose q G
+-- power-hom-coslice p q F r s G .Arrow-map.bot = Coslice-map-precompose p G
+-- power-hom-coslice p q F r s G .Arrow-map.comm x
+--   = Σ-path→ (refl , (funext→ (λ a → ap (_∙ G .snd a) (ap-∙ (G .fst) _ (x .snd a)
+--                   ∙ ap (_∙ ap (G .fst) _)
+--                          (sym (ap-∘ (G .fst) (x .fst) (F .snd a))))
+--                   ∙ ∙-assoc _ (ap (G .fst) (x .snd a)) (G .snd a))))
+
+-- pullback-coslice-power
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+--       {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+--       {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+--     → Coslice-map q r
+--     → Pullback (Coslice-map-precompose p G) (Coslice-map-postcompose s F)
+-- pullback-coslice-power p q F r s G
+--   = gap-map←square (power-hom-coslice p q F r s G)
+
+
+-- Pullback3
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+--       (f : A → D) (g : B → D) (h : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+-- Pullback3 {A = A}{B}{C} f g h = Σ[ a ∶ A ] Σ[ b ∶ B ] Σ[ c ∶ C ]
+--                                  ((f a ＝ g b) × (g b ＝ h c))
+
+-- Pullback3←Pullback-lassoc
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+--       (f : A → D) (g : B → D) (h : C → D)
+--     → Pullback {B = Pullback f g} (g ∘ pb.π₂) h → Pullback3 f g h
+-- Pullback3←Pullback-lassoc f g h ((a , b , p) , c , q) = (a , b , c , p , q)
+
+-- Pullback3←Pullback-rassoc
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+--       (f : A → D) (g : B → D) (h : C → D)
+--     → Pullback {C = Pullback g h} f (g ∘ pb.π₁) → Pullback3 f g h
+-- Pullback3←Pullback-rassoc f g h (a , (b , c , q) , p) = (a , b , c , p , q)
+
+-- Pullback←Cone
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓜}
+--       {f : A → B} {g : C → B}
+--     → Cone (mk-cospan B f g) Q → Pullback (precomp Q f) (precomp Q g)
+-- Pullback←Cone (mk-cone i j filler) = (i , j , funext→ filler)
+
+-- Cone←Pullback
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓜}
+--       {f : A → B} {g : C → B}
+--     → Pullback (precomp Q f) (precomp Q g) → Cone (mk-cospan B f g) Q
+-- Cone←Pullback (i , j , H) = mk-cone i j (happly H)
+
+-- Cocone←Pullback
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓜}
+--       {f : B → A} {g : B → C}
+--     → Pullback (postcomp Q f) (postcomp Q g) → Cocone (mk-span B f g) Q
+-- Cocone←Pullback = {!!}
+
+-- Coslice-pushout
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+--       {p : X → A} {q : X → B} {r : X → C}
+--       (F : Coslice-map p q) (G : Coslice-map p r)
+--     → X → Pushout (F .fst) (G .fst)
+-- Coslice-pushout {r = r} F G x = ι₂ (r x)
+
+-- Coslice-pushout-ι₁
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+--       {p : X → A} {q : X → B} {r : X → C}
+--       {F : Coslice-map p q} {G : Coslice-map p r}
+--     → Coslice-map q (Coslice-pushout F G)
+-- Coslice-pushout-ι₁ .fst = ι₁
+-- Coslice-pushout-ι₁ {p = p}{F = F} {G} .snd
+--   = (ι₁ ◂ F .snd ~⁻¹) ~∙ glue ▸ _ ~∙ ι₂ ◂ G .snd
+
+-- Coslice-pushout-ι₂
+--   : ∀ {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+--       {p : X → A} {q : X → B} {r : X → C}
+--       {F : Coslice-map p q} {G : Coslice-map p r}
+--     → Coslice-map r (Coslice-pushout F G)
+-- Coslice-pushout-ι₂ .fst = ι₂
+-- Coslice-pushout-ι₂ .snd = ~refl
+
+-- -- This should actually be Coslice map, but we need to define coslice
+-- -- exponentials and pullbacks etc.
+-- Coslice-pushout-UP
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {X : Type 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+--       {p : X → A} {q : X → B} {r : X → C}
+--       (F : Coslice-map p q) (G : Coslice-map p r)
+--       {Q : Type 𝓠} (i : X → Q)
+--     → Coslice-map (Coslice-pushout F G) i
+--     → Pullback {B = Coslice-map q i} {C = Coslice-map r i}
+--                (Coslice-map-postcompose i F)
+--                (Coslice-map-postcompose i G)
+-- Coslice-pushout-UP {p = p}{q}{r} F G i H
+--   = ( Coslice-map-∘ q _ i H (Coslice-pushout-ι₁ {F = F}{G})
+--     , Coslice-map-∘ r _ i H (Coslice-pushout-ι₂ {F = F}{G})
+--     , Σ-path→ (funext→ (H .fst ◂ glue) , funext→ λ a → {!!})) where
+--   module C = Cocone (cocone-map _ pushout (H .fst))
+
+-- Coslice-pushout-UP≃
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠} {X : Type 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+--       {p : X → A} {q : X → B} {r : X → C}
+--       (F : Coslice-map p q) (G : Coslice-map p r)
+--       {Q : Type 𝓠} (i : X → Q)
+--     → is-equiv (Coslice-pushout-UP F G i)
+-- Coslice-pushout-UP≃ = {!!}
+
+-- adjointness-fwd
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} {S : Type 𝓦} {T : Type 𝓜}
+--       {X : Type 𝓧} {Y : Type 𝓨}
+--       (u : A → B) (s : S → T) (t : T → X) (f : X → Y)
+--     → Arrow-map (pullback-power u (pullback-slice' f t s))
+--                 (pullback-coslice-power _ _ (Pushout-join-coslice u s)
+--                                              t _ (f , ~refl))
+-- adjointness-fwd u s t f .Arrow-map.top = adj' t
+-- adjointness-fwd {A = A} {B}{S}{T}{X}{Y} u s t f .Arrow-map.bot
+--   = {!!} ∘ {!!} ∘ map ∘ pullback←arrow where
+--   map : Pullback {B = A → Slice _ t}
+--                  {C = B → Pullback (postcompose-slice (f ∘ t) s) (precompose-slice (t ∘ s) f)}
+--                  (precomp _ (pullback-slice' f t s))
+--                  (postcomp _ u)
+--       → Pullback {B = A → Slice _ t}
+--                  {C = Pullback (precomp B (postcompose-slice (f ∘ t) s))
+--                                (precomp B (precompose-slice (t ∘ s) f))}
+--                  (precomp _ (pullback-slice' f t s))
+--                  (postcomp _ u ∘ gap ∘ Cone←Pullback)
+--   map = total-map (λ a → total-map-fst (Pullback←Cone ∘ cone-map _ (pullback _ _)))
+
+--   map3 : Pullback {B = A → Slice _ t}
+--                  {C = Pullback (precomp B (postcompose-slice (f ∘ t) s))
+--                                (precomp B (precompose-slice (t ∘ s) f))}
+--                  (precomp _ (pullback-slice' f t s))
+--                  (postcomp _ u ∘ gap ∘ Cone←Pullback)
+--        → Pullback {B = Coslice-map {X = A ⋉ T} ↑-ι₂ t}
+--                   {C = Pullback {B = Coslice-map {X = B ⋉ S} ↑-ι₂ s}
+--                                 {C = Coslice-map {X = B ⋉ T} ↑-ι₂ (f ∘ t)}
+--                                 {!!}
+--                                 {!Coslice-map-precompose!}}
+--                   (Coslice-map-precompose ↑-ι₂ (f , ~refl))
+--                   (λ a → Coslice-map-∘ _ _ _ {!!} {!!})
+--   map3 = {!!}
+
+--   map2
+--    : Pullback {B = Coslice-map (ι₂ ∘ ↑-ι₂) t}
+--               (Coslice-map-precompose (ι₂ ∘ ↑-ι₂) (f , ~refl))
+--               (Coslice-map-postcompose (f ∘ t) (Pushout-join-coslice u s))
+--    → Pullback {B = Pullback {!Coslice!}
+--                             {!Coslice-map-postcompose ? ?!}}
+--                ({!!} ∘ is-equiv.bwd (Coslice-pushout-UP≃ _ _ _))
+--                (Coslice-map-postcompose (f ∘ t) (Pushout-join-coslice u s))
+--   map2 = total-map-fst (Coslice-pushout-UP _ _ _)
+
+
+--   -- map2
+--   --   : Pullback {B = A → Slice _ t}
+--   --              {C = Cone (Cone←Arrow-map (slice-hom f {q = t} s) .fst) B}
+--   --              (precomp _ (pullback-slice' f t s))
+--   --              (postcomp _ u ∘ gap)
+--   --   → Pullback
+
+-- adjointness-fwd u s t f .Arrow-map.comm = {!!}
+
+-- adjointness
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} {S : Type 𝓦} {T : Type 𝓜}
+--       {X : Type 𝓧} {Y : Type 𝓨}
+--       (u : A → B) (s : S → T) (t : T → X) (f : X → Y)
+--     → is-Arrow-equiv (adjointness-fwd u s t f)
+-- adjointness u s t f .fst = adj'-is-equiv t
+-- adjointness u s t f .snd = {!!}
+
+-- test
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+--       {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+--       {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+--     → Arrow-map (pullback-coslice-power _ _ F _ _ G) (pullback-power (F .fst) (G .fst))
+-- test _ _ F _ _ G .Arrow-map.top = fst
+-- test _ _ F _ _ G .Arrow-map.bot (a , b , p)
+--   = mk-amap (fst a) (fst b) (sym ∘ happly (ap fst p))
+-- test _ _ F _ _ G .Arrow-map.comm a
+--   = Arrow-map-path→ (~refl , ~refl , λ
+--      a → ∙-reflr _ ∙ ap (λ x → sym (happly x a) ) Σ-path-ap-fst)
+
+-- -- test-eq
+-- --   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+-- --       {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+-- --       {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+-- --     → is-equiv (pullback-coslice-power _ _ F _ _ G)
+-- --     → is-equiv (pullback-power (F .fst) (G .fst))
+-- -- test-eq p q F r s G e = is-equiv←qiso ((fst ∘ bwd ∘ {!!}) , {!!}) where
+-- --   open is-equiv e
+
+-- perp-cond1
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} {S : Type 𝓦} {T : Type 𝓜}
+--       {X : Type 𝓧} {Y : Type 𝓨}
+--       (u : A → B) (s : S → T)  (f : X → Y) (t : T → X)
+--     → (u ⊥ pullback-slice' f t s)
+--     ⇔ is-equiv (pullback-power u (pullback-slice' f t s))
+-- perp-cond1 u s f t .fst = pb-power-is-equiv←orthogonal
+-- perp-cond1 u s f t .snd = orthogonal←pb-power-is-equiv
+
+-- fibre-pb-coslice-power
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+--       {A : Type 𝓤} {B : Type 𝓥} {p : Y → A} {q : Y → B} (F : Coslice-map p q)
+--       {C : Type 𝓦} {D : Type 𝓜} {r : Y → C} {s : Y → D} (G : Coslice-map r s)
+--     → ∀ a → fibre (pullback-coslice-power _ _ F _ _ G) a
+--     ≃ Σ[ F ∶ Coslice-map q r ] 𝟙
+-- fibre-pb-coslice-power {p = p} {q} F {r = r} {s} G a@(T , B , fil)
+--   = fibre (pullback-coslice-power _ _ F _ _ G) a ≃⟨⟩
+--     (Σ[ L ∶ Coslice-map q r ] (pullback-coslice-power _ _  F _ _ G L ＝ a))
+--       ≃⟨ {!!} ⟩
+--     Σ (Coslice-map q r) (λ F₁ → 𝟙) ≃∎
+
+-- coslice-lift
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+--       {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+--       {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+--     → (∀ (F : Arrow-map (F .fst) (G .fst)) → is-singleton (Lift F))
+--     → is-equiv (pullback-coslice-power _ _ F _ _ G)
+-- coslice-lift p q F r s G eq = is-equiv←is-contr-map λ
+--  a → {!!}
+
+-- perp-cond2
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} {S : Type 𝓦} {T : Type 𝓜}
+--       {X : Type 𝓧} {Y : Type 𝓨}
+--       (u : A → B) (s : S → T) (f : X → Y)
+--     → (are-orthogonal (Pushout-join u s) f)
+--     ⇔ (∀ t → is-equiv (pullback-coslice-power _ _ (Pushout-join-coslice u s)
+--                                               t _ (f , ~refl)))
+-- perp-cond2 u s f .fst orth t = {!!} where
+--   amap : Arrow-map (pullback-coslice-power _ _ (Pushout-join-coslice u s)
+--                                           t _ (f , ~refl))
+--                    (gap-map←square (power-hom (Pushout-join u s) f))
+--   amap .Arrow-map.top k = k .fst
+--   amap .Arrow-map.bot = {!!}
+--   amap .Arrow-map.comm = {!!}
+
+-- perp-cond2 u s v .snd eq = {!!}
+
+-- perp-cond
+--   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} {S : Type 𝓦} {T : Type 𝓜}
+--       {X : Type 𝓧} {Y : Type 𝓨}
+--       (u : A → B) (s : S → T)  (f : X → Y)
+--     → (Pushout-join u s ⊥ f) ⇔ (∀ (t : T → X) → are-orthogonal u (pullback-slice' f t s))
+-- perp-cond u s f = perp-cond2 u s f
+--                 ∙⇔ (precomp-Π-⇔ (λ t → perp-cond1 u s f t
+--                                 ∙⇔ top⇔bot-is-equiv←Arrow-equiv
+--                                     (adjointness-fwd u s t f)
+--                                     (adjointness u s t f)) ⇔⁻¹)
+
+}
+%```

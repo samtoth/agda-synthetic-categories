@@ -126,6 +126,7 @@ open import Synthetic.Categories.Horns
 open import Synthetic.Categories.JoinSlice
 open import Synthetic.Categories.NaturalTransformation
 open import Synthetic.Categories.Precategories
+open import Synthetic.Categories.PushoutJoin
 open import Synthetic.Categories.Simplicial
 open import Synthetic.Cubes
 open import Synthetic.Hom

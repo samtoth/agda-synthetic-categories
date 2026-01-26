@@ -53,12 +53,19 @@ open import Core.ExtPullbacks
 open import Core.PiSection
 open import Core.CanonicalPushouts
 
+-- For simp←strong-segal
+open import Core.FunctorialPushout
+open import Core.SpanMap
+open import Core.FunctorialPullback
+open import Core.Postwhisker
+
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open import Ergonomics.Auto
 open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
 open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Horns Δ¹ I I-distr
@@ -66,6 +73,8 @@ open import Synthetic.Categories.Precategories Δ¹ I I-distr
 open import Synthetic.Categories.Comma Δ¹ I I-distr
 open import Synthetic.Categories.CoComma Δ¹ I I-distr
 open import Synthetic.Categories.JoinSlice Δ¹ I I-distr
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
 }
 %```
 
@@ -351,6 +360,242 @@ hom-fam-is-cov⇔is-strongly-segal {𝓤}{A}
   ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
   ∙⇔ (coslice-orth-lemma (weird-horn-inclusion∙) ⇔⁻¹)
   ∙⇔ logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
+}
+%```
+}
+
+\subtree[tot-000F]{
+\taxon{Lemma}
+\title{Precategories are strongly Segal}
+
+\p{A [simplicial type]() is [segal]() iff it is [strongly Segal]().}
+
+%```agda
+\agda{
+
+is-segal-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (f : A → B) → Typeω
+is-segal-equiv f
+  = ∀ {𝓠} {Q : Type 𝓠} → is-precategory Q → is-equiv (postcomp Q f)
+
+is-segal-equiv-∘
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → C} {g : A → B} → is-segal-equiv f
+    → is-segal-equiv g → is-segal-equiv (f ∘ g)
+is-segal-equiv-∘ sf sg qpc = is-equiv-∘ (sg qpc) (sf qpc)
+
+⧅-degen-top : Type 𝓘
+⧅-degen-top = Pushout {A = Δ¹} {B = ⧅} (ι₂ ∘ (_, i0)) !
+
+⧅-□-degen-incl : ⧅-degen-top → 𝟙 ⋉ Δ¹
+⧅-□-degen-incl = Pushout₁
+  (mk-span-map
+    ((λ a → (a .snd , tt , a .fst)) ∘ ⧅-incl)
+    (λ i → (δΔ¹-0 , tt , i))
+    inl
+    ~refl
+    ~refl)
+
+
+⧅-degen←Δ² : Δ² → ⧅-degen-top
+⧅-degen←Δ² = ι₁ ∘ ι₂
+
+Δ²←⧅ : ⧅ → Δ²
+Δ²←⧅ = cogap (mk-cocone id id ~refl)
+
+⧅-degen←Δ²-is-segal-equiv : is-segal-equiv ⧅-degen←Δ²
+⧅-degen←Δ²-is-segal-equiv {Q = Q} qpc
+  = is-equiv←Arrow-equiv {F = amap} {!!} tgt-map-is-equiv where
+  tgt-map : Σ[ f ∶ (Δ² → Q)]
+              Σ[ k ∶ Hom Q (f ((i0 , i0) ⦃ ≤-refl ⦄)) (f ((i1 , i1) ⦃ ≤-refl ⦄)) ]
+                (λhom (f ∘ Δ²-diagonal) ~▵ k)
+          → (Δ² → Q)
+  tgt-map = fst
+
+  tgt-map-is-equiv : is-equiv tgt-map
+  tgt-map-is-equiv = singleton-fst-is-equiv
+                        (λ f → SingS-is-single ⦃ Hom-homotopy-IdS qpc ⦄
+                               (λhom (f ∘ Δ²-diagonal)))
+
+  top-map : Σ (Δ² → Q)
+          (λ f →
+             Σ (Hom Q (f _) (f _))
+             (λ k → λhom (f ∘ Δ²-diagonal) ~▵ k)) →
+          ⧅-degen-top → Q
+  top-map (f , g , H) = cogap
+    (mk-cocone
+      (cogap (mk-cocone (H .fst) f {!H .snd!}))
+      (λ _ → f (i0 , i0)) {!ap ι₂ (H .snd!})
+
+  amap : Arrow-map tgt-map (postcomp Q ⧅-degen←Δ²)
+  amap .Arrow-map.top = top-map
+  amap .Arrow-map.bot = id
+  amap .Arrow-map.comm = ~refl
+
+
+
+
+degen-square←square : □^ 2 → 𝟙 ⋉ Δ¹
+degen-square←square (i , j) = ι₁ (i , tt , j)
+
+opaque
+  coslice-as-pushout-lem
+    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+        (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
+        {Q : Type 𝓠}
+      → (∀ (q : C → Q) → is-equiv (Coslice-map-postcompose (q ∘ g) F))
+      → is-equiv (postcomp Q (Pushout₁ {S = mk-span _ f g}
+                               (mk-span-map (F .fst) id id (F .snd) ~refl)))
+  coslice-as-pushout-lem {A = A}{A'}{C = C} f f' g F {Q} coslice
+    = is-equiv←Arrow-equiv⁻¹
+        {F = amap}
+        ( is-equiv-∘ (postcomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω
+        , is-equiv-∘ (postcomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω)
+        (is-total-equiv←is-fibrewise-equiv
+          λ q →  is-equiv←Arrow-equiv
+                 {F = hom q}
+                 ( is-total-equiv←is-fibrewise-equiv
+                     (λ a → is-equiv-∘ sym-is-equiv (is-equiv⁻¹ global-funext))
+                 , is-total-equiv←is-fibrewise-equiv
+                     (λ a → is-equiv-∘ sym-is-equiv (is-equiv⁻¹ global-funext)))
+                 (coslice q) ) where
+    amap : Arrow-map (postcomp Q (Pushout₁ {S = mk-span _ f g}
+                               (mk-span-map (F .fst) id id (F .snd) ~refl)))
+                     (Pullback₁ {S = mk-cospan _  (postcomp Q g) (postcomp Q f')}
+                                 {T = mk-cospan _ (postcomp Q g) (postcomp Q f)}
+                       (mk-cospan-map id id (postcomp Q (F .fst))
+                                      ~refl (λ h → funext→ (ap h ∘ sym ∘ F .snd))))
+    amap .Arrow-map.top = postcomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
+    amap .Arrow-map.bot = postcomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
+    amap .Arrow-map.comm a = pullback-path→
+      ( refl
+      , refl
+      , sym (∙-reflr _
+        ∙ ap (funext→)
+          (funext→ (λ b → ap sym (ap-∘ a _ (glue b)
+                                 ∙ ap (ap a) (pushout-rec-apβ b
+                                 ∙ ap (ap ι₁ (F .snd b) ∙_) (∙-reflr _)))))
+          ∙ sym (ap (_∙ funext→ (ap (a ∘ ι₁) ∘ sym ∘ F .snd))
+                    (ap-id (funext→ (sym ∘ ap a ∘ glue)))
+          ∙ sym (funext-∙ (sym ∘ ap a ∘ glue) (ap (a ∘ ι₁) ∘ sym ∘ F .snd))
+          ∙ ap funext→ (funext→ (λ b
+              → ap (sym (ap a (glue b)) ∙_)
+                   (ap-sym (a ∘ ι₁) (F .snd b) ∙ ap sym (ap-∘ a ι₁ (F .snd b)))
+                   ∙ sym (∙-symsym (ap a (ap ι₁ (F .snd b))) (ap a (glue b)))
+                   ∙ ap sym (sym (ap-∙ a (ap ι₁ (F .snd b)) (glue b))))))))
+
+    hom : ∀ (q : C → Q)
+          → Arrow-map {A = Coslice-map f' (q ∘ g)}
+                      {B = Coslice-map f (q ∘ g)}
+                      (Coslice-map-postcompose (q ∘ g) F)
+                      {C = Σ[ x ∶ (A' → Q) ] (postcomp Q g q ＝ postcomp Q f' x)}
+                      {D = Σ[ x ∶ (A → Q) ] (postcomp Q g q ＝ postcomp Q f x)}
+                      (λ G →
+                          postcomp Q (F .fst) (G .fst)
+                        , ap id (G .snd) ∙ funext→ (ap (G .fst) ∘ sym ∘ F .snd))
+    hom q .Arrow-map.top = total-map (λ a → sym ∘ funext→)
+    hom q .Arrow-map.bot = total-map (λ a → sym ∘ funext→)
+    hom q .Arrow-map.comm (x , p)
+      = ext! (~refl , (sym (ap₂ _∙_
+                             (ap-id (sym (funext→ p)))
+                             (ap funext→ (funext→ λ b → ap-sym x (F .snd b))
+                               ∙ funext-sym _)
+                      ∙ sym (∙-symsym _ (funext→ p))
+                      ∙ ap sym (sym (funext-∙ _ _)))))
+
+⧅-□-degen-incl'
+  : Pushout {B = ⧅} (ι₂ ∘ (_, i0)) ! → Pushout {B = □^ 2} (_, i0) !
+⧅-□-degen-incl'
+  = Pushout₁ (mk-span-map ⧅-incl id id ~refl ~refl)
+
+is-based-triangulated'
+  : ∀ {𝓤} {A : Type 𝓤}
+    →  ⧅-incl ⊥ A → ⧅-□-degen-incl' ⊥ A
+is-based-triangulated' {A = A} ttA
+  =  coslice-as-pushout-lem _ _ ! map (lem ∘ ev tt)  where
+  -- A map colim(⧅ ← Δ¹ → 𝟙) → colim(□ ← Δ¹ → 𝟙)
+  -- is equivalently a map in the coslice under Δ¹ from ⧅ → □
+  map : Coslice-map {A = Δ¹} (ι₂ ∘ (_, i0)) (_, i0)
+  map .fst = ⧅-incl
+  map .snd = ~refl
+
+  lem : ∀ x → is-equiv (Coslice-map-postcompose (λ _ → x) map)
+  lem x = coslice-orth-lemma map .fst ttA (λ _ → x)
+
+opaque
+  is-based-triangulated
+    : ∀ {𝓤} {A : Type 𝓤}
+      →  ⧅-incl ⊥ A → ⧅-□-degen-incl ⊥ A
+  is-based-triangulated {A = A} ttA
+    = is-equiv~∘ (λ g → funext→ λ a → ap g (sym (H a)))
+                 btta' (postcomp-equiv (is-equiv←qiso test-is-eqv))  where
+    btta' : ⧅-□-degen-incl' ⊥ A
+    btta' = is-based-triangulated' ttA
+
+    test : Pushout {B = □^ 2} (_, i0) ! → 𝟙 ⋉ Δ¹
+    test = Pushout₁
+      (mk-span-map
+        (λ (i , j) → (j , tt , i))
+        (λ i → δΔ¹-0 , tt , i)
+        inl
+        ~refl
+        ~refl)
+
+    H : test ∘ ⧅-□-degen-incl' ~ ⧅-□-degen-incl
+    H = pushout-ind _
+      (mk-coconeD
+        ~refl ~refl
+        (λ i → IdP-func←Square (glue i) refl refl
+                 (Square-degen-hor _ _
+                   (sym (pushout-rec-apβ i
+                    ∙ ∙-reflr _
+                    ∙ sym (ap-∘ test ⧅-□-degen-incl' (glue i)
+                          ∙ ap (ap test) (pushout-rec-apβ i ∙ ∙-reflr _)
+                          ∙ pushout-rec-apβ _
+                          ∙ ∙-reflr _))))))
+
+    test-is-eqv : quasi-iso test
+    test-is-eqv .fst = ↑-rec (mk-right-cocone ι₂ (ι₁ ∘ (_, i1))
+                               λ where (_ , i) → mk-hom (ι₁ ∘ (i ,_))
+                                                        (glue i)
+                                                        refl)
+    test-is-eqv .snd .fst = pushout-ind _
+      (mk-coconeD ~refl ~refl
+        (λ i → IdP-func←Square
+                   {f = (test-is-eqv .fst ∘ test)} {id} (glue i) refl refl
+                   (Square-degen-hor _ _
+                     (ap-∘ (test-is-eqv .fst) test (glue i)
+                     ∙ ap (ap (test-is-eqv .fst)) (pushout-rec-apβ _ ∙ ∙-reflr _)
+                     ∙ pushout-rec-apβ _ ∙ sym (ap-id (glue i))))))
+    test-is-eqv .snd .snd = pushout-ind _
+      (mk-coconeD ~refl (⊎-ind (~refl , (λ i → glue (δΔ¹-1 , tt , i))))
+        λ where (mk-lift true , _ , i)
+                  → IdP-func←Square (glue (δΔ¹-1 , tt , i)) refl (glue (δΔ¹-1 , tt , i))
+                      (coe
+                        (Square-functorial-bot (sym (ap-id (glue (δΔ¹-1 , _ , i)))))
+                        (Square-flatten-vert (sym (ap-∘ test (test-is-eqv .fst) (glue _)
+                        ∙ ap (ap test) (pushout-rec-apβ _)))))
+                (mk-lift false , _ , i)
+                  → IdP-func←Square (glue (δΔ¹-0 , tt , i)) refl refl
+                      (Square-degen-hor _ _
+                        (ap-∘ test (test-is-eqv .fst) (glue (δΔ¹-0 , tt , i))
+                        ∙ ap (ap test) (pushout-rec-apβ _) ∙ pushout-rec-apβ _
+                        ∙ ∙-reflr _ ∙ sym (ap-id (glue _)))))
+
+is-strongly-segal←is-precategory
+  : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-precategory A
+    → is-strongly-segal A
+is-strongly-segal←is-precategory {A = A} asimp apc tt
+  = is-equiv~∘ H
+      (is-equiv-∘ (apc tt) (⧅-degen←Δ²-is-segal-equiv apc))
+      (is-based-triangulated (simp-is-triangulated asimp tt)) where
+  H : postcomp A weird-horn-inclusion ~
+      (postcomp A Λ[2,1]-incl ∘ postcomp A ⧅-degen←Δ²) ∘
+      postcomp A ⧅-□-degen-incl
+  H f = ap (f ∘_) (funext→ (sym ∘ pushout-rec-unique _ _ {!!} {!!} {!!}))
+
+
 }
 %```
 }

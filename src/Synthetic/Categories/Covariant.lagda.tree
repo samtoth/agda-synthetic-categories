@@ -45,6 +45,8 @@ open import Core.PiSection
 open import Core.CanonicalPushouts
 open import Core.FunctorialPushout
 
+open import Data.Bool
+
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open import Ergonomics.Auto
@@ -53,6 +55,7 @@ open Core.Orthogonal.notation
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Precategories Δ¹ I I-distr
 }
 %```
@@ -148,9 +151,46 @@ is-covariant {A = A} B
     = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
       → is-singleton (Σ[ x₁ ∶ B (x i1)] HomP (B ∘ x) x₀ x₁)
 
+Hom-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y}
+    → Hom A x y → B x → B y → Type (𝓘 ⊔ 𝓥)
+Hom-over {A = A} {B} f x' y'
+  = HomP (B ∘ f .HomP.hom)
+         (tr B (sym (f .HomP.hom0)) x')
+         (tr B (sym (f .HomP.hom1)) y')
+
+is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-covariant-hom {A = A} B
+  = ∀ {x y} (f : Hom A x y) (x' : B x)
+    → is-singleton (Σ[ y' ∶ B y ] Hom-over f x' y')
+
+is-covariant-hom←is-covariant
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant B → is-covariant-hom B
+is-covariant-hom←is-covariant B cov (mk-hom f refl refl) x' = cov f x'
+
+is-covariant←is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant-hom B → is-covariant B
+is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
+
 tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
        → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
 tr-cov cov h = fst ∘ centre ∘ cov h
+
+tr-cov-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-covariant-hom P
+    → ∀ {x y} (h : Hom A x y) → P x → P y
+tr-cov-hom cov h = fst ∘ centre ∘ cov h
+
+tr-cov-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (cov : is-covariant-hom P)
+    → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
+tr-cov-over cov h = snd ∘ centre ∘ cov h
 }
 %```
 }
@@ -491,6 +531,18 @@ is-inner←is-right-fibration {f = f} rf
 
 %```agda
 \agda{
+is-inner-family←is-covariant
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-covariant B → is-inner-family B
+is-inner-family←is-covariant
+  = is-inner←is-left-fibration ∘ (is-covariant⇔is-left-fibration _ .fst)
+
+is-inner-family←is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-covariant-hom B → is-inner-family B
+is-inner-family←is-covariant-hom
+  = is-inner-family←is-covariant ∘ is-covariant←is-covariant-hom _
+
 is-precategory-cov-Σ
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
     → is-precategory A → is-covariant B → is-precategory (Σ A B)
@@ -502,6 +554,158 @@ is-precategory-cov-Σ apc cov
 %```
 }
 
+\subtree[tot-000G]{
+\title{Morphisms in Hom types}
+\taxon{Lemma}
+
+\p{We show that for a covariant family #{P}, given any #{f : \Hom_A(x,y)},
+the type of dependent morphisms #{\Hom_{Pf}(x',y')} is equivalent to
+#{f^*(x') = y'}.}
+
+\proof{
+\p{By identity induction, it suffices to give a morphism #{\Hom_{Pf}(x', f^*(x'))}
+for each #{x'}. But this is just ??(the second component of is covariant).
+Now since #{\Sigma_{y' : P(f(1))} \Hom_{Pf}(x',y')}, the fundamental theorem of
+identity types gives us that this map is an equivalence.}
+}
+
+%```agda
+\agda{
+cov-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+            (f : Δ¹ → A) x' y'
+          → tr-cov {P = P} cov f x' ＝ y' → HomP (P ∘ f) x' y'
+cov-hom _ Pc f x' y' refl = Pc f x' .centre .snd
+
+cov-hom-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      (f : Δ¹ → A) x' y'
+    → is-equiv (cov-hom P cov f x' y')
+cov-hom-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (cov-hom P Pc f x')
+
+
+tr-cov-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+    → tr-cov {P = P} cov (λ _ → x) ~ id
+tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x') )
+
+Hom-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+        → (Σ[ f ∶ Hom A x y ] Hom-over f x' y') → Hom (Σ A P) (x , x') (y , y')
+Hom-Σ (mk-hom f refl refl , mk-hom f' refl refl) = λhom (λ i → f i , f' i)
+
+Hom-Σ-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+            → Hom (Σ A P) (x , x') (y , y') → Hom A x y
+Hom-Σ-fst (mk-hom f refl refl) = λhom (fst ∘ f)
+
+Hom-Σ-snd : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+            → (f : Hom (Σ A P) (x , x') (y , y'))
+            → Hom-over (Hom-Σ-fst f) x' y'
+Hom-Σ-snd (mk-hom f refl refl) = λhom (snd ∘ f)
+
+Hom-Σ-fst-β
+  : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥}
+      {x y} {x' : P x} {y' : P y} (f : Hom A x y) (f' : Hom-over f x' y')
+    → Hom-Σ-fst (Hom-Σ (f , f')) ＝ f
+Hom-Σ-fst-β (mk-hom f refl refl) (mk-hom f' refl refl) = refl
+
+Hom-Σ-ap-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y : Σ A P}
+    → ap-hom fst {x = x} {y} ~ Hom-Σ-fst
+Hom-Σ-ap-fst (mk-hom f refl refl) = refl
+
+opaque
+  ap-δΔ²
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+        {x y z} {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
+      → F ∘ make-δΔ² f g h ~ make-δΔ² (ap-hom F f) (ap-hom F g) (ap-hom F h)
+  ap-δΔ² F {f = f} {g} {h}
+    = pushout-rec-unique _ _
+        (pushout-rec-unique _ _
+          ~refl
+          ~refl
+          (λ _ → ∙-reflr _ ∙ ap-∘ F _ (glue tt) ∙ ap (ap F) (pushout-rec-apβ _)
+               ∙ ap-∙ F (g .HomP.hom1) _
+               ∙ ap (ap F (g .HomP.hom1) ∙_) (ap-sym F _)))
+        ~refl
+        λ { (mk-lift true)  → ∙-reflr _ ∙ ap-∘ F (make-δΔ² f g h) (glue δΔ¹-1)
+                            ∙ ap (ap F) (pushout-rec-apβ _)
+                            ∙ ap-∙ F  (f .HomP.hom1) _
+                            ∙ ap (ap F (f .HomP.hom1) ∙_) (ap-sym F _)
+          ; (mk-lift false) → ∙-reflr _ ∙ ap-∘ F (make-δΔ² f g h) (glue δΔ¹-0)
+                            ∙ ap (ap F) (pushout-rec-apβ _)
+                            ∙ ap-∙ F  (g .HomP.hom0) _
+                            ∙ ap (ap F (g .HomP.hom0) ∙_) (ap-sym F _)}
+
+ap-hom2
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+      {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
+    → Hom2 f g h → Hom2 (ap-hom F f) (ap-hom F g) (ap-hom F h)
+ap-hom2 F f g h K .fst = F ∘ K .fst
+ap-hom2 {B = B} F f g h K .snd
+  = postcomp-Π (λ v → B) δΔ²-incl (ap-hom2 F f g h K .fst)
+      ＝⟨⟩
+    postcomp B δΔ²-incl (ap-hom2 F f g h K .fst)
+      ＝⟨⟩
+    (F ∘ K .fst ∘ δΔ²-incl)
+      ＝⟨ ap (F ∘_) (K .snd) ⟩
+    F ∘ (make-δΔ² f g h)
+      ＝⟨ funext→ (ap-δΔ² F) ⟩
+    make-δΔ² (ap-hom F f) (ap-hom F g) (ap-hom F h) ∎
+
+Hom2-Σ-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      {x y z} (g : Hom (Σ A P) y z) (f : Hom (Σ A P) x y) (h : Hom (Σ A P) x z)
+    → Hom2 g f h
+    → Hom2 (Hom-Σ-fst g) (Hom-Σ-fst f) (Hom-Σ-fst h)
+Hom2-Σ-fst f g h K
+  = coe
+     (ap₃ Hom2
+          (Hom-Σ-ap-fst f)
+          (Hom-Σ-ap-fst g)
+          (Hom-Σ-ap-fst h))
+     (ap-hom2 fst f g h K)
+
+Hom-Σ-fst-∘
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-precategory A)
+      {P : A → Type 𝓥} (inn : is-inner-family P)
+      {x y z} {x' : P x} {y' : P y} {z' : P z}
+      (g : Hom _ (y , y') (z , z')) (f : Hom _ (x , x') (y , y'))
+    →  Hom-Σ-fst (g ∘[ is-precategory-Σ Apc inn ] f)
+    ＝ (Hom-Σ-fst g ∘[ Apc ] Hom-Σ-fst f)
+Hom-Σ-fst-∘ Apc inn f g
+  = unique-composite Apc (Hom-Σ-fst f) (Hom-Σ-fst g)
+      (Hom-Σ-fst (f ∘[ is-precategory-Σ Apc inn ] g))
+      (Hom2-Σ-fst _ _ _ ∘[ is-precategory-Σ Apc inn ]-is-composite)
+
+opaque
+  CompP
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-precategory A) (P : A → Type 𝓥)
+        (inn : is-inner-family P) {x y z} (g : Hom A y z) (f : Hom A x y)
+        {x' : P x} {y' : P y} {z' : P z}
+        (g' : Hom-over g y' z') (f' : Hom-over f x' y')
+      → Hom-over (g ∘[ Apc ] f) x' z'
+  CompP apc P inn {x}{y}{z} g f {x'}{y'}{z'} g' f'
+    = tr (λ p → Hom-over {x = x} {y = z} p x' z')
+         {Hom-Σ-fst (Hom-Σ (g , g') ∘[ is-precategory-Σ apc inn ] Hom-Σ (f , f'))}
+         {g ∘[ apc ] f}
+         (Hom-Σ-fst-∘ apc inn (Hom-Σ (g , g')) (Hom-Σ (f , f'))
+          ∙ ap₂ (_∘[ apc ]_) (Hom-Σ-fst-β _ _) (Hom-Σ-fst-β _ _))
+         (Hom-Σ-snd ((Hom-Σ (g , g')) ∘[ is-precategory-Σ apc inn ] (Hom-Σ (f , f'))))
+
+tr-cov-∘
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-precategory A) (P : A → Type 𝓥)
+      (cov : is-covariant-hom P) {x y z} (g : Hom A y z) (f : Hom A x y)
+      (x' : P x)
+      →  tr-cov-hom cov (g ∘[ Apc ] f) x'
+      ＝ tr-cov-hom cov g (tr-cov-hom cov f x')
+tr-cov-∘ apc P cov g f x'
+  = ap fst
+      (cov (g ∘[ apc ] f) x' .central
+        ( tr-cov-hom cov g (tr-cov-hom cov f x')
+        , CompP apc P (is-inner-family←is-covariant-hom cov) g f
+                 (tr-cov-over cov g _) (tr-cov-over cov f _)))
+}
+%```
+}
 
 \subtree[stt-00AS]{
 \title{There is a universe of amazingly covariant types}

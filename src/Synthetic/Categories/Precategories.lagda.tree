@@ -98,6 +98,18 @@ module Precat where
 
 is-inner : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
 is-inner f = Λ[2,1]-incl ⊥ f
+
+is-segal-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (f : A → B) → Typeω
+is-segal-equiv f
+  = ∀ {𝓠} {Q : Type 𝓠} → is-precategory Q → is-equiv (postcomp Q f)
+
+is-segal-equiv-∘
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → C} {g : A → B} → is-segal-equiv f
+    → is-segal-equiv g → is-segal-equiv (f ∘ g)
+is-segal-equiv-∘ sf sg qpc = is-equiv-∘ (sg qpc) (sf qpc)
 }
 %```
 }
@@ -268,6 +280,13 @@ opaque
                    (adjust-hom-is-equiv
                      (sym (g .HomP.hom0)) (sym (f .HomP.hom1))))
 
+ext-mk-horn-compute-diagonal
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+    → HomP.hom ∘ is-equiv.bwd (ext-mk-horn-is-equiv f g) ~ postcomp A ι₂ ∘ fst
+ext-mk-horn-compute-diagonal f g
+  = (HomP.hom ◂  is-equiv.η (ext-mk-horn-is-equiv f g))
+    ▸eqv (ext-mk-horn-is-equiv f g)
+
 opaque
   composite←horn-extension
     : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
@@ -291,18 +310,34 @@ opaque
              (sym (ap fst (is-equiv.ε (ext-mk-horn-is-equiv f g) a)))))
          (Ext-compose _ _ (make-horn f g) ._≃_.has-is-eqv))
 
-opaque
-  _∘[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
-            → Hom A x y → Hom A x z
-  f ∘[ apc ] g = fst (composite←horn-extension f g
-                      (centre (precategory-unique-composite apc f g)))
+  composite←horn-extension-diagonal
+    : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
+      → HomP.hom ∘ fst ∘ composite←horn-extension f g
+      ~ postcomp A Δ²-diagonal ∘ fst
+  composite←horn-extension-diagonal f g x
+    = ext-mk-horn-compute-diagonal f g _
 
-  ∘[_]-is-composite
-    : ∀ {𝓤} {A : Type 𝓤} {x y z} {f : Hom A y z} {g : Hom A x y}
-      → (apc : is-precategory A) → Hom2 f g (f ∘[ apc ] g)
-  ∘[_]-is-composite {f = f} {g} apc
-    = snd (composite←horn-extension _ _
-            (centre (precategory-unique-composite apc f g)))
+_∘[_]_ :  ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-precategory A
+          → Hom A x y → Hom A x z
+f ∘[ apc ] g = fst (composite←horn-extension f g
+                    (centre (precategory-unique-composite apc f g)))
+
+∘[_]-is-composite
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} {f : Hom A y z} {g : Hom A x y}
+    → (apc : is-precategory A) → Hom2 f g (f ∘[ apc ] g)
+∘[_]-is-composite {f = f} {g} apc
+  = snd (composite←horn-extension _ _
+          (centre (precategory-unique-composite apc f g)))
+
+opaque
+  composite-is-prop
+    : ∀ {𝓤} {A : Type 𝓤} (apc : is-precategory A)
+        {x y z} (f : Hom A y z) (g : Hom A x y)
+      → is-prop (Σ (Hom A x z) (Hom2 f g))
+  composite-is-prop apc f g
+    = is-prop←equiv-to-prop
+        (mk≃ _ (composite←horn-extension-is-equiv f g))
+        (is-prop←is-single (precategory-unique-composite apc f g))
 
   unique-composite : ∀ {𝓤} {A : Type 𝓤} (apc : is-precategory A)
                        {x y z} (f : Hom A y z) (g : Hom A x y)

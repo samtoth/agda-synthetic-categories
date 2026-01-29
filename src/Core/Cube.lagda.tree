@@ -10,7 +10,18 @@
 module Core.Cube where
 
 open import Foundations.Prelude
+
+open import ufAxioms
+
 open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.ArrowRetract
+open import Core.Postwhisker
+open import Core.FunctorialPullback
+
+open import Ergonomics.Marker
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -56,12 +67,16 @@ record Cube {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
             {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
             {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
             (G : Arrow-map h k) : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞) where
+  constructor mk-cube
   module F = Arrow-map F
   module G = Arrow-map G
   field
     left : Arrow-map f h
     right : Arrow-map g k
     comm : Arrow-map-path (paste-squares G left) (paste-squares right F)
+
+  module left = Arrow-map left
+  module right = Arrow-map right
 
   topl : A → X
   topl = left .Arrow-map.top
@@ -91,6 +106,14 @@ record Cube {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
   bot-amap .Arrow-map.top = botl
   bot-amap .Arrow-map.bot = botr
   bot-amap .Arrow-map.comm = bot ~⁻¹
+
+  fill-hex
+    : ∀ a → Hexagon
+              (ap G.bot (left.comm a)) (G.comm (left.top a)) (ap k (top a))
+              (bot (f a)) (ap right.bot (F.comm a)) (right.comm (F.top a))
+  fill-hex a .Hexagon.un-hex
+    = sym (∙-assoc (ap G.bot (left.comm a)) _ (ap k (top a)))
+    ∙ comm .snd .snd a
 }
 %```
 }
@@ -148,6 +171,265 @@ front-cartesian←cartesian-cube {f = f} F {k = k} G cube leftCart rightCart GCa
       (compose-cartesian GCart leftCart)
       rightCart where
   open Cube cube
+}
+%```
+}
+
+\subtree[stt-00BP]{
+\title{Equivalences of squares preserve pullbacks}
+\taxon{Corollary}
+
+\p{We define square-equivalences in the obvious way, just asking both the left
+and right squares to be [arrow equivalences](stt-004R). Since arrow equivalences
+are in particular cartesian squares, this result follows trivially from
+\ref{stt-00B3}.}
+
+%```agda
+\agda{
+is-Cube-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+      {F : Arrow-map f g}
+      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+      {G : Arrow-map h k}
+    → Cube F G → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
+is-Cube-equiv α = is-Arrow-equiv left × is-Arrow-equiv right where
+  open Cube α
+
+opaque
+  front-cartesian←equiv-cube
+    : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+        {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+        {F : Arrow-map f g}
+        {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+        {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+        {G : Arrow-map h k}
+      → (α : Cube F G)
+      → is-Cube-equiv α
+      → is-cartesian G
+      → is-cartesian F
+  front-cartesian←equiv-cube {F = F} {G = G} α (le , re)
+    = front-cartesian←cartesian-cube
+        F G α
+        (is-cartesian←is-equiv _ le)
+        (is-cartesian←is-equiv _ re)
+}
+%```
+}
+
+
+\subtree[stt-00BF]{
+\taxon{Construction}
+\title{Gap map square from cubes}
+
+\p{There is a forgetful functor from the category of squares to the
+category of cospan maps. On objects, we have already shown that [a square
+is comprised of a cospan together with a cone over it](stt-002Z), now we give
+(part of) the action on morhpisms: each cube gives rise to a
+[map of cospans](stt-00BG).}
+
+%```agda
+\agda{
+module _ where
+  open Cube
+  cospan-map←cube
+    : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+        {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+        {F : Arrow-map f g}
+        {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+        {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+        {G : Arrow-map h k}
+      → (cube : Cube F G)
+      → Cospan-map (Cone←Arrow-map F .fst) (Cone←Arrow-map G .fst)
+  cospan-map←cube α .Cospan-map.h₁ = botl α
+  cospan-map←cube α .Cospan-map.h₂ = botr α
+  cospan-map←cube α .Cospan-map.h₃ = topr α
+  cospan-map←cube α .Cospan-map.H = bot α ~⁻¹
+  cospan-map←cube α .Cospan-map.K = right.comm α
+}
+%```
+
+\p{Consequently, a map of squares (a cube) also induces a map of arrows between
+the respective [gap maps](stt-003L).}
+
+%```agda
+\agda{
+gap-map-square←cube
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+      (F : Arrow-map f g)
+      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+      (G : Arrow-map h k)
+    → (cube : Cube F G)
+    → Arrow-map (gap-map←square F) (gap-map←square G)
+gap-map-square←cube F G α .Arrow-map.top = α .Cube.left.top
+gap-map-square←cube F G α .Arrow-map.bot = Pullback₁ (cospan-map←cube α)
+gap-map-square←cube {f = f} F {k = k} G
+   α@(mk-cube L R (lc , rc , fill)) .Arrow-map.comm a
+  = pullback-path→ ( α .Cube.left.comm a
+                   , sym (Cube.top α a)
+                   , un-square
+                       (coe
+                         (ap (λ p → Square _ p _ _) (sym (ap-sym k (lc a))))
+                         (Hexagon.Square-compress-left
+                          (tr
+                           (λ p →
+                             Hexagon (ap (Arrow-map.bot G) (Arrow-map.comm L a))
+                                     (Arrow-map.comm G (Arrow-map.top L a))
+                                     (ap k (lc a))
+                                     p
+                                     (ap (Arrow-map.bot R) (Arrow-map.comm F a))
+                                     (Arrow-map.comm R (Arrow-map.top F a)))
+                           (sym sym-sym)
+                           (Cube.fill-hex α a)))))
+}
+%```
+
+\subtree[stt-00BI]{
+\taxon{Conjecture}
+
+\p{This map is an equivalence.}
+}
+}
+
+\subtree[stt-00BH]{
+\taxon{Definition}
+\title{Partially coherent retracts of squares}
+
+\p{A fully coherent notion of retract for a cube #{\alpha : F \to G} involves a
+lot of data:}
+
+\ul{
+\li{A cube #{\beta : G \to F}}
+\li{A path of cubes #{\beta \alpha = 1} - which itself involves:
+\ul{
+\li{Paths #{\beta_{tl} \alpha_{tl} = 1}, for each corner of the squares}
+\li{Such that the fillers of the resulting squares are also equal to #{1}}
+\li{And the result of pasting the fillers of the whole cubes together results
+in the filler of the identity cube.}
+}
+}
+}
+
+\p{Recall that a [cube induces a map of gap maps](stt-00BF). It follows that a retract
+of cubes should induce a retract of [gap maps](stt-003L) (retracts are preserved by
+all functors after all). In HoTT, a retract of maps contains extra coherence data,
+namely that the squares paste together to form the identity; however, we also
+define a notion of [incoherent retracts](stt-00BJ), which are enough for certain results
+[such as the fact incoherent retracts preserve equivalence](stt-00BK). Correspondingly,
+we define
+a \strong{1-coherent} or \strong{partially coherent} retract of squares to be
+a cube in the opposite direction, together with a retract of the top-left map
+and a (fully-coherent) retract of the induced cospan map. We show that this data
+induces an incoherent retract of the gap maps. Under the [above conjecture](stt-00BI),
+we expect the type of 1-coherent cube retracts to be equivalent to the type
+of incoherent retracts of gap maps (although this has not been formalised).}
+
+%```agda
+\agda{
+1-coherent-retract-cube
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+    {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+    {F : Arrow-map f g}
+    {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+    {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+    {G : Arrow-map h k}
+  → Cube F G
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
+1-coherent-retract-cube {F = F} {G = G} α@(mk-cube L R p)
+  = Σ[ β ∶ Cube G F ]
+     (retract-witness (Cube.topl α) (Cube.topl β)
+      ×
+     retract-witness-cospan (cospan-map←cube α) (cospan-map←cube β))
+}
+%```
+
+\proof{
+The fact that the induced gap map square is a retract follows from the
+fact that [pullbacks are functorial with respect to their cospan](stt-00BN).
+}
+
+%```agda
+\agda{
+gap-map-square-ret←cube-partial-ret
+  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+      (F : Arrow-map f g)
+      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+      (G : Arrow-map h k)
+    → (cube : Cube F G)
+    → (ret : 1-coherent-retract-cube cube)
+    → incoherent-retract-arrow-map (gap-map-square←cube F G cube)
+gap-map-square-ret←cube-partial-ret {g = g} F G α (β , tlr , cspr)
+  = (ret  , tlr ,  ret2) where
+  open Cube
+  ret : Arrow-map (gap-map←square G) (gap-map←square F)
+  ret = gap-map-square←cube _ _ β
+
+
+  ret-cspn : Pullback₁
+            (cospan-map-compose (cospan-map←cube β) (cospan-map←cube α))
+         ~ Pullback₁ (id-cospan-map)
+  ret-cspn
+    = happly
+        (ap Pullback₁ {cospan-map-compose (cospan-map←cube β) _} {id-cospan-map}
+          (ext! (cospan-retract-is-cospan-retract (cospan-map←cube α)
+                                                  (cospan-map←cube β , cspr))))
+
+  ret2 : retract-witness
+           (gap-map-square←cube _ _ α .Arrow-map.bot)
+           (ret .Arrow-map.bot)
+  ret2 = Pullback₁-∘ (cospan-map←cube β) (cospan-map←cube α)
+       ~∙ ret-cspn
+       ~∙ Pullback₁-id
+}
+%```
+}
+
+\subtree[stt-00BE]{
+\title{Retracts of cartesian squares are cartesian}
+\taxon{Corollary}
+
+\p{Given a [1-coherent retract of squares](stt-00BH) #{F \hookrightarrow G}, if
+#{G} is cartesian, then so is #{F}.}
+
+\proof{This follows from the fact that [1-coherent retracts of squares induce
+incoherent retracts of the respective gap maps](stt-00BH), and that [retracts of
+equivalences are equivalences](stt-00BK)}
+
+
+%```agda
+\agda{
+opaque
+  retract-is-cartesian
+    : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+        {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+        {F : Arrow-map f g}
+        {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+        {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
+        {G : Arrow-map h k}
+      → (cube : Cube F G)
+      → 1-coherent-retract-cube cube
+      → is-cartesian G
+      → is-cartesian F
+  retract-is-cartesian α β gcart
+    = is-cartesian←gap-is-equiv _
+          (is-equiv←retract-equiv
+            (gap-map-square←cube _ _ α)
+            (gap-map-square-ret←cube-partial-ret _ _ α β)
+            (gap-is-equiv←is-pullback _
+              (is-pullback←is-cartesian _ gcart)))
+
 }
 %```
 }

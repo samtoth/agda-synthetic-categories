@@ -1,0 +1,323 @@
+\title{Cocomma types}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-01-11}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.CoComma
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Data.Bool
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrow
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.ExtPullbacks
+open import Core.PiSection
+open import Core.FunctorialPullback
+open import Core.Slice
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+open import Ergonomics.Extensionality
+open import Ergonomics.Representation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
+}
+%```
+
+\subtree[stt-00CT]{
+\title{Right cocones over a span}
+\taxon{Definition}
+
+\p{Given a [span diagram](stt-0015) #{S}, we consider the right cocones over #{S}.
+This is analogous to the type of [cocones over #{S}](stt-0016) but with the
+filler now being a morphism, not a path. This dualises \ref{stt-00C1}}
+
+%```agda
+\agda{
+record Right-cocone {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) {𝓛} (Carrier : Type 𝓛)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛) where
+  constructor mk-right-cocone
+  open Span S
+  field
+    i : Left → Carrier
+    j : Right → Carrier
+    filler : ∀ (a : Centre) → Hom Carrier (i (left a)) (j (right a))
+
+
+unquoteDecl Right-cocone-repr≅ Right-cocone-repr≃
+  = make-record-repr Right-cocone-repr≅ Right-cocone-repr≃ (quote Right-cocone)
+
+Right-cocone-path
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛}
+      (c c' : Right-cocone S Carrier) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+Right-cocone-path {S = S} c c'
+  = Σ[ p ∶ c .i ~ c' .i ] Σ[ q ∶ c .j ~ c' .j ]
+      (∀ a → Hom-pathP (p (left a)) (q (right a)) (c .filler a) (c' .filler a))
+  where
+  open Right-cocone
+  open Span S
+
+opaque
+  Right-cocone-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛}
+        (c : Right-cocone S Carrier) → is-singleton (Σ _ (Right-cocone-path c))
+  Right-cocone-path-is-torsorial c
+    = is-single←equiv-to-single (Σ-ap-≃-fst (Right-cocone-repr≃ e⁻¹))
+        (is-singleton-structure←parts
+          (SingS-is-single _)
+          (_ , ~refl)
+          (is-singleton-structure←parts
+            (SingS-is-single _)
+            (_ , ~refl)
+            (is-single←equiv-to-single
+              (Σ-Π-swap≃ _ λ a h → Hom-pathP refl refl (c .Right-cocone.filler a) h)
+              (is-singleton-Π (λ a
+               → Hom-pathP-is-torsorial)))))
+
+Right-cocone-path-refl
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛}
+      {c : Right-cocone S Carrier} → Right-cocone-path c c
+Right-cocone-path-refl = (~refl , ~refl , λ a → Hom-pathP-refl)
+
+instance
+  IdS-right-cocone
+    : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛}
+      → Identity-system (Right-cocone S Carrier) (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  IdS-right-cocone .Identity-system.IdS = Right-cocone-path
+  IdS-right-cocone .Identity-system.IdS←Id refl = Right-cocone-path-refl
+  IdS-right-cocone .Identity-system.has-is-ids a
+    = fundamental-Id _ (Right-cocone-path-is-torsorial a) _
+}
+%```
+}
+
+
+\subtree[stt-00CU]{
+\title{Cocomma cocones}
+\taxon{Definition}
+
+\p{Again analogously to undirected pushouts, for any right cocone #{C}
+over a span #{S}, we can define a canonical map #{(C \to Q) \to \mathrm{Cocone}_S(Q)}.
+We call #{C} a (right) cocomma cone when this map is an equivalence.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛} where
+  right-cocone-map : Right-cocone S Carrier
+                   → ∀ {𝓠} {Q : Type 𝓠} → (Carrier → Q) → Right-cocone S Q
+  right-cocone-map cc f = mk-right-cocone (f ∘ i) (f ∘ j) (ap-hom f ∘ filler) where
+    open Right-cocone cc
+
+  is-cocomma-cocone : Right-cocone S Carrier → Typeω
+  is-cocomma-cocone cone
+    = ∀ {𝓠} {Q : Type 𝓠} → is-equiv (right-cocone-map cone {𝓠}{Q})
+}
+%```
+}
+
+\subtree[stt-00CV]{
+\title{Canonical cocomma types}
+\taxon{Construction}
+
+\p{The cocomma type of a [span diagram](stt-0015) is written
+#{f \uparrow g}. If we had a notion of \em{directed} higher inductive
+types, you might present it as the type generated by the following data:}
+
+\ul{
+\li{#{\iota_1 : A \to f \uparrow g}}
+\li{#{\iota_2 : C \to f \uparrow g}}
+\li{#{\mathit{gl} : \Pi_{b} \Hom_B(\iota_1(f(b)), \iota_2(g(b)))}}
+}
+
+\p{Whilst we don't have directed higher inductive types natively, we can
+use [pushouts](stt-0017) to give an equivalent definition for cocomma types.}
+
+
+\quiver{
+    \begin{tikzcd}[cramped]
+	{B\times\delta\Delta^1} && {A + C} \\
+	\\
+	{B \times \Delta^1} && \bullet
+	\arrow["{\overline{[f,g]}}", from=1-1, to=1-3]
+	\arrow[hook', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+    \end{tikzcd}
+}
+
+%```agda
+\agda{
+_↑_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : B → A) (g : B → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+_↑_ {A = A} {B} {C} f g
+  = Pushout (δΔ¹-incl ⊗1 B)
+            (uncurry (δΔ¹-UP→ (inl ∘ f , inr ∘ g)))
+
+↑-ι₁ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         {f : B → A} {g : B → C} → A → f ↑ g
+↑-ι₁ = ι₂ ∘ inl
+
+↑-ι₂ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+         {f : B → A} {g : B → C} → C → f ↑ g
+↑-ι₂ = ι₂ ∘ inr
+
+↑-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+          {f : B → A} {g : B → C} b → Hom (f ↑ g) (↑-ι₁ (f b)) (↑-ι₂ (g b))
+↑-hom b .HomP.hom = ι₁ ∘ (_, b)
+↑-hom b .HomP.hom0 = glue (δΔ¹-0 , b)
+↑-hom b .HomP.hom1 = glue (δΔ¹-1 , b)
+
+↑-cocone : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+             (f : B → A) (g : B → C) → Right-cocone (mk-span _ f g) (f ↑ g)
+↑-cocone f g .Right-cocone.i = ↑-ι₁
+↑-cocone f g .Right-cocone.j = ↑-ι₂
+↑-cocone f g .Right-cocone.filler = ↑-hom
+
+↑-is-cocomma-cocone
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → A} {g : B → C}
+    → is-cocomma-cocone (↑-cocone f g)
+↑-is-cocomma-cocone {f = f} {g = g} = is-equiv←qiso qiso where
+  open Right-cocone
+  qiso : quasi-iso (right-cocone-map (↑-cocone f g))
+  qiso .fst cone = pushout-rec
+    (mk-cocone (uncurry (HomP.hom ∘ cone .filler) ∘ ×-swap ._≃_.fwd)
+               ⊎[ cone .i , cone .j ] λ
+     { ((mk-lift true) ,  b) → filler cone b .HomP.hom1
+     ; ((mk-lift false) , b) → filler cone b .HomP.hom0})
+  qiso .snd .fst f = sym
+    (funext→ (pushout-rec-unique _ _ ~refl
+               (λ { (inl x) → refl
+                  ; (inr x) → refl})
+               λ { (mk-lift true , b) → ∙-reflr _
+                 ; (mk-lift false , b) → ∙-reflr _}))
+  qiso .snd .snd a = ext! (~refl , ~refl , λ b → Hom-pathP←path
+                            ( ~refl
+                            , sym (pushout-rec-apβ _)
+                            , sym (pushout-rec-apβ _)))
+
+↑-rec : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓠} {Q : Type 𝓠}
+        → let open Span S
+        in Right-cocone S Q → (left ↑ right → Q)
+↑-rec = is-equiv.bwd (↑-is-cocomma-cocone)
+
+↑-rec-unique
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓠} {Q : Type 𝓠}
+      {c : Right-cocone S Q} {f : Span.left S ↑ Span.right S → Q}
+    → IdS (right-cocone-map (↑-cocone (Span.left S) (Span.right S)) f) c
+    → f ~ ↑-rec c
+↑-rec-unique (p , q , r) = pushout-rec-unique _ _
+  (λ (i , c) → r c .fst i)
+  (λ { (inl x) → p x
+     ; (inr x) → q x })
+  λ { (mk-lift true  , c) → sym (un-square (r c .snd .snd))
+    ; (mk-lift false , c) → sym (un-square (r c .snd .fst))}
+
+}
+%```
+}
+
+
+
+\subtree[stt-00CW]{
+\title{Directed join}
+\taxon{Example}
+
+\p{An example of a comma type is the \em{directed join} of a pair of types.
+This is sometimes also called the \em{blunt join}.}
+
+\p{The interval is the join #{1 \rtimes 1}.}
+
+%```agda
+\agda{
+_⋉_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+A ⋉ B = _↑_ {B = A × B} fst snd
+
+Δ¹-is-join : is-cocomma-cocone {S = mk-span (𝟙 × 𝟙) fst snd}
+               (mk-right-cocone (const _ 𝟙 i0) (const _ 𝟙 i1) λ _ → 0≤1)
+Δ¹-is-join = is-equiv←qiso qiso where
+  qiso : quasi-iso _
+  qiso .fst cc = cc .Right-cocone.filler _ .HomP.hom
+  qiso .snd .fst = ~refl
+  qiso .snd .snd cc
+    = ext! ((λ _ → hom0) , (λ _ → hom1)
+           , λ _ → ( ~refl
+                   , (Square-flatten-hor refl) , Square-flatten-hor refl)) where
+    open Right-cocone cc
+    open HomP (filler _)
+
+_▻ : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+A ▻ = A ⋉ 𝟙
+
+_◅ : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+A ◅ = 𝟙 ⋉ A
+}
+%```
+}
+
+\subtree[stt-00CX]{
+\title{Functoriality of the directed join}
+\taxon{Construction}
+
+%```agda
+\agda{
+_⋉₁_ : ∀ {𝓤 𝓥 𝓦 𝓜}
+         {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
+       → A ⋉ C → B ⋉ D
+f ⋉₁ g = ↑-rec (mk-right-cocone (↑-ι₁ ∘ f) (↑-ι₂ ∘ g) (↑-hom ∘ (f ⊗ g)))
+
+⋉₁-id : ∀ {𝓤 𝓥} {A : Type 𝓤}  {B : Type 𝓥}
+     → id ⋉₁ id ~ id {A = A ⋉ A}
+⋉₁-id = sym ∘ ↑-rec-unique
+  ( ~refl
+  , ~refl
+  , λ _ → Hom-pathP←path (~refl , sym (ap-id _) , sym (ap-id _)))
+
+⋉₁-∘ : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+         {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦}
+         {D : Type 𝓜} {E : Type 𝓝} {F : Type 𝓛}
+         (f : B → C) (g : A → B) (h : E → F) (j : D → E)
+       → (f ∘ g) ⋉₁ (h ∘ j) ~ (f ⋉₁ h) ∘ (g ⋉₁ j)
+⋉₁-∘ f g h j = sym ∘ ↑-rec-unique
+  ( ~refl
+  , ~refl
+  , λ (a , d) → Hom-pathP←path
+     ( ~refl
+     , sym (ap-∘ _ _ _ ∙ ap (ap _) (pushout-rec-apβ _) ∙ pushout-rec-apβ _)
+     , sym (ap-∘ _ _ _ ∙ ap (ap _) (pushout-rec-apβ _) ∙ pushout-rec-apβ _)))
+}
+%```
+}

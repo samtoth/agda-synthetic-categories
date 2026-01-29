@@ -12,6 +12,7 @@ open import ufAxioms
 open import Foundations.Prelude
 open import Core.CanonicalPushouts
 open import Core.SpanMap
+open import Core.Postwhisker
 }
 %```
 
@@ -22,14 +23,14 @@ open import Core.SpanMap
 
 %```agda
 \agda{
-Pushout-functorial-cocone
+Cocone₁
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓛}
       {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
     → let module S = Span S; module S' = Span S'
       in (F : Span-map S S')
       → {P' : Type 𝓛} (Pc' : Cocone S' P')
       → Cocone S P'
-Pushout-functorial-cocone F Pc'
+Cocone₁ F Pc'
   = mk-cocone (Pc'.p ∘ F.h₁) (Pc'.q ∘ F.h₃)
               (  Pc'.p ◂ F.H
               ~∙ Pc'.filler ▸ F.h₂
@@ -46,55 +47,57 @@ Pushout-map←span-map : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓜 𝓛}
                   {P' : Type 𝓛} (Pc' : Cocone S' P')
                 → P → P'
 Pushout-map←span-map F pcc po pcc'
-  = is-equiv.bwd po (Pushout-functorial-cocone F pcc')
+  = is-equiv.bwd po (Cocone₁ F pcc')
 
 Pushout-map-id
   : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {P : Type 𝓜} {Pc : Cocone S P}
       (Po : is-pushoutω S Pc)
     → Pushout-map←span-map id-span-map Pc Po
-                           (Pushout-functorial-cocone id-span-map Pc)
+                           (Cocone₁ id-span-map Pc)
     ＝ id
 Pushout-map-id po
   = ap (is-equiv.bwd po) (ap (mk-cocone _ _)
                          (funext→ (λ a → ∙-reflr _ ∙ ∙-reflr _ ∙ sym (ap-id _))))
   ∙ is-equiv.η po id
 
-Pushout-functorial-span
+Pushout₀ : ∀ {𝓤 𝓥 𝓦} → Span 𝓤 𝓥 𝓦 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Pushout₀ S = Pushout (Span.left S) (Span.right S)
+
+Pushout₁
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'}
       {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
-    → let module S = Span S; module S' = Span S'
-      in (F : Span-map S S')
-    → Pushout S.left S.right → Pushout S'.left S'.right
-Pushout-functorial-span F = cogap (Pushout-functorial-cocone F pushout)
+      (F : Span-map S S')
+    → Pushout₀ S → Pushout₀ S'
+Pushout₁ F = cogap (Cocone₁ F pushout)
 
-Canonical-pushout-map-id
+Pushout-id
   : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
-  → Pushout-functorial-span (id-span-map {S = S}) ＝ id
-Canonical-pushout-map-id
-  = sym (pushout-rec-unique _ _ ~refl ~refl λ a → ap (_∙ refl) (ap-id (glue a)))
+  → id ~ Pushout₁ (id-span-map {S = S})
+Pushout-id
+  = pushout-rec-unique _ _ ~refl ~refl λ a → ap (_∙ refl) (ap-id (glue a))
 
-Canonical-Pushout-map-compose
+Pushout-∘
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
       {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'} {S'' : Span 𝓤'' 𝓥'' 𝓦''}
       (F : Span-map S' S'') (G : Span-map S S')
-    → Pushout-functorial-span (compose-span-map F G)
-    ＝ Pushout-functorial-span F ∘ Pushout-functorial-span G
-Canonical-Pushout-map-compose {S = S} F G
-  = sym (pushout-rec-unique
-          (Pushout-functorial-cocone (compose-span-map F G) pushout)
-          (Pushout-functorial-span F ∘ Pushout-functorial-span G)
+    → Pushout₁ F ∘ Pushout₁ G
+    ~ Pushout₁ (compose-span-map F G)
+Pushout-∘ {S = S} F G
+  = pushout-rec-unique
+          (Cocone₁ (compose-span-map F G) pushout)
+          (Pushout₁ F ∘ Pushout₁ G)
           ~refl
           ~refl
           (~∙-reflr _
-          ~∙ ap-∘ (Pushout-functorial-span F) (Pushout-functorial-span G) ∘ glue
-          ~∙ (λ x → ap (ap (Pushout-functorial-span F)) (pushout-rec-apβ x))
-          ~∙ λ x → ap-∙∙ (Pushout-functorial-span F)
+          ~∙ ap-∘ (Pushout₁ F) (Pushout₁ G) ∘ glue
+          ~∙ (λ x → ap (ap (Pushout₁ F)) (pushout-rec-apβ x))
+          ~∙ λ x → ap-∙∙ (Pushout₁ F)
                          (ap ι₁ (G.H x)) (glue (G.h₂ x)) (ap ι₂ (sym (G.K x)))
                   ∙   ap₃ (λ x y z → x ∙ y ∙ z)
-                         (sym (ap-∘ (Pushout-functorial-span F) ι₁ (G.H x)))
+                         (sym (ap-∘ (Pushout₁ F) ι₁ (G.H x)))
                          (pushout-rec-apβ (G.h₂ x))
-                         (sym (ap-∘ (Pushout-functorial-span F) ι₂ (sym (G.K x))))
-                  ∙ lem)) where
+                         (sym (ap-∘ (Pushout₁ F) ι₂ (sym (G.K x))))
+                  ∙ lem) where
     module F = Span-map F
     module G = Span-map G
     lem : {x : G.S.Centre} →
@@ -138,6 +141,31 @@ Canonical-Pushout-map-compose {S = S} F G
         ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
          glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (ap F.h₃ (G.K _) ∙ F.K (G.h₂ _))) ∎
 
+Pushout-qiso
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+      (F : Span-map S S')
+    → Span-quasi-iso F
+    → quasi-iso (Pushout₁ F)
+Pushout-qiso F x .fst = Pushout₁ (x .Span-quasi-iso.bwd)
+Pushout-qiso F x .snd .fst
+  = Pushout-∘ (x .Span-quasi-iso.bwd) F
+  ~∙ happly (ap Pushout₁ (Span-map-funext→ (x .Span-quasi-iso.ε)))
+  ~∙ (Pushout-id ~⁻¹)
+Pushout-qiso F x .snd .snd
+  = Pushout-∘ F (x .Span-quasi-iso.bwd)
+  ~∙ happly (ap Pushout₁ (Span-map-funext→ (x .Span-quasi-iso.η)))
+  ~∙ (Pushout-id ~⁻¹)
+
+Pushout-equiv←logical
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → is-prop-span S → is-prop-span S'
+    → Span-logical-equiv S S'
+    → Pushout₀ S
+    ≃ Pushout₀ S'
+Pushout-equiv←logical sp s'p le
+  = mk≃ (Pushout₁ fwd)
+        (is-equiv←qiso (Pushout-qiso fwd fwd-qiso)) where
+  open Span-logical-equiv sp s'p le
 }
 %```
 }

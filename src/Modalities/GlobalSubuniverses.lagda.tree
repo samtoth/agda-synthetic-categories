@@ -35,6 +35,7 @@ types in different universes.}
 \agda{
 record GSU (α : Level → Level) : Typeω where
   constructor mk-GSU
+  no-eta-equality
   field
     S : ∀ {𝓤} → SubU 𝓤 (α 𝓤)
     S-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -42,7 +43,7 @@ record GSU (α : Level → Level) : Typeω where
               → A ∈ S → B ∈ S
 
 SubU←global : ∀ {α} → GSU α →  ∀ {𝓤} → SubU 𝓤 (α 𝓤)
-SubU←global (mk-GSU s _) = s
+SubU←global = GSU.S
 
 GSU-equiv : ∀ {α β} → GSU α → GSU β → Typeω
 GSU-equiv S K = ∀ {𝓤} → Subtype-equiv (GSU.S S {𝓤}) (GSU.S K {𝓤})
@@ -66,6 +67,7 @@ record is-global-reflector {α} (GS : GSU α)
          {𝓤} (A : Type 𝓤)
          (○A : Type 𝓤) (η : A → ○A) : Typeω where
   constructor mk-grfltor
+  no-eta-equality
   open GSU GS
   field
     ○∈S : ○A ∈ S
@@ -87,8 +89,8 @@ is-reflector←global : ∀ {α} {GS : GSU α} {𝓤}
                         {A : Type 𝓤} {○A : Type 𝓤} {η : A → ○A}
                       → is-global-reflector GS A ○A η
                       → let open GSU GS in is-reflector S A ○A η
-is-reflector←global (mk-grfltor ○∈S reflects)
-  = mk-is-rfltor ○∈S reflects
+is-reflector←global gr
+  = mk-is-rfltor ○∈S reflects where open is-global-reflector gr
 
 is-global-reflector-subtype-equiv
   : ∀ {α β} {S : GSU α} {K : GSU β}
@@ -202,10 +204,10 @@ module GPiClosure {α} {GS : GSU α} (SR : is-globally-reflective GS) where
 %```agda
 \agda{
 is-globally-Σ-closed : ∀ {α} (GS : GSU α) → Typeω
-is-globally-Σ-closed (mk-GSU S _)
+is-globally-Σ-closed G
   = ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
     → A ∈ S → (∀ a → B a ∈ S)
-    → Σ A B ∈ S
+    → Σ A B ∈ S where open GSU G
 
 is-Σ-closed←globally : ∀ {α} (GS : GSU α)
                        → is-globally-Σ-closed GS
@@ -246,31 +248,32 @@ module GRSUInduction {α} {GS : GSU α}
   open GSU GS
   open is-globally-reflective Sref
 
-  ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
-        → (Π A (P ∘ η)) → Π (○ A) P
-  ind {A = A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
-    f'' : A → Σ (○ A) P
-    f'' a = (η a , f a)
+  opaque
+    ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
+          → (Π A (P ∘ η)) → Π (○ A) P
+    ind {A = A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
+      f'' : A → Σ (○ A) P
+      f'' a = (η a , f a)
 
-    f' : ○ A → Σ (○ A) P
-    f' = ○-rec (SΣ ○∈S ps) f''
+      f' : ○ A → Σ (○ A) P
+      f' = ○-rec (SΣ ○∈S ps) f''
 
-    secη : fst ∘ f' ∘ η ~ η
-    secη = fst ◂ ○-rec-β _ _
+      secη : fst ∘ f' ∘ η ~ η
+      secη = fst ◂ ○-rec-β _ _
 
-  ind-β : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
-            (P∈S : ∀ a → P a ∈ S)
-          → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
-  ind-β {A = A} {P} PS f a
-    = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
-        ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
-      tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
-        ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
-      tr (P ∘ fst) (○-rec-β _ f'' a) (snd (f' (η a)))
-        ＝⟨ apᵈ snd (○-rec-β _ f'' a) ⟩
-      snd (f'' a)
-        ＝⟨⟩
-      f a ∎       where open ind PS f
+    ind-β : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+              (P∈S : ∀ a → P a ∈ S)
+            → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
+    ind-β {A = A} {P} PS f a
+      = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
+           ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
+        tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
+          ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
+        tr (P ∘ fst) (○-rec-β _ f'' a) (snd (f' (η a)))
+          ＝⟨ apᵈ snd (○-rec-β _ f'' a) ⟩
+        snd (f'' a)
+          ＝⟨⟩
+        f a ∎       where open ind PS f
 
 
   ind-qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}

@@ -40,4 +40,3 @@ tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)
               → is-equiv (tr B p)
 tr-is-equiv refl = id-is-equiv
-

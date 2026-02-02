@@ -170,6 +170,64 @@ Hom2 : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
 Hom2 {A = A} f g h = Ext δΔ²-incl (make-δΔ² f g h)
 }
 %```
+
+\p{We show functions have actions on 2-simplices.}
+
+%```
+\agda{
+opaque
+  ap-δΔ²
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+        {x y z} {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
+      → F ∘ make-δΔ² f g h ~ make-δΔ² (ap-hom F f) (ap-hom F g) (ap-hom F h)
+  ap-δΔ² F {f = f} {g} {h}
+    = pushout-rec-unique _ _
+        (pushout-rec-unique _ _
+          ~refl
+          ~refl
+          (λ _ → ∙-reflr _ ∙ ap-∘ F _ (glue tt) ∙ ap (ap F) (pushout-rec-apβ _)
+               ∙ ap-∙ F (g .HomP.hom1) _
+               ∙ ap (ap F (g .HomP.hom1) ∙_) (ap-sym F _)))
+        ~refl
+        λ { (mk-lift true)  → ∙-reflr _ ∙ ap-∘ F (make-δΔ² f g h) (glue δΔ¹-1)
+                            ∙ ap (ap F) (pushout-rec-apβ _)
+                            ∙ ap-∙ F  (f .HomP.hom1) _
+                            ∙ ap (ap F (f .HomP.hom1) ∙_) (ap-sym F _)
+          ; (mk-lift false) → ∙-reflr _ ∙ ap-∘ F (make-δΔ² f g h) (glue δΔ¹-0)
+                            ∙ ap (ap F) (pushout-rec-apβ _)
+                            ∙ ap-∙ F  (g .HomP.hom0) _
+                            ∙ ap (ap F (g .HomP.hom0) ∙_) (ap-sym F _)}
+
+ap-hom2
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+      {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
+    → Hom2 f g h → Hom2 (ap-hom F f) (ap-hom F g) (ap-hom F h)
+ap-hom2 F f g h K .fst = F ∘ K .fst
+ap-hom2 {B = B} F f g h K .snd
+  = postcomp-Π (λ v → B) δΔ²-incl (ap-hom2 F f g h K .fst)
+      ＝⟨⟩
+    postcomp B δΔ²-incl (ap-hom2 F f g h K .fst)
+      ＝⟨⟩
+    (F ∘ K .fst ∘ δΔ²-incl)
+      ＝⟨ ap (F ∘_) (K .snd) ⟩
+    F ∘ (make-δΔ² f g h)
+      ＝⟨ funext→ (ap-δΔ² F) ⟩
+    make-δΔ² (ap-hom F f) (ap-hom F g) (ap-hom F h) ∎
+
+Hom2-Σ-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      {x y z} (g : Hom (Σ A P) y z) (f : Hom (Σ A P) x y) (h : Hom (Σ A P) x z)
+    → Hom2 g f h
+    → Hom2 (Hom-Σ-fst g) (Hom-Σ-fst f) (Hom-Σ-fst h)
+Hom2-Σ-fst f g h K
+  = coe
+     (ap₃ Hom2
+          (Hom-Σ-ap-fst f)
+          (Hom-Σ-ap-fst g)
+          (Hom-Σ-ap-fst h))
+     (ap-hom2 fst f g h K)
+}
+%```
 }
 
 
@@ -349,6 +407,53 @@ opaque
                 (mk≃ (composite←horn-extension f g)
                      (composite←horn-extension-is-equiv f g))
                 (segal-unique-composite apc f g)) .central (h , K)))
+}
+%```
+}
+
+
+\subtree[tot-000P]{
+\title{Dependent composition}
+\taxon{Construction}
+
+\p{Given a [Segal type]() #{A} together with #{P : A \to \UU}, an
+[inner family]() over it, given a pair of composable morphisms #{f,g} in #{A},
+we can define a composition operator on morphisms over #{f} and #{g} which
+lives over the composite #{f \circ g}.}
+
+\proof{
+Follows from the fact the the total type is Segal, and thus admits a composition
+operator, which agrees (by uniqueness of composites) with the base composition.
+}
+
+%```agda
+\agda{
+Hom-Σ-fst-∘
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A)
+      {P : A → Type 𝓥} (inn : is-inner-family P)
+      {x y z} {x' : P x} {y' : P y} {z' : P z}
+      (g : Hom _ (y , y') (z , z')) (f : Hom _ (x , x') (y , y'))
+    →  Hom-Σ-fst (g ∘[ is-segal-Σ Apc inn ] f)
+    ＝ (Hom-Σ-fst g ∘[ Apc ] Hom-Σ-fst f)
+Hom-Σ-fst-∘ Apc inn f g
+  = unique-composite Apc (Hom-Σ-fst f) (Hom-Σ-fst g)
+      (Hom-Σ-fst (f ∘[ is-segal-Σ Apc inn ] g))
+      (Hom2-Σ-fst _ _ _ ∘[ is-segal-Σ Apc inn ]-is-composite)
+
+opaque
+  CompP
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
+        (inn : is-inner-family P) {x y z} (g : Hom A y z) (f : Hom A x y)
+        {x' : P x} {y' : P y} {z' : P z}
+        (g' : Hom-over g y' z') (f' : Hom-over f x' y')
+      → Hom-over (g ∘[ Apc ] f) x' z'
+  CompP apc P inn {x}{y}{z} g f {x'}{y'}{z'} g' f'
+    = tr (λ p → Hom-over {x = x} {y = z} p x' z')
+         {Hom-Σ-fst (Hom-Σ (g , g') ∘[ is-segal-Σ apc inn ] Hom-Σ (f , f'))}
+         {g ∘[ apc ] f}
+         (Hom-Σ-fst-∘ apc inn (Hom-Σ (g , g')) (Hom-Σ (f , f'))
+          ∙ ap₂ (_∘[ apc ]_) (Hom-Σ-fst-β _ _) (Hom-Σ-fst-β _ _))
+         (Hom-Σ-snd ((Hom-Σ (g , g')) ∘[ is-segal-Σ apc inn ] (Hom-Σ (f , f'))))
 }
 %```
 }

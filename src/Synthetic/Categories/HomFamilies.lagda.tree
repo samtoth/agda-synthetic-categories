@@ -44,6 +44,7 @@ open import Data.Bool
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
+open import Core.CosliceOrthogonality
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.CoSlice
@@ -201,52 +202,6 @@ strongly-segal-type-is-segal orth tt
 %```
 }
 
-\subtree[tot-0008]{
-\title{Orthogonality from equivalence of postcomposition maps}
-\taxon{Lemma}
-
-\p{Given a map #{f} in the [coslice](stt-0062) #{p \to_X q}, postcomposition
-at every map #{X \to Y} is an equivalence iff #{f} is left orthogonal to #{Y}.
-}
-
-%```agda
-\agda{
-coslice-orth-lemma
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-      {p : X → A} {q : X → B} (f : Coslice-map p q)
-    → (f .fst ⊥ Y)
-    ⇔ (∀ (x : X → Y) → is-equiv (Coslice-map-postcompose x f))
-coslice-orth-lemma {A = A}{B}{X}{Y}{p}{q} (f , H)
-  = top⇔bot-is-equiv←Arrow-equiv (amap (funext→ H)) eq ∙⇔ fibrewise⇔total-is-equiv where
-
-  add-singleton : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
-                  → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
-  add-singleton f g = (g ∘ f , g , ~refl)
-
-  add-singleton-eq : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
-                     → quasi-iso (add-singleton p)
-  add-singleton-eq p .fst (a , f , H) = f
-  add-singleton-eq p .snd .fst x = refl
-  add-singleton-eq p .snd .snd (a , f , H)
-    = funext-rec
-        (λ H → ((f ∘ p) , (f , ~refl)) ＝ (a , (f , H)))
-        (λ where refl → refl)
-        H
-
-  amap : ∀ (H : f ∘ p ＝ q)
-         → Arrow-map (postcomp Y f)
-                     (total-map (λ a → Coslice-map-postcompose a (f , happly H)))
-  amap H .Arrow-map.top = add-singleton q
-  amap H .Arrow-map.bot = add-singleton p
-  amap refl .Arrow-map.comm x = refl
-
-  eq : is-Arrow-equiv (amap (funext→ H))
-  eq .fst = is-equiv←qiso (add-singleton-eq q)
-  eq .snd = is-equiv←qiso (add-singleton-eq p)
-
-}
-%```
-}
 
 \subtree[tot-0005]{
 \taxon{Therem}
@@ -286,8 +241,8 @@ the bottom via the universal property of the horn.}
 %```agda
 \agda{
 char-coslice-lift : ∀ {𝓤} {A : Type 𝓤} x
-      → Arrow-map (λ (_ : 𝟙) → i0) {C = Coslice A (λ (_ : 𝟙) → x)} (fst) →
-      Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (λ (_ : 𝟙) → x)
+      → Arrow-map (λ (_ : 𝟙) → i0) {C = Coslice A (λ (_ : 𝟙) → x)} (fst)
+      → Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (λ (_ : 𝟙) → x)
 char-coslice-lift x (mk-amap top bot comm)
   = cogap (mk-cocone (top tt .snd tt .HomP.hom)
                      bot
@@ -305,16 +260,20 @@ opaque
                                 (ap a ∘ sym ∘ glue)
     qiso .snd .fst (mk-amap top bot comm)
       = let pth = ( top tt .snd tt .HomP.hom1
-                  , λ i → ~refl , ((Square-degen-vert _ _ refl) , (Square-flatten-hor refl)))
+                  , λ i → ( ~refl
+                          , Square-degen-vert _ _ refl
+                          , Square-flatten-hor refl))
         in Arrow-map-path→
           ( (λ a → Coslice-path→ pth)
-          , (~refl , λ _ → ap (_∙ ap fst (Coslice-path→ pth)) (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
-                         ∙ ap (sym (HomP.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
-                              (Coslice-path-ap-fst pth)
-                         ∙ ap (_∙ top tt .snd tt .HomP.hom1) (∙-symsym _ (sym (comm tt)))
-                         ∙ ∙.cancell _  (∙-sym' (HomP.hom1 (top tt .snd tt)))
-                                        {f = sym (sym (comm tt))}
-                         ∙ sym-sym ))
+          , (~refl
+          , λ _ → ap (_∙ ap fst (Coslice-path→ pth))
+                    (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
+                ∙ ap (sym (HomP.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
+                     (Coslice-path-ap-fst pth)
+                ∙ ap (_∙ top tt .snd tt .HomP.hom1) (∙-symsym _ (sym (comm tt)))
+                ∙ ∙.cancell _  (∙-sym' (HomP.hom1 (top tt .snd tt)))
+                               {f = sym (sym (comm tt))}
+                ∙ sym-sym ))
     qiso .snd .snd (a , p)
       = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
                       (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
@@ -358,7 +317,7 @@ hom-fam-is-cov⇔is-strongly-segal {𝓤}{A}
        x →  hom-fam-is-cov⇔is-left-fibration x
          ∙⇔ coslice-is-left⇔strongly-inner-coslice x)
   ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
-  ∙⇔ (coslice-orth-lemma (weird-horn-inclusion∙) ⇔⁻¹)
+  ∙⇔ (coslice-orthogonality (weird-horn-inclusion∙) ⇔⁻¹)
   ∙⇔ logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
 }
 %```
@@ -513,84 +472,20 @@ strong-segal-factorisation
               ∙ ap (ap ι₁) (is-prop←is-truncated
                     (Trunc.×∈S car-is-set (Trunc.×∈S Trunc.𝟙∈S car-is-set) _ _)
                      _ refl))
-opaque
-  coslice-as-pushout-lem
-    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
-        (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
-        {Q : Type 𝓠}
-      → (∀ (q : C → Q) → is-equiv (Coslice-map-postcompose (q ∘ g) F))
-      → is-equiv (postcomp Q (Pushout₁ {S = mk-span _ f g}
-                               (mk-span-map (F .fst) id id (F .snd) ~refl)))
-  coslice-as-pushout-lem {A = A}{A'}{C = C} f f' g F {Q} coslice
-    = is-equiv←Arrow-equiv⁻¹
-        {F = amap}
-        ( is-equiv-∘ (postcomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω
-        , is-equiv-∘ (postcomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω)
-        (is-total-equiv←is-fibrewise-equiv
-          λ q →  is-equiv←Arrow-equiv
-                 {F = hom q}
-                 ( is-total-equiv←is-fibrewise-equiv
-                     (λ a → is-equiv-∘ sym-is-equiv (is-equiv⁻¹ global-funext))
-                 , is-total-equiv←is-fibrewise-equiv
-                     (λ a → is-equiv-∘ sym-is-equiv (is-equiv⁻¹ global-funext)))
-                 (coslice q) ) where
-    amap : Arrow-map (postcomp Q (Pushout₁ {S = mk-span _ f g}
-                               (mk-span-map (F .fst) id id (F .snd) ~refl)))
-                     (Pullback₁ {S = mk-cospan _  (postcomp Q g) (postcomp Q f')}
-                                 {T = mk-cospan _ (postcomp Q g) (postcomp Q f)}
-                       (mk-cospan-map id id (postcomp Q (F .fst))
-                                      ~refl (λ h → funext→ (ap h ∘ sym ∘ F .snd))))
-    amap .Arrow-map.top = postcomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
-    amap .Arrow-map.bot = postcomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
-    amap .Arrow-map.comm a = pullback-path→
-      ( refl
-      , refl
-      , sym (∙-reflr _
-        ∙ ap (funext→)
-          (funext→ (λ b → ap sym (ap-∘ a _ (glue b)
-                                 ∙ ap (ap a) (pushout-rec-apβ b
-                                 ∙ ap (ap ι₁ (F .snd b) ∙_) (∙-reflr _)))))
-          ∙ sym (ap (_∙ funext→ (ap (a ∘ ι₁) ∘ sym ∘ F .snd))
-                    (ap-id (funext→ (sym ∘ ap a ∘ glue)))
-          ∙ sym (funext-∙ (sym ∘ ap a ∘ glue) (ap (a ∘ ι₁) ∘ sym ∘ F .snd))
-          ∙ ap funext→ (funext→ (λ b
-              → ap (sym (ap a (glue b)) ∙_)
-                   (ap-sym (a ∘ ι₁) (F .snd b) ∙ ap sym (ap-∘ a ι₁ (F .snd b)))
-                   ∙ sym (∙-symsym (ap a (ap ι₁ (F .snd b))) (ap a (glue b)))
-                   ∙ ap sym (sym (ap-∙ a (ap ι₁ (F .snd b)) (glue b))))))))
-
-    hom : ∀ (q : C → Q)
-          → Arrow-map {A = Coslice-map f' (q ∘ g)}
-                      {B = Coslice-map f (q ∘ g)}
-                      (Coslice-map-postcompose (q ∘ g) F)
-                      {C = Σ[ x ∶ (A' → Q) ] (postcomp Q g q ＝ postcomp Q f' x)}
-                      {D = Σ[ x ∶ (A → Q) ] (postcomp Q g q ＝ postcomp Q f x)}
-                      (λ G →
-                          postcomp Q (F .fst) (G .fst)
-                        , ap id (G .snd) ∙ funext→ (ap (G .fst) ∘ sym ∘ F .snd))
-    hom q .Arrow-map.top = total-map (λ a → sym ∘ funext→)
-    hom q .Arrow-map.bot = total-map (λ a → sym ∘ funext→)
-    hom q .Arrow-map.comm (x , p)
-      = ext! (~refl , (sym (ap₂ _∙_
-                             (ap-id (sym (funext→ p)))
-                             (ap funext→ (funext→ λ b → ap-sym x (F .snd b))
-                               ∙ funext-sym _)
-                      ∙ sym (∙-symsym _ (funext→ p))
-                      ∙ ap sym (sym (funext-∙ _ _)))))
 
 is-based-triangulated
   : ∀ {𝓤} {A : Type 𝓤}
     →  ⧅-incl ⊥ A → ⧅-□-degen-incl ⊥ A
 is-based-triangulated {A = A} ttA
-  =  coslice-as-pushout-lem _ _ ! map (lem ∘ ev tt)  where
+  = left-orthogonal-pushout₁ map .snd (lem ∘ ev tt)  where
   -- A map colim(⧅ ← Δ¹ → 𝟙) → colim(□ ← Δ¹ → 𝟙)
   -- is equivalently a map in the coslice under Δ¹ from ⧅ → □
   map : Coslice-map {A = Δ¹} (ι₂ ∘ (_, i0)) (_, i0)
   map .fst = ⧅-incl
   map .snd = ~refl
 
-  lem : ∀ x → is-equiv (Coslice-map-postcompose (λ _ → x) map)
-  lem x = coslice-orth-lemma map .fst ttA (λ _ → x)
+  lem : ∀ x → map ⊥ (λ _ → x)
+  lem x = coslice-orthogonality map .fst ttA (λ _ → x)
 
 is-strongly-segal←is-segal
   : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-segal A

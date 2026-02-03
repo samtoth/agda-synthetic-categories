@@ -58,6 +58,14 @@ Hom A a b = HomP (λ _ → A) a b
 idH : ∀ {𝓤} {A : Type 𝓤} → (a : A) → Hom A a a
 idH a = λhom λ _ → a
 
+Hom-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y}
+    → Hom A x y → B x → B y → Type (𝓘 ⊔ 𝓥)
+Hom-over {A = A} {B} f x' y'
+  = HomP (B ∘ f .HomP.hom)
+         (tr B (sym (f .HomP.hom0)) x')
+         (tr B (sym (f .HomP.hom1)) y')
+
 
 0≤1 : Hom I i0 i1
 0≤1 .HomP.hom = id
@@ -191,18 +199,64 @@ Hom-extP→
     → {f : Hom A x y} {g : Hom A z w}
     → Hom-pathP p q f g → IdP (ap₂ (Hom A) p q) f g
 Hom-extP→ refl refl = Hom-ext→ ∘ Hom-path←pathP
+
+Hom-IdSP
+  : ∀ {𝓤} {A : Type 𝓤} {x y : A}
+    → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
+Hom-IdSP .Identity-system.IdS = Hom-pathP refl refl
+Hom-IdSP .Identity-system.IdS←Id refl = Hom-pathP-refl
+Hom-IdSP .Identity-system.has-is-ids a
+  = fundamental-Id _ Hom-pathP-is-torsorial _
 }
 %```
 }
 
 \subtree[stt-00CE]{
-\title{Functions are functors}
+\title{Functions have an action on synthetic morphisms}
 
 %```agda
 \agda{
 ap-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) {x y}
        → Hom A x y → Hom B (f x) (f y)
 ap-hom f (mk-hom hom hom0 hom1) = mk-hom (f ∘ hom) (ap f hom0) (ap f hom1)
+}
+%```
+}
+
+
+\subtree[stt-00DO]{
+\title{Morphisms in #{\Sigma} types}
+\taxon{Remark}
+
+\p{We can characterise morphisms in #{\Sigma} types as a pairs of a morphism,
+and a dependent morphism.
+#[\Hom_{\Sigma_A B}((x,x'), (y, y')) \simeq \Sigma_{f : \Hom_A(x,y)} \Hom_f(x',y')]}
+
+%```agda
+\agda{
+Hom-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+        → (Σ[ f ∶ Hom A x y ] Hom-over f x' y') → Hom (Σ A P) (x , x') (y , y')
+Hom-Σ (mk-hom f refl refl , mk-hom f' refl refl) = λhom (λ i → f i , f' i)
+
+Hom-Σ-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+            → Hom (Σ A P) (x , x') (y , y') → Hom A x y
+Hom-Σ-fst (mk-hom f refl refl) = λhom (fst ∘ f)
+
+Hom-Σ-snd : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+            → (f : Hom (Σ A P) (x , x') (y , y'))
+            → Hom-over (Hom-Σ-fst f) x' y'
+Hom-Σ-snd (mk-hom f refl refl) = λhom (snd ∘ f)
+
+Hom-Σ-fst-β
+  : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥}
+      {x y} {x' : P x} {y' : P y} (f : Hom A x y) (f' : Hom-over f x' y')
+    → Hom-Σ-fst (Hom-Σ (f , f')) ＝ f
+Hom-Σ-fst-β (mk-hom f refl refl) (mk-hom f' refl refl) = refl
+
+Hom-Σ-ap-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y : Σ A P}
+    → ap-hom fst {x = x} {y} ~ Hom-Σ-fst
+Hom-Σ-ap-fst (mk-hom f refl refl) = refl
 }
 %```
 }

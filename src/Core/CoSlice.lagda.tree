@@ -10,6 +10,8 @@ module Core.CoSlice where
 
 open import Foundations.Prelude
 open import ufAxioms
+
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -18,7 +20,7 @@ open import ufAxioms
 \taxon{Definition}
 
 \p{Fixing a type #{A}, there is a category
-#{\SS_{A/}} called the coslice category under #{A}.
+#{\Type_{A/}} called the coslice category under #{A}.
 Maps in this category are commuting triangles:}
 
 %```agda
@@ -37,6 +39,57 @@ Coslice-id : ∀ {𝓤} {A : Type 𝓤}
                (p : A → X)
              → Coslice-map p p
 Coslice-id p = (id , ~refl)
+
+Coslice-map-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      (p : A → X) (q : A → Y) (r : A → Z)
+    → Coslice-map q r → Coslice-map p q → Coslice-map p r
+Coslice-map-∘ p q r (f , H) (g , K) = (f ∘ g , f ◂ K ~∙ H)
+
+
+Coslice-map-precompose
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      (p : A → X) {q : A → Y} {r : A → Z}
+    → Coslice-map q r → (Coslice-map p q → Coslice-map p r)
+Coslice-map-precompose p F = Coslice-map-∘ p _ _ F
+
+Coslice-map-postcompose
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      {p : A → X} {q : A → Y} (r : A → Z)
+    → Coslice-map p q → (Coslice-map q r → Coslice-map p r)
+Coslice-map-postcompose r F G = Coslice-map-∘ _ _ r G F
+
+Coslice-map-path
+ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+     {Y : Type 𝓦} {q : A → Y} → (f g : Coslice-map p q) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Coslice-map-path {p = p} (f , H) (g , K) = Σ[ P ∶ f ~ g ] (P ▸ p ~∙ K ~ H)
+
+Coslice-map-path-refl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+      {Y : Type 𝓦} {q : A → Y} → (f : Coslice-map p q)
+    → Coslice-map-path f f
+Coslice-map-path-refl f = (~refl , ~refl)
+
+opaque
+  Coslice-map-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+        {Y : Type 𝓦} {q : A → Y} → (f : Coslice-map p q)
+      → is-singleton (Σ _ (Coslice-map-path f))
+  Coslice-map-path-is-torsorial f
+    = is-singleton-structure←parts
+        (SingS-is-single _)
+        (_ , ~refl)
+        (SingS-is-single' _)
+
+instance
+  Coslice-IdS
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+        {Y : Type 𝓦} {q : A → Y}
+     → Identity-system (Coslice-map p q) (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Coslice-IdS .Identity-system.IdS = Coslice-map-path
+  Coslice-IdS .Identity-system.IdS←Id refl = Coslice-map-path-refl _
+  Coslice-IdS .Identity-system.has-is-ids f
+    = fundamental-Id _ (Coslice-map-path-is-torsorial f) _
 }
 %```
 }
@@ -72,14 +125,14 @@ if it's underlying map of types in an equivalence.}
 
 %```agda
 \agda{
-Coslice-equiv : ∀ {𝓤} {A : Type 𝓤}
+is-coslice-equiv : ∀ {𝓤} {A : Type 𝓤}
                 {𝓥} {X : Type 𝓥}
                 {p : A → X}
                 {𝓦} {Y : Type 𝓦}
                 {q : A → Y}
                → Coslice-map p q
                → Type (𝓥 ⊔ 𝓦)
-Coslice-equiv (f , _) = is-equiv f
+is-coslice-equiv f = is-equiv (f .fst)
 }
 %```
 }
@@ -97,7 +150,7 @@ sec←sec-Coslice-equiv
       {𝓦} {Y : Type 𝓦}
       {q : A → Y}
       (f : Coslice-map p q)
-    → Coslice-equiv f
+    → is-coslice-equiv f
     → section p
     → section q
 sec←sec-Coslice-equiv (f , H) feq (ps , sp)
@@ -113,7 +166,7 @@ sec←sec-Coslice-equiv'
       {𝓦} {Y : Type 𝓦}
       {q : A → Y}
       (f : Coslice-map p q)
-    → Coslice-equiv f
+    → is-coslice-equiv f
     → section q
     → section p
 sec←sec-Coslice-equiv' (f , H) feq (ps , sp)
@@ -128,7 +181,7 @@ equiv←Coslice-equiv
       {𝓦} {Y : Type 𝓦}
       {q : A → Y}
       (f : Coslice-map p q)
-    → Coslice-equiv f
+    → is-coslice-equiv f
     → is-equiv p
     → is-equiv q
 equiv←Coslice-equiv (f , comm) feq peq

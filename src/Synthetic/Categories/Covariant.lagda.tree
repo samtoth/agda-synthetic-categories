@@ -45,6 +45,8 @@ open import Core.PiSection
 open import Core.CanonicalPushouts
 open import Core.FunctorialPushout
 
+open import Data.Bool
+
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open import Ergonomics.Auto
@@ -53,6 +55,7 @@ open Core.Orthogonal.notation
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Precategories Δ¹ I I-distr
 }
 %```
@@ -97,11 +100,12 @@ module Grpd where
 
 
 \subtree[stt-00B7]{
-\title{Groupoids are left-local types}
+\title{Groupoids are left(right)-local types}
 \taxon{Theorem}
 
 \p{A type is a groupoid iff it is local with respect to the map #{1 \to \Delta^1}
-which picks out the left endpoint.}
+which picks out the left endpoint iff it is local to the map that picks out the
+right endpoint.}
 
 %```agda
 \agda{
@@ -148,9 +152,38 @@ is-covariant {A = A} B
     = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
       → is-singleton (Σ[ x₁ ∶ B (x i1)] HomP (B ∘ x) x₀ x₁)
 
+is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-covariant-hom {A = A} B
+  = ∀ {x y} (f : Hom A x y) (x' : B x)
+    → is-singleton (Σ[ y' ∶ B y ] Hom-over f x' y')
+
+is-covariant-hom←is-covariant
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant B → is-covariant-hom B
+is-covariant-hom←is-covariant B cov (mk-hom f refl refl) x' = cov f x'
+
+is-covariant←is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+    → is-covariant-hom B → is-covariant B
+is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
+
 tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
        → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
 tr-cov cov h = fst ∘ centre ∘ cov h
+
+tr-cov-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-covariant-hom P
+    → ∀ {x y} (h : Hom A x y) → P x → P y
+tr-cov-hom cov h = fst ∘ centre ∘ cov h
+
+tr-cov-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (cov : is-covariant-hom P)
+    → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
+tr-cov-over cov h = snd ∘ centre ∘ cov h
 }
 %```
 }
@@ -160,8 +193,8 @@ tr-cov cov h = fst ∘ centre ∘ cov h
 \title{Left fibrations}
 \taxon{Definition}
 
-\p{A map is a left fibration if it is [right orthogonal](stt-0048) to the left
-endpoint of #{\Delta^1}.}
+\p{A map is a left (right) fibration if it is [right orthogonal](stt-0048) to the
+left (right) endpoint of #{\Delta^1}.}
 
 %```agda
 \agda{
@@ -401,7 +434,7 @@ is-covariant⇔is-left-fibration {A = A} B
 }
 
 \subtree[stt-00C7]{
-\title{Left fibrations are inner}
+\title{Left and right fibrations are inner}
 \taxon{Lemma}
 
 \proof{
@@ -487,21 +520,98 @@ is-inner←is-right-fibration {f = f} rf
 \subtree[stt-00C8]{
 \taxon{Corollary}
 
-\p{The total type of a covariant family over a precategory is a precategory.}
+\p{The total type of a covariant family over a Segal type is itself Segal.}
 
 %```agda
 \agda{
-is-precategory-cov-Σ
+is-inner-family←is-covariant
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-    → is-precategory A → is-covariant B → is-precategory (Σ A B)
-is-precategory-cov-Σ apc cov
-  = is-precategory-Σ apc
+    → is-covariant B → is-inner-family B
+is-inner-family←is-covariant
+  = is-inner←is-left-fibration ∘ (is-covariant⇔is-left-fibration _ .fst)
+
+is-inner-family←is-covariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-covariant-hom B → is-inner-family B
+is-inner-family←is-covariant-hom
+  = is-inner-family←is-covariant ∘ is-covariant←is-covariant-hom _
+
+is-segal-cov-Σ
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-segal A → is-covariant B → is-segal (Σ A B)
+is-segal-cov-Σ apc cov
+  = is-segal-Σ apc
       (is-inner←is-left-fibration
         (is-covariant⇔is-left-fibration _ .fst  cov))
 }
 %```
 }
 
+\subtree[stt-00DH]{
+\title{Morphisms in Hom types}
+\taxon{Lemma}
+
+\p{We show that for a covariant family #{P}, given any #{f : \Hom_A(x,y)},
+the type of dependent morphisms #{\Hom_{Pf}(x',y')} is equivalent to
+#{f^*(x') = y'}.}
+
+\proof{
+\p{We first give a map #{f^*(x') = y'}, by identity induction, it suffices to give
+a morphism #{\Hom_{Pf}(x', f^*(x'))} for each #{x'}, but this is just the
+coherence you get from covariant transport.
+Now since #{\Sigma_{y' : P(f(1))} \Hom_{Pf}(x',y')} is a singleton by the
+definition of transport, the fundamental theorem of identity types gives us that
+this map is an equivalence.}
+}
+
+%```agda
+\agda{
+cov-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+            (f : Δ¹ → A) x' y'
+          → tr-cov {P = P} cov f x' ＝ y' → HomP (P ∘ f) x' y'
+cov-hom _ Pc f x' y' refl = Pc f x' .centre .snd
+
+cov-hom-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      (f : Δ¹ → A) x' y'
+    → is-equiv (cov-hom P cov f x' y')
+cov-hom-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (cov-hom P Pc f x')
+}
+%```
+}
+
+\subtree[stt-00DQ]{
+\title{Covariant transport is functorial}
+\taxon{Theorem}
+
+\citet{8.16}{RS17}
+
+\p{Given a covariant family #{P}, we show the transport operation is functorial,
+in the sense that #{P(\id) \sim \id} and
+#{P(f \circ g) \sim P(f) \circ P(g)}.}
+
+%```agda
+\agda{
+tr-cov-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+    → tr-cov {P = P} cov (λ _ → x) ~ id
+tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x') )
+
+tr-cov-∘
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
+      (cov : is-covariant-hom P) {x y z} (g : Hom A y z) (f : Hom A x y)
+      (x' : P x)
+      →  tr-cov-hom cov (g ∘[ Apc ] f) x'
+      ＝ tr-cov-hom cov g (tr-cov-hom cov f x')
+tr-cov-∘ apc P cov g f x'
+  = ap fst
+      (cov (g ∘[ apc ] f) x' .central
+        ( tr-cov-hom cov g (tr-cov-hom cov f x')
+        , CompP apc P (is-inner-family←is-covariant-hom cov) g f
+                (tr-cov-over cov g _) (tr-cov-over cov f _)))
+}
+%```
+}
 
 \subtree[stt-00AS]{
 \title{There is a universe of amazingly covariant types}

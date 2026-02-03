@@ -16,6 +16,7 @@ open import Core.CartesianStraightening
 open import Core.CocartesianSquare
 open import Core.Codiagonal
 open import Core.Coequalisers
+open import Core.CosliceOrthogonality
 open import Core.CoSlice
 open import Core.Cube
 open import Core.ExtPullbacks
@@ -122,10 +123,13 @@ open import Synthetic.Categories.Boundaries
 open import Synthetic.Categories.CoComma
 open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
+open import Synthetic.Categories.HomFamilies
 open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns
+open import Synthetic.Categories.JoinSlice
 open import Synthetic.Categories.NaturalTransformation
 open import Synthetic.Categories.Precategories
+open import Synthetic.Categories.PushoutJoin
 open import Synthetic.Categories.Simplicial
 open import Synthetic.Cubes
 open import Synthetic.Hom

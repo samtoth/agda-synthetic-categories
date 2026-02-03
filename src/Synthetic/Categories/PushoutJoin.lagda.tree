@@ -1,0 +1,233 @@
+\title{The pushout join}
+\taxon{Module}
+\date{2026-01-12}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.PushoutJoin
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import Data.Bool
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrow
+open import Core.Lifts
+open import Core.PullbackPower
+open import Core.PushoutProduct
+open import Core.FunctorialPullback
+open import Core.FunctorialPushout
+open import Core.SpanMap
+open import Core.CoSlice
+open import Core.Slice
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.CoComma Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.JoinSlice Δ¹ I I-distr
+}
+%```
+
+\subtree[stt-00DE]{
+\taxon{Definition}
+\title{Pushout joins}
+
+\p{Just as we could [extend the product bifunctor to an operation on
+arrows](stt-00BS), we can do the same for the [directed join](stt-00CW)
+bifunctor. Given maps #{f : A \to B} and #{g : C \to D}, we define
+#{f \hat{\rtimes} g} to be the cogap map of the following square.}
+
+\quiver{
+\begin{tikzcd}
+	{A \rtimes C} && {A \rtimes D} \\
+	& \bullet \\
+	{B \rtimes C} && {B \rtimes D}
+	\arrow["{A \rtimes g}", from=1-1, to=1-3]
+	\arrow["{f\rtimes C}"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=2-2]
+	\arrow["{f \rtimes D}", from=1-3, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=2-2, to=1-1]
+	\arrow["{f \hat{\rtimes}g}", from=2-2, to=3-3]
+	\arrow[from=3-1, to=2-2]
+	\arrow["{B \rtimes g}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{We also note that this map can be considered a map in the slice over #{D}.}
+
+%```agda
+\agda{
+Join-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Arrow-map (f ⋉₁ id {A = X}) (f ⋉₁ id {A = Y})
+Join-square f g .Arrow-map.top = id ⋉₁ g
+Join-square f g .Arrow-map.bot = id ⋉₁ g
+Join-square f g .Arrow-map.comm = (⋉₁-∘ id f g id ~⁻¹) ~∙ ⋉₁-∘ f id id g
+
+Pushout-join
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Pushout₀ (Cocone←Arrow-map (Join-square f g) .fst) → B ⋉ Y
+Pushout-join f g = cogap-map←square (Join-square f g)
+
+Pushout-join-coslice
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+    → Coslice-map {X = Pushout₀ (Cocone←Arrow-map (Join-square f g) .fst)}
+                  (ι₂ ∘ ↑-ι₂)
+                  {Y = B ⋉ Y} ↑-ι₂
+Pushout-join-coslice f g .fst = Pushout-join f g
+Pushout-join-coslice f g .snd = ~refl
+}
+%```
+}
+
+\subtree[stt-00DF]{
+\title{Pullback Slices}
+\taxon{Definition}
+
+\p{Now given a map in the coslice #{s : t \to^A t'}, and a map #{f : X \to Y},
+we construct the \strong{pullback slice} #{s \hat{/} f} as the gap map of the
+following square:}
+
+\quiver{
+\begin{tikzcd}
+	{S_{/t}} && {S_{/tf}} \\
+	& \bullet \\
+	{T_{/t'}} && {T_{/t'f}}
+	\arrow[from=1-1, to=1-3]
+	\arrow["{s \hat{/}f}", dashed, from=1-1, to=2-2]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=2-2, to=1-3]
+	\arrow[from=2-2, to=3-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=2-2, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+
+%```agda
+\agda{
+extend-slice-map
+  : ∀ {𝓤 𝓥 𝓦 𝓧} {P : Type 𝓤} {Q : Type 𝓥} {A : Type 𝓦} {B : Type 𝓧}
+      (p : P → A) (q : Q → A) (f : A → B)
+    → Slice-map p q → Slice-map (f ∘ p) (f ∘ q)
+extend-slice-map p q f = total-map (λ _ → f ◂_)
+
+slice-square
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜} {p : K → A}
+       {S : Type 𝓝} {q : S → A} (g : Slice-map p q)
+    → Arrow-map (precompose-slice q f) (precompose-slice p f)
+slice-square f {p = p} {q = q} G .Arrow-map.top
+  = slice-map-slice p q G
+slice-square f {p = p} {q = q} G .Arrow-map.bot
+  = slice-map-slice (f ∘ p) (f ∘ q) (extend-slice-map p q f G)
+slice-square f G .Arrow-map.comm a
+  = Σ-path→ (refl , (funext→
+      (λ k → Hom-ext→ (~refl , ap-∙ f _ refl , ap-∙ f _ (G .snd k)))))
+
+pullback-slice
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜} {p : K → A}
+       {S : Type 𝓝} {q : S → A} (g : Slice-map p q)
+    → Slice A q
+    → Pullback (slice-map-slice (f ∘ p) (f ∘ q) (extend-slice-map _ q f g))
+               (precompose-slice p f)
+pullback-slice f g = gap-map←square (slice-square f g)
+
+slice-hom
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜}
+       {S : Type 𝓝} {q : S → A} (t : K → S)
+     → Arrow-map (precompose-slice q f) (precompose-slice (q ∘ t) f)
+slice-hom f t .Arrow-map.top = postcompose-slice _ t
+slice-hom f t .Arrow-map.bot = postcompose-slice _ t
+slice-hom f t .Arrow-map.comm a = refl
+
+pullback-slice'
+  : ∀ {𝓤 𝓥 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+       {K : Type 𝓜}
+       {S : Type 𝓝} (q : S → A) (t : K → S)
+    → Slice A q → Pullback (postcompose-slice (f ∘ q) t)
+                           (precompose-slice (q ∘ t) f)
+pullback-slice' f q t = gap-map←square (slice-hom f t)
+
+hom-fam-as-slice : ∀ {𝓤} {A : Type 𝓤} →
+  ∀ x → Arrow-map (pullback-slice (! {A = A}) {p = ¡_} {q = λ (_ : 𝟙) → x}
+                                  (¡_ , (λ ())))
+                  (fst {B = (λ y → Hom A y x)})
+hom-fam-as-slice x .Arrow-map.top (a , b) = a , b tt
+hom-fam-as-slice x .Arrow-map.bot (a , b , p) = b .fst
+hom-fam-as-slice x .Arrow-map.comm = ~refl
+}
+%```
+}
+
+\subtree[stt-00DR]{
+\title{The pushout join, pullback slice adjunction}
+\taxon{Theorem}
+
+\p{Just as the product-hom adjunction can be extended to an adjunction between
+the [pushout product](stt-00BS) and the [pullback power](Core.PullbackPower), we
+can extend the [join-slice adjunction](stt-00D5), to an adjunction between the
+[pushout join](stt-00DE) and [pullback slice](stt-00DF).}
+
+\remark{
+\p{This result has not been formalised - and I suspect it would be quite involved
+and require dealing with a lot of coherence. See \citek{JKL2026} for a
+discusion (and formalisation) of the pushout-product and pullback-hom adjunction
+mentioned above.}
+}
+
+%```agda
+\agda{
+power-hom-coslice
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+      {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+      {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+    → Arrow-map (Coslice-map-postcompose r F) (Coslice-map-postcompose s F)
+power-hom-coslice p q F r s G .Arrow-map.top = Coslice-map-precompose q G
+power-hom-coslice p q F r s G .Arrow-map.bot = Coslice-map-precompose p G
+power-hom-coslice p q F r s G .Arrow-map.comm x
+  = Σ-path→ (refl , (funext→ (λ a → ap (_∙ G .snd a) (ap-∙ (G .fst) _ (x .snd a)
+                  ∙ ap (_∙ ap (G .fst) _)
+                         (sym (ap-∘ (G .fst) (x .fst) (F .snd a))))
+                  ∙ ∙-assoc _ (ap (G .fst) (x .snd a)) (G .snd a))))
+
+pullback-coslice-power
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓨} {Y : Type 𝓨}
+      {A : Type 𝓤} {B : Type 𝓥} (p : Y → A) (q : Y → B) (F : Coslice-map p q)
+      {C : Type 𝓦} {D : Type 𝓜} (r : Y → C) (s : Y → D) (G : Coslice-map r s)
+    → Coslice-map q r
+    → Pullback (Coslice-map-precompose p G) (Coslice-map-postcompose s F)
+pullback-coslice-power p q F r s G
+  = gap-map←square (power-hom-coslice p q F r s G)
+}
+%```
+}

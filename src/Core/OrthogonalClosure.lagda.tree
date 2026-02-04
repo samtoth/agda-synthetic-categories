@@ -21,6 +21,9 @@ open import Core.PullbackPower
 open import Core.Postwhisker
 open import Core.CocartesianSquare
 open import Core.PushoutProduct
+open import Core.CoSlice
+open import Core.FunctorialPushout
+open import Core.SpanMap
 
 open notation
 open import Ergonomics.Notations.Orthogonality
@@ -405,6 +408,253 @@ left-orthogonal-pushout-product' f h fh g
         h
         (left-orthogonal-× id f h (id⊥ h) fh))
       (left-orthogonal-× id f h (id⊥ h) fh)
+}
+%```
+}
+
+
+\subtree[tot-0002]{
+\title{Left orthogonal maps are closed under functorial action of the pushout}
+\taxon{Lemma}
+
+\p{Consider spans #{A_i \xleftarrow{f_i} B \xrightarrow{g} C} for #{i \in \{1,2\}}.
+Given a coslice map #{F : f_0 \to_B f_1}, we have an action on pushouts
+#{A_0 +^B C \to A_1 +^B C}. If #{F \perp k}, then #{F +^B C \perp k}.}
+
+\proof{
+\p{We can arrange these maps into squares as follows:}
+
+\quiver{
+\begin{tikzcd}
+	B && C \\
+	\\
+	{A_0} && {A_0+^BC} \\
+	\\
+	{A_1} && {A_1+^B C}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow[from=3-1, to=5-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+	\arrow[from=3-3, to=5-3]
+	\arrow[from=5-1, to=5-3]
+\end{tikzcd}
+}
+
+\p{The total square and top square is cocartesian, so by pushout pasting, we have
+that the bottom square is cocartesian. So the result follows from the fact that
+cocartesian squares preserve left orthogonal maps.}
+
+\p{We have a similar result for the action on the right hand side of a pushout.}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+         {f : B → A} {f' : B → A'} (F : Coslice-map f f') (g : B → C) where
+
+  left-span-map : Span-map (mk-span _ f g) (mk-span _ f' g)
+  left-span-map = (mk-span-map (F .fst) id id (F .snd) ~refl)
+
+  Pushout₁-left : Pushout f g → Pushout f' g
+  Pushout₁-left = Pushout₁ (mk-span-map (F .fst) id id (F .snd) ~refl)
+
+  top-square : Arrow-map f ι₂
+  top-square = Pushout-square (mk-span _ f g)
+
+  bot-square : Arrow-map (F .fst) Pushout₁-left
+  bot-square .Arrow-map.top = ι₁
+  bot-square .Arrow-map.bot = ι₁
+  bot-square .Arrow-map.comm = ~refl
+
+  total-square' : Arrow-map (F .fst ∘ f) ι₂
+  total-square' = Pushout-square (mk-span _ (F .fst ∘ f) g)
+
+  _ : Pushout₁-left ∘ ι₂ ~ ι₂
+  _ = ~refl
+
+
+total-square-comp
+  : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → A} (F : A → A') (g : B → C)
+    → Arrow-map (F ∘ f) (ι₂ {f = F ∘ f} {g = g})
+total-square-comp F g
+  = rotate-square
+      (paste-squares
+        (rotate-square (bot-square (F , ~refl) g))
+        (rotate-square (top-square (F , ~refl) g)))
+
+total-square-comp-is-total
+  : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → A} (F : A → A') (g : B → C)
+    → Arrow-map-path (total-square-comp {f = f} F g) (total-square' (F , ~refl) g)
+total-square-comp-is-total F g .fst = ~refl
+total-square-comp-is-total F g .snd .fst = ~refl
+total-square-comp-is-total F g .snd .snd a
+  = ∙-reflr _ ∙ ∙-symsym _ refl
+  ∙ ap sym (ap-sym _ (glue a) ∙ ap sym (pushout-rec-apβ a))
+  ∙ sym-sym ∙ ∙-reflr _
+
+opaque
+  total-square-comp-is-cocartesian
+    : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+        {f : B → A} (F : A → A') (g : B → C)
+      → is-cocartesianω (total-square-comp {f = f} F g)
+  total-square-comp-is-cocartesian F g
+    = tr (λ p → is-cocartesian p _)
+         {a = total-square' (F , ~refl) g}
+         {b = total-square-comp F g}
+         (sym (Arrow-map-path→ (total-square-comp-is-total F g)))
+         (Pushout-square-is-cocartesian _)
+
+opaque
+  left-orthogonal-pushout₁-left
+    : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+        {f : B → A} {f' : B → A'} (F : Coslice-map f f') (g : B → C)
+      → ∀ {𝓜 𝓝} {U : Type 𝓜} {V : Type 𝓝} (k : U → V)
+      → F .fst ⊥ k
+      → Pushout₁-left F g ⊥ k
+  left-orthogonal-pushout₁-left (F , p) g k Fk
+    = funext-rec
+        (λ H → Pushout₁-left (F , H) g ⊥ k)
+        (λ where refl → left-orthogonal-pushout
+                          (bot-square (F , ~refl) g)
+                          (rotate-square-is-cocartesian
+                            (rotate-square (bot-square (F , ~refl) g))
+                            (cocartesian-square-cancel
+                              {F = rotate-square (bot-square (F , ~refl) g)}
+                              {G = rotate-square (top-square (F , ~refl) g)}
+                              (Pushout-square'-is-cocartesian (mk-span _ _ g))
+                              (unrotate-square-is-cocartesian _
+                                (total-square-comp-is-cocartesian F g))))
+                          k
+                          Fk)
+        p
+
+module _ {𝓤 𝓥 𝓦 𝓦'} {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦} {C' : Type 𝓦'}
+         (f : B → A) {g : B → C} {g' : B → C'} (G : Coslice-map g g') where
+
+  right-span-map : Span-map (mk-span _ f g) (mk-span _ f g')
+  right-span-map = (mk-span-map id id (G .fst) ~refl (G .snd))
+
+  Pushout₁-right : Pushout f g → Pushout f g'
+  Pushout₁-right = Pushout₁ right-span-map
+
+  left-square : Arrow-map f ι₂
+  left-square = Pushout-square (mk-span _ f g)
+
+  right-square : Arrow-map (ι₂ {g = g}) (ι₂ {g = g'})
+  right-square .Arrow-map.top = G .fst
+  right-square .Arrow-map.bot = Pushout₁-right
+  right-square .Arrow-map.comm = ~refl
+
+  total-square'' : Arrow-map f (ι₂ {g = g'})
+  total-square'' = Pushout-square (mk-span _ f g')
+
+  -- _ : Pushout₁-left ∘ ι₂ ~ ι₂
+  -- _ = ~refl
+
+
+total-square'-comp-is-total
+    : ∀ {𝓤 𝓥 𝓦 𝓦'} {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦} {C' : Type 𝓦'}
+         (f : B → A) {g : B → C} (G : C → C')
+    → Arrow-map-path
+        (paste-squares (right-square f {g = g} (G , ~refl))
+                       (left-square f (G , ~refl)))
+        (total-square'' f (G , ~refl))
+total-square'-comp-is-total f G .fst = ~refl
+total-square'-comp-is-total f G .snd .fst = ~refl
+total-square'-comp-is-total f G .snd .snd a
+  = ∙-reflr _ ∙ ∙-reflr _ ∙ pushout-rec-apβ a ∙ ∙-reflr _
+
+opaque
+  total-square'-comp-is-cocartesian
+    : ∀ {𝓤 𝓥 𝓦 𝓦'} {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦} {C' : Type 𝓦'}
+         (f : B → A) {g : B → C} (G : C → C')
+      → is-cocartesianω (paste-squares (right-square f {g = g} (G , ~refl))
+                                       (left-square f (G , ~refl)))
+  total-square'-comp-is-cocartesian f G
+    = tr (λ p → is-cocartesian p _)
+         {a = total-square'' f (G , ~refl)}
+         {b = _}
+         (sym (Arrow-map-path→ (total-square'-comp-is-total f G)))
+         (Pushout-square-is-cocartesian _)
+opaque
+  left-orthogonal-pushout₁-right
+    : ∀ {𝓤 𝓥 𝓦 𝓦'} {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦} {C' : Type 𝓦'}
+         (f : B → A) {g : B → C} {g' : B → C'} (G : Coslice-map g g')
+         {𝓜 𝓝} {U : Type 𝓜} {V : Type 𝓝} (k : U → V)
+      → G .fst ⊥ k
+      → Pushout₁-right f G ⊥ k
+  left-orthogonal-pushout₁-right f G@(Gg , p)
+    = left-orthogonal-pushout
+        (rotate-square (right-square f G))
+        (rotate-square-is-cocartesian (right-square f G)
+          (cocartesian-square-cancel
+             {F = right-square f G}
+             {G = left-square f G}
+             (Pushout-square-is-cocartesian _)
+             (funext-rec
+               (λ H → is-cocartesian
+                        (paste-squares
+                          (right-square f (Gg , H))
+                          (left-square f (Gg , H))) _)
+               (λ where refl → total-square'-comp-is-cocartesian f Gg)
+               p)))
+
+
+outer-span-map
+    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓦'} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥}
+        {C : Type 𝓦} {C' : Type 𝓦'}
+        {f : B → A} {f' : B → A'} (F : Coslice-map f f')
+        {g : B → C} {g' : B → C'} (G : Coslice-map g g')
+      → Span-map (mk-span _ f g) (mk-span _ f' g')
+outer-span-map F G .Span-map.h₁ = F .fst
+outer-span-map F G .Span-map.h₂ = id
+outer-span-map F G .Span-map.h₃ = G .fst
+outer-span-map F G .Span-map.H = F .snd
+outer-span-map F G .Span-map.K = G .snd
+
+Pushout₁-left-right
+    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓦'} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥}
+        {C : Type 𝓦} {C' : Type 𝓦'}
+        {f : B → A} {f' : B → A'} (F : Coslice-map f f')
+        {g : B → C} {g' : B → C'} (G : Coslice-map g g')
+      → Pushout₀ (mk-span B f g) → Pushout₀ (mk-span B f' g')
+Pushout₁-left-right F G = Pushout₁ (outer-span-map F G)
+
+Pushout₁-left∘right
+    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓦'} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥}
+        {C : Type 𝓦} {C' : Type 𝓦'}
+        {f : B → A} {f' : B → A'} (F : Coslice-map f f')
+        {g : B → C} {g' : B → C'} (G : Coslice-map g g')
+      → Span-map-homotopy
+          (compose-span-map (left-span-map F g') (right-span-map f G))
+          (outer-span-map F G)
+Pushout₁-left∘right F G .fst = ~refl
+Pushout₁-left∘right F G .snd .fst = ~refl
+Pushout₁-left∘right F G .snd .snd .fst = ~refl
+Pushout₁-left∘right F G .snd .snd .snd .fst = ~∙-reflr _ ~⁻¹
+Pushout₁-left∘right F G .snd .snd .snd .snd a = ap (_∙ refl) (ap-id (snd G a))
+
+opaque
+  left-orthogonal-pushout₁
+    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓦'} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥}
+        {C : Type 𝓦} {C' : Type 𝓦'}
+        {f : B → A} {f' : B → A'} (F : Coslice-map f f')
+        {g : B → C} {g' : B → C'} (G : Coslice-map g g')
+        {𝓜 𝓝} {U : Type 𝓜} {V : Type 𝓝} (k : U → V)
+      → F .fst ⊥ k
+      → G .fst ⊥ k
+      → Pushout₁-left-right F G ⊥ k
+  left-orthogonal-pushout₁ F G k Fk Gk
+    = left-orthogonal-homotopy k
+        (Pushout-∘ (left-span-map F _) (right-span-map _ G)
+        ~∙ happly (ap Pushout₁ (Span-map-funext→ (Pushout₁-left∘right F G))))
+        (left-orthogonal-∘ _ _ k
+            (left-orthogonal-pushout₁-left F _ k Fk)
+            (left-orthogonal-pushout₁-right _ G k Gk))
 }
 %```
 }

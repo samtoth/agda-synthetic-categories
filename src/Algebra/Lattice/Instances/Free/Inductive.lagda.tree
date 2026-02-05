@@ -1,0 +1,143 @@
+\title{An inductive definition of free lattice algebras}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-02-05}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Algebra.Lattice
+
+module Algebra.Lattice.Instances.Free.Inductive
+       {𝓘} (I : Type 𝓘) (L : Lattice I) where
+
+open import Algebra.Poset
+open import Modalities.Instances.Truncation
+open import Modalities.Separated
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+
+open import Data.Bool
+
+open Lattice L renaming (0l to i0; 1l to i1)
+}
+%```
+
+\subtree[tot-0001]{
+\title{General simplices}
+\taxon{Definition}
+
+\p{Just as in the case of the [1-variable free algebra](stt-009X), we give a
+geometrically suggestive name to the underlying type of the free algebra on
+#{n}-generators.}
+
+\remark{
+\p{We give an indexed-inductive-recursive definition for the type of n-simplices,
+which, if you aren't a type theorist - may scare you, and if you are, might
+worry you. In both cases, these worries may be assuaged by observing that the
+definition is trivially equivalent to your favorite other definition of a
+descending sequence of #{n}-elements. We hope to formalise this equivalence at
+some point.}
+}
+
+%```agda
+\agda{
+data Δ^_ : (n : ℕ) → Type 𝓘
+last-Δ : ∀ {n} → Δ^ n → I
+
+data Δ^_ where
+  · : Δ^ 0
+  _≥,_ : ∀ {n} → (i : Δ^ n) → (j : I) → ⦃ j ≤ last-Δ i ⦄ → Δ^ (suc n)
+
+infixl 5 _≥,_
+
+last-Δ · = i1
+last-Δ (x ≥, j) = j
+
+Δ-suc : ∀ {n} → (Δ^ suc n) ≅ (Σ[ x ∶ (Δ^ n)] Σ[ y ∶ I ] (y ≤ last-Δ x))
+Δ-suc ._≅_.fwd (x ≥, j) = (x , j , auto!)
+Δ-suc ._≅_.fwd-iso .fst (x , j , p) = (x ≥, j) ⦃ p ⦄
+Δ-suc ._≅_.fwd-iso .snd .fst (x ≥, j) = refl
+Δ-suc ._≅_.fwd-iso .snd .snd = ~refl
+}
+%```
+}
+
+
+\subtree[tot-0002]{
+\title{Paths in #{n}-simplices}
+\taxon{Definition}
+
+\p{We also inductively define the type of paths in the standard #{n}-simplex.
+It is clear that since #{\Delta^1} is a set, then so is #{\Delta^n}.}
+
+%```agda
+\agda{
+data Δ-path : {n : ℕ} → Δ^ n → Δ^ n → Type 𝓘 where
+  · : Δ-path · ·
+  _≥,_ : ∀ {n} {x x' : Δ^ n} {i i' : I} {p : i ≤ last-Δ x}
+           { q : i' ≤ last-Δ x' } → Δ-path x x' → i ＝ i'
+         → Δ-path ((x ≥, i) ⦃ p ⦄) ((x' ≥, i') ⦃ q ⦄)
+
+Δ-refl : ∀ {n} {p : Δ^ n} → Δ-path p p
+Δ-refl {p = ·} = ·
+Δ-refl {p = p ≥, j} = Δ-refl ≥, refl
+
+Δ-path-suc
+  : ∀ {n} {a b : Δ^ n} {i j : I} ⦃ p : i ≤ last-Δ a ⦄ ⦃ q : j ≤ last-Δ b ⦄
+    → Δ-path (a ≥, i) (b ≥, j) ≅ (Δ-path a b × (i ＝ j))
+Δ-path-suc ._≅_.fwd (x ≥, p) = (x , p)
+Δ-path-suc ._≅_.fwd-iso .fst (x , p) = (x ≥, p)
+Δ-path-suc ._≅_.fwd-iso .snd .fst (x ≥, p) = refl
+Δ-path-suc ._≅_.fwd-iso .snd .snd = ~refl
+
+opaque
+  Δ-path-is-torsorial
+    : ∀ {n} (a : Δ^ n) → is-singleton (Σ (Δ^ n) (Δ-path a))
+  Δ-path-is-torsorial · = mk-singl (· , ·) (λ { (· , ·) → refl})
+  Δ-path-is-torsorial {suc n} (a ≥, j)
+    = is-single←equiv-to-single
+        (  (Σ-ap-≃ (λ where (x ≥, i) → equiv←qiso Δ-path-suc)
+        ∙≃ Σ-ap-≃-fst (equiv←qiso (Δ-suc {n}))) e⁻¹)
+        (is-singleton-structure←parts
+          (Δ-path-is-torsorial a)
+          (a , Δ-refl)
+          (is-single←equiv-to-single
+            (remove-singleton-structure
+              Sing-is-singleton
+              (j , refl) e⁻¹)
+            (mk-singl auto! (≤-is-prop auto!))))
+
+instance
+  Δ-IdS : ∀ {n} → Identity-system (Δ^ n) 𝓘
+  Δ-IdS .Identity-system.IdS = Δ-path
+  Δ-IdS .Identity-system.IdS←Id refl = Δ-refl
+  Δ-IdS .Identity-system.has-is-ids a
+    = fundamental-Id _ (Δ-path-is-torsorial a) _
+
+Δ-ext : ∀ {n} {p q : Δ^ n} → Δ-path p q → p ＝ q
+Δ-ext = ext!
+
+Δ-path-is-prop : ∀ {n} {a b : Δ^ n} → is-prop (Δ-path a b)
+Δ-path-is-prop · · = refl
+Δ-path-is-prop (p ≥, q) (r ≥, s)
+  = ap₂ _≥,_ (Δ-path-is-prop p r) (is-prop←is-truncated trunc! _ _)
+
+opaque
+  unfolding is-n-separated
+  Δ-is-set : ∀ {n} → is-truncated 2 (Δ^ n)
+  Δ-is-set {n} _ _ = Trunc.is-truncated←equiv
+                       (ext!≃ ⦃ Δ-IdS ⦄ e⁻¹)
+                       (is-truncated←is-prop (Δ-path-is-prop))
+
+instance
+  Δ-Is-set : ∀ {n k} → Is-truncated (k + 2) (Δ^ n)
+  Δ-Is-set = truncation-instance 2 Δ-is-set
+}
+%```
+}

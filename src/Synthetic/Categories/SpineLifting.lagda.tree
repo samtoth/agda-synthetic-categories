@@ -212,9 +212,15 @@ instance
 %```
 }
 
-\subtree[tot-0001]{
+\subtree[tot-0004]{
 \title{The #{n}-spine}
 \taxon{Definition}
+
+\p{We construct the #{n}-spine, written #{\II_n}, as the result of gluing
+#{n} copies of the interval end-to-end. By convention, #{\II_0} is the unit type,
+and #{\II_1} is #{\Delta^1}. We also remark that the 2-spine #{\II_2} is
+definitionally equal to the bespoke definition we already gave in the form
+of the [inner horn](stt-00AD).}
 
 %```agda
 \agda{
@@ -228,42 +234,76 @@ Spine = fst ∘ Spine-coslice
 
 spine-agrees-[2,1]-horn : Spine-coslice 2 .snd ~ δΛ[2,1]-incl
 spine-agrees-[2,1]-horn = δΔ¹-UP→ (refl , refl)
+}
+%```
 
+\p{We show that there is an inclusion of the spine into the #{n}-cube, and
+that this inclusion factors through #{\Delta^n}}
 
+%```agda
+\agda{
 Spine-is-set : ∀ {n} → is-truncated 2 (Spine n)
 Spine-is-set {zero} = trunc!
 Spine-is-set {suc zero} = trunc!
 Spine-is-set {suc (suc n)} = Wedge-is-set (Spine-is-set {suc n}) trunc!
-
--- Don't add n = 1 and 2 as instances
--- instance
---   Spine-Is-set : ∀ {n k} → Is-truncated (k + 2) (Spine (n + 2))
---   Spine-Is-set {n} = truncation-instance 2 (Spine-is-set {n + 2})
-
 
 Spine-incl-□ : ∀ {n} → Spine n → □^ n
 Spine-incl-□ {zero} = id
 Spine-incl-□ {suc zero} = id
 Spine-incl-□ {suc (suc n)} = (Spine-incl-□ ⊗1 Δ¹) ∘ Wedge-embed
 
-Spine-subtype : ∀ {n} → Subtype (□^ n) 𝓘
-Spine-subtype {zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
-Spine-subtype {suc zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
-Spine-subtype {suc (suc n)} .Subtype.family (i , j)
-  = (i ∈ Spine-subtype) * (j ＝ i0)
-Spine-subtype {suc (suc n)} .Subtype.has-is-subtype (i , j)
-  = *-is-prop (∈-is-prop Spine-subtype i)
-              (is-prop←is-truncated trunc!)
+-- not sure if this is right... hmm
+
+-- Spine-subtype : ∀ {n} → Subtype (□^ n) 𝓘
+-- Spine-subtype {zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
+-- Spine-subtype {suc zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
+-- Spine-subtype {suc (suc n)} .Subtype.family (i , j)
+--   = (i ∈ Spine-subtype) * (j ＝ i0)
+-- Spine-subtype {suc (suc n)} .Subtype.has-is-subtype (i , j)
+--   = *-is-prop (∈-is-prop Spine-subtype i)
+--               (is-prop←is-truncated trunc!)
+
+Spine-incl : ∀ {n} → Spine n → Δ^ n
+Spine-top : ∀ {n} → Δ-path (Spine-incl (Spine-coslice n .snd δΔ¹-1)) (Δ-1 {n})
+
+Spine-incl {zero} s = ·
+Spine-incl {suc zero} i = (· ≥, i)
+Spine-incl {suc (suc n)} = cogap
+  (mk-cocone
+    (λ s → Spine-incl s ≥, i0)
+    (λ i → Δ-1 ≥, i)
+    λ _ → Δ-ext (Spine-top ≥, refl))
+
+Spine-top {zero} = ·
+Spine-top {suc zero} = · ≥, refl
+Spine-top {suc (suc n)} = Δ-refl ≥, refl ≥, refl
+
+Spine-bot : ∀ {n} → Δ-path (Spine-incl (Spine-coslice n .snd δΔ¹-0)) (Δ-0 {n})
+Spine-bot {zero} = ·
+Spine-bot {suc zero} = · ≥, refl
+Spine-bot {suc (suc zero)} = · ≥, refl ≥, refl
+Spine-bot {suc (suc (suc n))} = Spine-bot ≥, refl ≥, refl
+
+∂Δ^_ : ∀ n → δΔ¹ → Δ^ n
+(∂Δ^ n) (mk-lift true) = Δ-1
+(∂Δ^ n) (mk-lift false) = Δ-0
+
+∂Δ¹-Spine-incl : ∀ n → Coslice-map (Spine-coslice n .snd) (∂Δ^ n)
+∂Δ¹-Spine-incl n .fst = Spine-incl
+∂Δ¹-Spine-incl n .snd (mk-lift true ) = Δ-ext Spine-top
+∂Δ¹-Spine-incl n .snd (mk-lift false) = Δ-ext Spine-bot
+
+□←Δ : ∀ {n} → Δ^ n → □^ n
+□←Δ · = _
+□←Δ (· ≥, j) = j
+□←Δ (x ≥, i ≥, j) = □←Δ (x ≥, i) , j
+
 }
 %```
 }
 
 %```agda
 \agda{
-incl-mid : ∀ n → □^ n × Λ[2,1] → □^ n × Δ²
-incl-mid n = (□^ n) 1⊗ Λ[2,1]-incl
-
-
 is-inner-anodyne : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Typeω
 is-inner-anodyne f = ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (k : A → B)
                       → Λ[2,1]-incl ⊥ k → f ⊥ k
@@ -304,61 +344,35 @@ wedge-map-is-inner-anodyne a b a' b' F G fia gia {A = U} {V} k ik
 %```
 
 
+\subtree[tot-0005]{
+\taxon{Lemma}
+\p{#{\Delta^{n + 2}} is a retract of #{\square^n \times \Delta^2}}
+
+\p{We extend the obvious embedding #{\Delta^n \to \square^n}, to the map that
+just forgets the first #{n} inequalities and preserves the latter two. The
+retraction is defined as follows:
+##{(\bar{i}, j \geq k) : \square^n \times \Delta^2 \mapsto
+((\bigvee_{n} i_n \vee j) ≥ ... \ge (i_n \vee j) \ge j \ge k)}
+It is a retraction since if #{i_n} were ordered in the first place, then taking
+these successive meets would have no effect.
+}
+
 %```agda
 \agda{
-□←Δ : ∀ {n} → Δ^ n → □^ n
-□←Δ · = _
-□←Δ (· ≥, j) = j
-□←Δ (x ≥, i ≥, j) = □←Δ (x ≥, i) , j
+include-Δ-n+2 : ∀ {n} → Δ^ (n + 2) → □^ n × Δ²
+include-Δ-n+2 (x ≥, i ≥, j) = □←Δ x , (i , j)
 
-lmap : ∀ {n} → Δ^ (n + 2) → □^ n × Δ²
-lmap (x ≥, i ≥, j) = □←Δ x , (i , j)
+mutual
+  Δ←□ : ∀ {n} → □^ n → Δ¹ → Δ^ n
+  Δ←□-≤ : ∀ {n} (x : □^ n) i → i ≤ last-Δ (Δ←□ x i)
 
-Δ←□ : ∀ {n} → □^ n → Δ¹ → Δ^ n
-Δ←□-≤ : ∀ {n} (x : □^ n) i → i ≤ last-Δ (Δ←□ x i)
+  Δ←□ {zero} x j = ·
+  Δ←□ {suc zero} x j = · ≥, x ∨ j
+  Δ←□ {suc (suc n)} (x , i) j = (Δ←□ x (i ∨ j) ≥, i ∨ j) ⦃ Δ←□-≤ x (i ∨ j) ⦄
 
-Δ←□ {zero} x j = ·
-Δ←□ {suc zero} x j = · ≥, x ∨ j
-Δ←□ {suc (suc n)} (x , i) j = (Δ←□ x (i ∨ j) ≥, i ∨ j) ⦃ Δ←□-≤ x (i ∨ j) ⦄
-
-Δ←□-≤ {zero} x i = auto!
-Δ←□-≤ {suc zero} x i = ∨-≤-intror auto!
-Δ←□-≤ {suc (suc n)} x i = ∨-≤-intror auto!
-
-ret-lmap : ∀ {n} → □^ n × Δ² → Δ^ (n + 2)
-ret-lmap (x , (i , j)) = ((Δ←□ x i ≥, i) ⦃ Δ←□-≤ x i ⦄ ≥, j)
-
-is-ret' : ∀ {n} (p : Δ^ n) i ⦃ k : i ≤ last-Δ p ⦄ → Δ-path (Δ←□ (□←Δ p) i) p
-is-ret' · i = ·
-is-ret' (· ≥, j) i = · ≥, ∨-comm ∙ ≤-max auto!
-is-ret' (p ≥, i ≥, j) k
-  = is-ret' (p ≥, i) (j ∨ k) ⦃ ∨-UP (auto! , (≤-trans {b = j}auto! auto!)) ⦄
-  ≥, (∨-comm ∙ ≤-max auto!)
-
-is-ret-lmap : ∀ {n} → ret-lmap {n} ∘ lmap ~ id
-is-ret-lmap (p ≥, i ≥, j) = Δ-ext (is-ret' p i ≥, refl ≥, refl)
-
-Δ-1 : ∀ {n} → Δ^ n
-
-Δ-1-≤ : ∀ {i n} → i ≤ last-Δ {n} (Δ-1)
-
-Δ-1 {zero} = ·
-Δ-1 {suc n} = (Δ-1 ≥, i1) ⦃ Δ-1-≤ {i1} {n} ⦄
-
-Δ-1-≤ {i} {zero} = auto!
-Δ-1-≤ {i} {suc n} = auto!
-
-Δ-0 : ∀ {n} → Δ^ n
-Δ-0 {zero} = ·
-Δ-0 {suc n} = (Δ-0 ≥, i0)
-
-∂Δ^_ : ∀ n → δΔ¹ → Δ^ n
-(∂Δ^ n) (mk-lift true) = Δ-1
-(∂Δ^ n) (mk-lift false) = Δ-0
-
-incl-GWB2 : ∀ n → ∂Δ¹-Wedge (∂Δ^ n) δΔ¹-incl .fst → Δ^ (suc n)
-incl-GWB2 n = cogap (mk-cocone (λ x → x ≥, i0) (λ i → (Δ-1 ≥, i)⦃ Δ-1-≤ {n = n} ⦄)
-                    λ a → Δ-ext (Δ-refl ≥, refl))
+  Δ←□-≤ {zero} x i = auto!
+  Δ←□-≤ {suc zero} x i = ∨-≤-intror auto!
+  Δ←□-≤ {suc (suc n)} x i = ∨-≤-intror auto!
 
 Δ←□-1 : ∀ {n} (x : □^ n) {i} → (i ＝ i1) → Δ-path (Δ←□ x i) Δ-1
 Δ←□-1 {zero} x _ = ·
@@ -366,94 +380,18 @@ incl-GWB2 n = cogap (mk-cocone (λ x → x ≥, i0) (λ i → (Δ-1 ≥, i)⦃ �
 Δ←□-1 {suc (suc n)} (x , i) refl
   = Δ←□-1 {suc n} x (≤-max auto!) ≥, (≤-max auto!)
 
-amap2 : ∀ n → Arrow-map (incl-GWB2 (suc n)) (incl-mid n)
-amap2 n .Arrow-map.top = cogap
-  (mk-cocone
-    (λ { (x ≥, i) → (□←Δ x , ι₁ i)})
-    (λ i → □←Δ Δ-1 , ι₂ i)
-    λ a → ×-path→ (refl , glue tt))
-amap2 n .Arrow-map.bot = lmap
-amap2 n .Arrow-map.comm = pushout-ind _
-  (mk-coconeD
-    (λ { (x ≥, j) → refl})
-    ~refl
-    λ _ → is-set←is-truncated
-            (Trunc.×∈S (□-is-set trunc!) Δ²-is-set)
-            _ _ _ _)
+ret-Δ-n+2 : ∀ {n} → □^ n × Δ² → Δ^ (n + 2)
+ret-Δ-n+2 (x , (i , j)) = ((Δ←□ x i ≥, i) ⦃ Δ←□-≤ x i ⦄ ≥, j)
 
-amap2-ret : ∀ n → retract-arrow-map (amap2 n)
-amap2-ret n .fst .Arrow-map.top = uncurry (λ x → cogap
-  (mk-cocone
-    (λ i → ι₁ ((Δ←□ x i ≥, i) ⦃ Δ←□-≤ x i ⦄))
-    (λ i → ι₂ i)
-    λ _ → ap ι₁ (Δ-ext (Δ←□-1 x refl ≥, refl)) ∙ glue tt))
-amap2-ret n .fst .Arrow-map.bot = ret-lmap
-amap2-ret n .fst .Arrow-map.comm = uncurry (λ x → pushout-ind _
-  (mk-coconeD
-    ~refl
-    (λ i → Δ-ext (Δ←□-1 x refl ≥, refl ≥, refl))
-    λ _ → prop!))
-amap2-ret n .snd .fst = pushout-ind _
-  (mk-coconeD
-    (λ { (l ≥, j) → ap ι₁ (Δ-ext ((is-ret' {n} l j) ≥, refl))})
-    ~refl
-    λ _ → prop!)
-amap2-ret n .snd .snd .fst = is-ret-lmap
-amap2-ret n .snd .snd .snd x = prop!
+□←Δ-ret : ∀ {n} (p : Δ^ n) i ⦃ k : i ≤ last-Δ p ⦄ → Δ-path (Δ←□ (□←Δ p) i) p
+□←Δ-ret · i = ·
+□←Δ-ret (· ≥, j) i = · ≥, ∨-comm ∙ ≤-max auto!
+□←Δ-ret (p ≥, i ≥, j) k
+  = □←Δ-ret (p ≥, i) (j ∨ k) ⦃ ∨-UP (auto! , (≤-trans {b = j}auto! auto!)) ⦄
+  ≥, (∨-comm ∙ ≤-max auto!)
 
-
-incl-mid-inner-anodyne : ∀ {n} → is-inner-anodyne (incl-mid n)
-incl-mid-inner-anodyne k = left-orthogonal-× id Λ[2,1]-incl k (id⊥ k)
-
-Lemma1 : ∀ {n} → is-inner-anodyne (incl-GWB2 (suc n))
-Lemma1 {n} f finn
-  = left-orthogonal-retract
-      (incl-GWB2 (suc n)) _
-      (amap2 n) (amap2-ret n)
-      f (incl-mid-inner-anodyne f finn)
-
-
-Spine-incl : ∀ {n} → Spine n → Δ^ n
-Spine-top : ∀ {n} → Δ-path (Spine-incl (Spine-coslice n .snd δΔ¹-1)) (Δ-1 {n})
-
-Spine-incl {zero} s = ·
-Spine-incl {suc zero} i = (· ≥, i)
-Spine-incl {suc (suc n)} = cogap
-  (mk-cocone
-    (λ s → Spine-incl s ≥, i0)
-    (λ i → Δ-1 ≥, i)
-    λ _ → Δ-ext (Spine-top ≥, refl))
-
-Spine-top {zero} = ·
-Spine-top {suc zero} = · ≥, refl
-Spine-top {suc (suc n)} = Δ-refl ≥, refl ≥, refl
-
-Spine-bot : ∀ {n} → Δ-path (Spine-incl (Spine-coslice n .snd δΔ¹-0)) (Δ-0 {n})
-Spine-bot {zero} = ·
-Spine-bot {suc zero} = · ≥, refl
-Spine-bot {suc (suc zero)} = · ≥, refl ≥, refl
-Spine-bot {suc (suc (suc n))} = Spine-bot ≥, refl ≥, refl
-
-∂Δ¹-Spine-incl : ∀ n → Coslice-map (Spine-coslice n .snd) (∂Δ^ n)
-∂Δ¹-Spine-incl n .fst = Spine-incl
-∂Δ¹-Spine-incl n .snd (mk-lift true ) = Δ-ext Spine-top
-∂Δ¹-Spine-incl n .snd (mk-lift false) = Δ-ext Spine-bot
-
-inter-map : ∀ n → Spine (suc n) → ∂Δ¹-Wedge (∂Δ^ n) δΔ¹-incl .fst
-inter-map zero i = ι₂ i
-inter-map (suc n) = ∂Δ¹-Wedge-map
-                        (Spine-coslice (suc n) .snd) δΔ¹-incl
-                        (∂Δ^ (suc n)) δΔ¹-incl
-                        (Spine-incl ,
-                        (λ {
-                          (mk-lift true ) → Δ-ext Spine-top
-                        ; (mk-lift false) → Δ-ext Spine-bot}))
-                        (id , ~refl) .fst
-
-factorisation : ∀ n → incl-GWB2 n ∘ inter-map n ~ Spine-incl {suc n}
-factorisation zero = ~refl
-factorisation (suc n) = pushout-rec-unique _ _
-  ~refl ~refl λ _ → prop!
+is-ret-Δ-□ : ∀ {n} → ret-Δ-n+2 {n} ∘ include-Δ-n+2 ~ id
+is-ret-Δ-□ (p ≥, i ≥, j) = Δ-ext (□←Δ-ret p i ≥, refl ≥, refl)
 
 Δ←Δ² : Δ² → Δ^ 2
 Δ←Δ² (i , j) = (· ≥, i ≥, j)
@@ -463,6 +401,124 @@ factorisation (suc n) = pushout-rec-unique _ _
   ( (λ { (· ≥, i ≥, j) → (i , j) })
   , (λ { (i , j) → refl})
   , λ { (· ≥, i ≥, j) → Δ-ext (· ≥, refl ≥, refl)})
+}
+%```
+}
+
+\subtree[tot-0006]{
+\taxon{Theorem}
+\title{Spine lifting}
+
+\p{For all #{n \ge 2}, the inclusion #{\II_n \hookrightarrow \Delta^n} is inner
+anodyne.}
+
+\proof{
+We procede by induction on #{n}. The base case is trivial, so we need to show
+that the map #{\II_{n + 1} \to \Delta^{n + 1}} is inner anodyne. Firstly,
+we note that we can factorise this map as follows:
+
+##{\II_{n} \vee \Delta^1 \to \Delta^n \vee \Delta^1 \to \Delta^{n+1}}
+
+By the induction hypothesis and [closure properties of left orthogonal
+maps](tot-0007), we have the the first map is inner anodyne. To show the second
+map is inner anodyne, we show it is a retraction of
+#{\square^{n-1} \times \Lambda^2_1 \to \square^{n-1} \times \Delta^2}, which is
+trivially left anodyne by closure of orthogonal maps under products. The
+retraction is a pair of squares as follows:
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^n\vee\Delta^1} && {\square^{n-1}\times\Lambda^2_1} && {\Delta^n\vee\Delta^1} \\
+	\\
+	{\Delta^{n+1}} && {\square^{n-1}\times\Delta^2} && {\Delta^{n+1}}
+	\arrow[hook, from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[two heads, from=1-3, to=1-5]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow[hook, from=3-1, to=3-3]
+	\arrow[two heads, from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{\ref{tot-0005} gives the bottom maps. It is clear that this retraction should
+restrict to the apropriate subtypes.}
+
+}
+
+%```agda
+\agda{
+spine-incl-factor-1 : ∀ n → ∂Δ¹-Wedge (∂Δ^ n) δΔ¹-incl .fst → Δ^ (suc n)
+spine-incl-factor-1 n
+  = cogap (mk-cocone (λ x → x ≥, i0) (λ i → (Δ-1 ≥, i)⦃ Δ-1-≤ {n = n} ⦄)
+           λ a → Δ-ext (Δ-refl ≥, refl))
+
+spine-incl-factor-2 : ∀ n → Spine (suc n) → ∂Δ¹-Wedge (∂Δ^ n) δΔ¹-incl .fst
+spine-incl-factor-2 zero i = ι₂ i
+spine-incl-factor-2 (suc n) = ∂Δ¹-Wedge-map
+                        (Spine-coslice (suc n) .snd) δΔ¹-incl
+                        (∂Δ^ (suc n)) δΔ¹-incl
+                        (Spine-incl ,
+                        (λ {
+                          (mk-lift true ) → Δ-ext Spine-top
+                        ; (mk-lift false) → Δ-ext Spine-bot}))
+                        (id , ~refl) .fst
+
+private
+  factorisation
+    : ∀ n → spine-incl-factor-1 n ∘ spine-incl-factor-2 n ~ Spine-incl {suc n}
+  factorisation zero = ~refl
+  factorisation (suc n) = pushout-rec-unique _ _
+    ~refl ~refl λ _ → prop!
+
+opaque
+  fat-spine-lifts
+    : ∀ {n} → is-inner-anodyne (spine-incl-factor-1 (suc n))
+  fat-spine-lifts {n} f finn
+    = left-orthogonal-retract
+        (spine-incl-factor-1 (suc n)) _
+        (amap2 n) (amap2-ret n)
+        f (incl-mid-inner-anodyne f finn) where
+    incl-mid : ∀ n → □^ n × Λ[2,1] → □^ n × Δ²
+    incl-mid n = (□^ n) 1⊗ Λ[2,1]-incl
+
+    incl-mid-inner-anodyne : ∀ {n} → is-inner-anodyne (incl-mid n)
+    incl-mid-inner-anodyne k = left-orthogonal-× id Λ[2,1]-incl k (id⊥ k)
+
+    amap2 : ∀ n → Arrow-map (spine-incl-factor-1 (suc n)) (incl-mid n)
+    amap2 n .Arrow-map.top = cogap
+      (mk-cocone
+        (λ { (x ≥, i) → (□←Δ x , ι₁ i)})
+        (λ i → □←Δ Δ-1 , ι₂ i)
+        λ a → ×-path→ (refl , glue tt))
+    amap2 n .Arrow-map.bot = include-Δ-n+2
+    amap2 n .Arrow-map.comm = pushout-ind _
+      (mk-coconeD
+        (λ { (x ≥, j) → refl})
+        ~refl
+        λ _ → is-set←is-truncated
+                (Trunc.×∈S (□-is-set trunc!) Δ²-is-set)
+                _ _ _ _)
+
+    amap2-ret : ∀ n → retract-arrow-map (amap2 n)
+    amap2-ret n .fst .Arrow-map.top = uncurry (λ x → cogap
+      (mk-cocone
+        (λ i → ι₁ ((Δ←□ x i ≥, i) ⦃ Δ←□-≤ x i ⦄))
+        (λ i → ι₂ i)
+        λ _ → ap ι₁ (Δ-ext (Δ←□-1 x refl ≥, refl)) ∙ glue tt))
+    amap2-ret n .fst .Arrow-map.bot = ret-Δ-n+2
+    amap2-ret n .fst .Arrow-map.comm = uncurry (λ x → pushout-ind _
+      (mk-coconeD
+        ~refl
+        (λ i → Δ-ext (Δ←□-1 x refl ≥, refl ≥, refl))
+        λ _ → prop!))
+    amap2-ret n .snd .fst = pushout-ind _
+      (mk-coconeD
+        (λ { (l ≥, j) → ap ι₁ (Δ-ext (□←Δ-ret l j ≥, refl))})
+        ~refl
+        λ _ → prop!)
+    amap2-ret n .snd .snd .fst = is-ret-Δ-□
+    amap2-ret n .snd .snd .snd x = prop!
 
 opaque
   Spine-lifting : ∀ n → is-inner-anodyne (Spine-incl {suc (suc n)})
@@ -477,13 +533,13 @@ opaque
        k ko
   Spine-lifting (suc n)
     = is-inner-anodyne-homotopy
-        {f = incl-GWB2 (n + 2) ∘ inter-map (n + 2)}
+        {f = spine-incl-factor-1 (n + 2) ∘ spine-incl-factor-2 (n + 2)}
         {g = Spine-incl}
         (factorisation (n + 2))
         (is-inner-anodyne-∘
-          {f = incl-GWB2 (n + 2)}
-          {g = inter-map (n + 2)}
-          Lemma1
+          {f = spine-incl-factor-1 (n + 2)}
+          {g = spine-incl-factor-2 (n + 2)}
+          fat-spine-lifts
           (wedge-map-is-inner-anodyne
             (Spine-coslice (suc (suc n)) .snd) δΔ¹-incl
             (∂Δ^ (n + 2)) δΔ¹-incl
@@ -493,3 +549,4 @@ opaque
             λ k _ → id⊥ k))
 }
 %```
+}

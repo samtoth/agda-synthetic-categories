@@ -44,16 +44,14 @@ open import Core.Arrow
 open import Core.Lifts
 open import Core.PullbackPower
 open import Core.PushoutProduct
-open import Core.FunctorialPullback
-open import Core.FunctorialPushout
-open import Core.SpanMap
 open import Core.CoSlice
 open import Core.Slice
 open import Core.Cube
 open import Core.ArrowEquiv
 open import Core.ArrowRetract
-open import Core.FlatteningPushouts
-open import Core.Join
+open import Core.FunctorialPushout
+open import Core.SpanMap
+open import Core.WedgeSum
 
 open import Ergonomics.Notations.Orthogonality
 open Core.Orthogonal.notation
@@ -65,6 +63,7 @@ open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
 }
 %```
 
@@ -73,6 +72,19 @@ open import Synthetic.Categories.Horns Δ¹ I I-distr
 \title{Bi-pointed wedge sum}
 \taxon{Definition}
 
+\p{We extend the definition of [Wedge sum](tot-0009) to the case of maps out of
+the boundary of #{\Delta^1}. Given a type #{A}, equiped with
+maps from #{\partial \Delta^1}, we call the source and target points #{A_s} and
+#{A_t} respecitvely. Given a pair of such types #{A} and #{B}, we say that their
+wedge sum is the wedge sum #{A_t \vee B_s}, glueing the target of the first to
+the source of the second. This is itself a bi-pointed type with src #{A_s} and
+target #{B_t}.}
+
+\p{We also remark that #{-\vee-} determines a bifunctor
+##{\Type_{\partial\Delta^1 /} \times \Type_{\partial \Delta^1 /}
+\to \Type_{\partial \Delta^1 /}}
+}
+
 %```agda
 \agda{
 ∂Δ¹-Wedge : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -80,8 +92,6 @@ open import Synthetic.Categories.Horns Δ¹ I I-distr
             → Σ[ X ∶ Type (𝓤 ⊔ 𝓥) ] (δΔ¹ → X)
 ∂Δ¹-Wedge {A = A} {B} a b .fst = Pushout {A = 𝟙} (λ _ → a δΔ¹-1) (λ _ → b δΔ¹-0)
 ∂Δ¹-Wedge {A = A} {B} a b .snd = δΔ¹-UP→ (ι₁ (a δΔ¹-0) , ι₂ (b δΔ¹-1))
--- (mk-lift true)  = ι₁ (a δΔ¹-0)
--- ∂Δ¹-Wedge {A = A} {B} a b .snd (mk-lift false) = ι₂ (b δΔ¹-1)
 
 ∂Δ¹-Wedge-map
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
@@ -98,122 +108,32 @@ open import Synthetic.Categories.Horns Δ¹ I I-distr
   = ap ι₂ (G .snd δΔ¹-1)
 ∂Δ¹-Wedge-map a b a' b' F G .snd (mk-lift false)
   = ap ι₁ (F .snd δΔ¹-0)
+}
+%```
 
-Wedge : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A → B → Type (𝓤 ⊔ 𝓥)
-Wedge a b = Pushout (const _ 𝟙 a) (const _ 𝟙 b)
-{-# NOINLINE Wedge #-}
+\p{Finally, we remark that this functor preserves inner anodyne maps.}
 
-Wedge-embed
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
-    → Wedge a b → A × B
-Wedge-embed {a = a} {b = b}
-  = cogap (mk-cocone
-      (λ a' → (a' , b))
-      (λ b' → (a , b'))
-      ~refl)
-
-Wedge-fibre
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
-    → ∀ x y → fibre (Wedge-embed {a = a}{b}) (x , y) ≃ ((b ＝ y) * (a ＝ x))
-Wedge-fibre {𝓤} {𝓥} {a = a}{b} x y
-  = fibre Wedge-embed (x , y) ≃⟨ cogap-fibre _ (x , y) ⟩
-    Pushout₀ total-fibre-span ≃⟨ coe≃ (ap Pushout₀
-                                      (sym (ext! (span-map , span-map-eqv)))) ⟩
-    Pushout₀ intended-span    ≃⟨⟩
-    (ULift 𝓤 (b ＝ y) * ULift 𝓥 (a ＝ x))
-                              ≃⟨ mk≃ _
-                                  (is-equiv←qiso
-                                    (Pushout-qiso span-qiso→ span-qiso)) ⟩
-    ((b ＝ y) * (a ＝ x))     ≃∎ where
-
-  total-fibre-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
-  total-fibre-span = total-span (const _ 𝟙 a) (const _ 𝟙 b)
-                       (Fibre-family _ (x , y))
-
-  intended-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
-  intended-span .Span.Centre = ULift 𝓤 (b ＝ y) × ULift 𝓥 (a ＝ x)
-  intended-span .Span.Left = ULift 𝓤 (b ＝ y)
-  intended-span .Span.left = fst
-  intended-span .Span.Right = ULift 𝓥 (a ＝ x)
-  intended-span .Span.right = snd
-
-  span-qiso→ : Span-map  intended-span (mk-span ((b ＝ y) × (a ＝ x)) fst snd)
-  span-qiso→ .Span-map.h₁ = unlift
-  span-qiso→ .Span-map.h₂ = unlift ⊗ unlift
-  span-qiso→ .Span-map.h₃ = unlift
-  span-qiso→ .Span-map.H = ~refl
-  span-qiso→ .Span-map.K = ~refl
-
-  span-qiso : Span-quasi-iso span-qiso→
-  span-qiso .Span-quasi-iso.bwd .Span-map.h₁ = mk-lift
-  span-qiso .Span-quasi-iso.bwd .Span-map.h₂ = mk-lift ⊗ mk-lift
-  span-qiso .Span-quasi-iso.bwd .Span-map.h₃ = mk-lift
-  span-qiso .Span-quasi-iso.bwd .Span-map.H = ~refl
-  span-qiso .Span-quasi-iso.bwd .Span-map.K = ~refl
-  span-qiso .Span-quasi-iso.ε = Span-map-homotopy-refl _
-  span-qiso .Span-quasi-iso.η = Span-map-homotopy-refl _
-
-  opaque
-    span-map : Span-map intended-span total-fibre-span
-    span-map .Span-map.h₁ p = (x , ×-path→ (refl , unlift p))
-    span-map .Span-map.h₂ p = (tt , ×-path→ (×-swap→ ((unlift ⊗ unlift) p)))
-    span-map .Span-map.h₃ p = (y , ×-path→ (unlift p , refl))
-    span-map .Span-map.H (mk-lift refl , mk-lift refl)
-      = Σ-path→ (refl , sym (IdP-func←Square (sym (glue tt)) refl refl
-          (Square-degen-hor _ _
-            ( ap-sym Wedge-embed (glue tt)
-            ∙ ap sym (pushout-rec-apβ _)
-            ∙ sym (ap-const (sym (glue tt)))))))
-    span-map .Span-map.K (mk-lift refl , mk-lift refl) = refl
-
-    span-map-eqv : is-Span-equiv span-map
-    span-map-eqv .fst
-      = is-equiv-∘
-          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.has-is-eqv))
-          ((mk≃ _ (is-equiv⁻¹ lift-is-equiv) ∙≃ Σ-＝singl e⁻¹) ._≃_.has-is-eqv)
-    span-map-eqv .snd .fst
-      = (×-swap ∙≃ mk≃ _ (is-equiv⁻¹ (⊗-is-equiv lift-is-equiv lift-is-equiv))
-        ∙≃ ×-path ∙≃ Σ-singl 𝟙-is-singleton tt e⁻¹)._≃_.has-is-eqv
-    span-map-eqv .snd .snd
-      = is-equiv-∘
-          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.has-is-eqv))
-          ((mk≃ _ (is-equiv⁻¹ lift-is-equiv)
-           ∙≃ Σ-＝singl e⁻¹ ∙≃ Σ-ap-≃ (λ a₁ → ×-swap)) ._≃_.has-is-eqv)
-
-Wedge-is-set
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
-    → is-truncated 2 A → is-truncated 2 B → is-truncated 2 (Wedge a b)
-Wedge-is-set {A = A}{B}{a}{b} as bs = Trunc.is-truncated←equiv
-  ((Σ[ (x , y) ∶ A × B ] ((b ＝ y) * (a ＝ x)))
-      ≃⟨ Σ-ap-≃ (_e⁻¹ ∘ uncurry Wedge-fibre) ⟩
-   (Σ[ x ∶ A × B ] fibre Wedge-embed x) ≃⟨⟩
-   total-fibre Wedge-embed ≃⟨ total≃total-fibre Wedge-embed ⟩
-   Wedge a b ≃∎)
-  (Trunc.Σ-is-truncated
-    trunc!
-    (λ _ → suc-is-truncated 1
-            (is-truncated←is-prop
-              (*-is-prop
-                (is-prop←is-truncated trunc!)
-                (is-prop←is-truncated trunc!)))))
-  where instance
-    at : Is-truncated 2 A
-    at .Is-truncated.has-is-truncated = as
-    bt : Is-truncated 2 B
-    bt .Is-truncated.has-is-truncated = bs
-
-instance
-  Wedge-Is-set
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
-        ⦃ _ : Is-truncated 2 A ⦄ ⦃ _ : Is-truncated 2 B ⦄
-      → Is-truncated 2 (Wedge a b)
-  Wedge-Is-set .Is-truncated.has-is-truncated = Wedge-is-set trunc! trunc!
+%```agda
+\agda{
+wedge-map-is-inner-anodyne
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
+      (a : δΔ¹ → A) (b : δΔ¹ → B) (a' : δΔ¹ → A') (b' : δΔ¹ → B')
+      (F : Coslice-map a a') (G : Coslice-map b b')
+    → is-inner-anodyne (F .fst) → is-inner-anodyne (G .fst)
+    → is-inner-anodyne (∂Δ¹-Wedge-map _ _ _ _ F G .fst)
+wedge-map-is-inner-anodyne a b a' b' F G fia gia {U = U} {V} k ik
+  = left-orthogonal-pushout₁
+      (extend-coslice-map _ _ (const _ _ δΔ¹-1) F )
+      (extend-coslice-map _ _ (const _ _ δΔ¹-0) G)
+      k
+      (fia  k ik)
+      (gia k ik)
 }
 %```
 }
 
 \subtree[tot-0004]{
-\title{The #{n}-spine}
+\title{Spines}
 \taxon{Definition}
 
 \p{We construct the #{n}-spine, written #{\II_n}, as the result of gluing
@@ -252,17 +172,6 @@ Spine-incl-□ {zero} = id
 Spine-incl-□ {suc zero} = id
 Spine-incl-□ {suc (suc n)} = (Spine-incl-□ ⊗1 Δ¹) ∘ Wedge-embed
 
--- not sure if this is right... hmm
-
--- Spine-subtype : ∀ {n} → Subtype (□^ n) 𝓘
--- Spine-subtype {zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
--- Spine-subtype {suc zero} = ULift-subtype 𝓘 (SubtypeLattice.⊤ _)
--- Spine-subtype {suc (suc n)} .Subtype.family (i , j)
---   = (i ∈ Spine-subtype) * (j ＝ i0)
--- Spine-subtype {suc (suc n)} .Subtype.has-is-subtype (i , j)
---   = *-is-prop (∈-is-prop Spine-subtype i)
---               (is-prop←is-truncated trunc!)
-
 Spine-incl : ∀ {n} → Spine n → Δ^ n
 Spine-top : ∀ {n} → Δ-path (Spine-incl (Spine-coslice n .snd δΔ¹-1)) (Δ-1 {n})
 
@@ -297,51 +206,9 @@ Spine-bot {suc (suc (suc n))} = Spine-bot ≥, refl ≥, refl
 □←Δ · = _
 □←Δ (· ≥, j) = j
 □←Δ (x ≥, i ≥, j) = □←Δ (x ≥, i) , j
-
 }
 %```
 }
-
-%```agda
-\agda{
-is-inner-anodyne : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Typeω
-is-inner-anodyne f = ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (k : A → B)
-                      → Λ[2,1]-incl ⊥ k → f ⊥ k
-
-is-inner-anodyne-homotopy
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} → f ~ g
-    → is-inner-anodyne f → is-inner-anodyne g
-is-inner-anodyne-homotopy H fia k o = left-orthogonal-homotopy k H (fia k o)
-
-is-inner-anodyne-cancelr
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      {f : B → C} {g : A → B}
-    → is-inner-anodyne (f ∘ g) → is-inner-anodyne g → is-inner-anodyne f
-is-inner-anodyne-cancelr fgia gia k ko
-  = left-orthogonal-right-cancel (gia k ko) (fgia k ko)
-
-is-inner-anodyne-∘
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      {f : B → C} {g : A → B}
-    → is-inner-anodyne f → is-inner-anodyne g → is-inner-anodyne (f ∘ g)
-is-inner-anodyne-∘ fia gia k ko
-  =  left-orthogonal-∘ _ _ _ (fia k ko) (gia k ko)
-
-wedge-map-is-inner-anodyne
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
-      (a : δΔ¹ → A) (b : δΔ¹ → B) (a' : δΔ¹ → A') (b' : δΔ¹ → B')
-      (F : Coslice-map a a') (G : Coslice-map b b')
-    → is-inner-anodyne (F .fst) → is-inner-anodyne (G .fst)
-    → is-inner-anodyne (∂Δ¹-Wedge-map _ _ _ _ F G .fst)
-wedge-map-is-inner-anodyne a b a' b' F G fia gia {A = U} {V} k ik
-  = left-orthogonal-pushout₁
-      (extend-coslice-map _ _ (const _ _ δΔ¹-1) F )
-      (extend-coslice-map _ _ (const _ _ δΔ¹-0) G)
-      k
-      (fia  k ik)
-      (gia k ik)
-}
-%```
 
 
 \subtree[tot-0005]{
@@ -354,14 +221,11 @@ retraction is defined as follows:
 ##{(\bar{i}, j \geq k) : \square^n \times \Delta^2 \mapsto
 ((\bigvee_{n} i_n \vee j) ≥ ... \ge (i_n \vee j) \ge j \ge k)}
 It is a retraction since if #{i_n} were ordered in the first place, then taking
-these successive meets would have no effect.
+these successive joins would have no effect.
 }
 
 %```agda
 \agda{
-include-Δ-n+2 : ∀ {n} → Δ^ (n + 2) → □^ n × Δ²
-include-Δ-n+2 (x ≥, i ≥, j) = □←Δ x , (i , j)
-
 mutual
   Δ←□ : ∀ {n} → □^ n → Δ¹ → Δ^ n
   Δ←□-≤ : ∀ {n} (x : □^ n) i → i ≤ last-Δ (Δ←□ x i)
@@ -379,6 +243,9 @@ mutual
 Δ←□-1 {suc zero} x refl = · ≥, (≤-max auto!)
 Δ←□-1 {suc (suc n)} (x , i) refl
   = Δ←□-1 {suc n} x (≤-max auto!) ≥, (≤-max auto!)
+
+include-Δ-n+2 : ∀ {n} → Δ^ (n + 2) → □^ n × Δ²
+include-Δ-n+2 (x ≥, i ≥, j) = □←Δ x , (i , j)
 
 ret-Δ-n+2 : ∀ {n} → □^ n × Δ² → Δ^ (n + 2)
 ret-Δ-n+2 (x , (i , j)) = ((Δ←□ x i ≥, i) ⦃ Δ←□-≤ x i ⦄ ≥, j)
@@ -408,6 +275,7 @@ is-ret-Δ-□ (p ≥, i ≥, j) = Δ-ext (□←Δ-ret p i ≥, refl ≥, refl)
 \subtree[tot-0006]{
 \taxon{Theorem}
 \title{Spine lifting}
+\date{2026-02-04}
 
 \p{For all #{n \ge 2}, the inclusion #{\II_n \hookrightarrow \Delta^n} is inner
 anodyne.}
@@ -532,13 +400,15 @@ opaque
        (id-is-equiv , Δ←Δ²-is-equiv)
        k ko
   Spine-lifting (suc n)
-    = is-inner-anodyne-homotopy
+    = is-anodyne-homotopy
         {f = spine-incl-factor-1 (n + 2) ∘ spine-incl-factor-2 (n + 2)}
         {g = Spine-incl}
+        Λ[2,1]-incl
         (factorisation (n + 2))
-        (is-inner-anodyne-∘
+        (is-anodyne-∘
           {f = spine-incl-factor-1 (n + 2)}
           {g = spine-incl-factor-2 (n + 2)}
+          Λ[2,1]-incl
           fat-spine-lifts
           (wedge-map-is-inner-anodyne
             (Spine-coslice (suc (suc n)) .snd) δΔ¹-incl

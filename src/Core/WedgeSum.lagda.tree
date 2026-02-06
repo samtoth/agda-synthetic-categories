@@ -1,0 +1,182 @@
+\title{Wedge sums}
+\taxon{Module}
+\date{2026-02-06}
+\author{samueltoth}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.WedgeSum where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.Join
+open import Core.SpanMap
+open import Core.FunctorialPullback
+open import Core.FunctorialPushout
+
+open import Modalities.Instances.Truncation
+
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[tot-0008]{
+\title{Wedge sum}
+\taxon{Definition}
+
+\p{Given a pair of pointed types, #{A} and #{B}, their wedge sum, written #{A
+\vee B} is the pushout of #{A \leftarrow 1 \rightarrow B} given by the points of
+#{A} and #{B}. By convention we point the wedge at #{\iota_1(A_{\bullet})}
+(although we just as well could have chosen #{\iota_2(B_{\bullet})}).}
+
+%```agda
+\agda{
+Wedge : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A → B → Type (𝓤 ⊔ 𝓥)
+Wedge a b = Pushout (const _ 𝟙 a) (const _ 𝟙 b)
+{-# NOINLINE Wedge #-}
+
+Wedge∙ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (a : A) (b : B) → Wedge a b
+Wedge∙ a b = ι₁ a
+
+}
+%```
+}
+
+\subtree[tot-0009]{
+\taxon{Lemma}
+
+\p{There is a canonical (pointed) inclusion of the wedge sum into the product.
+The fibre of this map at some #{(x,y) : A \times B} is the join
+#{A_\bullet = x * B_\bullet = y}.}
+
+%```agda
+\agda{
+Wedge-embed
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+    → Wedge a b → A × B
+Wedge-embed {a = a} {b = b}
+  = cogap (mk-cocone
+      (λ a' → (a' , b))
+      (λ b' → (a , b'))
+      ~refl)
+
+opaque
+  Wedge-fibre
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+      → ∀ x y → fibre (Wedge-embed {a = a}{b}) (x , y) ≃ ((b ＝ y) * (a ＝ x))
+  Wedge-fibre {𝓤} {𝓥} {a = a}{b} x y
+    = fibre Wedge-embed (x , y) ≃⟨ cogap-fibre _ (x , y) ⟩
+      Pushout₀ total-fibre-span ≃⟨ coe≃ (ap Pushout₀
+                                        (sym (ext! (span-map , span-map-eqv)))) ⟩
+      Pushout₀ intended-span    ≃⟨⟩
+      (ULift 𝓤 (b ＝ y) * ULift 𝓥 (a ＝ x))
+                                ≃⟨ mk≃ _
+                                    (is-equiv←qiso
+                                      (Pushout-qiso span-qiso→ span-qiso)) ⟩
+      ((b ＝ y) * (a ＝ x))     ≃∎ where
+
+    total-fibre-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
+    total-fibre-span = total-span (const _ 𝟙 a) (const _ 𝟙 b)
+                         (Fibre-family _ (x , y))
+
+    intended-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
+    intended-span .Span.Centre = ULift 𝓤 (b ＝ y) × ULift 𝓥 (a ＝ x)
+    intended-span .Span.Left = ULift 𝓤 (b ＝ y)
+    intended-span .Span.left = fst
+    intended-span .Span.Right = ULift 𝓥 (a ＝ x)
+    intended-span .Span.right = snd
+
+    span-qiso→ : Span-map  intended-span (mk-span ((b ＝ y) × (a ＝ x)) fst snd)
+    span-qiso→ .Span-map.h₁ = unlift
+    span-qiso→ .Span-map.h₂ = unlift ⊗ unlift
+    span-qiso→ .Span-map.h₃ = unlift
+    span-qiso→ .Span-map.H = ~refl
+    span-qiso→ .Span-map.K = ~refl
+
+    span-qiso : Span-quasi-iso span-qiso→
+    span-qiso .Span-quasi-iso.bwd .Span-map.h₁ = mk-lift
+    span-qiso .Span-quasi-iso.bwd .Span-map.h₂ = mk-lift ⊗ mk-lift
+    span-qiso .Span-quasi-iso.bwd .Span-map.h₃ = mk-lift
+    span-qiso .Span-quasi-iso.bwd .Span-map.H = ~refl
+    span-qiso .Span-quasi-iso.bwd .Span-map.K = ~refl
+    span-qiso .Span-quasi-iso.ε = Span-map-homotopy-refl _
+    span-qiso .Span-quasi-iso.η = Span-map-homotopy-refl _
+
+    span-map : Span-map intended-span total-fibre-span
+    span-map .Span-map.h₁ p = (x , ×-path→ (refl , unlift p))
+    span-map .Span-map.h₂ p = (tt , ×-path→ (×-swap→ ((unlift ⊗ unlift) p)))
+    span-map .Span-map.h₃ p = (y , ×-path→ (unlift p , refl))
+    span-map .Span-map.H (mk-lift refl , mk-lift refl)
+      = Σ-path→ (refl , sym (IdP-func←Square (sym (glue tt)) refl refl
+          (Square-degen-hor _ _
+            ( ap-sym Wedge-embed (glue tt)
+            ∙ ap sym (pushout-rec-apβ _)
+            ∙ sym (ap-const (sym (glue tt)))))))
+    span-map .Span-map.K (mk-lift refl , mk-lift refl) = refl
+
+    span-map-eqv : is-Span-equiv span-map
+    span-map-eqv .fst
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.has-is-eqv))
+          ((mk≃ _ (is-equiv⁻¹ lift-is-equiv) ∙≃ Σ-＝singl e⁻¹) ._≃_.has-is-eqv)
+    span-map-eqv .snd .fst
+      = (×-swap ∙≃ mk≃ _ (is-equiv⁻¹ (⊗-is-equiv lift-is-equiv lift-is-equiv))
+        ∙≃ ×-path ∙≃ Σ-singl 𝟙-is-singleton tt e⁻¹)._≃_.has-is-eqv
+    span-map-eqv .snd .snd
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.has-is-eqv))
+          ((mk≃ _ (is-equiv⁻¹ lift-is-equiv)
+           ∙≃ Σ-＝singl e⁻¹ ∙≃ Σ-ap-≃ (λ a₁ → ×-swap)) ._≃_.has-is-eqv)
+
+}
+%```
+}
+
+\subtree[tot-000A]{
+\title{The Wedge of sets is a set}
+\taxon{Corollary}
+
+\proof{
+\p{By \ref{tot-0009}, the fibre of the inclusion is a join of paths in #{A} and
+#{B}. If #{A} and #{B} are both sets, then this fibre is a proposition. Hence,
+the wedge is a subset of the product of #{A} and #{B} which is itself a set.}
+}
+
+%```agda
+\agda{
+opaque
+  Wedge-is-set
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+      → is-truncated 2 A → is-truncated 2 B → is-truncated 2 (Wedge a b)
+  Wedge-is-set {A = A}{B}{a}{b} as bs = Trunc.is-truncated←equiv
+    ((Σ[ (x , y) ∶ A × B ] ((b ＝ y) * (a ＝ x)))
+        ≃⟨ Σ-ap-≃ (_e⁻¹ ∘ uncurry Wedge-fibre) ⟩
+     (Σ[ x ∶ A × B ] fibre Wedge-embed x) ≃⟨⟩
+     total-fibre Wedge-embed ≃⟨ total≃total-fibre Wedge-embed ⟩
+     Wedge a b ≃∎)
+    (Trunc.Σ-is-truncated
+      trunc!
+      (λ _ → suc-is-truncated 1
+              (is-truncated←is-prop
+                (*-is-prop
+                  (is-prop←is-truncated trunc!)
+                  (is-prop←is-truncated trunc!)))))
+    where instance
+      at : Is-truncated 2 A
+      at .Is-truncated.has-is-truncated = as
+      bt : Is-truncated 2 B
+      bt .Is-truncated.has-is-truncated = bs
+
+instance
+  Wedge-Is-set
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+        ⦃ _ : Is-truncated 2 A ⦄ ⦃ _ : Is-truncated 2 B ⦄
+      → Is-truncated 2 (Wedge a b)
+  Wedge-Is-set .Is-truncated.has-is-truncated = Wedge-is-set trunc! trunc!
+}
+%```
+}

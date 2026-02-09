@@ -123,6 +123,7 @@ open import Synthetic.Categories.Boundaries
 open import Synthetic.Categories.CoComma
 open import Synthetic.Categories.Comma
 open import Synthetic.Categories.Covariant
+open import Synthetic.Categories.Disjunctive
 open import Synthetic.Categories.HomFamilies
 open import Synthetic.Categories.Homotopies
 open import Synthetic.Categories.Horns

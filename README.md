@@ -30,5 +30,5 @@ by running `forest watch -- "build --dev"` to start it off :)
 
 I have been using the emacs mode by the Topos Institute at
 [github:ToposInstitute/forester.el](https://github.com/ToposInstitute/forester.el), which works well when 
-edditing trees, but there is currently no solution for working
+editing trees, but there is currently no solution for working
 with literate agda in forests.

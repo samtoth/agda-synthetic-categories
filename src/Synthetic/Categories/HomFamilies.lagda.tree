@@ -178,7 +178,7 @@ sec-weird-is-sec (a , b) = Δ²-ext (refl , (∧-comm ∙ auto!))
 
 is-segal←is-strongly-segal
   : ∀ {𝓤} {A : Type 𝓤}
-    → (weird-horn-inclusion ⊥ A)
+    → is-strongly-segal A
     → is-segal A
 is-segal←is-strongly-segal orth tt
   = is-orthogonal⇔orthogonal-! .fst
@@ -188,7 +188,7 @@ is-segal←is-strongly-segal orth tt
           (~refl , ((λ (i , j) → Δ²-ext (refl , ∧-comm ∙ auto!))
           , λ _ → is-set←is-truncated Δ²-is-set _ _ _ _)))
         !
-        (is-orthogonal⇔orthogonal-! .snd orth))
+        (is-orthogonal⇔orthogonal-! .snd (orth tt)))
 }
 %```
 }
@@ -298,18 +298,18 @@ coslice-is-left⇔strongly-inner-coslice x
   amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
   amap-eq .snd = char-coslice-lift-is-equiv x
 
-
-hom-fam-is-cov⇔is-strongly-segal
-  : ∀ {𝓤} {A : Type 𝓤}
-    → (∀ x → is-covariant (λ a → Hom A x a))
-    ⇔ is-strongly-segal A
-hom-fam-is-cov⇔is-strongly-segal {𝓤}{A}
-  =  precomp-Π-⇔ (λ
-       x →  hom-fam-is-cov⇔is-left-fibration x
-         ∙⇔ coslice-is-left⇔strongly-inner-coslice x)
-  ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
-  ∙⇔ (coslice-orthogonality (weird-horn-inclusion∙) ⇔⁻¹)
-  ∙⇔ logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
+opaque
+  hom-fam-is-cov⇔is-strongly-segal
+    : ∀ {𝓤} {A : Type 𝓤}
+      → (∀ x → is-covariant (λ a → Hom A x a))
+      ⇔ is-strongly-segal A
+  hom-fam-is-cov⇔is-strongly-segal {𝓤}{A}
+    =  precomp-Π-⇔ (λ
+         x →  hom-fam-is-cov⇔is-left-fibration x
+           ∙⇔ coslice-is-left⇔strongly-inner-coslice x)
+    ∙⇔ logical←equiv (postcomp-Π-≃ _ unit-UP≃)
+    ∙⇔ (coslice-orthogonality (weird-horn-inclusion∙) ⇔⁻¹)
+    ∙⇔ logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
 }
 %```
 }
@@ -480,17 +480,65 @@ is-based-triangulated {A = A} ttA
   lem : ∀ x → map ⊥ (λ _ → x)
   lem x = coslice-orthogonality map .fst ttA (λ _ → x)
 
-is-strongly-segal←is-segal
-  : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-segal A
-    → is-strongly-segal A
-is-strongly-segal←is-segal {A = A} asimp apc tt
-  = is-equiv~∘ (λ h → funext→ λ a → ap h (sym (strong-segal-factorisation a)))
-      (is-equiv-∘
-        (apc tt)
-        (⧅-degen←Δ²-is-segal-equiv apc))
-      (is-equiv-∘
-        (is-based-triangulated (simp-is-triangulated asimp tt))
-        (postcomp-equiv (is-equiv←qiso 1⋉Δ¹-is-cone)))
+opaque
+  is-strongly-segal←is-segal
+    : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-segal A
+      → is-strongly-segal A
+  is-strongly-segal←is-segal {A = A} asimp apc tt
+    = is-equiv~∘ (λ h → funext→ λ a → ap h (sym (strong-segal-factorisation a)))
+        (is-equiv-∘
+          (apc tt)
+          (⧅-degen←Δ²-is-segal-equiv apc))
+        (is-equiv-∘
+          (is-based-triangulated (simp-is-triangulated asimp tt))
+          (postcomp-equiv (is-equiv←qiso 1⋉Δ¹-is-cone)))
+
+hom-fam-is-cov⇔is-precategory
+  : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A
+    → is-segal A ⇔ (∀ x → is-covariant (Hom A x))
+hom-fam-is-cov⇔is-precategory Asimp
+  = (is-strongly-segal←is-segal Asimp , is-segal←is-strongly-segal)
+  ∙⇔ (hom-fam-is-cov⇔is-strongly-segal ⇔⁻¹)
+}
+%```
+}
+
+
+\subtree[tot-0002]{
+\title{Computing transport in representable families}
+\taxon{Prop}
+\p{Given a precategory #{A}, the covariant transport of a morphism
+#{f : \Hom(b,c)} is given by precomposition
+#{f \circ - : \Hom(a,b) \to \Hom(a,c)}.}
+
+
+%```agda
+\agda{
+module _ {𝓤} {A : Type 𝓤} (Asimp : is-simplicial A) (Apc : is-segal A) where
+  private
+    homc = hom-fam-is-cov⇔is-precategory Asimp .fst Apc
+
+  segal-comp-is-strong-segal-comp
+    : ∀ {x y z} (f : Hom A y z) (g : Hom A x y)
+      → is-equiv.bwd (Apc tt) (make-horn f g)
+      ＝ is-equiv.bwd (is-strongly-segal←is-segal Asimp Apc tt) (make-horn f g)
+        ∘ 1⋉Δ¹←cone ∘ ⧅-□-degen-incl ∘ ⧅-degen←Δ²
+  segal-comp-is-strong-segal-comp f g = {!!}
+
+  hom-cov-is-segal-comp
+    : ∀ {x y z} {f : Hom A y z} (g : Hom A x y)
+    → (h : Hom A x z)
+    → (Hom-over f g h) ≃ (Hom2 f g h)
+  hom-cov-is-segal-comp g h = {!!}
+
+  tr-hom-cov
+    : ∀ {x y z} (f : Hom A y z)
+      → tr-cov-hom {P = Hom A x} (homc x) f ~ (f ∘[ Apc ]_)
+  tr-hom-cov {x}{y}{z} f g
+    = unique-composite Apc f g (tr-cov-hom (homc _) f g)
+          (total-map (λ h → hom-cov-is-segal-comp g h ._≃_.fwd)
+            (is-covariant-hom←is-covariant (Hom A x) (homc x) f g .centre) .snd)
+
 }
 %```
 }

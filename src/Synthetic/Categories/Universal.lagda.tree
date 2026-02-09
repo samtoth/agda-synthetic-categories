@@ -1,0 +1,422 @@
+\date{2025-01-14}
+\title{Universal elements}
+\taxon{Module}
+\author{samueltoth}
+
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Universal
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open import Ergonomics.Auto
+
+open import Core.CanonicalPushouts
+open import Core.Arrow
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
+open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
+}
+%```
+
+
+%```agda
+\agda{
+Hom←Id
+  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
+Hom←Id refl = idH _
+
+Hom-gpd
+  : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A
+  → ∀ {a b} → is-equiv (Hom←Id {_}{A}{a}{b})
+Hom-gpd gpd {a} {b}
+  = is-equiv~∘ {f = _≃_.bwd HomP-repr≃} {g = g ∘ f}
+      (λ {refl → refl})
+      (is-equiv⁻¹ (_≃_.has-is-eqv HomP-repr≃))
+      (is-equiv-∘ {f = g} {g = f}
+        (total-is-equiv←fst-is-equiv (gpd tt))
+        (is-equiv⁻¹ (Σ-＝singl ._≃_.has-is-eqv))) where
+  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+  f = _≃_.bwd Σ-＝singl
+  g : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
+  g (a , p , q) = (const _ _ a , p , q)
+
+yo
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+    → is-covariant F
+    → ∀ b (x : F b) → ∀ a → Hom _ b a → F a
+yo Fc b x a f = tr-cov-hom (is-covariant-hom←is-covariant _ Fc) f x
+
+ev-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+    → ∀ b → (∀ a → Hom _ b a → F a) → F b
+ev-id b α = α b (idH b)
+
+tr-hom-is-∘
+  : ∀ {𝓤} {A : Type 𝓤}
+      (Asimp : is-simplicial A)
+      (Apc : is-segal A)
+      {a b c} (f : Hom A b c)
+    → tr-cov-hom {P = Hom A a}
+          (is-covariant-hom←is-covariant  _
+              (hom-fam-is-cov⇔is-strongly-segal .snd
+                (is-strongly-segal←is-segal Asimp Apc) a))
+          f ~ (f ∘[ Apc ]_)
+tr-hom-is-∘ Asi Ase f g = unique-composite Ase f g
+  (tr-cov-hom Ahomcov f g)
+  {!tr-cov-over Ahomcov f g!} {- have: Hom_f(g, tr(f,g)). Need Hom2(f,g,tr(f,g)) -} where
+  Ahomcov = (is-covariant-hom←is-covariant  _
+              (hom-fam-is-cov⇔is-strongly-segal .snd
+                (is-strongly-segal←is-segal Asi Ase) _))
+
+precat-idr : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) {x y}
+             → (f : Hom A x y) → (f ∘[ As ] idH _) ＝ f
+precat-idr As f = sym (unique-composite As f (idH _)
+  f
+  (refl~▵ f))
+
+precat-idl
+  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) {x y}
+    → (f : Hom A x y) → (idH _ ∘[ As ] f) ＝ f
+precat-idl As f = sym
+  (unique-composite As (idH _) f
+    f
+    ((f .HomP.hom ∘ Poly.Δ².s) , funext→
+      (pushout-rec-unique _ _
+        (pushout-rec-unique _ _
+          ~refl (λ _ → f .HomP.hom1)
+          (λ _ → un-square {ai0 = ap _ (glue tt)} {refl} {f .HomP.hom1} {f .HomP.hom1}
+                   (coe (Square-functorial-top
+                     (sym (ap-∘ (f .HomP.hom ∘ Poly.Δ².s) Λ[2,1]-incl (glue tt)
+                          ∙ ap (ap (f .HomP.hom ∘ Poly.Δ².s)) (pushout-rec-apβ tt)
+                          ∙ ap-∘ (HomP.hom f) (Poly.Δ².s) Δ²-refl
+                          ∙ ap (ap (f .HomP.hom)) (is-prop←is-truncated trunc! _ refl))))
+                    (Square-drop-j _))))
+        ~refl
+        {!!})))
+
+tr-naturality
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+      (Fc : is-covariant-hom F)
+      (Gc : is-covariant-hom G)
+      (α : ∀ a → F a → G a)
+      {x y} (f : Hom A x y)
+    → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
+tr-naturality = {!!}
+
+tr-cov-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤}
+      (Asimp : is-simplicial A)
+      (Apc : is-segal A)
+      {F : A → Type 𝓥}
+    → (Fc : is-covariant F)
+    → is-fibrewise-equiv (ev-id {F = F})
+tr-cov-is-equiv Asimp Apc {F = F} Fc a = is-equiv←qiso
+  (yo {F = F} Fc a
+  , (λ α → funext→ λ a' → funext→ λ f →
+    (yo Fc a (α a (idH a)) a' f)
+            ＝⟨⟩
+    tr-cov-hom Fch f (α a (idH a))
+            ＝⟨  tr-naturality {!!} {!Fc!} α f (idH _) ⟩
+    α a' (tr-cov-hom Ahomcov f (idH a))
+                            ＝⟨ ap (α a') (tr-hom-is-∘ Asimp Apc f (idH a) ) ⟩
+    α a' (f ∘[ Apc ] idH a) ＝⟨ ap (α a') (precat-idr Apc f) ⟩
+    α a' f ∎)
+  , (λ x → tr-cov-idH F Fch x)) where
+  Fch = is-covariant-hom←is-covariant _ Fc
+  Ahomcov = is-covariant-hom←is-covariant  _
+              (hom-fam-is-cov⇔is-strongly-segal .snd
+                (is-strongly-segal←is-segal Asimp Apc) a)
+
+is-universal
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+      → is-covariant F
+      → Σ A F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-universal {F = F} Fcov (a , x)
+  = is-fibrewise-equiv (yo Fcov a x)
+
+is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
+is-initial a = ∀ b → is-singleton (Hom _ a b)
+
+_⊣_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → (A → B) → (B → A) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+l ⊣ r = ∀ a b → Hom _ (l a) b ≃ Hom _ a (r b)
+
+is-initial←ladj
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
+    → (l : A → B) → (r : B → A) → l ⊣ r
+    → is-initial a → is-initial (l a)
+is-initial←ladj f g fg ai b
+  = is-single←equiv-to-single (fg _ b e⁻¹) (ai (g b))
+
+universal-rec
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+    → (Fc : is-covariant F)
+    → {x : Σ A F}
+    → is-universal Fc x
+    → ∀ {b} → F b
+    → Hom _ (x .fst) b
+universal-rec Fc un = is-equiv.bwd (un _)
+
+Hom-∫
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (Bc : is-covariant B)
+      {x} (x' : B x) {y} (y' : B y)
+    → Hom (Σ A B) (x , x') (y , y')
+    ≃ Σ[ f ∶ Hom A x y ]
+        (tr-cov-hom (is-covariant-hom←is-covariant B Bc) f x' ＝ y')
+Hom-∫ {B = B} Bc x' y'
+  = Hom-Σ≃ ∙≃ Σ-ap-≃ (λ a → mk≃ _ (Hom-cov'-is-equiv B Bch a x' y') e⁻¹) where
+  Bch = is-covariant-hom←is-covariant B Bc
+
+fundamental-Cov
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥} (Fc : is-covariant F)
+      x
+    → (f : ∀ a → Hom A x a → F a)
+    → is-initial {A = Σ A F} (x , f x (idH x))
+    ⇔ is-fibrewise-equiv f
+fundamental-Cov Fc x f = {!!}
+
+universal←initial
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+    → (Fc : is-covariant F)
+    → {x : Σ A F}
+    → is-initial x
+    → is-universal Fc x
+universal←initial {F = F} Fc {x} init a
+  = is-equiv←is-contr-map λ
+      b → is-single←equiv-to-single
+           (Hom-∫ Fc (x .snd) b)
+           (init (a , b))
+
+-- equiv-pres-initial
+--   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+--     → is-equiv f
+--     → ∀ x → is-initial x → is-initial (f x)
+-- equiv-reflects-initial = {!!}
+
+unit-NT←section
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (l : A → B) (r : B → A)
+    → (r ∘ l ~ id)
+    → id ⇒ r ∘ l
+unit-NT←section l r H a = adjust-hom refl (sym (H a)) (idH a)
+
+left-adjoint←NT-sec
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-segal A → is-segal B
+    → (l : A → B) (r : B → A)
+    → section-witness r l
+    → (ε : l ∘ r ⇒ id) → l ⊣ r
+left-adjoint←NT-sec As Bs l r p ε a b ._≃_.fwd f
+  = ap-hom r f ∘[ As ] unit-NT←section l r p a
+left-adjoint←NT-sec As Bs l r p ε a b ._≃_.has-is-eqv
+  = is-equiv←qiso
+      ( (λ f → ε b ∘[ Bs ] ap-hom l f)
+      , (λ f →
+  ε b ∘[ Bs ] ap-hom l (ap-hom r f ∘[ As ] unit-NT←section l r p a) ＝⟨ {!!} ⟩
+  ε b ∘[ Bs ] (ap-hom l (ap-hom r f) ∘[ Bs ] ap-hom l (unit-NT←section l r p a))
+    ＝⟨ {!!} ⟩
+  ε b ∘[ Bs ] {!f ∘[ Bs ] ?!} ＝⟨ {!!} ⟩
+  f ∎)
+      , λ a₁ → {!!})
+
+record left-adjoint-section'
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (r : B → A)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥) where
+  field
+    sec : A → B
+    η : id ~ r ∘ sec
+    η-univ
+      : ∀ {a b} → is-equiv ( adjust-hom (sym (η a)) (refl {a = r b}) ∘ ap-hom r)
+
+  adj←lasec : sec ⊣ r
+  adj←lasec a b = mk≃ (adjust-hom (sym (η a)) refl ∘ ap-hom r) η-univ
+
+-- open left-adjoint-section'
+
+record left-adjoint-section
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (r : B → A)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥) where
+  field
+    sec : A → B
+    η : id ~ r ∘ sec
+    ε : sec ∘ r ⇒ id
+    ε-left : ∀ x → Hom-pathP (ap sec (η x)) refl  (idH (sec x)) (ε (sec x))
+    ε' : sec ∘ r ⇒ id
+    ε'-right : ∀ x → Hom-pathP (η (r x)) refl (idH (r x)) (ap-hom r (ε' x))
+
+record bi-diagramatic-adjunction
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+  (l : A → B) (r : B → A)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥) where
+  field
+    η : id ⇒ r ∘ l
+    ε : l ∘ r ⇒ id
+    ε-left : ∀ x → Hom2 (ε (l x)) (ap-hom l (η x)) (idH (l x))
+    ε' : l ∘ r ⇒ id
+    ε'-right : ∀ y → Hom2 (ap-hom r (ε y)) (η (r y)) (idH (r y))
+
+test
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      (η : f ~ g) (h : g  ⇒ f)
+   → ∀ x → Hom-pathP (η x) refl (idH (f x)) (h x)
+   → Hom2 (h x) (Hom←Id (η x)) (idH _)
+test = {!!}
+
+Hom←Id-ap
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {x y} (p : x ＝ y) → Hom←Id (ap f p) ＝ ap-hom f (Hom←Id p)
+Hom←Id-ap refl = refl
+
+bi-diagramatic←left-adjoint-section
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (As : is-segal A)
+      (Bs : is-segal B)
+      (r : A → B)
+    → (s : left-adjoint-section r)
+    → bi-diagramatic-adjunction (s .left-adjoint-section.sec) r
+bi-diagramatic←left-adjoint-section As B s r = adj where
+  open bi-diagramatic-adjunction
+  module r = left-adjoint-section r
+
+  adj : bi-diagramatic-adjunction (r.sec) s
+  adj .η x = Hom←Id (r.η x)
+  adj .ε = r.ε
+  adj .ε-left x = tr (λ p → Hom2 _ p (idH _))
+                     (Hom←Id ((r.sec ◂ r.η) x) ＝⟨ Hom←Id-ap (r.η x) ⟩
+                     ap-hom r.sec (Hom←Id (r.η x)) ∎)
+                     (test (r.sec ◂ r.η) (r.ε ∘ r.sec) x (r.ε-left x))
+  adj .ε' = r.ε'
+  adj .ε'-right = {!!}
+
+-- adjunction←left-adjoint-section
+--   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+--       (As : is-segal A)
+--       (Bs : is-segal B)
+--       (r : A → B)
+--     → (s : left-adjoint-section r)
+--     → s .sec ⊣ r
+-- adjunction←left-adjoint-section As Bs r s a b = equiv←qiso qiso where
+--   qiso : Hom _ (s .sec a) b ≅ Hom _ a (r b)
+--   qiso ._≅_.fwd f = adjust-hom (s .η a) refl (ap-hom r f)
+--   qiso ._≅_.fwd-iso .fst g = s .ε b ∘[ As ] ap-hom (s .sec) g
+--   qiso ._≅_.fwd-iso .snd .fst f
+--     = (s .ε b ∘[ As ] ap-hom (s .sec) (adjust-hom (s .η a) refl (ap-hom r f)))
+--          ＝⟨ {!!} ⟩
+--       f ∎
+--   qiso ._≅_.fwd-iso .snd .snd g
+--     = adjust-hom (s .η a) refl (ap-hom r (s .ε b ∘[ As ] ap-hom (s .sec) g))
+--         ＝⟨ {!!} ⟩
+--       adjust-hom (s .η a) refl (ap-hom r (s .ε b) ∘[ Bs ] ap-hom (r ∘ s .sec) g)
+--         ＝⟨ {!!} ⟩
+--       (ap-hom r (s .ε b) ∘[ Bs ] adjust-hom (s .η a) refl (ap-hom (r ∘ s .sec) g))
+--         ＝⟨ {!!} ⟩
+--       g ∎
+
+ev0-lari'
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-segal A
+  → left-adjoint-section' (ev {B = λ _ →  A} i0)
+ev0-lari' As .left-adjoint-section'.sec = const _ _
+ev0-lari' As .left-adjoint-section'.η = ~refl
+ev0-lari' As .left-adjoint-section'.η-univ {a} {b} = is-equiv←qiso
+  ( (λ f → Hom←NT (λ i → mk-hom (λ j → b (i ∧ j)) {!!} {!!} ∘[ As ] f))
+  , {!!}
+  , {!!})
+
+-- ev0-lari
+--   : ∀ {𝓤} {A : Type 𝓤}
+--   → is-segal A
+--   → left-adjoint-section (ev {B = λ _ →  A} i0)
+-- ev0-lari {A = A} As .sec = const A Δ¹
+-- ev0-lari {A = A} As .η = ~refl
+-- ev0-lari {A = A} As .ε a = Hom←NT λ i → mk-hom (λ j → a (i ∧ j))
+--                                                (ap a (∧-comm ∙ 0-init))
+--                                                (ap a 1-top)
+-- ev0-lari {A = A} As .ε-left x = ~refl , ({!!} , {!!})
+-- ev0-lari {A = A} As .ε' a = Hom←NT λ i → mk-hom (λ j → a (i ∧ j))
+--                                                 (ap a (∧-comm ∙ 0-init))
+--                                                 (ap a 1-top)
+-- ev0-lari {A = A} As .ε'-right x = (x ◂ (λ _ → 0-init)) , {!!}
+
+lari-pullback
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y} (F : Arrow-map f g)
+    → is-cartesian F
+    → left-adjoint-section g
+    → left-adjoint-section f
+lari-pullback = {!!}
+
+lari-! : ∀ {𝓤} {A : Type 𝓤} → left-adjoint-section (! {A = A}) ≃ Σ A is-initial
+lari-! = {!!}
+
+-- initial←lari-!
+--   : ∀ {𝓤} {A : Type 𝓤}
+--     → is-segal A
+--     → (s : left-adjoint-section (! {A = A}))
+--     → is-initial (s .left-adjoint-section.sec tt)
+-- initial←lari-! as s b = is-single←equiv-to-single
+--   (adjunction←left-adjoint-section as Segal.𝟙∈S ! s tt b e⁻¹)
+--   {!!}
+
+-- R17 lemma 9.8
+-- coslice-initial
+--   : ∀ {𝓤} {A : Type 𝓤} {a : A}
+--     → is-segal A
+--     → is-initial {A = Coslice A (const _ 𝟙 a)} (a , λ _ → idH a)
+-- coslice-initial {a = a} as
+--   = initial←lari-!
+--       {!!}
+--       (lari-pullback {f = ! {A = Coslice _ (const _ _ a)}} {g = ev i0}
+--                      coslice-square {!!} (ev0-lari as)) where
+--   coslice-square : Arrow-map ! (ev i0)
+--   coslice-square .Arrow-map.top (_ , p) = p tt .HomP.hom
+--   coslice-square .Arrow-map.bot _ = a
+--   coslice-square .Arrow-map.comm (a , p) = sym {!p tt .HomP.hom0!}
+
+initial←universal
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
+    → (Fc : is-covariant F)
+    → {x : Σ A F}
+    → is-universal Fc x
+    → is-initial x
+initial←universal {F = F} Fc {x} univ
+  = tr is-initial
+       {!!}
+       (is-initial←ladj
+         (total-map (yo {F = F} Fc {!!} {!!}))
+         _
+         {!!}
+         {!!} )
+}
+%```

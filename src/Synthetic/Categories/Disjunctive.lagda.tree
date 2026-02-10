@@ -1,0 +1,341 @@
+\date{2026-02-09}
+\title{Disjunctive types}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Disjunctive
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+
+private
+  Δ² = Poly.Δ² I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+
+open import Core.Join
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+  using (is-simplicial; fam-is-simplicial)
+}
+%```
+
+
+\subtree[stt-00DS]{
+\taxon{Definition}
+\title{Disjunctive types}
+
+\p{
+The generic interval is not necessarily \em{disjunctive}, in the sense that
+for all #{i} and #{j} such that #{(i ∨ j) = 1} we would have #{i = 1} or
+#{j = 1}. Instead, we can speak of particular types which \em{'see'} the
+interval as being disjunctive. This can be made precise by asking for types
+which are [null](stt-005G) with respect to the family of propositions
+#{(i = 1) ∨ (j = 1)} for all #{i} and #{j} such that #{(i ∨ j) = 1}. Let #{∨²}
+be the type of elements #{i} and #{j} such that #{(i ∨ j) = 1}.
+}
+
+%```agda
+\agda{
+∨² : Type 𝓘
+∨² = Σ (Δ¹ × Δ¹) (λ (i , j) → (i ∨ j ＝ i1))
+
+fam-disjunctive : Δ¹ × Δ¹ → Type 𝓘
+fam-disjunctive (i , j) = (i ＝ i1) * (j ＝ i1)
+
+fam-is-disjunctive : ∨² → Type 𝓘
+fam-is-disjunctive = fam-disjunctive ∘ fst
+
+is-disjunctive : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-disjunctive = is-null fam-is-disjunctive
+}
+%```
+
+\p{
+By virtue of being defined in terms of nullification at a proposition, we
+know that disjunctive types form a lex [#{\Sigma}-closed](stt-006E)
+[reflective subuniverse](stt-0065).
+}
+
+%```agda
+\agda{
+Disjunctive-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Disjunctive-SubU = Null-SubU fam-is-disjunctive _
+
+Disjunctive-GSU : GSU (_⊔ 𝓘)
+Disjunctive-GSU = Null-GSU fam-is-disjunctive
+
+Disjunctive-is-globally-reflective
+  : is-globally-reflective Disjunctive-GSU
+Disjunctive-is-globally-reflective = Null-globally-reflective
+
+module Disj where
+  open GRSUInduction Disjunctive-is-globally-reflective
+                     Null-globally-Σ-closed
+      public
+
+  open GSU Disjunctive-GSU public renaming (S-equiv to is-disjunctive←equiv)
+
+  open is-globally-reflective Disjunctive-is-globally-reflective
+  Σ-is-disjunctive = Null-globally-Σ-closed
+
+Λ[2,2]-∨-rec : ∀ {𝓤} {A : Type 𝓤} {i j} → (i ∨ j ＝ i1) → is-disjunctive A
+          → (l : i ＝ i1 → A) → (r : j ＝ i1 → A)
+          → ((pi : i ＝ i1) (pj : j ＝ i1) → l pi ＝ r pj) → A
+Λ[2,2]-∨-rec {i = i} {j} p disj-A l r eq
+  = is-equiv.bwd
+  (disj-A ((i , j) , p))
+  (cogap (mk-cocone l r (λ (p , q) → eq p q)))
+
+Λ[2,2]-∨-rec' : ∀ {𝓤} {A : Type 𝓤} {i j} → (p : i ∨ j ＝ i1)
+              → is-disjunctive A
+              → (l : i ＝ i1 → A) → (r : j ＝ i1 → A)
+              → ((q : i ＝ j) → l (=∨←= q ∙ p) ＝ r ((=∨'←= (sym q)) ∙ p)) → A
+Λ[2,2]-∨-rec' {i = i} {j} p disj-A l r eq
+  = Λ[2,2]-∨-rec p disj-A l r (λ pi pj
+    → ap l (is-prop-separated _ _ _ _)
+    ∙ eq (pi ∙ sym pj)
+    ∙ ap r (is-prop-separated _ _ _ _))
+
+Λ[2,2]-∨-rec! : ∀ {𝓤} {A : Type 𝓤} i j → ⦃ p : i ∨ j ＝ i1 ⦄
+              → is-disjunctive A
+              → (l : ⦃  i ＝ i1 ⦄ → A) → (r : ⦃ j ＝ i1 ⦄ → A)
+              → ((pi : i ＝ i1) (pj : j ＝ i1) → l ⦃ pi ⦄ ＝ r ⦃ pj ⦄)
+              → A
+Λ[2,2]-∨-rec! i j ⦃ p ⦄ disj-A l r
+  = Λ[2,2]-∨-rec p disj-A (λ p → l ⦃ p ⦄) (λ q → r ⦃ q ⦄)
+}
+%```
+}
+
+
+\subtree[stt-00DT]{
+\taxon{Lemma}
+\title{The outer horn #{Λ[2,2]}}
+
+\p{
+We give a slightly nonstandard definition of the outer horn #{Λ[2,2]} as the
+subtype of the square consisting of elements #{(i,j)} such that
+#{(i = 1) * (j = 1)}. Normally, it is defined as the subtype such that
+#{(i = 1) * (i = j)}.
+}
+
+\p{
+We show that #{Λ[2,2]} is a subtype of #{∨²} by showing that
+#{(i = 1) ∨ (j = 1)} implies #{(i ∨ j) = 1}, and hence # #{Λ[2,2]} is
+equivalent to the type #{Σ_{(i\,j:Δ¹)((i ∨ j = 1) ∧ ((i = 1) ∨ (j = 1)))}}.
+}
+
+%```agda
+\agda{
+∨=1←fam-disjunctive : ∀ {i j} → fam-disjunctive (i , j) → (i ∨ j ＝ i1)
+∨=1←fam-disjunctive {i = i} {j}
+  = *-prop-rec
+      (is-prop-separated _ _)
+      (λ pi → ap (_∨ j) pi ∙ ∨-comm ∙ 1-coinit)
+      (λ pj → ap (i ∨_) pj ∙ 1-coinit)
+
+Λ[2,2]' : Type 𝓘
+Λ[2,2]' = Σ ∨² fam-is-disjunctive
+
+Λ[2,2] : Type 𝓘
+Λ[2,2] = Σ (Δ¹ × Δ¹) fam-disjunctive
+
+drop-join-proof
+  : (ij : Δ¹ × Δ¹)
+  → ((fst ij ∨ snd ij ＝ i1) × (fam-disjunctive ij))
+  → fam-disjunctive ij
+drop-join-proof _ = snd
+
+drop-join-proof-is-equiv
+  : (ij : Δ¹ × Δ¹) → is-equiv (drop-join-proof ij)
+drop-join-proof-is-equiv (i , j)
+  = is-equiv←inverse
+      (is-prop-Σ
+        (is-prop-separated _ _)
+        (λ _ → *-is-prop (is-prop-separated _ _) (is-prop-separated _ _)))
+      (*-is-prop (is-prop-separated _ _) (is-prop-separated _ _))
+      (λ d → ∨=1←fam-disjunctive d , d)
+
+Λ[2,2]←Λ[2,2]' : Λ[2,2]' → Λ[2,2]
+Λ[2,2]←Λ[2,2]' = total-map drop-join-proof ∘ _≃_.fwd Σ-assoc
+
+Λ[2,2]←Λ[2,2]'-is-equiv : is-equiv Λ[2,2]←Λ[2,2]'
+Λ[2,2]←Λ[2,2]'-is-equiv
+  = is-equiv-∘
+      (is-total-equiv←is-fibrewise-equiv drop-join-proof-is-equiv)
+      (_≃_.has-is-eqv Σ-assoc)
+
+Λ[2,2]'≃Λ[2,2] : Λ[2,2]' ≃ Λ[2,2]
+Λ[2,2]'≃Λ[2,2] = mk≃ Λ[2,2]←Λ[2,2]' Λ[2,2]←Λ[2,2]'-is-equiv
+
+Λ[2,2]'←Λ[2,2] : Λ[2,2] → Λ[2,2]'
+Λ[2,2]'←Λ[2,2] = _≃_.bwd Λ[2,2]'≃Λ[2,2]
+
+Λ[2,2]-incl : Λ[2,2] → ∨²
+Λ[2,2]-incl ((i , j) , d) = ((i , j) , ∨=1←fam-disjunctive d)
+}
+%```
+}
+
+
+\subtree[stt-00DU]{
+\taxon{Definition}
+\title{Upper located types}
+
+\p{
+We might say a type is \em{upper located} if it is local at the inclusion of
+#{Σ_{(i\,j:Δ¹)((i = 1) ∨ (j = 1))}} into
+#{Σ_{(i\,j:Δ¹)(i ∨ j = 1)}}. In other words, it sees the outer horn #{Λ[2,2]}
+as identical to the subset of the square whose join is #{1}.
+}
+
+%```agda
+\agda{
+is-upper-located : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-upper-located = is-local (λ (_ : 𝟙) → Λ[2,2]-incl)
+}
+%```
+}
+
+
+\subtree[stt-00DV]{
+\title{Disjunctive types are upper located}
+\taxon{Lemma}
+
+\proof{
+\p{
+By sum-closure, disjunctive types are local at the inclusion of
+#{Σ_{(i\,j:Δ¹)((i ∨ j ＝ 1) ∧ ((i = 1) ∨ (j ＝ 1)))}} into
+#{Σ_{(i\,j:Δ¹)(i ∨ j ＝ 1)}}, which is equivalent to the inclusion of #{Λ[2,2]}
+into #{∨²}.
+}
+}
+
+%```agda
+\agda{
+disj-is-upper-located : ∀ {𝓤} {A : Type 𝓤}
+                      → is-disjunctive A → is-upper-located A
+disj-is-upper-located {_}{A} disj tt
+  = is-orthogonal⇔orthogonal-! .fst
+      (left-orthogonal-equiv _ _ amap amap-is-eqv !
+        (left-orthogonal-Σ _ !
+          (is-orthogonal⇔orthogonal-! .snd
+          ∘ (is-local←is-null disj)))) where
+
+  amap : Arrow-map (total-map (λ _ → !)) Λ[2,2]-incl
+  amap .Arrow-map.top = Λ[2,2]←Λ[2,2]'
+  amap .Arrow-map.bot = fst
+  amap .Arrow-map.comm (((i , j) , p) , d)
+    = Σ-path→ (refl , is-prop-separated _ _ _ _)
+
+  amap-is-eqv : is-Arrow-equiv amap
+  amap-is-eqv .fst = Λ[2,2]←Λ[2,2]'-is-equiv
+  amap-is-eqv .snd = singleton-fst-is-equiv (λ _ → 𝟙-is-singleton)
+}
+%```
+}
+
+
+\subtree[stt-00DW]{
+\title{Simplicial types are disjunctive}
+\taxon{Lemma}
+
+\p{
+We call a type [simplicial](stt-00AB) if it is null at #{((i ≤ j) * (j ≤ i))}
+for all #{(i, j) : □}. We show that every simplicial type is disjunctive.
+}
+
+\proof{
+\p{
+If #{P} implies #{Q} then #{P}-null types are #{Q}-null, so it suffices to show
+that #{((i ≤ j) * (j ≤ i))} implies #{i = 1} or #{j = 1} for all #{i} and #{j}
+such that #{(i ∨ j) = 1}.
+}
+}
+
+%```agda
+\agda{
+disj←simp-over-∨² : (x : ∨²)
+                  → fam-is-simplicial (fst x) → fam-is-disjunctive x
+disj←simp-over-∨² ((i , j) , p)
+  = *-prop-rec
+      (*-is-prop (is-prop-separated _ _) (is-prop-separated _ _))
+      (λ ij → ι₂ (sym (≤-max ij) ∙ p))
+      (λ ji → ι₁ (sym (≤-max ji) ∙ sym ∨-comm ∙ p))
+
+disj→simp-over-∨² : (x : ∨²)
+                  → fam-is-disjunctive x → fam-is-simplicial (fst x)
+disj→simp-over-∨² ((i , j) , _)
+  = *-prop-rec
+      (*-is-prop ≤-is-prop ≤-is-prop)
+      (λ pi → ι₂ (tr (j ≤_) (sym pi) ≤-top))
+      (λ pj → ι₁ (tr (i ≤_) (sym pj) ≤-top))
+
+disj←simp-over-∨²-is-equiv
+  : (x : ∨²) → is-equiv (disj←simp-over-∨² x)
+disj←simp-over-∨²-is-equiv x@((i , j) , _)
+  = is-equiv←inverse
+      (*-is-prop ≤-is-prop ≤-is-prop)
+      (*-is-prop (is-prop-separated _ _) (is-prop-separated _ _))
+      (disj→simp-over-∨² x)
+
+simp-is-disjunctive : ∀ {𝓤} {A : Type 𝓤}
+                    → is-simplicial A → is-disjunctive A
+simp-is-disjunctive {_}{A} simp
+  = is-null←is-local
+      (is-local-equiv amap amap-is-eqv
+        (is-local←is-null simp-over-∨²)) where
+
+  simp-over-∨² : is-null (fam-is-simplicial ∘ fst) A
+  simp-over-∨² x = simp (fst x)
+
+  amap : (x : ∨²)
+       → Arrow-map (! {A = fam-is-simplicial (fst x)})
+                   (! {A = fam-is-disjunctive x})
+  amap x .Arrow-map.top = disj←simp-over-∨² x
+  amap x .Arrow-map.bot = id
+  amap x .Arrow-map.comm = ~refl
+
+  amap-is-eqv : ∀ x → is-Arrow-equiv (amap x)
+  amap-is-eqv x .fst = disj←simp-over-∨²-is-equiv x
+  amap-is-eqv x .snd = id-is-equiv
+}
+%```
+}
+
+
+\subtree[stt-00DX]{
+\title{Simplicial types are upper located}
+\taxon{Corollary}
+
+%```agda
+\agda{
+simp-is-upper-located : ∀ {𝓤} {A : Type 𝓤}
+                      → is-simplicial A → is-upper-located A
+simp-is-upper-located = disj-is-upper-located ∘ simp-is-disjunctive
+}
+%```
+}

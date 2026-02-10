@@ -29,7 +29,7 @@ def get_forester_json() -> list:
     """Run `forester query all` and parse JSON output."""
     try:
         result = subprocess.run(
-            ["forester", "query", "all"],
+            ["forester", "query", "all", "proxy.toml"],
             capture_output=True,
             text=True,
             check=True

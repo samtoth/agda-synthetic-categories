@@ -25,7 +25,7 @@ parser.add_argument(
 parser.add_argument(
     "-c", "--cannonical",
     default="stt",
-    help="The cannonical URL to insert onto, default=stt"
+    help="The canonical URL to insert onto, default=stt"
 )
 
 parser.add_argument(
@@ -51,13 +51,13 @@ AUTHOR = args.author
 DIRS = [Path(d) for d in args.dirs]
 DRY_RUN = args.dry_run
 GAP = args.gap
-CANNON = args.cannonical
+CANON = args.canonical
 
 # ----------------------------
 # Find first tree
 # ----------------------------
 all_trees = get_forester_json()
-next_val = find_next_tree(CANNON, all_trees, GAP)
+next_val = find_next_tree(CANON, all_trees, GAP)
 print(f"Starting STT value: {int_to_base36(next_val)}")
 
 # ----------------------------
@@ -73,12 +73,12 @@ author_trees = [auth_re.search(tree["uri"]).group(1)
 
 author_trees.sort(key=lambda x: int(x, 36))
 
-print("\nBuilding a remaping: \n")
+print("\nBuilding a remapping: \n")
 
 for tid in author_trees:
     new_num = int_to_base36(next_val)
     old_key = f"{AUTHOR}-{tid}"
-    new_key = f"{CANNON}-{new_num}"
+    new_key = f"{CANON}-{new_num}"
     rename_map[old_key] = new_key
     print(f"{old_key} → {new_key}")
     next_val += 1

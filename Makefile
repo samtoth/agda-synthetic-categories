@@ -68,7 +68,7 @@ check-port:
 
 watch-forest: check-port
 	@echo "Serving forest on http://localhost:$(FOREST_PORT)"
-	@forest watch "$(FOREST_PORT)" -- "build --dev --no-theme"
+	@forest watch "$(FOREST_PORT)" -- "build --dev"
 
 server:
 	@$(MAKE) --no-print-directory check-port

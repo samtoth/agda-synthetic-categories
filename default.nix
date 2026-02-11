@@ -40,7 +40,7 @@ in
       echo "made /output/html dir"
       LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html src/Everything.agda
       echo "Generated trees"
-      forester build --no-theme
+      forester build
       if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
         if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
           echo "Warning: failed to copy Agda.css into output/html; continuing." >&2

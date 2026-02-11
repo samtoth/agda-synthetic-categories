@@ -22,7 +22,7 @@ help:
 	@echo "  make check-dup         # Find duplicate subtree references (DIR=... optional)"
 	@echo "  make clean-agda        # Remove generated agda artifacts"
 	@echo "  make clean-forester    # Remove generated forester artifacts"
-	@echo "  make clean             # Remove generated build artifacts"
+	@echo "  make clean             # Remove all generated build artifacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
 	@bash ./scripts/generateEverything.sh

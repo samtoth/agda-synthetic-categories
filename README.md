@@ -7,10 +7,11 @@ the resource and find out more about the project.
 
 ## Development
 
-We provide a Makefile with a range of targets for building, watching, and serving the
-site. To build the project and set up a server you can run `make server` from the nix
-shell, with an optional `PORT=` parameter (default: `1313`). To see all `make`
-targets run `make help`.
+The easiest way to build or work on this project is using nix, and we provide a range
+of targets for building, watching, and serving the site via the Makefile. To build
+the project and set up a server you can run `make server` from the nix shell, with an
+optional `PORT=` parameter (default: `1313`). To see all `make` targets run
+`make help`.
 
 ### Emacs mode
 

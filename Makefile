@@ -25,7 +25,7 @@ help:
 	@echo "  make clean             # Remove generated build artifacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
-	@./scripts/generateEverything.sh
+	@bash ./scripts/generateEverything.sh
 
 generate-everything: $(EVERYTHING_FILE)
 

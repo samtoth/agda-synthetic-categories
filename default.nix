@@ -33,7 +33,7 @@ in
 
     buildPhase = ''
       mkdir -p trees/stt/autogen
-      ./scripts/generateEverything.sh
+      bash ./scripts/generateEverything.sh
       echo "Generated everything file"
       mkdir -p ./output
       mkdir -p ./output/html

@@ -5,21 +5,12 @@ type theory.
 Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories) to browse
 the resource and find out more about the project.
 
-## Building
-
-The easiest way to build or work on this project is using nix. To build the site
-simply run `nix-build`, and the site will be generated into the folder `/output`,
-you can then serve this any way of your choosing, for example using the python
-command:
-
-```bash
-python3 -m http.server 1313 -d result
-```
-
 ## Development
 
-There is also a provided Makefile for building, watching and launching a dev server.
-Run `make help` to see the available targets.
+We provide a Makefile with a range of targets for building, watching, and serving the
+site. To build the project and set up a server you can run `make server` from the nix
+shell, with an optional `PORT=` parameter (default: `1313`). To see all `make`
+targets run `make help`.
 
 ### Emacs mode
 

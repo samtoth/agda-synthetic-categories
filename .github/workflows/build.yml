@@ -1,4 +1,13 @@
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,13 +27,18 @@ jobs:
           submodules: 'recursive'
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v26
+        uses: cachix/install-nix-action@v31
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v14
         with:
            name: agda-synthetic-categories
            authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      # Enable tmate debugging of manually-triggered workflows if the input option was provided
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
 
       - name: Build
         run: nix-build

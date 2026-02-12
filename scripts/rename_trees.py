@@ -23,7 +23,7 @@ parser.add_argument(
     help="Author prefix to replace (e.g. smi)"
 )
 parser.add_argument(
-    "-c", "--cannonical",
+    "-c", "--canonical",
     default="stt",
     help="The canonical URL to insert onto, default=stt"
 )

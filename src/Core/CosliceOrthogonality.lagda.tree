@@ -19,6 +19,9 @@ open import Core.ArrowEquiv
 open import Core.SpanMap
 open import Core.FunctorialPushout
 open import Core.FunctorialPullback
+open import Core.PullbackPower
+open import Core.Postwhisker
+open import Core.Cube
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
@@ -129,17 +132,33 @@ to #{qg} for all maps #{q : C \to Q} iff the pushout map induced by
 
 %```agda
 \agda{
+
+Pushout-map-left
+  : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
+    → Pushout f g → Pushout f' g
+Pushout-map-left f f' g F = Pushout₁ (mk-span-map (F .fst) id id (F .snd) ~refl)
+
+postcomp-pullback
+  : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
+    → (Q : Type 𝓠)
+    → Cospan-map (mk-cospan _ (postcomp Q g) (postcomp Q f'))
+                 (mk-cospan _ (postcomp Q g) (postcomp Q f))
+postcomp-pullback f f' g F Q .Cospan-map.h₁ = id
+postcomp-pullback f f' g F Q .Cospan-map.h₂ = id
+postcomp-pullback f f' g F Q .Cospan-map.h₃ = postcomp Q (F .fst)
+postcomp-pullback f f' g F Q .Cospan-map.H = ~refl
+postcomp-pullback f f' g F Q .Cospan-map.K a
+  = funext→ (prewhisker a _ _ (sym ∘ F .snd))
+
 pushout-arrow-UP
     : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
         (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
         {Q : Type 𝓠}
       → Arrow-map
-         (postcomp Q (Pushout₁ {S = mk-span _ f g}
-                     (mk-span-map (F .fst) id id (F .snd) ~refl)))
-         (Pullback₁ {S = mk-cospan _  (postcomp Q g) (postcomp Q f')}
-                    {T = mk-cospan _ (postcomp Q g) (postcomp Q f)}
-                    (mk-cospan-map id id (postcomp Q (F .fst))
-                                   ~refl (λ h → funext→ (ap h ∘ sym ∘ F .snd))))
+         (postcomp Q (Pushout-map-left f f' g F))
+         (Pullback₁ (postcomp-pullback f f' g F Q))
 pushout-arrow-UP f f' g F .Arrow-map.top
   = postcomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
 pushout-arrow-UP f f' g F .Arrow-map.bot
@@ -172,14 +191,14 @@ pushout-arrow-UP-is-equiv f f' g F .snd
   = is-equiv-∘ (postcomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω
 
 opaque
-  left-orthogonal-pushout₁
+  left-orthogonal-type-pushout₁
     : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
         {f : B → A} {f' : B → A'} {g : B → C} → (F : Coslice-map f f')
         {Q : Type 𝓠}
       → ((Pushout₁ {S = mk-span _ f g}
           (mk-span-map (F .fst) id id (F .snd) ~refl)) ⊥ Q)
       ⇔ (∀ (q : C → Q) → F ⊥ (q ∘ g))
-  left-orthogonal-pushout₁ {A = A}{A'}{C = C} {f} {f'} {g} F {Q}
+  left-orthogonal-type-pushout₁ {A = A}{A'}{C = C} {f} {f'} {g} F {Q}
     = top⇔bot-is-equiv←Arrow-equiv
         (pushout-arrow-UP f f' g F)
         (pushout-arrow-UP-is-equiv f f' g F)

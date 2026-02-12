@@ -162,7 +162,7 @@ instance
 
           SingS ⦃ Bs ⦄ b ≃∎
 
-{-# OVERLAPPABLE IdS-Sigma #-}
+{-# OVERLAPPABLE IdS-Sigma #-}
 
 
 instance

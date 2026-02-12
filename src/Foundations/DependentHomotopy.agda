@@ -27,7 +27,7 @@ HomotopyP-syntax = HomotopyP
 
 syntax HomotopyP-syntax P f g = f ~[ P ] g
 
-{-# DISPLAY HomotopyP P f g = f ~[ P ] g #-}
+{-# DISPLAY HomotopyP P f g = f ~[ P ] g #-}
 
 HomotopyP-const : ∀ {𝓤 𝓥} {A : Type 𝓤}
                     {B : A → Type 𝓥}
@@ -45,7 +45,7 @@ HomotopyP-const {f = f} {g} refl h = h
 --                  {g : Π A C}
 --                  {p : B ~ C}
 --                  → ~refl {f = f} ~[ {!!} ] ~refl {f = g}
--- HomotopyP-sq = {!!}                
+-- HomotopyP-sq = {!!}
 
 module _ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}   where
   happlyᵈ : ∀ {P : B ＝ C}
@@ -57,7 +57,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}   where
 
 
 
-_◂ᵈ_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : ∀ {a} → B a → Type 𝓦}
+_◂ᵈ_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : ∀ {a} → B a → Type 𝓦}
          {f g : (a : A) → B a}
          (x : ∀ {a} → (b : B a) → C b)
          (h : f ~ g)

@@ -19,7 +19,7 @@ record Coconeᵘ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥}
                 ⦃ q-u : Universal (C → Q) 𝓝 ⦄
                 : Type (𝓤 ⊔ 𝓠 ⊔ 𝓜 ⊔ 𝓝) where
   constructor mk-coconeU
-  open Universal 
+  open Universal
 
   field
     p : p-u .methods
@@ -42,7 +42,7 @@ CoconeU-path→ : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 
                → c ＝ c'
 CoconeU-path→ (mk-coconeU p q filler) (mk-coconeU p q filler')
   refl refl h = ap (mk-coconeU p q) (funext→ ((~∙-reflr _ ~⁻¹) ~∙ h))
-              
+
 
 Cocone←universal : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 𝓥}
                 {C : Type 𝓦} {f : A → B} {g : A → C}
@@ -70,15 +70,15 @@ Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv
   iso : quasi-iso (Cocone←universal Q)
   iso .fst (mk-cocone p q filler)
     = mk-coconeU (Univ← auto! p) (Univ← auto! q)
-              λ x → happly (Univ≃.ε auto! p) _ ∙ filler x ∙ sym (happly (Univ≃.ε auto! q) _) 
-  iso .snd .fst a = CoconeU-path→ _ a (Univ≃.η p-u _) (Univ≃.η q-u _) 
+              λ x → happly (Univ≃.ε auto! p) _ ∙ filler x ∙ sym (happly (Univ≃.ε auto! q) _)
+  iso .snd .fst a = CoconeU-path→ _ a (Univ≃.η p-u _) (Univ≃.η q-u _)
    λ x → lem (happly (Univ≃.ε auto! _) (f x))
           (happly (ap (from p-u) (Univ≃.η p-u _)) (f x))
           (a .Coconeᵘ.filler x)
           (happly (Univ≃.ε q-u _) (g x))
           (happly (ap (from q-u) (Univ≃.η q-u _)) (g x))
           (ap (λ p → happly p (f x)) (sym (Univ≃.coherent p-u (a .Coconeᵘ.p))))
-          (ap (λ p → happly p (g x)) (sym (Univ≃.coherent q-u (a .Coconeᵘ.q)))) 
+          (ap (λ p → happly p (g x)) (sym (Univ≃.coherent q-u (a .Coconeᵘ.q))))
 
   iso .snd .snd cc = Cocone-path→ _ cc (Univ≃.ε auto! _) (Univ≃.ε auto! _)
    λ a → ((happly (Univ≃.ε auto! p) (f a)
@@ -112,4 +112,3 @@ instance
   Universal-Po .Universal.from = pushout-rec ∘ Cocone←universal _
   Universal-Po {f = f} {g = g} {Q} .Universal.from-is-equiv
     = is-equiv-∘ pushout-rec-is-equiv (Cocone←universal-is-equiv Q)
-    

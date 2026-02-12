@@ -28,7 +28,7 @@ postulate
 postulate
   Float : Type
 
-{-# BUILTIN FLOAT Float #-}
+{-# BUILTIN FLOAT Float #-}
 
 postulate
   Char : Type
@@ -36,13 +36,13 @@ postulate
 {-# BUILTIN CHAR Char #-}
 
 
-infixr 5 _∷_ 
+infixr 5 _∷_
 
 data List {𝓤} (A : Type 𝓤) : Type 𝓤 where
   [] : List A
   _∷_ : A → List A → List A
 
-{-# BUILTIN LIST List #-}
+{-# BUILTIN LIST List #-}
 
 List-map :  ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
             → (f : A → B)

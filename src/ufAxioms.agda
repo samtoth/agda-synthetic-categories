@@ -77,7 +77,7 @@ postulate
 
 open WithGlobalUnivalence UA public
 
-{-# REWRITE ua-linv #-}
+{-# REWRITE ua-linv #-}
 
 import Foundations.Straightening
 
@@ -139,7 +139,7 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
   pushout-indβ2 {c = c} x = primEraseEquality eq where
     postulate eq : pushout-ind _ _ (ι₂ x) ＝ c .CoconeD.q x
 
-  {-# REWRITE pushout-indβ1 pushout-indβ2 #-}
+  {-# REWRITE pushout-indβ1 pushout-indβ2 #-}
 
   pushout-ind-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
                       {c : CoconeD (mk-span _ f g) pushout Q} →
@@ -164,7 +164,7 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
                     → ∀ x → pushout-rec c (ι₂ x) ＝ c .Cocone.q x
     pushout-recβ2 _ = refl
 
-  {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
+  {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
 
   opaque
     unfolding pushout-rec

@@ -29,7 +29,7 @@ def get_forester_json() -> list:
     """Run `forester query all` and parse JSON output."""
     try:
         result = subprocess.run(
-            ["forester", "query", "all", "proxy.toml"],
+            ["forester", "query", "all"],
             capture_output=True,
             text=True,
             check=True
@@ -69,7 +69,7 @@ def find_next_tree(prefix, all_trees: list, gap: int) -> int:
     stt_numbers.sort()
     # Find the first gap that is at least `gap` long
     i = 0
-    while i < len(stt_numbers) and (stt_numbers[i+1] - stt_numbers[i] < gap):
+    while i + 1 < len(stt_numbers) and (stt_numbers[i+1] - stt_numbers[i] < gap):
         i += 1
 
     next_val = stt_numbers[i-1] + 2

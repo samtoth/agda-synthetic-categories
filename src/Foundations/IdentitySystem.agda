@@ -158,7 +158,7 @@ remove-singleton-structure
       {Ra : A → Type 𝓦}
     → is-singleton  (Σ A Ra)
     → ((a , _) : Σ A Ra)
-    → (Σ[ (a , _) ∶ Σ A B ] Ra a) ≃ B a
+    → (Σ[ (a , b) ∶ Σ A B ] Ra a) ≃ B a
 remove-singleton-structure ars a
   = Σ-assoc
   ∙≃ Σ-ap-≃ (λ _ → ×-swap)

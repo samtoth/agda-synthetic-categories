@@ -1,0 +1,149 @@
+\title{Yoneda}
+\date{2026-02-10}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Yoneda
+        {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import ufAxioms
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
+open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+}
+%```
+
+
+%```agda
+\agda{
+is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
+is-initial a = ∀ b → is-singleton (Hom _ a b)
+
+ev-init-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+    → is-covariant P
+    → is-initial a
+    → is-equiv (ev {B = P} a)
+ev-init-is-equiv {a = a} Pc ai = is-equiv←qiso
+  ( (λ x' a' → tr-cov-hom Pc (ai a' .centre) x')
+  , (λ x' → funext→ λ a' → ap fst (is-covariant-hom←is-covariant _ Pc
+                                    (ai a' .centre) (x' a) .central
+                                    (x' a' , ap-hom-over x' (ai a' .centre))))
+  , λ a' → ap fst (is-covariant-hom←is-covariant _ Pc (ai a .centre) a' .central
+             (a' ,  tr (λ p → Hom-over p a' a') (sym (ai a .central (idH a)))
+                       (idH _))))
+
+opaque
+  rec-init
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+      → is-covariant P
+      → is-initial a
+      → P a → ∀ x → P x
+  rec-init Pc ai p0 = is-equiv.bwd (ev-init-is-equiv Pc ai) p0
+
+  rec-init-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+        (Pc : is-covariant P)
+        (ai : is-initial a)
+      → (p : P a) → rec-init Pc ai p a ＝ p
+  rec-init-β {a = a} Pc ai p = is-equiv.ε (ev-init-is-equiv Pc ai) p
+
+
+YonedaJ
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a}
+      (P : (x : A) → Hom _ a x → Type 𝓥)
+    → is-covariant (uncurry P)
+    → (init : is-initial {A = Σ A (Hom _ a)} (a , idH a))
+    → P a (idH a)
+    → ∀ x (f : Hom _ a x) → P x f
+YonedaJ P cov init p x f = rec-init {P = uncurry P} cov init p (x , f)
+
+YonedaJ-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a}
+      (P : (x : A) → Hom _ a x → Type 𝓥)
+      (Pc : is-covariant (uncurry P))
+      (init : is-initial {A = Σ A (Hom _ a)} (a , idH a))
+    → (p0 : P a (idH a))
+    → YonedaJ P Pc init p0 a (idH a) ＝ p0
+YonedaJ-id P = rec-init-β
+
+swap-cov-hom
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (f : Δ¹ → A) → (g : Hom _ (f i0) (f i1))
+  → HomP (Hom _ (f i0) ∘ f) (idH (f i0)) g
+  → Hom-over {B = Hom _ (f i0)} g (idH (f i0)) (λhom f)
+swap-cov-hom f g H .HomP.hom i .HomP.hom j = H .HomP.hom j .HomP.hom i
+swap-cov-hom f g H .HomP.hom i .HomP.hom0 = happly (ap HomP.hom (H .HomP.hom0)) i
+swap-cov-hom f g H .HomP.hom i .HomP.hom1 = happly (ap HomP.hom (H .HomP.hom1)) i
+swap-cov-hom f g H .HomP.hom0
+  = Hom-ext→ ((λ a → {!!}) , {!!})
+swap-cov-hom f g H .HomP.hom1 = {!!}
+
+-- .HomP.hom j = H .HomP.hom j .HomP.hom i
+-- swap-cov-hom f g H .HomP.hom i .HomP.hom0 =  happly (ap HomP.hom (H .HomP.hom0 ∙ {!!})) i
+-- swap-cov-hom f g H .HomP.hom i .HomP.hom1
+--   =  ap (λ x → HomP.hom x i) (HomP.hom1 H)
+-- swap-cov-hom f (mk-hom g refl p) H .HomP.hom0
+--   = Hom-ext→ ((λ j → H .HomP.hom j .HomP.hom0) , (∙-reflr _ ∙ {!!}) , {!!})
+-- swap-cov-hom f g H .HomP.hom1
+--   = {!!}
+
+
+-- swap-cov-hom-is-equiv
+--   : ∀ {𝓤} {A : Type 𝓤} a {b}
+--   → (f : Hom A a b) → (g : Hom _ a b)
+--   → is-equiv (swap-cov-hom a f g)
+-- swap-cov-hom-is-equiv a f g = is-equiv←qiso
+--   (swap-cov-hom a g f
+--   , (λ a₁ → {!Hom-extP→!})
+--   , {!!})
+
+coslice-init
+  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) a
+    → is-initial {A = Σ A (Hom _ a)} (a , idH a)
+coslice-init As Asi a (b , f) = is-single←equiv-to-single
+  (Σ-ap-≃ (λ g → mk≃ _ {!!}) ∙≃ Hom-Σ≃ e⁻¹)
+  (is-covariant-hom←is-covariant
+    (Hom _ a)
+    (hom-fam-is-cov⇔is-precategory Asi .fst As a)
+    f
+    (idH a))
+
+precat-idr : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) {x y}
+             → (f : Hom A x y) → (f ∘[ As ] idH _) ＝ f
+precat-idr As f = sym (unique-composite As f (idH _)
+  f
+  (refl~▵ f))
+
+precat-idl : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) {x y}
+              → (f : Hom A x y) → idH _ ∘[ As ] f ＝ f
+precat-idl As {x} {y} = YonedaJ
+  (λ _ f → idH _ ∘[ As ] f ＝ f)
+  {!!}
+  (coslice-init As {!!} x)
+  (precat-idr As (idH x)) y
+
+precat-assoc
+  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A)
+      {x y z w} (f : Hom _ z w) (g : Hom _ y z) (h : Hom _ x y)
+    → (f ∘[ As ] g) ∘[ As ] h ＝ (f ∘[ As ] (g ∘[ As ] h))
+precat-assoc As {z = z}{w} f g h = YonedaJ
+  (λ _ f → (f ∘[ As ] g) ∘[ As ] h ＝ f ∘[ As ] (g ∘[ As ] h))
+  {!!}
+  (coslice-init As {!!} z)
+  (ap (_∘[ As ] h) (precat-idl As g) ∙ sym (precat-idl As (g ∘[ As ] h))) w f
+}
+%```

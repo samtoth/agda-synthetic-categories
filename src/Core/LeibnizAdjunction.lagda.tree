@@ -1,0 +1,371 @@
+\title{Leibniz Adjunction}
+\taxon{Module}
+\date{2026-02-18}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.LeibnizAdjunction where
+
+open import ufAxioms
+
+open import Foundations.Prelude
+open import Foundations.TypeFamilies
+
+open import Core.Join
+open import Core.CanonicalPushouts
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree{
+\taxon{Definition}
+\title{Constant Families and Paths}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  where
+
+  fam-Const : (A → B) → B → Type (𝓤1 ⊔ 𝓤2)
+  fam-Const f b = (a : A) → f a ＝ b
+
+  Const : (A → B) → Type (𝓤1 ⊔ 𝓤2)
+  Const f = Σ[ b ∶ B ] (fam-Const f b)
+
+  Const-path-coe-fam-Const
+    : {f : A → B}
+      {c l : B}
+      (h : fam-Const f c)
+      (t : c ＝ l)
+    → (λ a → h a ∙ t) ＝ coe (ap (fam-Const f) t) h
+  Const-path-coe-fam-Const h refl = funext→ (λ a → ∙-reflr (h a))
+
+  Const-path-IdP≃pointwise
+    : {f : A → B}
+      {c l : B}
+      (h : fam-Const f c)
+      (r : fam-Const f l)
+      (t : c ＝ l)
+    → IdP (ap (fam-Const f) t) h r ≃ ((a : A) → h a ∙ t ＝ r a)
+  Const-path-IdP≃pointwise {f = f} h r t
+    = IdP (ap (fam-Const f) t) h r ≃⟨ ＝-postcomp-≃ (Const-path-coe-fam-Const h t) ⟩
+      ((λ a → h a ∙ t) ＝ r)       ≃⟨ funext≃ ⟩
+      ((a : A) → h a ∙ t ＝ r a)   ≃∎
+
+  Const-path≃
+    : {f : A → B}
+      {c l : B}
+      (h : f ~ const B A c)
+      (r : f ~ const B A l)
+    → ((c , h) ＝ (l , r))
+    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+  Const-path≃ {f = f} {c} {l} h r
+    = ((c , h) ＝ (l , r))                           ≃⟨ Σ-path e⁻¹ ⟩
+      (Σ[ t ∶ c ＝ l ] IdP (ap (fam-Const f) t) h r) ≃⟨ Σ-ap-≃ (Const-path-IdP≃pointwise h r) ⟩
+      (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))   ≃∎
+}
+%```
+}
+
+\subtree{
+\taxon{Definition}
+\title{The dependent cotensor and dependent pushout-sum families}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  where
+
+  homᵈᶠ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  homᵈᶠ = Σ ((a : A) → X a) (λ i → (a : A) → B a → Y a (i a))
+
+  base-Π̂ᶠ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  base-Π̂ᶠ = homᵈᶠ
+
+  fam-Π̂ᶠ : base-Π̂ᶠ → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  fam-Π̂ᶠ (i , j)
+    = Σ ((a : A) → Y a (i a))
+        (λ y → (a : A) → j a ~ const _ _ (y a))
+
+  Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Π̂ᶠ = base-Π̂ᶠ , fam-Π̂ᶠ
+
+  base-Σ̂ᶠ : Type (𝓤1 ⊔ 𝓤3)
+  base-Σ̂ᶠ = Σ A X
+
+  fam-Σ̂ᶠ : base-Σ̂ᶠ → Type (𝓤2 ⊔ 𝓤4)
+  fam-Σ̂ᶠ (a , x) = B a * Y a x
+
+  Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
+  Σ̂ᶠ = base-Σ̂ᶠ , fam-Σ̂ᶠ
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  where
+
+  Σ̂ᵈᶠ : DepFam 𝓤5 𝓤6 (Σ̂ᶠ F G)
+  Σ̂ᵈᶠ
+    = (λ (a , x) → U a x)
+    , (λ (a , x) → V a x)
+
+  Π̂ᵈᶠ : DepFam (𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6) (𝓤3 ⊔ 𝓤4 ⊔ 𝓤6) F
+  Π̂ᵈᶠ
+    = ( λ a → Σ ((x : X a) → U a x) (λ i → (x : X a) → Y a x → V a x (i x)))
+    , ( λ a ij@(i , j) → (x : X a) → Const (j x))
+
+  Π̂Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂Σ̂ᶠ = Π̂ᶠ (Σ̂ᶠ F G) Σ̂ᵈᶠ
+
+  Π̂ᶠ² : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂ᶠ² = Π̂ᶠ F Π̂ᵈᶠ
+}
+%```
+}
+
+\subtree{
+\taxon{Theorem}
+\title{The dependent Leibniz adjunction}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  (let ΠΣ = Π̂Σ̂ᶠ F G H)
+  (let Π² = Π̂ᶠ² F G H)
+  where
+
+  Π̂ᶠ²←Π̂Σ̂ᶠ-base : fst ΠΣ → fst Π²
+  Π̂ᶠ²←Π̂Σ̂ᶠ-base (f , p) .fst a .fst x = f (a , x)
+  Π̂ᶠ²←Π̂Σ̂ᶠ-base (f , p) .fst a .snd x y = p (a , x) (ι₂ y)
+  Π̂ᶠ²←Π̂Σ̂ᶠ-base (f , p) .snd a b x .fst = p (a , x) (ι₁ b)
+  Π̂ᶠ²←Π̂Σ̂ᶠ-base (f , p) .snd a b x .snd y = ap (p (a , x)) (sym (glue (b , y)))
+
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base : fst Π² → fst ΠΣ
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base (f , p) .fst (a , x) = f a .fst x
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base (f , p) .snd (a , x)
+    = pushout-rec
+        (mk-cocone
+          (λ b → p a b x .fst)
+          (λ y → f a .snd x y)
+          (λ (b , y) → sym (p a b x .snd y)))
+
+  dLeibniz-base-section-cocone
+    : (fp : fst ΠΣ)
+    → (ax : Σ A X)
+    → Cocone (mk-span _ fst snd) (V (ax .fst) (ax .snd) (fp .fst ax))
+  dLeibniz-base-section-cocone (f , p) ax
+    = mk-cocone
+        (λ b → p ax (ι₁ b))
+        (λ y → p ax (ι₂ y))
+        (λ (b , y) → sym (ap (p ax) (sym (glue (b , y)))))
+
+  dLeibniz-base-section-coherence
+    : (fp : fst ΠΣ)
+    → (ax : Σ A X)
+    → fp .snd ax ◂ glue ~∙ ~refl ▸ snd
+    ~ ~refl ▸ fst ~∙ (dLeibniz-base-section-cocone fp ax) .Cocone.filler
+  dLeibniz-base-section-coherence (f , p) ax (b , y)
+    = ∙-reflr _
+    ∙ sym (ap sym (ap-sym (p ax) (glue (b , y))) ∙ sym-sym)
+    ∙ sym (∙-refll _)
+
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-retraction
+    : (fp : fst ΠΣ) → Π̂Σ̂ᶠ←Π̂ᶠ²-base (Π̂ᶠ²←Π̂Σ̂ᶠ-base fp) ＝ fp
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-retraction (f , p)
+    = Σ-path→ (refl , funext→ λ ax
+              → funext→ λ j
+              → (pushout-rec-unique (dLeibniz-base-section-cocone (f , p) ax) (p ax)
+                  ~refl
+                  ~refl
+                  (dLeibniz-base-section-coherence (f , p) ax) ~⁻¹) j)
+
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section-glue
+    : (fq : fst Π²)
+    → (a : A) (b : B a) (x : X a) (y : Y a x)
+    → ap (Π̂Σ̂ᶠ←Π̂ᶠ²-base fq .snd (a , x)) (sym (glue (b , y)))
+    ＝ fq .snd a b x .snd y
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section-glue (f , p) a b x y
+    = ap-sym (Π̂Σ̂ᶠ←Π̂ᶠ²-base (f , p) .snd (a , x)) (glue (b , y))
+    ∙ ap sym (pushout-rec-apβ (b , y))
+    ∙ sym-sym
+
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section
+    : (fq : fst Π²) → Π̂ᶠ²←Π̂Σ̂ᶠ-base (Π̂Σ̂ᶠ←Π̂ᶠ²-base fq) ＝ fq
+  Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section (f , p)
+    = Σ-path→
+        ( refl
+        , funext→ λ a → funext→ λ b → funext→ λ x
+        → Σ-path→ (refl
+                  , funext→ (Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section-glue (f , p) a b x)))
+
+  dLeibniz-base≅ : fst ΠΣ ≅ fst Π²
+  dLeibniz-base≅ ._≅_.fwd = Π̂ᶠ²←Π̂Σ̂ᶠ-base
+  dLeibniz-base≅ ._≅_.fwd-iso .fst = Π̂Σ̂ᶠ←Π̂ᶠ²-base
+  dLeibniz-base≅ ._≅_.fwd-iso .snd .fst = Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-retraction
+  dLeibniz-base≅ ._≅_.fwd-iso .snd .snd = Π̂Σ̂ᶠ←Π̂ᶠ²-base-is-section
+
+  dLeibniz-base≃ : fst ΠΣ ≃ fst Π²
+  dLeibniz-base≃ = equiv←qiso dLeibniz-base≅
+
+  dLeibniz-family-const-at-curry
+    : (fp : fst ΠΣ)
+    → (a : A)
+    → B a
+    → (x : X a)
+    → Const (fp .snd (a , x) ∘ ι₂)
+  dLeibniz-family-const-at-curry (f , p) a b x .fst
+    = p (a , x) (ι₁ b)
+  dLeibniz-family-const-at-curry (f , p) a b x .snd y
+    = ap (p (a , x)) (sym (glue (b , y)))
+
+  dLeibniz-family-const-at-uncurry
+    : (fp : fst ΠΣ)
+    → (ax : Σ A X)
+    → B (ax .fst)
+    → Const (fp .snd ax ∘ ι₂)
+  dLeibniz-family-const-at-uncurry fp (a , x) b
+    = dLeibniz-family-const-at-curry fp a b x
+
+  dLeibniz-family-cod-uncurry
+    : (fp : fst ΠΣ)
+    → (ax : Σ A X)
+    → B (ax .fst) * Y (ax .fst) (ax .snd)
+    → V (ax .fst) (ax .snd) (fp .fst ax)
+  dLeibniz-family-cod-uncurry fp ax = fp .snd ax
+
+  dLeibniz-family-cod-uncurry-sym
+    : (fp : fst ΠΣ) (a : A) (x : X a) (b : B a) (y : Y a x)
+    → dLeibniz-family-cod-uncurry fp (a , x) (ι₂ y)
+    ＝ dLeibniz-family-cod-uncurry fp (a , x) (ι₁ b)
+  dLeibniz-family-cod-uncurry-sym fp a x b y
+    = ap (dLeibniz-family-cod-uncurry fp (a , x)) (sym (glue (b , y)))
+
+  module _
+    (fp : fst ΠΣ) (a : A) (x : X a) (l : V a x (fp .fst (a , x)))
+    where
+
+
+    dLeibniz-family-cod : B a * Y a x → Type 𝓤6
+    dLeibniz-family-cod j
+      = dLeibniz-family-cod-uncurry fp (a , x) j ＝ l
+
+    dLeibniz-family-cod-inner-over≃
+      : (r : (y : Y a x) → dLeibniz-family-cod (ι₂ y))
+      → (b : B a)
+      → (Σ[ t ∶ dLeibniz-family-cod (ι₁ b) ]
+          ((y : Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) t (r y)))
+      ≃ (dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r))
+    dLeibniz-family-cod-inner-over≃ r b
+      = (Σ[ t ∶ dLeibniz-family-cod (ι₁ b) ]
+          ((y : Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) t (r y))) ≃⟨ Σ-ap-≃ (λ t → Π-ap-≃ (λ y → IdP-const-≃ (dLeibniz-family-cod-uncurry fp (a , x)) (glue (b , y)) t (r y))) ⟩
+        (Σ[ t ∶ dLeibniz-family-cod (ι₁ b) ]
+          ((y : Y a x) → dLeibniz-family-cod-uncurry-sym fp a x b y ∙ t ＝ r y)) ≃⟨ Const-path≃ {f = dLeibniz-family-cod-uncurry fp (a , x) ∘ ι₂} (dLeibniz-family-cod-uncurry-sym fp a x b) r e⁻¹ ⟩
+        (dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r))               ≃∎
+
+    dLeibniz-family-cod-inner≃
+      : (r : (y : Y a x) → dLeibniz-family-cod (ι₂ y))
+      → (Σ[ t ∶ ((b : B a) → dLeibniz-family-cod (ι₁ b)) ]
+          (((b , y) : B a × Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) (t b) (r y)))
+      ≃ ((b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r))
+    dLeibniz-family-cod-inner≃ r
+      = (Σ[ t ∶ ((b : B a) → dLeibniz-family-cod (ι₁ b)) ]
+          (((b , y) : B a × Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) (t b) (r y))) ≃⟨ Σ-ap-≃ (λ t → curry≃) ⟩
+        (Σ[ t ∶ ((b : B a) → dLeibniz-family-cod (ι₁ b)) ]
+          ((b : B a) (y : Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) (t b) (r y)))   ≃⟨ Σ-Π-swap≃ (λ b → dLeibniz-family-cod (ι₁ b))
+                                                                                                              (λ b t → (y : Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) t (r y))
+                                                                                                              e⁻¹ ⟩
+        ((b : B a)
+          → Σ[ t ∶ dLeibniz-family-cod (ι₁ b) ]
+            ((y : Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) t (r y)))               ≃⟨ Π-ap-≃ (dLeibniz-family-cod-inner-over≃ r) ⟩
+        ((b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r))                   ≃∎
+
+    dLeibniz-family-cod-main≃
+      : (((j : B a * Y a x) → dLeibniz-family-cod-uncurry fp (a , x) j ＝ l))
+      ≃ (Σ[ r ∶ ((y : Y a x) → dLeibniz-family-cod-uncurry fp (a , x) (ι₂ y) ＝ l) ]
+          ((b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r)))
+    dLeibniz-family-cod-main≃
+      = (((j : B a * Y a x) → dLeibniz-family-cod-uncurry fp (a , x) j ＝ l))                      ≃⟨ Pushout-UPᵈ≃ e⁻¹ ⟩
+        CoconeD (mk-span _ fst snd) pushout (dLeibniz-family-cod)                                  ≃⟨ coconeD-repr≃ ⟩
+        (Σ[ t ∶ ((b : B a) → dLeibniz-family-cod (ι₁ b)) ]
+          Σ[ r ∶ ((y : Y a x) → dLeibniz-family-cod (ι₂ y)) ]
+            (((b , y) : B a × Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) (t b) (r y))) ≃⟨ Σ-comm ⟩
+        (Σ[ r ∶ ((y : Y a x) → dLeibniz-family-cod (ι₂ y)) ]
+          Σ[ t ∶ ((b : B a) → dLeibniz-family-cod (ι₁ b)) ]
+            (((b , y) : B a × Y a x) → IdP (ap (dLeibniz-family-cod) (glue (b , y))) (t b) (r y))) ≃⟨ Σ-ap-≃ dLeibniz-family-cod-inner≃ ⟩
+        (Σ[ r ∶ ((y : Y a x) → dLeibniz-family-cod (ι₂ y)) ]
+        ((b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r)))                    ≃∎
+
+  dLeibniz-family-cod-Const≃
+    : (fp : fst ΠΣ)
+    → (ax : Σ A X)
+    → Const (fp .snd ax) ≃ Const (dLeibniz-family-const-at-uncurry fp ax)
+  dLeibniz-family-cod-Const≃ fp (a , x)
+    = Const (fp .snd (a , x))                                                        ≃⟨ Σ-ap-≃ (dLeibniz-family-cod-main≃ fp a x) ⟩
+      (Σ[ l ∶ V a x (fp .fst (a , x)) ]
+        Σ[ r ∶ ((y : Y a x) → fp .snd (a , x) (ι₂ y) ＝ l) ]
+          ((b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ (l , r)))    ≃⟨ Σ-assoc e⁻¹ ⟩
+      Const (dLeibniz-family-const-at-uncurry fp (a , x))                            ≃∎
+
+  dLeibniz-family-currying-swap-arguments≃
+    : (fp : fst ΠΣ)
+    → (a : A)
+    → (m : (x : X a) → Const (fp .snd (a , x) ∘ ι₂))
+    → (((x : X a) (b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ m x))
+    ≃ (((b : B a) → dLeibniz-family-const-at-curry fp a b ＝ m))
+  dLeibniz-family-currying-swap-arguments≃ fp a m
+    = (((x : X a) (b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ m x)) ≃⟨ flip≃ ⟩
+      ((b : B a) (x : X a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ m x)   ≃⟨ Π-ap-≃ (λ b → funext≃ e⁻¹) ⟩
+      ((b : B a) → dLeibniz-family-const-at-curry fp a b ＝ m)                       ≃∎
+
+  dLeibniz-family-currying-at≃
+    : (fp : fst ΠΣ)
+    → (a : A)
+    → ((x : X a) → Const (dLeibniz-family-const-at-uncurry fp (a , x)))
+    ≃ Const (dLeibniz-family-const-at-curry fp a)
+  dLeibniz-family-currying-at≃ fp a
+    = ((x : X a) → Const (dLeibniz-family-const-at-uncurry fp (a , x)))              ≃⟨ Σ-Π-swap≃ _ _ ⟩
+      (Σ[ g ∶ ((x : X a) → Const (fp .snd (a , x) ∘ ι₂)) ]
+        ((x : X a) (b : B a) → dLeibniz-family-const-at-uncurry fp (a , x) b ＝ g x)) ≃⟨ Σ-ap-≃ (dLeibniz-family-currying-swap-arguments≃ fp a) ⟩
+      Const (dLeibniz-family-const-at-curry fp a)                                    ≃∎
+
+  dLeibniz-family-currying≃
+    : (fp : fst ΠΣ)
+    → ((ax : Σ A X) → Const (dLeibniz-family-const-at-uncurry fp ax))
+    ≃ ((a : A) → Const (dLeibniz-family-const-at-curry fp a))
+  dLeibniz-family-currying≃ fp
+    = ((ax : Σ A X) → Const (dLeibniz-family-const-at-uncurry fp ax))           ≃⟨ curry≃ ⟩
+      ((a : A) (x : X a) → Const (dLeibniz-family-const-at-uncurry fp (a , x))) ≃⟨ Π-ap-≃ (dLeibniz-family-currying-at≃ fp) ⟩
+      ((a : A) → Const (dLeibniz-family-const-at-curry fp a))                   ≃∎
+
+  dLeibniz-family≃
+    : (fp : fst ΠΣ)
+    → snd ΠΣ fp ≃ snd Π² (Π̂ᶠ²←Π̂Σ̂ᶠ-base fp)
+  dLeibniz-family≃ fp
+    = snd ΠΣ fp                                                       ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
+      ((ax : Σ A X) → Const (fp .snd ax))                             ≃⟨ Π-ap-≃ (dLeibniz-family-cod-Const≃ fp) ⟩
+      ((ax : Σ A X) → Const (dLeibniz-family-const-at-uncurry fp ax)) ≃⟨ dLeibniz-family-currying≃ fp ⟩
+      ((a : A) → Const (dLeibniz-family-const-at-curry fp a))         ≃⟨ Σ-Π-swap≃ _ _ ⟩
+      snd Π² (Π̂ᶠ²←Π̂Σ̂ᶠ-base fp)                                        ≃∎
+
+  dep-leibniz≃ : equiv-Fam ΠΣ Π²
+  dep-leibniz≃ = dLeibniz-base≃ , dLeibniz-family≃
+}
+%```
+}

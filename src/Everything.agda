@@ -112,8 +112,10 @@ open import Foundations.Unit
 open import Foundations.UnitUP
 open import Foundations.Univalence
 open import Foundations.Universes
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.CrispLifts
+open import Modalities.Cohesion.Flat
 open import Modalities.Factorisation
-open import Modalities.Flat.Flat
 open import Modalities.GlobalSubuniverses
 open import Modalities.HigherModality
 open import Modalities.Instances.Localisation

@@ -55,8 +55,15 @@ module _
   Fam→DepFam : DepFam 𝓤3 𝓤4 F
   Fam→DepFam = ((λ _ → X) , (λ _ x → Y x))
 
-  Fam→Dep²Fam : {𝓤5 𝓤6 : Level} (H : Fam 𝓤5 𝓤6) → Dep²Fam 𝓤5 𝓤6 F Fam→DepFam
+  Fam→Dep²Fam : {𝓤5 𝓤6 : Level}
+              → Fam 𝓤5 𝓤6
+              → Dep²Fam 𝓤5 𝓤6 F Fam→DepFam
   Fam→Dep²Fam (U , V) = ((λ _ _ → U) , (λ _ _ u → V u))
+
+  DepFam→Dep²Fam : {𝓤5 𝓤6 : Level}
+                 → DepFam 𝓤5 𝓤6 G
+                 → Dep²Fam 𝓤5 𝓤6 F Fam→DepFam
+  DepFam→Dep²Fam (U , V) = ((λ _ x → U x) , (λ _ x u → V x u))
 }
 %```
 }
@@ -73,8 +80,92 @@ module _
   (G@(X , Y) : Fam 𝓤3 𝓤4)
   where
 
-  equiv-Fam : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
-  equiv-Fam = Σ (A ≃ X) (λ e → (a : A) → B a ≃ Y (e ._≃_.fwd a))
+  infix 7 _≃ᶠ_
+  _≃ᶠ_ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  _≃ᶠ_ = Σ (A ≃ X) (λ e → (a : A) → B a ≃ Y (e ._≃_.fwd a))
+}
+%```
+}
+
+\subtree{
+\title{Identity and composition of equivalences of type families}
+\taxon{Definition}
+
+%```agda
+\agda{
+id≃ᶠ
+  : ∀ {𝓤1 𝓤2} (F : Fam 𝓤1 𝓤2) → F ≃ᶠ F
+id≃ᶠ (A , B) = idequiv , (λ _ → idequiv)
+
+infixl 15 _∙≃ᶠ_
+
+_∙≃ᶠ_
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6}
+      {F : Fam 𝓤1 𝓤2}
+      {G : Fam 𝓤3 𝓤4}
+      {H : Fam 𝓤5 𝓤6}
+    → F ≃ᶠ G
+    → G ≃ᶠ H
+    → F ≃ᶠ H
+(e , ef) ∙≃ᶠ (e' , eg)
+  = e ∙≃ e'
+  , (λ a → ef a ∙≃ eg (e ._≃_.fwd a))
+
+}
+%```
+}
+
+\subtree{
+\title{Equivalences of dependent type families over a fixed base}
+\taxon{Definition}
+
+%```agda
+\agda{
+≃ᵈᶠ-over
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6}
+      (F@(A , B) : Fam 𝓤1 𝓤2)
+      (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+      (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+    → Type (𝓤1 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+≃ᵈᶠ-over F (X , Y) (U , V) = (a : fst F) → (X a , Y a) ≃ᶠ (U a , V a)
+
+syntax ≃ᵈᶠ-over F G H = G ≃ᵈᶠ⟦ F ⟧ H
+}
+%```
+}
+
+\subtree{
+\title{Identity and composition of dependent family equivalences}
+\taxon{Definition}
+
+%```agda
+\agda{
+id≃ᵈᶠ
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4}
+      (F : Fam 𝓤1 𝓤2)
+      (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+    → G ≃ᵈᶠ⟦ F ⟧ G
+id≃ᵈᶠ F (X , Y) a = id≃ᶠ (X a , Y a)
+
+infixl 14 _∙≃ᵈᶠ_
+
+_∙≃ᵈᶠ_
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 𝓤7 𝓤8}
+      {F : Fam 𝓤1 𝓤2}
+      {G : DepFam 𝓤3 𝓤4 F}
+      {H : DepFam 𝓤5 𝓤6 F}
+      {K : DepFam 𝓤7 𝓤8 F}
+    → G ≃ᵈᶠ⟦ F ⟧ H
+    → H ≃ᵈᶠ⟦ F ⟧ K
+    → G ≃ᵈᶠ⟦ F ⟧ K
+_∙≃ᵈᶠ_ {F = F} {G = (X , Y)} {H = (U , V)} {K = (P , Q)} e e'
+  = λ a
+  → _∙≃ᶠ_
+      {F = (X a , Y a)}
+      {G = (U a , V a)}
+      {H = (P a , Q a)}
+      (e a)
+      (e' a)
 }
 %```
 }

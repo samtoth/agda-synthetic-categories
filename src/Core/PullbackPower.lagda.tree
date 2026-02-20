@@ -10,14 +10,15 @@
 module Core.PullbackPower where
 
 open import Foundations.Prelude
+open import Foundations.TypeFamilies
 open import ufAxioms
 
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.Lifts
 open import Ergonomics.Extensionality
 }
 %```
-
 
 \subtree[stt-004D]{
 \title{Pullback power}
@@ -44,6 +45,7 @@ gives rise to a square for which it is trivially a lifting.}
 module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
          {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
          (f' : C → D) where
+
   pullback-power : (B → C) → Arrow-map f f'
   pullback-power l .Arrow-map.top = l ∘ f
   pullback-power l .Arrow-map.bot = f' ∘ l
@@ -182,6 +184,252 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
                                        (pullback-power f g l) G) ⟩
       (Σ[ l ∶ (B → C)] _) ≃⟨ Lift-repr≃ G e⁻¹ ⟩
       Lift G ≃∎
+}
+%```
+}
+
+\subtree{
+\taxon{Definition}
+\title{The \code{Const} Family}
+
+\p{
+Given a map #{f : A → B}, we consider a type of \em{constancies} of #{f},
+#{Σ (b : B), ((a : A) → f\,a = b)}.
+
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  where
+
+  fam-Const : (A → B) → B → Type (𝓤1 ⊔ 𝓤2)
+  fam-Const f b = (a : A) → f a ＝ b
+
+  Const : (A → B) → Type (𝓤1 ⊔ 𝓤2)
+  Const f = Σ[ b ∶ B ] (fam-Const f b)
+
+  Const-path-coe-fam-Const
+    : {f : A → B}
+      {c l : B}
+      (h : fam-Const f c)
+      (t : c ＝ l)
+    → (λ a → h a ∙ t) ＝ coe (ap (fam-Const f) t) h
+  Const-path-coe-fam-Const h refl = funext→ (λ a → ∙-reflr (h a))
+
+  Const-path-IdP≃pointwise
+    : {f : A → B}
+      {c l : B}
+      (h : fam-Const f c)
+      (r : fam-Const f l)
+      (t : c ＝ l)
+    → IdP (ap (fam-Const f) t) h r ≃ ((a : A) → h a ∙ t ＝ r a)
+  Const-path-IdP≃pointwise {f = f} h r t
+    = IdP (ap (fam-Const f) t) h r ≃⟨ ＝-postcomp-≃ (Const-path-coe-fam-Const h t) ⟩
+      ((λ a → h a ∙ t) ＝ r)       ≃⟨ funext≃ ⟩
+      ((a : A) → h a ∙ t ＝ r a)   ≃∎
+
+  Const-path≃
+    : {f : A → B}
+      {c l : B}
+      (h : f ~ const B A c)
+      (r : f ~ const B A l)
+    → ((c , h) ＝ (l , r))
+    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+  Const-path≃ {f = f} {c} {l} h r
+    = ((c , h) ＝ (l , r))                           ≃⟨ Σ-path e⁻¹ ⟩
+      (Σ[ t ∶ c ＝ l ] IdP (ap (fam-Const f) t) h r) ≃⟨ Σ-ap-≃ (Const-path-IdP≃pointwise h r) ⟩
+      (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))   ≃∎
+}
+%```
+}
+
+\subtree{
+\taxon{Definition}
+\title{Dependent pullback-exponential families}
+
+Given a type family #{B : A → 𝒰} and a dependent type family over #{B},
+#{Y : (a : A) → X\,a → 𝒱}, then we define the
+\em{dependent pullback-exponential family} #{Π̂_B Y} to be the family
+
+##{Π̂_B Y \coloneqq ((i , j) : Σ (i : (a : A) → X\,a), ((a : A) → B\,a → Y\,a\,(i\,a))) ↦ Σ (y : (a : A) → Y\,a\,(i\,a)), ((a : A) → j\,a ∼ \const(y\,a))}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  where
+
+  homᵈᶠ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  homᵈᶠ = Σ ((a : A) → X a) (λ i → (a : A) → B a → Y a (i a))
+
+  base-Π̂ᶠ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  base-Π̂ᶠ = homᵈᶠ
+
+  fam-Π̂ᶠ : base-Π̂ᶠ → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  fam-Π̂ᶠ (i , j)
+    = Σ ((a : A) → Y a (i a))
+        (λ y → (a : A) → j a ~ const _ _ (y a))
+
+  Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Π̂ᶠ = base-Π̂ᶠ , fam-Π̂ᶠ
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (f : Arr 𝓤1 𝓤2)
+  (G : (b : Arr.cod f) → Arr 𝓤3 𝓤4)
+  where
+
+  fibre-famᶠ : Fam 𝓤2 (𝓤1 ⊔ 𝓤2)
+  fibre-famᶠ = Arr.cod f , fibre (Arr.f f)
+
+  fibre-arrowsᵈᶠ : DepFam 𝓤4 (𝓤3 ⊔ 𝓤4) fibre-famᶠ
+  fibre-arrowsᵈᶠ
+    = (λ b → Arr.cod (G b))
+    , (λ b y → fibre (Arr.f (G b)) y)
+
+  Π̂ᶠ-fibre
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+          (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂ᶠ-fibre = Π̂ᶠ fibre-famᶠ fibre-arrowsᵈᶠ
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  where
+
+  Π̂ᵈᶠ : DepFam (𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6) (𝓤3 ⊔ 𝓤4 ⊔ 𝓤6) F
+  Π̂ᵈᶠ
+    = (λ a → Σ ((x : X a) → U a x) (λ i → (x : X a) → Y a x → V a x (i x)))
+    , (λ a ij@(i , j) → (x : X a) → Const (j x))
+
+  Π̂Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂Π̂ᶠ = Π̂ᶠ F Π̂ᵈᶠ
+
+  Π̂ᵈᶠ'
+    : DepFam (𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6) (𝓤3 ⊔ 𝓤4 ⊔ 𝓤6) F
+  Π̂ᵈᶠ'
+    = (λ a → fst (Π̂ᶠ (X a , Y a) (U a , V a)))
+    , (λ a → snd (Π̂ᶠ (X a , Y a) (U a , V a)))
+
+  Π̂Π̂ᶠ' : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂Π̂ᶠ' = Π̂ᶠ F Π̂ᵈᶠ'
+}
+%```
+}
+
+\subtree{
+\taxon{Definition}
+\title{The nondependent pullback-exponential}
+
+%```agda
+\agda{
+infixl 40 ⟨_,ᶠ_⟩
+
+⟨_,ᶠ_⟩
+  : {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  → Fam 𝓤1 𝓤2
+  → Fam 𝓤3 𝓤4
+  → Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+⟨ F ,ᶠ H ⟩ = Π̂ᶠ F (Fam→DepFam F H)
+}
+%```
+}
+
+\subtree{
+\taxon{Lemma}
+\title{\(Π̂\) preserves equivalences of dependent type families over a fixed base family}
+
+\p{
+For a fixed base type family #{F}, any equivalence between dependent families over
+#{F}, #{G ≃ H} gives an equivalence #{Π̂\,F\,G ≃ Π̂\,F\,H}.
+}
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+  (e : G ≃ᵈᶠ⟦ F ⟧ H)
+  where
+
+  Π̂ᶠ-ap-≃ᵈᶠ-base-over
+    : (i : (a : A) → X a)
+    → ((a : A) → B a → Y a (i a))
+    ≃ ((a : A) → B a → V a (e a .fst ._≃_.fwd (i a)))
+  Π̂ᶠ-ap-≃ᵈᶠ-base-over i
+    = Π-ap-≃ (λ a → Π-ap-≃ (λ _ → e a .snd (i a)))
+
+  Π̂ᶠ-ap-≃ᵈᶠ-base
+    : fst (Π̂ᶠ F G) ≃ fst (Π̂ᶠ F H)
+  Π̂ᶠ-ap-≃ᵈᶠ-base
+    = Σ-ap-≃ Π̂ᶠ-ap-≃ᵈᶠ-base-over
+    ∙≃ Σ-ap-≃-fst (Π-ap-≃ (λ a → e a .fst))
+
+  Π̂ᶠ-ap-≃ᵈᶠ-family-over
+    : (i : (a : A) → X a)
+    → (j : (a : A) → B a → Y a (i a))
+    → (y : (a : A) → Y a (i a))
+    → ((a : A) → j a ~ const _ _ (y a))
+    ≃ ((a : A) → (λ b → e a .snd (i a) ._≃_.fwd (j a b))
+               ~ const _ _ (e a .snd (i a) ._≃_.fwd (y a)))
+  Π̂ᶠ-ap-≃ᵈᶠ-family-over i j y
+    = Π-ap-≃ (λ a → Π-ap-≃ (λ b → ＝-equiv (e a .snd (i a))))
+
+  Π̂ᶠ-ap-≃ᵈᶠ-family
+    : (fp : fst (Π̂ᶠ F G))
+    → snd (Π̂ᶠ F G) fp ≃ snd (Π̂ᶠ F H) (Π̂ᶠ-ap-≃ᵈᶠ-base ._≃_.fwd fp)
+  Π̂ᶠ-ap-≃ᵈᶠ-family (i , j)
+    = Σ-ap-≃ (Π̂ᶠ-ap-≃ᵈᶠ-family-over i j)
+    ∙≃ Σ-ap-≃-fst (Π-ap-≃ (λ a → e a .snd (i a)))
+
+  Π̂ᶠ-ap-≃ᵈᶠ : Π̂ᶠ F G ≃ᶠ Π̂ᶠ F H
+  Π̂ᶠ-ap-≃ᵈᶠ = Π̂ᶠ-ap-≃ᵈᶠ-base , Π̂ᶠ-ap-≃ᵈᶠ-family
+}
+%```
+}
+
+\subtree{
+\taxon{Lemma}
+\title{Fubini law for #{Π̂}}
+
+\p{
+Given a family #{F}, a dependent family #{G} over #{F}, and a dependent
+family #{H} over \#{G}, there is an equivalence
+##{Π̂\,F\,(Π̂\,G\,H) ≃ Π̂\,F\,(Π̂_*\,G\,H)}
+
+where #{Π̂_*} is the pointwise dependent pullback-exponential.
+}
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  (let Π² = Π̂Π̂ᶠ F G H)
+  (let ΠΠ = Π̂Π̂ᶠ' F G H)
+  where
+
+  Π̂ᵈᶠ≃Π̂ᵈᶠ'
+    : Π̂ᵈᶠ F G H ≃ᵈᶠ⟦ F ⟧ Π̂ᵈᶠ' F G H
+  Π̂ᵈᶠ≃Π̂ᵈᶠ' a
+    = idequiv
+    , (λ (i , j) → Σ-Π-swap≃ (λ x → V a x (i x)) (λ x l → (y : Y a x) → j x y ＝ l))
+
+  Π̂ᶠ-fubini≃
+    : Π² ≃ᶠ ΠΠ
+  Π̂ᶠ-fubini≃ = Π̂ᶠ-ap-≃ᵈᶠ F (Π̂ᵈᶠ F G H) (Π̂ᵈᶠ' F G H) Π̂ᵈᶠ≃Π̂ᵈᶠ'
 }
 %```
 }

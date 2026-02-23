@@ -26,13 +26,66 @@ open import Core.CanonicalPushouts
 % ```agda
 \agda{
 record Arrow : Typeω where
-  constructor mk-arr
+  constructor mk-arrow
   no-eta-equality
   field
     {𝓤 𝓥} : Level
     {dom} : Type 𝓤
     {cod} : Type 𝓥
     f : dom → cod
+}
+% ```
+}
+
+\subtree{
+\taxon{Definition}
+\title{Walking morphisms in #{\mathcal{S}}}
+
+% ```agda
+\agda{
+record Arr (𝓤 𝓥 : Level) : Type (lsuc 𝓤 ⊔ lsuc 𝓥) where
+  constructor mk-arr
+  no-eta-equality
+  field
+    {dom} : Type 𝓤
+    {cod} : Type 𝓥
+    f : dom → cod
+
+Arrow←Arr : ∀ {𝓤 𝓥} → Arr 𝓤 𝓥 → Arrow
+Arrow←Arr g = mk-arrow (Arr.f g)
+
+Arr←Arrow : (f : Arrow) → Arr (Arrow.𝓤 f) (Arrow.𝓥 f)
+Arr←Arrow f = mk-arr {dom = Arrow.dom f} {cod = Arrow.cod f} (Arrow.f f)
+}
+% ```
+}
+
+
+\subtree{
+\taxon{Definition}
+\title{Dependent morphisms of arrows}
+
+% ```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  record Arr-dmap : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) where
+    constructor mk-arr-dmap
+    field
+      top : (a : A) → X (f a)
+      bot : (b : B) → Y b
+      comm : postcomp-Π Y f bot ~ precomp-Π (λ a → g (f a)) top
+
+  unquoteDecl Arr-dmap-repr≅ Arr-dmap-repr≃
+    = make-record-repr Arr-dmap-repr≅ Arr-dmap-repr≃ (quote Arr-dmap)
 }
 % ```
 }
@@ -64,14 +117,104 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
 % ```
 }
 
+\subtree{
+\taxon{Theorem}
+\title{The type of morphisms from arrows to families of arrows over their codomain as a pullback}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  {f : A → B}
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  {g : (b : B) → X b → Y b}
+  where
+
+  Arr-dmap-cone
+    : Cone (mk-cospan ((a : A) → Y (f a))
+                      (postcomp-Π Y f)
+                      (precomp-Π (λ a → g (f a))))
+           (Arr-dmap f g)
+  Arr-dmap-cone .Cone.i p = Arr-dmap.bot p
+  Arr-dmap-cone .Cone.j p = Arr-dmap.top p
+  Arr-dmap-cone .Cone.filler p = funext→ (Arr-dmap.comm p)
+
+  Arr-dmap≃pullback-repr
+    : Arr-dmap f g
+    ≃ Pullback (postcomp-Π Y f) (precomp-Π (λ a → g (f a)))
+  Arr-dmap≃pullback-repr
+    = Arr-dmap f g                                          ≃⟨ Arr-dmap-repr≃ f g ⟩
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+      Σ[ b ∶ ((b : B) → Y b) ]
+       (postcomp-Π Y f b ~ precomp-Π (λ a → g (f a)) t)     ≃⟨ Σ-comm ⟩
+      Σ[ b ∶ ((b : B) → Y b) ]
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+       (postcomp-Π Y f b ~ precomp-Π (λ a → g (f a)) t)     ≃⟨ Σ-ap-≃ (λ _
+                                                                      → Σ-ap-≃ λ _
+                                                                      → (funext≃ e⁻¹)) ⟩
+      Pullback (postcomp-Π Y f) (precomp-Π (λ a → g (f a))) ≃∎
+
+  Arr-dmap≃pullback-repr~gap
+    : Arr-dmap≃pullback-repr ._≃_.fwd ~ gap Arr-dmap-cone
+  Arr-dmap≃pullback-repr~gap = ~refl
+
+  Arr-dmap-gap-is-equiv : is-equiv (gap Arr-dmap-cone)
+  Arr-dmap-gap-is-equiv
+    = homotopy-is-equiv (Arr-dmap≃pullback-repr~gap)
+                        (Arr-dmap≃pullback-repr ._≃_.has-is-eqv)
+
+  Arr-dmap≃pullback
+    : Arr-dmap f g
+    ≃ Pullback (postcomp-Π Y f) (precomp-Π (λ a → g (f a)))
+  Arr-dmap≃pullback
+    = mk≃ (gap Arr-dmap-cone) (Arr-dmap-gap-is-equiv)
+}
+%```
+}
+
+\subtree{
+\taxon{Definition}
+\title{Morphisms of arrows from dependent morphisms of arrows}
+
+%```agda
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛 : Level}
+  {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {D : Type 𝓛}
+  (f : A → B) (g : C → D)
+  where
+
+  Arrow-map←Arr-dmap
+    : Arr-dmap f (λ _ → g) → Arrow-map f g
+  Arrow-map←Arr-dmap p
+    = mk-amap (Arr-dmap.top p) (Arr-dmap.bot p) (Arr-dmap.comm p)
+
+  Arr-dmap←Arrow-map
+    : Arrow-map f g → Arr-dmap f (λ _ → g)
+  Arr-dmap←Arrow-map p
+    = mk-arr-dmap (Arrow-map.top p) (Arrow-map.bot p) (Arrow-map.comm p)
+
+  Arrow-map←Arr-dmap-is-equiv : is-equiv Arrow-map←Arr-dmap
+  Arrow-map←Arr-dmap-is-equiv
+    = is-equiv←qiso (Arr-dmap←Arrow-map
+                    , (λ where (mk-arr-dmap _ _ _) → refl)
+                    , λ where (mk-amap _ _ _) → refl)
+}
+%```
+}
+
 
 \subtree[stt-004H]{
 \taxon{Theorem}
 \date{2025-05-17}
-\title{A square is a pullback}
+\title{Morphisms of arrows as a pullback}
 
-\p{The type #{\Hom(f,g)} is equivalent to the pullback of #{g \circ -} with
-#{- \circ f}.}
+\p{The type #{\Hom(f,g)} is equivalent to the pullback of #{g \circ {-}} with
+#{{-} \circ f}.}
 
 %```agda
 \agda{
@@ -84,8 +227,8 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
   pullback←arrow' (mk-amap f g h) = g , f , funext→ h
 
-  Arrow≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
-  Arrow≃pullback
+  Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
+  Arrow-map≃pullback
     = Arrow-map f g                      ≃⟨ Arrow-map-repr≃ f g ⟩
       Σ[ k ∶ (A → C) ]
        Σ[ h ∶ (B → D) ] (h ∘ f ~ g ∘ k)  ≃⟨  Σ-ap-≃ (λ _
@@ -93,8 +236,8 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                                              → (funext≃ e⁻¹) ∙≃ sym≃)  ⟩
       Pullback (g ∘_) (_∘ f) ≃∎
 
-  Arrow≃pullback' : Arrow-map f g ≃ Pullback (_∘ f) (g ∘_)
-  Arrow≃pullback'
+  Arrow-map≃pullback' : Arrow-map f g ≃ Pullback (_∘ f) (g ∘_)
+  Arrow-map≃pullback'
     = Arrow-map f g                      ≃⟨ Arrow-map-repr≃ f g ⟩
       Σ[ k ∶ (A → C) ]
        Σ[ h ∶ (B → D) ] (h ∘ f ~ g ∘ k)  ≃⟨ Σ-comm ⟩

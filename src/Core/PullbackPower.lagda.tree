@@ -215,7 +215,7 @@ Given a type family #{B : A → 𝒰} and a dependent type family over #{B},
 #{Y : (a : A) → X\,a → 𝒱}, then we define the
 \em{dependent pullback power family} #{Π̂_B Y} to be the family
 
-##{Π̂_B Y \coloneqq ((i , j) : Σ (i : (a : A) → X\,a), ((a : A) → B\,a → Y\,a\,(i\,a))) ↦ Σ (y : (a : A) → Y\,a\,(i\,a)), ((a : A) → j\,a ∼ \const(y\,a))}
+##{Π̂_B Y \coloneqq ((i , j) : Σ (i : (a : A) → X\,a), ((a : A) → B\,a → Y\,a\,(i\,a))) ↦ ((a : A) → \nullhtpy(j\,a))}
 
 %```agda
 \agda{
@@ -233,11 +233,10 @@ module _
 
   fam-Π̂ᶠ : base-Π̂ᶠ → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
   fam-Π̂ᶠ (i , j)
-    = Σ ((a : A) → Y a (i a))
-        (λ y → (a : A) → j a ~ const _ _ (y a))
+    = (a : A) → null-homotopy (j a)
 
   Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
-  Π̂ᶠ = base-Π̂ᶠ , fam-Π̂ᶠ
+  Π̂ᶠ = (base-Π̂ᶠ , fam-Π̂ᶠ)
 }
 %```
 }
@@ -365,15 +364,18 @@ module _
         (Arr-dmap≃pullback ._≃_.has-is-eqv)
 
   Π̂-unstraight-dom←Π : ((b : B) → X b) → Π̂-unstraight-dom f g
-  Π̂-unstraight-dom←Π l = Π̂-unstraight-cod←Arr-dmap (Π̂ f g l) , y , H where
+  Π̂-unstraight-dom←Π l = Π̂-unstraight-cod←Arr-dmap (Π̂ f g l) , m where
     y : (b : B) → fibre (g b) (precomp-Π g l b)
     y b = l b , refl
 
     H : (b : B) → Π̂-unstraight-cod←Arr-dmap (Π̂ f g l) .snd b ~ const _ _ (y b)
     H b (a , refl) = refl
 
+    m : (b : B) → null-homotopy (Π̂-unstraight-cod←Arr-dmap (Π̂ f g l) .snd b)
+    m b = y b , H b
+
   Π←Π̂-unstraight-dom : Π̂-unstraight-dom f g → ((b : B) → X b)
-  Π←Π̂-unstraight-dom (_ , y , _) b = fst (y b)
+  Π←Π̂-unstraight-dom (_ , m) b = fst (fst (m b))
 
   Π←Π̂-unstraight-dom∘Π̂-unstraight-dom←Π
     : Π←Π̂-unstraight-dom ∘ Π̂-unstraight-dom←Π ~ id
@@ -384,26 +386,23 @@ module _
 
   Π̂-unstraight-dom≃ptᵈ-maps : Π̂-unstraight-dom f g ≃ ((b : B) → Ptᵈ b)
   Π̂-unstraight-dom≃ptᵈ-maps
-    = Π̂-unstraight-dom f g                                  ≃⟨ Σ-assoc ⟩
+    = Π̂-unstraight-dom f g
+      ≃⟨ Σ-assoc ⟩
       Σ[ i ∶ ((b : B) → Y b) ]
       Σ[ j ∶ ((b : B) → fibre f b → fibre (g b) (i b)) ]
-      Σ[ y ∶ ((b : B) → fibre (g b) (i b)) ]
-        ((b : B) → j b ~ const _ _ (y b))                   ≃⟨ Σ-ap-≃ (λ i → Σ-ap-≃ (λ j
-                                                                      → Σ-Π-swap≃ (λ b → fibre (g b) (i b))
-                                                                                  (λ b yb → j b ~ const _ _ yb)
-                                                                                  e⁻¹)) ⟩
-      Σ[ i ∶ ((b : B) → Y b) ]
-      Σ[ j ∶ ((b : B) → fibre f b → fibre (g b) (i b)) ]
-        ((b : B) → null-homotopy (j b))                             ≃⟨ Σ-ap-≃ (λ i
-                                                                      → Σ-Π-swap≃ (λ b → fibre f b → fibre (g b) (i b))
-                                                                                  (λ b jb → null-homotopy jb)
-                                                                                  e⁻¹) ⟩
+        ((b : B) → null-homotopy (j b))
+      ≃⟨ Σ-ap-≃ (λ i
+                → Σ-Π-swap≃ (λ b → fibre f b → fibre (g b) (i b))
+                            (λ b jb → null-homotopy jb)
+                            e⁻¹) ⟩
       Σ[ i ∶ ((b : B) → Y b) ]
       ((b : B)
-      → Σ[ jb ∶ (fibre f b → fibre (g b) (i b)) ] null-homotopy jb) ≃⟨ Σ-Π-swap≃ (λ b → Y b)
-                                                                         (λ b i → Σ[ jb ∶ (fibre f b → fibre (g b) i) ] null-homotopy jb)
-                                                                         e⁻¹ ⟩
-      ((b : B) → Ptᵈ b)                                     ≃∎
+      → Σ[ jb ∶ (fibre f b → fibre (g b) (i b)) ] null-homotopy jb)
+      ≃⟨ Σ-Π-swap≃ (λ b → Y b)
+                   (λ b i → Σ[ jb ∶ (fibre f b → fibre (g b) i) ] null-homotopy jb)
+                   e⁻¹ ⟩
+      ((b : B) → Ptᵈ b)
+      ≃∎
 
   ptᵈ-maps≃Π : ((b : B) → Ptᵈ b) ≃ ((b : B) → X b)
   ptᵈ-maps≃Π = Π-ap-≃ (λ b → fibre-pointed-total≃domain (fibre f b) (g b))
@@ -414,7 +413,7 @@ module _
   Π←Π̂-unstraight-dom-is-equiv : is-equiv Π←Π̂-unstraight-dom
   Π←Π̂-unstraight-dom-is-equiv
     = homotopy-is-equiv
-        (λ (_ , y , _) → refl)
+        (λ (_ , m) → refl)
         (Π̂-unstraight-dom≃Π ._≃_.has-is-eqv)
 
   Π̂-unstraight-dom←Π-is-equiv : is-equiv Π̂-unstraight-dom←Π
@@ -513,19 +512,16 @@ module _
   Π̂ᶠ-ap-≃ᵈᶠ-family-over
     : (i : (a : A) → X a)
     → (j : (a : A) → B a → Y a (i a))
-    → (y : (a : A) → Y a (i a))
-    → ((a : A) → j a ~ const _ _ (y a))
-    ≃ ((a : A) → (λ b → e a .snd (i a) ._≃_.fwd (j a b))
-               ~ const _ _ (e a .snd (i a) ._≃_.fwd (y a)))
-  Π̂ᶠ-ap-≃ᵈᶠ-family-over i j y
-    = Π-ap-≃ (λ a → Π-ap-≃ (λ b → ＝-equiv (e a .snd (i a))))
+    → ((a : A) → null-homotopy (j a))
+    ≃ ((a : A) → null-homotopy (λ b → e a .snd (i a) ._≃_.fwd (j a b)))
+  Π̂ᶠ-ap-≃ᵈᶠ-family-over i j
+    = Π-ap-≃ (λ a → null-homotopy-map-codomain-≃ (e a .snd (i a)) (j a))
 
   Π̂ᶠ-ap-≃ᵈᶠ-family
     : (fp : base-Π̂ᶠ F G)
     → fam-Π̂ᶠ F G fp ≃ fam-Π̂ᶠ F H (Π̂ᶠ-ap-≃ᵈᶠ-base ._≃_.fwd fp)
   Π̂ᶠ-ap-≃ᵈᶠ-family (i , j)
-    = Σ-ap-≃ (Π̂ᶠ-ap-≃ᵈᶠ-family-over i j)
-    ∙≃ Σ-ap-≃-fst (Π-ap-≃ (λ a → e a .snd (i a)))
+    = Π̂ᶠ-ap-≃ᵈᶠ-family-over i j
 
   Π̂ᶠ-ap-≃ᵈᶠ : Π̂ᶠ F G ≃ᶠ Π̂ᶠ F H
   Π̂ᶠ-ap-≃ᵈᶠ = Π̂ᶠ-ap-≃ᵈᶠ-base , Π̂ᶠ-ap-≃ᵈᶠ-family
@@ -574,8 +570,7 @@ module _
     → snd Π̂ᶠ-fibre-fam-unstraight fp
     ≃ fam-Π̂ᶠ F G (Π̂ᶠ-fibre-fam-unstraight-base ._≃_.fwd fp)
   Π̂ᶠ-fibre-fam-unstraight-family (i , j)
-    = Σ-ap-≃ (λ y → Π-ap-≃ (λ a
-      → homotopy-const-postcomp-≃ (fibre-straighten B a) (j a) (y a)))
+    = Π-ap-≃ (λ a → null-homotopy-postcomp-≃ (fibre-straighten B a) (j a))
 
   Π̂ᶠ-fibre-fam-unstraight≃Π̂ᶠ
     : Π̂ᶠ-fibre-fam-unstraight ≃ᶠ Π̂ᶠ F G
@@ -621,14 +616,9 @@ module _
 }
 
 \subtree{
-\taxon{Lemma}
-\title{Equivalence of iterated #{Π̂}}
+\taxon{Definition}
+\title{Iterated dependent pullback powers}
 
-\p{
-Given a family #{F}, a dependent family #{G} over #{F}, and a dependent family #{H}
-over #{G}, then there are two ways to form the iterated dependent pullback power. We
-show that these are equivalent.
-}
 %```agda
 \agda{
 module _
@@ -646,23 +636,6 @@ module _
   Π̂Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
             (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
   Π̂Π̂ᶠ = Π̂ᶠ F Π̂ᵈᶠ
-
-  Π̂ᵈᶠ' : DepFam (𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6) (𝓤3 ⊔ 𝓤4 ⊔ 𝓤6) F
-  Π̂ᵈᶠ'
-    = (λ a → base-Π̂ᶠ (X a , Y a) (U a , V a))
-    , (λ a → fam-Π̂ᶠ (X a , Y a) (U a , V a))
-
-  Π̂Π̂ᶠ' : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
-             (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
-  Π̂Π̂ᶠ' = Π̂ᶠ F Π̂ᵈᶠ'
-
-  Π̂ᵈᶠ≃Π̂ᵈᶠ' : Π̂ᵈᶠ ≃ᵈᶠ⟦ F ⟧ Π̂ᵈᶠ'
-  Π̂ᵈᶠ≃Π̂ᵈᶠ' a
-    = idequiv
-    , (λ (i , j) → Σ-Π-swap≃ (λ x → V a x (i x)) (λ x l → (y : Y a x) → j x y ＝ l))
-
-  Π̂Π̂ᶠ≃Π̂Π̂ᶠ' : Π̂Π̂ᶠ ≃ᶠ Π̂Π̂ᶠ'
-  Π̂Π̂ᶠ≃Π̂Π̂ᶠ' = Π̂ᶠ-ap-≃ᵈᶠ F Π̂ᵈᶠ Π̂ᵈᶠ' Π̂ᵈᶠ≃Π̂ᵈᶠ'
 }
 %```
 }

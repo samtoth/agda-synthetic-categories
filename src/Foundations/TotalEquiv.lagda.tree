@@ -23,6 +23,26 @@ open import Foundations.EquivSingleton
 }
 % ```
 
+\subtree{
+\taxon{Definition}
+\title{Functorial action of Σ-types}
+
+% ```agda
+\agda{
+map-Σ
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4}
+      {A : Type 𝓤1}
+      {B : Type 𝓤2}
+      {X : A → Type 𝓤3}
+      {Y : B → Type 𝓤4}
+      (f : A → B)
+      (g : (a : A) → X a → Y (f a))
+    → Σ A X → Σ B Y
+map-Σ f g = total-map-fst f ∘ total-map g
+}
+% ```
+}
+
 \subtree[stt-0027]{
 \taxon{Theorem}
 \title{Classifying the fibre of total maps}
@@ -43,6 +63,109 @@ fibre-total-map {A = A} {B} {B'} {f = f} {a} {b}
         λ ba → IdP (ap B' p) (f a' ba) b)                         ≃⟨ Σ-＝singl ⟩
     Σ (B a) (λ ba → f a ba ＝ b)                                  ≃⟨⟩
     fibre (f a) b ≃∎
+
+fibre-total-map-fst
+  : ∀ {𝓤 𝓥 𝓦}
+      {A : Type 𝓤}
+      {A' : Type 𝓥}
+      {B : A → Type 𝓦}
+      (f : A' → A)
+      (a : A)
+      (b : B a)
+    → fibre (total-map-fst f {B}) (a , b) ≃ fibre f a
+fibre-total-map-fst {B = B} f a b = mk≃ fwd (is-equiv←qiso qiso) where
+  fwd : fibre (total-map-fst f {B}) (a , b) → fibre f a
+  fwd ((a' , b') , p) = a' , ap fst p
+
+  bwd : fibre f a → fibre (total-map-fst f {B}) (a , b)
+  bwd (a' , p)
+    = (a' , coe (sym (ap B p)) b)
+    , Σ-path→ (p , IdP-inl {P = ap B p} (coe-sym (ap B p)))
+
+  qiso : quasi-iso fwd
+  qiso .fst = bwd
+  qiso .snd .fst (a' , refl) = refl
+  qiso .snd .snd (a' , refl) = refl
+
+fibre-map-Σ
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4}
+      {A : Type 𝓤1}
+      {B : Type 𝓤2}
+      {X : A → Type 𝓤3}
+      {Y : B → Type 𝓤4}
+      (f : A → B)
+      (g : (a : A) → X a → Y (f a))
+      (b : B)
+      (y : Y b)
+    → fibre (map-Σ f g) (b , y)
+      ≃ Σ[ af ∶ fibre f b ]
+          fibre (λ x → coe (ap Y (af .snd)) (g (af .fst) x)) y
+fibre-map-Σ {A = A} {X = X} {Y = Y} f g b y
+  = fibre (map-Σ f g) (b , y)                                          ≃⟨⟩
+    Σ (Σ A X) (λ (a , x) → map-Σ f g (a , x) ＝ (b , y))               ≃⟨ Σ-assoc ⟩
+    Σ A (λ a → Σ (X a) λ x → map-Σ f g (a , x) ＝ (b , y))             ≃⟨⟩
+    Σ A (λ a → Σ (X a) λ x → (f a , g a x) ＝ (b , y))                 ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ λ x → Σ-path e⁻¹) ⟩
+    Σ A (λ a → Σ (X a) λ x → Σ (f a ＝ b)
+      λ p → IdP (ap Y p) (g a x) y)                                    ≃⟨ Σ-ap-≃ (λ a → Σ-comm) ⟩
+    Σ A (λ a → Σ (f a ＝ b) λ p → Σ (X a)
+      λ x → IdP (ap Y p) (g a x) y)                                    ≃⟨ Σ-assoc e⁻¹ ⟩
+    Σ (fibre f b) (λ af → Σ (X (af .fst))
+      λ x → IdP (ap Y (af .snd)) (g (af .fst) x) y)                    ≃⟨⟩
+    Σ[ af ∶ fibre f b ] fibre (λ x → coe (ap Y (af .snd)) (g (af .fst) x)) y ≃∎
+
+fibre-map-Σ-over
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4}
+      {A : Type 𝓤1}
+      {B : Type 𝓤2}
+      (f : A → B)
+      {X : B → Type 𝓤3}
+      {Y : B → Type 𝓤4}
+      (g : (b : B) → X b → Y b)
+      (b : B)
+      (y : Y b)
+    → fibre (map-Σ f (λ a → g (f a))) (b , y)
+      ≃ (fibre f b × fibre (g b) y)
+fibre-map-Σ-over f {X = X} g b y
+  = mk≃ fwd (is-equiv←qiso qiso) where
+  fwd
+    : fibre (map-Σ f (λ a → g (f a))) (b , y)
+    → (fibre f b × fibre (g b) y)
+  fwd ((a , x) , p)
+    = (a , p₁)
+    , _≃_.fwd (fibre-total-map {f = g} {a = b} {b = y}) l₀
+    where
+    p₁ : f a ＝ b
+    p₁ = ap fst p
+
+    l₀ : fibre (total-map g) (b , y)
+    l₀ = (f a , x) , p
+
+  bwd
+    : (fibre f b × fibre (g b) y)
+    → fibre (map-Σ f (λ a → g (f a))) (b , y)
+  bwd ((a , p₁) , (x' , q))
+    = (a , x)
+    , p
+    where
+    x : X (f a)
+    x = coe (sym (ap X p₁)) x'
+
+    pathX : (f a , x) ＝ (b , x')
+    pathX = Σ-path→ (p₁ , IdP-inl {P = ap X p₁} (coe-sym (ap X p₁)))
+
+    r₁ : (f a , g (f a) x) ＝ (b , g b x')
+    r₁ = ap (total-map g) pathX
+
+    r₂ : (b , g b x') ＝ (b , y)
+    r₂ = Σ-path→ (refl , q)
+
+    p : (f a , g (f a) x) ＝ (b , y)
+    p = r₁ ∙ r₂
+
+  qiso : quasi-iso fwd
+  qiso .fst = bwd
+  qiso .snd .fst ((a , x) , refl) = refl
+  qiso .snd .snd ((a , refl) , (x' , refl)) = refl
 }
 % ```
 }

@@ -12,15 +12,21 @@ module Core.PushoutSums where
 open import ufAxioms
 
 open import Foundations.Prelude
+open import Foundations.SpanDiagramEquiv
 open import Foundations.TypeFamilies
 
+open import Core.Arrow
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
 open import Core.Join
+open import Core.PushoutEquiv
+open import Foundations.TotalEquiv
 }
 %```
 
 \subtree{
 \taxon{Definition}
-\title{Dependent pushout-sum families}
+\title{Pushout-sums of families}
 
 %```agda
 \agda{
@@ -37,7 +43,7 @@ module _
   fam-Σ̂ᶠ (a , x) = B a * Y a x
 
   Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
-  Σ̂ᶠ = base-Σ̂ᶠ , fam-Σ̂ᶠ
+  Σ̂ᶠ = (base-Σ̂ᶠ , fam-Σ̂ᶠ)
 
 module _
   {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
@@ -50,6 +56,328 @@ module _
   Σ̂ᵈᶠ
     = (λ (a , x) → U a x)
     , (λ (a , x) → V a x)
+}
+%```
+}
+
+
+\subtree{
+\taxon{Construction}
+\title{Pushout sums of arrows}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1} {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3} {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  Σ̂-left : Σ A (X ∘ f) → Σ B X
+  Σ̂-left = total-map-fst f
+
+  Σ̂-top : Σ A (X ∘ f) → Σ A (Y ∘ f)
+  Σ̂-top = total-map (λ a → g (f a))
+
+  Σ̂-right : Σ A (Y ∘ f) → Σ B Y
+  Σ̂-right = total-map-fst f
+
+  Σ̂-bot : Σ B X → Σ B Y
+  Σ̂-bot = total-map g
+
+  Σ̂-square : Arrow-map Σ̂-left Σ̂-right
+  Σ̂-square = mk-amap Σ̂-top Σ̂-bot ~refl
+
+  Σ̂ : Pushout Σ̂-left Σ̂-top → Σ B Y
+  Σ̂ = cogap-map←square Σ̂-square
+}
+%```
+}
+
+
+\subtree{
+\taxon{Lemma}
+\title{Fibre characterisation of the pushout sum of arrows}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1} {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3} {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  Σ̂-fibre-fam
+    : Fam (𝓤2 ⊔ 𝓤4)
+          (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Σ̂-fibre-fam
+    = Σ B Y
+    , fibre (Σ̂ f g)
+
+  Σ̂ᶠ-unstraight-fibre-fam
+    : Fam (𝓤2 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Σ̂ᶠ-unstraight-fibre-fam = Σ̂ᶠ (fibre-fam f) (fibre-depfam g)
+
+  Σ̂-fibre-family-over
+    : (b : B) (y : Y b)
+    → Pushout (Σ̂-left f g) (Σ̂-top f g)
+    → Type (𝓤2 ⊔ 𝓤4)
+  Σ̂-fibre-family-over b y p = (Σ̂ f g p ＝ (b , y))
+
+  Σ̂-fibre-total-span
+    : (b : B) (y : Y b)
+    → Span (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Σ̂-fibre-total-span b y
+    = total-span (Σ̂-left f g) (Σ̂-top f g) (Σ̂-fibre-family-over b y)
+
+  Σ̂-fibre-total-span-left
+    : (b : B) → Y b → Type (𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Σ̂-fibre-total-span-left b y
+    = Span.Left (Σ̂-fibre-total-span b y)
+
+  Σ̂-fibre-total-span-right
+    : (b : B) → Y b → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Σ̂-fibre-total-span-right b y
+    = Span.Right (Σ̂-fibre-total-span b y)
+
+  Σ̂-fibre-total-span-centre
+    : (b : B) → Y b → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Σ̂-fibre-total-span-centre b y
+    = Span.Centre (Σ̂-fibre-total-span b y)
+
+  Σ̂-cogap-fibre-at
+    : (b : B) (y : Y b)
+    → fibre (Σ̂ f g) (b , y)
+    ≃ Pushout
+        (Σ̂-fibre-total-span b y .Span.left)
+        (Σ̂-fibre-total-span b y .Span.right)
+  Σ̂-cogap-fibre-at b y
+    = cogap-fibre (Cocone←Arrow-map (Σ̂-square f g) .snd) (b , y)
+
+  fibre-Σ̂-right≃fibre-base
+    : (b : B) (y : Y b)
+    → fibre (Σ̂-right f g) (b , y) ≃ fibre f b
+  fibre-Σ̂-right≃fibre-base b y = fibre-total-map-fst f b y
+
+  Σ̂-fibre-total-span-centre≃fibrewise-product
+    : (b : B) (y : Y b)
+    → Σ̂-fibre-total-span-centre b y ≃ (fibre f b × fibre (g b) y)
+  Σ̂-fibre-total-span-centre≃fibrewise-product b y
+    = fibre-map-Σ-over f g b y
+
+  Σ̂-fibre-span-equiv
+    : (b : B) (y : Y b)
+    → SpanDiagram-equiv
+        (mk-span (fibre f b × fibre (g b) y) snd fst)
+        (mk-span
+          (Σ̂-fibre-total-span-centre b y)
+          (Σ̂-fibre-total-span b y .Span.left)
+          (Σ̂-fibre-total-span b y .Span.right))
+  Σ̂-fibre-span-equiv b y = span-equiv where
+    Span₀ : Span _ _ _
+    Span₀ = Σ̂-fibre-total-span b y
+
+    Centre₀ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+    Centre₀ = Span₀ .Span.Centre
+
+    left₀ : Centre₀ → Σ̂-fibre-total-span-left b y
+    left₀ = Span₀ .Span.left
+
+    right₀ : Centre₀ → Σ̂-fibre-total-span-right b y
+    right₀ = Span₀ .Span.right
+
+    left≃ : Σ̂-fibre-total-span-left b y ≃ fibre (g b) y
+    left≃ = fibre-total-map {f = g} {a = b} {b = y}
+
+    right≃ : Σ̂-fibre-total-span-right b y ≃ fibre f b
+    right≃ = fibre-Σ̂-right≃fibre-base b y
+
+    centre≃ : Centre₀ ≃ (fibre f b × fibre (g b) y)
+    centre≃ = Σ̂-fibre-total-span-centre≃fibrewise-product b y
+
+    left₀~left'
+      : _≃_.bwd left≃ ∘ snd ∘ _≃_.fwd centre≃ ~ left₀
+    left₀~left' ((a , x) , p) = _≃_.η left≃ l₀ ∙ sym α where
+      l₀ : Σ̂-fibre-total-span-left b y
+      l₀ = (f a , x) , p
+
+      β
+        : coe (ap (Σ̂-fibre-family-over b y) (sym (glue (a , x)))) p
+        ＝ p
+      β
+        = IdP-const-coe (Σ̂ f g) (sym (glue (a , x))) p
+        ∙ ap (_∙ p) (ap (ap (Σ̂ f g)) (sym-sym {p = glue (a , x)}))
+        ∙ ap (_∙ p) (pushout-rec-apβ (a , x))
+        ∙ ∙-refll p
+
+      α : left₀ ((a , x) , p) ＝ l₀
+      α = Σ-path→ (refl , β)
+
+    right₀~right'
+      : _≃_.bwd right≃ ∘ fst ∘ _≃_.fwd centre≃ ~ right₀
+    right₀~right' t = _≃_.η right≃ (right₀ t)
+
+    left-comm-proof
+      : _≃_.bwd left≃ ∘ snd ∘ _≃_.fwd centre≃ ~ left₀
+    left-comm-proof = left₀~left'
+
+    right-comm-proof
+      : _≃_.bwd right≃ ∘ fst ∘ _≃_.fwd centre≃ ~ right₀
+    right-comm-proof = right₀~right'
+
+    span-equiv
+      : SpanDiagram-equiv
+          (mk-span (fibre f b × fibre (g b) y) snd fst)
+          (mk-span Centre₀ left₀ right₀)
+    span-equiv .SpanDiagram-equiv.centre-≃ = centre≃
+    span-equiv .SpanDiagram-equiv.left-≃ = left≃
+    span-equiv .SpanDiagram-equiv.right-≃ = right≃
+    span-equiv .SpanDiagram-equiv.left-comm = left-comm-proof
+    span-equiv .SpanDiagram-equiv.right-comm = right-comm-proof
+
+  Σ̂-fibre≃fibrewise-join
+    : ((b , y) : Σ B Y)
+    → fibre (Σ̂ f g) (b , y) ≃ fibre f b * fibre (g b) y
+  Σ̂-fibre≃fibrewise-join (b , y)
+    = fibre (Σ̂ f g) (b , y)                  ≃⟨ Σ̂-cogap-fibre-at b y ⟩
+      Pushout
+        (Σ̂-fibre-total-span b y .Span.left)
+        (Σ̂-fibre-total-span b y .Span.right) ≃⟨ Pushout≃←SpanDiagram-equiv (Σ̂-fibre-span-equiv b y) ∙≃ pushout-comm ⟩
+      (fibre f b * fibre (g b) y)            ≃∎
+
+  Σ̂-unstraighten≃ᶠ
+    : Σ̂-fibre-fam ≃ᶠ Σ̂ᶠ-unstraight-fibre-fam
+  Σ̂-unstraighten≃ᶠ
+    = idequiv
+    , Σ̂-fibre≃fibrewise-join
+}
+%```
+}
+
+
+\subtree{
+\taxon{Lemma}
+\title{#{Σ̂} preserves equivalences of dependent type families over a fixed base family}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+  (e : G ≃ᵈᶠ⟦ F ⟧ H)
+  where
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    : base-Σ̂ᶠ F G ≃ base-Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    = Σ-ap-≃ (λ a → e a .fst)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-family
+    : (fp : base-Σ̂ᶠ F G)
+    → fam-Σ̂ᶠ F G fp ≃ fam-Σ̂ᶠ F H (Σ̂ᶠ-ap-≃ᵈᶠ-base ._≃_.fwd fp)
+  Σ̂ᶠ-ap-≃ᵈᶠ-family (a , x)
+    = *-≃ idequiv (e a .snd x)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ : Σ̂ᶠ F G ≃ᶠ Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ = Σ̂ᶠ-ap-≃ᵈᶠ-base , Σ̂ᶠ-ap-≃ᵈᶠ-family
+}
+%```
+}
+
+\subtree{
+\taxon{Theorem}
+\title{The equivalence of unstraightened pushout sums}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (let fᵘ = fst {A = A} {B = B})
+  (let gᵘ = λ a → fst {A = X a} {B = Y a})
+  (let Fᵘ = fibre-fam fᵘ)
+  (let Gᵘ = fibre-depfam gᵘ)
+  where
+
+  Σ̂ᶠ-fibre-fam-unstraight
+    : Fam (𝓤1 ⊔ 𝓤3) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Σ̂ᶠ-fibre-fam-unstraight = Σ̂ᶠ Fᵘ G
+
+  Σ̂ᶠ-unstraight-fibre-fam≃Σ̂ᶠ-fibre-fam-unstraight
+    : Σ̂ᶠ-unstraight-fibre-fam fᵘ gᵘ ≃ᶠ Σ̂ᶠ-fibre-fam-unstraight
+  Σ̂ᶠ-unstraight-fibre-fam≃Σ̂ᶠ-fibre-fam-unstraight
+    = Σ̂ᶠ-ap-≃ᵈᶠ Fᵘ Gᵘ G (λ a → (idequiv , fibre-straighten (Y a)))
+}
+%```
+}
+
+\subtree{
+\taxon{Theorem}
+\title{The equivalence of straightened pushout sums}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (let fᵘ = fst {A = A} {B = B})
+  (let gᵘ = λ a → fst {A = X a} {B = Y a})
+  (let Fᵘ = fibre-fam fᵘ)
+  (let Gᵘ = fibre-depfam gᵘ)
+  where
+
+  Σ̂-straight
+    : Fam (𝓤1 ⊔ 𝓤3) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Σ̂-straight = Σ̂-fibre-fam fᵘ gᵘ
+
+  Σ̂-straight≃Σ̂ᶠ-unstraight-fibre-fam
+    : Σ̂-straight ≃ᶠ Σ̂ᶠ-unstraight-fibre-fam fᵘ gᵘ
+  Σ̂-straight≃Σ̂ᶠ-unstraight-fibre-fam
+    = Σ̂-unstraighten≃ᶠ fᵘ gᵘ
+
+  Σ̂-straight≃Σ̂ᶠ-fibre-fam-unstraight
+    : Σ̂-straight ≃ᶠ Σ̂ᶠ-fibre-fam-unstraight F G
+  Σ̂-straight≃Σ̂ᶠ-fibre-fam-unstraight
+    = concat≃ᶠ
+        (Σ̂-straight)
+        (Σ̂ᶠ-unstraight-fibre-fam fᵘ gᵘ)
+        (Σ̂ᶠ-fibre-fam-unstraight F G)
+        (Σ̂-straight≃Σ̂ᶠ-unstraight-fibre-fam)
+        (Σ̂ᶠ-unstraight-fibre-fam≃Σ̂ᶠ-fibre-fam-unstraight F G)
+
+  Σ̂ᶠ-fibre-fam-unstraight-base
+    : fst (Σ̂ᶠ-fibre-fam-unstraight F G) ≃ base-Σ̂ᶠ F G
+  Σ̂ᶠ-fibre-fam-unstraight-base = idequiv
+
+  Σ̂ᶠ-fibre-fam-unstraight-family
+    : (fp : fst (Σ̂ᶠ-fibre-fam-unstraight F G))
+    → snd (Σ̂ᶠ-fibre-fam-unstraight F G) fp
+    ≃ fam-Σ̂ᶠ F G (Σ̂ᶠ-fibre-fam-unstraight-base ._≃_.fwd fp)
+  Σ̂ᶠ-fibre-fam-unstraight-family (a , x)
+    = *-≃ (fibre-straighten B a) idequiv
+
+  Σ̂ᶠ-fibre-fam-unstraight≃Σ̂ᶠ
+    : Σ̂ᶠ-fibre-fam-unstraight F G ≃ᶠ Σ̂ᶠ F G
+  Σ̂ᶠ-fibre-fam-unstraight≃Σ̂ᶠ
+    = Σ̂ᶠ-fibre-fam-unstraight-base
+    , Σ̂ᶠ-fibre-fam-unstraight-family
+
+  Σ̂-straighten≃ᶠ : Σ̂-straight ≃ᶠ Σ̂ᶠ F G
+  Σ̂-straighten≃ᶠ
+    = concat≃ᶠ
+        (Σ̂-straight)
+        (Σ̂ᶠ-fibre-fam-unstraight F G)
+        (Σ̂ᶠ F G)
+        (Σ̂-straight≃Σ̂ᶠ-fibre-fam-unstraight)
+        (Σ̂ᶠ-fibre-fam-unstraight≃Σ̂ᶠ)
 }
 %```
 }

@@ -177,7 +177,7 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
         coe (tr-cst ∙-)
           (CoconeD.filler {cc = pushout}
             (Dependent←Cocone {P = λ _ → Q} c) x)        ＝⟨⟩
-        coe (tr-cst ∙-) (tr-cst ∙ (c .Cocone.filler x))  ＝⟨ coe-postcomp＝ tr-cst _ ⟩
+        coe (tr-cst ∙-) (tr-cst ∙ (c .Cocone.filler x))  ＝⟨ coe-precomp＝ tr-cst _ ⟩
         sym tr-cst ∙ (tr-cst ∙ (c .Cocone.filler x))     ＝⟨ ∙.cancelr _ {h = tr-cst} (∙-sym' tr-cst) {f = c .Cocone.filler x} ⟩
         Cocone.filler c x ∎ where
          tr-cst : tr (λ _ → Q) (glue {f = f} {g} x) (pushout-rec c (ι₁ (f x))) ＝ pushout-rec c (ι₁ (f x))

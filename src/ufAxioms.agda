@@ -125,27 +125,27 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 
   postulate
     pushout-ind : ∀ {f : A → B} {g : A → C} {𝓠} (Q : Pushout f g → Type 𝓠)
-                  → CoconeD (mk-span _ f g) pushout Q → (x : Pushout f g) → Q x
+                  → Coconeᵈ (mk-span _ f g) pushout Q → (x : Pushout f g) → Q x
 
   pushout-indβ1 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠} →
-                    {c : CoconeD (mk-span _ f g) pushout Q} →
-                     ∀ x → pushout-ind Q c (ι₁ x) ＝ c .CoconeD.p x
+                    {c : Coconeᵈ (mk-span _ f g) pushout Q} →
+                     ∀ x → pushout-ind Q c (ι₁ x) ＝ c .Coconeᵈ.p x
   pushout-indβ1 {c = c} x = primEraseEquality eq where
-    postulate eq : pushout-ind _ _ (ι₁ x) ＝ c .CoconeD.p x
+    postulate eq : pushout-ind _ _ (ι₁ x) ＝ c .Coconeᵈ.p x
 
   pushout-indβ2 : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠} →
-                    {c : CoconeD (mk-span _ f g) pushout Q} →
-                      ∀ x → pushout-ind Q c (ι₂ x) ＝ c .CoconeD.q x
+                    {c : Coconeᵈ (mk-span _ f g) pushout Q} →
+                      ∀ x → pushout-ind Q c (ι₂ x) ＝ c .Coconeᵈ.q x
   pushout-indβ2 {c = c} x = primEraseEquality eq where
-    postulate eq : pushout-ind _ _ (ι₂ x) ＝ c .CoconeD.q x
+    postulate eq : pushout-ind _ _ (ι₂ x) ＝ c .Coconeᵈ.q x
 
   {-# REWRITE pushout-indβ1 pushout-indβ2 #-}
 
   pushout-ind-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
-                      {c : CoconeD (mk-span _ f g) pushout Q} →
-                       ∀ x → apᵈ (pushout-ind Q c) (glue x) ＝ c .CoconeD.filler x
+                      {c : Coconeᵈ (mk-span _ f g) pushout Q} →
+                       ∀ x → apᵈ (pushout-ind Q c) (glue x) ＝ c .Coconeᵈ.filler x
   pushout-ind-apβ {c = c} x = primEraseEquality eq where
-    postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .CoconeD.filler x
+    postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .Coconeᵈ.filler x
 
   opaque
     pushout-rec : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
@@ -175,7 +175,7 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
       = ap (pushout-rec _) (glue x)                      ＝⟨ sym apᵈ-is-ap ⟩
         coe (tr-cst ∙-) (apᵈ (pushout-rec c) (glue x))   ＝⟨ ap (coe (tr-cst ∙-)) (pushout-ind-apβ x) ⟩
         coe (tr-cst ∙-)
-          (CoconeD.filler {cc = pushout}
+          (Coconeᵈ.filler {cc = pushout}
             (Dependent←Cocone {P = λ _ → Q} c) x)        ＝⟨⟩
         coe (tr-cst ∙-) (tr-cst ∙ (c .Cocone.filler x))  ＝⟨ coe-precomp＝ tr-cst _ ⟩
         sym tr-cst ∙ (tr-cst ∙ (c .Cocone.filler x))     ＝⟨ ∙.cancelr _ {h = tr-cst} (∙-sym' tr-cst) {f = c .Cocone.filler x} ⟩

@@ -37,15 +37,15 @@ sym≃ = mk≃ sym sym-is-equiv
                → (b ＝ c) ≃ (a ＝ c)
 ＝-postcomp-≃ p = mk≃ (λ q → p ∙ q) (∙-is-equiv p)
 
-IdP-const-≃
+Idᵈ-const-≃
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       (f : A → B)
       {x y : A} (p : x ＝ y)
       {l : B}
       (t : f x ＝ l)
       (r : f y ＝ l)
-    → IdP (ap (λ z → f z ＝ l) p) t r ≃ (ap f (sym p) ∙ t ＝ r)
-IdP-const-≃ f p t r = ＝-postcomp-≃ (sym (IdP-const-coe f p t))
+    → Idᵈ (ap (λ z → f z ＝ l) p) t r ≃ (ap f (sym p) ∙ t ＝ r)
+Idᵈ-const-≃ f p t r = ＝-postcomp-≃ (sym (Idᵈ-const-coe f p t))
 
 tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)

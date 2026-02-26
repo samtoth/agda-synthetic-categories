@@ -56,7 +56,7 @@ instance
   Universal-Π ⦃ u ⦄ .methods = ∀ a → u {a} .methods
   Universal-Π ⦃ u ⦄ .from = u .from ∘_
   Universal-Π {A = A} {B} ⦃ u ⦄ .from-is-equiv
-    = precomp-Π-equiv (u .from-is-equiv)
+    = postcomp-Π-equiv (u .from-is-equiv)
 
   {-# INCOHERENT Universal-default #-}
   {-# OVERLAPPABLE Universal-Π #-}

@@ -33,6 +33,7 @@ open import Foundations.DependentHomotopy public
 open import Foundations.DependentCocone public
 open import Foundations.EquivOfSingleton public
 open import Foundations.Square public
+open import Foundations.TypeFamily public
 open import Foundations.PathReasoning public
 open import Foundations.FibrePath public
 open import Foundations.Span public hiding (Cocone-path→)

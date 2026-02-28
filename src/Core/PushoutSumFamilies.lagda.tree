@@ -1,0 +1,142 @@
+\title{Pushout sum of families}
+\taxon{Module}
+\date{2026-02-19}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.PushoutSumFamilies where
+
+open import ufAxioms
+
+open import Foundations.Prelude
+
+open import Core.Arrow
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.Join
+open import Core.PushoutEquiv
+open import Core.SpanMap
+open import Foundations.TotalEquiv
+}
+%```
+
+\subtree[fre-0020]{
+\taxon{Definition}
+\title{Pushout sums}
+
+\p{
+Given a type family #{B : A \to \UU} and a dependent type family over #{B},
+#{Y : (a : A) \to X(a) \to \UV}, then we define the
+\em{pushout sum family} #{\pushsum_B Y} to be the family
+
+##{\pushsum_B Y \coloneqq ((a , x) : \Sigma_A X) \mapsto B(a) * Y(a, x)}
+}
+
+\p{This is precisely the straightening of the [pushout sum of arrows](fre-0021).}
+
+%```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+         (F@(A , B) : Fam 𝓤1 𝓤2)
+         (G@(X , Y) : DepFam 𝓤3 𝓤4 F) where
+
+  base-Σ̂ᶠ : Type (𝓤1 ⊔ 𝓤3)
+  base-Σ̂ᶠ = Σ A X
+
+  fam-Σ̂ᶠ : base-Σ̂ᶠ → Type (𝓤2 ⊔ 𝓤4)
+  fam-Σ̂ᶠ (a , x) = B a * Y a x
+
+  Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
+  Σ̂ᶠ = (base-Σ̂ᶠ , fam-Σ̂ᶠ)
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  where
+
+  Σ̂ᵈᶠ : DepFam 𝓤5 𝓤6 (Σ̂ᶠ F G)
+  Σ̂ᵈᶠ
+    = (λ (a , x) → U a x)
+    , (λ (a , x) → V a x)
+}
+%```
+}
+
+\subtree[fre-0018]{
+\taxon{Definition}
+\title{Pushout products}
+
+%```agda
+\agda{
+pushout-productᶠ
+  : {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  → Fam 𝓤1 𝓤2
+  → Fam 𝓤3 𝓤4
+  → Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
+pushout-productᶠ F G = Σ̂ᶠ F (Fam→DepFam F G)
+
+infixl 41 _□ᶠ_
+_□ᶠ_ = pushout-productᶠ
+}
+%```
+}
+
+\subtree[fre-0023]{
+\taxon{Lemma}
+\title{#{\pushsum} preserves equivalences of dependent type families over a fixed base family}
+
+%```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+         (F@(A , B) : Fam 𝓤1 𝓤2)
+         (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+         (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+         (e : G ≃ᵈᶠ⟦ F ⟧ H) where
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    : base-Σ̂ᶠ F G ≃ base-Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    = Σ-ap-≃ (λ a → e a .fst)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-family
+    : (fp : base-Σ̂ᶠ F G)
+    → fam-Σ̂ᶠ F G fp ≃ fam-Σ̂ᶠ F H (Σ̂ᶠ-ap-≃ᵈᶠ-base ._≃_.fwd fp)
+  Σ̂ᶠ-ap-≃ᵈᶠ-family (a , x)
+    = *-≃ idequiv (e a .snd x)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ : Σ̂ᶠ F G ≃ᶠ Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ = Σ̂ᶠ-ap-≃ᵈᶠ-base , Σ̂ᶠ-ap-≃ᵈᶠ-family
+}
+%```
+}
+
+\subtree[fre-0025]{
+\taxon{Lemma}
+\title{Changing the family in the base of #{\pushsum^\rm{f}}}
+
+%```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 : Level}
+         {A : Type 𝓤1} {B : A → Type 𝓤2} {C : A → Type 𝓤3}
+         (G : DepFam 𝓤4 𝓤5 (A , B)) (e : (a : A) → B a ≃ C a) where
+
+  Σ̂ᶠ-ap-base-fam-base
+    : base-Σ̂ᶠ (A , B) G ≃ base-Σ̂ᶠ (A , C) G
+  Σ̂ᶠ-ap-base-fam-base = idequiv
+
+  Σ̂ᶠ-ap-base-fam-family
+    : (fp : base-Σ̂ᶠ (A , B) G)
+    → fam-Σ̂ᶠ (A , B) G fp
+    ≃ fam-Σ̂ᶠ (A , C) G (Σ̂ᶠ-ap-base-fam-base ._≃_.fwd fp)
+  Σ̂ᶠ-ap-base-fam-family (a , x) = *-≃ (e a) idequiv
+
+  Σ̂ᶠ-ap-base-fam : Σ̂ᶠ (A , B) G ≃ᶠ Σ̂ᶠ (A , C) G
+  Σ̂ᶠ-ap-base-fam = Σ̂ᶠ-ap-base-fam-base , Σ̂ᶠ-ap-base-fam-family
+}
+%```
+}

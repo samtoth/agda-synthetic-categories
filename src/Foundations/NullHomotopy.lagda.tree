@@ -1,0 +1,208 @@
+\date{2026-02-23}
+\author{fredrikbakke}
+\title{Null-homotopy}
+\taxon{Module}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.FunExt
+
+module Foundations.NullHomotopy (FE : FunExt-global) where
+
+open import Foundations.Universes
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.CompositionEquiv FE
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Sigma
+open import Foundations.SigmaPath
+open import Foundations.SigmaProperties
+open import Foundations.FibrewiseEquiv
+open import Foundations.Identity
+open import Foundations.IdentityEquiv
+open import Foundations.DependentIdentity
+open import Foundations.EquivProp FE
+
+open WithFunExt-global FE
+}
+%```
+
+\subtree[fre-0027]{
+\title{Null-homotopies}
+\taxon{Definition}
+
+\p{
+Given a map #{f : A \to B} then its type of \em{null-homotopies} is the collection of
+elements #{b} of #{B} such that for all #{a} in #{A} we have #{f(a) = b}.
+##{\nullhtpy{f} \coloneqq \Sigma_{(b : B)}(\Pi_{(a : A)} f(a) = b).}
+}
+
+%```agda
+\agda{
+module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
+
+  fam-null-homotopy : (A → B) → B → Type (𝓤1 ⊔ 𝓤2)
+  fam-null-homotopy f b = (a : A) → f a ＝ b
+
+  null-homotopy : (A → B) → Type (𝓤1 ⊔ 𝓤2)
+  null-homotopy f = Σ[ b ∶ B ] (fam-null-homotopy f b)
+
+  null-homotopy-path-coe-fam-null-homotopy
+    : {f : A → B}
+      {c l : B}
+      (h : fam-null-homotopy f c)
+      (t : c ＝ l)
+    → (λ a → h a ∙ t) ＝ coe (ap (fam-null-homotopy f) t) h
+  null-homotopy-path-coe-fam-null-homotopy h refl = funext→ (λ a → ∙-reflr (h a))
+
+  null-homotopy-path-Idᵈ≃pointwise
+    : {f : A → B}
+      {c l : B}
+      (h : fam-null-homotopy f c)
+      (r : fam-null-homotopy f l)
+      (t : c ＝ l)
+    → Idᵈ (ap (fam-null-homotopy f) t) h r ≃ ((a : A) → h a ∙ t ＝ r a)
+  null-homotopy-path-Idᵈ≃pointwise {f = f} h r t
+    = Idᵈ (ap (fam-null-homotopy f) t) h r
+      ≃⟨ ＝-postcomp-≃ (null-homotopy-path-coe-fam-null-homotopy h t) ⟩
+      ((λ a → h a ∙ t) ＝ r)
+      ≃⟨ funext≃ ⟩
+      ((a : A) → h a ∙ t ＝ r a)
+      ≃∎
+
+  null-homotopy-path≃
+    : {f : A → B}
+      {c l : B}
+      (h : f ~ const B A c)
+      (r : f ~ const B A l)
+    → ((c , h) ＝ (l , r))
+    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+  null-homotopy-path≃ {f = f} {c} {l} h r
+    = ((c , h) ＝ (l , r))
+      ≃⟨ Σ-path e⁻¹ ⟩
+      (Σ[ t ∶ c ＝ l ] Idᵈ (ap (fam-null-homotopy f) t) h r)
+      ≃⟨ Σ-ap-≃ (null-homotopy-path-Idᵈ≃pointwise h r) ⟩
+      (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+      ≃∎
+}
+%```
+}
+
+\subtree[fre-0028]{
+\title{The action on identifications of null-homotopic maps is null-homotopic}
+\taxon{Proposition}
+
+\p{
+If #{f : A \to B} is null-homotopic, then for any #{x,y : A}, the induced map on paths
+#{\ap f : (x = y) \to (f(x) = f(y))} is null-homotopic.
+}
+
+%```agda
+\agda{
+ap-null-homotopy
+  : ∀ {𝓤 𝓥}
+      {A : Type 𝓤}
+      {B : Type 𝓥}
+      {f : A → B}
+    → null-homotopy f
+    → (x y : A)
+    → null-homotopy (ap f {x} {y})
+ap-null-homotopy {f = f} (b , h) x y
+  = h x ∙ sym (h y)
+  , J (λ y p → ap f p ＝ h x ∙ sym (h y)) (sym (∙-sym (h x)))
+}
+%```
+}
+
+\subtree[fre-0029]{
+\title{A null-homotopy presentation of domains of maps}
+\taxon{Construction}
+
+\p{
+Given a map #{g : X \to Y} and any type #{A}, then #{X} is equivalent to the data
+consisting of a point #{y : Y}, a map #{j : A \to \fibre{g}{y}}, and a null-homotopy of #{j}.
+##{X \;\simeq\; \Sigma_{(y : Y)}\Sigma_{(j : A \to \fibre{g}{y})}\nullhtpy(j)}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X → Y) where
+
+  fibre-pointed-total : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  fibre-pointed-total
+    = Σ[ y ∶ Y ] Σ[ j ∶ (A → fibre g y) ] null-homotopy j
+
+  fibre-pointed-total←domain : X → fibre-pointed-total
+  fibre-pointed-total←domain x
+    = g x , const (fibre g (g x)) A (x , refl) , (x , refl) , ~refl
+
+  domain←fibre-pointed-total : fibre-pointed-total → X
+  domain←fibre-pointed-total (_ , _ , y , _) = fst y
+
+  domain←fibre-pointed-total-qiso : quasi-iso domain←fibre-pointed-total
+  domain←fibre-pointed-total-qiso .fst = fibre-pointed-total←domain
+  domain←fibre-pointed-total-qiso .snd .fst (.(g x) , j , (x , refl) , H)
+    = funext-rec
+        (λ H' → fibre-pointed-total←domain x ＝ (g x , j , (x , refl) , H'))
+        (λ where refl → refl)
+        H
+  domain←fibre-pointed-total-qiso .snd .snd x = refl
+
+  fibre-pointed-total≃domain : fibre-pointed-total ≃ X
+  fibre-pointed-total≃domain
+    = mk≃ domain←fibre-pointed-total
+          (is-equiv←qiso domain←fibre-pointed-total-qiso)
+}
+%```
+}
+
+\subtree[fre-0030]{
+\title{Postcomposition preserves null-homotopies}
+\taxon{Proposition}
+
+% ```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
+         (e : A ≃ B) (j : A → C) where
+
+  homotopy-const-postcomp-≃
+    : (y : C)
+    → (j ~ const C A y)
+    ≃ (((precomp-≃ (e e⁻¹)) ._≃_.fwd j) ~ const C B y)
+  homotopy-const-postcomp-≃ y
+    = precomp-Π-≃ (λ a → j a ＝ y) (e e⁻¹)
+
+  null-homotopy-postcomp-≃
+    : null-homotopy j
+    ≃ null-homotopy ((precomp-≃ (e e⁻¹)) ._≃_.fwd j)
+  null-homotopy-postcomp-≃
+    = Σ-ap-≃ homotopy-const-postcomp-≃
+}
+% ```
+}
+
+\subtree[fre-0031]{
+\title{Equivalences on codomains preserve null-homotopies}
+\taxon{Proposition}
+
+% ```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
+         (e : B ≃ C) (j : A → B) where
+
+  null-homotopy-map-codomain-≃
+    : null-homotopy j
+    ≃ null-homotopy (e ._≃_.fwd ∘ j)
+  null-homotopy-map-codomain-≃
+    = null-homotopy j
+      ≃⟨ Σ-ap-≃ (λ y → Π-ap-≃ (λ a → ＝-equiv e)) ⟩
+      (Σ[ y ∶ B ] ((a : A) → e ._≃_.fwd (j a) ＝ e ._≃_.fwd y))
+      ≃⟨ Σ-ap-≃-fst e ⟩
+      null-homotopy (e ._≃_.fwd ∘ j)
+      ≃∎
+}
+% ```
+}

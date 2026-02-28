@@ -1,0 +1,209 @@
+\title{Type Family}
+\taxon{Module}
+\date{2026-02-18}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Foundations.TypeFamily where
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Functions
+open import Foundations.SigmaProperties
+open import Foundations.Identity
+open import Foundations.CoherentIsomorphism
+}
+%```
+
+\subtree[fre-0032]{
+\title{Type families and dependent type families}
+\taxon{Definition}
+
+\p{
+A \em{type family} is a function #{B : A \to \UU}. A \em{dependent type family} over the
+type family #{B : A \to \UU} is a function #{Y : (a : A) \to X(a) \to \UV}.
+}
+
+%```agda
+\agda{
+Fam : (𝓤1 𝓤2 : Level) → Type (lsuc 𝓤1 ⊔ lsuc 𝓤2)
+Fam 𝓤1 𝓤2 = Σ (Type 𝓤1) (λ X → X → Type 𝓤2)
+
+DepFam
+  : {𝓤1 𝓤2 : Level}
+  → (𝓤3 𝓤4 : Level)
+  → Fam 𝓤1 𝓤2
+  → Type (𝓤1 ⊔ lsuc 𝓤3 ⊔ lsuc 𝓤4)
+DepFam 𝓤3 𝓤4 (A , B)
+  = Σ (A → Type 𝓤3)
+      (λ X → (a : A) → X a → Type 𝓤4)
+
+Dep²Fam
+  : {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  → (𝓤5 𝓤6 : Level)
+  → (F : Fam 𝓤1 𝓤2)
+  → DepFam 𝓤3 𝓤4 F
+  → Type (𝓤1 ⊔ 𝓤3 ⊔ lsuc 𝓤5 ⊔ lsuc 𝓤6)
+Dep²Fam 𝓤5 𝓤6 (A , B) (X , Y)
+  = Σ ((a : A) → X a → Type 𝓤5)
+      (λ U → (a : A) (x : X a) → U a x → Type 𝓤6)
+}
+%```
+}
+
+\subtree[fre-0034]{
+\title{Equivalences of type families}
+\taxon{Definition}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : Fam 𝓤3 𝓤4)
+  where
+
+  infix 7 _≃ᶠ_
+  _≃ᶠ_ : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  _≃ᶠ_ = Σ[ (mk≃ e _) ∶ A ≃ X ] ((a : A) → B a ≃ Y (e a))
+}
+%```
+}
+
+\subtree[fre-0035]{
+\title{Straightening–unstraightening for type families}
+\taxon{Construction}
+
+%```agda
+\agda{
+arr←Fam
+  : {𝓤1 𝓤2 : Level}
+    (F : Fam 𝓤1 𝓤2)
+  → Σ (fst F) (snd F) → fst F
+arr←Fam F = fst
+
+arr←Fam-fibre-fam
+  : {𝓤1 𝓤2 : Level}
+    {A : Type 𝓤1}
+    {B : Type 𝓤2}
+    (f : A → B)
+  → arr←Fam (fibre-fam f) ＝ fst
+arr←Fam-fibre-fam f = refl
+
+fibre-fam-arr←Fam≃ᶠ
+  : {𝓤1 𝓤2 : Level}
+    (F : Fam 𝓤1 𝓤2)
+  → fibre-fam (arr←Fam F) ≃ᶠ F
+fibre-fam-arr←Fam≃ᶠ (A , B)
+  = idequiv , fibre-straighten B
+}
+%```
+}
+
+\subtree[fre-0036]{
+\title{Dependent type families from nondependent type families}
+\taxon{Definition}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : Fam 𝓤3 𝓤4)
+  where
+
+  Fam→DepFam : DepFam 𝓤3 𝓤4 F
+  Fam→DepFam = ((λ _ → X) , (λ _ → Y))
+
+  Fam→Dep²Fam
+    : {𝓤5 𝓤6 : Level}
+    → Fam 𝓤5 𝓤6
+    → Dep²Fam 𝓤5 𝓤6 F Fam→DepFam
+  Fam→Dep²Fam (U , V)
+    = ((λ _ _ → U) , (λ _ _ → V))
+
+  DepFam→Dep²Fam
+    : {𝓤5 𝓤6 : Level}
+    → DepFam 𝓤5 𝓤6 G
+    → Dep²Fam 𝓤5 𝓤6 F Fam→DepFam
+  DepFam→Dep²Fam (U , V)
+    = ((λ _ → U) , (λ _ → V))
+}
+%```
+}
+
+\subtree[fre-0037]{
+\title{Identity and composition of equivalences of type families}
+\taxon{Definition}
+
+%```agda
+\agda{
+id≃ᶠ : ∀ {𝓤1 𝓤2} (F : Fam 𝓤1 𝓤2) → F ≃ᶠ F
+id≃ᶠ (A , B) = idequiv , (λ _ → idequiv)
+
+concat≃ᶠ
+  : ∀ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6}
+      {F : Fam 𝓤1 𝓤2}
+      {G : Fam 𝓤3 𝓤4}
+      (H : Fam 𝓤5 𝓤6)
+    → F ≃ᶠ G
+    → G ≃ᶠ H
+    → F ≃ᶠ H
+concat≃ᶠ H (e , ef) (e' , eg)
+  = e ∙≃ e'
+  , (λ a → ef a ∙≃ eg (e ._≃_.fwd a))
+
+}
+%```
+}
+
+\subtree[fre-0038]{
+\title{Equivalences of dependent type families over a fixed base}
+\taxon{Definition}
+
+%```agda
+\agda{
+≃ᵈᶠ-over
+  : {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+    (F@(A , B) : Fam 𝓤1 𝓤2)
+    (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+    (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+  → Type (𝓤1 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+≃ᵈᶠ-over F (X , Y) (U , V)
+  = (a : fst F) → (X a , Y a) ≃ᶠ (U a , V a)
+
+syntax ≃ᵈᶠ-over F G H = G ≃ᵈᶠ⟦ F ⟧ H
+}
+%```
+}
+
+\subtree[fre-0039]{
+\title{Identity and composition of dependent family equivalences}
+\taxon{Definition}
+
+%```agda
+\agda{
+id≃ᵈᶠ
+  : {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+    (F : Fam 𝓤1 𝓤2)
+    (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  → G ≃ᵈᶠ⟦ F ⟧ G
+id≃ᵈᶠ F (X , Y) a = id≃ᶠ (X a , Y a)
+
+concat≃ᵈᶠ
+  : {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 𝓤7 𝓤8 : Level}
+    (F : Fam 𝓤1 𝓤2)
+    (G : DepFam 𝓤3 𝓤4 F)
+    (H : DepFam 𝓤5 𝓤6 F)
+    (K : DepFam 𝓤7 𝓤8 F)
+  → G ≃ᵈᶠ⟦ F ⟧ H
+  → H ≃ᵈᶠ⟦ F ⟧ K
+  → G ≃ᵈᶠ⟦ F ⟧ K
+concat≃ᵈᶠ F (X , Y) (U , V) (P , Q) e e' a
+  = concat≃ᶠ (P a , Q a) (e a) (e' a)
+}
+%```
+}

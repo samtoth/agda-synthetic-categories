@@ -27,6 +27,7 @@ open import Foundations.PropClosure public hiding (is-prop-Π)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
+open import Foundations.NullHomotopy global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
 open HE public

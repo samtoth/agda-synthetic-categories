@@ -6,7 +6,6 @@
 
 %```agda
 \agda{
-{-# OPTIONS --lossy-unification #-}
 open import Foundations.Prelude
 open import Algebra.Lattice
 
@@ -24,33 +23,34 @@ private
 
 open import ufAxioms
 
-open import Core.CoSlice
-open import Core.Arrow
-open import Core.PullbackPower
-open import Core.Orthogonal
-
-open import Ergonomics.Extensionality
-
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Categories.Precategories Δ¹ I I-distr
-open import Synthetic.Categories.Horns Δ¹ I I-distr
 open import Synthetic.Categories.Simplicial Δ¹ I I-distr
-open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
-open import Synthetic.Categories.Comma Δ¹ I I-distr
-open import Synthetic.Categories.CoComma Δ¹ I I-distr
-open import Synthetic.Categories.JoinSlice Δ¹ I I-distr
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 open import Synthetic.Categories.Homotopies Δ¹ I I-distr
-open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Initial Δ¹ I I-distr
 }
 %```
 
 
+\subtree[tot-0006]{
+\title{Sections of types with initial objects}
+\taxon{Lemma}
+\citet{Thm 9.7}{RS17}
+
+\p{If #{A} is a type with an initial object #{a}, and #{P}, a covariant family
+over #{A}, then the evaluation map at #{a} #{(\Pi_{x}P(x)) \to P(a)} is an
+equivalence.}
+
+\proof{
+We first give the inverse map. Given a partial section at #{a}, #{x : P(a)},
+we use the covariance of #{P} and the fact #{a} is initial to transport #{x}
+to a full section: #{(x : P(a)) \mapsto ¡_{b}^*(x) : P(b)}.
+}
+
 %```agda
 \agda{
-is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
-is-initial a = ∀ b → is-singleton (Hom _ a b)
-
 ev-init-is-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
     → is-covariant P
@@ -73,249 +73,81 @@ opaque
       → P a → ∀ x → P x
   rec-init Pc ai p0 = is-equiv.bwd (ev-init-is-equiv Pc ai) p0
 
+  rec-init-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+        (Pc : is-covariant P)
+        (init : is-initial a)
+      → is-equiv (rec-init {P = P} Pc init)
+  rec-init-is-equiv Pc init = is-equiv⁻¹ (ev-init-is-equiv Pc init)
+
   rec-init-β
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
         (Pc : is-covariant P)
         (ai : is-initial a)
       → (p : P a) → rec-init Pc ai p a ＝ p
   rec-init-β {a = a} Pc ai p = is-equiv.ε (ev-init-is-equiv Pc ai) p
+}
+%```
+}
 
+\subtree[tot-0007]{
+\title{The Yoneda Lemma}
+\taxon{Corollary}
 
-YonedaJ
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a}
-      (P : (x : A) → Hom _ a x → Type 𝓥)
-    → is-covariant (uncurry P)
-    → (init : is-initial {A = Σ A (Hom _ a)} (a , idH a))
-    → P a (idH a)
-    → ∀ x (f : Hom _ a x) → P x f
-YonedaJ P cov init p x f = rec-init {P = uncurry P} cov init p (x , f)
+\p{We first prove the dependent Yoneda lemma. Given a precategory #{A},
+an element #{a : A}, and some family #{P : \Pi_{x} \Hom(a,x) \to \UU}, we
+show that the evaluation map #{(\Pi_{x}\Pi_{f : \Hom(a,x)} P(x,f)) \to P(a,\id)}
+is an equivalence. If we uncurry #{P}, we get a family #{A_{a/} \to \UU},
+which has an initial object by \ref{tot-0003}. Then the result follows directly
+from the [above lemma](tot-0006).}
 
-YonedaJ-id
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a}
-      (P : (x : A) → Hom _ a x → Type 𝓥)
-      (Pc : is-covariant (uncurry P))
-      (init : is-initial {A = Σ A (Hom _ a)} (a , idH a))
-    → (p0 : P a (idH a))
-    → YonedaJ P Pc init p0 a (idH a) ＝ p0
-YonedaJ-id P = rec-init-β
+%```agda
+\agda{
+module _ {𝓤 𝓥}
+         {A : Type 𝓤}
+         (Asimp : is-simplicial A)
+         (Ase : is-segal A)
+         {a}
+         (P : (x : A) → Hom _ a x → Type 𝓥)
+         (cov : is-covariant (uncurry P))
+         (let init = coslice-init' Ase Asimp a)
+         where
+  YonedaJ
+    : P a (idH a) → ∀ x (f : Hom _ a x) → P x f
+  YonedaJ p x f = rec-init {P = uncurry P} cov init p (x , f)
 
-is-initial←slice-proj-is-equiv
-  : ∀ {𝓤} {A : Type 𝓤} a
-    → is-equiv (λ ((f , _) : Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)) → f i1)
-    → is-initial a
-is-initial←slice-proj-is-equiv a eq b
-  = is-single←equiv-to-single
-      (Σ-assoc ∙≃ HomP-repr≃ e⁻¹)
-      (is-contr-map←is-equiv eq b)
+  YonedaJ-is-equiv
+    : is-equiv YonedaJ
+  YonedaJ-is-equiv
+    = is-equiv-∘ curry-is-equiv (rec-init-is-equiv cov init)
 
-coslice-init
-  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) a
-    → is-initial {A = Coslice A (const _ 𝟙 a)} (a , λ _ → idH a)
-coslice-init {A = A} As Asi a
-  = is-initial←slice-proj-is-equiv _ proj-is-equiv where
-  lemma
-    : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-    → Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
-  lemma (sq , p , q , H) .fst i .fst = _
-  lemma (sq , p , q , H) .fst i .snd _ .HomP.hom j = sq i j
-  lemma (sq , p , q , H) .fst i .snd _ .HomP.hom0 = p i
-  lemma (sq , p , q , H) .fst i .snd _ .HomP.hom1 = refl
-  lemma (sq , p , q , H) .snd = Coslice-path→
-    ((q i1) ,
-    (λ i → q , mk-square (ap (_∙ refl) (sym H)) , Square-degen-hor _ _ refl)
-    )
+  YonedaJ-id : (p0 : P a (idH a)) → YonedaJ p0 a (idH a) ＝ p0
+  YonedaJ-id = rec-init-β cov init
+}
+%```
 
-  lemma-eq : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-               Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-           ≃ Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
-  lemma-eq
-    = ((Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-         Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0)))
-           ≃⟨ Σ-assoc e⁻¹
-          ∙≃ Σ-ap-≃-fst {B = λ sq →  Σ[ q ∶ (∀ j → sq i0 .snd tt .HomP.hom j ＝ a)]
-                                       (sq i0 .snd tt .HomP.hom0 ＝ q i0) }
-              ((Σ-Π-swap≃ _ λ _ sq → sq i0 ＝ a) e⁻¹
-               ∙≃ precomp-Π-≃ (λ i → Coslice-object-repr≃ a e⁻¹)) ⟩
-      ((Σ[ sl ∶ ((i : Δ¹) → (Coslice A (const _ 𝟙 a)))]
-         Σ[ q ∶ (∀ j → sl i0 .snd tt .HomP.hom j ＝ a)]
-           (sl i0 .snd tt .HomP.hom0 ＝ q i0)))
-            ≃⟨ Σ-ap-≃ II ⟩
-      (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))]
-        Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-          (∀ _ → Hom-pathP refl sl01 (sl i0 .snd tt) (idH a)))
-            ≃⟨ Σ-ap-≃ (λ sl →  mk≃ _ (Coslice-path-is-equiv {x = sl i0}) ) ⟩
-      (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))) ≃∎ where
+\p{The non-dependent Yoneda lemma can the be obtained from the observation that
+[covariant families are stable under change of base](tot-0009), and we can weaken
+any family #{P : A \to \UU} into a family #{{\pi_1}^*P : A_{a/} \to \UU}.}
 
-      II-map : (w : A) (sl : Hom A a w)
-         → Σ[ q ∶ (∀ j → sl .HomP.hom j ＝ a)]
-             (sl .HomP.hom0 ＝ q i0)
-         → Σ[ sl01 ∶ (w ＝ a)]
-             (∀ _ → Hom-pathP refl sl01 sl (idH a))
-      II-map w x (p , coh) .fst = sym (x .HomP.hom1) ∙ p i1
-      II-map w x (p , coh) .snd tt .fst = p
-      II-map w x (p , coh) .snd tt .snd .fst = mk-square (ap (_∙ refl) (sym coh))
-      II-map w x@(mk-hom _ _ refl) (p , coh) .snd tt .snd .snd
-        = Square-degen-hor _ _ refl
+%```agda
+\agda{
+module _ {𝓤 𝓥}
+         {A : Type 𝓤}
+         (Asimp : is-simplicial A)
+         (Ase : is-segal A)
+         {a}
+         (P : A → Type 𝓥)
+         (cov : is-covariant P)
+         (let init  = coslice-init' Ase Asimp a)
+         (let cov' = covariant-base-change {P = P} fst cov)
+         where
+  Yoneda-coe : P a → ∀ x → Hom _ a x → P x
+  Yoneda-coe x p = YonedaJ Asimp Ase (λ a _ → P a) cov' x p
 
-      II-inv : (w : A) (sl : Hom A a w)
-         → Σ[ sl01 ∶ (w ＝ a)]
-             (∀ _ → Hom-pathP refl sl01 sl (idH a))
-         → Σ[ q ∶ (∀ j → sl .HomP.hom j ＝ a)]
-             (sl .HomP.hom0 ＝ q i0)
-      II-inv w x (a , b) .fst = b tt .fst
-      II-inv w x (a , b) .snd
-          = unap-equiv {f = _∙ refl} (∙-is-equiv' _)
-                       (sym (un-square (b tt .snd .fst)))
-
-
-      qiso : ∀ a x → quasi-iso (II-map a x)
-      qiso w x .fst = II-inv w x
-      qiso w x .snd .fst (a , b) = Σ-path→ (refl
-        , (unap-equiv (∙-is-equiv' _) (sym _)
-               ＝⟨ ap (unap-equiv (∙-is-equiv' _))
-                      (ap sym (un-mk-square (ap (_∙ refl) (sym b)))
-                      ∙ sym (ap-sym (_∙ refl) (sym b))
-                      ∙ ap (ap (_∙ refl)) sym-sym) ⟩
-           unap-equiv (∙-is-equiv' _) (ap (_∙ refl) b)
-             ＝⟨ unap-ap-equiv _ b ⟩
-           b ∎))
-      qiso w x .snd .snd (refl , t)
-         = let path = Id←IdS {a = x} {b = idH _} (Hom-path←pathP (t tt))
-           in tr (λ p → II-map w x (qiso w x .fst (refl , λ _ → p)) ＝ (refl , λ _ → p))
-                 (Hom-pathP←path (IdS←Id ⦃ IdS-Hom ⦄ path) ＝⟨⟩
-                 (Hom-pathP←path (IdS←Id ⦃ IdS-Hom ⦄
-                                 (Id←IdS {a = x} (Hom-path←pathP (t tt)))))
-                                               ＝⟨ ap Hom-pathP←path
-                                                      (IdS←Id←IdS ⦃ IdS-Hom ⦄
-                                                        (Hom-path←pathP (t tt))) ⟩
-                 (Hom-pathP←path (Hom-path←pathP (t tt)))
-                                               ＝⟨ _≃_.ε Hom-pathP≃path (t tt)  ⟩
-                 t tt ∎)
-                 (help x path) where
-           opaque
-             unfolding Square
-             III : Square-degen-hor {a = a} refl refl refl ＝ mk-square refl
-             III = refl
-             IV : II-map w (idH w)
-                   (qiso w (idH w) .fst
-                    (refl ,
-                     (λ _ → Hom-pathP←path (Identity-system.IdS←Id IdS-Hom refl))))
-                   .snd tt .snd .fst
-                   ＝
-                   mk-square
-                   (Identity-system.IdS←Id IdS-Hom {a = idH w} refl .snd .fst ∙
-                    sym (∙-reflr (HomP.hom0 (idH w))))
-             IV = ap (ap (_∙ refl)) (ap sym (unap-refl (∙-is-equiv' refl)))
-                  ∙ refl
-
-
-           help : ∀ (x' : Hom A w w) → (p : x' ＝ idH w)
-                → II-map w x' (qiso w x' .fst (refl , λ _ → Hom-pathP←path (IdS←Id p)))
-                ＝ (refl , λ _ → Hom-pathP←path (IdS←Id p))
-           help x' refl = Σ-path→ (refl , (funext→
-             (λ a₁ → Σ-path→ (refl , (×-path→ (IV , III))))))
-
-      II : (sl : Δ¹ → Coslice A (const A 𝟙 a))
-         → Σ[ q ∶ (∀ j → sl i0 .snd tt .HomP.hom j ＝ a)]
-             (sl i0 .snd tt .HomP.hom0 ＝ q i0)
-         ≃ Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-             (∀ _ → Hom-pathP refl sl01 (sl i0 .snd tt) (idH a))
-      II x ._≃_.fwd = II-map (x i0 .fst) (x i0 .snd tt)
-      II x ._≃_.has-is-eqv = is-equiv←qiso (qiso (x i0 .fst) (x i0 .snd tt))
-
-  H : _≃_.fwd lemma-eq ~ lemma
-  H = ~refl
-
-  mirror-aut
-    : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-    → (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-  mirror-aut (sq , p , q , coh) .fst i j = sq j i
-  mirror-aut (sq , p , q , coh) .snd .fst = q
-  mirror-aut (sq , p , q , coh) .snd .snd .fst = p
-  mirror-aut (sq , p , q , coh) .snd .snd .snd = sym coh
-
-  mirror-aut-invol : mirror-aut ∘ mirror-aut ~ id
-  mirror-aut-invol (sq , p , q , coh)
-    = Σ-path→ (refl , Σ-path→ (refl , Σ-path→ (refl , sym-sym)))
-
-  mirror-aut-is-equiv : is-equiv mirror-aut
-  mirror-aut-is-equiv = is-equiv←qiso
-    ( mirror-aut
-    , mirror-aut-invol
-    , mirror-aut-invol)
-
-  proj : Σ[ f ∶ (Δ¹ → Coslice A (const _ 𝟙 a)) ] (f i0 ＝ (a , λ _ → idH a))
-       → Coslice A (const _ 𝟙 a)
-  proj (f , _) = f i1
-
-  factor1 : Σ[ f ∶ (Δ¹ → Coslice A (const _ 𝟙 a)) ] (f i0 ＝ (a , λ _ → idH a))
-        → Σ[ x ∶ Arrow-map (const _ 𝟙 i0) {C = Coslice A (const _ _ a)} fst ]
-            (Arrow-map.top x tt ＝ (a , (λ _ → idH a)))
-  factor1 = total-map-fst (pullback-power (const _ 𝟙 i0) fst)
-                        {B = λ x → Arrow-map.top x tt ＝ (a , λ _ → idH a)}
-
-  factor2
-    : Σ[ x ∶ Arrow-map (const _ 𝟙 i0) {C = Coslice A (const _ 𝟙 a)} fst ]
-            (Arrow-map.top x tt ＝ (a , (λ _ → idH a)))
-    → Σ[ f ∶ (Δ¹ → A)]
-        Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-         (f i0 ＝ g .fst .fst)
-  factor2 (mk-amap f g h , p) = (g , (f tt , p) , h tt)
-
-  factor2-qiso : quasi-iso factor2
-  factor2-qiso .fst (g , (f , p) , h)
-    = (mk-amap (λ _ → f) g λ _ → h) , p
-  factor2-qiso .snd .fst (mk-amap f g h , p) = refl
-  factor2-qiso .snd .snd (g , (f , p) , h) = refl
-
-  factor3 : Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-        → Σ[ f ∶ (Δ¹ → A)]
-            Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-             (f i0 ＝ g .fst .fst)
-  factor3 (f , p) = (f , ((a , λ _ → idH a) , refl) , p)
-
-  factor3-inv
-    : Σ[ f ∶ (Δ¹ → A)]
-        Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-         (f i0 ＝ g .fst .fst)
-    → Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-  factor3-inv (f , p , q) = (f , q ∙ ap fst (p .snd))
-
-  factor3-qiso : quasi-iso factor3-inv
-  factor3-qiso .fst = factor3
-  factor3-qiso .snd .fst (f , ((g , k) , refl) , h)
-    = Σ-path→ (refl , (Σ-path→ (refl , (∙-reflr _))))
-  factor3-qiso .snd .snd (f , p) = Σ-path→ (refl , ∙-reflr _)
-
-  factor4 : Coslice A (const _ 𝟙 a) → Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-  factor4 = Coslice-object-repr≃ a ._≃_.fwd
-
-  factorisation : factor4 ∘ proj ∘ lemma
-                ~ factor3-inv ∘ factor2 ∘ factor1 ∘ lemma ∘ mirror-aut
-  factorisation (sq , p , q , coh) = fibre-path→ (refl , Coslice-path-ap-fst _)
-
-  opaque
-    proj-is-equiv : is-equiv proj
-    proj-is-equiv = 3-for-2 {f = factor4}
-      (Coslice-object-repr≃ a ._≃_.has-is-eqv)
-      (3-for-2~' {f = factor4 ∘ proj} {g = lemma}
-        (factorisation ~⁻¹)
-        (lemma-eq ._≃_.has-is-eqv)
-        (is-equiv-∘ {f = factor3-inv}
-          (is-equiv←qiso factor3-qiso)
-          (is-equiv-∘ {f = factor2}
-            (is-equiv←qiso factor2-qiso)
-            (is-equiv-∘ {f = factor1}
-              (total-is-equiv←fst-is-equiv
-                (pb-power-is-equiv←orthogonal
-                  (coslice-is-left⇔is-precategory Asi .fst As a)))
-              (is-equiv-∘ {f = lemma}
-                (lemma-eq ._≃_.has-is-eqv)
-                mirror-aut-is-equiv)))))
-
+  Yoneda-coe-is-equiv
+    : is-equiv (Yoneda-coe)
+  Yoneda-coe-is-equiv = YonedaJ-is-equiv Asimp Ase _ cov'
 
 
 precat-idr : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) {x y}
@@ -343,3 +175,4 @@ precat-idr As f = sym (unique-composite As f (idH _)
 --   (ap (_∘[ As ] h) (precat-idl As g) ∙ sym (precat-idl As (g ∘[ As ] h))) w f
 }
 %```
+}

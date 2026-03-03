@@ -64,13 +64,16 @@ module _
     : (b : B)
       (y : Y b)
     → fibre (map-Σ f g) (b , y)
-    ≃ Σ A (λ a → Σ (f a ＝ b) (λ p → Σ (X a) (λ x → Idᵈ (ap Y p) (g a x) y)))
+    ≃ Σ[ a ∶ A ] Σ[ p ∶ f a ＝ b ] Σ[ x ∶ X a ] Idᵈ (ap Y p) (g a x) y
   fibre-map-Σ' b y
-    = Σ (Σ A X) (λ (a , x) → (f a , g a x) ＝ (b , y))                    ≃⟨ Σ-assoc ⟩
-      Σ A (λ a → Σ (X a) λ x → (f a , g a x) ＝ (b , y))                  ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ (λ x → Σ-path e⁻¹)) ⟩
-      Σ A (λ a → Σ (X a) λ x → Σ (f a ＝ b)
-                                 (λ p → Idᵈ (ap Y p) (g a x) y))          ≃⟨ Σ-ap-≃ (λ a → Σ-comm) ⟩
-      Σ A (λ a → Σ (f a ＝ b) λ p → Σ (X a) λ x → Idᵈ (ap Y p) (g a x) y) ≃∎
+    = Σ[ (a , x) ∶ (Σ A X) ] ((f a , g a x) ＝ (b , y))
+        ≃⟨ Σ-assoc ⟩
+      Σ[ a ∶ A ] Σ[ x ∶ X a ] ((f a , g a x) ＝ (b , y))
+        ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ (λ x → Σ-path e⁻¹)) ⟩
+      Σ[ a ∶ A ] Σ[ x ∶ X a ] Σ[ p ∶ f a ＝ b ] (Idᵈ (ap Y p) (g a x) y)
+        ≃⟨ Σ-ap-≃ (λ a → Σ-comm) ⟩
+      Σ[ a ∶ A ] Σ[ p ∶ f a ＝ b ] Σ[ x ∶ X a ] (Idᵈ (ap Y p) (g a x) y)
+        ≃∎
 
   fibre-map-Σ
     : (b : B)
@@ -79,11 +82,12 @@ module _
     ≃ Σ[ af ∶ fibre f b ]
         fibre (λ x → coe (ap Y (af .snd)) (g (af .fst) x)) y
   fibre-map-Σ b y
-    = fibre (map-Σ f g) (b , y)                        ≃⟨ fibre-map-Σ' b y ⟩
-      Σ A (λ a → Σ (f a ＝ b) λ p → Σ (X a)
-        λ x → Idᵈ (ap Y p) (g a x) y)                  ≃⟨ Σ-assoc e⁻¹ ⟩
-      Σ (fibre f b) (λ af → Σ (X (af .fst))
-        λ x → Idᵈ (ap Y (af .snd)) (g (af .fst) x) y)  ≃∎
+    = fibre (map-Σ f g) (b , y)
+        ≃⟨ fibre-map-Σ' b y ⟩
+      Σ[ a ∶ A ] Σ[ p ∶ f a ＝ b ] Σ[ x ∶ X a ] (Idᵈ (ap Y p) (g a x) y)
+        ≃⟨ Σ-assoc e⁻¹ ⟩
+      Σ[ (a , p) ∶ fibre f b ] Σ[ x ∶ X a ] Idᵈ (ap Y p) (g a x) y
+        ≃∎
 
 fibre-total-map
   : {𝓤 𝓥 𝓦 : Level}
@@ -92,10 +96,12 @@ fibre-total-map
     {a : A} {b : B' a}
   → fibre (total-map f) (a , b) ≃ fibre (f a) b
 fibre-total-map {A = A} {B} {B'} {f = f} {a} {b}
-  = fibre (total-map f) (a , b)                         ≃⟨ fibre-map-Σ' id f a b ⟩
-    Σ A (λ a' → Σ (a' ＝ a) λ p → Σ (B a')
-        λ ba → Idᵈ (ap B' p) (f a' ba) b)               ≃⟨ Σ-＝singl ⟩
-    fibre (f a) b                                       ≃∎
+  = fibre (total-map f) (a , b)
+      ≃⟨ fibre-map-Σ' id f a b ⟩
+    Σ[ a' ∶ A ] Σ[ p ∶ a' ＝ a ] Σ[ b' ∶ B a' ] Idᵈ (ap B' p) (f a' b') b
+      ≃⟨ Σ-＝singl ⟩
+    fibre (f a) b
+      ≃∎
 
 fibre-total-map-fst
   : {𝓤 𝓥 𝓦 : Level}
@@ -107,9 +113,12 @@ fibre-total-map-fst
     (b : B a)
   → fibre (total-map-fst f {B}) (a , b) ≃ fibre f a
 fibre-total-map-fst {A = A} {A'} {B} f a b
-  = fibre (total-map-fst f {B}) (a , b)                           ≃⟨ fibre-map-Σ f (λ _ → id) a b ⟩
-    Σ (fibre f a) (λ af → fibre (λ x → coe (ap B (af .snd)) x) b) ≃⟨ Σ-singleton (λ af → is-contr-map←is-equiv (coe-is-equiv (ap B (af .snd))) b) ⟩
-    fibre f a                                                     ≃∎
+  = fibre (total-map-fst f {B}) (a , b)
+      ≃⟨ fibre-map-Σ f (λ _ → id) a b ⟩
+    Σ[ (a' , p) ∶ fibre f a ] (fibre (coe (ap B p)) b)
+      ≃⟨ Σ-singleton (λ (a' , p) → is-contr-map←is-equiv (coe-is-equiv (ap B p)) b) ⟩
+    fibre f a
+      ≃∎
 
 module _
   {𝓤1 𝓤2 𝓤3 𝓤4}
@@ -124,8 +133,8 @@ module _
       (g : (b : B) → X b → Y b)
       (b : B)
       (y : Y b)
-      (af : fibre f b)
-    → fibre (λ x → coe (ap Y (af .snd)) (g (f (af .fst)) x)) y
+      (af@(a , p) : fibre f b)
+    → fibre (coe (ap Y p) ∘ g (f a)) y
     ≃ fibre (g b) y
   fibre-map-Σ-over-at g b y (_ , refl) = idequiv
 
@@ -133,13 +142,15 @@ module _
     : {X : B → Type 𝓤3}
       (g : (b : B) → X b → Y b)
       (b : B) (y : Y b)
-    → fibre (map-Σ f (λ a → g (f a))) (b , y)
+    → fibre (map-Σ f (g ∘ f)) (b , y)
     ≃ (fibre f b × fibre (g b) y)
   fibre-map-Σ-over g b y
-    = fibre (map-Σ f (λ a → g (f a))) (b , y)    ≃⟨ fibre-map-Σ f (λ a → g (f a)) b y ⟩
-      Σ[ (a , p) ∶ fibre f b ]
-        fibre (λ x → coe (ap Y p) (g (f a) x)) y ≃⟨ Σ-ap-≃ (fibre-map-Σ-over-at g b y) ⟩
-      (fibre f b × fibre (g b) y)                ≃∎
+    = fibre (map-Σ f (g ∘ f)) (b , y)
+        ≃⟨ fibre-map-Σ f (g ∘ f) b y ⟩
+      Σ[ (a , p) ∶ fibre f b ] fibre (coe (ap Y p) ∘ g (f a)) y
+        ≃⟨ Σ-ap-≃ (fibre-map-Σ-over-at g b y) ⟩
+      (fibre f b × fibre (g b) y)
+        ≃∎
 
   fibre-map-Σ-over-left
     : {X : B → Type 𝓤3}
@@ -147,8 +158,8 @@ module _
       (b : B) (y : Y b)
       (a : A) (x : X (f a))
       (p : (f a , g (f a) x) ＝ (b , y))
-     → _≃_.bwd fibre-total-map (snd (_≃_.fwd (fibre-map-Σ-over g b y) ((a , x) , p)))
-     ＝ ((f a , x) , p)
+    → _≃_.bwd fibre-total-map (snd (_≃_.fwd (fibre-map-Σ-over g b y) ((a , x) , p)))
+    ＝ ((f a , x) , p)
   fibre-map-Σ-over-left g b y a x refl = refl
 
 }

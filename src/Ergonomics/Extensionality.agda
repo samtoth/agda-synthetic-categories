@@ -134,33 +134,35 @@ instance
               → Identity-system (Σ A B) (𝓦 ⊔ 𝓜)
   IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS (a , b) (a' , b')
     = Σ[ p ∶ IdS a a' ] IdS (trS ⦃ A ⦄ p b) b'
-  IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS←Id {(a , b)} refl = IdS₀ ⦃ A ⦄ , IdS₀ ⦃ B ⦄
-  IdS-Sigma {A = A}{B}⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
+  IdS-Sigma {A = A} {B} ⦃ As ⦄ ⦃ Bs ⦄ .IdS←Id refl
+    = IdS₀ ⦃ As ⦄ , IdS←Id ⦃ Bs ⦄ (IdSJ-refl ⦃ As ⦄ (B ∘ fst))
+  IdS-Sigma {A = A} {B} ⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
     = fundamental-Id _
-      (is-single←equiv-to-single (lem e⁻¹) (SingS-is-single ⦃ Bs ⦄ b)) _ where
-    lem : Σ (Σ A B) (λ where (a' , b') → Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b')
-           ≃
-          SingS ⦃ Bs ⦄ b
-    lem =
-         Σ (Σ A B)
-           (λ { (a' , b')
-                  → Σ[ p ∶ IdS a a' ]
-                     IdS (trS ⦃ As ⦄ p b) b'
-              })
+      (is-single←equiv-to-single (lem e⁻¹) (BR.SingS-is-single b₀)) _ where
+    module BR = IdSReasoning (Bs)
+
+    b₀ : B a
+    b₀ = trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b
+
+    lem : Σ[ (a' , b') ∶ Σ A B ]
+          Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
+        ≃ BR.SingS b₀
+    lem = Σ[ (a' , b') ∶ Σ A B ]
+          Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
 
              ≃⟨ Σ-assoc ⟩
 
           (Σ[ a' ∶ A ] Σ[ b' ∶ B a' ]
-            Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b')
+           Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄  p b) b')
 
             ≃⟨ Σ-ap-≃ (λ a₁ → Σ-comm) ⟩
 
-          (Σ[ a' ∶ A ]  Σ[ p ∶ IdS a a' ]
-            Σ[ b' ∶ B a' ] IdS (trS ⦃ As ⦄ p b) b')
+          (Σ[ a' ∶ A ] Σ[ p ∶ IdS ⦃ As ⦄ a a' ]
+           Σ[ b' ∶ B a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b')
 
             ≃⟨ Σ-singS' ⦃ As ⦄ ⟩
 
-          SingS ⦃ Bs ⦄ b ≃∎
+          BR.SingS b₀ ≃∎
 
 {-# OVERLAPPABLE IdS-Sigma #-}
 

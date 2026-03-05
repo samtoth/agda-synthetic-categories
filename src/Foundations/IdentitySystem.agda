@@ -114,14 +114,13 @@ module IdSReasoning {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) wh
                    (ap P (SingS-is-single _ .central (_ , p)))
                    p₀
 
-
     IdSJ-refl : ∀ {𝓦} {a} (P : SingS a → Type 𝓦)
               → {P₀ : P (a , IdS₀)}
               → IdSJ P P₀ IdS₀ ＝ P₀
     IdSJ-refl {a = a} P {P₀}
-      = IdSJ P P₀ IdS₀                              ＝⟨⟩
+      = IdSJ P P₀ IdS₀                                 ＝⟨⟩
         tr id (ap P (SingS-is-single _ .central _)) P₀ ＝⟨ ap (λ p → tr id (ap P p) P₀) lem ⟩
-        tr id (ap P refl) P₀                  ＝⟨⟩
+        tr id (ap P refl) P₀                           ＝⟨⟩
         P₀ ∎  where
 
       lem : SingS-is-single a .central (_ , IdS₀) ＝ refl

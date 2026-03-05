@@ -138,15 +138,14 @@ instance
     = IdS₀ ⦃ As ⦄ , IdS←Id ⦃ Bs ⦄ (IdSJ-refl ⦃ As ⦄ (B ∘ fst))
   IdS-Sigma {A = A} {B} ⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
     = fundamental-Id _
-      (is-single←equiv-to-single (lem e⁻¹) (BR.SingS-is-single b₀)) _ where
+      (is-single←equiv-to-single
+        (lem e⁻¹)
+        (BR.SingS-is-single (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b))) _ where
     module BR = IdSReasoning (Bs)
-
-    b₀ : B a
-    b₀ = trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b
 
     lem : Σ[ (a' , b') ∶ Σ A B ]
           Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
-        ≃ BR.SingS b₀
+        ≃ BR.SingS (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b)
     lem = Σ[ (a' , b') ∶ Σ A B ]
           Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
 
@@ -162,7 +161,7 @@ instance
 
             ≃⟨ Σ-singS' ⦃ As ⦄ ⟩
 
-          BR.SingS b₀ ≃∎
+          BR.SingS (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b) ≃∎
 
 {-# OVERLAPPABLE IdS-Sigma #-}
 

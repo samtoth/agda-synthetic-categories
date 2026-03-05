@@ -135,33 +135,25 @@ instance
   IdS-Sigma ⦃ A ⦄ ⦃ B ⦄ .IdS (a , b) (a' , b')
     = Σ[ p ∶ IdS a a' ] IdS (trS ⦃ A ⦄ p b) b'
   IdS-Sigma {A = A} {B} ⦃ As ⦄ ⦃ Bs ⦄ .IdS←Id refl
-    = IdS₀ ⦃ As ⦄ , IdS←Id ⦃ Bs ⦄ (IdSJ-refl ⦃ As ⦄ (B ∘ fst))
+    = IdS₀ ⦃ As ⦄ , IdS←Id (IdSJ-refl (B ∘ fst))
   IdS-Sigma {A = A} {B} ⦃ As ⦄ ⦃ Bs ⦄ .has-is-ids (a , b)
     = fundamental-Id _
       (is-single←equiv-to-single
         (lem e⁻¹)
-        (BR.SingS-is-single (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b))) _ where
+        (BR.SingS-is-single (trS {B = B} (IdS₀ ⦃ As ⦄) b))) _ where
     module BR = IdSReasoning (Bs)
 
     lem : Σ[ (a' , b') ∶ Σ A B ]
-          Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
-        ≃ BR.SingS (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b)
+          Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b'
+        ≃ BR.SingS (trS {B = B} (IdS₀ ⦃ As ⦄) b)
     lem = Σ[ (a' , b') ∶ Σ A B ]
-          Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b'
-
+          Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄ p b) b'
              ≃⟨ Σ-assoc ⟩
-
-          (Σ[ a' ∶ A ] Σ[ b' ∶ B a' ]
-           Σ[ p ∶ IdS ⦃ As ⦄ a a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄  p b) b')
-
+          (Σ[ a' ∶ A ] Σ[ b' ∶ B a' ] Σ[ p ∶ IdS a a' ] IdS (trS ⦃ As ⦄  p b) b')
             ≃⟨ Σ-ap-≃ (λ a₁ → Σ-comm) ⟩
-
-          (Σ[ a' ∶ A ] Σ[ p ∶ IdS ⦃ As ⦄ a a' ]
-           Σ[ b' ∶ B a' ] IdS ⦃ Bs ⦄ (trS ⦃ As ⦄ p b) b')
-
-            ≃⟨ Σ-singS' ⦃ As ⦄ ⟩
-
-          BR.SingS (trS ⦃ As ⦄ {B = B} (IdS₀ ⦃ As ⦄) b) ≃∎
+          (Σ[ a' ∶ A ] Σ[ p ∶ IdS a a' ] Σ[ b' ∶ B a' ] IdS (trS ⦃ As ⦄ p b) b')
+            ≃⟨ Σ-singS' ⟩
+          BR.SingS (trS {B = B} (IdS₀ ⦃ As ⦄) b) ≃∎
 
 {-# OVERLAPPABLE IdS-Sigma #-}
 

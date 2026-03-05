@@ -127,8 +127,6 @@ module IdSReasoning {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) wh
       lem : SingS-is-single a .central (_ , IdS₀) ＝ refl
       lem = is-prop←is-single (Singleton-Id (SingS-is-single a) _ _) _ _
 
-  {-# REWRITE IdSJ-refl #-}
-
   trS : ∀ {𝓦} {B : A → Type 𝓦} {a b : A} (p : IdS a b) → B a → B b
   trS {_}{B} p ba = IdSJ (B ∘ fst) ba p
 

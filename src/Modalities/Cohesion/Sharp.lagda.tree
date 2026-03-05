@@ -1,0 +1,279 @@
+\date{2026-02-03}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Modalities.Cohesion.Sharp where
+
+open import Foundations.Prelude
+
+open import Ergonomics.Extensionality
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.CrispLifts
+open import Modalities.Cohesion.Connectivity
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.ModalMaps
+
+open import Core.Arrow
+open import Core.PullbackPower
+open import Core.Orthogonal
+
+open import ufAxioms
+}
+%```
+
+\subtree{
+\title{The Sharp modal operator}
+\taxon{Definition}
+
+%```agda
+\agda{
+record ⟨♯|_⟩ {𝓤} (@♯ A : Type 𝓤) : Type 𝓤 where
+  constructor mod♯
+  field
+    @♯ counit♯ : A
+
+open ⟨♯|_⟩
+
+unit-♯ : ∀ {𝓤} {A : Type 𝓤} → A → ⟨♯| A ⟩
+unit-♯ a .counit♯ = a
+
+♯-map : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} {@♯ B : Type 𝓥}
+        → (@♯ f : A → B) → ⟨♯| A ⟩ → ⟨♯| B ⟩
+♯-map f x .counit♯ = f (x .counit♯)
+
+_＝♯_ : ∀ {𝓤} {@♯ A : Type 𝓤} (@♯ a b : A) → Type 𝓤
+a ＝♯ b = ⟨♯| a ＝ b ⟩
+
+mapply♯ : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a b : A} → mod♯ a ＝ mod♯ b → a ＝♯ b
+mapply♯ refl .counit♯ = refl
+
+postulate
+  modext♯ : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a b : A} → is-equiv (mapply♯ {a = a}{b})
+
+modext♯→ : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a b : A}
+           → a ＝♯ b → mod♯ a ＝ mod♯ b
+modext♯→ = is-equiv.bwd modext♯
+
+modext♯→' : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a b : A}
+           → @♯ a ＝ b → mod♯ a ＝ mod♯ b
+modext♯→' x = modext♯→ (mod♯ x)
+
+refl♯ : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a : A} → a ＝♯ a
+refl♯ = mod♯ refl
+
+modext♯-refl
+  : ∀ {𝓤} {@♯ A : Type 𝓤} {@♯ a : A} → modext♯→ (refl♯ {a = a}) ＝ refl
+modext♯-refl = unap-equiv modext♯ (is-equiv.ε modext♯ refl♯)
+
+♯-map-is-equiv
+  : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} {@♯ B : Type 𝓥} {@♯ f : A → B}
+    → @♯ is-equiv f → is-equiv (♯-map f)
+♯-map-is-equiv fe = is-equiv←qiso
+  ( ♯-map (bwd fe)
+  , (λ x → modext♯→ (mod♯ (η fe (x .counit♯))))
+  , λ x → modext♯→ (mod♯ (ε fe (x .counit♯)))) where open is-equiv
+
+instance
+  IdS-♯ : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} ⦃ @♯ _ : Identity-system A 𝓥 ⦄
+          → Identity-system ⟨♯| A ⟩ 𝓥
+  IdS-♯ .Identity-system.IdS a b = ⟨♯| IdS (a .counit♯) (b .counit♯) ⟩
+  IdS-♯ .Identity-system.IdS←Id {mod♯ a} {mod♯ b} = ♯-map IdS←Id ∘ mapply♯
+  IdS-♯ .Identity-system.has-is-ids a b
+    = is-equiv-∘ (♯-map-is-equiv (has-is-ids _ _)) modext♯
+}
+%```
+}
+
+\subtree{
+\title{Sharp is right adjoint to flat}
+\taxon{Lemma}
+
+
+%```agda
+\agda{
+♭⊣♯-transpose : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} →
+            ⟨♯| (⟨♭| A ⟩ → B) ⟩ → (A → ⟨♯| B ⟩)
+♭⊣♯-transpose f a .counit♯ = f .counit♯ (mod♭ a)
+
+♭⊣♯-transpose-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → is-equiv (♭⊣♯-transpose {A = A} {B = B})
+♭⊣♯-transpose-is-equiv = is-equiv←qiso qiso where
+  qiso : quasi-iso _
+  qiso .fst f .counit♯ a = f (ε♭ a) .counit♯
+  qiso .snd .fst x = ext! (mod♯ (λ where (mod♭ x) → refl))
+  qiso .snd .snd x = refl
+
+♭⊣♯ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → ⟨♯| (⟨♭| A ⟩ → B)⟩ ≃ (A → ⟨♯| B ⟩)
+♭⊣♯ = mk≃ ♭⊣♯-transpose ♭⊣♯-transpose-is-equiv
+}
+%```
+}
+
+
+\subtree{
+\title{Sharp types forms a reflective subuniverse}
+\taxon{Lemma}
+
+\p{We call a type codiscrete if #{\eta : A \to \mod{\sharp}{A}} is an
+equivalence.}
+
+%```agda
+\agda{
+is-♯-codiscrete : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+is-♯-codiscrete A = is-equiv (unit-♯ {A = A})
+
+unmod♯ : ∀ {𝓤} {A : Type 𝓤} → is-♯-codiscrete A → ⟨♯| A ⟩ → A
+unmod♯ e = is-equiv.bwd e
+
+⟨♯|-⟩-is-♯-codiscrete : ∀ {𝓤} {A : Type 𝓤} → is-♯-codiscrete ⟨♯| A ⟩
+⟨♯|-⟩-is-♯-codiscrete = is-equiv←qiso
+  ( (λ where x .counit♯ →  x .counit♯ .counit♯)
+  , (λ a → ext! (mod♯ refl))
+  , λ _ → refl)
+
+is-♯-codiscrete←is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f
+    → is-♯-codiscrete A → is-♯-codiscrete B
+is-♯-codiscrete←is-equiv {f = f} fe ad
+  = 3-for-2~' {k = ♯-map f ∘ unit-♯}
+      (λ a → ext! refl♯)
+      fe
+      (is-equiv-∘ (♯-map-is-equiv fe) ad)
+
+♯-induction
+  : ∀ {𝓤} {A : Type 𝓤} (P : ⟨♯| A ⟩ → Type 𝓤) → ((a : A) → ⟨♯| P (unit-♯ a) ⟩)
+    → (x : ⟨♯| A ⟩) → ⟨♯| P x ⟩
+♯-induction P sec x .counit♯ = counit♯ (sec (x .counit♯))
+
+♯-GSU : GSU id
+♯-GSU .GSU.S .Subtype.family = is-♯-codiscrete
+♯-GSU .GSU.S .Subtype.has-is-subtype _ = is-equiv-is-prop
+♯-GSU .GSU.S-equiv e = is-♯-codiscrete←is-equiv (e ._≃_.has-is-eqv)
+
+♯-is-reflective-GSU : is-globally-reflective ♯-GSU
+♯-is-reflective-GSU .is-globally-reflective.○ A = ⟨♯| A ⟩
+♯-is-reflective-GSU .is-globally-reflective.η = unit-♯
+♯-is-reflective-GSU .is-globally-reflective.has-is-reflector {_} {A}
+  = grf where
+  open is-global-reflector
+  grf : is-global-reflector ♯-GSU A ⟨♯| A ⟩ unit-♯
+  grf .○∈S = ⟨♯|-⟩-is-♯-codiscrete
+  grf .reflects Qdisc = is-equiv←qiso
+    ( (λ f x → unmod♯ Qdisc (mod♯ (f (x .counit♯))))
+    , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
+    , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
+    )
+
+♯-is-Σ-closed : is-globally-Σ-closed ♯-GSU
+♯-is-Σ-closed {A = A} {B} a b
+  = in-SubU←η-retract
+      (is-globally-reflective.reflector ♯-is-reflective-GSU (Σ A B) )
+      ((λ x → let aa = unmod♯ a (mod♯ (x .counit♯ .fst))
+              in (aa , unmod♯ (b aa)
+                              (mod♯ (tr B (is-equiv.η⁻¹ a (x .counit♯ .fst))
+                                          (x .counit♯ .snd)))))
+      , λ x → Σ-path→ ((is-equiv.η a (fst x)) , {!is-equiv.η (b (x .fst))!}))
+
+
+
+}
+%```
+}
+
+\subtree{
+\title{Sharp codiscrete and sharp connected maps}
+\taxon{Definition}
+
+\p{A map #{f : A \to B} is #{\sharp}-codiscrete if all of its fibres are.}
+
+%```agda
+\agda{
+is-♯-codiscrete-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-♯-codiscrete-map f = is-modal-map (SubU←global ♯-GSU) f
+}
+%```
+
+\p{A map is #{\sharp}-connected if all of it's fibres are \{\sharp}-connected.}
+
+%```agda
+\agda{
+is-♯-connected-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-♯-connected-map = is-connected-map (is-reflective←global ♯-is-reflective-GSU)
+}
+%```
+}
+
+\subtree{
+\title{Sharp equivalences}
+\taxon{Definition}
+
+\p{A map #{f : A \to B} is a #{\sharp}-equivalence if precomposition at all
+#{\sharp} codiscrete types are equivalences.}
+
+%```agda
+\agda{
+is-♯-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
+is-♯-equiv f = ∀ {𝓠} {Q : Type 𝓠} → is-♯-codiscrete Q → is-equiv (precomp Q f)
+}
+%```
+
+\p{For any crisp type, the counit #{\mod{\flat}{A} \to A} is a sharp equivalence.}
+
+%```agda
+\agda{
+ε-is-♯-equivalence
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♯-equiv (ε♭ {A = A})
+ε-is-♯-equivalence Qcd = is-equiv←qiso
+  ( (λ f → is-equiv.bwd Qcd ∘ ♭⊣♯-transpose (mod♯ f))
+  , (λ f → funext→ (λ a → unap-equiv Qcd (is-equiv.ε Qcd _)))
+  , λ f → funext→ (λ where (mod♭ a) → unap-equiv Qcd (is-equiv.ε Qcd _)))
+
+ε-is-♯-equiv' : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-equiv (♯-map (ε♭ {A = A}))
+ε-is-♯-equiv' = {!!}
+}
+%```
+}
+
+\subtree{
+\title{Sharp connected maps are sharp equivalences}
+
+%```agda
+\agda{
+is-♯-equiv←is-♯-connected
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-♯-connected-map f → is-♯-equiv f
+is-♯-equiv←is-♯-connected fs {_} {Q} Qcd
+  = is-equiv←is-contr-map (λ b → {!!})
+}
+%```
+}
+
+\subtree{
+\title{Sharp cordiscrete maps lift crisply against the flat counit}
+\taxon{Theorem}
+
+% \citek{MR2025}{3.1.2}
+
+%```agda
+\agda{
+lifts-ε♭←is-♯-codiscrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+    → @♭ is-♯-codiscrete-map f
+    → (∀ {@♭ 𝓠} {@♭ Q : Type 𝓠} → are-♭-orthogonal (ε♭ {𝓠}{Q}) f)
+lifts-ε♭←is-♯-codiscrete {f = f} fcd {_}{Q}
+  = ♭-is-cartesian (power-hom ε♭ f) {!!}
+      (is-cartesian←orthogonal
+        (connected⊥modal ♯-is-reflective-GSU
+          {!!}
+          fcd))
+}
+%```
+}

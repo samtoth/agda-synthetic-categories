@@ -1,0 +1,128 @@
+\title{Lex modalities}
+\author{samueltoth}
+\date{2026-03-04}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Modalities.Lex where
+
+open import Foundations.Prelude
+
+open import ufAxioms
+
+open import Modalities.GlobalSubuniverses
+open import Modalities.ModalMaps
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+}
+%```
+
+
+\subtree{
+\title{Modality extensionality}
+\taxon{Definition}
+
+%```agda
+\agda{
+module _ {α} {S : GSU α}
+             (Srfl : is-globally-reflective S)
+             (let Srfl' = is-reflective←global Srfl)
+             (Σ-is-modal : is-globally-Σ-closed S) where
+  open is-globally-reflective Srfl
+  open GPiClosure Srfl
+  open GRSUInduction Srfl Σ-is-modal
+
+  mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → ○ (a ＝ b) → η a ＝ η b
+  mapply-○ = ○-rec (＝∈S ○∈S) (ap η)
+
+  is-lex : Typeω
+  is-lex = ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-equiv (mapply-○ {a = a}{b})
+
+  η-square
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → Arrow-map f (○-map (η f))
+  η-square f .Arrow-map.top = η
+  η-square f .Arrow-map.bot = η
+  η-square f .Arrow-map.comm _ = sym ○-map-β
+
+  ○-fibre-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → ∀ b → fibre f b → fibre (○-map (η f)) (η b)
+  ○-fibre-map f = arrow-fibre (η-square f)
+
+  module Lex (lex : is-lex) where
+    ○-modext→ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → η a ＝ η b → ○ (a ＝ b)
+    ○-modext→ = is-equiv.bwd lex
+
+    is-fibrewise-connected←is-total-connected
+      : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+          {P : A → Type 𝓦} {Q : B → Type 𝓜}
+        → (g : (a : A) → P a → Q (f a))
+        → is-connected-map {A = Σ A P} {B = Σ B Q} Srfl'
+                           (λ (a , b) → (f a , g a b))
+        → ∀ a → is-connected-map Srfl' (g a)
+    is-fibrewise-connected←is-total-connected = {!!}
+
+    fibre-map-is-connected
+      : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+          {f : A → B} {g : X → Y}
+        → (F : Arrow-map f g)
+        → (let module F = Arrow-map F)
+        → is-connected-map Srfl' F.top
+        → ∀ a → is-connected-map Srfl' (arrow-fibre F a)
+    fibre-map-is-connected {A = A}{B}{X}{Y}{f = f}{g} F gconn b
+      = is-fibrewise-connected←is-total-connected
+          (F .Arrow-map.bot)
+          {P = fibre f} {Q = fibre g}
+          (arrow-fibre F)
+          {!!} b where
+      module F = Arrow-map F
+      amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
+                       (λ (a , b) → (F.bot a , arrow-fibre F a b)) F.top
+      amap .Arrow-map.top = total←total-fibre f
+      amap .Arrow-map.bot = total←total-fibre g
+      amap .Arrow-map.comm = ~refl
+
+      amap-is-equiv : is-Arrow-equiv amap
+      amap-is-equiv .fst = total≃total-fibre f ._≃_.has-is-eqv
+      amap-is-equiv .snd = total≃total-fibre g ._≃_.has-is-eqv
+
+    ○-fibre-map-is-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        → ∀ a → is-connected-map Srfl' (○-fibre-map f a)
+    ○-fibre-map-is-equiv {A = A} {B} {f} b
+      = fibre-map-is-connected amap (η-is-connected Srfl Σ-is-modal) b where
+      amap : Arrow-map f (○-map (η f))
+      amap .Arrow-map.top = η
+      amap .Arrow-map.bot = η
+      amap .Arrow-map.comm _ = sym ○-map-β
+
+    is-connected-left-cancel
+      : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+          {f : A → B} {g : B → C}
+        → is-connected-map Srfl' g → is-connected-map Srfl' (g ∘ f)
+        → is-connected-map Srfl' f
+    is-connected-left-cancel fconn gfconn = {!!}
+
+    is-connected-map←is-modal-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        → is-modal-equiv Srfl f
+        → is-connected-map (is-reflective←global Srfl) f
+    is-connected-map←is-modal-equiv {A = A} {B} {f} feq
+      = is-connected-left-cancel {f = f} {g = η}
+          (η-is-connected Srfl Σ-is-modal)
+          (is-connected-~
+            Srfl
+            (sym ∘ η-square f .Arrow-map.comm)
+            (is-connected-∘ Srfl Σ-is-modal
+              {f = ○-map (η f)} {η}
+              (η-is-connected Srfl Σ-is-modal)
+              (is-connected←is-equiv Srfl feq)))
+
+}
+%```
+}

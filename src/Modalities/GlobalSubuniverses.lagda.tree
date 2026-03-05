@@ -9,6 +9,7 @@
 
 %```agda
 \agda{
+{-# OPTIONS --allow-unsolved-metas #-}
 module Modalities.GlobalSubuniverses where
 
 open import Foundations.Prelude
@@ -74,12 +75,13 @@ record is-global-reflector {α} (GS : GSU α)
     reflects : ∀ {𝓥} {Q : Type 𝓥}
                → Q ∈ S → is-equiv (precomp Q η)
 
-  ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
-  ○-rec cs = is-equiv.bwd (reflects cs)
+  opaque
+    ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
+    ○-rec cs = is-equiv.bwd (reflects cs)
 
-  ○-rec-β : ∀ {𝓥} {Q : Type 𝓥} (p : Q ∈ S) (f : A → Q)
-             → ○-rec p f ∘ η ~ f
-  ○-rec-β p f a = happly (is-equiv.ε (reflects p) f) a
+    ○-rec-β : ∀ {𝓥} {Q : Type 𝓥} (p : Q ∈ S) (f : A → Q)
+               → ○-rec p f ∘ η ~ f
+    ○-rec-β p f a = happly (is-equiv.ε (reflects p) f) a
 
   module ∈S▸η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
     = is-equiv (prewhisker-is-equiv←ap-compose {A = A} {g = g}{h}
@@ -89,8 +91,8 @@ is-reflector←global : ∀ {α} {GS : GSU α} {𝓤}
                         {A : Type 𝓤} {○A : Type 𝓤} {η : A → ○A}
                       → is-global-reflector GS A ○A η
                       → let open GSU GS in is-reflector S A ○A η
-is-reflector←global gr
-  = mk-is-rfltor ○∈S reflects where open is-global-reflector gr
+is-reflector←global gr .is-reflector.○∈S = gr .is-global-reflector.○∈S
+is-reflector←global gr .is-reflector.reflects = gr .is-global-reflector.reflects
 
 is-global-reflector-subtype-equiv
   : ∀ {α β} {S : GSU α} {K : GSU β}
@@ -135,11 +137,18 @@ record is-globally-reflective {α} (GS : GSU α) : Typeω where
                   (is-reflector←global has-is-reflector)
 
 
+  η-is-equiv←is-modal
+    : ∀ {𝓤} {A : Type 𝓤} → A ∈ S → is-equiv (η {A = A})
+  η-is-equiv←is-modal = η-is-equiv←in-SubU (reflector _)
+
+
 
 is-reflective←global :  ∀ {α} {GS : GSU α} → is-globally-reflective GS
                      → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
-is-reflective←global (mk-gReflectors ○ η has-is-reflector)
-  = mk-reflective ○ η (is-reflector←global has-is-reflector)
+is-reflective←global x .is-reflective.○ = x .is-globally-reflective.○
+is-reflective←global x .is-reflective.η = x .is-globally-reflective.η
+is-reflective←global x .is-reflective.has-is-reflector
+  = is-reflector←global (x .is-globally-reflective.has-is-reflector)
 
 
 is-globally-reflective-subtype-equiv
@@ -157,13 +166,14 @@ module GPiClosure {α} {GS : GSU α} (SR : is-globally-reflective GS) where
   open GSU GS
   open is-globally-reflective SR
 
-  Π∈S : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-        → (∀ a → B a ∈ S)
-        → Π A B ∈ S
-  Π∈S b = in-SubU←η-retract (reflector _) ret where
-    ret : retract η
-    ret .fst lab a = ○-rec (b a) (ev a) lab
-    ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
+  opaque
+    Π∈S : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+          → (∀ a → B a ∈ S)
+          → Π A B ∈ S
+    Π∈S {A = A} {B} b = in-SubU←η-retract (reflector _) ret where
+      ret : retract (η {A = Π A B})
+      ret .fst lab a = ○-rec (b a) (ev a) lab
+      ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
 
 
   ULift∈S : ∀ {𝓤 𝓥} {A : Type 𝓤}
@@ -191,6 +201,55 @@ module GPiClosure {α} {GS : GSU α} (SR : is-globally-reflective GS) where
   ∈S←is-singleton sing = in-SubU←η-retract
                            (reflector _)
                            (retract←singleton-dom sing η)
+
+  ○-is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → is-singleton (○ A)
+  ○-is-singleton {A = A} sa = is-single←equiv-to-single
+    (mk≃ _ (η-is-equiv←in-SubU (reflector A) (∈S←is-singleton sa)))
+    sa
+
+  ＝∈S : ∀ {𝓤} {A : Type 𝓤} → A ∈ S → ∀ {a b : A} → (a ＝ b) ∈ S
+  ＝∈S as = is-modal-＝ (is-reflective←global SR) as
+
+  ○-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → ○ (A → B) → ○ A → ○ B
+  ○-map = ○-rec (Π∈S (λ _ → ○∈S)) λ f → ○-rec ○∈S λ x → η (f x)
+
+  ○-map-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {a : A}
+      → ○-map (η f) (η a) ＝ η (f a)
+  ○-map-β {f = f} {a}
+    = ○-rec (Π∈S (λ _ → ○∈S)) (λ f → ○-rec ○∈S λ x → η (f x)) (η f) (η a)
+        ＝⟨ happly (○-rec-β _ _ f) (η a) ⟩
+      ○-rec ○∈S (η ∘ f) (η a)
+        ＝⟨ ○-rec-β ○∈S (η ∘ f) a ⟩
+      η (f a) ∎
+
+  module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+    Σ○-η : Σ _ P → ○ (Σ _ (○ ∘ P))
+    Σ○-η (x , y) = η (x , η y)
+
+    Σ○ : ○ (Σ A P) → ○ (Σ A (○ ∘ P))
+    Σ○ = ○-rec ○∈S Σ○-η
+
+    Σ○-up : ∀ {𝓠} {Y : Type 𝓠}
+           → Y ∈ S
+           → is-equiv (precomp Y Σ○-η)
+    Σ○-up {Y = Y} Ys
+      = is-equiv-∘
+          uncurry-is-equiv
+          (is-equiv-∘
+            (postcomp-Π-equiv (reflects Ys))
+            (is-equiv-∘
+              curry-is-equiv
+              (reflects Ys))) where
+      fact : precomp Y Σ○-η
+           ~ uncurry
+           ∘ postcomp-Π (λ a → precomp Y η)
+           ∘ curry
+           ∘ precomp Y η
+      fact = ~refl
+
+    Σ○-is-equiv : is-equiv Σ○
+    Σ○-is-equiv = {!!}
 }
 %```
 }
@@ -246,6 +305,7 @@ module GRSUInduction {α} {GS : GSU α}
         (SΣ : is-globally-Σ-closed GS) where
   open GSU GS
   open is-globally-reflective Sref
+  open GPiClosure Sref
 
   opaque
     ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
@@ -292,6 +352,19 @@ module GRSUInduction {α} {GS : GSU α}
                             (ind PS)
   ind-is-equiv = is-equiv←qiso ∘ ind-qiso
 
+  ○-map-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-equiv (○-map (η f))
+  ○-map-is-equiv {f = f} fe = is-equiv←qiso
+    ( ○-map (η bwd)
+    , ind (λ _ → ＝∈S ○∈S)
+          (λ a → ap (○-map (η bwd)) ○-map-β ∙ ○-map-β ∙ ap η (eta a))
+    , ind (λ _ → ＝∈S ○∈S)
+          (λ b → ap (○-map (η f)) ○-map-β ∙ ○-map-β ∙ ap η (ε b))
+    ) where open is-equiv fe renaming (η to eta)
+
+  ○-≃ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → ○ A ≃ ○ B
+  ○-≃ e = mk≃ (○-map (η (_≃_.fwd e))) (○-map-is-equiv (e ._≃_.has-is-eqv))
 
   return = η
   _>>=_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}

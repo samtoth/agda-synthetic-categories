@@ -273,3 +273,191 @@ f *₁ g = pushout-rec (mk-cocone (ι₁ ∘ f) (ι₂ ∘ g) (glue ∘ (f ⊗ g
 }
 %```
 }
+
+\subtree[fre-0068]{
+\taxon{Theorem}
+\date{2026-03-06}
+\author{fredrikbakke}
+\title{Null-homotopies of maps out of a join}
+
+\p{
+Given a map #{q : A * B \to Q}, each point #{a : A} determines a
+[null-homotopy](fre-0027) of the restriction #{q \circ \iota_2 : B \to Q}. Moreover,
+null-homotopies of #{q} are equivalent to null-homotopies of this induced family over
+#{A}.
+}
+
+%```agda
+\agda{
+join-null-homotopy-at
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (q : A * B → Q)
+  → A
+  → null-homotopy (q ∘ ι₂)
+join-null-homotopy-at q a .fst = q (ι₁ a)
+join-null-homotopy-at q a .snd b = ap q (glue (a , b))
+
+join-rec≃null-homotopies
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (A * B → Q)
+  ≃ Σ[ r ∶ (B → Q) ] ((a : A) → null-homotopy r)
+join-rec≃null-homotopies {A = A} {B} {Q}
+  = (A * B → Q)
+      ≃⟨ Pushout-UP≃ ⟩
+    Cocone (mk-span _ fst snd) Q
+      ≃⟨ cocone-repr≃ ⟩
+    Σ[ l ∶ (A → Q) ] Σ[ r ∶ (B → Q) ] (l ∘ fst ~ r ∘ snd)
+      ≃⟨ Σ-ap-≃ (λ l → Σ-ap-≃ (λ r → curry≃)) ⟩
+    Σ[ l ∶ (A → Q) ] Σ[ r ∶ (B → Q) ] ((a : A) (b : B) → l a ＝ r b)
+      ≃⟨ Σ-comm ⟩
+    Σ[ r ∶ (B → Q) ] Σ[ l ∶ (A → Q) ] ((a : A) (b : B) → l a ＝ r b)
+      ≃⟨ Σ-ap-≃ (λ r → Σ-Π-swap≃ (λ _ → Q) (λ a q → (b : B) → q ＝ r b) e⁻¹) ⟩
+    Σ[ r ∶ (B → Q) ] ((a : A) → Σ[ q ∶ Q ] ((b : B) → q ＝ r b))
+      ≃⟨⟩
+    Σ[ r ∶ (B → Q) ] ((a : A) → null-homotopy r)
+      ≃∎
+
+join-recᵈ≃null-homotopies
+  : {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 : Level}
+    {A : Type 𝓤1}
+    {X : A → Type 𝓤2}
+    {B : A → Type 𝓤3}
+    {Y : (a : A) → X a → Type 𝓤4}
+    {Q : (a : A) (x : X a) → Type 𝓤5}
+  → ((a : A) (x : X a) → B a * Y a x → Q a x)
+  ≃ Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+      ((a : A) → (b : B a) → (x : X a) → null-homotopy (r a x))
+join-recᵈ≃null-homotopies
+  {A = A} {X} {B} {Y} {Q}
+  = ((a : A) (x : X a) → B a * Y a x → Q a x)
+      ≃⟨ Π-ap-≃ (λ a → Π-ap-≃ (λ _ → join-rec≃null-homotopies)) ⟩
+    ((a : A) (x : X a) → Σ[ r ∶ (Y a x → Q a x) ] ((b : B a) → null-homotopy r))
+      ≃⟨ Π-ap-≃
+            ( λ a
+              → Σ-Π-swap≃
+                  (λ x → Y a x → Q a x)
+                  (λ x r → (b : B a) → null-homotopy r)) ⟩
+    ((a : A)
+      → Σ[ r ∶ ((x : X a) → Y a x → Q a x) ]
+          ((x : X a) → (b : B a) → null-homotopy (r x)))
+      ≃⟨ Σ-Π-swap≃
+            (λ a → (x : X a) → Y a x → Q a x)
+            (λ a r → (x : X a) → (b : B a) → null-homotopy (r x)) ⟩
+    (Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+      ((a : A) → (x : X a) → (b : B a) → null-homotopy (r a x)))
+      ≃⟨ Σ-ap-≃ (λ _ → Π-ap-≃ (λ _ → flip≃)) ⟩
+    (Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+      ((a : A) → (b : B a) → (x : X a) → null-homotopy (r a x)))
+      ≃∎
+
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  (q : A * B → Q)
+  (l : Q)
+  where
+
+  join-path-from-left
+    : (a : A)
+    → const Q B (q (ι₁ a)) ~ q ∘ ι₂
+  join-path-from-left a b = ap q (glue (a , b))
+
+  join-ind-paths≃null-homotopy-inner-over
+    : (r : (b : B) → l ＝ q (ι₂ b))
+    → (a : A)
+    → (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) t (r b)))
+    ≃ ((l , r) ＝ join-null-homotopy-at q a)
+  join-ind-paths≃null-homotopy-inner-over r a
+    = (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) t (r b)))
+        ≃⟨ Σ-ap-≃ (λ t → Π-ap-≃ (λ b → Idᵈ-const-≃' q (glue (a , b)) t (r b))) ⟩
+      (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → t ∙ join-path-from-left a b ＝ r b))
+        ≃⟨ null-homotopy-path≃
+              {f = q ∘ ι₂}
+              r
+              (join-path-from-left a)
+              e⁻¹ ⟩
+      ((l , r) ＝ join-null-homotopy-at q a)
+        ≃∎
+
+  join-ind-paths≃null-homotopy-inner
+    : (r : (b : B) → l ＝ q (ι₂ b))
+    → (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        (((a , b) : A × B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) (t a) (r b)))
+    ≃ ((a : A) → (l , r) ＝ join-null-homotopy-at q a)
+  join-ind-paths≃null-homotopy-inner r
+    = (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        (((a , b) : A × B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) (t a) (r b)))
+        ≃⟨ Σ-ap-≃ (λ t → curry≃) ⟩
+      (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        ((a : A) (b : B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) (t a) (r b)))
+        ≃⟨ Σ-Π-swap≃
+              (λ a → l ＝ q (ι₁ a))
+              (λ a t → (b : B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) t (r b))
+              e⁻¹ ⟩
+      ((a : A)
+        → Σ[ t ∶ l ＝ q (ι₁ a) ]
+          ((b : B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) t (r b)))
+        ≃⟨ Π-ap-≃ (join-ind-paths≃null-homotopy-inner-over r) ⟩
+      ((a : A) → (l , r) ＝ join-null-homotopy-at q a)
+        ≃∎
+
+  join-ind-paths≃null-homotopy-at
+    : (((j : A * B) → l ＝ q j))
+    ≃ (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+        ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+  join-ind-paths≃null-homotopy-at
+    = (((j : A * B) → l ＝ q j))
+        ≃⟨ Pushout-UPᵈ≃ e⁻¹ ⟩
+      Coconeᵈ (mk-span _ fst snd) pushout (λ j → l ＝ q j)
+        ≃⟨ coconeD-repr≃ ⟩
+      (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+       Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+         (((a , b) : A × B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) (t a) (r b)))
+        ≃⟨ Σ-comm ⟩
+      (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+       Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+         (((a , b) : A × B) → Idᵈ (ap (λ j → l ＝ q j) (glue (a , b))) (t a) (r b)))
+        ≃⟨ Σ-ap-≃ join-ind-paths≃null-homotopy-inner ⟩
+      (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+        ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+        ≃∎
+
+join-null-homotopies≃
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (q : A * B → Q)
+  → null-homotopy q ≃ null-homotopy (join-null-homotopy-at q)
+join-null-homotopies≃ {A = A} {B} {Q} q
+  = null-homotopy q
+      ≃⟨ Σ-ap-≃ (join-ind-paths≃null-homotopy-at q) ⟩
+    (Σ[ l ∶ Q ]
+     Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+       ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+      ≃⟨ Σ-assoc e⁻¹ ⟩
+    null-homotopy (join-null-homotopy-at q)
+      ≃∎
+
+join-null-homotopiesᵈ≃
+  : {𝓤 𝓥 𝓦 𝓠 : Level}
+    {X : Type 𝓤}
+    {B : Type 𝓥}
+    {Y : X → Type 𝓦}
+    {Q : X → Type 𝓠}
+  → (q : (x : X) → B * Y x → Q x)
+  → ((x : X) → null-homotopy (q x))
+  ≃ null-homotopy (λ b x → join-null-homotopy-at (q x) b)
+join-null-homotopiesᵈ≃ {X = X} q
+  = ((x : X) → null-homotopy (q x))
+      ≃⟨ Π-ap-≃ (λ x → join-null-homotopies≃ (q x)) ⟩
+    ((x : X) → null-homotopy (join-null-homotopy-at (q x)))
+      ≃⟨ null-homotopy-curry≃ (λ x b → join-null-homotopy-at (q x) b) ⟩
+    null-homotopy (λ b x → join-null-homotopy-at (q x) b)
+      ≃∎
+}
+%```
+}

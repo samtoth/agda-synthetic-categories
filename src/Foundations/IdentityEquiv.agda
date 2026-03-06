@@ -47,6 +47,16 @@ Idᵈ-const-≃
     → Idᵈ (ap (λ z → f z ＝ l) p) t r ≃ (ap f (sym p) ∙ t ＝ r)
 Idᵈ-const-≃ f p t r = ＝-postcomp-≃ (sym (Idᵈ-const-coe f p t))
 
+Idᵈ-const-≃'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+      {x y : A} (p : x ＝ y)
+      {l : B}
+      (t : l ＝ f x)
+      (r : l ＝ f y)
+    → Idᵈ (ap (λ z → l ＝ f z) p) t r ≃ (t ∙ ap f p ＝ r)
+Idᵈ-const-≃' f refl t r = ＝-postcomp-≃ (∙-reflr t)
+
 tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)
               → is-equiv (tr B p)

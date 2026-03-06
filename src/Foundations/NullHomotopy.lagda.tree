@@ -38,8 +38,8 @@ open WithFunExt-global FE
 
 \p{
 Given a map #{f : A \to B} then its type of \em{null-homotopies} is the collection of
-elements #{b} of #{B} such that for all #{a} in #{A} we have #{f(a) = b}.
-##{\nullhtpy{f} \coloneqq \Sigma_{(b : B)}(\Pi_{(a : A)} f(a) = b).}
+elements #{b} of #{B} such that for all #{a} in #{A} we have #{b = f(a)}.
+##{\nullhtpy{f} \coloneqq \Sigma_{(b : B)}(\Pi_{(a : A)} b = f(a)).}
 }
 
 %```agda
@@ -47,7 +47,7 @@ elements #{b} of #{B} such that for all #{a} in #{A} we have #{f(a) = b}.
 module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
 
   fam-null-homotopy : (A → B) → B → Type (𝓤1 ⊔ 𝓤2)
-  fam-null-homotopy f b = (a : A) → f a ＝ b
+  fam-null-homotopy f b = (a : A) → b ＝ f a
 
   null-homotopy : (A → B) → Type (𝓤1 ⊔ 𝓤2)
   null-homotopy f = Σ[ b ∶ B ] (fam-null-homotopy f b)
@@ -58,31 +58,40 @@ module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
       (h : fam-null-homotopy f c)
       (r : fam-null-homotopy f l)
       (t : c ＝ l)
-    → Idᵈ (ap (fam-null-homotopy f) t) h r ≃ ((a : A) → h a ∙ t ＝ r a)
+    → Idᵈ (ap (fam-null-homotopy f) t) h r ≃ ((a : A) → t ∙ r a ＝ h a)
   null-homotopy-path-Idᵈ≃pointwise {f = f} h r t
     = Idᵈ (ap (fam-null-homotopy f) t) h r
         ≃⟨ ＝-postcomp-≃
-            ( J (λ l' t' → (λ a → h a ∙ t') ＝ coe (ap (fam-null-homotopy f) t') h)
-                (funext→ (λ a → ∙-reflr (h a)))
+            ( J (λ l' t' → (λ a → sym t' ∙ h a) ＝ coe (ap (fam-null-homotopy f) t') h)
+                (funext→ (λ a → ∙-refll (h a)))
                 (t) ) ⟩
-      ((λ a → h a ∙ t) ＝ r)
+      ((λ a → sym t ∙ h a) ＝ r)
         ≃⟨ funext≃ ⟩
-      ((a : A) → h a ∙ t ＝ r a)
+      ((a : A) → sym t ∙ h a ＝ r a)
+        ≃⟨ Π-ap-≃
+              (λ a
+              → J
+                  (λ l' t' → (r' : l' ＝ f a)
+                    → (sym t' ∙ h a ＝ r') ≃ (t' ∙ r' ＝ h a))
+                  (λ _ → sym≃)
+                  t
+                  (r a)) ⟩
+      ((a : A) → t ∙ r a ＝ h a)
         ≃∎
 
   null-homotopy-path≃
     : {f : A → B}
       {c l : B}
-      (h : f ~ const B A c)
-      (r : f ~ const B A l)
+      (h : const B A c ~ f)
+      (r : const B A l ~ f)
     → ((c , h) ＝ (l , r))
-    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
   null-homotopy-path≃ {f = f} {c} {l} h r
     = ((c , h) ＝ (l , r))
         ≃⟨ Σ-path e⁻¹ ⟩
       (Σ[ t ∶ c ＝ l ] Idᵈ (ap (fam-null-homotopy f) t) h r)
         ≃⟨ Σ-ap-≃ (null-homotopy-path-Idᵈ≃pointwise h r) ⟩
-      (Σ[ t ∶ c ＝ l ] ((a : A) → h a ∙ t ＝ r a))
+      (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
         ≃∎
 }
 %```
@@ -108,8 +117,8 @@ ap-null-homotopy
     → (x y : A)
     → null-homotopy (ap f {x} {y})
 ap-null-homotopy {f = f} (b , h) x y
-  = h x ∙ sym (h y)
-  , J (λ y p → ap f p ＝ h x ∙ sym (h y)) (sym (∙-sym (h x)))
+  = sym (h x) ∙ h y
+  , J (λ y p → sym (h x) ∙ h y ＝ ap f p) (∙-sym' (h x))
 }
 %```
 }
@@ -167,10 +176,10 @@ module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
 
   homotopy-const-postcomp-≃
     : (y : C)
-    → (j ~ const C A y)
-    ≃ (((precomp-≃ (e e⁻¹)) ._≃_.fwd j) ~ const C B y)
+    → (const C A y ~ j)
+    ≃ (const C B y ~ ((precomp-≃ (e e⁻¹)) ._≃_.fwd j))
   homotopy-const-postcomp-≃ y
-    = precomp-Π-≃ (λ a → j a ＝ y) (e e⁻¹)
+    = precomp-Π-≃ (λ a → y ＝ j a) (e e⁻¹)
 
   null-homotopy-postcomp-≃
     : null-homotopy j
@@ -196,7 +205,7 @@ module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
   null-homotopy-map-codomain-≃
     = null-homotopy j
         ≃⟨ Σ-ap-≃ (λ y → Π-ap-≃ (λ a → ＝-equiv e)) ⟩
-      (Σ[ y ∶ B ] ((a : A) → e ._≃_.fwd (j a) ＝ e ._≃_.fwd y))
+      (Σ[ y ∶ B ] ((a : A) → e ._≃_.fwd y ＝ e ._≃_.fwd (j a)))
         ≃⟨ Σ-ap-≃-fst e ⟩
       null-homotopy (e ._≃_.fwd ∘ j)
         ≃∎
@@ -223,10 +232,10 @@ module _ {𝓤1 𝓤2 𝓤3}
     = ((x : X) → null-homotopy (f x))
         ≃⟨ Σ-Π-swap≃
               (λ x → Y x)
-              (λ x y → (a : A) → f x a ＝ y) ⟩
-      (Σ[ y ∶ ((x : X) → Y x) ] ((x : X) → (a : A) → f x a ＝ y x))
+              (λ x y → (a : A) → y ＝ f x a) ⟩
+      (Σ[ y ∶ ((x : X) → Y x) ] ((x : X) → (a : A) → y x ＝ f x a))
         ≃⟨ Σ-ap-≃ (λ _ → flip≃) ⟩
-      (Σ[ y ∶ ((x : X) → Y x) ] ((a : A) (x : X) → f x a ＝ y x))
+      (Σ[ y ∶ ((x : X) → Y x) ] ((a : A) (x : X) → y x ＝ f x a))
         ≃⟨ Σ-ap-≃ (λ _ → Π-ap-≃ (λ _ → funext≃ e⁻¹)) ⟩
       null-homotopy (λ a x → f x a)
         ≃∎

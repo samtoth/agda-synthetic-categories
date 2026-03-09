@@ -249,7 +249,6 @@ power.
 
 %```agda
 \agda{
-
 module _
   {𝓤1 𝓤2 𝓤3 𝓤4}
   {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
@@ -282,47 +281,67 @@ module _
   {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
   {X : B → Type 𝓤3} {Y : B → Type 𝓤4} (g : (b : B) → X b → Y b) where
 
-  Π̂-unstraight-cod←pullback
-    : Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
-    → Π̂-unstraight-cod f g
-  Π̂-unstraight-cod←pullback (i , j , p)
-    = i
-    , λ where b (a , refl) → j a , sym (happly p a)
+  Π̂-unstraight-cod'
+    : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-unstraight-cod'
+    = Σ[ i ∶ ((b : B) → Y b) ] ((b : B) → fibre f b → fibre' (g b) (i b))
 
-  Π̂-unstraight-cod-cone
+  Π̂-unstraight-cod≃Π̂-unstraight-cod'
+    : Π̂-unstraight-cod f g ≃ Π̂-unstraight-cod'
+  Π̂-unstraight-cod≃Π̂-unstraight-cod'
+    = Σ-ap-≃ λ i → Π-ap-≃ λ b → Π-ap-≃ λ _ → (fibre'≃fibre (g b) (i b)) e⁻¹
+
+  Π̂-unstraight-cod'←pullback
+    : Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+    → Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←pullback (i , j , p)
+    = i
+    , λ where b (a , refl) → j a , happly p a
+
+  Π̂-unstraight-cod'-cone
     : Cone (mk-cospan ((a : A) → Y (f a))
                       (precomp-Π Y f)
                       (postcomp-Π (λ a → g (f a))))
-           (Π̂-unstraight-cod f g)
-  Π̂-unstraight-cod-cone .Cone.i (i , k)
+           (Π̂-unstraight-cod')
+  Π̂-unstraight-cod'-cone .Cone.i (i , k)
     = i
-  Π̂-unstraight-cod-cone .Cone.j (i , k) a
+  Π̂-unstraight-cod'-cone .Cone.j (i , k) a
     = fst (k (f a) (a , refl))
-  Π̂-unstraight-cod-cone .Cone.filler (i , k)
-    = funext→ (λ a → sym (snd (k (f a) (a , refl))))
+  Π̂-unstraight-cod'-cone .Cone.filler (i , k)
+    = funext→ (λ a → snd (k (f a) (a , refl)))
 
-  pullback←Π̂-unstraight-cod
-    : Π̂-unstraight-cod f g
+  pullback←Π̂-unstraight-cod'
+    : Π̂-unstraight-cod'
     → Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
-  pullback←Π̂-unstraight-cod = gap Π̂-unstraight-cod-cone
+  pullback←Π̂-unstraight-cod' = gap Π̂-unstraight-cod'-cone
 
-  Π̂-unstraight-cod←pullback-qiso : quasi-iso Π̂-unstraight-cod←pullback
-  Π̂-unstraight-cod←pullback-qiso .fst = pullback←Π̂-unstraight-cod
-  Π̂-unstraight-cod←pullback-qiso .snd .fst (i , j , p)
+  Π̂-unstraight-cod'←pullback-qiso : quasi-iso Π̂-unstraight-cod'←pullback
+  Π̂-unstraight-cod'←pullback-qiso .fst = pullback←Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←pullback-qiso .snd .fst (i , j , p)
     = Σ-path→
         ( refl
         , Σ-path→
             ( refl
-            , ap funext→ (funext→ (λ _ → sym-sym)) ∙ funext.η p))
+            , funext.η p))
 
-  Π̂-unstraight-cod←pullback-qiso .snd .snd (i , k)
+  Π̂-unstraight-cod'←pullback-qiso .snd .snd (i , k)
     = Σ-path→
         ( refl
         , funext→ λ b → funext→ λ where
           (a , refl) → Σ-path→
             ( refl
-            , ap sym (happly (funext.ε (λ a → sym (snd (k (f a) (a , refl))))) a)
-            ∙ sym-sym))
+            , happly (funext.ε (λ a → snd (k (f a) (a , refl)))) a))
+
+  Π̂-unstraight-cod←Π̂-unstraight-cod'
+    : Π̂-unstraight-cod' → Π̂-unstraight-cod f g
+  Π̂-unstraight-cod←Π̂-unstraight-cod'
+    = is-equiv.bwd (Π̂-unstraight-cod≃Π̂-unstraight-cod' ._≃_.has-is-eqv)
+
+  Π̂-unstraight-cod←pullback
+    : Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+    → Π̂-unstraight-cod f g
+  Π̂-unstraight-cod←pullback
+    = Π̂-unstraight-cod←Π̂-unstraight-cod' ∘ Π̂-unstraight-cod'←pullback
 
   Π̂-unstraight-cod←Arrow-Π : Arrow-Π f g → Π̂-unstraight-cod f g
   Π̂-unstraight-cod←Arrow-Π
@@ -331,7 +350,9 @@ module _
   Π̂-unstraight-cod←Arrow-Π-is-equiv : is-equiv Π̂-unstraight-cod←Arrow-Π
   Π̂-unstraight-cod←Arrow-Π-is-equiv
     = is-equiv-∘
-        (is-equiv←qiso Π̂-unstraight-cod←pullback-qiso)
+        (is-equiv-∘
+          (is-equiv⁻¹ (Π̂-unstraight-cod≃Π̂-unstraight-cod' ._≃_.has-is-eqv))
+          (is-equiv←qiso Π̂-unstraight-cod'←pullback-qiso))
         (Arrow-Π≃pullback ._≃_.has-is-eqv)
 
   Π̂-unstraight-dom←Π : ((b : B) → X b) → Π̂-unstraight-dom f g

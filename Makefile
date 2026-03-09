@@ -48,7 +48,7 @@ typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 
 build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
-	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" "$(EVERYTHING_FILE)"
+	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" "$(EVERYTHING_FILE)" -j
 
 watch-agda:
 	@$(MAKE) --no-print-directory build-forest

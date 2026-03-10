@@ -13,6 +13,7 @@ in pkgs.mkShell {
       (forester-server.packages.${system}.default)
       (pkgs.python3.withPackages (py-pkgs: []))
       (pkgs.codespell)
+      (pkgs.ripgrep)
     ] ++ drv.buildInputs;
 
     shellHook = ''

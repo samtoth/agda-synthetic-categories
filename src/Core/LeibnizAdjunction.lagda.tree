@@ -1,0 +1,304 @@
+\title{Leibniz Adjunction}
+\taxon{Module}
+\date{2026-02-18}
+\date{2026-03-09}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.LeibnizAdjunction where
+
+open import ufAxioms
+
+open import Foundations.Prelude
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Join
+open import Core.CanonicalPushouts
+open import Core.PullbackPower
+open import Core.PullbackPowerFamilies
+open import Core.PushoutSum
+open import Core.PushoutSumFamilies
+
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[stt-00FJ]{
+\taxon{Definition}
+\title{Iterated pullback powers and pushout sums}
+
+\p{
+We define the [dependent pullback power](stt-00EO) of the [pushout sum](stt-00EW) of
+a [doubly dependent type family](stt-00F8), and the double dependent pullback power.
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (B'@(A , B) : Fam 𝓤1 𝓤2)
+  (Y'@(X , Y) : DepFam 𝓤3 𝓤4 B')
+  (V'@(U , V) : Dep²Fam 𝓤5 𝓤6 B' Y')
+  where
+
+  Π̂Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂Σ̂ᶠ = Π̂ᶠ (Σ̂ᶠ B' Y') (Σ̂ᵈᶠ B' Y' V')
+
+  Π̂ᵈᶠ : DepFam (𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6) (𝓤3 ⊔ 𝓤4 ⊔ 𝓤6) B'
+  Π̂ᵈᶠ
+    = (λ a → (Π̂ᶠ (X a , Y a) (U a , V a)) .fst)
+    , (λ a → (Π̂ᶠ (X a , Y a) (U a , V a)) .snd)
+
+  Π̂Π̂ᶠ : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤5 ⊔ 𝓤6)
+            (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4 ⊔ 𝓤6)
+  Π̂Π̂ᶠ = Π̂ᶠ B' Π̂ᵈᶠ
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  {U : (b : B) → Y b → Type 𝓤5}
+  {V : (b : B) → Y b → Type 𝓤6}
+  (h : (b : B) (y : Y b) → U b y → V b y)
+  where
+
+  Π̂Σ̂ : (((b , y) : Σ B Y) → U b y) → Arrow-Π (Σ̂ f g) (λ (b , y) → h b y)
+  Π̂Σ̂ = Π̂ (Σ̂ f g) (λ (b , y) → h b y)
+
+  Π̂Π̂ : ((b : B) (y : Y b) → U b y) → Arrow-Π f (λ b → Π̂ (g b) (h b))
+  Π̂Π̂ = Π̂ f (λ b → Π̂ (g b) (h b))
+}
+%```
+}
+
+\subtree[stt-00FK]{
+\taxon{Theorem}
+\title{The dependent Leibniz adjunction for families}
+
+\p{
+For all [type families](stt-00F8) #{B : A \to \UU}, dependent type families
+#{Y : (a : A)\to X(a) \to \UV} and doubly dependent type families
+#{V : (a : A)\ (x : X(a)) \to U(a, x) \to \UW}, we have an
+[equivalence of families](stt-00FA)
+##{
+\pulldpow_{\pushsum_B Y}((a , x) \mapsto V(a, x))
+\simeq \pulldpow_B {(a \mapsto \pulldpow_{Y(a)} V(a))},
+}
+where #{\pulldpow} is the [dependent pullback power](stt-00EO) and #{\pushsum} is the
+[pushout sum](stt-00EW) of type families.
+}
+
+\p{
+For the proof, we first show that the base of the two families are
+[equivalent](stt-00FA), and
+then display a dependent equivalence over the base equivalence. Both are straight
+forward to construct. See respectively \code{Leibnizᵈᶠ≃-base} and
+\code{Leibnizᵈᶠ≃-family} below. We make use of two essential [equivalences](stt-001U)
+for the [join](stt-002S):
+
+\ol{
+\li{
+For the base we use the equivalence, for every #{a : A} and #{x : X(a)},
+
+##{
+(B(a) * Y(a,x) \to Q(a,x))
+\simeq
+\Sigma_{(r : (Y(a,x) \to Q(a,x)))} {((b : B(a)) \to \nullhtpy(r))}.
+}
+Here #{\nullhtpy(r)} means the type of [null-homotopies](stt-00F3) of #{r}, I.e.,
+elements #{q : Q(a,x)} together with homotopies #{(y : Y(a,x)) \to (q = r(y))}.
+}
+
+\li{
+For the family we use the equivalence
+
+##{
+((x : X(a)) \to \nullhtpy (q(x)))
+\simeq
+\nullhtpy ((b, x) \mapsto (q(a)(\iota_1 b) , (y \mapsto \ap_{q(x)}(\glue(b,y)))))
+}
+for every #{q : (x : X(a)) \to B(a) * Y(a,x) \to Q(a,x)}.
+}
+}
+The rest mostly speaks for itself.
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (B'@(A , B) : Fam 𝓤1 𝓤2)
+  (Y'@(X , Y) : DepFam 𝓤3 𝓤4 B')
+  (V'@(U , V) : Dep²Fam 𝓤5 𝓤6 B' Y')
+  where
+
+  Leibnizᵈᶠ≃-base : Π̂Σ̂ᶠ B' Y' V' .fst ≃ Π̂Π̂ᶠ B' Y' V' .fst
+  Leibnizᵈᶠ≃-base
+    = Π̂Σ̂ᶠ B' Y' V' .fst
+          ≃⟨ Σ-ap-≃-fst curry≃ ∙≃ Σ-ap-≃ (λ _ → curry≃)⟩
+      (Σ[ u ∶ ((a : A) (x : X a) → U a x) ]
+        ( (a : A) (x : X a) → B a * Y a x → V a x (u a x)))
+          ≃⟨ Σ-ap-≃ (λ u → join-recᵈ≃null-homotopies) ⟩
+      (Σ[ u ∶ ((a : A) (x : X a) → U a x) ]
+       Σ[ r ∶ ((a : A) (x : X a) → Y a x → V a x (u a x)) ]
+        ( (a : A) (b : B a) (x : X a) → null-homotopy (r a x)))
+          ≃⟨ Σ-assoc e⁻¹ ∙≃
+             Σ-ap-≃-fst-bwd
+              (Σ-Π-swap≃
+                (λ a → (x : X a) → U a x)
+                (λ a u → (x : X a) → Y a x → V a x (u x))) ⟩
+      Π̂Π̂ᶠ B' Y' V' .fst
+          ≃∎
+
+  Π̂Π̂ᶠ←Π̂Σ̂ᶠ-base : Π̂Σ̂ᶠ B' Y' V' .fst → Π̂Π̂ᶠ B' Y' V' .fst
+  Π̂Π̂ᶠ←Π̂Σ̂ᶠ-base = Leibnizᵈᶠ≃-base ._≃_.fwd
+
+  Leibnizᵈᶠ≃-family
+    : (fq : Π̂Σ̂ᶠ B' Y' V' .fst)
+    → Π̂Σ̂ᶠ B' Y' V' .snd fq ≃ Π̂Π̂ᶠ B' Y' V' .snd (Π̂Π̂ᶠ←Π̂Σ̂ᶠ-base fq)
+  Leibnizᵈᶠ≃-family (f , q)
+    = Π̂Σ̂ᶠ B' Y' V' .snd (f , q)
+          ≃⟨ curry≃ ⟩
+      ((a : A) (x : X a) → null-homotopy (q (a , x)))
+          ≃⟨ Π-ap-≃ (λ a → join-null-homotopiesᵈ≃ (λ x → q (a , x))) ⟩
+      Π̂Π̂ᶠ B' Y' V' .snd (Π̂Π̂ᶠ←Π̂Σ̂ᶠ-base (f , q))
+          ≃∎
+
+  Leibnizᵈᶠ≃ : Π̂Σ̂ᶠ B' Y' V' ≃ᶠ Π̂Π̂ᶠ B' Y' V'
+  Leibnizᵈᶠ≃ = Leibnizᵈᶠ≃-base
+             , Leibnizᵈᶠ≃-family
+}
+%```
+}
+
+\subtree[stt-00FL]{
+\taxon{Corollary}
+\title{The nondependent Leibniz adjunction for families}
+
+\p{
+For all triples of type families #{B : A \to \UU}, #{Y : X(a) \to \UV}, and
+#{V : U(a, x) \to \UW}, we have an equivalence of families
+##{\pullpow{B \pushprod Y}{V} \simeq \pullpow{B}{\pullpow{Y}{V}}.}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (B' : Fam 𝓤1 𝓤2)
+  (Y' : Fam 𝓤3 𝓤4)
+  (V' : Fam 𝓤5 𝓤6)
+  where
+
+  Leibnizᶠ≃ : ⟨(B' □ᶠ Y') ,ᶠ V' ⟩ ≃ᶠ ⟨ B' ,ᶠ ⟨ Y' ,ᶠ V' ⟩ ⟩
+  Leibnizᶠ≃ = Leibnizᵈᶠ≃ B' (Fam→DepFam B' Y') (Fam→Dep²Fam B' Y' V')
+}
+%```
+}
+
+\subtree[stt-00FM]{
+\taxon{Corollary}
+\title{The dependent Leibniz adjunction for arrows}
+
+\p{
+For all [arrows](stt-0038) #{f : A \to B}, dependent arrows
+#{g : (b : B) \to X(b) \to Y(b)} and doubly dependent arrows
+#{h : (b : B)\ (y : Y(b)) \to U(b, y) \to V(b, y)}, we have an
+[equivalence of arrows](stt-004R)
+##{
+\pulldpow_{\pushsum_f g} ((b,y) \mapsto h(b, y))
+\simeq \pulldpow_f {(b \mapsto \pulldpow_{g(b)} h(b))}.
+}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  {U : (b : B) → Y b → Type 𝓤5}
+  {V : (b : B) → Y b → Type 𝓤6}
+  (h : (b : B) (y : Y b) → U b y → V b y)
+  (let h-uncurry = λ (b , y) → h b y)
+  (let B' = fibre-fam f)
+  (let Y' = fibre-depfam g)
+  (let V' = fibre-dep²fam h)
+  (let Π̂Σ̂ᶠ-fibre-fam = Π̂Σ̂ᶠ B' Y' V')
+  (let Π̂Π̂ᶠ-fibre-fam = Π̂Π̂ᶠ B' Y' V')
+  where
+
+  Π̂Σ̂-bridge≃
+    : Arrow-equiv (Π̂Σ̂ f g h) (arrow←Fam Π̂Σ̂ᶠ-fibre-fam)
+  Π̂Σ̂-bridge≃
+    = Π̂-Arrow-equiv←≃ᶠ
+        (Σ̂ f g)
+        (h-uncurry)
+        (Π̂Σ̂ᶠ-fibre-fam)
+        (Π̂ᶠ-ap-base-fam (fibre-depfam h-uncurry) (Σ̂-unstraighten≃ᶠ f g .snd))
+
+  Π̂Π̂-bridge≃
+    : Arrow-equiv (Π̂Π̂ f g h) (arrow←Fam Π̂Π̂ᶠ-fibre-fam)
+  Π̂Π̂-bridge≃
+    = Π̂-Arrow-equiv←≃ᶠ
+        (f)
+        (λ b → Π̂ (g b) (h b))
+        (Π̂Π̂ᶠ-fibre-fam)
+        (Π̂ᶠ-ap-≃ᵈᶠ
+          (B')
+          (fibre-depfam (λ b → Π̂ (g b) (h b)))
+          (Π̂ᵈᶠ B' Y' V')
+          (λ b → Π̂-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam (g b) (h b)))
+
+  Leibnizᵈ≃
+    : Arrow-equiv (Π̂Σ̂ f g h) (Π̂Π̂ f g h)
+  Leibnizᵈ≃
+    = concat-Arrow-equiv
+        (concat-Arrow-equiv
+          (Π̂Σ̂-bridge≃)
+          (Arrow-equiv←≃ᶠ
+            (Π̂Σ̂ᶠ-fibre-fam)
+            (Π̂Π̂ᶠ-fibre-fam)
+            (Leibnizᵈᶠ≃ B' Y' V')))
+        (inv-Arrow-equiv Π̂Π̂-bridge≃)
+}
+%```
+}
+
+\subtree[stt-00FN]{
+\taxon{Corollary}
+\title{The nondependent Leibniz adjunction for arrows}
+
+\p{
+For all triples of [arrows](stt-0038) #{f : A \to B}, #{g : X \to Y}, and
+#{h : U \to V}, we have an [equivalence of arrows](stt-004R)
+##{\pullpow{f \pushprod g}{h} \simeq \pullpow{f}{\pullpow{g}{h}}.}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
+  {C : Type 𝓤3} {D : Type 𝓤4} (g : C → D)
+  {E : Type 𝓤5} {B' : Type 𝓤6} (h : E → B')
+  where
+
+  Leibniz≃ : Arrow-equiv ⟨ (f □ g) , h ⟩ ⟨ f , ⟨ g , h ⟩ ⟩
+  Leibniz≃ = Leibnizᵈ≃ f (λ _ → g) (λ _ _ → h)
+}
+%```
+}

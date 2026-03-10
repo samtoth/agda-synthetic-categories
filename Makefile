@@ -115,6 +115,22 @@ check-dup:
 		exit err ; \
 	}'
 
+
+check-forest-no-typecheck:
+	@mkdir -p "$(AUTOGEN_DIR)" "$(HTML_DIR)"
+	@find ./src -name '*.lagda.tree' | while read -r file; do \
+		rel=$${file#./src/}; \
+		newname=$${rel//\//.}; \
+		newname=$${newname/.lagda/}; \
+		dest="$(AUTOGEN_DIR)/$$newname"; \
+		mkdir -p "$$(dirname "$$dest")"; \
+		cp "$$file" "$$dest"; \
+		echo "Copied $$file -> $$dest"; \
+	done
+	@$(MAKE) --no-print-directory check-dup
+	@forester build
+
+
 clean-agda:
 	@chmod -R u+w _build 2>/dev/null || true
 	@rm -rf _build

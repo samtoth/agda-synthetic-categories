@@ -37,6 +37,7 @@ open import Foundations.PathReasoning public
 open import Foundations.FibrePath public
 open import Foundations.Span public hiding (Cocone-path→)
 open import Foundations.3for2 public
+open import Foundations.6for2 public
 open import Foundations.Pullbacks public
 open import Foundations.CanonicalPullbacks public
 open import Foundations.PullbackPath public

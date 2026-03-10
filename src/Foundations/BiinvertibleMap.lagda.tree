@@ -1,0 +1,143 @@
+\title{Biinvertible maps}
+\taxon{Module}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Foundations.BiinvertibleMap where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+import Foundations.CanonicalPullbacks as CP
+
+import Foundations.FunExt as FE
+}
+% ```
+
+\subtree[fre-1002]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Biinvertible map}
+
+\p{
+A map #{f} is \em{biinvertible} if it has a [section](stt-000H) and a
+[retraction](stt-000I).
+}
+
+\p{
+The data of being biinvertible is different from that of being a
+[quasi isomorphism](stt-001K). The data of being a quasi isomorphism consists of a
+single map #{g} that is both a section and a retraction of #{f}, while the data
+of biinvertibility consists of two maps #{s} and #{r}, the first is assumed to be a
+section of #{f} and the second is assumed to be a retraction of #{r}. This
+distinction matters, even though the inverse of an isomorphism is unique up to
+homotopy, because the homotopy of being a section and/or retraction need not be. This
+means that when #{f} is a map between types that need not be [sets](stt-006T), the
+data of being a quasi isomorphism need not be coherent, i.e., unique. But the data of
+being biinvertible on the other hand is always unique, and hence equivalent as types
+to that of being a [coherent isomorphism](stt-000K).
+}
+
+% ```agda
+\agda{
+is-biinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-biinv f = section f × retract f
+
+biinv : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+biinv A B = Σ (A → B) is-biinv
+}
+% ```
+}
+
+\subtree[fre-1001]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Biinvertible maps are equivalent to coherent isomorphisms}
+
+% ```agda
+\agda{
+qiso←is-biinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+              → is-biinv f → quasi-iso f
+qiso←is-biinv {f = f} ((g , ε) , (h , η)) = (g , ret , ε) where
+  g~h : g ~ h
+  g~h b = sym (η (g b)) ∙ ap h (ε b)
+
+  ret : retract-witness f g
+  ret = g~h ▸ f ~∙ η
+
+is-equiv←is-biinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                  → is-biinv f → is-equiv f
+is-equiv←is-biinv = is-equiv←qiso ∘ qiso←is-biinv
+
+is-biinv←is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                  → is-equiv f → is-biinv f
+is-biinv←is-equiv e = is-equiv.section-fwd e , is-equiv.retract-fwd e
+}
+% ```
+
+
+\p{
+Under function extensionality, the predicate of being biinvertible is equivalent to
+coherent isomorphism library's default notion of equivalence.
+}
+
+% ```agda
+\agda{
+module WithFunExt (FE : FE.FunExt-global) where
+
+  open import Foundations.Singleton
+  open import Foundations.SingletonClosure
+  open import Foundations.FibrewiseEquiv
+  open import Foundations.PropExt using (is-equiv←inverse)
+  open import Foundations.EquivProp FE
+
+  is-biinv-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                   → is-prop (is-biinv f)
+  is-biinv-is-prop {f = f} = is-prop←is-single-if-inhabited λ b
+    → Singleton-Σ (section-is-single←qinv (qiso←is-biinv b))
+                   (λ _ → retracts-is-single←qinv (qiso←is-biinv b))
+
+  is-biinv≃is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                    → is-biinv f ≃ is-equiv f
+  is-biinv≃is-equiv = mk≃ is-equiv←is-biinv
+    (is-equiv←inverse is-biinv-is-prop is-equiv-is-prop is-biinv←is-equiv)
+
+  ≃-rep-biinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+              → (A ≃ B) ≃ biinv A B
+  ≃-rep-biinv = ≃-rep ∙≃ Σ-ap-≃ (λ f → is-biinv≃is-equiv {f = f} e⁻¹)
+}
+% ```
+}
+
+\subtree[fre-1000]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Biinvertible maps as a pullback}
+
+% ```agda
+\agda{
+biinv≃pullback
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+  → biinv A B
+  ≃ CP.Pullback (fst {B = section}) (fst {B = retract})
+biinv≃pullback {A = A} {B = B} = mk≃ to (is-equiv←qiso qiso) where
+  to : biinv A B → CP.Pullback (fst {B = section}) (fst {B = retract})
+  to (f , s , r) = (f , s) , (f , r) , refl
+
+  qiso : quasi-iso to
+  qiso .fst ((f , s) , (.f , r) , refl) = f , s , r
+  qiso .snd .fst (f , s , r) = refl
+  qiso .snd .snd ((f , s) , (.f , r) , refl) = refl
+}
+% ```
+}

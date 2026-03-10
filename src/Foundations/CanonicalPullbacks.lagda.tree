@@ -1,6 +1,8 @@
-\date{2025-04-22}
 \title{Canonical pullbacks}
+\date{2025-04-22}
 \author{samueltoth}
+\date{2026-03-10}
+\author{fredrikbakke}
 \taxon{Module}
 \import{stt-macros}
 
@@ -12,17 +14,20 @@ open import Foundations.Universes
 open import Foundations.Span
 open import Foundations.Functions
 open import Foundations.Identity
+open import Foundations.Unit
 open import Foundations.Singleton
 open import Foundations.Homotopy
 open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
 open import Foundations.Pullbacks
 open import Foundations.Sigma
+open import Foundations.SigmaPath
 open import Foundations.SigmaProperties
 open import Foundations.3for2
 open import Foundations.EquivProp
 open import Foundations.EquivHomotopy
 open import Foundations.FibrewiseEquiv
+open import Foundations.FunctionInverses
 open import Foundations.IdentityEquiv
 open import Foundations.EquivSingleton
 open import Foundations.Embedding
@@ -102,18 +107,10 @@ pullback-is-pullback : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C :
                          {f : B → A} {g : C → A}
                        → is-pullbackω (mk-cospan _ f g) (pullback f g)
 pullback-is-pullback {f = f} {g = g} .is-pullbackω.has-is-pb Q
-  = is-equiv←qiso (gap , ~refl , ~refl)
+  = mk-eqv (gap , ~refl , ~refl) ~refl
 }
 % ```
 }
-
-% ```agda
-\agda{
-module WithFunExt (FE : FE.FunExt-global) where
-  open FE.WithFunExt-global FE
-  open CE FE
-}
-% ```
 
 \subtree[stt-003M]{
 \taxon{Theorem}
@@ -142,6 +139,10 @@ iff the gap map is, so we use then use the fact canonical pullbacks are pullback
 
 % ```agda
 \agda{
+module WithFunExt-gap (FE : FE.FunExt-global) where
+  open FE.WithFunExt-global FE
+  open CE FE
+
   is-pullback←gap : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
                       {f : B → A} {g : C → A}
                       {𝓜} {D : Type 𝓜}
@@ -212,6 +213,192 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 }
 % ```
 }
+}
+
+\subtree[fre-0001]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Fibres as pullbacks}
+
+\p{
+The [fibre](stt-000M) of a map #{f : A \to B} at an element #{b : B} is the pullback
+
+\quiver{
+\begin{tikzcd}
+	\fib{f}{b} && A \\
+	\\
+	\mathbb{1} && B
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["f", from=1-3, to=3-3]
+	\arrow["b", from=3-1, to=3-3]
+	\arrow[from=1-1, to=3-3, phantom, "\lrcorner" very near start]
+\end{tikzcd}
+}
+}
+
+% ```agda
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B) (b : B)
+  where
+
+  pullback-point-cone
+    : Cone (mk-cospan _ (point b) f) (fibre f b)
+  pullback-point-cone = mk-cone ! fst (sym ∘ snd)
+
+  pullback-point-gap-is-equiv
+    : is-equiv (gap pullback-point-cone)
+  pullback-point-gap-is-equiv = mk-eqv (bwd , ret , sec) coh where
+    bwd : Pullback (point b) f → fibre f b
+    bwd (tt , a , p) = a , sym p
+    ret : retract-witness (gap pullback-point-cone) bwd
+    ret (a , p) = Σ-path→ (refl , sym-sym {p = p})
+    sec : section-witness (gap pullback-point-cone) bwd
+    sec (tt , a , p) = Σ-path→ (refl , Σ-path→ (refl , sym-sym {p = p}))
+    coh : qiso-coh (bwd , ret , sec)
+    coh (a , refl) = refl
+
+  fibre≃pullback-point
+    : fibre f b ≃ Pullback (point b) f
+  fibre≃pullback-point
+    = mk≃ (gap pullback-point-cone)
+          (pullback-point-gap-is-equiv)
+
+  pullback-point≃fibre
+    : Pullback (point b) f ≃ fibre f b
+  pullback-point≃fibre = fibre≃pullback-point e⁻¹
+}
+% ```
+}
+
+\subtree[fre-6767]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Products as pullbacks}
+
+\p{
+The [cartesian product](stt-001C) of two types #{A \times B} is the pullback
+
+\quiver{
+\begin{tikzcd}
+	A \times B && B \\
+	\\
+	A && \mathbb{1}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow[from=1-1, to=3-3, phantom, "\lrcorner" very near start]
+\end{tikzcd}
+}
+}
+
+% ```agda
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  where
+
+  pullback-!-cone
+    : Cone (mk-cospan 𝟙 (! {A = A}) (! {A = B})) (A × B)
+  pullback-!-cone = mk-cone fst snd (λ _ → refl)
+
+  pullback-!-gap-is-equiv
+    : is-equiv (gap pullback-!-cone)
+  pullback-!-gap-is-equiv = mk-eqv (bwd , ret , sec) coh where
+    bwd : Pullback (! {A = A}) (! {A = B}) → A × B
+    bwd (x , y , p) = x , y
+
+    ret : retract-witness (gap pullback-!-cone) bwd
+    ret (x , y)
+      = refl
+
+    sec : section-witness (gap pullback-!-cone) bwd
+    sec (x , y , p)
+      = Σ-path→
+          ( refl
+          , Σ-path→
+              ( refl
+              , is-prop←is-single
+                  (＝-singleton←is-prop
+                    (is-prop←is-single 𝟙-is-singleton)
+                    tt tt)
+                  refl p))
+
+    coh : qiso-coh (bwd , ret , sec)
+    coh (x , y) = refl
+
+  ×≃pullback-!
+    : A × B ≃ Pullback (! {A = A}) (! {A = B})
+  ×≃pullback-!
+    = mk≃ (gap pullback-!-cone) pullback-!-gap-is-equiv
+
+  pullback-!≃×
+    : Pullback (! {A = A}) (! {A = B}) ≃ A × B
+  pullback-!≃× = ×≃pullback-! e⁻¹
+}
+% ```
+
+% ```agda
+\agda{
+module WithFunExt (FE : FE.FunExt-global) where
+  open FE.WithFunExt-global FE
+  open CE FE
+
+  module _
+    {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+    (let retract-comp = λ ((s , r) : ((A → B) × (B → A))) → r ∘ s)
+    where
+
+    retract-of-cone
+      : Cone (mk-cospan (A → A) (const _ 𝟙 id) retract-comp) (A retract-of B)
+    retract-of-cone
+      = mk-cone ! (λ (s , r , _) → (s , r)) (funext→ ∘ _~⁻¹ ∘ snd ∘ snd)
+
+    retract-of-gap-is-equiv
+      : is-equiv (gap (retract-of-cone))
+    retract-of-gap-is-equiv = is-equiv←qiso qiso where
+      qiso : quasi-iso (gap (retract-of-cone))
+      qiso .fst (tt , (s , r) , p) = s , r , happly (sym p)
+      qiso .snd .fst (s , r , p)
+        = Σ-path→ (refl , Σ-path→ (refl , funext→ retp)) where
+          retp : happly (sym (funext→ (p ~⁻¹))) ~ p
+          retp a
+            = happly (happly-sym (funext→ (p ~⁻¹)) a) a
+            ∙ ap sym (happly (funext.ε (p ~⁻¹)) a)
+            ∙ sym-sym
+      qiso .snd .snd (tt , (s , r) , p) = Σ-path→
+        ( refl
+        , Σ-path→
+            ( refl
+            , ap funext→ (funext→ (λ a →
+                ap sym (happly (happly-sym p a) a) ∙ sym-sym))
+              ∙ funext.η p))
+
+    retract-of≃pullback
+      : (A retract-of B)
+      ≃ Pullback (const _ 𝟙 id) retract-comp
+    retract-of≃pullback
+      = mk≃ (gap (retract-of-cone)) (retract-of-gap-is-equiv)
+
+    retract-of≃fibre-∘
+      : fibre retract-comp id
+      ≃ (A retract-of B)
+    retract-of≃fibre-∘
+      =  (pullback-point≃fibre (retract-comp) id e⁻¹)
+      ∙≃ (retract-of≃pullback e⁻¹)
+
+    section-total≃retract-of
+      : (Σ[ f ∶ (A → B) ] section f)
+      ≃ (B retract-of A)
+    section-total≃retract-of
+      = Σ-comm
+}
+% ```
 }
 
 \subtree[stt-005X]{

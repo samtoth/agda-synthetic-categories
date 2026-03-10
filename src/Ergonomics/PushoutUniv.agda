@@ -34,12 +34,12 @@ CoconeU-path→ : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤} {B : Type 
                 {Q : Type 𝓠}
                 ⦃ p-u : Universal (B → Q) 𝓜 ⦄
                 ⦃ q-u : Universal (C → Q) 𝓝 ⦄
-               → (c c' : Coconeᵘ {f = f} {g = g} Q)
-               → (p : c .Coconeᵘ.p ＝ c' .Coconeᵘ.p)
-               → (q : c .Coconeᵘ.q ＝ c' .Coconeᵘ.q)
-               → (c .Coconeᵘ.filler ~∙ happly (ap (from q-u) q) ▸ g
-                    ~ happly (ap (from p-u) p) ▸ f ~∙ c' .Coconeᵘ.filler)
-               → c ＝ c'
+              → (c c' : Coconeᵘ {f = f} {g = g} Q)
+              → (p : c .Coconeᵘ.p ＝ c' .Coconeᵘ.p)
+              → (q : c .Coconeᵘ.q ＝ c' .Coconeᵘ.q)
+              → (c .Coconeᵘ.filler ~∙ happly (ap (from q-u) q) ▸ g
+                   ~ happly (ap (from p-u) p) ▸ f ~∙ c' .Coconeᵘ.filler)
+              → c ＝ c'
 CoconeU-path→ (mk-coconeU p q filler) (mk-coconeU p q filler')
   refl refl h = ap (mk-coconeU p q) (funext→ ((~∙-reflr _ ~⁻¹) ~∙ h))
 

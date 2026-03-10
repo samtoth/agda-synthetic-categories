@@ -18,21 +18,57 @@ open import Core.CanonicalPushouts
 }
 % ```
 
-
 \subtree[stt-0038]{
 \taxon{Definition}
-\title{Walking morphisms in #{\mathcal{S}\omega}}
+\title{Walking morphisms in #{\Type}}
+\author{fredrikbakke}
 
 % ```agda
 \agda{
-record Arrow : Typeω where
-  constructor mk-arr
+record Arrow (𝓤 𝓥 : Level) : Type (lsuc 𝓤 ⊔ lsuc 𝓥) where
+  constructor mk-arrow
   no-eta-equality
   field
-    {𝓤 𝓥} : Level
     {dom} : Type 𝓤
     {cod} : Type 𝓥
     f : dom → cod
+}
+% ```
+}
+
+\subtree[stt-00EF]{
+\taxon{Definition}
+\date{2026-02-20}
+\title{Dependent morphisms of arrows}
+
+\p{
+Given an arrow #{f : A \to B}, a \em{dependent arrow} over #{f} is a family of arrows
+over its domain, #{g : (b : B) \to X(b) \to Y(b)}. Given such a dependent arrow, then a
+\em{dependent morphism of arrows} is a pair of dependent functions
+#{i : (b : B) \to Y(b)} and #{j : (a : A) \to X (f(a))} so that #{i \circ f \sim g \circ j}.
+}
+
+% ```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  record Arrow-Π : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) where
+    constructor mk-amap
+    field
+      top : (a : A) → X (f a)
+      bot : (b : B) → Y b
+      comm : precomp-Π Y f bot ~ postcomp-Π (λ a → g (f a)) top
+
+  unquoteDecl Arrow-Π-repr≅ Arrow-Π-repr≃
+    = make-record-repr Arrow-Π-repr≅ Arrow-Π-repr≃ (quote Arrow-Π)
 }
 % ```
 }
@@ -41,74 +77,127 @@ record Arrow : Typeω where
 \taxon{Definition}
 \title{Morphisms of arrows}
 
-
-\p{Given a pair of arrows, we define a morphism between them to be
-a commutative square, that is a pair of a maps and a homotopy witnessing
-that the square commutes.
+\p{
+Given a pair of arrows, we define a morphism between them to be a commutative square,
+that is, a pair of a maps and a homotopy witnessing that the square commutes.
 }
 
 % ```agda
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} (f' : C → D) where
-  record Arrow-map : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛) where
-    constructor mk-amap
-    field
-      top  : A → C
-      bot  : B → D
-      comm : bot ∘ f ~ f' ∘ top
+module _
+  {𝓤 𝓥 𝓦 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {C : Type 𝓦} {D : Type 𝓛} (f' : C → D)
+  where
 
-  unquoteDecl Arrow-map-repr≅ Arrow-map-repr≃
-    = make-record-repr Arrow-map-repr≅ Arrow-map-repr≃ (quote Arrow-map)
+  Arrow-map : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  Arrow-map = Arrow-Π f (λ _ → f')
+
+  Arrow-map-repr≅ : Arrow-map ≅ _
+  Arrow-map-repr≅ = Arrow-Π-repr≅ f (λ _ → f')
+
+  Arrow-map-repr≃ : Arrow-map ≃ _
+  Arrow-map-repr≃ = Arrow-Π-repr≃ f (λ _ → f')
+
+module Arrow-map = Arrow-Π
 }
 % ```
 }
 
+\subtree[stt-00EG]{
+\taxon{Theorem}
+\date{2026-02-20}
+\title{The type of dependent morphisms of arrows as a pullback}
+\author{fredrikbakke}
+
+\p{The type #{\Hom^{\mathrm{d}}(f,g)} is the pullback of #{g \circ {-}} and
+#{{-} \circ f}.}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  {f : A → B}
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  {g : (b : B) → X b → Y b}
+  where
+
+  Arrow-Π-cone
+    : Cone (mk-cospan ((a : A) → Y (f a))
+                      (precomp-Π Y f)
+                      (postcomp-Π (λ a → g (f a))))
+           (Arrow-Π f g)
+  Arrow-Π-cone .Cone.i p = Arrow-Π.bot p
+  Arrow-Π-cone .Cone.j p = Arrow-Π.top p
+  Arrow-Π-cone .Cone.filler p = funext→ (Arrow-Π.comm p)
+
+  Arrow-Π≃pullback-repr
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback-repr
+    = Arrow-Π f g
+        ≃⟨ Arrow-Π-repr≃ f g ⟩
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+      Σ[ b ∶ ((b : B) → Y b) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-comm ⟩
+      Σ[ b ∶ ((b : B) → Y b) ]
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-ap-≃ (λ _ → Σ-ap-≃ λ _ → (funext≃ e⁻¹)) ⟩
+      Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+        ≃∎
+
+  Arrow-Π≃pullback-repr~gap
+    : Arrow-Π≃pullback-repr ._≃_.fwd ~ gap Arrow-Π-cone
+  Arrow-Π≃pullback-repr~gap = ~refl
+
+  Arrow-Π-gap-is-equiv : is-equiv (gap Arrow-Π-cone)
+  Arrow-Π-gap-is-equiv
+    = homotopy-is-equiv (Arrow-Π≃pullback-repr~gap)
+                        (Arrow-Π≃pullback-repr ._≃_.has-is-eqv)
+
+  Arrow-Π≃pullback
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback
+    = mk≃ (gap Arrow-Π-cone) (Arrow-Π-gap-is-equiv)
+}
+%```
+}
 
 \subtree[stt-004H]{
 \taxon{Theorem}
 \date{2025-05-17}
-\title{A square is a pullback}
+\title{The type of morphisms of arrows as a pullback}
 
-\p{The type #{\Hom(f,g)} is equivalent to the pullback of #{g \circ -} with
-#{- \circ f}.}
+\p{The type #{\Hom(f,g)} is the pullback of #{g \circ {-}} and #{{-} \circ f}.}
 
 %```agda
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {g : C → D} where
 
-  pullback←arrow : Arrow-map f g → Pullback (g ∘_) (_∘ f)
-  pullback←arrow (mk-amap f g h) = f , g , sym (funext→ h)
+  Arrow-map≃pullback' : Arrow-map f g ≃ Pullback (_∘ f) (g ∘_)
+  Arrow-map≃pullback' = Arrow-Π≃pullback {f = f} {g = λ _ → g}
+
+  Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
+  Arrow-map≃pullback = Arrow-map≃pullback' ∙≃ pullback-swap
 
   pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
-  pullback←arrow' (mk-amap f g h) = g , f , funext→ h
+  pullback←arrow' = Arrow-map≃pullback' ._≃_.fwd
 
-  Arrow≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
-  Arrow≃pullback
-    = Arrow-map f g                      ≃⟨ Arrow-map-repr≃ f g ⟩
-      Σ[ k ∶ (A → C) ]
-       Σ[ h ∶ (B → D) ] (h ∘ f ~ g ∘ k)  ≃⟨  Σ-ap-≃ (λ _
-                                           → Σ-ap-≃ λ _
-                                             → (funext≃ e⁻¹) ∙≃ sym≃)  ⟩
-      Pullback (g ∘_) (_∘ f) ≃∎
-
-  Arrow≃pullback' : Arrow-map f g ≃ Pullback (_∘ f) (g ∘_)
-  Arrow≃pullback'
-    = Arrow-map f g                      ≃⟨ Arrow-map-repr≃ f g ⟩
-      Σ[ k ∶ (A → C) ]
-       Σ[ h ∶ (B → D) ] (h ∘ f ~ g ∘ k)  ≃⟨ Σ-comm ⟩
-      Σ[ k ∶ (B → D) ]
-       Σ[ h ∶ (A → C) ] (k ∘ f ~ g ∘ h)  ≃⟨  Σ-ap-≃ (λ _
-                                           → Σ-ap-≃ λ _
-                                             → (funext≃ e⁻¹))  ⟩
-      Pullback (_∘ f) (g ∘_) ≃∎
+  pullback←arrow : Arrow-map f g → Pullback (g ∘_) (_∘ f)
+  pullback←arrow = Arrow-map≃pullback ._≃_.fwd
 }
 %```
 }
 
 \subtree[stt-004I]{
-\title{Characterising the path of arrow maps}
+\title{Characterising the paths of morphisms of arrows}
 \taxon{Theorem}
 
 %```agda
@@ -220,7 +309,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
         {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
 
-
   arrow-fibre-∘
     : ∀ (F : Arrow-map f' f'') (G : Arrow-map f f')
       → ∀ b
@@ -278,7 +366,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          ＝⟨⟩
        (arrow-fibre a (b .bot x) ∘ arrow-fibre b x) (aa , p) .snd ∎
 
-
   3-for-2-cartesian : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
                         {H : Arrow-map f f''}
                       → Arrow-map-path H (paste-squares a b)
@@ -300,7 +387,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
 
 \p{We now have (at least) three things that can be called squares. We give functions
 to convert from arrow-map squares, to either cones over cospans or cocones over spans.}
-
 
 % ```agda
 \agda{
@@ -339,7 +425,6 @@ gap-map←square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                  → A → Pullback (g .Arrow-map.bot) f'
 gap-map←square g = gap (Cone←Arrow-map g .snd)
 
-
 cogap-map←square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                    {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
                  → (g : Arrow-map f f')
@@ -348,7 +433,6 @@ cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
 }
 % ```
 }
-
 
 \subtree[stt-003C]{
 \title{Pullback squares from cartesian arrow maps}
@@ -371,7 +455,7 @@ cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
 \end{tikzcd}
 }
 
-\p{such that the map #{\textrm{fib}_{g'}(a) \toeq \textrm{fib}_g(f'(a))} is
+\p{such that the map #{\fibre{g'}{a} \toeq \fibre{g}{f'(a)}} is
 an equivalence. Then to verify it is a pullback, then we need
 to show that the induced map #{A \to C \times_D B} is also an equivalence.}
 
@@ -389,10 +473,10 @@ on fibres.}
 \end{tikzcd}
 }
 
-\p{So we need to show #{\textrm{fib}_{f}(c) \to \textrm{fib}_{\pi_1}(c)} is
-an equivalence. The fibre of the projection is equivalent to the fibre of
-#{g} at #{f(c)}, and so by the [3-for-2](foundations.3for2) property of equivalences we
-have that the square is a pullback.}
+\p{So we need to show #{\fibre{f}{c} \to \fibre{\pi_1}{c}} is an equivalence. The
+fibre of the projection is equivalent to the fibre of #{g} at #{f(c)}, and so by the
+[3-for-2](foundations.3for2) property of equivalences we have that the square is a
+pullback.}
 
 % ```agda
 \agda{
@@ -461,7 +545,6 @@ is-cartesian←is-pullback {f = f} {f' = f'} g pb b
       ~ arrow-fibre g b
   lem (a , refl) = Σ-path→ (refl , sym (∙-reflr _))
 
-
 is-cartesian←gap-is-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
@@ -500,10 +583,10 @@ is-cartesian←gap-is-equiv F gap
 	{Q \to A} && {Q \to C} \\
 	\\
 	{Q \to B} && {Q \to D}
-	\arrow["{g \circ -}", from=1-1, to=1-3]
-	\arrow["{f \circ -}"', from=1-1, to=3-1]
-	\arrow["{f' \circ -}", from=1-3, to=3-3]
-	\arrow["{g' \circ -}"', from=3-1, to=3-3]
+	\arrow["{g \circ {-}}", from=1-1, to=1-3]
+	\arrow["{f \circ {-}}"', from=1-1, to=3-1]
+	\arrow["{f' \circ {-}}", from=1-3, to=3-3]
+	\arrow["{g' \circ {-}}"', from=3-1, to=3-3]
 \end{tikzcd}
 }
 
@@ -514,10 +597,10 @@ is-cartesian←gap-is-equiv F gap
 	{D \to Q} && {B \to Q} \\
 	\\
 	{C \to Q} && {A \to Q}
-	\arrow["{- \circ g'}", from=1-1, to=1-3]
-	\arrow["{- \circ f'}"', from=1-1, to=3-1]
-	\arrow["{- \circ f'}", from=1-3, to=3-3]
-	\arrow["{- \circ g}"', from=3-1, to=3-3]
+	\arrow["{{-} \circ g'}", from=1-1, to=1-3]
+	\arrow["{{-} \circ f'}"', from=1-1, to=3-1]
+	\arrow["{{-} \circ f'}", from=1-3, to=3-3]
+	\arrow["{{-} \circ g}"', from=3-1, to=3-3]
 \end{tikzcd}
 }
 
@@ -544,8 +627,8 @@ postcomp-square (mk-amap top bot p) C
 
 \remark{
 \p{Precomposing squares gives the result of applying the functor
-#{Hom(Q,H)} to the square. It is a well known result that this functor preserves
-pullback Likewise, postcomposition is given by #{Hom(-,Q)}, and this functor turns
+#{\Hom(Q,H)} to the square. It is a well known result that this functor preserves
+pullback Likewise, postcomposition is given by #{\Hom({-},Q)}, and this functor turns
 pushouts in to pullbacks.
 }
 }
@@ -685,7 +768,6 @@ fibre-square : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
 fibre-square f b .Arrow-map.top = fst
 fibre-square f b .Arrow-map.bot = point b
 fibre-square f b .Arrow-map.comm (x , p) = sym p
-
 
 fibre-square-is-cartesian : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
                             → is-cartesian (fibre-square f b)

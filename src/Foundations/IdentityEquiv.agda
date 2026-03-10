@@ -6,6 +6,9 @@ open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
 open import Foundations.Homotopy
 open import Foundations.Sigma
+open import Foundations.Functions
+open import Foundations.DependentIdentity
+open import Foundations.FibrewiseEquiv
 open import Foundations.Embedding
 open import Foundations.EquivHomotopy
 
@@ -36,7 +39,33 @@ sym≃ = mk≃ sym sym-is-equiv
                → (b ＝ c) ≃ (a ＝ c)
 ＝-postcomp-≃ p = mk≃ (λ q → p ∙ q) (∙-is-equiv p)
 
+Idᵈ-const-≃
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+      {x y : A} (p : x ＝ y)
+      {l : B}
+      (t : f x ＝ l)
+      (r : f y ＝ l)
+    → Idᵈ (ap (λ z → f z ＝ l) p) t r ≃ (ap f (sym p) ∙ t ＝ r)
+Idᵈ-const-≃ f p t r = ＝-postcomp-≃ (sym (Idᵈ-const-coe f p t))
+
+Idᵈ-const-≃'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+      {x y : A} (p : x ＝ y)
+      {l : B}
+      (t : l ＝ f x)
+      (r : l ＝ f y)
+    → Idᵈ (ap (λ z → l ＝ f z) p) t r ≃ (t ∙ ap f p ＝ r)
+Idᵈ-const-≃' f refl t r = ＝-postcomp-≃ (∙-reflr t)
+
 tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)
               → is-equiv (tr B p)
 tr-is-equiv refl = id-is-equiv
+
+fibre'≃fibre
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B) (b : B)
+  → fibre' f b ≃ fibre f b
+fibre'≃fibre f b = Σ-ap-≃ λ _ → sym≃

@@ -51,12 +51,17 @@ id-square-is-equiv
 id-square-is-equiv .fst = id-is-equiv
 id-square-is-equiv .snd = id-is-equiv
 
-Arrow⁻¹←Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+                {Y : Type 𝓜} (f : A → B) (g : X → Y)
+              → Type _
+Arrow-equiv f g = Σ[ F ∶ Arrow-map f g ] is-Arrow-equiv F
+
+Arrow⁻¹←is-Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
                        {Y : Type 𝓜} {f : A → B} {g : X → Y}
                      → (F : Arrow-map f g)
                      → is-Arrow-equiv F
                      → Arrow-map g f
-Arrow⁻¹←Arrow-equiv {f = f}{g} (mk-amap top bot comm) (teq , beq)
+Arrow⁻¹←is-Arrow-equiv {f = f}{g} (mk-amap top bot comm) (teq , beq)
   = mk-amap top.bwd bot.bwd H module Arrow⁻¹ where opaque
   module top = is-equiv teq
   module bot = is-equiv beq
@@ -73,8 +78,85 @@ Arrow⁻¹-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} 
                        {Y : Type 𝓜} {f : A → B} {g : X → Y}
                      → (F : Arrow-map f g)
                      → (eq : is-Arrow-equiv F)
-                     → is-Arrow-equiv (Arrow⁻¹←Arrow-equiv F eq)
+                     → is-Arrow-equiv (Arrow⁻¹←is-Arrow-equiv F eq)
 Arrow⁻¹-is-equiv F (teq , beq) = (is-equiv⁻¹ teq  , is-equiv⁻¹ beq)
+}
+%```
+}
+
+\subtree[stt-00EH]{
+\title{Basic operations on arrow equivalences}
+\author{fredrikbakke}
+
+%```agda
+\agda{
+Arrow-equiv←≃ᶠ
+  : {𝓤1 𝓤2 𝓥1 𝓥2 : Level}
+    (F : Fam 𝓤1 𝓤2)
+    (G : Fam 𝓥1 𝓥2)
+  → F ≃ᶠ G → Arrow-equiv (arrow←Fam F) (arrow←Fam G)
+Arrow-equiv←≃ᶠ (A , B) (X , Y) (e , ef)
+  = mk-amap top bot ~refl
+  , top-is-equiv
+  , bot-is-equiv
+  where
+  top : Σ A B → Σ X Y
+  top = total-map-fst (e ._≃_.fwd) ∘ total-map (λ a → ef a ._≃_.fwd)
+
+  bot : A → X
+  bot = e ._≃_.fwd
+
+  top-is-equiv : is-equiv top
+  top-is-equiv
+    = is-equiv-∘
+        (total-is-equiv←fst-is-equiv (e ._≃_.has-is-eqv))
+        (is-total-equiv←is-fibrewise-equiv (λ a → ef a ._≃_.has-is-eqv))
+
+  bot-is-equiv : is-equiv bot
+  bot-is-equiv = e ._≃_.has-is-eqv
+
+concat-Arrow-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠 𝓡}
+      {A : Type 𝓤}
+      {B : Type 𝓥}
+      {C : Type 𝓦}
+      {D : Type 𝓜}
+      {E : Type 𝓠}
+      {F : Type 𝓡}
+      {f : A → B}
+      {g : C → D}
+      {h : E → F}
+    → Arrow-equiv f g
+    → Arrow-equiv g h
+    → Arrow-equiv f h
+concat-Arrow-equiv (p , peq) (q , qeq)
+  = paste-squares q p
+  , is-equiv-∘ (qeq .fst) (peq .fst)
+  , is-equiv-∘ (qeq .snd) (peq .snd)
+
+concat-Arrow-equiv-≃ᶠ
+  : ∀ {𝓤 𝓥 𝓦1 𝓦2 𝓛1 𝓛2}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      (F : Fam 𝓦1 𝓦2) (G : Fam 𝓛1 𝓛2)
+    → Arrow-equiv f (arrow←Fam F)
+    → F ≃ᶠ G
+    → Arrow-equiv f (arrow←Fam G)
+concat-Arrow-equiv-≃ᶠ F G e₀ e
+  = concat-Arrow-equiv e₀ (Arrow-equiv←≃ᶠ F G e)
+
+inv-Arrow-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤}
+      {B : Type 𝓥}
+      {C : Type 𝓦}
+      {D : Type 𝓜}
+      {f : A → B}
+      {g : C → D}
+    → Arrow-equiv f g
+    → Arrow-equiv g f
+inv-Arrow-equiv (p , peq)
+  = Arrow⁻¹←is-Arrow-equiv p peq
+  , Arrow⁻¹-is-equiv p peq
 }
 %```
 }
@@ -159,7 +241,7 @@ section←Arrow-equiv⁻¹ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type
                        → is-Arrow-equiv F
                        → section g → section f
 section←Arrow-equiv⁻¹ {f = f}{g}{F} EF sec = section←Arrow-equiv {f = g}{f}
-                                               {Arrow⁻¹←Arrow-equiv F EF}
+                                               {Arrow⁻¹←is-Arrow-equiv F EF}
                                                (Arrow⁻¹-is-equiv F EF) sec
 }
 %```

@@ -69,8 +69,6 @@ funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                → happly (funext→ p) ＝ p
 funext-redex {p = p} = is-equiv.ε global-funext p
 
-{-# REWRITE funext-redex #-}
-
 
 open import Foundations.Univalence
 
@@ -79,8 +77,6 @@ postulate
 
 
 open WithGlobalUnivalence UA public
-
-{-# REWRITE ua-linv #-}
 
 import Foundations.Straightening
 

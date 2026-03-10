@@ -174,15 +174,15 @@ tr-cov cov h = fst ∘ centre ∘ cov h
 
 tr-cov-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant-hom P
+    → is-covariant P
     → ∀ {x y} (h : Hom A x y) → P x → P y
-tr-cov-hom cov h = fst ∘ centre ∘ cov h
+tr-cov-hom cov h = fst ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 
 tr-cov-over
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → (cov : is-covariant-hom P)
+    → (cov : is-covariant P)
     → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
-tr-cov-over cov h = snd ∘ centre ∘ cov h
+tr-cov-over cov h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 }
 %```
 }
@@ -565,16 +565,33 @@ this map is an equivalence.}
 
 %```agda
 \agda{
-cov-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+Hom-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
             (f : Δ¹ → A) x' y'
           → tr-cov {P = P} cov f x' ＝ y' → Homᵈ (P ∘ f) x' y'
-cov-hom _ Pc f x' y' refl = Pc f x' .centre .snd
+Hom-cov _ Pc f x' y' refl = Pc f x' .centre .snd
 
-cov-hom-is-equiv
+Hom-cov-is-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
       (f : Δ¹ → A) x' y'
-    → is-equiv (cov-hom P cov f x' y')
-cov-hom-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (cov-hom P Pc f x')
+    → is-equiv (Hom-cov P cov f x' y')
+Hom-cov-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (Hom-cov P Pc f x')
+
+Hom-cov'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      {x y} (f : Hom A x y) x' y'
+    → tr-cov-hom {P = P} cov f x' ＝ y' → Hom-over f x' y'
+Hom-cov' P cov f x' y' refl
+  = is-covariant-hom←is-covariant _ cov f x' .centre .snd
+
+Hom-cov'-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      {x y} (f : Hom A x y) x' y'
+    → is-equiv (Hom-cov' P cov f x' y')
+Hom-cov'-is-equiv P Pc f x'
+  = fundamental-Id
+      _
+      (is-covariant-hom←is-covariant _ Pc f x')
+      (Hom-cov' P Pc f x')
 }
 %```
 }
@@ -596,17 +613,23 @@ tr-cov-id
     → tr-cov {P = P} cov (λ _ → x) ~ id
 tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x') )
 
+tr-cov-idH
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+    → tr-cov-hom {P = P} cov (idH x) ~ id
+tr-cov-idH P cov {x} x' = ap fst
+  (is-covariant-hom←is-covariant _ cov (idH x) x' .central (x' , idH x'))
+
 tr-cov-∘
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
-      (cov : is-covariant-hom P) {x y z} (g : Hom A y z) (f : Hom A x y)
+      (cov : is-covariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
       (x' : P x)
       →  tr-cov-hom cov (g ∘[ Apc ] f) x'
       ＝ tr-cov-hom cov g (tr-cov-hom cov f x')
 tr-cov-∘ apc P cov g f x'
   = ap fst
-      (cov (g ∘[ apc ] f) x' .central
+      (is-covariant-hom←is-covariant _ cov (g ∘[ apc ] f) x' .central
         ( tr-cov-hom cov g (tr-cov-hom cov f x')
-        , Compᵈ apc P (is-inner-family←is-covariant-hom cov) g f
+        , Compᵈ apc P (is-inner-family←is-covariant cov) g f
                 (tr-cov-over cov g _) (tr-cov-over cov f _)))
 }
 %```

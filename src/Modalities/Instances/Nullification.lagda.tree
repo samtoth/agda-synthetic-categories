@@ -62,6 +62,14 @@ module _
         (has-is-eqv , postcomp-equiv has-is-eqv)
         (anull i) where
     open _≃_ e
+
+Null-SubU
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      (A : I → Type 𝓤)
+      𝓦
+    → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
+Null-SubU A 𝓦 .Subtype.family = is-null A
+Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
 }
 %```
 }
@@ -115,7 +123,7 @@ module _
 \date{2025-06-17}
 \author{samueltoth}
 \taxon{Theorem}
-\title{Null types are #{!\rm{-local}}}
+\title{Null types are #{!}-local}
 
 \p{A type is #{A_i}-null iff it is #{(! : A_i \to 1)}-local.}
 
@@ -162,6 +170,12 @@ is-null←is-local-sing Bs f loc i
   = is-equiv-∘
       (loc i)
       (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bs i)))
+
+Null≃!Local
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+  → Subtype-equiv (Local-SubU (λ i → ! {A = A i}) 𝓥)
+                  (Null-SubU A 𝓥)
+Null≃!Local A = (is-null←is-local , is-local←is-null)
 }
 %```
 }
@@ -217,14 +231,6 @@ module _ where
   open is-globally-reflective
   open is-global-reflector
 
-  Null-SubU
-    : ∀ {𝓘 𝓤} {I : Type 𝓘}
-        (A : I → Type 𝓤)
-        𝓦
-      → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
-  Null-SubU A 𝓦 .Subtype.family = is-null A
-  Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
-
   Null-GSU : ∀ {𝓘 𝓤} {I : Type 𝓘}
                (A : I → Type 𝓤)
               → GSU (_⊔ (𝓘 ⊔ 𝓤))
@@ -234,6 +240,14 @@ module _ where
         {F = mk-amap fwd (postcomp _ fwd) ~refl}
         (has-is-eqv , postcomp-equiv has-is-eqv)
         (anull i) where open _≃_ e
+
+  Null-globally-reflective
+    : ∀ {𝓘 𝓤} {I : Type 𝓘} {A : I → Type 𝓤}
+    → is-globally-reflective (Null-GSU A)
+  Null-globally-reflective {A = A}
+    = is-globally-reflective-subtype-equiv
+        (Null≃!Local)
+        (Local-global-reflectors (λ i → ! {A = A i}))
 
   opaque
     Null∙-global-reflectors
@@ -325,6 +339,29 @@ Null∙-HigherModality
 Null∙-HigherModality a = HigherModality←SubU
                            (Null∙-reflective a)
                            (Null-Σ-closed)
+
+module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
+         where
+
+  Local-Σ-closed
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → is-Σ-closed (Local-SubU f 𝓦)
+  Local-Σ-closed f sngl aloc bloc
+    = is-local-sing←is-null sngl f
+        (Null-Σ-closed
+          (is-null←is-local-sing sngl f aloc)
+          λ a → is-null←is-local-sing sngl f (bloc a))
+
+  Local-HigherModality
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → HigherModality 𝓦
+  Local-HigherModality f s
+    = HigherModality←SubU
+        (Local-reflective f)
+        (Local-Σ-closed f s)
 }
 %```
 }
@@ -558,55 +595,6 @@ Null-U-is-null←is-prop {𝓥 = 𝓥} {P = P} is-prop-P
       {S = Full-GSU}
       (is-prop-P)
       (λ _ _ → tt)
-}
-%```
-}
-
-\subtree[fre-0004]{
-\date{2026-03-10}
-\author{fredrikbakke}
-\title{Null types and singleton-codomain local types}
-\taxon{Theorem}
-
-%```agda
-\agda{
-Null≃!Local : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
-              → Subtype-equiv (Local-SubU (λ i → ! {A = A i}) 𝓥)
-                              (Null-SubU A 𝓥)
-Null≃!Local A = (is-null←is-local , is-local←is-null )
-
-
-Null-globally-reflective
-  : ∀ {𝓘 𝓤} {I : Type 𝓘} {A : I → Type 𝓤}
-  → is-globally-reflective (Null-GSU A)
-Null-globally-reflective {A = A}
-  = is-globally-reflective-subtype-equiv
-      Null≃!Local
-      (Local-global-reflectors (λ i → ! {A = A i}))
-
-module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
-         {A : I → Type 𝓤} {B : I → Type 𝓥}
-         where
-  open is-reflective
-  open is-reflector
-
-  Local-Σ-closed
-    : (f : (i : I) → A i → B i)
-    → (∀ i → is-singleton (B i))
-    → is-Σ-closed (Local-SubU f 𝓦)
-  Local-Σ-closed f sngl aloc bloc
-    = is-local-sing←is-null sngl f
-        (Null-Σ-closed
-        (is-null←is-local-sing sngl f aloc)
-           λ a → is-null←is-local-sing sngl f (bloc a))
-
-  Local-HigherModality
-    : (f : (i : I) → A i → B i)
-    → (∀ i → is-singleton (B i))
-    → HigherModality 𝓦
-  Local-HigherModality f s = HigherModality←SubU
-                               (Local-reflective f)
-                               (Local-Σ-closed f s)
 }
 %```
 }

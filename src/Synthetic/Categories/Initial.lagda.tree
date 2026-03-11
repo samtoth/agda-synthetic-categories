@@ -39,6 +39,7 @@ open import Synthetic.Categories.Precategories Δ¹ I I-distr
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
 open import Synthetic.Categories.Comma Δ¹ I I-distr
 open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Adjoints Δ¹ I I-distr
 }
 %```
 
@@ -52,7 +53,6 @@ open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
 
 %```agda
 \agda{
-
 is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
 is-initial a = ∀ b → is-singleton (Hom _ a b)
 }
@@ -65,7 +65,9 @@ is-initial a = ∀ b → is-singleton (Hom _ a b)
 \p{An object #{a} is initial iff the codomain projection #{A_{a/} \to A} is
 an equivalence.}
 
-\proof{By considering fibres.}
+\proof{
+\p{By considering fibres.}
+}
 
 %```agda
 \agda{
@@ -81,7 +83,7 @@ is-initial←slice-proj-is-equiv a eq b
 %```
 }
 
-\subtree[tot-0004]{
+\subtree[tot-0014]{
 \title{Initial objects are preserved by left adjoints}
 
 \p{For a map #{l : A \to B}, if there is a map #{r} with #{l \dashv r},
@@ -90,10 +92,6 @@ is-initial←slice-proj-is-equiv a eq b
 
 %```agda
 \agda{
-_⊣_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      → (A → B) → (B → A) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-l ⊣ r = ∀ a b → Hom _ (l a) b ≃ Hom _ a (r b)
-
 is-initial←ladj
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
     → (l : A → B) → (r : B → A) → l ⊣ r
@@ -103,61 +101,11 @@ is-initial←ladj f g fg ai b
 }
 %```
 
-\p{In particular, since [equivalences are left adjoints](),
+\p{In particular, since [equivalences are left adjoints](tot-0016),
 they also preserve initial objects.}
 
 %```agda
 \agda{
-is-fully-faithful
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-fully-faithful f = ∀ {x y} → is-equiv (ap-hom f {x} {y})
-
-ap-total-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → (A → B)
-    → (Σ[ x ∶ A ] Σ[ y ∶ A ] Hom _ x y) → Σ[ x' ∶ B ] Σ[ y' ∶ B ] Hom _ x' y'
-ap-total-hom F
-  = total-map-fst F ∘ total-map λ a → total-map-fst F ∘ total-map (λ _ → ap-hom F)
-
-is-fully-faithful←is-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → {f : A → B}
-    → is-equiv f → is-fully-faithful f
-is-fully-faithful←is-equiv {f = F} Fe {x} {y}
-  = is-fibrewise-equiv←is-total-equiv (eq2 x) y where
-  fact : Arrow-map (postcomp Δ¹ F) (ap-total-hom F)
-  fact .Arrow-map.top = total-hom ._≃_.fwd
-  fact .Arrow-map.bot = total-hom ._≃_.fwd
-  fact .Arrow-map.comm = ~refl
-
-  ap-total-hom-is-equiv : is-equiv (ap-total-hom F)
-  ap-total-hom-is-equiv
-    = is-equiv←Arrow-equiv {F = fact}
-        (total-hom ._≃_.has-is-eqv , (total-hom ._≃_.has-is-eqv))
-        (postcomp-equiv Fe)
-
-  eq1 : is-equiv (total-map λ a → total-map-fst F ∘ total-map (λ b → ap-hom F {a} {b}))
-  eq1 = 3-for-2
-       {f = total-map-fst F}
-       (total-is-equiv←fst-is-equiv Fe)
-       ap-total-hom-is-equiv
-
-  eq2 : ∀ a → is-equiv (total-map λ b → ap-hom F {a} {b})
-  eq2 = λ a → 3-for-2 {f = total-map-fst F}
-              (total-is-equiv←fst-is-equiv Fe)
-              (is-fibrewise-equiv←is-total-equiv eq1 a)
-
-is-left-adjoint←is-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → {f : A → B} → (fe : is-equiv f)
-    → f ⊣ (is-equiv.bwd fe)
-is-left-adjoint←is-equiv {f = f} fe a b
-  = Hom _ (f a) b             ≃⟨ mk≃ _ (is-fully-faithful←is-equiv (is-equiv⁻¹ fe)) ⟩
-    Hom _ (bwd (f a)) (bwd b) ≃⟨ mk≃ _ (adjust-hom-is-equiv (η _) refl) ⟩
-    Hom _ a (bwd b) ≃∎
-    where open is-equiv fe
-
 opaque
   is-initial←is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
@@ -173,6 +121,186 @@ opaque
 \taxon{Example}
 \title{Initial objects in the coslice category}
 
+\p{If #{A} is a precategory, then #{(a , \id)} is an initial object in #{A_{a/}}.}
+
+
+\p{We hope to prove the projection #{{A_{a/}}_{\id /} \to A_{a/}} is an
+equivalence. And to this end, we start with a lemma describing this iterated
+coslice category:}
+
+\subtree[tot-0010]{
+\taxon{Lemma}
+\title{Describing iterated coslices}
+
+\p{We show that the type #{{A_{a/}}_{\id /}} is equivalent to squares in #{A}
+where the top left span are both the identity map. }
+
+\p{Note the extra coherence in the type of this square:
+##{\Sigma_{K : A^{\square}} \Sigma_{p : \Pi_{i} K(i,0) = a} \Sigma_{q : \Pi_{j} K(0,j) = a} p(0) = q(0)}
+}
+
+%```agda
+\agda{
+coslice-coslice-repr≃
+  : ∀ {𝓤} {A : Type 𝓤} a
+    → (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
+             Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
+    ≃ Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
+}
+%```
+
+\closedScope{
+\proof{
+%```agda
+\agda{
+coslice-coslice-repr≃ {A = A} a
+  = ((Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
+       Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0)))
+
+         ≃⟨ Σ-assoc e⁻¹
+        ∙≃ Σ-ap-≃-fst {B = λ sq →  Σ[ q ∶ (∀ j → sq i0 .snd tt .Homᵈ.hom j ＝ a)]
+                                     (sq i0 .snd tt .Homᵈ.hom0 ＝ q i0) }
+            ((Σ-Π-swap≃ _ λ _ sq → sq i0 ＝ a) e⁻¹
+             ∙≃ postcomp-Π-≃ (λ i → Coslice-object-repr≃ a e⁻¹)) ⟩
+
+    ((Σ[ sl ∶ ((i : Δ¹) → (Coslice A (const _ 𝟙 a)))]
+       Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
+         (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)))
+
+          ≃⟨ Σ-ap-≃ II ⟩
+
+    (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))]
+      Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
+        (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a)))
+
+          ≃⟨ Σ-ap-≃ (λ sl →  mk≃ _ (Coslice-path-is-equiv {x = sl i0}) ) ⟩
+
+    (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))) ≃∎ where
+
+    II-map : (w : A) (sl : Hom A a w)
+       → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
+           (sl .Homᵈ.hom0 ＝ q i0)
+       → Σ[ sl01 ∶ (w ＝ a)]
+           (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
+    II-map w x (p , coh) .fst = sym (x .Homᵈ.hom1) ∙ p i1
+    II-map w x (p , coh) .snd tt .fst = p
+    II-map w x (p , coh) .snd tt .snd .fst = mk-square (ap (_∙ refl) (sym coh))
+    II-map w x@(mk-hom _ _ refl) (p , coh) .snd tt .snd .snd
+      = Square-degen-hor _ _ refl
+
+    II-inv : (w : A) (sl : Hom A a w)
+       → Σ[ sl01 ∶ (w ＝ a)]
+           (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
+       → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
+           (sl .Homᵈ.hom0 ＝ q i0)
+    II-inv w x (a , b) .fst = b tt .fst
+    II-inv w x (a , b) .snd
+        = unap-equiv {f = _∙ refl} (∙-is-equiv' _)
+                     (sym (un-square (b tt .snd .fst)))
+
+
+    qiso : ∀ a x → quasi-iso (II-map a x)
+    qiso w x .fst = II-inv w x
+    qiso w x .snd .fst (a , b) = Σ-path→ (refl
+      , (unap-equiv (∙-is-equiv' _) (sym _)
+             ＝⟨ ap (unap-equiv (∙-is-equiv' _))
+                    (ap sym (un-mk-square (ap (_∙ refl) (sym b)))
+                    ∙ sym (ap-sym (_∙ refl) (sym b))
+                    ∙ ap (ap (_∙ refl)) sym-sym) ⟩
+         unap-equiv (∙-is-equiv' _) (ap (_∙ refl) b)
+           ＝⟨ unap-ap-equiv _ b ⟩
+         b ∎))
+    qiso w x .snd .snd (refl , t)
+       = let path = Id←IdS {a = x} {b = idH _} (Hom-path←pathᵈ (t tt))
+         in tr (λ p → II-map w x (qiso w x .fst (refl , λ _ → p)) ＝ (refl , λ _ → p))
+               (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄ path) ＝⟨⟩
+               (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄
+                               (Id←IdS {a = x} (Hom-path←pathᵈ (t tt)))))
+                                             ＝⟨ ap Hom-pathᵈ←path
+                                                    (IdS←Id←IdS ⦃ IdS-Hom ⦄
+                                                      (Hom-path←pathᵈ (t tt))) ⟩
+               (Hom-pathᵈ←path (Hom-path←pathᵈ (t tt)))
+                                             ＝⟨ _≃_.ε Hom-pathᵈ≃path (t tt)  ⟩
+               t tt ∎)
+               (help x path) where
+         opaque
+           unfolding Square
+           III : Square-degen-hor {a = a} refl refl refl ＝ mk-square refl
+           III = refl
+           IV : II-map w (idH w)
+                 (qiso w (idH w) .fst
+                  (refl ,
+                   (λ _ → Hom-pathᵈ←path (Identity-system.IdS←Id IdS-Hom refl))))
+                 .snd tt .snd .fst
+                 ＝
+                 mk-square
+                 (Identity-system.IdS←Id IdS-Hom {a = idH w} refl .snd .fst ∙
+                  sym (∙-reflr (Homᵈ.hom0 (idH w))))
+           IV = ap (ap (_∙ refl)) (ap sym (unap-refl (∙-is-equiv' refl)))
+                ∙ refl
+
+
+         help : ∀ (x' : Hom A w w) → (p : x' ＝ idH w)
+              → II-map w x' (qiso w x' .fst (refl , λ _ → Hom-pathᵈ←path (IdS←Id p)))
+              ＝ (refl , λ _ → Hom-pathᵈ←path (IdS←Id p))
+         help x' refl = Σ-path→ (refl , (funext→
+           (λ a₁ → Σ-path→ (refl , (×-path→ (IV , III))))))
+
+    II : (sl : Δ¹ → Coslice A (const A 𝟙 a))
+       → Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
+           (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)
+       ≃ Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
+           (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a))
+    II x ._≃_.fwd = II-map (x i0 .fst) (x i0 .snd tt)
+    II x ._≃_.has-is-eqv = is-equiv←qiso (qiso (x i0 .fst) (x i0 .snd tt))
+}
+%```
+}
+}
+}
+
+\proof{
+\p{Now we give a diagram where all maps apart from our desired projection
+are equivalences, and hence by the 3 for 2 property, the projection is an
+equivalence and #{(a,\id)} is an initial object.}
+
+\quiver{
+\begin{tikzcd}
+	{{A_{a/}}_{\id /}} && S \\
+	&&& S \\
+	&&& {{A_{a/}}_{\id /}} & {\Sigma_{f : {C_{x/}}^{\Delta^1}} f(0)=(a,\id )} \\
+	\\
+	{A_{a/}} && {\Sigma_{k: A^{\Delta^1}\times_A A_{/a}} \pi_2k = (a,\id )}
+	\arrow["{(4)}"', from=1-1, to=5-1]
+	\arrow["{(3)}"', from=1-3, to=1-1]
+	\arrow["{(5)}", from=1-3, to=2-4]
+	\arrow["{(3)}", from=2-4, to=3-4]
+	\arrow[equals, from=3-4, to=3-5]
+	\arrow["{(1)}", from=3-4, to=5-3]
+	\arrow["{(2)}", from=5-3, to=5-1]
+\end{tikzcd}
+}
+
+\p{We write #{S} for the representation of the iterated coslice as in
+\ref{tot-0010}.}
+
+\ol{
+\li{Is an equivalence since #{A_{a/} \to A} is a left fibration}
+\li{just contracts away the singleton #{\pi_2 k}. What remains is
+#{\Sigma_{f : A^{\Delta^1}} f(0) = a}, which is exactly #{A_{a/}}.}
+\li{Is the equivalence of \ref{tot-0010}}
+\li{Is the projection map we want to be an equivalence}
+\li{Is the automorphisms on the square that swaps #{i} and #{j}.}
+}
+
+\p{Notice that the type #{{A_{a/}}_{\id /}} (which is just a square with top
+left half constant at #{a}) occurs twice in this diagram.
+The composite #{(2) \circ (1)} takes the right map, and the map #{(4)} takes
+the bottom map, thus we insert the mirroring automorphism in this diagram so
+that it trivially commutes.}
+}
+
+
 %```agda
 \agda{
 coslice-init
@@ -180,120 +308,6 @@ coslice-init
     → is-initial {A = Coslice A (const _ 𝟙 a)} (a , λ _ → idH a)
 coslice-init {A = A} As Asi a
   = is-initial←slice-proj-is-equiv _ proj-is-equiv where
-  lemma
-    : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-    → Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
-  lemma (sq , p , q , H) .fst i .fst = _
-  lemma (sq , p , q , H) .fst i .snd _ .Homᵈ.hom j = sq i j
-  lemma (sq , p , q , H) .fst i .snd _ .Homᵈ.hom0 = p i
-  lemma (sq , p , q , H) .fst i .snd _ .Homᵈ.hom1 = refl
-  lemma (sq , p , q , H) .snd = Coslice-path→
-    ((q i1) ,
-    (λ i → q , mk-square (ap (_∙ refl) (sym H)) , Square-degen-hor _ _ refl)
-    )
-
-  lemma-eq : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-               Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-           ≃ Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
-  lemma-eq
-    = ((Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-         Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0)))
-           ≃⟨ Σ-assoc e⁻¹
-          ∙≃ Σ-ap-≃-fst {B = λ sq →  Σ[ q ∶ (∀ j → sq i0 .snd tt .Homᵈ.hom j ＝ a)]
-                                       (sq i0 .snd tt .Homᵈ.hom0 ＝ q i0) }
-              ((Σ-Π-swap≃ _ λ _ sq → sq i0 ＝ a) e⁻¹
-               ∙≃ postcomp-Π-≃ (λ i → Coslice-object-repr≃ a e⁻¹)) ⟩
-      ((Σ[ sl ∶ ((i : Δ¹) → (Coslice A (const _ 𝟙 a)))]
-         Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
-           (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)))
-            ≃⟨ Σ-ap-≃ II ⟩
-      (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))]
-        Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-          (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a)))
-            ≃⟨ Σ-ap-≃ (λ sl →  mk≃ _ (Coslice-path-is-equiv {x = sl i0}) ) ⟩
-      (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))) ≃∎ where
-
-      II-map : (w : A) (sl : Hom A a w)
-         → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
-             (sl .Homᵈ.hom0 ＝ q i0)
-         → Σ[ sl01 ∶ (w ＝ a)]
-             (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
-      II-map w x (p , coh) .fst = sym (x .Homᵈ.hom1) ∙ p i1
-      II-map w x (p , coh) .snd tt .fst = p
-      II-map w x (p , coh) .snd tt .snd .fst = mk-square (ap (_∙ refl) (sym coh))
-      II-map w x@(mk-hom _ _ refl) (p , coh) .snd tt .snd .snd
-        = Square-degen-hor _ _ refl
-
-      II-inv : (w : A) (sl : Hom A a w)
-         → Σ[ sl01 ∶ (w ＝ a)]
-             (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
-         → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
-             (sl .Homᵈ.hom0 ＝ q i0)
-      II-inv w x (a , b) .fst = b tt .fst
-      II-inv w x (a , b) .snd
-          = unap-equiv {f = _∙ refl} (∙-is-equiv' _)
-                       (sym (un-square (b tt .snd .fst)))
-
-
-      qiso : ∀ a x → quasi-iso (II-map a x)
-      qiso w x .fst = II-inv w x
-      qiso w x .snd .fst (a , b) = Σ-path→ (refl
-        , (unap-equiv (∙-is-equiv' _) (sym _)
-               ＝⟨ ap (unap-equiv (∙-is-equiv' _))
-                      (ap sym (un-mk-square (ap (_∙ refl) (sym b)))
-                      ∙ sym (ap-sym (_∙ refl) (sym b))
-                      ∙ ap (ap (_∙ refl)) sym-sym) ⟩
-           unap-equiv (∙-is-equiv' _) (ap (_∙ refl) b)
-             ＝⟨ unap-ap-equiv _ b ⟩
-           b ∎))
-      qiso w x .snd .snd (refl , t)
-         = let path = Id←IdS {a = x} {b = idH _} (Hom-path←pathᵈ (t tt))
-           in tr (λ p → II-map w x (qiso w x .fst (refl , λ _ → p)) ＝ (refl , λ _ → p))
-                 (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄ path) ＝⟨⟩
-                 (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄
-                                 (Id←IdS {a = x} (Hom-path←pathᵈ (t tt)))))
-                                               ＝⟨ ap Hom-pathᵈ←path
-                                                      (IdS←Id←IdS ⦃ IdS-Hom ⦄
-                                                        (Hom-path←pathᵈ (t tt))) ⟩
-                 (Hom-pathᵈ←path (Hom-path←pathᵈ (t tt)))
-                                               ＝⟨ _≃_.ε Hom-pathᵈ≃path (t tt)  ⟩
-                 t tt ∎)
-                 (help x path) where
-           opaque
-             unfolding Square
-             III : Square-degen-hor {a = a} refl refl refl ＝ mk-square refl
-             III = refl
-             IV : II-map w (idH w)
-                   (qiso w (idH w) .fst
-                    (refl ,
-                     (λ _ → Hom-pathᵈ←path (Identity-system.IdS←Id IdS-Hom refl))))
-                   .snd tt .snd .fst
-                   ＝
-                   mk-square
-                   (Identity-system.IdS←Id IdS-Hom {a = idH w} refl .snd .fst ∙
-                    sym (∙-reflr (Homᵈ.hom0 (idH w))))
-             IV = ap (ap (_∙ refl)) (ap sym (unap-refl (∙-is-equiv' refl)))
-                  ∙ refl
-
-
-           help : ∀ (x' : Hom A w w) → (p : x' ＝ idH w)
-                → II-map w x' (qiso w x' .fst (refl , λ _ → Hom-pathᵈ←path (IdS←Id p)))
-                ＝ (refl , λ _ → Hom-pathᵈ←path (IdS←Id p))
-           help x' refl = Σ-path→ (refl , (funext→
-             (λ a₁ → Σ-path→ (refl , (×-path→ (IV , III))))))
-
-      II : (sl : Δ¹ → Coslice A (const A 𝟙 a))
-         → Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
-             (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)
-         ≃ Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-             (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a))
-      II x ._≃_.fwd = II-map (x i0 .fst) (x i0 .snd tt)
-      II x ._≃_.has-is-eqv = is-equiv←qiso (qiso (x i0 .fst) (x i0 .snd tt))
-
-  H : _≃_.fwd lemma-eq ~ lemma
-  H = ~refl
-
   mirror-aut
     : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
           Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
@@ -360,17 +374,19 @@ coslice-init {A = A} As Asi a
   factor4 : Coslice A (const _ 𝟙 a) → Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
   factor4 = Coslice-object-repr≃ a ._≃_.fwd
 
-  factorisation : factor4 ∘ proj ∘ lemma
-                ~ factor3-inv ∘ factor2 ∘ factor1 ∘ lemma ∘ mirror-aut
+  coslice-id-map = _≃_.fwd (coslice-coslice-repr≃ a)
+
+  factorisation : factor4 ∘ proj ∘ coslice-id-map
+                ~ factor3-inv ∘ factor2 ∘ factor1 ∘ (coslice-id-map) ∘ mirror-aut
   factorisation (sq , p , q , coh) = fibre-path→ (refl , Coslice-path-ap-fst _)
 
   opaque
     proj-is-equiv : is-equiv proj
     proj-is-equiv = 3-for-2 {f = factor4}
       (Coslice-object-repr≃ a ._≃_.has-is-eqv)
-      (3-for-2~' {f = factor4 ∘ proj} {g = lemma}
+      (3-for-2~' {f = factor4 ∘ proj} {g = coslice-id-map}
         (factorisation ~⁻¹)
-        (lemma-eq ._≃_.has-is-eqv)
+        (coslice-coslice-repr≃ a ._≃_.has-is-eqv)
         (is-equiv-∘ {f = factor3-inv}
           (is-equiv←qiso factor3-qiso)
           (is-equiv-∘ {f = factor2}
@@ -379,8 +395,8 @@ coslice-init {A = A} As Asi a
               (total-is-equiv←fst-is-equiv
                 (pb-power-is-equiv←orthogonal
                   (coslice-is-left⇔is-precategory Asi .fst As a)))
-              (is-equiv-∘ {f = lemma}
-                (lemma-eq ._≃_.has-is-eqv)
+              (is-equiv-∘ {f = coslice-id-map}
+                (coslice-coslice-repr≃ a ._≃_.has-is-eqv)
                 mirror-aut-is-equiv)))))
 
 coslice-init'

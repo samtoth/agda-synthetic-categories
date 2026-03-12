@@ -181,9 +181,11 @@ is-singleton-structure←parts aR t@(a , c) bR
 
 
 ap-equiv←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : A} →
-               is-equiv f → is-equiv (ap  f)
-ap-equiv←equiv {A = A} {f = f} {x} {y} h = fundamental-Id _ sing (λ a → ap f) y where abstract
+               is-equiv f → is-equiv (ap f)
+ap-equiv←equiv {A = A} {f = f} {x} {y} h
+  = fundamental-Id _ sing (λ a → ap f) y where abstract
   sing : is-singleton (Σ A (λ z → f x ＝ f z))
   sing = is-single←section-single (total-map (λ a → sym))
-                                  ((λ (a , p) → (a , (sym p))) , λ x →  Σ-path→ (refl , sym-sym))
+                                  ( (λ (a , p) → (a , (sym p)))
+                                  , (λ x → Σ-path→ (refl , sym-sym)))
                                   (is-contr-map←is-equiv h (f x))

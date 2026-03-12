@@ -7,35 +7,35 @@ open import Foundations.Functions
 open import Foundations.Homotopy
 
 
-HomotopyP : ∀ {𝓤 𝓥} {A : Type 𝓤}
+Homotopyᵈ : ∀ {𝓤 𝓥} {A : Type 𝓤}
               → {B : A → Type 𝓥}
               → {C : A → Type 𝓥}
               → (P : B ~ C)
               → (f : ∀ a → B a)
               → (g : ∀ a → C a)
               → Type _
-HomotopyP {A = A} P f g = ∀ (a : A) → IdP (P a) (f a) (g a)
+Homotopyᵈ {A = A} P f g = ∀ (a : A) → Idᵈ (P a) (f a) (g a)
 
-HomotopyP-syntax : ∀ {𝓤 𝓥} {A : Type 𝓤}
+Homotopyᵈ-syntax : ∀ {𝓤 𝓥} {A : Type 𝓤}
               → {B : A → Type 𝓥}
               → {C : A → Type 𝓥}
               → (P : B ~ C)
               → (f : ∀ a → B a)
               → (g : ∀ a → C a)
               → Type _
-HomotopyP-syntax = HomotopyP
+Homotopyᵈ-syntax = Homotopyᵈ
 
-syntax HomotopyP-syntax P f g = f ~[ P ] g
+syntax Homotopyᵈ-syntax P f g = f ~[ P ] g
 
-{-# DISPLAY HomotopyP P f g = f ~[ P ] g #-}
+{-# DISPLAY Homotopyᵈ P f g = f ~[ P ] g #-}
 
-HomotopyP-const : ∀ {𝓤 𝓥} {A : Type 𝓤}
+Homotopyᵈ-const : ∀ {𝓤 𝓥} {A : Type 𝓤}
                     {B : A → Type 𝓥}
                     {f g : Π A B}
                     {p : B ~ B}
                     (_ : p ＝ ~refl)
                     → f ~ g → f ~[ p ] g
-HomotopyP-const {f = f} {g} refl h = h
+Homotopyᵈ-const {f = f} {g} refl h = h
 
 
 -- HomotopyP-sq : ∀ {𝓤 𝓥} {A : Type 𝓤}

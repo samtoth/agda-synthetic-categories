@@ -1,0 +1,93 @@
+\date{2026-03-12}
+\title{Quasicoherent Aypes}
+\author{markwilliams}
+\taxon{Module}
+\import{stt-macros}
+
+\subtree[wil-0000]{
+\taxon{Remark}
+\p{This module, as almost all in \code{Synthetic.Categories} assumes a
+type #{\Delta^1} with a distributive lattice structure, we
+call this type the generic interval.}
+}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Core.CoSlice
+open import ufAxioms
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Pointwise
+open import Algebra.Lattice.Instances.Polynomial
+
+module Synthetic.Quasicoherence
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+    where
+}
+```
+
+\subtree[wil-0001]{
+\taxon{Definition}
+\title{Quasicoherent Algebras}
+
+\p{A remarkable property of the distributive lattice in simplicial type theory
+is that it satisfies a strong algebraic duality principle, known as
+\strong{Blechschmidt duality}. This tells us that all functions between types that
+are algebraic subsets of #{\mathbb{I}^n} are actually given by polynomials.}
+
+\p{Formally an algebraic subset is specified by an algebra #{\mathbb{I} \to A}.
+  The algebraic subset is then defined as
+  #{\mathrm{Spec}(A) := \mathrm{hom}_{\mathbb{I}-\mathrm{Alg}}(A, \mathbb{I})}.
+  We will call an algebra \textf{quasicoherent} if the natural map
+  #{A \to (\mathrm{Spec}(A) \to \mathbb{I}) } is an equivalence of algebras.}
+
+%```agda
+\agda{
+
+  Spec : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓘 ⊔ 𝓤)
+  Spec {X = X} A = LatticeAlgHom A (initial-Algebra I)
+
+  Obs : {𝓤 : Level} →  Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+  Obs X = X → Δ¹
+
+  ObsAlg : {𝓤 : Level} (X : Type 𝓤) → Algebra I (Obs X)
+  ObsAlg X = Pointwise-Algebra X λ _ → initial-Algebra _
+
+  eval : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → X → Spec A → Δ¹
+  eval A f x = x .fst .fst f
+
+  eval' : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → X → Spec (ObsAlg X)
+  eval' A x .fst .fst f =  f x
+  eval' A x .fst .snd = λ a → refl
+  eval' A x .snd = mk-is-lattice-alg-hom (record
+      { pres-∨ = refl
+      ; pres-∧ = refl
+      ; pres-0 = refl
+      ; pres-1 = refl })
+
+
+  eval-AlgebraHom : {𝓤 : Level}
+                    {X : Type 𝓤} (A : Algebra I X)
+                  →  LatticeAlgHom A (ObsAlg (Spec A))
+  eval-AlgebraHom A .fst .fst = eval A
+  eval-AlgebraHom A .fst .snd a = funext→ λ a₁ → a₁ .fst .snd a
+  eval-AlgebraHom A .snd = mk-is-lattice-alg-hom (record
+    { pres-∨ = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∨
+    ; pres-∧ = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∧ 
+    ; pres-0 = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-0
+    ; pres-1 = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-1 })
+    where
+      open is-lattice-hom
+
+  is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓤 ⊔ 𝓘)
+  is-quasicoherent A = is-LatticeAlgHom-equiv (eval-AlgebraHom A)
+
+  equiv←is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} {A : Algebra I X}
+                         → is-quasicoherent A
+                         → X ≃ Obs (Spec A)
+  equiv←is-quasicoherent {A = A} qc  = mk≃ (eval-AlgebraHom A .fst .fst) qc
+
+  Phoas-principle : Type 𝓘
+  Phoas-principle = is-quasicoherent (𝕃[x] I I-distr)
+}
+%```

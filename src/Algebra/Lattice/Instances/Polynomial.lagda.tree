@@ -18,6 +18,7 @@ open import Modalities.Instances.Truncation
 open import Ergonomics.Marker
 open import Ergonomics.Auto
 open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 
 open import Core.CoSlice
 open import Data.Bool
@@ -282,6 +283,11 @@ commutativity of #{\lor}.}
     = Δ²-ext (refl , refl)
   L[x]-is-lattice-algebra .is-lattice-hom.pres-1
     = Δ²-ext (refl , refl)
+
+  𝕃[x] : Algebra L (Δ² L)
+  𝕃[x] .Algebra.str-Lattice = L[x]
+  𝕃[x] .Algebra.ι = ι-const
+  𝕃[x] .Algebra.ι-alg = L[x]-is-lattice-algebra
 }
 %```
 }
@@ -297,50 +303,44 @@ we show this map is a [morphism of lattice algebras](stt-009Z).}
 
 %```agda
 \agda{
-  eval-polynomial : ∀ {𝓤} {B : Type 𝓤} (M : Lattice B) {i : A → B}
-                    → is-lattice-algebra L M i
-                    → B → Coslice-map ι-const i
-  eval-polynomial M {i} ialg x .fst (a₀ , a₁) = (i a₀ M.∧ x) M.∨ i a₁
-    where module M = Lattice M
-  eval-polynomial M {i} ialg b .snd a = M.∨-comm ∙ M.∨-∧-abs where
-    module M = Lattice M
+  eval-polynomial : ∀ {𝓤} {B : Type 𝓤} (M : Algebra L B)
+                    → B → Coslice-map (Algebra.ι 𝕃[x]) (Algebra.ι M)
+  eval-polynomial M x .fst (a₀ , a₁) = (M.ι a₀ M.∧ x) M.∨ M.ι a₁
+    where module M = Algebra M
+  eval-polynomial M x .snd a = M.∨-comm ∙ M.∨-∧-abs where
+    module M = Algebra M
 
   eval-polynomial-is-alg-hom
-    : ∀ {𝓤} {B : Type 𝓤} (M : Lattice B) (M-distr : is-distributive M) {i : A → B}
-    → (ialg : is-lattice-algebra L M i)
+    : ∀ {𝓤} {B : Type 𝓤} (M : Algebra L B) (Md : is-distributive-algebra M )
     → (b : B)
-    → is-lattice-alg-hom L L[x] L[x]-is-lattice-algebra
-                           M ialg
-                           (eval-polynomial M ialg b)
-  eval-polynomial-is-alg-hom M Md {i} ialg x
-    = l where
-    module M = Lattice M
+    → is-lattice-alg-hom 𝕃[x] M (eval-polynomial M b)
+  eval-polynomial-is-alg-hom M Md x
+    = mk-is-lattice-alg-hom l where
+    module M = Algebra M
+    module Md = is-distributive Md
     open is-lattice-hom
-    module Md = is-distributive  Md
 
-    l : is-lattice-alg-hom L L[x] L[x]-is-lattice-algebra
-                             M ialg
-                             (eval-polynomial M ialg x)
-    l .pres-0 = M.∨-comm ∙ M.∨-∧-abs ∙ ialg .pres-0
-    l .pres-1 = M.∨-comm ∙ M.∨-∧-abs ∙ ialg .pres-1
-    l .pres-∨ {(a₀ , a₁)} {(b₀ , b₁)}
-      = (⌜ i (a₀ ∨ b₀)⌝ M.∧ x M.∨ i (a₁ ∨ b₁))
-         ＝⟨ ap₂ M._∨_ (ap! (ialg .pres-∨) ∙ Md.distrib-∧-∨') (ialg .pres-∨) ⟩
-        ((i a₀ M.∧ x M.∨ i b₀ M.∧ x) M.∨ i a₁ M.∨ i b₁)
+
+    l : is-lattice-hom L[x] M.str-Lattice (fst (eval-polynomial M x))
+    l .pres-0 =  M.∨-comm ∙ M.∨-∧-abs ∙ M.ι-alg .pres-0
+    l .pres-1 =  M.∨-comm ∙ M.∨-∧-abs ∙ M.ι-alg .pres-1
+    l .pres-∨ {(a₀ , a₁)} {(b₀ , b₁)} =
+        (⌜ M.ι (a₀ ∨ b₀)⌝ M.∧ x M.∨ M.ι (a₁ ∨ b₁))
+         ＝⟨  ap₂ M._∨_ (ap! (M.ι-alg .pres-∨) ∙ Md.distrib-∧-∨') (M.ι-alg .pres-∨)  ⟩
+        ((M.ι a₀ M.∧ x M.∨ M.ι b₀ M.∧ x) M.∨ M.ι a₁ M.∨ M.ι b₁)
           ＝⟨ sym M.∨-assoc ⟩
-        (i a₀ M.∧ x M.∨ ⌜ i b₀ M.∧ x M.∨ i a₁ M.∨ i b₁ ⌝)
-          ＝⟨ ap! (M.∨-assoc ∙ ap₂ M._∨_ M.∨-comm refl ∙ sym M.∨-assoc)
-            ∙ M.∨-assoc ⟩
-        ((i a₀ M.∧ x M.∨ i a₁) M.∨ i b₀ M.∧ x M.∨ i b₁) ∎
+        (M.ι a₀ M.∧ x M.∨ ⌜ M.ι b₀ M.∧ x M.∨ M.ι a₁ M.∨ M.ι b₁ ⌝)
+          ＝⟨  ap! (M.∨-assoc ∙ ap₂ M._∨_ M.∨-comm refl ∙ sym M.∨-assoc) ∙ M.∨-assoc ⟩
+        ((M.ι a₀ M.∧ x M.∨ M.ι a₁) M.∨ M.ι b₀ M.∧ x M.∨ M.ι b₁) ∎
     l .pres-∧ {(a₀ , a₁)} {(b₀ , b₁)}
       = sym (Md.polynomial-mult' x
-            ∙ ap₂ M._∨_ (ap (M._∧ x)
-                            (sym (ialg .pres-∨
-                              ∙ ap₂ M._∨_ (ialg .pres-∧)
-                                          (ialg .pres-∨
-                                          ∙ ap₂ M._∨_ (ialg .pres-∧)
-                                                      (ialg .pres-∧)))))
-                        (sym (ialg .pres-∧)))
+        ∙ ap₂ M._∨_ (ap (M._∧ x)
+                        (sym (M.ι-alg .pres-∨
+                          ∙ ap₂ M._∨_ (M.ι-alg .pres-∧)
+                                      (M.ι-alg .pres-∨
+                                      ∙ ap₂ M._∨_ (M.ι-alg .pres-∧)
+                                                  (M.ι-alg .pres-∧)))))
+                    (sym (M.ι-alg .pres-∧)))
 }
 %```
 
@@ -351,43 +351,43 @@ from elements of #{M} to algebra morphisms #{L[x] \to M} is an equivalence.}
 %```agda
 \agda{
   L[x]-ev-algebra-hom
-    : ∀ {𝓤} {B : Type 𝓤} {M : Lattice B} (Md : is-distributive M)
-        {i : A → B} (ialg : is-lattice-algebra L M i)
-      → B → Σ _ (is-lattice-alg-hom L L[x] L[x]-is-lattice-algebra M ialg)
-  L[x]-ev-algebra-hom Md ialg b
-    = (eval-polynomial _ ialg b , eval-polynomial-is-alg-hom _ Md ialg b)
+    : ∀ {𝓤} {B : Type 𝓤} (M : Algebra L B) (Md : is-distributive-algebra M)
+      → B → LatticeAlgHom 𝕃[x] M
+  L[x]-ev-algebra-hom M Md b
+    = (eval-polynomial M b , eval-polynomial-is-alg-hom M Md b)
 
   L[x]-is-free-algebra
-    : ∀ {𝓤} {B : Type 𝓤} {M : Lattice B} (Md : is-distributive M) {i : A → B}
-      → (ialg : is-lattice-algebra L M i)
-      → is-equiv (L[x]-ev-algebra-hom Md ialg)
-  L[x]-is-free-algebra {M = M} Md {i} ialg = is-equiv←qiso qiso where
-    module M = Lattice M
+    : ∀ {𝓤} {B : Type 𝓤} (A : Algebra L B) (Ad : is-distributive-algebra A)
+      → is-equiv (L[x]-ev-algebra-hom A Ad )
+  L[x]-is-free-algebra M Md = is-equiv←qiso qiso where
+    module M = Algebra M
+    module Md = is-distributive Md
     module L[x] = Lattice L[x]
     open is-lattice-hom
 
-    qiso : quasi-iso (L[x]-ev-algebra-hom Md ialg)
+    qiso : quasi-iso (L[x]-ev-algebra-hom M Md)
     qiso .fst (map , ishom) = map .fst (1l , 0l) -- f ↦ f(1)
-    qiso .snd .fst b = ap ((i 1l M.∧ _) M.∨_) (ialg .pres-0)
-                     ∙ M.0-bottom ∙ M.∧-comm ∙ ap (b M.∧_) (ialg .pres-1)
+    qiso .snd .fst b = ap ((M.ι 1l M.∧ _) M.∨_) (M.ι-alg .pres-0)
+                     ∙ M.0-bottom ∙ M.∧-comm ∙ ap (b M.∧_) (M.ι-alg .pres-1)
                      ∙ M.1-top
     qiso .snd .snd ((f , K) , isalghom)
-      = Σ-path→ (Σ-path→ (funext→ H
-              , funext→ (λ _ → M.is-prop-separated _ _ _ _))
-              , (is-lattice-hom-is-prop L[x] M f _ _)) where
+      = ext! H  where
+      ishom : is-lattice-hom (Algebra.str-Lattice 𝕃[x]) M.str-Lattice f
+      ishom = un-is-lattice-alg-hom isalghom
+
       H : ((a , b) : Δ² L) →
-           i a M.∧ f (1l , 0l) M.∨ i b ＝ f (a , b)
+           M.ι a M.∧ f (1l , 0l) M.∨ M.ι b ＝ f (a , b)
       H ((a , b) ⦃ p ⦄)
-        = (i a M.∧ f (1l , 0l) M.∨ i b)
+        = (M.ι a M.∧ f (1l , 0l) M.∨ M.ι b)
              ＝⟨ ap₂ M._∨_ (ap (M._∧ _) (sym (K a))) (sym (K b)) ⟩
-          f (a , a) M.∧ f (1l , 0l) M.∨ f (b , b)      ＝⟨ ap (M._∨ _) (sym (isalghom .pres-∧)) ⟩
+          f (a , a) M.∧ f (1l , 0l) M.∨ f (b , b)      ＝⟨ ap (M._∨ _) (sym (ishom .pres-∧)) ⟩
           (f ((a , a) L[x].∧ (1l , 0l)) M.∨ f (b , b)) ＝⟨⟩
           (f (((a ∧ 0l ∨ a ∧ 1l ∨ a ∧ 1l) , (a ∧ 0l)) ⦃ _ ⦄) M.∨ f (b , b))
              ＝⟨ ap (λ x → f x M.∨ f (b , b))
                     (Δ²-ext (ap (_ ∨_) ∨-idem ∙ sym distrib-∧-∨
                             ∙ ap (a ∧_) (∨-comm ∙ 0-bottom) ∙ auto!
                             , (∧-comm ∙ 0-init))) ⟩
-          (f (a , 0l) M.∨ f (b , b))                   ＝⟨ sym (isalghom .pres-∨) ⟩
+          (f (a , 0l) M.∨ f (b , b))                   ＝⟨ sym (ishom .pres-∨) ⟩
           (f ((a , 0l) L[x].∨ (b , b))) ＝⟨⟩
           f ((a ∨ b) , (0l ∨ b))
             ＝⟨ ap f (Δ²-ext ((∨-comm ∙ ≤-max p) , ∨-comm ∙ 0-bottom)) ⟩

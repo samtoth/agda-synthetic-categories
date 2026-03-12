@@ -266,16 +266,167 @@ is-lattice-algebra : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
                      → Type (𝓤 ⊔ 𝓥)
 is-lattice-algebra = is-lattice-hom
 
-is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-                        (L : Lattice A)
-                        (M : Lattice B) {f : A → B}
-                      → is-lattice-algebra L M f
-                      → (N : Lattice C) {g : A → C}
-                      → is-lattice-algebra L N g
-                      → Coslice-map f g → Type (𝓥 ⊔ 𝓦)
-is-lattice-alg-hom L M _ N _ (h , H) = is-lattice-hom M N h
+
+record Algebra {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  no-eta-equality
+  field
+    str-Lattice : Lattice B
+    ι : A → B
+    ι-alg : is-lattice-algebra L str-Lattice ι
+  open Lattice str-Lattice public
+
+opaque
+  is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {L : Lattice A}
+                         {B : Type 𝓥} (AB : Algebra L B)
+                         {C : Type 𝓦} (AC : Algebra L C)
+                       → Coslice-map (AB .Algebra.ι) (AC .Algebra.ι) → Type (𝓥 ⊔ 𝓦)
+  is-lattice-alg-hom AB AC f =
+    is-lattice-hom (AB .Algebra.str-Lattice) (AC .Algebra.str-Lattice) (fst f)
+
+  mk-is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {L : Lattice A}
+                            {B : Type 𝓥} {AB : Algebra L B}
+                            {C : Type 𝓦} {AC : Algebra L C}
+                          → {f : Coslice-map (AB .Algebra.ι) (AC .Algebra.ι)}
+                          → is-lattice-hom (AB .Algebra.str-Lattice)
+                                           (AC .Algebra.str-Lattice)
+                                           (fst f)
+                          → is-lattice-alg-hom AB AC f
+  mk-is-lattice-alg-hom = id
+
+  un-is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {L : Lattice A}
+                            {B : Type 𝓥} {AB : Algebra L B}
+                            {C : Type 𝓦} {AC : Algebra L C}
+                          → {f : Coslice-map (AB .Algebra.ι) (AC .Algebra.ι)}
+                          → is-lattice-alg-hom AB AC f
+                          → is-lattice-hom (AB .Algebra.str-Lattice)
+                                           (AC .Algebra.str-Lattice)
+                                           (fst f)
+  un-is-lattice-alg-hom = id
+
+  is-lattice-alg-hom-is-prop : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {L : Lattice A}
+                            {B : Type 𝓥} {AB : Algebra L B}
+                            {C : Type 𝓦} {AC : Algebra L C}
+                            {f : Coslice-map (AB .Algebra.ι) (AC .Algebra.ι)}
+                          → is-prop (is-lattice-alg-hom AB AC f)
+  is-lattice-alg-hom-is-prop = is-lattice-hom-is-prop _ _ _ 
+
+
+LatticeAlgHom : {𝓤 𝓥 𝓦 : Level}
+             {A : Type 𝓤} {L : Lattice A}
+             {B : Type 𝓥} (AB : Algebra L B)
+             {C : Type 𝓦} (AC : Algebra L C)
+             → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+LatticeAlgHom {B} AB {C} AC =
+  Σ[ f ∶ Coslice-map (Algebra.ι AB) (Algebra.ι AC) ]
+    (is-lattice-alg-hom AB AC f)
+  where
+    module AB = Algebra AB
+    module AC = Algebra AC
+
+
+LatticeAlgHom-id :  {𝓤 𝓥 : Level}
+             {X : Type 𝓤} {L : Lattice X}
+             {B : Type 𝓥} (A : Algebra L B)
+             → LatticeAlgHom A A
+LatticeAlgHom-id A .fst .fst = id
+LatticeAlgHom-id A .fst .snd = λ a → refl
+LatticeAlgHom-id A .snd =
+  mk-is-lattice-alg-hom
+    (record { pres-∨ = refl
+            ; pres-∧ = refl
+            ; pres-0 = refl
+            ; pres-1 = refl })
+
+
+LatticeAlgHom-∘ : {𝓤 𝓥 𝓦 𝓧 : Level}
+             {A : Type 𝓤} {L : Lattice A}
+             {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓧}
+             {A1 : Algebra L B} {A2 : Algebra L C} {A3 : Algebra L D}
+             → LatticeAlgHom A2 A3 → LatticeAlgHom A1 A2 → LatticeAlgHom A1 A3
+LatticeAlgHom-∘ (g , b) (f , a) .fst = Coslice-map-∘ g f
+LatticeAlgHom-∘ (g , b) (f , a) .snd =
+  mk-is-lattice-alg-hom
+    (record { pres-∨ = ap (fst g) a.pres-∨ ∙ b.pres-∨
+            ; pres-∧ = ap (fst g) a.pres-∧ ∙ b.pres-∧
+            ; pres-0 = ap (fst g) a.pres-0 ∙ b.pres-0
+            ; pres-1 = ap (fst g) a.pres-1 ∙ b.pres-1 })
+  where
+    module a = is-lattice-hom (un-is-lattice-alg-hom a)
+    module b = is-lattice-hom (un-is-lattice-alg-hom b)
+
+
+
 }
 %```
+}
+
+\subtree[wil-0000]{
+\taxon{Module}
+\title{Identifying Algebra Homomorphisms}
+
+\p{Being an algebra homomorphism is a property of a map, and hence
+  there is an identity system identifying identities of algebra homomorphisms
+  with the identities of the underlying maps.}
+
+%```agda
+\agda{
+is-LatticeAlgHom-equiv : {𝓤 𝓥 𝓦 : Level}
+                   {A : Type 𝓤} {L : Lattice A}
+                   {B : Type 𝓥} {C : Type 𝓦}
+                   {A1 : Algebra L B} {A2 : Algebra L C}
+                 → LatticeAlgHom A1 A2 → Type (𝓥  ⊔ 𝓦)
+is-LatticeAlgHom-equiv (f , _) = is-coslice-equiv f
+
+
+
+LatticeAlgHom-~ : {𝓤 𝓥 𝓦 : Level}
+               {A : Type 𝓤} {L : Lattice A}
+               {B : Type 𝓥} {C : Type 𝓦}
+               {A1 : Algebra L B} {A2 : Algebra L C}
+               → LatticeAlgHom A1 A2 → LatticeAlgHom A1 A2 → Type (𝓥 ⊔ 𝓦)
+LatticeAlgHom-~ ((p , _) , _) ((q , _) , _) = p ~ q
+
+
+LatticeAlgHom-~＝ : {𝓤 𝓥 𝓦 : Level}
+               {A : Type 𝓤} {L : Lattice A}
+               {B : Type 𝓥} {C : Type 𝓦}
+               {A1 : Algebra L B} {A2 : Algebra L C}
+               (p q :  LatticeAlgHom A1 A2) → p ＝ q → LatticeAlgHom-~  p q
+LatticeAlgHom-~＝ p .p refl = λ a → refl
+
+
+opaque
+  LatticeAlgHom-~-is-torsorial
+    : {𝓤 𝓥 𝓦 : Level}
+      {A : Type 𝓤} {L : Lattice A}
+      {B : Type 𝓥} {C : Type 𝓦}
+      {A1 : Algebra L B} {A2 : Algebra L C}
+    → (p : LatticeAlgHom A1 A2)
+    → is-singleton (Σ[ q ∶ LatticeAlgHom A1 A2  ] (LatticeAlgHom-~ p q))
+  LatticeAlgHom-~-is-torsorial p .centre = p , (λ a → refl)
+  LatticeAlgHom-~-is-torsorial {A2 = A2} p .central (q , r) =
+    ext! (((r
+           , λ a → is-prop←is-truncated trunc! _ _)
+           , is-lattice-alg-hom-is-prop _ _ )
+           , λ a → is-prop←is-truncated trunc! _ _)
+    where
+      open Algebra A2
+
+instance
+  LatticeAlgHom-equiv-IdS : {𝓤 𝓥 𝓦 : Level}
+                         {A : Type 𝓤} {L : Lattice A}
+                         {B : Type 𝓥} {C : Type 𝓦}
+                         {A1 : Algebra L B} {A2 : Algebra L C}
+                       → Identity-system (LatticeAlgHom A1 A2) (𝓥 ⊔ 𝓦)
+  LatticeAlgHom-equiv-IdS {A1 = A1} {A2} .Identity-system.IdS
+    = LatticeAlgHom-~
+  LatticeAlgHom-equiv-IdS {A1 = A1} {A2} .Identity-system.IdS←Id {p} {q}
+    = LatticeAlgHom-~＝  p q
+  LatticeAlgHom-equiv-IdS {A1 = A1} {A2} .Identity-system.has-is-ids p
+    = fundamental-Id _ (LatticeAlgHom-~-is-torsorial {A1 = A1} {A2} p) _
+}
+%```
+
 }
 
 \subtree[stt-00A0]{
@@ -294,16 +445,23 @@ initial-lattice-algebra L .is-lattice-hom.pres-∧ = refl
 initial-lattice-algebra L .is-lattice-hom.pres-0 = refl
 initial-lattice-algebra L .is-lattice-hom.pres-1 = refl
 
-initial-lattice-algebra-is-initial
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) {X : Type 𝓥} (M : Lattice X)
-      {f : A → X}
-    → (falg : is-lattice-algebra L M f)
-    → is-singleton
-        (Σ _ (is-lattice-alg-hom L L (initial-lattice-algebra L) M falg))
-initial-lattice-algebra-is-initial L M {f} falg
-  = mk-singl (initial-coslice f .centre , falg)
-             (is-prop-Σ (is-prop←is-single (initial-coslice f))
-                        (λ a → is-lattice-hom-is-prop _ _ _) _)
+initial-Algebra : ∀ {𝓤 : Level} {A : Type 𝓤} (L : Lattice A)
+                  → Algebra L A
+initial-Algebra L .Algebra.str-Lattice = L
+initial-Algebra L .Algebra.ι           = id
+initial-Algebra L .Algebra.ι-alg       = initial-lattice-algebra L
+
+initial-Algebra-is-initial :
+  ∀ {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A)
+    {X : Type 𝓥} (AX : Algebra L X)
+    → is-singleton (LatticeAlgHom (initial-Algebra L) AX)
+initial-Algebra-is-initial  L AX
+  = mk-singl ((initial-coslice AX.ι .centre) , mk-is-lattice-alg-hom AX.ι-alg)
+             (is-prop-Σ (is-prop←is-single (initial-coslice _))
+                        (λ a → is-lattice-alg-hom-is-prop) _)
+  where
+    module AX = Algebra AX
+
 }
 %```
 }
@@ -332,22 +490,38 @@ record LatticeCongruence {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A)
 
 module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
   open Lattice L
-  data ⟪_⟫ (R : A → A → Type 𝓥) : A → A → Type (𝓤 ⊔ 𝓥) where
-    ⟪⟫-inc  : {a b : A} → R a b → ⟪ R ⟫ a b
-    ⟪⟫-refl : {a : A} → ⟪ R ⟫ a a
-    ⟪⟫-sym  : {a b : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b a
-    ⟪⟫-trans : {a b c : A} → ⟪ R ⟫ a b → ⟪ R ⟫ b c → ⟪ R ⟫ a c
-    ⟪⟫-∨ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∨ a2) (b1 ∨ b2)
-    ⟪⟫-∧ : {a1 a2 b1 b2 : A} → ⟪ R ⟫ a1 b1 → ⟪ R ⟫ a2 b2 → ⟪ R ⟫ (a1 ∧ a2) (b1 ∧ b2)
 
-  ⟪⟫-congruence : {R : A → A → Type 𝓥}
-                → LatticeCongruence L (λ x y → ∥ ⟪ R ⟫ x y ∥)
-  ⟪⟫-congruence {R} = l-con where
+  data ⟪⟫-rel-untrunc (R : A → A → Type 𝓥) : A → A → Type (𝓤 ⊔ 𝓥) where
+    ⟪⟫-inc  : {a b : A} → R a b → ⟪⟫-rel-untrunc R a b
+    ⟪⟫-refl : {a : A} → ⟪⟫-rel-untrunc R a a
+    ⟪⟫-sym  : {a b : A}
+            → ⟪⟫-rel-untrunc R a b
+            → ⟪⟫-rel-untrunc R b a
+    ⟪⟫-trans : {a b c : A}
+             → ⟪⟫-rel-untrunc R a b
+             → ⟪⟫-rel-untrunc R b c
+             → ⟪⟫-rel-untrunc R a c
+    ⟪⟫-∨ : {a1 a2 b1 b2 : A}
+         → ⟪⟫-rel-untrunc R a1 b1
+         → ⟪⟫-rel-untrunc R a2 b2
+         → ⟪⟫-rel-untrunc R (a1 ∨ a2) (b1 ∨ b2)
+    ⟪⟫-∧ : {a1 a2 b1 b2 : A}
+         → ⟪⟫-rel-untrunc R a1 b1
+         → ⟪⟫-rel-untrunc R a2 b2
+         → ⟪⟫-rel-untrunc R (a1 ∧ a2) (b1 ∧ b2)
+
+
+  ⟪⟫-rel : (R : A → A → Type 𝓥) → (x y : A) → Type (𝓤 ⊔ 𝓥)
+  ⟪⟫-rel R = λ x y → ∥ ⟪⟫-rel-untrunc R x y ∥
+
+  ⟪_⟫ : (R : A → A → Type 𝓥)
+                → LatticeCongruence L (⟪⟫-rel R)
+  ⟪ R ⟫ = l-con where
     open LatticeCongruence
     open Trunc {1}
     module E = is-equivalence-relation
 
-    l-eq : is-equivalence-relation (λ x y → ∥ ⟪ R ⟫ x y ∥)
+    l-eq : is-equivalence-relation (⟪⟫-rel R)
     l-eq .E.~-is-prop = is-prop←is-truncated ○∈S
     l-eq .E.reflexive = η ⟪⟫-refl
     l-eq .E.symmetric a = do
@@ -358,7 +532,7 @@ module _ {𝓤} {𝓥} {A : Type 𝓤} {L : Lattice A} where
       ryz ← b
       return (⟪⟫-trans rxy ryz)
 
-    l-con : LatticeCongruence L (λ x y → ∥ ⟪ _ ⟫ x y ∥)
+    l-con : LatticeCongruence L (⟪⟫-rel R)
     l-con .~-equivalence = l-eq
     l-con .~-∨ p q = do
       r1 ← p
@@ -448,6 +622,18 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
         (a₁ ∧ b₁ ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x)
           ＝⟨ ∨-comm ⟩
         ((a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x ∨ a₁ ∧ b₁) ∎
+
+is-distributive-algebra : {𝓤 𝓥 : Level} {L : Type 𝓤} {Lat : Lattice L}
+                          {A : Type 𝓥} (Alg : Algebra Lat A) → Type 𝓥
+is-distributive-algebra Alg = is-distributive (Algebra.str-Lattice Alg)
+
+Dist-Algebra : {𝓤 𝓥 : Level}
+               {L : Type 𝓤} (Lat : Lattice L)
+               (A : Type 𝓥)
+             → Type (𝓤 ⊔ 𝓥)
+Dist-Algebra Lat A = Σ (Algebra Lat A) (is-distributive-algebra) 
+
+
 }
 %```
 }

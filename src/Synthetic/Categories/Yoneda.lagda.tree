@@ -1,0 +1,155 @@
+\title{Yoneda}
+\date{2026-02-10}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Yoneda
+        {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import ufAxioms
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
+open import Synthetic.Categories.Initial Δ¹ I I-distr
+}
+%```
+
+
+\subtree[tot-0006]{
+\title{Sections of types with initial objects}
+\taxon{Lemma}
+\citet{Thm 9.7}{RS17}
+
+\p{If #{A} is a type with an initial object #{a}, and #{P} a covariant family
+over #{A}, then the evaluation map at #{a} is an equivalence #{(\Pi_{x}P(x)) \toeq P(a)}.}
+
+\proof{
+\p{
+We first give the inverse map. Given a partial section at #{a}, #{x : P(a)},
+we use the covariance of #{P} and the fact #{a} is initial to transport #{x}
+to a full section: #{(x : P(a)) \mapsto ¡_{b}^*(x) : P(b)}. This map is
+an equivalence by virtue of the uniqueness of covariant transport.
+}
+}
+
+%```agda
+\agda{
+ev-init-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+    → is-covariant P
+    → is-initial a
+    → is-equiv (ev {B = P} a)
+ev-init-is-equiv {a = a} Pc ai = is-equiv←qiso
+  ( (λ x' a' → tr-cov-hom Pc (ai a' .centre) x')
+  , (λ x' → funext→ λ a' → ap fst (is-covariant-hom←is-covariant _ Pc
+                                    (ai a' .centre) (x' a) .central
+                                    (x' a' , ap-hom-over x' (ai a' .centre))))
+  , λ a' → ap fst (is-covariant-hom←is-covariant _ Pc (ai a .centre) a' .central
+             (a' ,  tr (λ p → Hom-over p a' a') (sym (ai a .central (idH a)))
+                       (idH _))))
+
+opaque
+  rec-init
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+      → is-covariant P
+      → is-initial a
+      → P a → ∀ x → P x
+  rec-init Pc ai p0 = is-equiv.bwd (ev-init-is-equiv Pc ai) p0
+
+  rec-init-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+        (Pc : is-covariant P)
+        (init : is-initial a)
+      → is-equiv (rec-init {P = P} Pc init)
+  rec-init-is-equiv Pc init = is-equiv⁻¹ (ev-init-is-equiv Pc init)
+
+  rec-init-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {a : A}
+        (Pc : is-covariant P)
+        (ai : is-initial a)
+      → (p : P a) → rec-init Pc ai p a ＝ p
+  rec-init-β {a = a} Pc ai p = is-equiv.ε (ev-init-is-equiv Pc ai) p
+}
+%```
+}
+
+\subtree[tot-0007]{
+\title{The Yoneda lemma}
+\taxon{Corollary}
+
+\p{We first prove the dependent Yoneda lemma. Given a precategory #{A},
+an element #{a : A}, and some covariant family #{P : \Pi_{x} \Hom(a,x) \to \UU},
+we show that the evaluation map #{(\Pi_{x}\Pi_{f : \Hom(a,x)} P(x,f)) \to P(a,\id)}
+is an equivalence. If we uncurry #{P}, we get a family #{A_{a/} \to \UU},
+which has an initial object by \ref{tot-0003}. Then the result follows directly
+from the [above lemma](tot-0006).}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥}
+         {A : Type 𝓤}
+         (Asimp : is-simplicial A)
+         (Ase : is-segal A)
+         {a}
+         (P : (x : A) → Hom _ a x → Type 𝓥)
+         (cov : is-covariant (uncurry P))
+         (let init = coslice-init' Ase Asimp a)
+         where
+  YonedaJ
+    : P a (idH a) → ∀ x (f : Hom _ a x) → P x f
+  YonedaJ p x f = rec-init {P = uncurry P} cov init p (x , f)
+
+  YonedaJ-is-equiv
+    : is-equiv YonedaJ
+  YonedaJ-is-equiv
+    = is-equiv-∘ curry-is-equiv (rec-init-is-equiv cov init)
+
+  YonedaJ-id : (p0 : P a (idH a)) → YonedaJ p0 a (idH a) ＝ p0
+  YonedaJ-id = rec-init-β cov init
+}
+%```
+
+\p{The non-dependent Yoneda lemma can the be obtained from the observation that
+[covariant families are stable under change of base](tot-0009), and we can weaken
+any family #{P : A \to \UU} into a family #{{\pi_1}^*P : A_{a/} \to \UU}.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥}
+         {A : Type 𝓤}
+         (Asimp : is-simplicial A)
+         (Ase : is-segal A)
+         {a}
+         (P : A → Type 𝓥)
+         (cov : is-covariant P)
+         (let init  = coslice-init' Ase Asimp a)
+         (let cov' = covariant-base-change {P = P} fst cov)
+         where
+  Yoneda-coe : P a → ∀ x → Hom _ a x → P x
+  Yoneda-coe x p = YonedaJ Asimp Ase (λ a _ → P a) cov' x p
+
+  Yoneda-coe-is-equiv
+    : is-equiv (Yoneda-coe)
+  Yoneda-coe-is-equiv = YonedaJ-is-equiv Asimp Ase _ cov'
+}
+%```
+}

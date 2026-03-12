@@ -14,7 +14,12 @@ open import Foundations.Span
 open import Foundations.Functions
 open import Foundations.Homotopy
 open import Foundations.CoherentIsomorphism
+open import Foundations.QuasiIsomorphism
+open import Foundations.3for2
+open import Foundations.EquivHomotopy
 open import Foundations.Sigma
+open import Foundations.FibrewiseEquiv
+open import Foundations.SigmaProperties
 open import Foundations.Identity
 open import Foundations.Unit
 }
@@ -57,6 +62,16 @@ cone-map : ∀ {𝓤 𝓥 𝓦 𝓛 𝓠} (S : Cospan 𝓤 𝓥 𝓦)
            → {Q : Type 𝓠} → (Q → D)
            → Cone S Q
 cone-map S C f = mk-cone (i ∘ f) (j ∘ f) (filler ▸ f) where open Cone C
+
+module _ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) where
+  open Cospan S
+
+  cone-repr≃ : {𝓛 : Level} {D : Type 𝓛}
+    → Cone S D
+    ≃ Σ[ i ∶ (D → Left) ] Σ[ j ∶ (D → Right) ] (left ∘ i ~ right ∘ j)
+  cone-repr≃ = mk≃
+    (λ (mk-cone i j filler) → i , j , filler)
+    (mk-eqv ((λ (i , j , filler) → mk-cone i j filler) , ~refl , ~refl) ~refl)
 }
 % ```
 
@@ -89,6 +104,69 @@ record is-pullbackω {𝓤 𝓥 𝓦 𝓛} (S : Cospan 𝓤 𝓥 𝓦)
 % ```
 }
 
+\subtree[fre-0014]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{A precomposition criterion for pullbacks}
+\taxon{Lemma}
+
+\p{
+Given a cospan #{f : A \to B \leftarrow C : g} and a map #{u : X \to Y} such that
+#{A^u} and #{C^u} are equivalences, and its right whiskering map #{{-}\mathbin{▸} h}
+is an equivalence, then the cone map \code{cone-map (f , g) c u} is an equivalence.
+}
+
+%```agda
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛 𝓜 : Level}
+  (S : Cospan 𝓤 𝓥 𝓦)
+  {X : Type 𝓛} {Y : Type 𝓜}
+  where
+
+
+  cone-map-is-equiv
+    : (u : X → Y)
+    → is-equiv (precomp (Cospan.Left S) u)
+    → is-equiv (precomp (Cospan.Right S) u)
+    → ((i : Y → Cospan.Left S) (j : Y → Cospan.Right S) → is-equiv (_▸ u))
+    → is-equiv (λ (c : Cone S Y) → cone-map S c u)
+  cone-map-is-equiv u leq req heq
+    = is-equiv-∘
+        (is-equiv⁻¹ (_≃_.has-is-eqv (cone-repr≃ S)))
+        (is-equiv-∘
+          (_≃_.has-is-eqv repr-precomp-equiv)
+          (_≃_.has-is-eqv (cone-repr≃ S))) where
+    open Cospan S
+
+    repr-precomp-equiv
+      : Σ[ i ∶ (Y → Left) ] Σ[ j ∶ (Y → Right) ] (left ∘ i ~ right ∘ j)
+      ≃ Σ[ i ∶ (X → Left) ] Σ[ j ∶ (X → Right) ] (left ∘ i ~ right ∘ j)
+    repr-precomp-equiv
+      = Σ[ i ∶ (Y → Left) ] Σ[ j ∶ (Y → Right) ] (left ∘ i ~ right ∘ j)
+          ≃⟨ Σ-ap-≃
+              ( λ i
+                →  Σ-ap-≃ (λ j → mk≃ (_▸ u) (heq i j))
+                ∙≃ Σ-ap-≃-fst (mk≃ (precomp Right u) req)) ⟩
+        Σ[ i ∶ (Y → Left) ] Σ[ j ∶ (X → Right) ] (left ∘ i ∘ u ~ right ∘ j)
+          ≃⟨ Σ-ap-≃-fst (mk≃ (precomp Left u) leq) ⟩
+        Σ[ i ∶ (X → Left) ] Σ[ j ∶ (X → Right) ] ( left ∘ i ~ right ∘ j)
+          ≃∎
+
+  precomp-is-equiv←cone-precomp-is-equiv
+    : (u : X → Y)
+      (C : Cone S X)
+    → is-pullbackω S C
+    → is-equiv (λ (C' : Cone S Y) → cone-map S C' u)
+    → is-equiv (precomp X u)
+  precomp-is-equiv←cone-precomp-is-equiv u C pb ceq
+    = 3-for-2
+        (pb .is-pullbackω.has-is-pb X)
+        (is-equiv-∘ ceq (pb .is-pullbackω.has-is-pb Y))
+}
+%```
+}
+
 
 
 \subtree[stt-006K]{
@@ -99,7 +177,7 @@ record is-pullbackω {𝓤 𝓥 𝓦 𝓛} (S : Cospan 𝓤 𝓥 𝓦)
 %```agda
 \agda{
 Identity-pullback : ∀ {𝓤} {A : Type 𝓤} {x y : A}
-                    → is-pullbackω (mk-cospan _ (const A 𝟙 x) (const A 𝟙 y))
+                    → is-pullbackω (mk-cospan _ (point x) (point y))
                                    (mk-cone ! ! id)
 Identity-pullback = mk-is-pullbackω λ Q → is-equiv←qiso λ where
   .fst (mk-cone i j filler) q → filler q

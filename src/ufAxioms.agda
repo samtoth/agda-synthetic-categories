@@ -18,9 +18,12 @@ open fe public
 
 import Foundations.CanonicalPullbacks
 open Foundations.CanonicalPullbacks.WithFunExt global-funext public
+open Foundations.CanonicalPullbacks.WithFunExt-gap global-funext public
 import Foundations.PathSplit
 open Foundations.PathSplit.PSWithFunExt global-funext public
 open import Foundations.EquivProp global-funext public
+open import Foundations.BiinvertibleMap public
+open Foundations.BiinvertibleMap.WithFunExt global-funext public
 open import Foundations.EmptyUP global-funext public
 open import Foundations.SingletonClosure public hiding (Singleton-Π)
 open import Foundations.PropClosure public hiding (is-prop-Π)

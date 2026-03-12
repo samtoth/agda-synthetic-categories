@@ -1,0 +1,600 @@
+\title{Nullification}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Modalities.Instances.Nullification where
+
+open import ufAxioms
+open import Axioms.FreeAlgInj
+open import Foundations.Prelude
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.ArrowRetract
+open import Modalities.Instances.Localisation
+open import Modalities.HigherModality
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+}
+%```
+
+\subtree[stt-005G]{
+\date{2025-06-17}
+\author{samueltoth}
+\taxon{Definition}
+\title{Null types}
+
+\p{
+Given a family of types #{A_i}, we say a type #{X} is #{A} \em{null} if
+it is right orthogonal to each #{A_i}. Or equivalently, if the
+obvious maps #{X \to (A_i \to X)} are equivalences for each #{i}.
+}
+
+%```agda
+\agda{
+module _
+  {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
+  where
+
+  is-null : (A : I → Type 𝓤) → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-null A X = (i : I) → is-equiv (const X (A i))
+
+  is-null-is-prop
+    : {A : I → Type 𝓤}
+    → (X : Type 𝓥) → is-prop (is-null A X)
+  is-null-is-prop X = is-prop-Π λ a → is-equiv-is-prop
+
+  null≃ : {A : I → Type 𝓤}
+          {X : Type 𝓥} (_ : is-null A X) (i : I)
+        → X ≃ (A i → X)
+  null≃ {A} {X} An i = mk≃ (const X (A i)) (An i)
+
+  is-null-equiv
+    : {A : I → Type 𝓤}
+      {X : Type 𝓥} {Y : Type 𝓥}
+    → X ≃ Y
+    → is-null A X
+    → is-null A Y
+  is-null-equiv e anull i
+    = is-equiv←Arrow-equiv
+        {F = mk-amap fwd (postcomp _ fwd) ~refl}
+        (has-is-eqv , postcomp-equiv has-is-eqv)
+        (anull i) where
+    open _≃_ e
+
+Null-SubU
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      (A : I → Type 𝓤)
+      𝓦
+    → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
+Null-SubU A 𝓦 .Subtype.family = is-null A
+Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
+}
+%```
+}
+
+\subtree[fre-1234]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{Closure of null types under retracts}
+\taxon{Lemma}
+
+%```agda
+\agda{
+module _
+  {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
+  where
+
+  is-null-retract-exponent
+    : {A : I → Type 𝓤}
+      {B : I → Type 𝓤}
+      {X : Type 𝓥}
+    → ((i : I) → retract (A i) (B i))
+    → is-null B X
+    → is-null A X
+  is-null-retract-exponent {A = A} {B} {X} R Bnull i
+    = is-equiv←retraction-equiv
+        (mk-amap id (precomp X (R i .snd .fst)) ~refl)
+        (mk-amap id (precomp X (R i .fst)) ~refl
+        , ~refl
+        , λ h → funext→ λ a → ap h (R i .snd .snd a))
+        (Bnull i)
+
+  is-null-retract
+    : {A : I → Type 𝓤}
+      {X : Type 𝓥}
+      {Y : Type 𝓥}
+    → retract X Y
+    → is-null A Y
+    → is-null A X
+  is-null-retract {A = A} {X} {Y} R Anull i
+    = is-equiv←retraction-equiv
+        (mk-amap (R .fst) (postcomp (A i) (R .fst)) ~refl)
+        ( mk-amap (R .snd .fst) (postcomp (A i) (R .snd .fst)) ~refl
+        , R .snd .snd
+        , λ h → funext→ λ a → R .snd .snd (h a))
+        (Anull i)
+}
+%```
+}
+
+\subtree[stt-005H]{
+\date{2025-06-17}
+\author{samueltoth}
+\taxon{Theorem}
+\title{Null types are #{!}-local}
+
+\p{A type is #{A_i}-null iff it is #{(! : A_i \to 1)}-local.}
+
+\proof{ \p{A type #{X} is #{!\rm{-local}} when the map #{- \circ\ ! :
+(1 \to X) \to (A_i \to X)} is an equivalence.}
+}
+
+%```agda
+\agda{
+is-local←is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+                   → {X : Type 𝓥}
+                   → is-null A X
+                   → is-local (λ i → !: A i) X
+is-local←is-null eq i = 3-for-2' (point-is-equiv) (eq i)
+
+is-local-sing←is-null : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+                          {A : I → Type 𝓤}
+                          {B : I → Type 𝓥}
+                          (Bsing : ∀ i → is-singleton (B i))
+                          (f : ∀ i → A i → B i)
+                        → {X : Type 𝓦}
+                        → is-null A X
+                        → is-local f X
+is-local-sing←is-null Bsing f null i
+  = 3-for-2'
+    (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bsing i)))
+    (null i)
+
+is-null←is-local : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+                   → {X : Type 𝓥}
+                   → is-local (λ i → !: A i) X
+                   → is-null A X
+is-null←is-local eq i = is-equiv-∘ (eq i) point-is-equiv
+
+is-null←is-local-sing : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+                          {A : I → Type 𝓤}
+                          {B : I → Type 𝓥}
+                          (Bsing : ∀ i → is-singleton (B i))
+                          (f : ∀ i → A i → B i)
+                        → {X : Type 𝓦}
+                        → is-local f X
+                        → is-null A X
+is-null←is-local-sing Bs f loc i
+  = is-equiv-∘
+      (loc i)
+      (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bs i)))
+
+Null≃!Local
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+  → Subtype-equiv (Local-SubU (λ i → !: A i) 𝓥)
+                  (Null-SubU A 𝓥)
+Null≃!Local A = (is-null←is-local , is-local←is-null)
+}
+%```
+}
+
+\subtree[stt-005K]{
+\date{2025-06-17}
+\author{samueltoth}
+\title{Nullification at a pointed family}
+\taxon{Definition}
+
+\p{The nullification of a pointed type can be constructed
+using the [free algebraic injection](stt-005I)
+higher inductive type. By definition, the free
+algebraic injection already gives a section to
+the precomposition map. Because any map #{A \to 1}
+has a section, then the precomposition by this
+map already has a retract, and so the type is not just
+algebraically #{A}-injective, but #{A}-null.}
+
+%```agda
+\agda{
+Null∙ : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
+         (A∙ : Π _ A) (X : Type 𝓥)
+       → Type 𝓥
+Null∙ A _ X = Free-inj
+               (λ i → !: A i)
+                X
+
+Null∙-is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘}
+                 {A : I → Type 𝓤} (A∙ : Π _ A)
+                 {X : Type 𝓥}
+               → is-null A (Null∙ A A∙ X)
+Null∙-is-null a = is-null←is-local I where
+  I : is-local (λ _ → !) _
+  I i = is-equiv←qiso λ where
+    .fst → injector-Free-inj i .fst
+    .snd .fst α → funext→ (λ _ → Free-inj.is-ext (α ∘ !) (a i))
+    .snd .snd → injector-Free-inj i .snd
+}
+%```
+}
+
+\subtree[stt-0065]{
+\date{2025-06-21}
+\author{samueltoth}
+\title{Nullification is a [reflective subuniverse](stt-0041)}
+\taxon{Corollary}
+
+
+%```agda
+\agda{
+module _ where
+  open is-globally-reflective
+  open is-global-reflector
+
+  Null-GSU : ∀ {𝓘 𝓤} {I : Type 𝓘}
+               (A : I → Type 𝓤)
+              → GSU (_⊔ (𝓘 ⊔ 𝓤))
+  Null-GSU A .GSU.S = Null-SubU A _
+  Null-GSU A .GSU.S-equiv e anull i
+    = is-equiv←Arrow-equiv
+        {F = mk-amap fwd (postcomp _ fwd) ~refl}
+        (has-is-eqv , postcomp-equiv has-is-eqv)
+        (anull i) where open _≃_ e
+
+  Null-globally-reflective
+    : ∀ {𝓘 𝓤} {I : Type 𝓘} {A : I → Type 𝓤}
+    → is-globally-reflective (Null-GSU A)
+  Null-globally-reflective {A = A}
+    = is-globally-reflective-subtype-equiv
+        (Null≃!Local)
+        (Local-global-reflectors (λ i → !: A i))
+
+  opaque
+    Null∙-global-reflectors
+      : ∀ {𝓘 𝓤} {I : Type 𝓘}
+          {A : I → Type 𝓤}
+          (a∙ : ∀ i → A i)
+        → is-globally-reflective (Null-GSU A)
+    Null∙-global-reflectors a .○ = Null∙ _ a
+    Null∙-global-reflectors a .η = Free-inj.inc
+    Null∙-global-reflectors a .has-is-reflector
+      .○∈S = Null∙-is-null a
+    Null∙-global-reflectors a .has-is-reflector
+      .reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
+
+  Null∙-reflective
+    : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+        {A : I → Type 𝓤}
+        (a∙ : ∀ i → A i)
+      → is-reflective (Null-SubU A 𝓦)
+  Null∙-reflective a = is-reflective←global (Null∙-global-reflectors a)
+}
+%```
+}
+
+\subtree[stt-006E]{
+\date{2025-06-25}
+\author{samueltoth}
+\taxon{Theorem}
+\title{Nullification is a #{\Sigma}-closed reflective subuniverse}
+
+\p{Nullification is a #{\Sigma}-closed reflective subuniverse and so
+is also a higher modality.}
+
+\proof{
+\p{By calculation:}
+
+##{
+\begin{align}
+  \Sigma_{(x : X)} Y(x)  &\simeq \Sigma_{(x : X)} A_i \to Y(x) \\
+                         &\simeq \Sigma_{(x : A_i \to X)} \Pi_{(a : A_i)} Y(f(a))\\
+                         &\simeq A_i \to \Sigma_{(x : X)} Y(x)
+\end{align}
+}
+
+\p{Where (1) and (2) follow from the fact #{X} and each #{Y(x)} are
+#{A}-[null](stt-005G), and (3) is the [type theoretic theorem of
+choice](foundations.TheoremOfChoice).}  }
+
+%```agda
+\agda{
+Σ-is-null : ∀ {𝓘 𝓤 𝓥 𝓦}
+              {I : Type 𝓘}
+              {P : I → Type 𝓤}
+              {X : Type 𝓥} {Y : X → Type 𝓦}
+            → is-null P X
+            → (∀ x → is-null P (Y x))
+            → is-null P (Σ X Y)
+Σ-is-null {P = P} {X = X} {Y} Xnull Ynull i
+  = eqv where
+  opaque
+    I : Σ X Y ≃ (P i → Σ X Y)
+    I = Σ X Y
+          ≃⟨ Σ-ap-≃ (λ x → null≃ (Ynull x) i) ⟩
+        Σ X (λ x → P i → Y x)
+          ≃⟨ Σ-ap-≃-fst {B = λ f → (a : P i) → Y (f a)} (null≃ Xnull i) ⟩
+        Σ (P i → X) (λ f → (a : P i) → Y (f a))
+          ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
+        (P i → Σ X Y) ≃∎
+
+    eqv : is-equiv (const (Σ X Y) (P i))
+    eqv = I ._≃_.has-is-eqv
+
+Null-globally-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
+                   {P : I → Type 𝓤}
+                 → is-globally-Σ-closed (Null-GSU P)
+Null-globally-Σ-closed = Σ-is-null
+
+Null-Σ-closed : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+                   {A : I → Type 𝓤}
+                 → is-Σ-closed (Null-SubU A 𝓦)
+Null-Σ-closed {A = A}
+  = is-Σ-closed←globally (Null-GSU A) Null-globally-Σ-closed
+
+Null∙-HigherModality
+  : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      (a : Π _ A)
+    → HigherModality 𝓦
+Null∙-HigherModality a = HigherModality←SubU
+                           (Null∙-reflective a)
+                           (Null-Σ-closed)
+
+module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+         {A : I → Type 𝓤} {B : I → Type 𝓥}
+         where
+
+  Local-Σ-closed
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → is-Σ-closed (Local-SubU f 𝓦)
+  Local-Σ-closed f sngl aloc bloc
+    = is-local-sing←is-null sngl f
+        (Null-Σ-closed
+          (is-null←is-local-sing sngl f aloc)
+          λ a → is-null←is-local-sing sngl f (bloc a))
+
+  Local-HigherModality
+    : (f : (i : I) → A i → B i)
+    → (∀ i → is-singleton (B i))
+    → HigherModality 𝓦
+  Local-HigherModality f s
+    = HigherModality←SubU
+        (Local-reflective f)
+        (Local-Σ-closed f s)
+}
+%```
+}
+
+\subtree[fre-0003]{
+\date{2025-06-29}
+\author{samueltoth}
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{Closure properties of null types from closure properties of local types}
+\taxon{Corollary}
+
+\p{
+Given a type family #{X : A \to \UU}, then #{X}-null types are closed under
+
+\ul{
+\li{contractible types}
+\li{dependent products}
+\li{forming identity types}
+\li{forming pullbacks}
+\li{forming cartesian products}
+\li{forming fibers}
+\li{forming retract types}
+\li{forming equivalence types.}
+}
+}
+
+
+%```agda
+\agda{
+module _
+  {𝓘 𝓤 : Level}
+  {I : Type 𝓘} (X : I → Type 𝓤)
+  (let X! =  λ i → !: X i) where
+
+  is-nulll←is-singleton
+    : ∀ {𝓥} {Y : Type 𝓥}
+    → is-singleton Y
+    → is-null X Y
+  is-nulll←is-singleton sing
+    = is-null←is-local (is-local←is-singleton X! sing)
+
+  𝟙-is-null
+    : is-null X 𝟙
+  𝟙-is-null
+    = is-null←is-local (𝟙-is-local X!)
+
+  Π-is-null
+    : ∀ {𝓥 𝓦}
+        {A : Type 𝓥} {B : A → Type 𝓦}
+      → (∀ a → is-null X (B a))
+      → is-null X (Π A B)
+  Π-is-null bn
+    = is-null←is-local
+        (Π-is-local X! (λ a → is-local←is-null (bn a)))
+
+  ＝-is-null
+    : ∀ {𝓥}
+        {A : Type 𝓥}
+      → is-null X A
+      → ∀ {x y : A}
+        → is-null X (x ＝ y)
+  ＝-is-null null
+    = is-null←is-local
+        (＝-is-local X! (is-local←is-null null))
+
+  Pullback-is-null
+    : ∀ {𝓥 𝓦 𝓧}
+        {Y : Type 𝓥} {Z : Type 𝓦} {Q : Type 𝓧}
+        (f : Y → Q) (g : Z → Q)
+      → is-null X Y
+      → is-null X Z
+      → is-null X Q
+      → is-null X (Pullback f g)
+  Pullback-is-null f g Ynull Znull Qnull
+    = is-null←is-local
+        (Pullback-is-local X! f g
+          (is-local←is-null Ynull)
+          (is-local←is-null Znull)
+          (is-local←is-null Qnull))
+
+  fibre-is-null
+    : ∀ {𝓥 𝓦}
+        {Y : Type 𝓥} {Z : Type 𝓦}
+        (f : Y → Z) (b : Z)
+      → is-null X Y
+      → is-null X Z
+      → is-null X (fibre f b)
+  fibre-is-null f b Ynull Znull
+    = is-null←is-local
+        (fibre-is-local X! f b
+          (is-local←is-null Ynull)
+          (is-local←is-null Znull))
+
+  ×-is-null
+    : ∀ {𝓥 𝓦}
+        {Y : Type 𝓥} {Z : Type 𝓦}
+      → is-null X Y
+      → is-null X Z
+      → is-null X (Y × Z)
+  ×-is-null Ynull Znull
+    = is-null←is-local
+        (×-is-local X!
+          (is-local←is-null Ynull)
+          (is-local←is-null Znull))
+
+  retract-is-null
+    : ∀ {𝓥 𝓦}
+        {A : Type 𝓥} {B : Type 𝓦}
+      → is-null X A
+      → is-null X B
+      → is-null X (retract A B)
+  retract-is-null Anull Bnull
+    = is-null←is-local
+        (retract-is-local X!
+          (is-local←is-null Anull)
+          (is-local←is-null Bnull))
+
+  biinv-is-null
+    : ∀ {𝓥 𝓦}
+        {A : Type 𝓥} {B : Type 𝓦}
+      → is-null X A
+      → is-null X B
+      → is-null X (biinv A B)
+  biinv-is-null Anull Bnull
+    = is-null←is-local
+        (biinv-is-local X!
+          (is-local←is-null Anull)
+          (is-local←is-null Bnull))
+
+  ≃-is-null
+    : ∀ {𝓥 𝓦}
+        {A : Type 𝓥} {B : Type 𝓦}
+      → is-null X A
+      → is-null X B
+      → is-null X (A ≃ B)
+  ≃-is-null Anull Bnull
+    = is-null←is-local
+        (≃-is-local X!
+          (is-local←is-null Anull)
+          (is-local←is-null Bnull))
+}
+%```
+}
+
+\subtree[fre-0000]{
+\date{2026-03-09}
+\author{fredrikbakke}
+\title{The universe of null types in a subuniverse at a family of propositions}
+\taxon{Theorem}
+
+\p{
+Let #{P_i} be a family of propositions, and let #{\mathcal{S}} be a
+[global subuniverse](stt-007A) which is closed under dependent products over each
+#{P_i}. Then the type of #{P}-null types in #{\mathcal{S}} is again #{P}-null.
+}
+
+%```agda
+\agda{
+Null-in-GSU
+  : {α : Level → Level} {𝓘 𝓤 : Level} {I : Type 𝓘}
+  → (P : I → Type 𝓤)
+  → GSU α
+  → ∀ 𝓥 → Type (lsuc (𝓤 ⊔ 𝓥) ⊔ α (𝓤 ⊔ 𝓥) ⊔ 𝓘)
+Null-in-GSU {𝓤 = 𝓤} P S 𝓥
+  = Σ[ X ∶ Type (𝓤 ⊔ 𝓥) ] ((X ∈ GSU.S S) × is-null P X)
+
+Null-in-GSU-is-null←is-prop
+  : {α : Level → Level} {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
+    {P : I → Type 𝓤} {S : GSU α}
+  → ((i : I) → is-prop (P i))
+  → ( {𝓦 : Level} (i : I) {B : P i → Type 𝓦}
+      → (∀ a → (B a) ∈ GSU.S S)
+      → (Π (P i) B) ∈ GSU.S S)
+  → is-null P (Null-in-GSU P S 𝓥)
+Null-in-GSU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-prop-P SΠ i
+  = is-equiv←qiso qiso where
+  U = Null-in-GSU P S 𝓥
+  SU = GSU.S S
+
+  is-in-SU-and-is-null-is-prop
+    : (X : Type (𝓤 ⊔ 𝓥)) → is-prop ((X ∈ SU) × is-null P X)
+  is-in-SU-and-is-null-is-prop X
+    = is-prop-Σ (∈-is-prop SU X) (λ _ → is-null-is-prop X)
+
+  qiso : quasi-iso (const U (P i))
+  qiso .fst f
+    = ( Π (P i) (fst ∘ f)
+      , SΠ i (λ a → snd (f a) .fst)
+      , Π-is-null P (λ a → snd (f a) .snd))
+  qiso .snd .fst (X , X∈S , Xnull)
+    = Σ-path→ (ua (null≃ Xnull i e⁻¹) , is-in-SU-and-is-null-is-prop _ _ _)
+  qiso .snd .snd f
+    = funext→ λ a → Σ-path→
+      ( ua (mk≃ (ev a)
+                (sing-evᵈ-is-equiv global-funext (mk-singl a (is-prop-P i a))))
+      , is-in-SU-and-is-null-is-prop _ _ _)
+}
+%```
+}
+
+\subtree[fre-0001]{
+\date{2026-03-09}
+\author{fredrikbakke}
+\title{The universe of null types at a family of propositions}
+\taxon{Corollary}
+
+\p{
+For a family of propositions #{P_i}, the type of #{P}-null types is itself #{P}-null.
+}
+
+%```agda
+\agda{
+Null-U
+  : {𝓘 𝓤 : Level}
+  → {I : Type 𝓘}
+  → (P : I → Type 𝓤)
+  → (𝓥 : Level) → Type (𝓘 ⊔ lsuc 𝓤 ⊔ lsuc 𝓥)
+Null-U P 𝓥 = Null-in-GSU P Full-GSU 𝓥
+
+Null-U-is-null←is-prop
+  : {𝓘 𝓤 𝓥 : Level}
+    {I : Type 𝓘}
+    {P : I → Type 𝓤}
+  → ((i : I) → is-prop (P i))
+  → is-null P (Null-U P 𝓥)
+Null-U-is-null←is-prop {𝓥 = 𝓥} {P = P} is-prop-P
+  = Null-in-GSU-is-null←is-prop
+      {𝓥 = 𝓥}
+      {P = P}
+      {S = Full-GSU}
+      (is-prop-P)
+      (λ _ _ → tt)
+}
+%```
+}

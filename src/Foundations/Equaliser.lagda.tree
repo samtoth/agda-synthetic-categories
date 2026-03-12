@@ -1,0 +1,154 @@
+\title{Equalisers}
+\taxon{Module}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+open import Foundations.FunExt
+
+module Foundations.Equaliser where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Fork
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.EquivHomotopy
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.SigmaPath
+open import Foundations.SigmaProperties
+open import Foundations.Span
+open import Foundations.Pullbacks
+open import Foundations.CanonicalPullbacks
+open import Foundations.PullbackPath
+}
+% ```
+
+\subtree[fre-2100]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Equalisers}
+
+\p{
+Given a a pair of parallel maps #{f\ g : A \to B}, the \em{equaliser} if #{f} and
+#{g} is the limit of the diagram presented by #{f} and #{g}. The equaliser has a
+very simple presentation in type theory: it is the type of elements #{a : A} such
+that #{f(a) = g(a)}.
+}
+
+% ```agda
+\agda{
+is-equaliser
+  : {𝓤 𝓥 𝓦 : Level} {A : Type 𝓤} {B : Type 𝓥}
+    {f g : A → B} {E : Type 𝓦}
+  → Fork f g E
+  → Typeω
+is-equaliser {f = f} {g = g} {E = E} F
+  = ∀ {𝓠} {Q : Type 𝓠}
+  → is-equiv (fork-map {f = f} {g = g} {E = E} F {Q = Q})
+
+Equaliser
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  → (f g : A → B)
+  → Type (𝓤 ⊔ 𝓥)
+Equaliser {A = A} f g = Σ[ a ∶ A ] (f a ＝ g a)
+
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f g : A → B) where
+
+  Equaliser-fork : Fork f g (Equaliser f g)
+  Equaliser-fork = fst , snd
+
+  Equaliser-gap
+    : ∀ {𝓠} {Q : Type 𝓠}
+    → Fork f g Q
+    → Q → Equaliser f g
+  Equaliser-gap (e , H) q = (e q , H q)
+}
+% ```
+}
+
+\subtree[fre-2102]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Equalisers as pullbacks}
+
+\p{
+The equaliser of a pair of parallel maps #{f\ g : A \to B} can be presented as the
+pullback
+
+\quiver{
+\begin{tikzcd}
+	\Textrm{Eq}(f,g) && A  \\
+	\\
+	B && B \times B
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["{[f,g]}", from=1-3, to=3-3]
+	\arrow["\Delta", from=3-1, to=3-3]
+	\arrow["\lrcorner" very near start, phantom, from=1-1, to=3-3]
+\end{tikzcd}
+}
+}
+
+% ```agda
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+  where
+
+  Equaliser-diagonal-cone
+    : Cone
+        (mk-cospan (B × B) (λ b → (b , b)) (λ a → (f a , g a)))
+        (Equaliser f g)
+  Equaliser-diagonal-cone
+    = mk-cone
+        (f ∘ fst)
+        (fst)
+        (λ (_ , p) → ×-path→ (refl , p))
+
+  Pullback←Equaliser
+    : Equaliser f g
+    → Pullback (λ b → (b , b)) (λ a → (f a , g a))
+  Pullback←Equaliser = gap Equaliser-diagonal-cone
+
+  Pullback←Equaliser-is-equiv
+    : is-equiv Pullback←Equaliser
+  Pullback←Equaliser-is-equiv = is-equiv←qiso qiso where
+    bwd : Pullback (λ b → (b , b)) (λ a → (f a , g a)) → Equaliser f g
+    bwd (b , a , p) = (a , sym (ap fst p) ∙ ap snd p)
+
+    qiso : quasi-iso Pullback←Equaliser
+    qiso .fst = bwd
+    qiso .snd .fst (a , p) = Σ-path→ (refl , retp) where
+      retp
+        : sym (ap fst (×-path→ (refl , p))) ∙ ap snd (×-path→ (refl , p))
+        ＝ p
+      retp
+        = ap (λ q → sym q ∙ ap snd (×-path→ (refl , p))) ×-path-ap-fst
+        ∙ ∙-refll _
+        ∙ ×-path-ap-snd
+    qiso .snd .snd (b , a , p)
+      = pullback-path→ (sym (ap fst p) , refl , sq p ∙ sym (∙-reflr _)) where
+      sq : {b' : B} {a' : A}
+           (p' : (b' , b') ＝ (f a' , g a'))
+         → ap (λ c → (c , c)) (sym (ap fst p')) ∙ p'
+         ＝ ×-path→ (refl , sym (ap fst p') ∙ ap snd p')
+      sq = J ( λ y p'
+             → ap (λ c → (c , c)) (sym (ap fst p')) ∙ p'
+             ＝ ×-path→ (refl , sym (ap fst p') ∙ ap snd p'))
+        ( refl)
+
+  Equaliser≃Pullback-diagonal
+    : Equaliser f g
+    ≃ Pullback (λ b → (b , b)) (λ a → (f a , g a))
+  Equaliser≃Pullback-diagonal
+    = mk≃ Pullback←Equaliser Pullback←Equaliser-is-equiv
+}
+% ```
+}

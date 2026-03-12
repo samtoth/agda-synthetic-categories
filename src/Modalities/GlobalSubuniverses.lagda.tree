@@ -13,16 +13,17 @@ module Modalities.GlobalSubuniverses where
 
 open import Foundations.Prelude
 open import ufAxioms
+open import Foundations.BiinvertibleMap
 open import Modalities.Subuniverses
 open import Core.Postwhisker
 open import Core.PiSection
-open import Data.Bool
 open import Ergonomics.Extensionality
 open import Ergonomics.Universal
 }
 %```
 
 \subtree[stt-007A]{
+\taxon{Definition}
 \title{Global subuniverses}
 
 \p{A global subuniverse is a subuniverse for each #{\UU}
@@ -47,6 +48,11 @@ SubU←global = GSU.S
 
 GSU-equiv : ∀ {α β} → GSU α → GSU β → Typeω
 GSU-equiv S K = ∀ {𝓤} → Subtype-equiv (GSU.S S {𝓤}) (GSU.S K {𝓤})
+
+Full-GSU : GSU (λ _ → lzero)
+Full-GSU .GSU.S .Subtype.family _ = 𝟙
+Full-GSU .GSU.S .Subtype.has-is-subtype _ _ _ = refl
+Full-GSU .GSU.S-equiv _ _ = tt
 }
 %```
 }
@@ -134,13 +140,10 @@ record is-globally-reflective {α} (GS : GSU α) : Typeω where
   reflector A = mk-rfltor (○ A) η
                   (is-reflector←global has-is-reflector)
 
-
-
 is-reflective←global :  ∀ {α} {GS : GSU α} → is-globally-reflective GS
                      → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
 is-reflective←global (mk-gReflectors ○ η has-is-reflector)
   = mk-reflective ○ η (is-reflector←global has-is-reflector)
-
 
 is-globally-reflective-subtype-equiv
   : ∀ {α β} {S : GSU α} {K : GSU β}
@@ -160,11 +163,10 @@ module GPiClosure {α} {GS : GSU α} (SR : is-globally-reflective GS) where
   Π∈S : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
         → (∀ a → B a ∈ S)
         → Π A B ∈ S
-  Π∈S b = in-SubU←η-retract (reflector _) ret where
-    ret : retract η
+  Π∈S b = in-SubU←η-retraction (reflector _) ret where
+    ret : retraction η
     ret .fst lab a = ○-rec (b a) (ev a) lab
     ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
-
 
   ULift∈S : ∀ {𝓤 𝓥} {A : Type 𝓤}
           → A ∈ S
@@ -172,34 +174,157 @@ module GPiClosure {α} {GS : GSU α} (SR : is-globally-reflective GS) where
   ULift∈S = S-equiv (mk≃ _ lift-is-equiv)
 
   𝟙∈S : 𝟙 ∈ S
-  𝟙∈S = in-SubU←η-retract (reflector _) (! , ~refl)
-
-  ×∈S : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ∈ S → B ∈ S
-        → (A × B) ∈ S
-  ×∈S {𝓤}{𝓥}{A}{B} as bs
-    = S-equiv (equiv←qiso eqv)
-        (Π∈S {B = (if_then ULift (𝓤 ⊔ 𝓥) A else ULift (𝓤 ⊔ 𝓥) B)}
-             λ {true → ULift∈S as; false → ULift∈S bs}) where
-    eqv : (Π Bool (if_then ULift (𝓤 ⊔ 𝓥) A else ULift (𝓤 ⊔ 𝓥) B)) ≅ (A × B)
-    eqv ._≅_.fwd x = (unlift (x true)) , (unlift (x false))
-    eqv ._≅_.fwd-iso .fst (x , y) true = mk-lift x
-    eqv ._≅_.fwd-iso .fst (x , y) false = mk-lift y
-    eqv ._≅_.fwd-iso .snd .fst f = funext→ (λ {true → refl; false → refl})
-    eqv ._≅_.fwd-iso .snd .snd = ~refl
+  𝟙∈S = in-SubU←η-retraction (reflector _) (! , ~refl)
 
   ∈S←is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → A ∈ S
-  ∈S←is-singleton sing = in-SubU←η-retract
+  ∈S←is-singleton sing = in-SubU←η-retraction
                            (reflector _)
-                           (retract←singleton-dom sing η)
+                           (retraction←singleton-dom sing η)
 }
 %```
 }
 
+\subtree[fre-ABCD]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Closure of reflective subuniverses under pullbacks}
+
+%```agda
+\agda{
+module GReflectiveClosure {α} {GS : GSU α}
+       (Sref : is-globally-reflective GS) where
+  open GSU GS
+
+  module GΠ = GPiClosure Sref
+  module GRS = is-globally-reflective Sref
+
+  Pullback∈S
+    : ∀ {𝓦 𝓧 𝓨}
+        {X : Type 𝓦} {Y : Type 𝓧} {Q : Type 𝓨}
+        (g : X → Q) (h : Y → Q)
+      → X ∈ S
+      → Y ∈ S
+      → Q ∈ S
+      → Pullback g h ∈ S
+  Pullback∈S {X = X} {Y = Y} {Q = Q} g h Xloc Yloc Qloc
+    = in-SubU←η-retraction (GRS.reflector (Pullback g h)) ret where
+    u = GRS.η {A = Pullback g h}
+
+    S' : Cospan _ _ _
+    S' = mk-cospan Q g h
+
+    cone-map-equiv
+      : is-equiv (λ (C : Cone S' (GRS.○ (Pullback g h))) → cone-map S' C u)
+    cone-map-equiv
+      = cone-map-is-equiv S' u
+          (GRS.reflects {A = Pullback g h} Xloc)
+          (GRS.reflects {A = Pullback g h} Yloc)
+          (λ _ _ → prewhisker-is-equiv←ap-compose
+            (is-embedding←is-equiv
+              (GRS.reflects {A = Pullback g h} Qloc)))
+
+    pb-local : is-equiv (precomp (Pullback g h) u)
+    pb-local
+      = precomp-is-equiv←cone-precomp-is-equiv S' u
+          (pullback g h)
+          (pullback-is-pullback {f = g} {g = h})
+          (cone-map-equiv)
+
+    ret : retraction u
+    ret = retraction←is-equiv-precomp pb-local
+}
+% ```
+}
+
+\subtree[fre-ABCE]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Corollary}
+
+\p{
+As a corollary of pullback closure, we obtain that reflective global subuniverses
+are closed under forming identity types, fibers, retract types, and equivalence
+types.
+}
+
+% ```
+\agda{
+  ＝∈S
+    : ∀ {𝓦} {X : Type 𝓦}
+    → X ∈ S
+    → ∀ {x y : X}
+    → (x ＝ y) ∈ S
+  ＝∈S loc = ＝-is-modal (is-reflective←global Sref) loc
+
+  fibre∈S
+    : ∀ {𝓦 𝓧}
+        {X : Type 𝓦} {Y : Type 𝓧}
+        (g : X → Y) (y : Y)
+      → X ∈ S
+      → Y ∈ S
+      → fibre g y ∈ S
+  fibre∈S {X = X} {Y = Y} g y Xloc Yloc
+    = S-equiv
+        (pullback-point≃fibre g y)
+        (Pullback∈S (point y) g (GΠ.𝟙∈S) Xloc Yloc)
+
+  ×∈S
+    : ∀ {𝓦 𝓧} {X : Type 𝓦} {Y : Type 𝓧}
+    → X ∈ S
+    → Y ∈ S
+    → (X × Y) ∈ S
+  ×∈S {X = X} {Y = Y} Xloc Yloc
+    = S-equiv
+        (pullback-!≃×)
+        (Pullback∈S (! {A = X}) (! {A = Y}) Xloc Yloc GΠ.𝟙∈S)
+
+  retract∈S
+    : ∀ {𝓦 𝓧}
+        {X : Type 𝓦} {Y : Type 𝓧}
+      → X ∈ S
+      → Y ∈ S
+      → (retract X Y) ∈ S
+  retract∈S {X = X} {Y = Y} Xloc Yloc
+    = S-equiv
+        (retract≃fibre-∘)
+        (fibre∈S
+          (comp-pair)
+          (id)
+          (×∈S (GΠ.Π∈S (λ _ → Yloc)) (GΠ.Π∈S (λ _ → Xloc)))
+          (GΠ.Π∈S (λ _ → Xloc)))
+
+  biinv∈S
+    : {𝓦 𝓧 : Level}
+      {X : Type 𝓦} {Y : Type 𝓧}
+    → X ∈ S
+    → Y ∈ S
+    → biinv X Y ∈ S
+  biinv∈S {X = X} {Y = Y} Xloc Yloc
+    = S-equiv
+        (biinv≃pullback e⁻¹)
+        (Pullback∈S
+          (fst {B = section})
+          (fst {B = retraction})
+          (S-equiv (section-total≃retract e⁻¹) (retract∈S Yloc Xloc))
+          (retract∈S Xloc Yloc)
+          (GΠ.Π∈S (λ _ → Yloc)))
+
+  ≃∈S
+    : {𝓦 𝓧 : Level}
+      {X : Type 𝓦} {Y : Type 𝓧}
+    → X ∈ S
+    → Y ∈ S
+    → (X ≃ Y) ∈ S
+  ≃∈S {X = X} {Y = Y} Xloc Yloc
+    = S-equiv (≃-rep-biinv e⁻¹) (biinv∈S Xloc Yloc)
+}
+%```
+}
 
 \subtree[stt-007C]{
 \taxon{Definition}
 \title{Sigma closed global reflective subuniverses}
-
 
 %```agda
 \agda{
@@ -282,7 +407,7 @@ module GRSUInduction {α} {GS : GSU α}
   ind-qiso PS .fst = _∘ η
   ind-qiso PS .snd .fst f = ext! (ind-β _ f)
   ind-qiso {A = A} {P} PS .snd .snd f = ext!
-    (ind (λ a → is-modal-＝ (is-reflective←global Sref) (PS a))
+    (ind (λ a → ＝-is-modal (is-reflective←global Sref) (PS a))
          (ind-β _ (f ∘ η)))
 
   ind-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}

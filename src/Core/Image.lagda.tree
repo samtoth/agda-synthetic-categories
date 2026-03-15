@@ -11,6 +11,7 @@ module Core.Image where
 open import Foundations.Prelude
 open import ufAxioms
 open import Core.Slice
+open import Modalities.Instances.Truncation
 }
 %```
 
@@ -64,6 +65,120 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
       has-is-emb   : is-embedding i
       factors      : Slice-map f i
       has-is-image : is-universal-embedding i factors
+}
+%```
+}
+
+\subtree[fre-2145]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Construction}
+\title{The canonical image}
+
+\p{
+The \em{canonical image} of a map #{f : A \to B} is the type of elements #{b} of #{B}
+such that #{f} merely hits #{b}.
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+
+  canonical-image
+    : Type (𝓤 ⊔ 𝓥)
+  canonical-image = Σ[ b ∶ B ] ║ fibre f b ║
+
+  canonical-image-incl
+    : canonical-image → B
+  canonical-image-incl = fst
+
+  canonical-image-factors
+    : Slice-map f canonical-image-incl
+  canonical-image-factors .fst a = f a , Trunc.η (a , refl)
+  canonical-image-factors .snd = ~refl
+
+  canonical-image-incl-is-embedding
+    : is-embedding canonical-image-incl
+  canonical-image-incl-is-embedding
+    = is-embedding←is-prop-map λ b →
+        is-prop←equiv-to-prop
+          ((fibre-straighten (λ b' → ║ fibre f b' ║) b) e⁻¹)
+          ║-║-is-prop
+
+  canonical-image-factor
+    : ∀ {𝓦} {I : Type 𝓦}
+        (i : I → B)
+      → is-embedding i
+      → Slice-map f i
+      → Slice-map canonical-image-incl i
+  canonical-image-factor i iemb fi
+    = (λ (b , t) → go b t .fst) , (λ (b , t) → go b t .snd)
+    where
+    go : (b : B) → ║ fibre f b ║ → fibre i b
+    go b = Trunc.○-rec
+      (is-truncated←is-prop (is-prop-map←is-embedding iemb b))
+      λ (a , p) → fi .fst a , fi .snd a ∙ p
+
+  canonical-image-is-image
+    : is-image f canonical-image-incl
+  canonical-image-is-image .is-image.has-is-emb = canonical-image-incl-is-embedding
+  canonical-image-is-image .is-image.factors = canonical-image-factors
+  canonical-image-is-image .is-image.has-is-image
+    = is-universal-embedding←logical
+        (f)
+        (canonical-image-incl)
+        (canonical-image-factors)
+        (canonical-image-factor)
+}
+%```
+}
+
+\subtree[fre-2146]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Images are unique up to equivalence}
+
+%```agda
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B)
+  {I : Type 𝓦} {i : I → B}
+  {J : Type 𝓛} {j : J → B}
+  where
+
+  image-slice-map
+    : is-image f i
+    → is-image f j
+    → Slice-map i j
+  image-slice-map Ii Ij
+    = is-equiv.bwd
+        (is-image.has-is-image Ii j (is-image.has-is-emb Ij))
+        (is-image.factors Ij)
+
+  is-image-equiv
+    : is-image f i
+    → is-image f j
+    → I ≃ J
+  is-image-equiv Ii Ij = mk≃ (to .fst) (is-equiv←qiso (from .fst , ret , sec)) where
+    to   = image-slice-map Ii Ij
+    from = is-equiv.bwd
+             (is-image.has-is-image Ij i (is-image.has-is-emb Ii))
+             (is-image.factors Ii)
+
+    ret : from .fst ∘ to .fst ~ id
+    ret = happly (ap fst
+      (slice-embedding-is-prop (is-image.has-is-emb Ii)
+        (from .fst ∘ to .fst , from .snd ▸ to .fst ~∙ to .snd)
+        (Slice-id i)))
+
+    sec : to .fst ∘ from .fst ~ id
+    sec = happly (ap fst
+      (slice-embedding-is-prop (is-image.has-is-emb Ij)
+        (to .fst ∘ from .fst , to .snd ▸ from .fst ~∙ from .snd)
+        (Slice-id j)))
 }
 %```
 }

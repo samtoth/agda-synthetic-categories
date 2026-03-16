@@ -12,7 +12,7 @@ open import Foundations.Prelude
 open import Algebra.Lattice
 
 module Synthetic.Categories.Covariant
-  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   where
 
 open import ufAxioms
@@ -30,11 +30,10 @@ open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Truncation
-open import Modalities.Cohesion.Flat renaming (ε to ε♭)
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
-open import Core.PushoutProduct
+open import Core.PushoutSum
 open import Core.SpanMap
 open import Core.Arrow
 open import Core.ArrowRetract
@@ -94,6 +93,26 @@ module Grpd where
   open is-globally-reflective Grpd-is-globally-reflective
 
   Σ-is-groupoid = Null-globally-Σ-closed
+
+Hom←Id
+  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
+Hom←Id refl = idH _
+
+Hom-gpd
+  : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A
+  → ∀ {a b} → is-equiv (Hom←Id {_}{A}{a}{b})
+Hom-gpd gpd {a} {b}
+  = is-equiv~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
+      (λ {refl → refl})
+      (is-equiv⁻¹ (_≃_.has-is-eqv Homᵈ-repr≃))
+      (is-equiv-∘ {f = g} {g = f}
+        (total-is-equiv←fst-is-equiv (gpd tt))
+        (is-equiv⁻¹ (Σ-＝singl ._≃_.has-is-eqv))) where
+  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+  f = _≃_.bwd Σ-＝singl
+  g : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
+  g (a , p , q) = (const _ _ a , p , q)
 }
 %```
 }
@@ -151,6 +170,8 @@ is-covariant {A = A} B
     = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
       → is-singleton (Σ[ x₁ ∶ B (x i1)] Homᵈ (B ∘ x) x₀ x₁)
 
+{-# INJECTIVE_FOR_INFERENCE is-covariant #-}
+
 is-covariant-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
     → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
@@ -174,15 +195,15 @@ tr-cov cov h = fst ∘ centre ∘ cov h
 
 tr-cov-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant-hom P
+    → is-covariant P
     → ∀ {x y} (h : Hom A x y) → P x → P y
-tr-cov-hom cov h = fst ∘ centre ∘ cov h
+tr-cov-hom cov h = fst ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 
 tr-cov-over
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → (cov : is-covariant-hom P)
+    → (cov : is-covariant P)
     → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
-tr-cov-over cov h = snd ∘ centre ∘ cov h
+tr-cov-over cov h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 }
 %```
 }
@@ -234,7 +255,7 @@ equivalent to the type of lifts of the following square:}
 \agda{
 lifts-of-based-arrow : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
           (f : Δ¹ → A) (x₀ : B (f i0))
-        → let F = mk-amap {f = λ (_ : 𝟙) → i0} {f' = fst {B = B}}
+        → let F = mk-amap {f = λ (_ : 𝟙) → i0}
                           (λ _ → f i0 , x₀) f ~refl
         in Σ (B (f i1)) (Homᵈ (B ∘ f) x₀)
         ≃ Lift F
@@ -399,35 +420,35 @@ lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
 
 %```agda
 \agda{
-is-covariant⇔is-left-fibration
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-    → is-covariant B ⇔ is-left-fibration (fst {B = B})
-is-covariant⇔is-left-fibration {A = A} B
-  = (fwd , bwd) where
-  opaque
-    arrow-map-snd : (F : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B}))
-                    → B (F .Arrow-map.bot i0)
-    arrow-map-snd (mk-amap top bot comm) = tr B (sym (comm tt)) (top tt .snd)
+opaque
+  is-covariant⇔is-left-fibration
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+      → is-covariant B ⇔ is-left-fibration (fst {B = B})
+  is-covariant⇔is-left-fibration {A = A} B
+    = (fwd , bwd) where
+      arrow-map-snd : (F : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B}))
+                      → B (F .Arrow-map.bot i0)
+      arrow-map-snd (mk-amap top bot comm) = tr B (sym (comm tt)) (top tt .snd)
 
-    Σ←arrow-map : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B})
-                → Σ[ f ∶ (Δ¹ → A)] (B (f i0))
-    Σ←arrow-map F = F .bot , arrow-map-snd F where open Arrow-map
+      Σ←arrow-map : Arrow-map (λ (_ : 𝟙) → i0) (fst {B = B})
+                  → Σ[ f ∶ (Δ¹ → A)] (B (f i0))
+      Σ←arrow-map F = F .bot , arrow-map-snd F where open Arrow-map
 
-    fwd : is-covariant B → is-left-fibration (fst {B = B})
-    fwd cov a@(mk-amap top bot comm)
-      = is-single←equiv-to-single
-          ( lifts-of-based-arrow bot (tr B (sym (comm tt)) (snd (top tt)))
-          ∙≃ coe≃ (ap Lift
-              (Arrow-map-path→
-                ((λ a₁ → Σ-path→ ((comm tt)
-                                 , tr∙tr-sym' (comm tt) (snd (top tt))))
-                , (~refl , (λ _ → Σ-path-ap-fst))))))
-          (cov bot (arrow-map-snd a))
+      fwd : is-covariant B → is-left-fibration (fst {B = B})
+      fwd cov a@(mk-amap top bot comm)
+        = is-single←equiv-to-single
+            ( lifts-of-based-arrow bot (tr B (sym (comm tt)) (snd (top tt)))
+            ∙≃ coe≃ (ap Lift
+                (Arrow-map-path→
+                  ((λ a₁ → Σ-path→ ((comm tt)
+                                   , tr∙tr-sym' (comm tt) (snd (top tt))))
+                  , (~refl , (λ _ → Σ-path-ap-fst))))))
+            (cov bot (arrow-map-snd a))
 
-    bwd : is-left-fibration (fst {B = B}) → is-covariant B
-    bwd lfib f x₀ = is-single←equiv-to-single
-         (lifts-of-based-arrow f x₀  e⁻¹)
-         (lfib (mk-amap (λ _ → (f i0 , x₀)) f ~refl))
+      bwd : is-left-fibration (fst {B = B}) → is-covariant B
+      bwd lfib f x₀ = is-single←equiv-to-single
+           (lifts-of-based-arrow f x₀  e⁻¹)
+           (lfib (mk-amap (λ _ → (f i0 , x₀)) f ~refl))
 }
 %```
 }
@@ -439,7 +460,7 @@ is-covariant⇔is-left-fibration {A = A} B
 \proof{
 \p{We use the fact that left orthogonal maps [are closed under pushout products
 and embeddings](stt-00BV). In particular we take the pushout product:
-#{\underset{\Delta^1}{\overset{\{0\}}{\downarrow}} \hat{\otimes}
+#{\underset{\Delta^1}{\overset{\{0\}}{\downarrow}} \pushprod
 \underset{\Delta^1}{\overset{\{1\}}{\downarrow}}}, which modulo some contracting
 away singletons, is the [inner horn](stt-00AD) inclusion into the square. Now
 the following retract square completes the proof:}
@@ -565,16 +586,33 @@ this map is an equivalence.}
 
 %```agda
 \agda{
-cov-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+Hom-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
             (f : Δ¹ → A) x' y'
           → tr-cov {P = P} cov f x' ＝ y' → Homᵈ (P ∘ f) x' y'
-cov-hom _ Pc f x' y' refl = Pc f x' .centre .snd
+Hom-cov _ Pc f x' y' refl = Pc f x' .centre .snd
 
-cov-hom-is-equiv
+Hom-cov-is-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
       (f : Δ¹ → A) x' y'
-    → is-equiv (cov-hom P cov f x' y')
-cov-hom-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (cov-hom P Pc f x')
+    → is-equiv (Hom-cov P cov f x' y')
+Hom-cov-is-equiv P Pc f x' = fundamental-Id _ (Pc f x') (Hom-cov P Pc f x')
+
+Hom-cov'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      {x y} (f : Hom A x y) x' y'
+    → tr-cov-hom {P = P} cov f x' ＝ y' → Hom-over f x' y'
+Hom-cov' P cov f x' y' refl
+  = is-covariant-hom←is-covariant _ cov f x' .centre .snd
+
+Hom-cov'-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+      {x y} (f : Hom A x y) x' y'
+    → is-equiv (Hom-cov' P cov f x' y')
+Hom-cov'-is-equiv P Pc f x'
+  = fundamental-Id
+      _
+      (is-covariant-hom←is-covariant _ Pc f x')
+      (Hom-cov' P Pc f x')
 }
 %```
 }
@@ -596,101 +634,24 @@ tr-cov-id
     → tr-cov {P = P} cov (λ _ → x) ~ id
 tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x') )
 
+tr-cov-idH
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+    → tr-cov-hom {P = P} cov (idH x) ~ id
+tr-cov-idH P cov {x} x' = ap fst
+  (is-covariant-hom←is-covariant _ cov (idH x) x' .central (x' , idH x'))
+
 tr-cov-∘
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
-      (cov : is-covariant-hom P) {x y z} (g : Hom A y z) (f : Hom A x y)
+      (cov : is-covariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
       (x' : P x)
       →  tr-cov-hom cov (g ∘[ Apc ] f) x'
       ＝ tr-cov-hom cov g (tr-cov-hom cov f x')
 tr-cov-∘ apc P cov g f x'
   = ap fst
-      (cov (g ∘[ apc ] f) x' .central
+      (is-covariant-hom←is-covariant _ cov (g ∘[ apc ] f) x' .central
         ( tr-cov-hom cov g (tr-cov-hom cov f x')
-        , CompP apc P (is-inner-family←is-covariant-hom cov) g f
+        , Compᵈ apc P (is-inner-family←is-covariant cov) g f
                 (tr-cov-over cov g _) (tr-cov-over cov f _)))
 }
 %```
-}
-
-\subtree[stt-00AS]{
-\title{There is a universe of amazingly covariant types}
-\taxon{Construction}
-
-\p{Assuming that the interval is [tiny](Synthetic.Tiny), there is a universe of
-\em{amazingly covariant types}, which weakly classify the left fibrations.
-We denote it #{\mathcal{s}}.}
-
-\proof{
-\p{Since being covariant is equivalent to being a left fibration, it is stable
-under base change, and so is a [relative notion of fibrancy](stt-00AO). By the machinery
-developed for [amazing right adjoints](stt-00AA) we can construct a universe.
-}
-}
-
-%```agda
-\agda{
-module UCov where
-  open import Synthetic.Tiny Δ¹
-
-  is-covariant-is-relative : is-relative is-covariant
-  is-covariant-is-relative {A = A} P = (fwd , bwd) where
-    fwd : is-covariant P → (x : Δ¹ → A) → is-covariant (P ∘ x)
-    fwd cov f h = cov (f ∘ h)
-
-    bwd : ((x : Δ¹ → A) → is-covariant (P ∘ x)) → is-covariant P
-    bwd cov h x₀ = cov h id x₀
-
-  open AFib is-covariant is-covariant-is-relative public
-    renaming (is-afib to is-acov;
-              UFib to 𝓢;
-              UFib∙ to 𝓢∙;
-              F-π-is-fib to 𝓢-π-is-covariant)
-}
-%```
-}
-
-\subtree[stt-00AU]{
-\title{The objects of #{\mathcal{S}} are groupoids}
-\taxon{Theorem}
-
-\p{If #{A :^\flat \UU} is a groupoid, then #{A} is amazing covariant and so
-factors through #{\mathcal{S}}.}
-
-%```agda
-\agda{
-  groupoids-in-𝓢 : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-groupoid A → is-acov A
-  groupoids-in-𝓢 A gpd
-    = ε♭ (liftFib .fst
-           (mod♭ (is-covariant⇔is-left-fibration
-                   (λ _ → A) .snd
-                     (is-orthogonal⇔orthogonal-! .snd
-                       (is-left←is-groupoid
-                         (Null-globally-Σ-closed
-                           (Grpd.𝟙∈S)
-                           (λ _ → gpd)) tt))))) tt
-}
-%```
-}
-
-
-\subtree[stt-00AT]{
-\title{#{\mathcal{S}} is directed univalent}
-\taxon{Theorem}
-
-\p{We show that #{\mathcal{S}} is directed univalent. That is, arrows in
-#{\mathcal{S}} correspond exactly to pairs of groupoids, together with a function
-between them.}
-
-%```agda
-\agda{
-  tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → 𝓢 𝓤) → fst (f i0) → fst (f i1)
-  tr-𝓢 = tr-cov {P = fst} 𝓢-π-is-covariant
-
-  dua→ : ∀ {@♭ 𝓤} → (Δ¹ → 𝓢 𝓤) → Σ[ A ∶ 𝓢 𝓤 ] Σ[ B ∶ 𝓢 𝓤 ] (fst A → fst B)
-  dua→ h = (h i0 , h i1 , tr-𝓢 h)
-}
-%```
-
-
-\remark{It remains to be shown that this map is an equivalence.}
 }

@@ -27,6 +27,7 @@ open import Foundations.PropClosure public hiding (is-prop-Π)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
+open import Foundations.NullHomotopy global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
 open HE public
@@ -66,8 +67,6 @@ funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                → happly (funext→ p) ＝ p
 funext-redex {p = p} = is-equiv.ε global-funext p
 
-{-# REWRITE funext-redex #-}
-
 
 open import Foundations.Univalence
 
@@ -76,8 +75,6 @@ postulate
 
 
 open WithGlobalUnivalence UA public
-
-{-# REWRITE ua-linv #-}
 
 import Foundations.Straightening
 

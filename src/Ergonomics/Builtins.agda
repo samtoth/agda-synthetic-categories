@@ -44,9 +44,9 @@ data List {𝓤} (A : Type 𝓤) : Type 𝓤 where
 
 {-# BUILTIN LIST List #-}
 
-List-map :  ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-            → (f : A → B)
-            → List A → List B
+List-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+           → (f : A → B)
+           → List A → List B
 List-map f [] = []
 List-map f (x ∷ xs) = f x ∷ List-map f xs
 

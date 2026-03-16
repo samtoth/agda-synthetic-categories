@@ -1,5 +1,7 @@
 \date{2025-05-18}
 \author{samueltoth}
+\date{2026-02-23}
+\author{fredrikbakke}
 \taxon{Module}
 \import{stt-macros}
 
@@ -13,11 +15,54 @@ open import Foundations.Prelude
 open import ufAxioms
 
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.Lifts
+open import Core.PullbackPowerFamilies
 open import Ergonomics.Extensionality
 }
 %```
 
+\subtree[stt-00EN]{
+\taxon{Construction}
+\title{Dependent pullback power}
+\author{fredrikbakke}
+
+\p{
+Given an [arrow](stt-0038) #{f : A \to B} and a dependent arrow over it
+#{g : (b : B) \to X(b) \to Y(b)}, then we may form the \em{dependent pullback power}
+#{\pulldpow_f g} as the gap map in the square
+
+\quiver{
+\begin{tikzcd}
+	(\Pi_{(b : B)} X(b)) && (\Pi_{(b : B)}Y(b)) \\
+	& \Hom^\mathrm{d}(f, g) \\
+	(\Pi_{(a : A)} X(f(a))) && (\Pi_{(a : A)}Y(f(a)))
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=2-2, to=1-3]
+	\arrow[from=2-2, to=3-1]
+	\arrow[from=3-1, to=3-3]
+	\arrow[dashed, from=1-1, to=2-2, "{\pulldpow_f g}"]
+	\arrow[phantom, from=2-2, to=3-3, "\lrcorner" very near start]
+\end{tikzcd}
+}
+
+where #{\Hom^\mathrm{d}(f, g)} is the type of
+[dependent morphisms of arrows](stt-00EF).
+}
+
+%```agda
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4}
+         {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
+         {X : B → Type 𝓤3} {Y : B → Type 𝓤4} (g : (b : B) → X b → Y b) where
+
+  Π̂ : ((b : B) → X b) → Arrow-Π f g
+  Π̂ l = mk-amap (precomp-Π X f l) (postcomp-Π g l) ~refl
+}
+%```
+}
 
 \subtree[stt-004D]{
 \title{Pullback power}
@@ -38,16 +83,19 @@ open import Ergonomics.Extensionality
 
 \p{Given a pair of arrows as above, any diagonal map
 gives rise to a square for which it is trivially a lifting.}
+\p{This is the nondependent case of the [dependent pullback power](stt-00EN).}
 
 %```agda
 \agda{
-module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
-         (f' : C → D) where
+module _ {𝓤 𝓥 𝓦 𝓜}
+         {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {C : Type 𝓦} {D : Type 𝓜} (f' : C → D) where
+
   pullback-power : (B → C) → Arrow-map f f'
-  pullback-power l .Arrow-map.top = l ∘ f
-  pullback-power l .Arrow-map.bot = f' ∘ l
-  pullback-power l .Arrow-map.comm = ~refl
+  pullback-power = Π̂ f (λ _ → f')
+
+  infixl 40 ⟨_,_⟩
+  ⟨_,_⟩ = pullback-power
 
   pullback-power-lifts : (l : B → C) → Lift (pullback-power l)
   pullback-power-lifts l .Lift.lift = l
@@ -57,7 +105,7 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
 }
 %```
 
-\p{The pullback power of #{f} with #{g} is sometimes written #{f \pitchfork g}.}
+\p{The pullback power of #{f} with #{g} is sometimes written #{\pullpow{f}{g}}.}
 }
 
 \subtree[stt-004C]{
@@ -72,10 +120,10 @@ of maps, we can define a square as follows:}
 	{C^B} && {C^A} \\
 	\\
 	{D^B} && {D^A}
-	\arrow["{- \circ f}", from=1-1, to=1-3]
-	\arrow["{g \circ -}"', from=1-1, to=3-1]
-	\arrow["{g \circ -}", from=1-3, to=3-3]
-	\arrow["{- \circ f}"', from=3-1, to=3-3]
+	\arrow["{{-} \circ f}", from=1-1, to=1-3]
+	\arrow["{g \circ {-}}"', from=1-1, to=3-1]
+	\arrow["{g \circ {-}}", from=1-3, to=3-3]
+	\arrow["{{-} \circ f}"', from=3-1, to=3-3]
 \end{tikzcd}
 }
 
@@ -87,7 +135,7 @@ sense that the following triangle commutes.}
 	& {B \to C} \\
 	\\
 	{\Hom(f,g)} && {D^B\times_{D^A}C^A}
-	\arrow["{f\pitchfork g}"', from=1-2, to=3-1]
+	\arrow["{\pullpow{f}{g}}"', from=1-2, to=3-1]
 	\arrow["gap", from=1-2, to=3-3]
 	\arrow["\sim"', from=3-1, to=3-3]
 \end{tikzcd}
@@ -98,6 +146,7 @@ sense that the following triangle commutes.}
 module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
          {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
          (g : C → D)  where
+
   power-hom : Arrow-map (postcomp B g) (postcomp A g)
   power-hom .Arrow-map.top = precomp _ f
   power-hom .Arrow-map.bot = precomp _ f
@@ -108,7 +157,8 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
 
   pullback-gap~pullback-power :
     gap pb-power-cone ~ pullback←arrow' ∘ pullback-power f g
-  pullback-gap~pullback-power f = ext! (~refl , ~refl , sym funext-refl)
+  pullback-gap~pullback-power f
+    = pullback-path→ (refl , refl , ∙-refll _ ∙ funext-refl ∙ sym (∙-reflr _))
 }
 %```
 }
@@ -126,21 +176,21 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
 
 %```agda
 \agda{
-module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
-         (g : C → D)  where
+module _ {𝓤 𝓥 𝓦 𝓜}
+         {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {C : Type 𝓦} {D : Type 𝓜} (g : C → D) where
+
   power-pb←pb-power-is-equiv : is-equiv (pullback-power f g)
                              → is-pullbackω _ (pb-power-cone f g)
   power-pb←pb-power-is-equiv pb-eq = is-pullback←gap (pb-power-cone f g)
     (homotopy-is-equiv (pullback-gap~pullback-power f g ~⁻¹)
-                       (is-equiv-∘ (Arrow≃pullback' ._≃_.has-is-eqv)
+                       (is-equiv-∘ (Arrow-map≃pullback' ._≃_.has-is-eqv)
                                    pb-eq))
-
 
   pb-power-is-equiv←power-pb : is-pullbackω _ (pb-power-cone f g)
                              → is-equiv (pullback-power f g)
   pb-power-is-equiv←power-pb pb = 3-for-2~ (pullback-gap~pullback-power f g)
-                                           (Arrow≃pullback' ._≃_.has-is-eqv)
+                                           (Arrow-map≃pullback' ._≃_.has-is-eqv)
                                            (gap-is-equiv←is-pullback _ pb)
 
   power-hom-cartesian←pullback-power : is-equiv (pullback-power f g)
@@ -150,12 +200,11 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
     lem : is-pullbackω _ (pb-power-cone f g)
     lem = power-pb←pb-power-is-equiv ppeq
 
-
   pullback-power←power-hom-cartesian : is-cartesian (power-hom f g)
                                      → is-equiv (pullback-power f g)
   pullback-power←power-hom-cartesian pb = 3-for-2~ {f = pullback←arrow'}
                                      (pullback-gap~pullback-power f g)
-                                     (Arrow≃pullback' ._≃_.has-is-eqv)
+                                     (Arrow-map≃pullback' ._≃_.has-is-eqv)
                                      gap-is-equiv where
     gap-is-equiv : is-equiv (gap (pb-power-cone f g))
     gap-is-equiv = gap-is-equiv←is-pullback _ (is-pullback←is-cartesian _ pb)
@@ -169,19 +218,440 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
 
 %```agda
 \agda{
-module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-         {C : Type 𝓦} {D : Type 𝓜} (f : A → B)
-         (g : C → D)  where
+module _ {𝓤 𝓥 𝓦 𝓜}
+         {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+         {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
+  where
 
-  pb-power-fibre≃lifts : ∀ (G : Arrow-map f g)
-                         → fibre (pullback-power f g) G ≃ Lift G
+  pb-power-fibre≃lifts
+    : (G : Arrow-map f g) → fibre (pullback-power f g) G ≃ Lift G
   pb-power-fibre≃lifts G
-    = fibre (pullback-power f g) G ≃⟨⟩
-      Σ[ l ∶ (B → C)] _            ≃⟨ Σ-ap-≃ (λ
-                                   l → Arrow-map-path≃
-                                       (pullback-power f g l) G) ⟩
-      (Σ[ l ∶ (B → C)] _) ≃⟨ Lift-repr≃ G e⁻¹ ⟩
-      Lift G ≃∎
+    = Σ-ap-≃ (λ l → Arrow-map-path≃ (pullback-power f g l) G) ∙≃ Lift-repr≃ G e⁻¹
 }
 %```
+}
+
+\subtree{
+\taxon{Subsection}
+\title{Equivalence between the pullback powers of families and arrows}
+\author{fredrikbakke}
+
+\subtree[stt-00EP]{
+\taxon{Theorem}
+\title{The equivalence of unstraightened pullback powers}
+
+\p{
+Given #{f : A \to B} and #{g : (b : B) \to X(b) \to Y(b)}, the dependent pullback
+power is equivalent, as an arrow, to the unstraightening of the fibrewise pullback
+power.
+
+##{\pulldpow_f g \simeq \pulldpow^{\mathrm f}_{\text{unstraight},f} g}
+}
+
+\proof{
+\p{
+First, consider the codomain of #{\pulldpow_f g}, #{\Hom^{\mathrm d}(f,g)}. It
+consists of a section #{i : \Pi_{(b : B)} Y(b)} together with a section
+#{j : \Pi_{(a : A)} X(f(a))} such that #{i \circ f \sim g \circ j}. Reindexing the
+second piece fibrewise over the fibres of #{f} this data is equivalent to the type
+
+##{
+\Sigma_{(i : \Pi_{(b : B)} Y(b))}
+\Pi_{(b : B)} (\fibre{f}{b} \to \fibre{g(b)}{i(b)}),
+}
+
+so the codomain of #{\pulldpow_f g} is identified with the base of the fibrewise
+pullback power family.
+}
+
+\p{
+Second, consider the fibrewise pullback power family over this base: over a section
+#{i : \Pi_{(b : B)} Y(b)} its fibre is the type
+
+##{
+\Pi_{(b : B)} (\fibre{f}{b} \to \fibre{g(b)}{i(b)}).
+}
+
+Unstraightening this family essentially adds, for each #{b : B}, a null-homotopy of
+the map #{\fibre{f}{b} \to \fibre{g(b)}{i(b)}}. After exchanging the outer
+#{\Sigma}-types and #{\Pi}-types, the domain becomes
+
+##{
+\Pi_{(b : B)}
+\Sigma_{(y : Y(b))}
+\Sigma_{(k : \fibre{f}{b} \to \fibre{g(b)}{y})}
+\nullhtpy(k).
+}
+
+For each #{b : B} this is the [pointed-total presentation](stt-00F5) of the map
+#{g(b) : X(b) \to Y(b)} at #{\fibre{f}{b}}, and hence it is equivalent
+to #{X(b)}. Taking the dependent product over #{B} this gives an equivalence between
+the domain of the unstraightened fibrewise pullback power and #{\Pi_{(b : B)} X(b)}.
+}
+
+\p{
+Under these identifications, a section #{\ell : \Pi_{(b : B)} X(b)} is sent to the
+family whose fibre over #{b} is the point #{g(b)(\ell(b)) : Y(b)} together with the
+constant map
+#{\fibre{f}{b} \to \fibre{g(b)}{g(b)(\ell(b))}}, sending every point of
+#{\fibre{f}{b}} to #{(\ell(b), \refl)} and its evident null-homotopy. This is
+exactly the image of #{\ell} under the unstraightened fibrewise pullback power.
+Thus the domain and codomain identifications are compatible with the two arrows, so
+they assemble into an equivalence of arrows. Passing to fibres over corresponding
+codomain points then yields the equivalence of the associated fibre families.
+}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4}
+  {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
+  {X : B → Type 𝓤3} {Y : B → Type 𝓤4} (g : (b : B) → X b → Y b) where
+
+  Π̂ᶠ-unstraight-fibre-fam
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+          (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂ᶠ-unstraight-fibre-fam = Π̂ᶠ (fibre-fam f) (fibre-depfam g)
+
+  Π̂-unstraight-cod : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-unstraight-cod = fst Π̂ᶠ-unstraight-fibre-fam
+
+  Π̂ᶠ-unstraight-bundle : Bundle Π̂-unstraight-cod
+  Π̂ᶠ-unstraight-bundle = unstraighten (snd Π̂ᶠ-unstraight-fibre-fam)
+
+  Π̂-unstraight-dom : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-unstraight-dom = fst Π̂ᶠ-unstraight-bundle
+
+  Π̂ᶠ-unstraight : Π̂-unstraight-dom → Π̂-unstraight-cod
+  Π̂ᶠ-unstraight = snd Π̂ᶠ-unstraight-bundle
+
+  straighten-Π̂ᶠ-unstraight-bundle
+    : straighten Π̂ᶠ-unstraight-bundle ＝ snd Π̂ᶠ-unstraight-fibre-fam
+  straighten-Π̂ᶠ-unstraight-bundle
+    = straighten-qiso .snd .snd (snd Π̂ᶠ-unstraight-fibre-fam)
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4}
+  {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
+  {X : B → Type 𝓤3} {Y : B → Type 𝓤4} (g : (b : B) → X b → Y b) where
+
+  Π̂-unstraight-cod'
+    : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-unstraight-cod'
+    = Σ[ i ∶ ((b : B) → Y b) ] ((b : B) → fibre f b → fibre' (g b) (i b))
+
+  Π̂-unstraight-cod'≃Π̂-unstraight-cod
+    : Π̂-unstraight-cod' ≃ Π̂-unstraight-cod f g
+  Π̂-unstraight-cod'≃Π̂-unstraight-cod
+    = Σ-ap-≃ λ i → Π-ap-≃ λ b → Π-ap-≃ λ _ → fibre'≃fibre (g b) (i b)
+
+  Π̂-unstraight-cod'←pullback
+    : Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+    → Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←pullback (i , j , p)
+    = i
+    , λ where b (a , refl) → j a , happly p a
+
+  Π̂-unstraight-cod'-cone
+    : Cone (mk-cospan ((a : A) → Y (f a))
+                      (precomp-Π Y f)
+                      (postcomp-Π (λ a → g (f a))))
+           (Π̂-unstraight-cod')
+  Π̂-unstraight-cod'-cone .Cone.i (i , k)
+    = i
+  Π̂-unstraight-cod'-cone .Cone.j (i , k) a
+    = fst (k (f a) (a , refl))
+  Π̂-unstraight-cod'-cone .Cone.filler (i , k)
+    = funext→ (λ a → snd (k (f a) (a , refl)))
+
+  pullback←Π̂-unstraight-cod'
+    : Π̂-unstraight-cod'
+    → Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  pullback←Π̂-unstraight-cod' = gap Π̂-unstraight-cod'-cone
+
+  Π̂-unstraight-cod'←pullback-qiso : quasi-iso Π̂-unstraight-cod'←pullback
+  Π̂-unstraight-cod'←pullback-qiso .fst = pullback←Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←pullback-qiso .snd .fst (i , j , p)
+    = Σ-path→
+        ( refl
+        , Σ-path→
+            ( refl
+            , funext.η p))
+
+  Π̂-unstraight-cod'←pullback-qiso .snd .snd (i , k)
+    = Σ-path→
+        ( refl
+        , funext→ λ b → funext→ λ where
+          (a , refl) → Σ-path→
+            ( refl
+            , happly (funext.ε (λ a → snd (k (f a) (a , refl)))) a))
+
+  Π̂-unstraight-cod←Π̂-unstraight-cod'
+    : Π̂-unstraight-cod' → Π̂-unstraight-cod f g
+  Π̂-unstraight-cod←Π̂-unstraight-cod'
+    = Π̂-unstraight-cod'≃Π̂-unstraight-cod ._≃_.fwd
+
+  Π̂-unstraight-cod←pullback
+    : Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+    → Π̂-unstraight-cod f g
+  Π̂-unstraight-cod←pullback
+    = Π̂-unstraight-cod←Π̂-unstraight-cod' ∘ Π̂-unstraight-cod'←pullback
+
+  Π̂-unstraight-cod'←Arrow-Π
+    : Arrow-Π f g → Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←Arrow-Π (mk-amap j i H)
+    = i
+    , λ where b (a , refl) → j a , H a
+
+  Π̂-unstraight-cod'←Arrow-Π-via-pullback
+    : Arrow-Π f g → Π̂-unstraight-cod'
+  Π̂-unstraight-cod'←Arrow-Π-via-pullback
+    = Π̂-unstraight-cod'←pullback ∘ Arrow-Π≃pullback ._≃_.fwd
+
+  Π̂-unstraight-cod'←Arrow-Π~via-pullback
+    : Π̂-unstraight-cod'←Arrow-Π-via-pullback ~ Π̂-unstraight-cod'←Arrow-Π
+  Π̂-unstraight-cod'←Arrow-Π~via-pullback (mk-amap j i H)
+    = Σ-path→
+        ( refl
+        , funext→ λ b → funext→ λ where
+            (a , refl) → Σ-path→
+              ( refl
+              , happly (funext.ε H) a))
+
+  Π̂-unstraight-cod'←Arrow-Π-is-equiv : is-equiv Π̂-unstraight-cod'←Arrow-Π
+  Π̂-unstraight-cod'←Arrow-Π-is-equiv
+    = homotopy-is-equiv
+        Π̂-unstraight-cod'←Arrow-Π~via-pullback
+        (is-equiv-∘
+          (is-equiv←qiso Π̂-unstraight-cod'←pullback-qiso)
+          (Arrow-Π≃pullback ._≃_.has-is-eqv))
+
+  Π̂-unstraight-cod←Arrow-Π : Arrow-Π f g → Π̂-unstraight-cod f g
+  Π̂-unstraight-cod←Arrow-Π
+    = Π̂-unstraight-cod←Π̂-unstraight-cod' ∘ Π̂-unstraight-cod'←Arrow-Π
+
+  Π̂-unstraight-cod←Arrow-Π-is-equiv : is-equiv Π̂-unstraight-cod←Arrow-Π
+  Π̂-unstraight-cod←Arrow-Π-is-equiv
+    = is-equiv-∘
+        (Π̂-unstraight-cod'≃Π̂-unstraight-cod ._≃_.has-is-eqv)
+        Π̂-unstraight-cod'←Arrow-Π-is-equiv
+
+  Π̂-unstraight-dom←Π : ((b : B) → X b) → Π̂-unstraight-dom f g
+  Π̂-unstraight-dom←Π l = Π̂-unstraight-cod←Arrow-Π (Π̂ f g l) , m where
+    y : (b : B) → fibre (g b) (postcomp-Π g l b)
+    y b = l b , refl
+
+    H : (b : B) → const _ _ (y b) ~ Π̂-unstraight-cod←Arrow-Π (Π̂ f g l) .snd b
+    H b (a , refl) = refl
+
+    m : (b : B) → null-homotopy (Π̂-unstraight-cod←Arrow-Π (Π̂ f g l) .snd b)
+    m b = y b , H b
+
+  Π←Π̂-unstraight-dom : Π̂-unstraight-dom f g → ((b : B) → X b)
+  Π←Π̂-unstraight-dom (_ , m) b = fst (fst (m b))
+
+  Π←Π̂-unstraight-dom∘Π̂-unstraight-dom←Π
+    : Π←Π̂-unstraight-dom ∘ Π̂-unstraight-dom←Π ~ id
+  Π←Π̂-unstraight-dom∘Π̂-unstraight-dom←Π l = refl
+
+  Ptᵈ : B → Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Ptᵈ b = fibre-pointed-total (fibre f b) (g b)
+
+  Π̂-unstraight-dom≃ptᵈ-maps : Π̂-unstraight-dom f g ≃ ((b : B) → Ptᵈ b)
+  Π̂-unstraight-dom≃ptᵈ-maps
+    = Π̂-unstraight-dom f g
+        ≃⟨ Σ-assoc ⟩
+      Σ[ i ∶ ((b : B) → Y b) ]
+      Σ[ j ∶ ((b : B) → fibre f b → fibre (g b) (i b)) ]
+        ((b : B) → null-homotopy (j b))
+        ≃⟨ Σ-ap-≃ (λ i
+                  → Σ-Π-swap≃ (λ b → fibre f b → fibre (g b) (i b))
+                              (λ b jb → null-homotopy jb)
+                              e⁻¹) ⟩
+      Σ[ i ∶ ((b : B) → Y b) ]
+      ((b : B)
+      → Σ[ jb ∶ (fibre f b → fibre (g b) (i b)) ] null-homotopy jb)
+        ≃⟨ Σ-Π-swap≃ (λ b → Y b)
+                     (λ b i → Σ[ jb ∶ (fibre f b → fibre (g b) i) ] null-homotopy jb)
+                     e⁻¹ ⟩
+      ((b : B) → Ptᵈ b)
+        ≃∎
+
+  Π̂-unstraight-dom≃Π : Π̂-unstraight-dom f g ≃ ((b : B) → X b)
+  Π̂-unstraight-dom≃Π
+    = Π̂-unstraight-dom≃ptᵈ-maps
+    ∙≃ Π-ap-≃ (λ b → fibre-pointed-total≃domain (fibre f b) (g b))
+
+  Π←Π̂-unstraight-dom-is-equiv : is-equiv Π←Π̂-unstraight-dom
+  Π←Π̂-unstraight-dom-is-equiv
+    = Π̂-unstraight-dom≃Π ._≃_.has-is-eqv
+
+  Π̂-unstraight-dom←Π-is-equiv : is-equiv Π̂-unstraight-dom←Π
+  Π̂-unstraight-dom←Π-is-equiv
+    = 3-for-2~ (Π←Π̂-unstraight-dom∘Π̂-unstraight-dom←Π ~⁻¹)
+               (Π←Π̂-unstraight-dom-is-equiv)
+               (id-is-equiv)
+
+  Π̂ᶠ-unstraight←Π̂ : Arrow-map (Π̂ f g) (Π̂ᶠ-unstraight f g)
+  Π̂ᶠ-unstraight←Π̂ = mk-amap Π̂-unstraight-dom←Π Π̂-unstraight-cod←Arrow-Π ~refl
+
+  Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv : is-Arrow-equiv Π̂ᶠ-unstraight←Π̂
+  Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv
+    = Π̂-unstraight-dom←Π-is-equiv , Π̂-unstraight-cod←Arrow-Π-is-equiv
+
+  Π̂-unstraighten-Arrow-equiv : Arrow-equiv (Π̂ f g) (Π̂ᶠ-unstraight f g)
+  Π̂-unstraighten-Arrow-equiv
+    = Π̂ᶠ-unstraight←Π̂ , Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv
+
+  Π̂-Arrow-equiv←≃ᶠ
+    : {𝓤5 𝓤6 : Level}
+      (H : Fam 𝓤5 𝓤6)
+    → Π̂ᶠ-unstraight-fibre-fam f g ≃ᶠ H
+    → Arrow-equiv (Π̂ f g) (arrow←Fam H)
+  Π̂-Arrow-equiv←≃ᶠ H
+    = concat-Arrow-equiv-≃ᶠ
+        (Π̂ᶠ-unstraight-fibre-fam f g)
+        (H)
+        (Π̂-unstraighten-Arrow-equiv)
+
+  Π̂-fibre-fam
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+          (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-fibre-fam
+    = Arrow-Π f g
+    , fibre (Π̂ f g)
+
+  Π̂-unstraight-fibre-fam
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+          (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-unstraight-fibre-fam
+    = Π̂-unstraight-cod f g
+    , fibre (Π̂ᶠ-unstraight f g)
+
+  Π̂-unstraighten≃ᶠ
+    : Π̂-fibre-fam ≃ᶠ Π̂-unstraight-fibre-fam
+  Π̂-unstraighten≃ᶠ
+    = mk≃ Π̂-unstraight-cod←Arrow-Π Π̂-unstraight-cod←Arrow-Π-is-equiv
+    , (λ t
+      → mk≃ (arrow-fibre Π̂ᶠ-unstraight←Π̂ t)
+            (is-cartesian←is-equiv Π̂ᶠ-unstraight←Π̂
+                                   Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv
+                                   t))
+
+  Π̂-unstraight-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam
+    : Π̂-unstraight-fibre-fam ≃ᶠ Π̂ᶠ-unstraight-fibre-fam f g
+  Π̂-unstraight-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam
+    = idequiv
+    , (λ t → coe≃ (ap (λ P → P t) (straighten-Π̂ᶠ-unstraight-bundle f g)))
+
+  Π̂-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam
+    : Π̂-fibre-fam ≃ᶠ Π̂ᶠ-unstraight-fibre-fam f g
+  Π̂-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam
+    = concat≃ᶠ
+        (Π̂ᶠ-unstraight-fibre-fam f g)
+        (Π̂-unstraighten≃ᶠ)
+        (Π̂-unstraight-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam)
+}
+%```
+}
+
+\subtree[stt-00ES]{
+\taxon{Lemma}
+\title{Changing the family in the base of #{\pulldpow^\rm{f}}}
+\author{fredrikbakke}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 : Level}
+  {A : Type 𝓤1} {B : A → Type 𝓤2} {C : A → Type 𝓤3}
+  (Y'@(X , Y) : DepFam 𝓤4 𝓤5 (A , B))
+  (e : (a : A) → B a ≃ C a) where
+
+  Π̂ᶠ-ap-base-fam-base
+    : base-Π̂ᶠ (A , B) Y' ≃ base-Π̂ᶠ (A , C) Y'
+  Π̂ᶠ-ap-base-fam-base
+    = Σ-ap-≃ (λ i → Π-ap-≃ (λ a → precomp-≃ ((e a) e⁻¹)))
+
+  Π̂ᶠ-ap-base-fam-family
+    : (fp : base-Π̂ᶠ (A , B) Y')
+    → fam-Π̂ᶠ (A , B) Y' fp
+    ≃ fam-Π̂ᶠ (A , C) Y' (Π̂ᶠ-ap-base-fam-base ._≃_.fwd fp)
+  Π̂ᶠ-ap-base-fam-family (i , j)
+    = Π-ap-≃ (λ a → null-homotopy-postcomp-≃ (e a) (j a))
+
+  Π̂ᶠ-ap-base-fam : Π̂ᶠ (A , B) Y' ≃ᶠ Π̂ᶠ (A , C) Y'
+  Π̂ᶠ-ap-base-fam = Π̂ᶠ-ap-base-fam-base , Π̂ᶠ-ap-base-fam-family
+}
+%```
+}
+
+\subtree[stt-00ET]{
+\taxon{Theorem}
+\title{The equivalence of straightened pullback powers}
+\author{fredrikbakke}
+
+
+\p{Given families #{B : A \to \UU} and #{Y : (a : A) \to X a \to \UV}, their
+fibrewise dependent pullback power is equivalent, as a family, to the straightening
+of the dependent pullback power of total space projections.
+
+##{\pulldpow^{\mathrm f} B\ Y \simeq \pulldpow_{\text{straight}} B\ Y}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4}
+  (B'@(A , B) : Fam 𝓤1 𝓤2)
+  (Y'@(X , Y) : DepFam 𝓤3 𝓤4 B')
+  (let fᵘ = fst {A = A} {B = B})
+  (let gᵘ = λ a → fst {A = X a} {B = Y a})
+  (let Bᵘˢ = fibre-fam fᵘ)
+  (let Yᵘˢ = fibre-depfam gᵘ)
+  where
+
+  Π̂-straight
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4)
+  Π̂-straight = Π̂-fibre-fam fᵘ gᵘ
+
+  Π̂ᶠ-fibre-fam-unstraight
+    : Fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) (𝓤1 ⊔ 𝓤2 ⊔ 𝓤4)
+  Π̂ᶠ-fibre-fam-unstraight = Π̂ᶠ Bᵘˢ Y'
+
+  Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ-fibre-fam-unstraight
+    : Π̂ᶠ-unstraight-fibre-fam fᵘ gᵘ ≃ᶠ Π̂ᶠ-fibre-fam-unstraight
+  Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ-fibre-fam-unstraight
+    = Π̂ᶠ-ap-≃ᵈᶠ Bᵘˢ Yᵘˢ Y' (λ a → (idequiv , fibre-straighten (Y a)))
+
+  Π̂ᶠ-fibre-fam-unstraight≃Π̂ᶠ
+    : Π̂ᶠ-fibre-fam-unstraight ≃ᶠ Π̂ᶠ B' Y'
+  Π̂ᶠ-fibre-fam-unstraight≃Π̂ᶠ
+    = Π̂ᶠ-ap-base-fam Y' (fibre-straighten B)
+
+  Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ
+    : Π̂ᶠ-unstraight-fibre-fam fᵘ gᵘ ≃ᶠ Π̂ᶠ B' Y'
+  Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ
+    = concat≃ᶠ
+        (Π̂ᶠ B' Y')
+        (Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ-fibre-fam-unstraight)
+        (Π̂ᶠ-fibre-fam-unstraight≃Π̂ᶠ)
+
+  Π̂-straight≃Π̂ᶠ-unstraight-fibre-fam : Π̂-straight ≃ᶠ Π̂ᶠ-unstraight-fibre-fam fᵘ gᵘ
+  Π̂-straight≃Π̂ᶠ-unstraight-fibre-fam
+    = concat≃ᶠ
+        (Π̂ᶠ-unstraight-fibre-fam fᵘ gᵘ)
+        (Π̂-unstraighten≃ᶠ fᵘ gᵘ)
+        (Π̂-unstraight-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam fᵘ gᵘ)
+
+  Π̂-straighten≃ᶠ : Π̂-straight ≃ᶠ Π̂ᶠ B' Y'
+  Π̂-straighten≃ᶠ
+    = concat≃ᶠ
+        (Π̂ᶠ B' Y')
+        (Π̂-straight≃Π̂ᶠ-unstraight-fibre-fam)
+        (Π̂ᶠ-unstraight-fibre-fam≃Π̂ᶠ)
+}
+%```
+}
 }

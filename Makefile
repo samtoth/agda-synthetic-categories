@@ -6,7 +6,7 @@ HTML_DIR ?= output/html
 EVERYTHING_FILE ?= src/Everything.agda
 WATCH_DIR ?= src
 PORT ?= 1313
-DUP_DIR ?= .
+DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --rewriting --guardedness --flat-split --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
@@ -84,22 +84,52 @@ server:
 
 check-dup:
 	@DIR="$(DUP_DIR)"; \
-	rg -n --no-heading -o --glob '*.lagda.tree' 'subtree\[stt-[0-9A-Z]{4}\]' "$$DIR" \
-	| awk -F: '\
-		{ \
-			id = $$3; \
-			sub(/^subtree\[/, "", id); \
-			sub(/\]$$/, "", id); \
-			occurrences[id] = occurrences[id] "\n  " $$1 ":" $$2; \
-			counts[id]++; \
-		} \
-		END { \
-			for (id in counts) { \
-				if (counts[id] > 1) { \
-					printf "DUPLICATE %s (%d occurrences):\n%s\n\n", id, counts[id], occurrences[id]; \
-				} \
-			} \
-		}'
+	{ \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[stt-[0-9A-Z]{4}\]' "$$DIR"; \
+		find "$$DIR" -name '*.tree'; \
+	} | awk '\
+	/subtree\[stt-/ { \
+		split($$0, a, ":"); \
+		id = a[3]; \
+		sub(/^subtree\[/, "", id); \
+		sub(/\]$$/, "", id); \
+		loc = a[1] ":" a[2]; \
+	} \
+	/\.tree$$/ { \
+		loc = $$0; \
+		id = $$0; \
+		sub(/^.*\//, "", id); \
+		sub(/\.tree$$/, "", id); \
+	} \
+	{ \
+		count[id]++; \
+		occ[id] = occ[id] "\n  " loc; \
+	} \
+	END { \
+		err = 0; \
+		for (id in count) \
+			if (count[id] > 1) { \
+				err = 1; \
+				printf "DUPLICATE %s (%d occurrences):\n%s\n\n", id, count[id], occ[id]; \
+		        } \
+		exit err ; \
+	}'
+
+
+check-forest-no-typecheck:
+	@mkdir -p "$(AUTOGEN_DIR)" "$(HTML_DIR)"
+	@find ./src -name '*.lagda.tree' | while read -r file; do \
+		rel=$${file#./src/}; \
+		newname=$${rel//\//.}; \
+		newname=$${newname/.lagda/}; \
+		dest="$(AUTOGEN_DIR)/$$newname"; \
+		mkdir -p "$$(dirname "$$dest")"; \
+		cp "$$file" "$$dest"; \
+		echo "Copied $$file -> $$dest"; \
+	done
+	@$(MAKE) --no-print-directory check-dup
+	@forester build
+
 
 clean-agda:
 	@chmod -R u+w _build 2>/dev/null || true

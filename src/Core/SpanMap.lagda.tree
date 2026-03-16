@@ -277,31 +277,95 @@ id-span-map-is-equiv = (id-is-equiv , id-is-equiv , id-is-equiv)
 %```
 \agda{
 Span-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} (S : Span  𝓤 𝓥 𝓦) (S' : Span 𝓤' 𝓥' 𝓦')
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+  : {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' : Level}
+  → Span 𝓤 𝓥 𝓦
+  → Span 𝓤' 𝓥' 𝓦'
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
 Span-equiv S S' = Σ[ F ∶ Span-map S S' ] is-Span-equiv F
 
-Span-equiv-lemma
+Span-equiv'
+  : {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' : Level}
+  → Span 𝓤 𝓥 𝓦
+  → Span 𝓤' 𝓥' 𝓦'
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+Span-equiv' S S'
+  = Σ[ F ∶ (S .Span.Centre ≃ S' .Span.Centre) ]
+    Σ[ L ∶ (S .Span.Left ≃ S' .Span.Left) ]
+    Σ[ _ ∶ (L ._≃_.fwd ∘ S .Span.left ~ S' .Span.left ∘ F ._≃_.fwd) ]
+    Σ[ R ∶ (S .Span.Right ≃ S' .Span.Right) ]
+      (R ._≃_.fwd ∘ S .Span.right ~ S' .Span.right ∘ F ._≃_.fwd)
+
+Span-equiv'≃Span-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span  𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
-    → let module S = Span S; module S' = Span S'
-    in Span-equiv S S'
-    ≃ Σ[ F ∶ (S.Centre ≃ S'.Centre) ]
-       Σ[ L ∶ (S.Left ≃ S'.Left)] Σ[ _ ∶ (L ._≃_.fwd ∘ S.left ~ S'.left ∘ F ._≃_.fwd)]
-         Σ[ R ∶ (S.Right ≃ S'.Right)] (R ._≃_.fwd ∘ S.right ~ S'.right ∘ F ._≃_.fwd)
-Span-equiv-lemma = equiv←qiso qiso where
-  open Span-map
-  qiso : _ ≅ _
+    → Span-equiv S S' ≃ Span-equiv' S S'
+Span-equiv'≃Span-equiv {S = S} {S' = S'}
+  = equiv←qiso qiso where
+  qiso : Span-equiv S S' ≅ Span-equiv' S S'
   qiso ._≅_.fwd (smap , (leq , ceq , req))
     =
-    ( mk≃ (smap .h₂) ceq
-    , mk≃ (smap .h₁) leq
-    , smap .H
-    , mk≃ (smap .h₃) req
-    , smap .K)
+    ( mk≃ (smap .Span-map.h₂) ceq
+    , mk≃ (smap .Span-map.h₁) leq
+    , smap .Span-map.H
+    , mk≃ (smap .Span-map.h₃) req
+    , smap .Span-map.K)
   qiso ._≅_.fwd-iso .fst (mk≃ c ceq , mk≃ l leq , H , mk≃ r req , K)
     = (mk-span-map l c r H K , leq , ceq , req)
   qiso ._≅_.fwd-iso .snd .fst = ~refl
   qiso ._≅_.fwd-iso .snd .snd = ~refl
+
+components←Span-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-equiv S S' → Span-equiv' S S'
+components←Span-equiv = _≃_.fwd Span-equiv'≃Span-equiv
+
+Span-equiv←components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-equiv' S S' → Span-equiv S S'
+Span-equiv←components = _≃_.bwd Span-equiv'≃Span-equiv
+
+inverse-components←Span-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-equiv S S'
+    → Span-equiv' S' S
+inverse-components←Span-equiv {S = S} {S'} e
+  = from-components (components←Span-equiv e)
+  where
+  from-components
+    : Span-equiv' S S'
+    → Span-equiv' S' S
+  from-components (F , L , H , R , K)
+    = (F e⁻¹)
+    , (L e⁻¹ , left-inv-comm , (R e⁻¹ , right-inv-comm))
+    where
+    left-inv-comm : _≃_.bwd L ∘ S' .Span.left ~ S .Span.left ∘ _≃_.bwd F
+    left-inv-comm p
+      = ap (_≃_.bwd L) (ap (S' .Span.left) (sym (_≃_.ε F p)))
+      ∙ ap (_≃_.bwd L) (sym (H (_≃_.bwd F p)))
+      ∙ _≃_.η L (S .Span.left (_≃_.bwd F p))
+
+    right-inv-comm : _≃_.bwd R ∘ S' .Span.right ~ S .Span.right ∘ _≃_.bwd F
+    right-inv-comm p
+      = ap (_≃_.bwd R) (ap (S' .Span.right) (sym (_≃_.ε F p)))
+      ∙ ap (_≃_.bwd R) (sym (K (_≃_.bwd F p)))
+      ∙ _≃_.η R (S .Span.right (_≃_.bwd F p))
+
+Span-equiv←inverse-components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-equiv' S' S
+    → Span-equiv S S'
+Span-equiv←inverse-components {S = S} {S'} (F , L , H , R , K)
+  = Span-equiv←components
+      ( (F e⁻¹)
+      , (L e⁻¹)
+      , (λ p
+          → sym (ap (_≃_.bwd L) (ap (Span.left S) (_≃_.ε F p)))
+          ∙ sym (ap (_≃_.bwd L) (H (_≃_.bwd F p)))
+          ∙ is-equiv.η (L ._≃_.has-is-eqv) (Span.left S' (_≃_.bwd F p)))
+      , (R e⁻¹)
+      , (λ p
+          → sym (ap (_≃_.bwd R) (ap (Span.right S) (_≃_.ε F p)))
+          ∙ sym (ap (_≃_.bwd R) (K (_≃_.bwd F p)))
+          ∙ is-equiv.η (R ._≃_.has-is-eqv) (Span.right S' (_≃_.bwd F p))))
 
 Span-equiv←Id
   : ∀ {𝓤 𝓥 𝓦} {S S' : Span 𝓤 𝓥 𝓦}
@@ -317,7 +381,7 @@ opaque
        (is-single←equiv-to-single
          ((Σ-ap-≃-fst
             {B = λ (C , _ , f , _ , g) → Span-equiv S (mk-span C f g) }
-            Span-repr≃ ∙≃ Σ-ap-≃ (λ a → Span-equiv-lemma)) e⁻¹)
+            Span-repr≃ ∙≃ Σ-ap-≃ (λ a → Span-equiv'≃Span-equiv)) e⁻¹)
          (is-singleton-structure←parts (SingS-is-single (Centre S))
           (S .Centre , idequiv)
           (is-singleton-structure←parts
@@ -370,13 +434,24 @@ Span-map-funext→
 Span-map-funext→ {S = S} {S'} {F} {G} (p , q , r , s , t)
   = span-map-pathᵈ→ refl refl refl refl refl
      (funext→ p) (funext→ q) (funext→ r)
-     (funext→ (λ a → s a ∙ ap ((p (S.left a) ∙_) ∘ (G.H a ∙_))
-                  (ap (ap G.S'.left) (sym (happly (happly-sym (funext→ q) a) a)))))
-     (funext→ (λ a → t a ∙ ap ((r (S.right a) ∙_) ∘ (G.K a ∙_))
-                  (ap (ap S'.right) (sym (happly (happly-sym (funext→ q) a) a))))) where
+     (funext→ (λ a → s a
+                   ∙ ap ((p (S.left a) ∙_) ∘ (G.H a ∙_))
+                        (ap (ap G.S'.left) (q-sym-happly a)))
+      ∙ ap (λ x → x ▸ G.S.left ~∙ G.H ~∙ G.S'.left ◂ happly (sym (funext→ q)))
+           (sym funext-redex))
+     (funext→ (λ a → t a
+                   ∙ ap ((r (S.right a) ∙_) ∘ (G.K a ∙_))
+                        (ap (ap S'.right) (q-sym-happly a)))
+      ∙ ap (λ x → x ▸ G.S.right ~∙ G.K ~∙ S'.right ◂ happly (sym (funext→ q)))
+           (sym funext-redex)) where
    module S = Span S
    module S' = Span S'
    module G = Span-map G
+
+   q-sym-happly : ∀ a → sym (q a) ＝ happly (sym (funext→ q)) a
+   q-sym-happly a
+     = ap sym (sym (happly funext-redex a))
+     ∙ sym (happly (happly-sym (funext→ q) a) a)
 }
 %```
 }

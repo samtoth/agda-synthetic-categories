@@ -36,7 +36,6 @@ open import Core.PiSection
 open import Core.Postwhisker
 open import Core.PullbackPower
 open import Core.PushoutEquiv
-open import Core.PushoutProduct
 open import Core.SeqMapHomotopy
 open import Core.SetQuotients
 open import Core.Slice

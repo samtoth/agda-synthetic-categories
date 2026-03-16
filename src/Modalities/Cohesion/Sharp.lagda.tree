@@ -21,6 +21,7 @@ open import Modalities.ModalMaps
 open import Modalities.Lex
 
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.PullbackPower
 open import Core.Orthogonal
 
@@ -62,10 +63,6 @@ ap♯ f refl = refl
 }
 
 
-
-
-
-
 \subtree{
 \title{Sharp types forms a reflective subuniverse}
 \taxon{Lemma}
@@ -92,16 +89,40 @@ unmod♯ e = is-equiv.bwd e
     → (x : ⟨♯| A ⟩) → ⟨♯| P x ⟩
 ♯-induction P sec x .counit♯ = counit♯ (sec (x .counit♯))
 
-♯-HigherModality : ∀ {𝓤} → HigherModality 𝓤
-♯-HigherModality .HigherModality.○_ A = ⟨♯| A ⟩
-♯-HigherModality .HigherModality.η = unit-♯
-♯-HigherModality .HigherModality.ind = ♯-induction
-♯-HigherModality .HigherModality.ind-β = {!!}
-♯-HigherModality .HigherModality.＝-○-is-modal = {!!}
+
+♯-pres-Σ : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} {@♯ B : A → Type 𝓥}
+     → ⟨♯| Σ[ a ∶ _ ] B a ⟩
+     ≃ (Σ[ b ∶ ⟨♯| _ ⟩ ] ⟨♯| B (b .counit♯) ⟩)
+♯-pres-Σ ._≃_.fwd x = (mod♯ (x .counit♯ .fst) , mod♯ (x .counit♯ .snd))
+♯-pres-Σ ._≃_.has-is-eqv = is-equiv←qiso
+  ( (λ x → mod♯ (x .fst .counit♯ , x .snd .counit♯))
+  , ~refl
+  , ~refl)
+
+
+♯-SubU : ∀ {𝓤} → SubU 𝓤 𝓤
+♯-SubU .Subtype.family = is-♯-codiscrete
+♯-SubU .Subtype.has-is-subtype _ = is-equiv-is-prop
+
+♯-reflectors : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → is-♯-codiscrete B
+               → is-equiv (precomp B (unit-♯ {A = A}))
+♯-reflectors Qdisc = is-equiv←qiso
+  ( (λ f x → unmod♯ Qdisc (mod♯ (f (x .counit♯))))
+  , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
+  , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
+  )
+
+♯-is-reflective : ∀ {𝓤} → is-reflective (♯-SubU {𝓤})
+♯-is-reflective .is-reflective.○ A = ⟨♯| A ⟩
+♯-is-reflective .is-reflective.η = unit-♯
+♯-is-reflective .is-reflective.has-is-reflector .is-reflector.○∈S
+  = ⟨♯|-⟩-is-♯-codiscrete
+♯-is-reflective .is-reflective.has-is-reflector .is-reflector.reflects
+  = ♯-reflectors
 
 ＝-is-♯-codiscrete
   : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-♯-codiscrete A → is-♯-codiscrete (a ＝ b)
-＝-is-♯-codiscrete A = {!!}
+＝-is-♯-codiscrete = is-modal-＝ ♯-is-reflective
 
 ♯-map-is-equiv : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} {@♯ B : Type 𝓥} {@♯ f : A → B}
     → @♯ is-equiv f → is-equiv (♯-map f)
@@ -130,7 +151,6 @@ is-♯-codiscrete←is-equiv {f = f} fe ad
       (is-equiv-∘ (♯-map-is-equiv fe) ad)
 
 
-
 ♯-GSU : GSU id
 ♯-GSU .GSU.S .Subtype.family = is-♯-codiscrete
 ♯-GSU .GSU.S .Subtype.has-is-subtype _ = is-equiv-is-prop
@@ -144,27 +164,21 @@ is-♯-codiscrete←is-equiv {f = f} fe ad
   open is-global-reflector
   grf : is-global-reflector ♯-GSU A ⟨♯| A ⟩ unit-♯
   grf .○∈S = ⟨♯|-⟩-is-♯-codiscrete
-  grf .reflects Qdisc = is-equiv←qiso
-    ( (λ f x → unmod♯ Qdisc (mod♯ (f (x .counit♯))))
-    , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
-    , (λ f → funext→ (λ a → is-equiv.η Qdisc (f a)))
-    )
+  grf .reflects = ♯-reflectors
 
+opaque
+  ♯-is-Σ-closed : is-globally-Σ-closed ♯-GSU
+  ♯-is-Σ-closed {A = A} {B} a b
+    = is-equiv-∘
+        (is-equiv⁻¹ (♯-pres-Σ ._≃_.has-is-eqv))
+        (map-Σ-is-equiv a b) where
+    _ : _≃_.bwd ♯-pres-Σ ∘ map-Σ unit-♯ (λ a → unit-♯) ~ unit-♯ {A = Σ A B}
+    _ = ~refl
 
-♯-pres-Σ : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} {@♯ B : A → Type 𝓥}
-     → ⟨♯| Σ[ a ∶ _ ] B a ⟩
-     ≃ (Σ[ b ∶ ⟨♯| _ ⟩ ] ⟨♯| B (b .counit♯) ⟩)
-♯-pres-Σ ._≃_.fwd x = (mod♯ (x .counit♯ .fst) , mod♯ (x .counit♯ .snd))
-♯-pres-Σ ._≃_.has-is-eqv = is-equiv←qiso
-  ( (λ x → mod♯ (x .fst .counit♯ , x .snd .counit♯))
-  , ~refl
-  , ~refl)
-
-♯-is-Σ-closed : is-globally-Σ-closed ♯-GSU
-♯-is-Σ-closed {A = A} {B} a b = {!!} where
-  factorisation : _≃_.bwd ♯-pres-Σ ∘ {!map-Σ!} ~ unit-♯ {A = Σ A B}
-
-
+module ♯ where
+  open is-globally-reflective ♯-is-reflective-GSU public
+  open GPiClosure ♯-is-reflective-GSU public
+  open GRSUInduction ♯-is-reflective-GSU ♯-is-Σ-closed public
 }
 %```
 }
@@ -191,17 +205,18 @@ refl♯ .counit♯ = refl
       (mk≃ _ (♯-map-is-equiv (is-equiv⁻¹ (sing≃𝟙 as ._≃_.has-is-eqv))))
       ♯-1
 
-＝♯-is-torsorial
-  : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} ⦃ @♯ _ : Identity-system A 𝓥 ⦄
-    → (a : ⟨♯| A ⟩)
-    → is-singleton (Σ[ b ∶ ⟨♯| A ⟩ ] ⟨♯| IdS (a .counit♯) (b .counit♯) ⟩)
-＝♯-is-torsorial a
-  = is-single←equiv-to-single
-      ♯-pres-Σ
-      (♯-is-singleton (SingS-is-single (a .counit♯)))
+opaque
+  ＝♯-is-torsorial
+    : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} ⦃ @♯ _ : Identity-system A 𝓥 ⦄
+      → (a : ⟨♯| A ⟩)
+      → is-singleton (Σ[ b ∶ ⟨♯| A ⟩ ] ⟨♯| IdS (a .counit♯) (b .counit♯) ⟩)
+  ＝♯-is-torsorial a
+    = is-single←equiv-to-single
+        ♯-pres-Σ
+        (♯-is-singleton (SingS-is-single (a .counit♯)))
 
-mapply♯→ : ∀ {𝓤} {@♯ A : Type 𝓤} {a b : ⟨♯| A ⟩} → a ＝ b → a ＝♯ b
-mapply♯→ refl = refl♯
+mapply♯ : ∀ {𝓤} {@♯ A : Type 𝓤} {a b : ⟨♯| A ⟩} → a ＝ b → a ＝♯ b
+mapply♯ refl = refl♯
 
 instance
   IdS-♯ : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} ⦃ @♯ _ : Identity-system A 𝓥 ⦄
@@ -211,12 +226,18 @@ instance
   IdS-♯ .Identity-system.has-is-ids a
     = fundamental-Id _ (＝♯-is-torsorial a) _
 
+modext♯ : ∀ {𝓤}{@♯ A : Type 𝓤} {a b : ⟨♯| A ⟩} → a ＝♯ b → a ＝ b
+modext♯ = ext!
 
--- ♯-is-lex : is-lex ♯-is-reflective-GSU ♯-is-Σ-closed
--- ♯-is-lex = is-equiv←qiso
---   ( mapply♯
---   , (λ x → ap mapply♯ {!!} ∙ {!!})
---   , λ p → {!!})
+modext♯-is-equiv
+  : ∀ {𝓤}{@♯ A : Type 𝓤} {a b : ⟨♯| A ⟩} → is-equiv (modext♯ {a = a}{b})
+modext♯-is-equiv = ext!-is-equiv
+
+♯-is-lex : is-lex ♯-is-reflective-GSU ♯-is-Σ-closed modext♯
+♯-is-lex {A = A} = ext!-is-equiv
+
+module ♯Lex where
+  open Lex ♯-is-reflective-GSU ♯-is-Σ-closed modext♯ ♯-is-lex public
 }
 %```
 }
@@ -258,9 +279,9 @@ instance
 
 %```agda
 \agda{
--- is-♯-codiscrete-map
---   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
--- is-♯-codiscrete-map f = is-modal-map (SubU←global ♯-GSU) f
+is-♯-codiscrete-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-♯-codiscrete-map f = is-modal-map ♯-SubU f
 }
 %```
 
@@ -268,9 +289,9 @@ instance
 
 %```agda
 \agda{
--- is-♯-connected-map
---   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
--- is-♯-connected-map = is-connected-map (is-reflective←global ♯-is-reflective-GSU)
+is-♯-connected-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-♯-connected-map = is-connected-map (is-reflective←global ♯-is-reflective-GSU)
 }
 %```
 }
@@ -279,28 +300,25 @@ instance
 \title{Sharp equivalences}
 \taxon{Definition}
 
-\p{A map #{f : A \to B} is a #{\sharp}-equivalence if precomposition at all
-#{\sharp} codiscrete types are equivalences.}
+\p{A map #{f : A \to B} is a #{\sharp}-equivalence if the induced map
+#{\sharp f : \mod{\sharp}{A} \to \mod{\sharp}{B}} is an equivalence.}
 
 %```agda
 \agda{
--- is-♯-equiv
---   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
--- is-♯-equiv f = ∀ {𝓠} {Q : Type 𝓠} → is-♯-codiscrete Q → is-equiv (precomp Q f)
 is-♯-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
 is-♯-equiv f = is-equiv (♯-map f)
 
--- is-modal-equiv←is-♯-equiv
---   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → {f : A → B}
---     → is-♯-equiv f → is-modal-equiv ♯-is-reflective-GSU f
--- is-modal-equiv←is-♯-equiv = homotopy-is-equiv λ where
---   x → modext♯→ (λ where .counit♯ → help x) where
---   help : ∀ {@♭ 𝓤} {@♭ 𝓥} {@♭ A : Set 𝓤} {@♭ B : Set 𝓥} {@♭ f : A → B}
---          (@♭ x : ⟨♯| A ⟩) → f (x .counit♯)
---          ＝ GPiClosure.○-map ♯-is-reflective-GSU (mod♯ f) x .counit♯
---   help {f = f} (mod♯ x)
---     = ap♭ counit♯ (sym (GPiClosure.○-map-β ♯-is-reflective-GSU {f = f} {a = x}))
+is-modal-equiv←is-♯-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → {f : A → B}
+    → is-♯-equiv f → is-modal-equiv ♯-is-reflective-GSU f
+is-modal-equiv←is-♯-equiv = homotopy-is-equiv λ where
+  x → modext♯ (λ where .counit♯ → help x) where
+  help : ∀ {@♭ 𝓤} {@♭ 𝓥} {@♭ A : Set 𝓤} {@♭ B : Set 𝓥} {@♭ f : A → B}
+         (@♭ x : ⟨♯| A ⟩) → f (x .counit♯)
+         ＝ GPiClosure.○-map ♯-is-reflective-GSU (mod♯ f) x .counit♯
+  help {f = f} (mod♯ x)
+    = ap♭ counit♯ (sym (GPiClosure.○-map-β ♯-is-reflective-GSU {f = f} {a = x}))
 }
 %```
 
@@ -308,21 +326,14 @@ is-♯-equiv f = is-equiv (♯-map f)
 
 %```agda
 \agda{
--- ε-is-♯-equivalence
---   : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♯-equiv (ε♭ {A = A})
--- ε-is-♯-equivalence Qcd = is-equiv←qiso
---   ( (λ f → is-equiv.bwd Qcd ∘ ♭⊣♯-transpose (mod♯ f))
---   , (λ f → funext→ (λ a → unap-equiv Qcd (is-equiv.ε Qcd _)))
---   , λ f → funext→ (λ where (mod♭ a) → unap-equiv Qcd (is-equiv.ε Qcd _)))
-
--- ε-is-♯-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♯-equiv (ε♭ {A = A})
--- ε-is-♯-equiv = is-equiv←qiso
---   ( (λ x → mod♯ (mod♭ (x .counit♯)))
---   , (λ x → modext♯→ (mod♯ (help x)))
---   , ~refl) where
---   help : ∀ {@♭ 𝓤} {@♭ A : Set 𝓤} (@♭ x : ⟨♯| ⟨♭| A ⟩ ⟩) →
---       mod♭ (♯-map ε♭ x .counit♯) ＝ x .counit♯
---   help (mod♯ (mod♭ x)) = refl
+ε-is-♯-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♯-equiv (ε♭ {A = A})
+ε-is-♯-equiv = is-equiv←qiso
+  ( (λ x → mod♯ (mod♭ (x .counit♯)))
+  , (λ x → modext♯ (mod♯ (help x)))
+  , ~refl) where
+  help : ∀ {@♭ 𝓤} {@♭ A : Set 𝓤} (@♭ x : ⟨♯| ⟨♭| A ⟩ ⟩) →
+      mod♭ (♯-map ε♭ x .counit♯) ＝ x .counit♯
+  help (mod♯ (mod♭ x)) = refl
 
 }
 %```
@@ -333,15 +344,11 @@ is-♯-equiv f = is-equiv (♯-map f)
 
 %```agda
 \agda{
--- is-♯-connected←is-♯-equiv
---   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
---     → is-♯-equiv f → is-♯-connected-map f
--- is-♯-connected←is-♯-equiv fs
---   =  Lex.is-connected-map←is-modal-equiv
---        ♯-is-reflective-GSU
---        ♯-is-Σ-closed
---        {!modext♯!}
---        (is-modal-equiv←is-♯-equiv fs)
+is-♯-connected←is-♯-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-♯-equiv f → is-♯-connected-map f
+is-♯-connected←is-♯-equiv fs
+  = ♯Lex.is-connected-map←is-modal-equiv (is-modal-equiv←is-♯-equiv fs)
 }
 %```
 }
@@ -354,16 +361,6 @@ is-♯-equiv f = is-equiv (♯-map f)
 
 %```agda
 \agda{
--- lifts-ε♭←is-♯-codiscrete
---   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
---     → @♭ is-♯-codiscrete-map f
---     → (∀ {@♭ 𝓠} {@♭ Q : Type 𝓠} → are-♭-orthogonal (ε♭ {𝓠}{Q}) f)
--- lifts-ε♭←is-♯-codiscrete {f = f} fcd {_}{Q}
---   = ♭-is-cartesian (power-hom ε♭ f) {!!}
---       (is-cartesian←orthogonal
---         (connected⊥modal ♯-is-reflective-GSU
---           {!!}
---           fcd))
 
 module _ {@♭ 𝓤}{@♭ A : Type 𝓤}{@♭ a : A} where
  J♭' : ∀ {@♭ 𝓥} (@♭ P : (@♭ x : A) → @♭(a ＝ x) → Type 𝓥)
@@ -377,6 +374,18 @@ module _ {@♭ 𝓤}{@♭ A : Type 𝓤}{@♭ a : A} where
 
 J♭'' : ∀ {@♭ 𝓤} → J-crisp-ind 𝓤 𝓤
 J♭'' P x p = J♭' P x _ p
+
+
+lifts-ε♭←is-♯-codiscrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+    → @♭ is-♯-codiscrete-map f
+    → (∀ {@♭ 𝓠} {@♭ Q : Type 𝓠} → are-♭-orthogonal (ε♭ {𝓠}{Q}) f)
+lifts-ε♭←is-♯-codiscrete {f = f} fcd {_}{Q}
+  = ♭-is-cartesian (power-hom ε♭ f) J♭''
+      (is-cartesian←orthogonal
+        (connected⊥modal ♯-is-reflective-GSU
+          (is-♯-connected←is-♯-equiv ε-is-♯-equiv)
+          fcd))
 
 }
 %```

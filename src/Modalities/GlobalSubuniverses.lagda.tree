@@ -12,6 +12,8 @@
 module Modalities.GlobalSubuniverses where
 
 open import Foundations.Prelude
+open import Foundations.Equaliser
+open import Foundations.Idempotent
 open import ufAxioms
 open import Foundations.BiinvertibleMap
 open import Modalities.Subuniverses
@@ -19,6 +21,11 @@ open import Core.Postwhisker
 open import Core.PiSection
 open import Ergonomics.Extensionality
 open import Ergonomics.Universal
+open Foundations.Idempotent.IdemWithFunExt global-funext
+open Foundations.Idempotent.QIdemWithFunExt global-funext
+open Foundations.Idempotent.CoherentIdemWithFunExt global-funext
+open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA
+open RetractWithFunExt global-funext
 }
 %```
 
@@ -140,7 +147,7 @@ record is-globally-reflective {α} (GS : GSU α) : Typeω where
   reflector A = mk-rfltor (○ A) η
                   (is-reflector←global has-is-reflector)
 
-is-reflective←global :  ∀ {α} {GS : GSU α} → is-globally-reflective GS
+is-reflective←global : ∀ {α} {GS : GSU α} → is-globally-reflective GS
                      → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
 is-reflective←global (mk-gReflectors ○ η has-is-reflector)
   = mk-reflective ○ η (is-reflector←global has-is-reflector)
@@ -198,6 +205,18 @@ module GReflectiveClosure {α} {GS : GSU α}
 
   module GΠ = GPiClosure Sref
   module GRS = is-globally-reflective Sref
+  open GRS
+
+  ∈S←retract
+    : ∀ {𝓦 𝓧}
+        {X : Type 𝓦} {Y : Type 𝓧}
+      → retract X Y
+      → Y ∈ S
+      → X ∈ S
+  ∈S←retract {X = X} {Y = Y} (s , r , rs) Yloc
+    = in-SubU←η-retraction (reflector X) (r ∘ ○-rec Yloc s , ret) where
+      ret : (r ∘ ○-rec Yloc s) ∘ η {A = X} ~ id
+      ret = r ◂ ○-rec-β Yloc s ~∙ rs
 
   Pullback∈S
     : ∀ {𝓦 𝓧 𝓨}
@@ -244,47 +263,56 @@ module GReflectiveClosure {α} {GS : GSU α}
 
 \p{
 As a corollary of pullback closure, we obtain that reflective global subuniverses
-are closed under forming identity types, fibers, retract types, and equivalence
-types.
+are closed under forming identity types, homotopies of functions, fibers, cartesian
+products, retract types, equivalence types, equalisers and sequential limits.
 }
 
 % ```
 \agda{
   ＝∈S
-    : ∀ {𝓦} {X : Type 𝓦}
+    : {𝓦 : Level} {X : Type 𝓦}
     → X ∈ S
     → ∀ {x y : X}
     → (x ＝ y) ∈ S
   ＝∈S loc = ＝-is-modal (is-reflective←global Sref) loc
 
+  ~∈S
+    : {𝓤 𝓥 : Level}
+      {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : Π A B}
+    → ((a : A) → B a ∈ S)
+    → (f ~ g) ∈ S
+  ~∈S Bloc
+    = GΠ.Π∈S (λ a → ＝∈S (Bloc a))
+
   fibre∈S
-    : ∀ {𝓦 𝓧}
-        {X : Type 𝓦} {Y : Type 𝓧}
-        (g : X → Y) (y : Y)
-      → X ∈ S
-      → Y ∈ S
-      → fibre g y ∈ S
-  fibre∈S {X = X} {Y = Y} g y Xloc Yloc
+    : {𝓦 𝓧 : Level}
+      {X : Type 𝓦} {Y : Type 𝓧}
+      (g : X → Y) (y : Y)
+    → X ∈ S
+    → Y ∈ S
+    → fibre g y ∈ S
+  fibre∈S g y Xloc Yloc
     = S-equiv
         (pullback-point≃fibre g y)
         (Pullback∈S (point y) g (GΠ.𝟙∈S) Xloc Yloc)
 
   ×∈S
-    : ∀ {𝓦 𝓧} {X : Type 𝓦} {Y : Type 𝓧}
+    : {𝓦 𝓧 : Level} {X : Type 𝓦} {Y : Type 𝓧}
     → X ∈ S
     → Y ∈ S
     → (X × Y) ∈ S
   ×∈S {X = X} {Y = Y} Xloc Yloc
     = S-equiv
-        (pullback-!≃×)
-        (Pullback∈S (! {A = X}) (! {A = Y}) Xloc Yloc GΠ.𝟙∈S)
+        (×≃pullback-! e⁻¹)
+        (Pullback∈S (!: X) (!: Y) Xloc Yloc GΠ.𝟙∈S)
 
   retract∈S
-    : ∀ {𝓦 𝓧}
-        {X : Type 𝓦} {Y : Type 𝓧}
-      → X ∈ S
-      → Y ∈ S
-      → (retract X Y) ∈ S
+    : {𝓦 𝓧 : Level}
+      {X : Type 𝓦} {Y : Type 𝓧}
+    → X ∈ S
+    → Y ∈ S
+    → (retract X Y) ∈ S
   retract∈S {X = X} {Y = Y} Xloc Yloc
     = S-equiv
         (retract≃fibre-∘)
@@ -300,7 +328,7 @@ types.
     → X ∈ S
     → Y ∈ S
     → biinv X Y ∈ S
-  biinv∈S {X = X} {Y = Y} Xloc Yloc
+  biinv∈S Xloc Yloc
     = S-equiv
         (biinv≃pullback e⁻¹)
         (Pullback∈S
@@ -316,8 +344,109 @@ types.
     → X ∈ S
     → Y ∈ S
     → (X ≃ Y) ∈ S
-  ≃∈S {X = X} {Y = Y} Xloc Yloc
+  ≃∈S Xloc Yloc
     = S-equiv (≃-rep-biinv e⁻¹) (biinv∈S Xloc Yloc)
+
+  Equaliser∈S
+    : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+      (f g : A → B)
+    → A ∈ S
+    → B ∈ S
+    → Equaliser f g ∈ S
+  Equaliser∈S f g Aloc Bloc
+    = S-equiv
+        (Equaliser≃Pullback-diagonal e⁻¹)
+        (Pullback∈S (λ b → (b , b)) (λ a → (f a , g a))
+          (Bloc)
+          (Aloc)
+          (×∈S Bloc Bloc))
+
+  Seq-lim∈S
+    : {𝓤 : Level}
+      (T : Tower 𝓤)
+    → (∀ n → Tower.Point T n ∈ S)
+    → Seq-lim T ∈ S
+  Seq-lim∈S T Tloc
+    = S-equiv
+        (Σ-ap-≃ (λ _ → funext≃))
+        (Equaliser∈S
+          (id)
+          (λ a n → Tower.decr T {n} (a (suc n)))
+          (GΠ.Π∈S Tloc)
+          (GΠ.Π∈S Tloc))
+}
+%```
+}
+
+\subtree[fre-ABCH]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Closure of reflective subuniverses under forming universes of retracts}
+\taxon{Theorem}
+
+%```
+\agda{
+  preidempotent-map∈S
+    : {𝓤 : Level} {X : Type 𝓤}
+    → X ∈ S
+    → preidempotent-map X ∈ S
+  preidempotent-map∈S {X = X} Xloc
+    = S-equiv
+        (Σ-ap-≃ (λ _ → funext≃))
+        (Equaliser∈S
+          (λ f → f ∘ f)
+          (id)
+          (GΠ.Π∈S (λ _ → Xloc))
+          (GΠ.Π∈S (λ _ → Xloc)))
+
+  total-Id∈S
+    : {𝓤 : Level} {X : Type 𝓤}
+    → X ∈ S
+    → total-Id X ∈ S
+  total-Id∈S = S-equiv (total-Id≃ e⁻¹)
+
+  quasicoherence-boundary∈S
+    : {𝓤 : Level} {X : Type 𝓤}
+    → X ∈ S
+    → quasicoherence-boundary X ∈ S
+  quasicoherence-boundary∈S {X = X} Xloc
+    = Equaliser∈S
+        (λ uv → uv .fst .fst)
+        (λ uv → uv .snd .fst)
+        (×∈S (total-Id∈S Xloc) (total-Id∈S Xloc))
+        (×∈S Xloc Xloc)
+
+  quasicoherence-data∈S
+    : {𝓤 : Level} {X : Type 𝓤}
+    → X ∈ S
+    → quasicoherence-data X ∈ S
+  quasicoherence-data∈S {X = X} Xloc
+    = S-equiv
+        (quasicoherence-data≃total-Id {X = X} e⁻¹)
+        (total-Id∈S (total-Id∈S Xloc))
+
+  qidempotent-map∈S
+    : {𝓤 : Level} {X : Type 𝓤}
+    → X ∈ S
+    → qidempotent-map X ∈ S
+  qidempotent-map∈S {X = X} Xloc
+    = S-equiv
+        (qidempotent-map≃pullback {X = X} e⁻¹)
+        (Pullback∈S
+          (λ (Q : X → quasicoherence-data X) → fst ∘ Q)
+          (quasicoherence-boundary-map {X = X})
+          (GΠ.Π∈S (λ _ → quasicoherence-data∈S Xloc))
+          (preidempotent-map∈S Xloc)
+          (GΠ.Π∈S (λ _ → quasicoherence-boundary∈S Xloc)))
+
+  Retracts∈S
+    : {𝓤 : Level} {A : Type 𝓤}
+    → A ∈ S
+    → Retracts 𝓤 A ∈ S
+  Retracts∈S {A = A} Aloc
+    = ∈S←retract
+        (retracts-qidempotent-map-retract)
+        (GΠ.ULift∈S (qidempotent-map∈S Aloc))
 }
 %```
 }
@@ -331,7 +460,7 @@ types.
 is-globally-Σ-closed : ∀ {α} (GS : GSU α) → Typeω
 is-globally-Σ-closed G
   = ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-    → A ∈ S → (∀ a → B a ∈ S)
+    → A ∈ S → ((a : A) → B a ∈ S)
     → Σ A B ∈ S where open GSU G
 
 is-Σ-closed←globally : ∀ {α} (GS : GSU α)
@@ -342,6 +471,7 @@ is-Σ-closed←globally GS sc = sc
 }
 %```
 }
+
 \subtree[stt-007D]{
 \taxon{Theorem}
 \title{Induction for sigma closed [GRSU](stt-007C)}

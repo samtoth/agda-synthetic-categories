@@ -1,0 +1,197 @@
+\title{Flat as a lex modality}
+\taxon{Module}
+\date{2026-03-16}
+
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Modalities.Cohesion.FlatLex where
+
+open import Foundations.Prelude
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.Sharp
+}
+%```
+
+
+\subtree[tot-000C]{
+\title{Crisp identity induction}
+
+\p{In \ref{stt-0057} we construct (weak) identity induction, and remark there
+is a stronger principal which follows from the adjoint relationship
+#{\flat \dashv \sharp}.}
+
+\p{To be precise, we construct the following induction principal: For crisp
+types #{A}, and crisp families
+#{P : \Pi_{a :^\flat A} (p :^{\flat} a = b) \to \UU}, there is a map}
+
+##{\flat P(a,\refl) \to \Pi_{a :^\flat A} (p :^{\flat} a = b) \to P(a,p)}
+
+\p{This follows from the fact that we can use regular identity induction into
+the sharp motive, and then transpose accross the adjunction.}
+
+%```agda
+\agda{
+strong-J♭ : ∀ {@♭ 𝓤 𝓥} → J-crisp-ind 𝓤 𝓥
+strong-J♭ {𝓤}{𝓥}{A}{a} P x p = help x p .counit♯ where
+   P' : (b : A) → (p : a ＝ b) → Type 𝓥
+   P' b p = ⟨♯| P b p ⟩
+
+   help : (x : P a refl) → {b : A} → (p : a ＝ b) → P' b p
+   help x p .counit♯ = (J P' (mod♯ x) p) .counit♯
+}
+%```
+}
+
+
+\subtree[stt-0056]{
+\title{Flat is lex (Flat extensionlality)}
+\taxon{Theorem}
+
+\p{We can define a retraction of the function
+#{\mod_{\flat}(a) = \mod_{\flat}(b) \to \modflat{a = b}} defined in
+\ref{stt-0055} by using weak crisp identity induction.}
+
+%```agda
+\agda{
+modext♭ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+       → mod♭ a ＝ mod♭ b
+       → ⟨♭| a ＝ b ⟩
+modext♭ refl = mod♭ refl
+
+_ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+       → ⟨♭| a ＝ b ⟩
+       → mod♭ a ＝ mod♭ b
+_ = λ { (mod♭ p) → J♭ (λ b' p₁ → _ ＝ mod♭ b') refl p }
+
+modext♭-retraction : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+                   → retract-witness (modext♭ {a = a} {b}) mapply♭
+modext♭-retraction refl = refl
+}
+%```
+
+
+% TODO: Maybe the following is relavant, but needs to be adjusted to reflect
+% sharp modality
+
+% \p{A modality is lex when it preserves identity types, i.e. \code{mod♭＝} is
+% an equivalence. Whilst we have given a retraction, it is not possible to show
+% that the map is a section. To see the issue, we carefully construct the
+% motive over which we perform induction:}
+%
+% \p{For a crisp type #{A}, and #{a,b} a pair of crisp elements of #{A}, we need
+% to show that for all #{p :^\flat a = b},
+% #{\textrm{unmod}_{\flat}(\mod_{\flat}(p)) = p}. To apply induction, we
+% need to give a motive of type #{M : \Pi_{(y :^\flat A)} \Pi_{(p : a = y)} \UU},
+% such that #{M(b,p) \equiv (\textrm{unmod}_{\flat}(\mod_{\flat}(p)) = p)}. But
+% this is already ill-typed for a general #{p} as #{\mod_{\flat}} requires a crisp
+% identification.}
+%
+% \p{The above argument gives a syntactic heuristic for why weak crisp induction
+% does not suffice, but in an [unpublished note](DG21), Gratzer shows that
+% strong crisp induction is independent of MTT. One sufficient condition for a
+% modality to have strong crisp induction is that it has a right adjoint. This
+% will be the case in most modalities of interest at least in this formalisation,
+% in particular in \em{spatial type theory} as introduced in
+% \citek{shulmanRealCohesive2017}.}
+
+%```agda
+\agda{
+modext♭-section : ∀ {@♭ 𝓜} {@♭ A : Type 𝓜} → {@♭ a b : A}
+    → section-witness (modext♭ {a = a} {b}) mapply♭
+modext♭-section (mod♭ p)
+  = strong-J♭ (λ _ p' → modext♭ (mapply♭ (mod♭ p')) ＝ (mod♭ p')) refl p
+
+
+mapply♭-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+                   → is-equiv (mapply♭ {a = a}{b})
+mapply♭-is-equiv {A = A}{a}{b} = is-equiv←qiso qiso where
+  qiso : quasi-iso mapply♭
+  qiso .fst = modext♭
+  qiso .snd .fst = modext♭-section
+  qiso .snd .snd = modext♭-retraction
+}
+%```
+}
+
+\subtree[stt-0058]{
+\taxon{Theorem}
+\title{Flat preserve pullbacks}
+
+\p{There are numerous ways to define the crisp pullback. Given crisp types
+#{A,B} and #{C}, and crisp maps #{f :^\flat A \to C} and #{g :^\flat B \to C},
+we define the following notions of crisp pullbacks:}
+
+\ol{
+\li{The type #{\modflat{A \times_C B}} (using the [standard pullback](stt-003J)
+)}
+\li{The type #{A \times_{C}^{\flat} B}, which we define as
+  #{\Sigma_{(a :^\flat A)}\Sigma_{(b :^\flat B)} \modflat{f(a) = g(b)}}
+using [modal dependent sums](stt-0053)}
+\li{The type #{\modflat{A} \times_{\modflat{C}} \modflat{B}} where the maps are given by
+the [functorial action of #{\flat}](stt-0051)}
+}
+
+\p{We can immediately see that (1) and (2) are equivalent:}
+
+
+%```agda
+\agda{
+Pullback♭ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+               {@♭ C : Type 𝓦}
+               (@♭ f : A → C) (@♭ g : B → C)
+             → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Pullback♭ {A = A} {B} {C} f g = Σ[♭ x ∶ A ] Σ[♭ y ∶ B ] ⟨♭| f x ＝ g y ⟩
+
+
+♭-pb : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+              {@♭ C : Type 𝓦}
+              {@♭ f : A → C} {@♭ g : B → C}
+            → Pullback♭ f g → ⟨♭| Pullback f g ⟩
+♭-pb (mod♭ a , mod♭ b , mod♭ p) = mod♭ (a , b , p)
+
+♭-pb' : ∀  {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+              {@♭ C : Type 𝓦}
+              {@♭ f : A → C} {@♭ g : B → C}
+            → ⟨♭| Pullback f g ⟩ → Pullback♭ f g
+♭-pb' (mod♭ (a , b , p)) = (mod♭ a , mod♭ b , mod♭ p)
+
+
+♭-pres-pb : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+              {@♭ C : Type 𝓦}
+              {@♭ f : A → C} {@♭ g : B → C}
+            → Pullback♭ f g ≃ ⟨♭| Pullback f g ⟩
+♭-pres-pb {f = f} {g} ._≃_.fwd = ♭-pb
+♭-pres-pb {f = f} {g} ._≃_.has-is-eqv .is-equiv.qiso .fst = ♭-pb'
+♭-pres-pb {f = f} {g} ._≃_.has-is-eqv .is-equiv.qiso .snd .fst
+  (mod♭ a , mod♭ b , mod♭ p) = refl
+♭-pres-pb {f = f} {g} ._≃_.has-is-eqv .is-equiv.qiso .snd .snd
+  (mod♭ x) = refl
+♭-pres-pb {f = f} {g} ._≃_.has-is-eqv .is-equiv.coherent
+  (mod♭ x , mod♭ y , mod♭ p) = refl
+}
+%```
+
+\p{It follows from modal extensionality that (1),(2) and (3) are
+    all equivalent.}
+
+%```agda
+\agda{
+♭-pb-repr3 : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+         {@♭ C : Type 𝓦}
+         (@♭ f : A → C) (@♭ g : B → C)
+       → Pullback (♭-map f) (♭-map g) ≃ Pullback♭ f g
+♭-pb-repr3 f g = equiv←qiso lem where
+  lem : Pullback (♭-map f) (♭-map g) ≅ Pullback♭ f g
+  lem ._≅_.fwd (mod♭ a , mod♭ b , p) = (mod♭ a , mod♭ b , modext♭ p)
+  lem ._≅_.fwd-iso .fst (mod♭ a , mod♭ b , p) = (mod♭ a , mod♭ b , mapply♭ p)
+  lem ._≅_.fwd-iso .snd .fst (mod♭ a , mod♭ b , p)
+    = Σ-path→ (refl , Σ-path→ (refl , modext♭-retraction p))
+  lem ._≅_.fwd-iso .snd .snd (mod♭ a , mod♭ b , p)
+    = Σ-path→ (refl , (Σ-path→ (refl , modext♭-section p)))
+}
+%```
+}

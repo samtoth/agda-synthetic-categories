@@ -9,16 +9,19 @@
 module Modalities.Cohesion.Continuity where
 
 open import Foundations.Prelude
+open import ufAxioms
 
 open import Modalities.GlobalSubuniverses
 open import Modalities.ModalMaps
 open import Modalities.Lex
 
 open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
 open import Modalities.Cohesion.Sharp
 open import Modalities.Cohesion.CrispLifts
 
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.PullbackPower
 open import Core.Orthogonal
 }
@@ -165,11 +168,11 @@ family-separates G = ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ 
                      → is-equiv f
 
 large-family-separates
-  : ∀ {@♭ α β : Level → Level} {@♭ I : ∀ 𝓤 → Type (α 𝓤)}
+  : ∀ {@♭ α β : Level → Level} (@♭ I : ∀ 𝓤 → Type (α 𝓤))
     → (@♭ G : ∀ {𝓤} → I 𝓤 → Type (β 𝓤)) → Typeω
-large-family-separates {I = I} G
+large-family-separates I G
   = ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
-    → is-equiv (♭-map f)
+    → @♭ is-equiv (♭-map f)
     → ((∀ {@♭ 𝓤} {@♭ i : I 𝓤} → is-equiv (♭-map (postcomp (G i) f))))
     → is-equiv f
 }
@@ -208,13 +211,53 @@ assumption that #{G_i} detects continuity.}
 \end{tikzcd}
 }
 
-\p{We hope to show the left square is a pullback, and so by the pullback pasting
-lemma, it suffices to show that the right square and total recrangle are
-pullbacks. The right-most square is an equivalence of arrows (by the
-#{\flat \dashv \sharp} adjunction), and hence a pullback. For the total square,
-notice that both the leftmost and rightmost vertical maps are equivalences by
-assumption, and any square with two opposing faces equivalences, is cartesian.}
+\p{We hope to show the left square is a pullback. The right-most square is an
+equivalence of arrows (by the #{\flat \dashv \sharp} adjunction), and because
+the rightmost map is an equivalence (by assumption), so is the middle map.
+Notice that the leftmost vertical map is an equivalences by assumption, and any
+square with two opposing faces being equivalences is cartesian.}
 }
+
+%```agda
+\agda{
+large-family-separates←detects-continuity
+  : ∀ {@♭ α β : Level → Level} {@♭ I : ∀ 𝓤 → Type (α 𝓤)}
+    → (@♭ G : ∀ {𝓤} → I 𝓤 → Type (β 𝓤))
+    → large-detects-continuity I G
+    → large-family-separates I G
+large-family-separates←detects-continuity {I = I} G gc f f♭eq fsep
+  = is-equiv←is-modal←is-connected ♯-is-reflective-GSU ♯-is-Σ-closed
+      f-is-♯-codisc
+      (is-♯-connected←is-♯-equiv (is-♯-equiv←is-♭-equiv f♭eq)) where
+  module _  {@♭ 𝓤} {@♭ i : I 𝓤} where
+    lsquare : Arrow-map (♭-map (postcomp (G i) (Arrow.f f)))
+                        (♭-map (postcomp ⟨♭| G i ⟩ (Arrow.f f)))
+    lsquare = ♭Square (power-hom (ε♭ {A = G i}) (Arrow.f f))
+
+    rsquare : Arrow-map (♭-map (postcomp ⟨♭| G i ⟩ (Arrow.f f)))
+                        (♭-map (postcomp (G i) (♯-map (Arrow.f f))))
+    rsquare .Arrow-Π.top = global-transpose
+    rsquare .Arrow-Π.bot = global-transpose
+    rsquare .Arrow-Π.comm (mod♭ f) = refl
+
+    rsquare-is-equiv : is-Arrow-equiv rsquare
+    rsquare-is-equiv .fst = global-transpose-is-equiv
+    rsquare-is-equiv .snd = global-transpose-is-equiv
+
+    lemma : is-equiv (♭-map (postcomp ⟨♭| G i ⟩ (Arrow.f f)))
+    lemma = is-equiv←Arrow-equiv⁻¹ {F = rsquare} rsquare-is-equiv
+                                   (♭-map-is-equiv
+                                     (postcomp-equiv
+                                       {f = ♯-map (f .Arrow.f)}
+                                       (is-♯-equiv←is-♭-equiv f♭eq)))
+
+    lsquare-cart : is-cartesian lsquare
+    lsquare-cart = is-cartesian←dom+cod-is-equiv lsquare fsep lemma
+
+  f-is-♯-codisc : is-♯-codiscrete-map (Arrow.f f)
+  f-is-♯-codisc = gc f lsquare-cart
+}
+%```
 }
 
 

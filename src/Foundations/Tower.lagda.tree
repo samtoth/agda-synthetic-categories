@@ -1,5 +1,6 @@
 \title{Towers}
 \taxon{Module}
+\contributor{samueltoth}
 
 \import{stt-macros}
 
@@ -12,6 +13,8 @@ open import Foundations.Sigma
 open import Foundations.Nat
 open import Foundations.Functions
 open import Foundations.Homotopy
+open import Foundations.CoherentIsomorphism
+open import Foundations.QuasiIsomorphism
 open import Foundations.Identity
 }
 %```
@@ -63,24 +66,94 @@ record Tower-map {𝓤 𝓥 : Level} (A : Tower 𝓤) (B : Tower 𝓥) : Type (�
   field
     map  : {n : ℕ} → A.Point n → B.Point n
     comm : {n : ℕ} → B.decr ∘ map {suc n} ~ map ∘ A.decr
+}
+%```
+}
 
-comp-Tower-map
+\subtree[fre-0090]{
+\title{Composing maps of towers}
+\taxon{Construction}
+
+\p{
+We compose maps of towers in the obvious way by composing their components and
+pasting together squares.
+}
+
+%```agda
+\agda{
+comp-tower-map
   : {𝓤 𝓥 𝓦 : Level}
     {A : Tower 𝓤} {B : Tower 𝓥} {C : Tower 𝓦}
   → Tower-map B C
   → Tower-map A B
   → Tower-map A C
-comp-Tower-map F G .Tower-map.map
+comp-tower-map F G .Tower-map.map
   = Tower-map.map F ∘ Tower-map.map G
-comp-Tower-map F G .Tower-map.comm
+comp-tower-map F G .Tower-map.comm
   = Tower-map.comm F ▸ Tower-map.map G
   ~∙ Tower-map.map F ◂ Tower-map.comm G
 
-id-Tower-map
+id-tower-map
   : ∀ {𝓤} {A : Tower 𝓤}
   → Tower-map A A
-id-Tower-map .Tower-map.map = id
-id-Tower-map .Tower-map.comm = ~refl
+id-tower-map .Tower-map.map = id
+id-tower-map .Tower-map.comm = ~refl
+}
+%```
+}
+
+\subtree[fre-0091]{
+\title{Homotopies of maps of towers}
+\taxon{Definition}
+
+\p{
+Given a pair of maps of towers #{f, g : A \to B}, we define a \em{homotopy}
+#{f \sim g} to be a homotopy at each component #{f_n \sim g_n} together
+with a coherence condition between the squares of each maps.
+}
+
+%```agda
+\agda{
+tower-map~ : ∀ {𝓤 𝓥} {S : Tower 𝓤} {S' : Tower 𝓥}
+              (F G : Tower-map S S')
+            → Type (𝓤 ⊔ 𝓥)
+tower-map~ F G = Σ[ α ∶ (∀ {n} → map F {n} ~ map G)]
+                  (∀ {n} →  comm F ~∙ α ▸ A.decr G
+                       ~ (B.decr F ◂ α) ~∙ comm G {n})
+  where open Tower-map
+}
+%```
+}
+
+
+\subtree[fre-008X]{
+\title{Equivalences of towers}
+\taxon{Definition}
+\date{2025-08-14}
+
+\p{
+A map of towers is an \em{equivalence} of sequences when each component is an
+equivalence.
+}
+
+%```agda
+\agda{
+is-tower-equiv : ∀ {𝓤 𝓥} {A : Tower 𝓤} {B : Tower 𝓥}
+                  (F : Tower-map A B) → Type (𝓤 ⊔ 𝓥)
+is-tower-equiv F = ∀ n → is-equiv (F .Tower-map.map {n})
+
+
+tower-map-inv←equiv : ∀ {𝓤 𝓥} {A : Tower 𝓤} {B : Tower 𝓥}
+                      {F : Tower-map A B} (Feq : is-tower-equiv F)
+                    → Tower-map B A
+tower-map-inv←equiv {A = A}{B}{F} Feq = imap where
+  open Tower-map
+  module F {n} = is-equiv (Feq n)
+  imap : Tower-map B A
+  imap .map = F.bwd
+  imap .comm = (F.η ~⁻¹) ▸ Tower.decr A ▸ F.bwd
+             ~∙ F.bwd ◂ (  (comm F ~⁻¹) ▸ F.bwd
+                        ~∙ Tower.decr B ◂ F.ε)
 }
 %```
 }
@@ -99,10 +172,10 @@ indefinitely.
 
 %```agda
 \agda{
-Tower←endomap
-  : ∀ {𝓤} {X : Type 𝓤}
-  → (X → X) → Tower 𝓤
-Tower←endomap {X = X} f = mk-tower (λ _ → X) f
+tower←endomap
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (A → A) → Tower 𝓤
+tower←endomap {A = A} f = mk-tower (λ _ → A) f
 }
 %```
 }
@@ -121,9 +194,51 @@ identity function at #{A} indefinitely.
 
 %```agda
 \agda{
-const-Tower
+const-tower
   : ∀ {𝓤} → Type 𝓤 → Tower 𝓤
-const-Tower A = Tower←endomap {X = A} id
+const-tower A = tower←endomap {A = A} id
+}
+%```
+}
+
+\subtree[fre-0088]{
+\title{Cones over towers}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Seq-cone {𝓤 𝓥} (S : Tower 𝓤) (Apex : Type 𝓥)
+         : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-seq-cone
+  open Tower S
+  field
+    π : ∀ {n} → Apex → Point n
+    comm : ∀ {n} → decr ∘ π ~ π {n}
+}
+%```
+}
+
+\subtree[fre-0089]{
+\title{Cones as maps of towers}
+\taxon{Theorem}
+
+\p{A cone over a tower #{B} at apex #{A} is a map #{\Delta_A \to B}}
+
+%```agda
+\agda{
+tower-map←cone : ∀ {𝓤 𝓥} {S : Tower 𝓤} {Apex : Type 𝓥}
+               → Seq-cone S Apex
+               → Tower-map (const-tower Apex) S
+tower-map←cone (mk-seq-cone π comm) = mk-tower-map π comm
+
+tower-map≃cone : ∀ {𝓤 𝓥} {S : Tower 𝓤} {Apex : Type 𝓥}
+               → Seq-cone S Apex
+               ≃ Tower-map (const-tower Apex) S
+tower-map≃cone = mk≃ _ (is-equiv←qiso qiso) where
+  qiso : quasi-iso tower-map←cone
+  qiso .fst (mk-tower-map map comm) = mk-seq-cone map comm
+  qiso .snd .fst (mk-seq-cone π comm) = refl
+  qiso .snd .snd (mk-tower-map map comm) = refl
 }
 %```
 }

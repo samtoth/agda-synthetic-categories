@@ -15,7 +15,7 @@ EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagd
 help:
 	@echo "Available targets:"
 	@echo "  make build-forest               # Generate Everything.agda + Agda/Forester trees/html"
-	@echo "  make sync-forest-src            # Copy source .lagda.tree files into trees/stt/autogen"
+	@echo "  make sync-forest-src            # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
 	@echo "  make typecheck                  # Generate Everything.agda and typecheck with agda"
 	@echo "  make watch-agda                 # Rebuild Agda output when src/ changes"
 	@echo "  make watch-forest [PORT=<port>] # Run forester watch server (default: 1313)"
@@ -57,7 +57,7 @@ sync-forest-src:
 		cp "$$file" "$$dest"; \
 	done
 
-build-forest: $(EVERYTHING_FILE) prepare-agda-datadir sync-forest-src
+build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
 	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" "$(EVERYTHING_FILE)"
 

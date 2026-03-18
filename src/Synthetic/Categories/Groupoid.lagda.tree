@@ -1,0 +1,146 @@
+\date{2026-03-18}
+\title{Groupoids}
+\author{samueltoth}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Groupoid
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import ufAxioms
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+%```
+
+
+\subtree[stt-00B6]{
+\title{Groupoids}
+\taxon{Definition}
+
+\p{A type is a \em{groupoid}, or \em{simplicially discrete}, if it is local with
+respect to #{\Delta^1}. This forms a sigma closed reflective subuniverse.}
+
+%```agda
+\agda{
+is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-groupoid = is-null (point Δ¹)
+
+Grpd-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Grpd-SubU = Null-SubU (point Δ¹) _
+
+Grpd-GSU : GSU (_⊔ 𝓘)
+Grpd-GSU = Null-GSU (point Δ¹)
+
+Grpd-is-globally-reflective
+  : is-globally-reflective Grpd-GSU
+Grpd-is-globally-reflective = Null-globally-reflective
+
+open GSU Grpd-GSU public using () renaming (S-equiv to is-groupoid←equiv)
+
+open GReflectiveClosure Grpd-is-globally-reflective public using () renaming
+  ( Π∈S to Π-is-groupoid
+  ; ULift∈S to ULift-is-groupoid
+  ; 𝟙∈S to 𝟙-is-groupoid
+  ; ∈S←is-singleton to is-groupoid←is-singleton
+  ; ∈S←retract to is-groupoid←retract
+  ; Pullback∈S to Pullback-is-groupoid
+  ; fibre∈S to fibre-is-groupoid
+  ; ×∈S to ×-is-groupoid
+  ; ＝∈S to ＝-is-groupoid
+  ; ~∈S to ~-is-groupoid
+  ; retract∈S to retract-is-groupoid
+  ; biinv∈S to biinv-is-groupoid
+  ; ≃∈S to ≃-is-groupoid
+  ; Equaliser∈S to Equaliser-is-groupoid
+  ; Seq-lim∈S to Seq-lim-is-groupoid
+  ; preidempotent-map∈S to preidempotent-map-is-groupoid
+  ; qidempotent-map∈S to qidempotent-map-is-groupoid
+  ; Retracts∈S to Retracts-is-groupoid)
+
+Σ-is-groupoid = Null-globally-Σ-closed
+
+module Grpd where
+
+  open GSU Grpd-GSU public using ()
+  open GRSUInduction Grpd-is-globally-reflective Null-globally-Σ-closed public
+  open GReflectiveClosure Grpd-is-globally-reflective public
+  open is-globally-reflective Grpd-is-globally-reflective public
+}
+%```
+
+%```agda
+\agda{
+Hom←Id
+  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
+Hom←Id refl = idH _
+
+Hom-gpd
+  : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A
+  → ∀ {a b} → is-equiv (Hom←Id {_}{A}{a}{b})
+Hom-gpd gpd {a} {b}
+  = is-equiv~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
+      (λ {refl → refl})
+      (is-equiv⁻¹ (_≃_.has-is-eqv Homᵈ-repr≃))
+      (is-equiv-∘ {f = g} {g = f}
+        (total-is-equiv←fst-is-equiv (gpd tt))
+        (is-equiv⁻¹ (Σ-＝singl ._≃_.has-is-eqv))) where
+  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+  f = _≃_.bwd Σ-＝singl
+  g : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
+  g (a , p , q) = (const _ _ a , p , q)
+}
+%```
+}
+
+
+\subtree[stt-00B7]{
+\title{Groupoids are left(right)-local types}
+\taxon{Theorem}
+
+\p{A type is a groupoid iff it is local with respect to the map #{1 \to \Delta^1}
+which picks out the left endpoint iff it is local to the map that picks out the
+right endpoint.}
+
+%```agda
+\agda{
+is-left-local : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-left-local = is-local (λ (_ _ : 𝟙) → i0)
+
+is-groupoid←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left-local A → is-groupoid A
+is-groupoid←is-left {_}{A} il x
+  = is-equiv~∘ lem (is-equiv⁻¹ (il x))
+                   point-is-equiv where
+  open is-equiv (il x)
+
+  lem : const A Δ¹ ~ bwd ∘ point
+  lem = il x ◂eqv ((ε ▸ point) ~⁻¹)
+
+
+is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left-local A
+is-left←is-groupoid {_} {A} gp x
+  =  is-equiv~∘ H point-is-equiv (is-equiv⁻¹ (gp x)) where
+  open is-equiv (gp x)
+
+  H : precomp A (point i0) ~ point ∘ bwd
+  H = ((point ◂ η) ~⁻¹) ▸eqv (gp x)
+}
+%```
+}

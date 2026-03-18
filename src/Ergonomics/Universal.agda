@@ -85,7 +85,7 @@ instance
     : ∀ {𝓤} {A : Type 𝓤}
       → Universal (∅ → A) lzero
   Universal-⊥ .methods = 𝟙
-  Universal-⊥ .from _  = ¡_
+  Universal-⊥ .from _  = ¡
   Universal-⊥ .from-is-equiv = K¡-𝟙-is-equiv
 
 

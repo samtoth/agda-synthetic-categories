@@ -7,6 +7,8 @@ primitive
   primEraseEquality : {𝓤 : Level} {A : Type 𝓤} {x y : A} → x ＝ y → x ＝ y
 
 open import Foundations.FunExt
+open import Foundations.Retract
+open import Foundations.Idempotent
 
 
 postulate
@@ -78,6 +80,11 @@ postulate
 
 
 open WithGlobalUnivalence UA public
+open Foundations.Idempotent.IdemWithFunExt global-funext public
+open Foundations.Idempotent.QIdemWithFunExt global-funext public
+open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
+open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
+open RetractWithFunExt global-funext public
 
 import Foundations.Straightening
 

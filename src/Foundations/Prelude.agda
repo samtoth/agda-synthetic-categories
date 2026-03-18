@@ -45,6 +45,7 @@ open import Foundations.CanonicalPullbacks public
 open import Foundations.PullbackPath public
 open import Foundations.Fork public
 open import Foundations.Equaliser public
+open import Foundations.CanonicalEqualiser public
 open import Foundations.Tower public
 open import Foundations.CanonicalSeqLim public
 open import Foundations.PathSplit public

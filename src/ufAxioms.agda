@@ -33,6 +33,10 @@ open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
 open import Foundations.NullHomotopy global-funext public
+open Foundations.Idempotent.IdemWithFunExt global-funext public
+open Foundations.Idempotent.QIdemWithFunExt global-funext public
+open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
+open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
 open HE public
@@ -80,11 +84,7 @@ postulate
 
 
 open WithGlobalUnivalence UA public
-open Foundations.Idempotent.IdemWithFunExt global-funext public
-open Foundations.Idempotent.QIdemWithFunExt global-funext public
-open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
 open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
-open RetractWithFunExt global-funext public
 
 import Foundations.Straightening
 

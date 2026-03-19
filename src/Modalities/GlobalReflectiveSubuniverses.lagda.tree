@@ -12,6 +12,8 @@ module Modalities.GlobalReflectiveSubuniverses where
 open import Foundations.Prelude
 open import Foundations.CanonicalEqualiser
 open import Foundations.Idempotent
+open import Foundations.UnitUP
+open import Foundations.SingletonClosure
 open import ufAxioms
 open import Foundations.BiinvertibleMap
 open import Modalities.Subuniverses
@@ -79,6 +81,43 @@ is-global-reflector-subtype-equiv {A = A} {○A} {η} eq rfl = lem where
   lem : is-global-reflector _ A ○A η
   lem .is-global-reflector.○∈S = eq _ .fst ○∈S
   lem .is-global-reflector.reflects QK = reflects (eq _ .snd QK)
+
+record gReflector {α} (GS : gSubU α) {𝓤} (A : Type 𝓤) : Typeω where
+  constructor mk-greflector
+  no-eta-equality
+  field
+    ○ : Type 𝓤
+    η : A → ○
+    has-is-global-reflector : is-global-reflector GS A ○ η
+
+  module R = is-global-reflector has-is-global-reflector
+  open R public
+
+Reflector←gReflector
+  : ∀ {α 𝓤} {GS : gSubU α} {A : Type 𝓤}
+  → gReflector GS A
+  → Reflector (SubU←global GS) A
+Reflector←gReflector G
+  = mk-rfltor (G .gReflector.○)
+      (G .gReflector.η)
+      (is-reflector←global (G .gReflector.has-is-global-reflector))
+
+module gReflectorMap
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (RA : gReflector GS A)
+    (RB : gReflector GS B) where
+  module A = gReflector RA
+  module B = gReflector RB
+
+  ○₁
+    : (A → B) → A.○ → B.○
+  ○₁ f = A.○-rec B.○∈S (B.η ∘ f)
+
+  ○₁-β
+    : (f : A → B)
+    → ○₁ f ∘ A.η ~ B.η ∘ f
+  ○₁-β f = A.○-rec-β B.○∈S (B.η ∘ f)
 }
 %```
 }
@@ -143,6 +182,15 @@ record gRSubU (α : Level → Level) : Typeω where
 is-reflective←gRSubU : ∀ {α} (RS : gRSubU α)
                      → ∀ {𝓤} → is-reflective (SubU←global (RS .gRSubU.GS) {𝓤})
 is-reflective←gRSubU RS = is-reflective←global (RS .gRSubU.has-is-globally-reflective)
+
+gReflector←gRSubU
+  : ∀ {α 𝓤} (RS : gRSubU α) (A : Type 𝓤)
+  → gReflector (RS .gRSubU.GS) A
+gReflector←gRSubU RS A
+  = mk-greflector
+      (RS .gRSubU.○ A)
+      (RS .gRSubU.η)
+      (RS .gRSubU.has-is-reflector)
 }
 %```
 }
@@ -487,6 +535,99 @@ that #{\textsf{Retracts}_{\UU}(A)}
 %```
 }
 
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{The reflected map of a global subuniverse equivalence is an equivalence}
+
+%```agda
+\agda{
+module gRSubUEquivMap {α} (RS : gRSubU α) where
+  open gRSubU RS
+
+  ○₁
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (A → B)
+    → ○ A → ○ B
+  ○₁ f = ○-rec ○∈S (η ∘ f)
+
+  ○₁-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → ○₁ f ∘ η ~ η ∘ f
+  ○₁-β f = ○-rec-β ○∈S (η ∘ f)
+
+  ○₁-id
+    : ∀ {𝓤} {A : Type 𝓤}
+    → ○₁ (id {A = A}) ~ id
+  ○₁-id {A = A}
+    = ▸η.bwd (○₁-β (id {A = A}))
+
+  ○₁-∘
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (g : B → C) (f : A → B)
+    → ○₁ (g ∘ f) ~ ○₁ g ∘ ○₁ f
+  ○₁-∘ {A = A} g f
+    = ▸η.bwd λ a
+    → ○₁ (g ∘ f) (η a)     ＝⟨ ○₁-β (g ∘ f) a ⟩
+      η (g (f a))           ＝⟨ sym (○₁-β g (f a)) ⟩
+      ○₁ g (η (f a))        ＝⟨ sym (ap (○₁ g) (○₁-β f a)) ⟩
+      ○₁ g (○₁ f (η a))     ∎
+
+  section-○₁
+    : ∀ {𝓤 𝓥}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+    → section f
+    → section (○₁ f)
+  section-○₁ {f = f} (s , sec)
+    = ○₁ s
+    , λ y
+      → ○₁ f (○₁ s y)   ＝⟨ sym (○₁-∘ f s y) ⟩
+        ○₁ (f ∘ s) y     ＝⟨ ap (λ h → ○₁ h y) (funext→ sec) ⟩
+        ○₁ id y          ＝⟨ ○₁-id y ⟩
+        y                ∎
+
+  retraction-○₁
+    : ∀ {𝓤 𝓥}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+    → retraction f
+    → retraction (○₁ f)
+  retraction-○₁ {f = f} (r , ret)
+    = ○₁ r
+    , λ y
+      → ○₁ r (○₁ f y)   ＝⟨ sym (○₁-∘ r f y) ⟩
+        ○₁ (r ∘ f) y     ＝⟨ ap (λ h → ○₁ h y) (funext→ ret) ⟩
+        ○₁ id y          ＝⟨ ○₁-id y ⟩
+        y                ∎
+}
+%```
+}
+
+\subtree[fre-0614]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Reflections of unit types are contractible}
+
+%```agda
+\agda{
+module _ {α} (RS : gRSubU α) where
+  open gRSubU RS
+  open ReflectiveClosureᵍ RS
+
+  ○𝟙-is-single : is-singleton (○ 𝟙)
+  ○𝟙-is-single
+    = is-single←equiv-to-single
+        (mk≃ (η {A = 𝟙}) (η-is-equiv←in-SubU (reflector 𝟙) 𝟙∈S))
+        𝟙-is-singleton
+}
+%```
+}
+
 \subtree[stt-007D]{
 \taxon{Theorem}
 \title{Induction for #{\Sigma}-closed [global reflective subuniverses](stt-007C)}
@@ -517,6 +658,7 @@ module gRSubUInduction {α}
         (RS : gRSubU α)
         (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
   open gRSubU RS
+  open gRSubUEquivMap RS
 
   opaque
     ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)

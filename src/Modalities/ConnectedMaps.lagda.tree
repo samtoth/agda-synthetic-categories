@@ -9,13 +9,10 @@
 \agda{
 module Modalities.ConnectedMaps where
 
+open import ufAxioms
 open import Foundations.Prelude
 open import Foundations.SingletonClosure
 open import Foundations.EquivOfSingleton
-open import ufAxioms using (global-funext)
-open import Foundations.NullHomotopy global-funext
-open import Foundations.CompositionFibres global-funext
-open import Foundations.CompositionEquiv global-funext
 open import Core.Surjection
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -24,8 +21,11 @@ open import Modalities.ModalMaps
 open import Modalities.ModalEquivalences
 open import Modalities.Instances.Truncation
 open import Core.Arrow
+open import Core.ArrowRetract
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 open import Core.ArrowEquiv
+open import Core.CocartesianSquare
 }
 %```
 
@@ -172,6 +172,102 @@ up-gconnected-map←orthogonal-map K f orth {U = U} U∈K
   fst∈K b = gSubU.∈S←equiv K (fibre-straighten U b e⁻¹) (U∈K b)
 
   eq = precomp-Π-straighten-Arrow-equiv U f
+}
+%```
+}
+
+\subtree{
+\date{2026-03-20}
+\author{fredrikbakke}
+\taxon{Proposition}
+\title{Closure properties of #{K}-connected maps}
+
+\p{
+Connected maps are stable under homotopies, retracts of arrows, and cobase change.
+}
+
+% ```agda
+\agda{
+up-gconnected-map-homotopy
+  : ∀ {α 𝓤 𝓥}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B}
+    → f ~ g
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+up-gconnected-map-homotopy K {f = f} {g = g} H fconn
+  = up-gconnected-map←orthogonal-map K g λ h hmodal
+      → left-orthogonal-homotopy h H
+          (up-gconnected-map⇔orthogonal-map K f fconn h hmodal)
+
+up-gconnected-map-∘~
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {h : A → C}
+      (f : A → B) (g : B → C)
+    → h ~ g ∘ f
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+    → up-gconnected-map K h
+up-gconnected-map-∘~ K f g H fconn gconn
+  = up-gconnected-map-homotopy K (H ~⁻¹)
+      (up-gconnected-map-∘ K f g fconn gconn)
+
+up-gconnected-map-right-cancel~
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {h : A → C}
+      (f : A → B) (g : B → C)
+    → h ~ g ∘ f
+    → up-gconnected-map K f
+    → up-gconnected-map K h
+    → up-gconnected-map K g
+up-gconnected-map-right-cancel~ K f g H fconn hconn
+  = up-gconnected-map-right-cancel K f g fconn
+      (up-gconnected-map-homotopy K H hconn)
+
+up-gconnected-map←retraction-arrow-map
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → retraction-arrow-map F
+    → up-gconnected-map K g
+    → up-gconnected-map K f
+up-gconnected-map←retraction-arrow-map K {f = f} {g = g} F R gconn
+  = up-gconnected-map←orthogonal-map K f λ h hmodal
+      → left-orthogonal-retraction f g F R h
+          (up-gconnected-map⇔orthogonal-map K g gconn h hmodal)
+
+up-gconnected-map←cocartesian
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → is-cocartesianω F
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+up-gconnected-map←cocartesian K {f = f} {g = g} F cocart fconn
+  = up-gconnected-map←orthogonal-map K g λ h hmodal
+      → left-orthogonal-pushout F cocart h
+          (up-gconnected-map⇔orthogonal-map K f fconn h hmodal)
+
+up-gconnected-map-ι₂
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : A → C)
+    → up-gconnected-map K f
+    → up-gconnected-map K (ι₂ {f = f} {g = g})
+up-gconnected-map-ι₂ K f g
+  = up-gconnected-map←cocartesian K
+      (Pushout-square (mk-span _ f g))
+      (Pushout-square-is-cocartesian (mk-span _ f g))
 }
 %```
 }
@@ -410,7 +506,7 @@ module gRSubUReflectorConnected {α}
     comm
       : precomp-Π U (η ∘ f)
       ~ rhs
-    comm h = ufAxioms.funext→ λ a → sym (apᵈ h (○₁-β f a))
+    comm h = funext→ λ a → sym (apᵈ h (○₁-β f a))
 
   is-gmodal-equiv←up-gconnected-map
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -463,7 +559,7 @@ module gReflectorFibres
     p : const Fb.○ Fb.○ u ＝ id
     p = unap
           (is-embedding←is-equiv (Fb.reflects Fb.○∈S))
-          (ufAxioms.funext→ H)
+          (funext→ H)
 
   fibre-precomp-Π-η-fibre≃Π-local-centre-over
     : fibre (precomp-Π (λ b → gReflector.○ (Rf b)) f) η-fibre-section
@@ -517,7 +613,7 @@ module gReflectorConnectedCharacterisation
     → reflected-fibres-singleton
   reflected-fibres-singleton←merely-local-centre mere b
     = Trunc.○-rec
-        (is-truncated←is-prop ufAxioms.is-single-is-prop)
+        (is-truncated←is-prop is-single-is-prop)
         reflected-fibre-singleton←local-centre
         (mere b)
 

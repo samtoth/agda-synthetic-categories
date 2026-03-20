@@ -8,6 +8,8 @@
 \agda{
 open import Foundations.Prelude
 open import Algebra.Lattice
+open import Ergonomics.Auto
+open import Modalities.Instances.Truncation
 
 module Synthetic.Categories.Yoneda
         {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
@@ -30,6 +32,9 @@ open import Synthetic.Categories.Covariant Δ¹ I I-distr
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 open import Synthetic.Categories.Homotopies Δ¹ I I-distr
 open import Synthetic.Categories.Initial Δ¹ I I-distr
+open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 }
 %```
 
@@ -150,6 +155,147 @@ module _ {𝓤 𝓥}
   Yoneda-coe-is-equiv
     : is-equiv (Yoneda-coe)
   Yoneda-coe-is-equiv = YonedaJ-is-equiv Asimp Ase _ cov'
+}
+%```
+}
+
+\subtree[stt-00GJ]{
+\title{Associativity of composition}
+\date{2026-03-20}
+\author{fredrikbakke}
+\taxon{Corollary}
+
+\p{
+Postcomposition on a precategory is a covariant family, and covariant
+transport in this family coincides with composition. From the functoriality
+of covariant transport, we derive the right unit law and associativity of
+composition.
+}
+
+\p{
+I believe I first saw this result mentioned by [[Emily Riehl]]. It is probably
+formalised in [[rzk-shott]].
+}
+
+%```agda
+\agda{
+module _ {𝓤} {A : Type 𝓤} (Asimp : is-simplicial A) (Ase : is-segal A) where
+
+  hom-fam-cov : (a : A) → is-covariant (Hom A a)
+  hom-fam-cov a = hom-fam-is-cov⇔is-precategory Asimp .fst Ase a
+
+  tr-cov-hom-is-comp
+    : {a b c : A} (g : Hom A b c) (f : Hom A a b)
+      → tr-cov-hom (hom-fam-is-cov⇔is-precategory Asimp .fst Ase _) g f ＝ g ∘[ Ase ] f
+  tr-cov-hom-is-comp {a} (mk-hom gh refl refl) f@(mk-hom fh refl fh1)
+    = ap fst (hom-fam-is-cov⇔is-precategory Asimp .fst Ase a gh f .central (gf , comp-hov))
+    where
+    g = mk-hom gh refl refl
+    gf = g ∘[ Ase ] f
+    σ = ∘[_]-is-composite {f = g} {g = f} Ase
+
+    bd : ∀ x → σ .fst (δΔ²-incl x) ＝ make-δΔ² g f gf x
+    bd = happly (σ .snd)
+
+    face2 : ∀ s → σ .fst (s , i0) ＝ fh s
+    face2 s = bd (ι₁ (ι₁ s))
+
+    face0 : ∀ t → σ .fst (i1 , t) ＝ gh t
+    face0 t = bd (ι₁ (ι₂ t))
+
+    diag : ∀ s → σ .fst (s , s) ＝ gf .Homᵈ.hom s
+    diag s = bd (ι₂ s)
+
+    wedge-hom : (t : Δ¹) → Hom A (fh i0) (gh t)
+    wedge-hom t = mk-hom
+      (λ s → σ .fst ((s , s ∧ t) ⦃ ∧-≤-eliml auto! ⦄))
+      (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙ face2 i0)
+      (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙ face0 t)
+
+    horn-glue : ι₁ {f = point i1} {g = point i0} i1
+              ＝ ι₂ i0
+    horn-glue = glue tt
+
+    horn-cocone : Cocone (mk-span 𝟙 (point i1) (point i0)) A
+    horn-cocone = mk-cocone fh gh (λ _ → fh1 ∙ sym refl)
+
+    comp-hov : Homᵈ (Hom A (fh i0) ∘ gh) f gf
+    comp-hov .Homᵈ.hom = wedge-hom
+    comp-hov .Homᵈ.hom0 = Hom-ext→
+      ( (λ s → ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙ face2 s)
+      , ∙-reflr _ ∙ ap (λ p → ap (σ .fst) p ∙ face2 i0) (Δ²-is-set _ _ _ _)
+      , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init))) (face2 i1) fh1
+        ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙_)
+              (ap (face2 i1 ∙_)
+                  (sym (∙-reflr fh1)
+                  ∙ sym (pushout-rec-apβ {c = horn-cocone} tt)
+                  ∙ ap-∘ (make-δΔ² g f gf) δΔ²←Λ[2,1] horn-glue)
+              ∙ homotopy-natural bd (ap δΔ²←Λ[2,1] horn-glue))
+        ∙ sym (∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)))
+                        (ap (σ .fst ∘ δΔ²-incl) (ap δΔ²←Λ[2,1] horn-glue))
+                        (face0 i0))
+        ∙ ap (_∙ face0 i0)
+             (ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙_)
+                  (ap-∘ (σ .fst) δΔ²-incl (ap δΔ²←Λ[2,1] horn-glue))
+             ∙ sym (ap-∙ (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init))
+                                   (ap δΔ²-incl (ap δΔ²←Λ[2,1] horn-glue)))
+             ∙ ap (ap (σ .fst)) (Δ²-is-set _ _ _ _)) )
+    comp-hov .Homᵈ.hom1 = Hom-ext→
+      ( (λ s → ap (σ .fst) (Δ²-ext (refl , 1-top)) ∙ diag s)
+      , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i0) (gf .Homᵈ.hom0)
+        ∙ ap (_∙ (diag i0 ∙ gf .Homᵈ.hom0))
+             (ap (ap (σ .fst))
+                 (Δ²-is-set _ _ (Δ²-ext (refl , 1-top))
+                             (Δ²-ext (refl , 0-init) ∙ ap δΔ²-incl (glue δΔ¹-0)))
+             ∙ ap-∙ (σ .fst) (Δ²-ext (refl , 0-init)) (ap δΔ²-incl (glue δΔ¹-0))
+             ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
+                  (sym (ap-∘ (σ .fst) δΔ²-incl (glue δΔ¹-0))))
+        ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 0-init)))
+                  (ap (σ .fst ∘ δΔ²-incl) (glue δΔ¹-0))
+                  (diag i0 ∙ gf .Homᵈ.hom0)
+        ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
+             (sym (∙-assoc (ap (σ .fst ∘ δΔ²-incl) (glue δΔ¹-0))
+                           (diag i0) (gf .Homᵈ.hom0))
+             ∙ ap (_∙ gf .Homᵈ.hom0)
+                  (sym (homotopy-natural bd (glue δΔ¹-0))
+                  ∙ ap (face2 i0 ∙_) (pushout-rec-apβ δΔ¹-0))
+             ∙ ∙-assoc (face2 i0) (sym (gf .Homᵈ.hom0)) (gf .Homᵈ.hom0)
+             ∙ ap (face2 i0 ∙_) (∙-sym' (gf .Homᵈ.hom0))
+             ∙ ∙-reflr (face2 i0))
+      , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i1) (gf .Homᵈ.hom1)
+        ∙ ap (_∙ (diag i1 ∙ gf .Homᵈ.hom1))
+             (ap (ap (σ .fst))
+                 (Δ²-is-set _ _ (Δ²-ext (refl , 1-top))
+                             (Δ²-ext (refl , ∧-comm ∙ 1-top) ∙ ap δΔ²-incl (glue δΔ¹-1)))
+             ∙ ap-∙ (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) (ap δΔ²-incl (glue δΔ¹-1))
+             ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙_)
+                  (sym (ap-∘ (σ .fst) δΔ²-incl (glue δΔ¹-1))))
+        ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)))
+                  (ap (σ .fst ∘ δΔ²-incl) (glue δΔ¹-1))
+                  (diag i1 ∙ gf .Homᵈ.hom1)
+        ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙_)
+             (sym (∙-assoc (ap (σ .fst ∘ δΔ²-incl) (glue δΔ¹-1))
+                           (diag i1) (gf .Homᵈ.hom1))
+             ∙ ap (_∙ gf .Homᵈ.hom1)
+                  (sym (homotopy-natural bd (glue δΔ¹-1))
+                  ∙ ap (face0 i1 ∙_) (pushout-rec-apβ δΔ¹-1))
+             ∙ ∙-assoc (face0 i1) (sym (gf .Homᵈ.hom1)) (gf .Homᵈ.hom1)
+             ∙ ap (face0 i1 ∙_) (∙-sym' (gf .Homᵈ.hom1))
+             ∙ ∙-reflr (face0 i1)) )
+
+  right-unit : {a b : A} (f : Hom A a b) → idH b ∘[ Ase ] f ＝ f
+  right-unit f = sym (tr-cov-hom-is-comp (idH _) f)
+               ∙ tr-cov-idH (Hom A _) (hom-fam-cov _) f
+
+  ∘-assoc : {a b c d : A}
+            (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+          → (h ∘[ Ase ] g) ∘[ Ase ] f
+          ＝ h ∘[ Ase ] (g ∘[ Ase ] f)
+  ∘-assoc h g f
+    = sym (tr-cov-hom-is-comp (h ∘[ Ase ] g) f)
+    ∙ tr-cov-∘ Ase (Hom A _) (hom-fam-cov _) h g f
+    ∙ ap (tr-cov-hom (hom-fam-cov _) h) (tr-cov-hom-is-comp g f)
+    ∙ tr-cov-hom-is-comp h (g ∘[ Ase ] f)
 }
 %```
 }

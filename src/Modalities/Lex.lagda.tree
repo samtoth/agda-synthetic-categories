@@ -233,37 +233,16 @@ modality:}
 %```
 }
 
-\subtree{
+\subtree[tot-0FDS]{
 \title{Maps are fibrewise connected if the total map is connected}
 \taxon{Lemma}
 
-%```agda
-\agda{
-    is-fibrewise-connected←is-total-connected
-      : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-          {P : A → Type 𝓦} {Q : B → Type 𝓜}
-        → (g : (a : A) → P a → Q (f a))
-        → is-connected-map Srfl' f
-        → is-connected-map {A = Σ A P} {B = Σ B Q} Srfl' (map-Σ f g)
-        → ∀ a → is-connected-map Srfl' (g a)
-    is-fibrewise-connected←is-total-connected f {P} {Q} g fconn Σconn a q
-      = is-single←equiv-to-single
-          ((mk≃ (○-map (η lemma)) (○-map-is-equiv {!!})) e⁻¹)
-          (is-connected←cod+dom-is-connected
-            (Σconn (f a , q))
-            (fconn (f a))
-            π-fibre (a , refl)) where
-      π-fibre : fibre (map-Σ {Y = Q} f g) (f a , q) → fibre f (f a)
-      π-fibre ((a' , p) , h) = (a' , ap fst h)
-
-      lemma : fibre (g a) q → fibre π-fibre (a , refl)
-      lemma (x , refl) = (((a , x) , refl) , refl)
-
-      lemma-inv : fibre π-fibre (a , refl) → fibre (g a) q
-      lemma-inv = {!!}
+\todo{The formalisation of this, which follows from the
+[3x3 lemma for pullbacks](https://github.com/samtoth/agda-synthetic-categories/issues/74),
+is still TODO.}
 }
-%```
-}
+
+\p{Under the assumption of \ref{tot-0FDS}, we have the following lemmas:}
 
 \subtree{
 \tile{Fibre maps of connected arrow maps are connected}
@@ -274,33 +253,40 @@ connected.}
 
 %```agda
 \agda{
+    module _
+      (is-fibrewise-connected←is-total-connected
+        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+            {P : A → Type 𝓦} {Q : B → Type 𝓜}
+          → (g : (a : A) → P a → Q (f a))
+          → is-connected-map Srfl' f
+          → is-connected-map {A = Σ A P} {B = Σ B Q} Srfl' (map-Σ f g)
+          → ∀ a → is-connected-map Srfl' (g a)) where
+      fibre-map-is-connected
+        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+            {f : A → B} {g : X → Y}
+          → (F : Arrow-map f g)
+          → (let module F = Arrow-map F)
+          → is-connected-map Srfl' F.bot
+          → is-connected-map Srfl' F.top
+          → ∀ a → is-connected-map Srfl' (arrow-fibre F a)
+      fibre-map-is-connected {A = A}{B}{X}{Y}{f = f}{g} F bconn tconn b
+        = is-fibrewise-connected←is-total-connected
+            (F .Arrow-map.bot)
+            {P = fibre f} {Q = fibre g}
+            (arrow-fibre F)
+            bconn
+            (is-connected←is-arrow-equiv⁻¹ amap amap-is-equiv tconn)
+            b where
+        module F = Arrow-map F
+        amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
+                         (map-Σ F.bot (arrow-fibre F)) F.top
+        amap .Arrow-map.top = total←total-fibre f
+        amap .Arrow-map.bot = total←total-fibre g
+        amap .Arrow-map.comm = ~refl
 
-    fibre-map-is-connected
-      : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-          {f : A → B} {g : X → Y}
-        → (F : Arrow-map f g)
-        → (let module F = Arrow-map F)
-        → is-connected-map Srfl' F.bot
-        → is-connected-map Srfl' F.top
-        → ∀ a → is-connected-map Srfl' (arrow-fibre F a)
-    fibre-map-is-connected {A = A}{B}{X}{Y}{f = f}{g} F bconn tconn b
-      = is-fibrewise-connected←is-total-connected
-          (F .Arrow-map.bot)
-          {P = fibre f} {Q = fibre g}
-          (arrow-fibre F)
-          bconn
-          (is-connected←is-arrow-equiv⁻¹ amap amap-is-equiv tconn)
-          b where
-      module F = Arrow-map F
-      amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
-                       (map-Σ F.bot (arrow-fibre F)) F.top
-      amap .Arrow-map.top = total←total-fibre f
-      amap .Arrow-map.bot = total←total-fibre g
-      amap .Arrow-map.comm = ~refl
-
-      amap-is-equiv : is-Arrow-equiv amap
-      amap-is-equiv .fst = total≃total-fibre f ._≃_.has-is-eqv
-      amap-is-equiv .snd = total≃total-fibre g ._≃_.has-is-eqv
+        amap-is-equiv : is-Arrow-equiv amap
+        amap-is-equiv .fst = total≃total-fibre f ._≃_.has-is-eqv
+        amap-is-equiv .snd = total≃total-fibre g ._≃_.has-is-eqv
 }
 %```
 }
@@ -311,17 +297,18 @@ connected.}
 
 %```agda
 \agda{
-    η-fibre-map-is-equiv
-      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-        → ∀ a → is-connected-map Srfl' (η-fibre-map Srfl Σ-is-modal f a)
-    η-fibre-map-is-equiv {A = A} {B} {f} b
-      = fibre-map-is-connected amap
-          (η-is-connected Srfl Σ-is-modal)
-          (η-is-connected Srfl Σ-is-modal) b where
-      amap : Arrow-map f (○-map (η f))
-      amap .Arrow-map.top = η
-      amap .Arrow-map.bot = η
-      amap .Arrow-map.comm _ = sym ○-map-β
+      η-fibre-map-is-equiv
+        : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+          → ∀ a → is-connected-map Srfl' (η-fibre-map Srfl Σ-is-modal f a)
+      η-fibre-map-is-equiv {A = A} {B} {f} b
+        = fibre-map-is-connected amap
+            (η-is-connected Srfl Σ-is-modal)
+            (η-is-connected Srfl Σ-is-modal) b where
+        amap : Arrow-map f (○-map (η f))
+        amap .Arrow-map.top = η
+        amap .Arrow-map.bot = η
+        amap .Arrow-map.comm _ = sym ○-map-β
 }
 %```
+}
 }

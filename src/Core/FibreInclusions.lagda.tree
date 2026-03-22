@@ -1,0 +1,266 @@
+\title{Fibre inclusions}
+\taxon{Module}
+\date{2026-03-20}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.FibreInclusions where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.SpanMap
+open import Core.FunctorialPullback
+}
+%```
+
+
+\subtree[stt-003L]{
+\title{Displayed Cospans}
+
+%```agda
+\agda{
+record Cospanᵈ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) 𝓤' 𝓥' 𝓦'
+         : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ lsuc (𝓤' ⊔ 𝓥' ⊔ 𝓦')) where
+  open Cospan S
+  field
+    Centreᵈ : Centre → Type 𝓤'
+    Leftᵈ   : Left → Type 𝓥'
+    leftᵈ   : ∀ l → Leftᵈ l → Centreᵈ (left l)
+    Rightᵈ  : Right → Type 𝓦'
+    rightᵈ  : ∀ r → Rightᵈ r → Centreᵈ (right r)
+
+Σ-cospan
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → Cospanᵈ S 𝓤' 𝓥' 𝓦' → Cospan (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+Σ-cospan cc .Cospan.Centre = Σ _ (cc .Cospanᵈ.Centreᵈ)
+Σ-cospan cc .Cospan.Left = Σ _ (cc .Cospanᵈ.Leftᵈ)
+Σ-cospan cc .Cospan.left = map-Σ _ (cc .Cospanᵈ.leftᵈ)
+Σ-cospan cc .Cospan.Right = Σ _ (cc .Cospanᵈ.Rightᵈ)
+Σ-cospan cc .Cospan.right = map-Σ _ (cc .Cospanᵈ.rightᵈ)
+
+π-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → (C : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+    → Cospan-map (Σ-cospan C) S
+π-cospanᵈ C .Cospan-map.h₁ = fst
+π-cospanᵈ C .Cospan-map.h₂ = fst
+π-cospanᵈ C .Cospan-map.h₃ = fst
+π-cospanᵈ C .Cospan-map.H = ~refl
+π-cospanᵈ C .Cospan-map.K = ~refl
+
+pullback-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → (C : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+    → Pullback-of-cospan S → Type (𝓤' ⊔ 𝓥' ⊔ 𝓦')
+pullback-cospanᵈ C (l , r , p)
+  = Σ[ a ∶ Leftᵈ l ] Σ[ b ∶ Rightᵈ r ] (leftᵈ l a ＝[ ap Centreᵈ p ] rightᵈ r b)
+  where open Cospanᵈ C
+}
+%```
+}
+
+\subtree[tot-03SD]{
+\title{Family cospans}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Fam-cospan 𝓤 𝓥 𝓦 : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦)) where
+  field
+    Centre : Type 𝓤
+    Left : Centre → Type 𝓥
+    Right : Centre → Type 𝓦
+
+pullback₀-fam : ∀ {𝓤 𝓥 𝓦} → Fam-cospan 𝓤 𝓥 𝓦 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+pullback₀-fam fc
+  = Σ[ a ∶ fc .Fam-cospan.Centre ]
+      (fc .Fam-cospan.Left a × fc .Fam-cospan.Right a)
+
+record Fam-cospan-map {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+                      (S : Fam-cospan 𝓤 𝓥 𝓦) (T : Fam-cospan 𝓜 𝓝 𝓛)
+                      : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛) where
+  module S = Fam-cospan S
+  module T = Fam-cospan T
+  field
+    h₂ : S.Centre → T.Centre
+    h₁ : ∀ c → S.Left c → T.Left (h₂ c)
+    h₃ : ∀ c → S.Right c → T.Right (h₂ c)
+
+pullback₁-fam
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Fam-cospan 𝓤 𝓥 𝓦} {T : Fam-cospan 𝓜 𝓝 𝓛}
+    → Fam-cospan-map S T → pullback₀-fam S → pullback₀-fam T
+pullback₁-fam F = map-Σ h₂ λ c → (h₁ c ⊗ h₃ c)
+  where open Fam-cospan-map F
+}
+%```
+}
+
+
+\subtree[tot-023F]{
+\title{Fibre inclusion}
+\taxon{Definition}
+
+
+
+%```agda
+\agda{
+
+null-htpy-fibre-map
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+      (f : A → B) (g : Q → A) → (x : null-homotopy (f ∘ g))
+    → Q → fibre f (x .fst)
+null-htpy-fibre-map f g x q = g q , sym (x .snd q)
+
+is-fibre-incl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+      (f : A → B) (g : Q → A) → null-homotopy (f ∘ g)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-fibre-incl f g n = is-equiv (null-htpy-fibre-map f g n)
+
+record fibre-inclusion
+         {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) 𝓦
+         : Type (𝓤 ⊔ 𝓥 ⊔ lsuc 𝓦)
+         where
+  field
+    { Fib } : Type 𝓦
+    incl : Fib → A
+    null-htpy : null-homotopy (f ∘ incl)
+    has-is-fibre-incl : is-fibre-incl f incl null-htpy
+
+  * : B
+  * = null-htpy .fst
+
+  to-fib : Fib → fibre f *
+  to-fib x = (incl x , sym (null-htpy .snd x))
+
+
+module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
+         (B : Cospan 𝓤2 𝓤1 𝓤3)
+         (A : Cospanᵈ B 𝓥2 𝓥1 𝓥3)
+         (C : Cospanᵈ B 𝓦2 𝓦1 𝓦3)
+         where
+  open Cospanᵈ
+
+  private
+    open Fam-cospan
+    X : Fam-cospan 𝓤1 𝓥1 𝓦1
+    X .Centre = Cospan.Left B
+    X .Left = Leftᵈ A
+    X .Right = Leftᵈ C
+
+    Y : Fam-cospan 𝓤2 𝓥2 𝓦2
+    Y .Centre = Cospan.Centre B
+    Y .Left = Centreᵈ A
+    Y .Right = Centreᵈ C
+
+    Z : Fam-cospan 𝓤3 𝓥3 𝓦3
+    Z .Centre = Cospan.Right B
+    Z .Left = Rightᵈ A
+    Z .Right = Rightᵈ C
+
+    XY : Fam-cospan-map X Y
+    XY .Fam-cospan-map.h₂ = Cospan.left B
+    XY .Fam-cospan-map.h₁ = A .leftᵈ
+    XY .Fam-cospan-map.h₃ = C .leftᵈ
+
+    ZY : Fam-cospan-map Z Y
+    ZY .Fam-cospan-map.h₂ = Cospan.right B
+    ZY .Fam-cospan-map.h₁ = A .rightᵈ
+    ZY .Fam-cospan-map.h₃ = C .rightᵈ
+
+  hor-cospan : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
+  hor-cospan .Cospan.Centre = pullback₀-fam Y
+  hor-cospan .Cospan.Left = pullback₀-fam X
+  hor-cospan .Cospan.left = pullback₁-fam XY
+  hor-cospan .Cospan.Right = pullback₀-fam Z
+  hor-cospan .Cospan.right = pullback₁-fam ZY
+
+  vert-cospan : Fam-cospan (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3) (𝓥1 ⊔ 𝓥2 ⊔ 𝓥3) (𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
+  vert-cospan .Centre = Pullback-of-cospan B
+  vert-cospan .Left = pullback-cospanᵈ A
+  vert-cospan .Right = pullback-cospanᵈ C
+
+module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
+         (A : Cospan 𝓥2 𝓥1 𝓥3)
+         (B : Cospan 𝓤2 𝓤1 𝓤3)
+         (C : Cospan 𝓦2 𝓦1 𝓦3)
+         (F : Cospan-map A B)
+         (G : Cospan-map C B)
+         where
+  open Cospan
+  open Cospan-map
+
+  private
+    X : Cospan 𝓤1 𝓥1 𝓦1
+    X .Centre = B .Left
+    X .Left = A .Left
+    X .left = Cospan-map.h₁ F
+    X .Right = C .Left
+    X .right = Cospan-map.h₁ G
+
+    Y : Cospan 𝓤2 𝓥2 𝓦2
+    Y .Centre = B .Centre
+    Y .Left = A .Centre
+    Y .left = Cospan-map.h₂ F
+    Y .Right = C .Centre
+    Y .right = Cospan-map.h₂ G
+
+    Z : Cospan 𝓤3 𝓥3 𝓦3
+    Z .Centre = B .Right
+    Z .Left = A .Right
+    Z .left = h₃ F
+    Z .Right = C .Right
+    Z .right = h₃ G
+
+    P : Cospan-map X Y
+    P .h₁ = left A
+    P .h₂ = left B
+    P .h₃ = left C
+    P .H = sym ∘ H F
+    P .K = sym ∘ H G
+
+    Q : Cospan-map Z Y
+    Q .h₁ = right A
+    Q .h₂ = right B
+    Q .h₃ = right C
+    Q .H = sym ∘ K F
+    Q .K = sym ∘ K G
+
+  vert-pullback : Cospan (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3) (𝓥1 ⊔ 𝓥2 ⊔ 𝓥3) (𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
+  vert-pullback .Centre = Pullback-of-cospan B
+  vert-pullback .Left = Pullback-of-cospan A
+  vert-pullback .left = Pullback₁ F
+  vert-pullback .Right = Pullback-of-cospan C
+  vert-pullback .right = Pullback₁ G
+
+
+  hor-pullback : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
+  hor-pullback .Centre = Pullback-of-cospan Y
+  hor-pullback .Left = Pullback-of-cospan X
+  hor-pullback .left = Pullback₁ P
+  hor-pullback .Right = Pullback-of-cospan Z
+  hor-pullback .right = Pullback₁ Q
+
+
+  3×3 : Pullback-of-cospan vert-pullback ≅ Pullback-of-cospan hor-pullback
+  3×3 ._≅_.fwd (a , b , c) .fst = (a .pb.π₁ , b .pb.π₁ , ap pb.π₁ c)
+  3×3 ._≅_.fwd (a , b , c) .snd .fst = (a .pb.π₂ , b .pb.π₂ , ap pb.π₂ c)
+  3×3 ._≅_.fwd (a , b , c) .snd .snd
+    = pullback-path→ (a .pb.filler , b .pb.filler , {!!})
+  3×3 ._≅_.fwd-iso .fst (a , b , c) .fst = (a .pb.π₁ , b .pb.π₁ , ap pb.π₁ c)
+  3×3 ._≅_.fwd-iso .fst (a , b , c) .snd .fst
+    = (a .pb.π₂ , b .pb.π₂ , ap pb.π₂ c)
+  3×3 ._≅_.fwd-iso .fst (a , b , c) .snd .snd
+    = pullback-path→ (a .pb.filler , b .pb.filler , {!!})
+  3×3 ._≅_.fwd-iso .snd .fst (a , b , p)
+    = pullback-path→
+        ( pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₁))
+        , pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₂))
+        , {!!})
+  3×3 ._≅_.fwd-iso .snd .snd = {!!}
+}
+%```
+}

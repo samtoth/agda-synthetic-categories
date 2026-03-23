@@ -433,41 +433,32 @@ for all #{i}. When #{f} is [preidempotent](fre-2110) this type factors #{f}.
 
 % ```agda
 \agda{
-module _
+module Splitting
   {𝓤 : Level} {X : Type 𝓤}
+  (f : X → X)
   where
 
-  seq-splitting-type
-    : (X → X) → Type 𝓤
-  seq-splitting-type f = Seq-lim (tower←endomap f)
+  type : Type 𝓤
+  type = Seq-lim (tower←endomap f)
 
-  inclusion-seq-splitting-type
-    : {f : X → X}
-    → seq-splitting-type f → X
-  inclusion-seq-splitting-type {f = f} = limit-point (tower←endomap f)
+  inclusion : type → X
+  inclusion = limit-point (tower←endomap f)
 
-  shift-seq-splitting-type
-    : {f : X → X}
-    → seq-splitting-type f
-    → seq-splitting-type f
-  shift-seq-splitting-type {f = f} (a , α)
+  shift : type → type
+  shift (a , α)
     = ( (λ n → f (f (a (suc n))))
       , (λ n → ap (f ∘ f) (α (suc n))))
 
-  map-retraction-seq-splitting-type
-    : {f : X → X}
-    → preidempotence f
-    → X → seq-splitting-type f
-  map-retraction-seq-splitting-type {f = f} I x
+  map-retraction
+    : preidempotence f
+    → X → type
+  map-retraction I x
     = ((λ _ → f x) , (λ _ → sym (I x)))
 
-  split-idempotent-seq-splitting-type
-    : {f : X → X}
-      (I : preidempotence f)
-    → inclusion-seq-splitting-type {f = f}
-    ∘ map-retraction-seq-splitting-type {f = f} I
-    ~ f
-  split-idempotent-seq-splitting-type I x = refl
+  factorisation
+    : (I : preidempotence f)
+    → inclusion ∘ map-retraction I ~ f
+  factorisation I x = refl
 }
 % ```
 }
@@ -564,10 +555,10 @@ is a retract of #{A} that factors #{f}, following
 
 \p{
 The construction uses two different levels of coherence. The type
-#{\textsf{seq-splitting-type}(f)} and its inclusion into #{A} were already defined
+#{\textsf{Splitting.type}(f)} and its inclusion into #{A} were already defined
 above for any endomap #{f}. Moreover, a mere preidempotence #{I : f \circ f \sim f}
 already gives the converse map
-#{\textsf{map-retraction-seq-splitting-type}(I) : A \to \textsf{seq-splitting-type}(f)}
+#{\textsf{Splitting.map-retraction}(I) : A \to \textsf{Splitting.type}(f)}
 and the strict factorisation #{i \circ r \sim f}. What remains is to show that,
 assuming a full quasiidempotence, this converse map is also a retraction of the
 inclusion.
@@ -580,9 +571,10 @@ module IdemWithFunExt (FE : FunExt-global) where
   open LimitWithFunExt FE
 
   module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} (H : qidempotence f) where
+    open Splitting f
 
     path-shift-seq-splitting-type~id
-      : (aα : seq-splitting-type f)
+      : (aα : type)
       → (n : ℕ) → f (f (aα .fst (suc n))) ＝ (aα .fst n)
     path-shift-seq-splitting-type~id (a , α) n
       = I (a (suc n)) ∙ sym (α n)
@@ -591,7 +583,7 @@ module IdemWithFunExt (FE : FunExt-global) where
       Q = H .snd
 
     square-shift-seq-splitting-type~id
-      : (aα : seq-splitting-type f)
+      : (aα : type)
         (n : ℕ)
       → Square
           (path-shift-seq-splitting-type~id aα n)
@@ -645,7 +637,7 @@ module IdemWithFunExt (FE : FunExt-global) where
 
     opaque
       shift-seq-splitting-type~id
-        : shift-seq-splitting-type {f = f} ~ id
+        : shift ~ id
       shift-seq-splitting-type~id aα
         = Id←Seq-lim-htpy
             ( tower←endomap f)
@@ -653,8 +645,8 @@ module IdemWithFunExt (FE : FunExt-global) where
             , square-shift-seq-splitting-type~id aα)
 
       ap-inclusion-shift-seq-splitting-type~id
-        : (aα : seq-splitting-type f)
-        → ap inclusion-seq-splitting-type
+        : (aα : type)
+        → ap inclusion
              (shift-seq-splitting-type~id aα)
         ＝ path-shift-seq-splitting-type~id aα 0
       ap-inclusion-shift-seq-splitting-type~id aα
@@ -679,7 +671,7 @@ homotopic to the identity, first levelwise by
 % ```agda
 \agda{
     path-compute-retraction-seq-splitting-type
-      : (aα : seq-splitting-type f)
+      : (aα : type)
       → (n : ℕ) → f (aα .fst 0) ＝ f (f (aα .fst (suc n)))
     path-compute-retraction-seq-splitting-type (a , α) 0
       = ap f (α 0)
@@ -692,7 +684,7 @@ homotopic to the identity, first levelwise by
       Q = H .snd
 
     square-compute-retraction-seq-splitting-type
-      : (aα : seq-splitting-type f)
+      : (aα : type)
         (n : ℕ)
       → Square
           (path-compute-retraction-seq-splitting-type aα n)
@@ -865,8 +857,8 @@ In particular, the left-hand square labelled #{\Xi_n} is the inductive hypothesi
 \p{
 Taken together, the base case and the inductive step produce a coherent homotopy from
 the composite
-#{\textsf{map-retraction-seq-splitting-type}(\fst H) \circ
-\textsf{inclusion-seq-splitting-type}}
+#{\textsf{Splitting.map-retraction}(\fst H) \circ
+\textsf{Splitting.inclusion}}
 to the shift. Once again, the sequential-limit extensionality principle upgrades the
 levelwise data to a homotopy of maps.
 }
@@ -875,9 +867,9 @@ levelwise data to a homotopy of maps.
 \agda{
     opaque
       compute-retraction-seq-splitting-type
-        : map-retraction-seq-splitting-type (H .fst)
-        ∘ inclusion-seq-splitting-type
-        ~ shift-seq-splitting-type
+        : map-retraction (H .fst)
+        ∘ inclusion
+        ~ shift
       compute-retraction-seq-splitting-type aα
         = Id←Seq-lim-htpy
             ( tower←endomap f)
@@ -885,8 +877,8 @@ levelwise data to a homotopy of maps.
             , square-compute-retraction-seq-splitting-type aα)
 
       ap-inclusion-compute-retraction-seq-splitting-type
-        : (aα : seq-splitting-type f)
-        → ap inclusion-seq-splitting-type
+        : (aα : type)
+        → ap inclusion
             (compute-retraction-seq-splitting-type aα)
         ＝ path-compute-retraction-seq-splitting-type aα 0
       ap-inclusion-compute-retraction-seq-splitting-type aα
@@ -907,10 +899,10 @@ sequential splitting type.
 % ```agda
 \agda{
     retract-seq-splitting-type
-      : retract (seq-splitting-type f) X
+      : retract (type) X
     retract-seq-splitting-type
-      = ( inclusion-seq-splitting-type
-        , map-retraction-seq-splitting-type (H .fst)
+      = ( inclusion
+        , map-retraction (H .fst)
         , compute-retraction-seq-splitting-type ~∙ shift-seq-splitting-type~id)
 }
 % ```
@@ -945,27 +937,28 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
     (let L = retract-seq-splitting-type Hq)
     (let w = L .snd .snd)
     where
+    open Splitting (s ∘ r)
 
     map-section-retract-seq-splitting-type
-      : A → seq-splitting-type (fst (qidempotent-map←retract R))
+      : A → type
     map-section-retract-seq-splitting-type a
       = ((λ _ → s a) , (λ _ → sym (ap s (rs a))))
 
     retract-seq-splitting-type←retract
-      : retract (seq-splitting-type (fst (qidempotent-map←retract R))) A
+      : retract (type) A
     retract-seq-splitting-type←retract
-      = ( r ∘ inclusion-seq-splitting-type {f = s ∘ r}
+      = ( r ∘ inclusion
         , map-section-retract-seq-splitting-type
         , compute-retraction-seq-splitting-type (snd (qidempotent-map←retract R))
         ~∙ shift-seq-splitting-type~id (snd (qidempotent-map←retract R)))
 
     split-retract-equiv
-      : seq-splitting-type (fst (qidempotent-map←retract R)) ≃ A
+      : type ≃ A
     split-retract-equiv
       = mk≃
-          (r ∘ inclusion-seq-splitting-type {f = s ∘ r})
+          (r ∘ inclusion)
           (is-equiv←qiso qiso) where
-      qiso : quasi-iso (r ∘ inclusion-seq-splitting-type {f = s ∘ r})
+      qiso : quasi-iso (r ∘ inclusion)
       qiso .fst = map-section-retract-seq-splitting-type
       qiso .snd .fst = retract-seq-splitting-type←retract .snd .snd
       qiso .snd .snd x = rs x
@@ -999,11 +992,11 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
     compare-splittings-compute
       : (a : (n : ℕ) → X)
         (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
-      → ap (r ∘ inclusion-seq-splitting-type)
+      → ap (r ∘ inclusion)
             (compute-retraction-seq-splitting-type Hq (a , α))
       ＝ ap ((r ∘ s) ∘ r) (α 0)
     compare-splittings-compute a α
-      = ap-∘ r inclusion-seq-splitting-type
+      = ap-∘ r inclusion
           (compute-retraction-seq-splitting-type Hq (a , α))
       ∙ ap (ap r) (ap-inclusion-compute-retraction-seq-splitting-type Hq (a , α))
       ∙ sym (ap-∘ r (s ∘ r) (α 0))
@@ -1011,11 +1004,11 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
     compare-splittings-shift
       : (a : (n : ℕ) → X)
         (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
-      → ap (r ∘ inclusion-seq-splitting-type )
+      → ap (r ∘ inclusion )
             (shift-seq-splitting-type~id Hq (a , α))
       ＝ ap r (fst Hq (a 1)) ∙ sym (ap r (α 0))
     compare-splittings-shift a α
-      = ap-∘ r inclusion-seq-splitting-type (shift-seq-splitting-type~id Hq (a , α))
+      = ap-∘ r inclusion (shift-seq-splitting-type~id Hq (a , α))
       ∙ ap (ap r) (ap-inclusion-shift-seq-splitting-type~id Hq (a , α))
       ∙ ap-∙ r (fst Hq (a 1)) (sym (α 0))
       ∙ ap (ap r (fst Hq (a 1)) ∙_) (ap-sym r (α 0))
@@ -1025,22 +1018,22 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
       unfolding shift-seq-splitting-type~id
 
       compare-splittings-section
-        : (z : seq-splitting-type (s ∘ r))
-        → ap (r ∘ inclusion-seq-splitting-type) (w z)
-        ＝ rs (r (inclusion-seq-splitting-type z))
+        : (z : type)
+        → ap (r ∘ inclusion) (w z)
+        ＝ rs (r (inclusion z))
       compare-splittings-section (a , α)
-        = ap (r ∘ inclusion-seq-splitting-type) (w (a , α))
+        = ap (r ∘ inclusion) (w (a , α))
               ＝⟨⟩
-          ap ( r ∘ inclusion-seq-splitting-type)
+          ap ( r ∘ inclusion)
               ( compute-retraction-seq-splitting-type Hq (a , α)
               ∙ shift-seq-splitting-type~id Hq (a , α))
               ＝⟨ ap-∙
-                  (r ∘ inclusion-seq-splitting-type)
+                  (r ∘ inclusion)
                   (compute-retraction-seq-splitting-type Hq (a , α))
                   (shift-seq-splitting-type~id Hq (a , α)) ⟩
-          ap (r ∘ inclusion-seq-splitting-type)
+          ap (r ∘ inclusion)
              (compute-retraction-seq-splitting-type Hq (a , α))
-          ∙ ap (r ∘ inclusion-seq-splitting-type)
+          ∙ ap (r ∘ inclusion)
               (shift-seq-splitting-type~id Hq (a , α))
               ＝⟨ ap₂ _∙_
                   (compare-splittings-compute a α)
@@ -1064,25 +1057,25 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
           ∎
 
     compare-splittings-map-retraction
-      : (z : seq-splitting-type (s ∘ r))
+      : (z : type)
       → ap (L .snd .fst) (compare-splittings-inclusion z)
       ＝ sym (ap (map-section-retract-seq-splitting-type)
-                 (rs (r (inclusion-seq-splitting-type z))))
+                 (rs (r (inclusion z))))
     compare-splittings-map-retraction z
       = ap (L .snd .fst) (compare-splittings-inclusion z)
-          ＝⟨ ap-sym (L .snd .fst) (ap inclusion-seq-splitting-type (w z)) ⟩
-        sym (ap (L .snd .fst) (ap inclusion-seq-splitting-type (w z)))
+          ＝⟨ ap-sym (L .snd .fst) (ap inclusion (w z)) ⟩
+        sym (ap (L .snd .fst) (ap inclusion (w z)))
           ＝⟨ ap
               ( sym)
               ( ap-∘ (map-section-retract-seq-splitting-type)
                      (r)
-                     (ap inclusion-seq-splitting-type (w z))
+                     (ap inclusion (w z))
               ∙ ap
                   ( ap map-section-retract-seq-splitting-type)
-                  ( sym (ap-∘ r inclusion-seq-splitting-type (w z))
+                  ( sym (ap-∘ r inclusion (w z))
                   ∙ compare-splittings-section z)) ⟩
         sym (ap (map-section-retract-seq-splitting-type)
-                (rs (r (inclusion-seq-splitting-type z)))) ∎
+                (rs (r (inclusion z)))) ∎
 
     compare-splittings-coherence
       : coherence-retract-htpy
@@ -1103,11 +1096,11 @@ module SplitRetractWithFunExt (FE : FunExt-global) where
         ∙ (comp-retract (retract←equiv split-retract-equiv) R) .snd .snd z)
         ∎ where
       p : map-section-retract-seq-splitting-type
-            ( r (s (r (inclusion-seq-splitting-type {f = s ∘ r} z))))
+            ( r (s (r (inclusion z))))
         ＝ map-section-retract-seq-splitting-type
-            ( r (inclusion-seq-splitting-type {f = s ∘ r} z))
+            ( r (inclusion z))
       p = ap (map-section-retract-seq-splitting-type)
-             (rs (r (inclusion-seq-splitting-type {f = s ∘ r} z)))
+             (rs (r (inclusion z)))
 
     compare-splittings-htpy
       : retract-htpy
@@ -1155,7 +1148,7 @@ module RetractsQIdempotentsWithFunExtUnivalence
     → qidempotent-map A
     → Retracts 𝓤 A
   Retracts←qidempotent-map H
-    = ( seq-splitting-type (H .fst)
+    = ( Splitting.type (H .fst)
       , retract-seq-splitting-type (H .snd))
 
   retracts-qidempotent-map-retract

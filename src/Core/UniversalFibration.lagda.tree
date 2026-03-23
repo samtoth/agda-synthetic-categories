@@ -1,0 +1,82 @@
+\title{Universal fibrations}
+\taxon{Module}
+\date{2026-03-13}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.UniversalFibration where
+
+open import Foundations.Prelude
+
+open import Core.Arrow
+open import Core.PiSection
+
+record is-globally-universal {α₁ α₂ α : Level → Level → Level}
+      (univ : ∀ {𝓤 𝓥} → Arrow (α₁ 𝓤 𝓥) (α₂ 𝓤 𝓥))
+      (𝓕 : ∀ {𝓤 𝓥} → Subtype (Arrow 𝓤 𝓥) (α 𝓤 𝓥)) : Typeω where
+  module A {𝓤 𝓥} = Arrow (univ {𝓤} {𝓥}) renaming (dom to U∙; cod to U; f to π)
+  open A public
+  open Arrow
+  module S {𝓤 𝓥} = Subtype (𝓕 {𝓤} {𝓥})
+  open S
+  field
+    univ-is-fib : ∀ {𝓤 𝓥} → (univ {𝓤} {𝓥}) ∈ 𝓕
+    class : ∀ {𝓤 𝓥} (X : Arrow 𝓤 𝓥) → X ∈ 𝓕 → Arrow-map (X .f) (π {𝓤} {𝓥})
+    class-is-cartesian : ∀ {𝓤 𝓥} {X : Arrow 𝓤 𝓥} (p : X ∈ 𝓕)
+                           → is-cartesian (class X p)
+
+-- is-globally-universal u 𝓕
+--   = u ∈ 𝓕
+--   × (∀ {𝓤 𝓥} (X : Arrow 𝓤 𝓥) → X ∈ 𝓕 → Σ[ F ∶ Arrow-map (X .f) π ] is-cartesian F ) where
+
+Type∙-π : ∀ 𝓤 𝓥 → Arrow (lsuc (𝓤 ⊔ 𝓥)) (lsuc (𝓤 ⊔ 𝓥))
+Type∙-π 𝓤 𝓥 .Arrow.dom = Σ (Type (𝓤 ⊔ 𝓥)) id
+Type∙-π 𝓤 𝓥 .Arrow.cod = _
+Type∙-π 𝓤 𝓥 .Arrow.f = fst
+
+Type-is-universal
+  : is-globally-universal (λ {𝓤 𝓥} → mk-arrow {dom = Σ (Type (𝓤 ⊔ 𝓥)) id} fst)
+                          (SubtypeLattice.⊤ _)
+Type-is-universal .is-globally-universal.univ-is-fib = _
+Type-is-universal .is-globally-universal.class X tt .Arrow-Π.top a
+  = (fibre (X .Arrow.f) (X .Arrow.f a) , (a , refl))
+Type-is-universal .is-globally-universal.class X tt .Arrow-Π.bot
+  = fibre (X .Arrow.f)
+Type-is-universal .is-globally-universal.class X tt .Arrow-Π.comm = ~refl
+Type-is-universal .is-globally-universal.class-is-cartesian {X = X} tt
+  = is-cartesian←gap-is-equiv _ (is-equiv←qiso
+      ( (λ where (a , (_ , b) , refl) → b .fst)
+      , ~refl
+      , λ where (a , (_ , x , refl) , refl) → refl))
+
+module Type-is-universal = is-globally-universal Type-is-universal
+
+
+Lift
+  : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} (p : Arrow 𝓥 𝓦) (A : Γ → p .Arrow.cod)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Lift p A = fibre (postcomp _ (Arrow.f p)) A
+
+Lift←arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {f : Arrow 𝓤 𝓥} {g : Arrow 𝓦 𝓜}
+      (F : Arrow-map (f .Arrow.f) (g .Arrow.f))
+    → {Γ : Type 𝓝} (A : Γ → f .Arrow.cod)
+    → Lift f A
+    → Lift g (F .Arrow-map.bot ∘ A)
+Lift←arrow-map F A = arrow-fibre (postcomp-square F _) A
+
+section-type∙ : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} (A : Γ → Type (𝓥 ⊔ 𝓦))
+                → Lift (Type∙-π 𝓥 𝓦) A → Π Γ A
+section-type∙ A = is-equiv.bwd (extension←Π-is-equiv A)
+
+universal-section
+  : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} {p : Arrow 𝓥 𝓦} (A : Γ → p .Arrow.cod)
+    → Lift p A
+    → Π Γ (Type-is-universal.class p tt .Arrow-Π.bot ∘ A)
+universal-section {𝓤} {𝓥} {𝓦} {p  = p} A
+  = section-type∙ {𝓤} {𝓥} {𝓦} (Arrow-Π.bot (Type-is-universal.class p tt) ∘ A)
+  ∘ Lift←arrow-map {f = p}{g = Type∙-π 𝓥 𝓦} (Type-is-universal.class p tt) A
+}
+%```

@@ -82,7 +82,7 @@ check-port:
 		exit 1; \
 	fi
 
-watch-forest: check-port sync-forest-src
+watch-forest: check-port
 	@echo "Serving forest on http://localhost:$(PORT)"
 	@forest watch "$(PORT)" -- "build --dev"
 

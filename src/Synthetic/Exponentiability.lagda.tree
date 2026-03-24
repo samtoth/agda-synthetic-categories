@@ -1,0 +1,195 @@
+\date{2026-03-18}
+\title{Exponentiability}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Synthetic.Exponentiability where
+
+open import ufAxioms
+open import Foundations.Prelude
+open import Modalities.GlobalSubuniverses
+open import Modalities.Instances.Localisation
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+}
+%```
+
+\subtree[fre-Q005]{
+\date{2026-03-18}
+\title{Exponentiability}
+\taxon{Definition}
+
+\p{
+Given a family of maps #{\delta_i : X_i \to Y_i}, then a map #{p : E \to B} is
+#{\delta}-\em{exponentiable} if, for every map #{q : U \to V} such that #{q} fits
+into a diagram of the form
+
+\quiver{
+\begin{tikzcd}
+  U && V && E \\
+  \\
+  X_i && Y_i && B
+	\arrow["p", from=1-5, to=3-5]
+	\arrow["\delta_i", from=3-1, to=3-3]
+	\arrow["q", from=1-1, to=1-3]
+	\arrow[dashed, from=3-3, to=3-5]
+	\arrow[dashed, from=1-1, to=3-1]
+	\arrow[dashed, from=1-3, to=3-3]
+	\arrow[dashed, from=1-3, to=1-5]
+	\arrow[from=1-3, to=3-5, "\lrcorner" very near start, phantom]
+	\arrow[from=1-1, to=3-3, "\lrcorner" very near start, phantom]
+\end{tikzcd}
+}
+
+for some #{i}, then every type #{Q} that is #{\delta_i}-local is also #{q}-local.
+}
+
+\p{
+In the context of category theory, exponentiability is used to characterise dependent
+products in the category of categories. A functor is exponentiable if and only if we
+can form dependent products along it in the category of categories.
+}
+\p{
+In the setting of Triangulated Type Theory, however, we must take
+extra care when defining the concept, as not every type is simplicial. For this
+reason, we introduce the relativised notion of exponentiability \em{with respect to a
+[(global) subuniverse](Modalities.GlobalSubuniverses)} #{S}. I.e., instead of asking
+that \em{any} type #{Q} that is #{\delta_i}-local is #{q}-local, we ask only that any
+type #{Q} in #{S} satisfies this implication.
+}
+
+\p{
+The way we state this in the formalisation is with the following predicates:
+
+\ul{
+\li{
+#{\mathrm{is\text{-}Pb}(p,q)} is the data of an index #{i} together with a cartesian
+morphism #{\alpha} from #{q} to #{\delta_i}, together with a further cartesian
+morphism from #{\alpha_1}, the map on codomains, to #{p}. I.e., it is the data to
+complete the diagram above, given a map #{p} and #{q}.
+}
+\li{
+#{\mathrm{is{-}exponentiable{-}at}(p,q)} is the predicate that, for any presentation
+as above, then every type in #{S} that is #{\delta_i}-local is #{q}-local.
+}
+}
+}
+
+%```agda
+\agda{
+module ExponentiabilityAt
+  {α : Level → Level}
+  (GS : gSubU α)
+  {𝓘 𝓤 𝓥 : Level}
+  {I : Type 𝓘}
+  {A : I → Type 𝓤}
+  {B : I → Type 𝓥}
+  (δ : (i : I) → A i → B i)
+  where
+
+  open gSubU GS
+
+  is-Pb
+    : ∀ {𝓤' 𝓥' 𝓦 𝓜}
+        {X : Type 𝓤'} {Y : Type 𝓥'}
+      → (f : X → Y)
+      → {U : Type 𝓦} {V : Type 𝓜}
+      → (g : U → V)
+      → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦 ⊔ 𝓜)
+  is-Pb f g
+    = Σ[ i ∶ I ]
+      Σ[ F ∶ Arrow-map g (δ i) ]
+       ( is-cartesian F × Arrow-cartesian-map (Arrow-map.bot F) f)
+
+  is-exponentiable-at
+    : ∀ {𝓤' 𝓥'} (𝓦 𝓛 𝓜 : Level) {X : Type 𝓤'} {Y : Type 𝓥'}
+      → (f : X → Y)
+      → Type (α 𝓦 ⊔ 𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓤' ⊔ 𝓥' ⊔ lsuc 𝓦 ⊔ lsuc 𝓛 ⊔ lsuc 𝓜)
+  is-exponentiable-at 𝓦 𝓛 𝓜 f
+    = {Q : Type 𝓦}
+      → Q ∈ S
+      → is-local δ Q
+      → {U : Type 𝓛} {V : Type 𝓜}
+        (g : U → V)
+      → is-Pb f g
+      → orthogonal-type g Q
+
+  is-exponentiable-at-is-prop
+    : ∀ {𝓤' 𝓥'} (𝓦 𝓛 𝓜 : Level) {X : Type 𝓤'} {Y : Type 𝓥'}
+      → (f : X → Y)
+      → is-prop (is-exponentiable-at 𝓦 𝓛 𝓜 f)
+  is-exponentiable-at-is-prop 𝓦 𝓛 𝓜 f
+    = is-prop-Πᵢ λ {Q} → is-prop-Π λ _ → is-prop-Π λ _ →
+        is-prop-Πᵢ λ {U} → is-prop-Πᵢ λ {V} → is-prop-Π λ g →
+          is-prop-Π λ _ → is-equiv-is-prop
+
+  is-globally-exponentiable-at
+    : ∀ {𝓤' 𝓥'} {X : Type 𝓤'} {Y : Type 𝓥'}
+      → (f : X → Y)
+      → Typeω
+  is-globally-exponentiable-at f
+    = ∀ {𝓦} {Q : Type 𝓦}
+      → Q ∈ S
+      → is-local δ Q
+      → ∀ {𝓛 𝓜} {U : Type 𝓛} {V : Type 𝓜}
+          (g : U → V)
+        → is-Pb f g
+        → orthogonal-type g Q
+
+  is-exponentiable-at-base-change
+    : ∀ {𝓤 𝓥 𝓦 𝓛 𝓜 𝓤' 𝓥'}
+        {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓤'} {Y : Type 𝓥'}
+        (f : A → B) (g : X → Y)
+      → Arrow-cartesian-map g f
+      → is-exponentiable-at 𝓦 𝓛 𝓜 f
+      → is-exponentiable-at 𝓦 𝓛 𝓜 g
+  is-exponentiable-at-base-change f g G f-exp inS loc h (i , F , F-cart , bc)
+    = f-exp inS loc h
+        ( i
+        , F
+        , F-cart
+        , comp-Arrow-cartesian-map G bc)
+
+  is-globally-exponentiable-at-base-change
+    : ∀ {𝓤 𝓥 𝓤' 𝓥'}
+        {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓤'} {Y : Type 𝓥'}
+        (f : A → B) (g : X → Y)
+      → Arrow-cartesian-map g f
+      → is-globally-exponentiable-at f
+      → is-globally-exponentiable-at g
+  is-globally-exponentiable-at-base-change f g G f-exp inS loc h (i , F , F-cart , bc)
+    = f-exp inS loc h
+        ( i
+        , F
+        , F-cart
+        , comp-Arrow-cartesian-map G bc)
+
+  classified-is-globally-exponentiable-at
+    : ∀ {𝓤' 𝓥'} {X : Type 𝓤'} {Y : Type 𝓥'}
+        (f : X → Y)
+        {𝓙 𝓚 𝓛} {J : Type 𝓙}
+        {K : J → Type 𝓚}
+        {L : J → Type 𝓛}
+      → (κ : (j : J) → K j → L j)
+      → ( ∀ {𝓦 𝓜} {U : Type 𝓦} {V : Type 𝓜} {g : U → V}
+          → is-Pb f g
+          → Σ[ j ∶ J ] Arrow-equiv g (κ j))
+      → ( ∀ {𝓦} {Q : Type 𝓦}
+          → Q ∈ S
+          → is-local δ Q
+          → (j : J)
+          → orthogonal-type (κ j) Q)
+      → is-globally-exponentiable-at f
+  classified-is-globally-exponentiable-at f κ classify κ-local {Q = Q} inS loc g Pb
+    = let j , e = classify Pb in
+      orthogonal-type←Arrow-equiv
+        (inv-Arrow-equiv e)
+        (κ-local inS loc j)
+}
+%```
+}

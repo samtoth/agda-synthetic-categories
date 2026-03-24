@@ -47,6 +47,7 @@ open import Core.FunctorialPushout
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.PushoutEquiv
+open import Core.PushoutSum
 open import Core.SpanMap
 
 open import Synthetic.Cubes Δ¹ i0 i1
@@ -505,19 +506,8 @@ checked-over
   → Δ² → Type 𝓘
 checked-over α t = (α v00 ＝ i1) * (βα-phoa-Δ² α t ＝ i1)
 
-over-∨Δ²·
-  : (α : Δ² → Δ¹)
-  → Δ²· α → Type 𝓘
-over-∨Δ²· α = checked-over α ∘ fst
-
 ∨Δ²· : (α : Δ² → Δ¹) → Type 𝓘
 ∨Δ²· α = Σ Δ² (checked-over α)
-
-over-∨Λ[2,1]·
-  : (α : Δ² → Δ¹)
-  → Λ[2,1]· α → Type 𝓘
-over-∨Λ[2,1]· α
-  = (checked-over α ∘ Λ[2,1]-incl) ∘ fst
 
 ∨Λ[2,1]· : (α : Δ² → Δ¹) → Type 𝓘
 ∨Λ[2,1]· α = Σ Λ[2,1] (checked-over α ∘ Λ[2,1]-incl)
@@ -670,41 +660,20 @@ has already been replaced by the equivalent family
 
 %```agda
 \agda{
-  ∨η·-pushoutβ
-    : Pushout ∨η·-overlapβ→left ∨η·-overlapβ→right
-    → ∨Δ²· α
-  ∨η·-pushoutβ
-    = pushout-rec
-        (mk-cocone
-          (λ (p , t) → (t , ι₁ p))
-          (λ (t , q) → (t , ι₂ q))
-          (λ (p , (t , q)) → Σ-path→ (refl , glue (p , q))))
-
-  pushoutβ←∨η·
-    : ∨Δ²· α
-    → Pushout ∨η·-overlapβ→left ∨η·-overlapβ→right
-  pushoutβ←∨η· (t , d)
-    = pushout-rec
-        (mk-cocone
-          (λ p → ι₁ (p , t))
-          (λ q → ι₂ (t , q))
-          (λ (p , q) → glue (p , (t , q))))
-        d
-
-  ∨η·-pushoutβ-β
-    : (p : α v00 ＝ i1)
-    → (t : Δ²)
-    → (q : βα-phoa-Δ² α t ＝ i1)
-    → ap ∨η·-pushoutβ (glue (p , (t , q)))
-      ＝ Σ-path→ (refl , glue (p , q))
-  ∨η·-pushoutβ-β p t q = pushout-rec-apβ (p , (t , q))
+  open module PΔ²
+    = Pushout-id⊗fst-snd (α v00 ＝ i1) (λ t → βα-phoa-Δ² α t ＝ i1)
+    renaming
+    ( Pushout→Σ* to ∨η·-pushoutβ
+    ; Pushout→Σ*-β to ∨η·-pushoutβ-β
+    ; Σ-path→-refl-, to ∨η·-Σ-path
+    ; Pushout≃Σ* to ∨η·≃pushoutβ)
 
   ∨η·-pushout-β
     : (p : α v00 ＝ i1)
     → (t : Λ[2,1])
     → (q : βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)
     → ap ∨η·-pushout (glue (p , (t , q)))
-      ＝ glue (p , (t , q))
+    ＝ glue (p , (t , q))
   ∨η·-pushout-β p t q
     = pushout-rec-apβ (p , (t , q)) ∙ ∙-reflr _
 
@@ -713,102 +682,9 @@ has already been replaced by the equivalent family
     =
       is-set←is-truncated
        ( Σ-is-truncated Δ²-is-2-truncated
-        (λ _ → suc-is-truncated 1
-          (is-truncated←is-prop
-            (*-is-prop (is-prop-separated _ _) (is-prop-separated _ _)))))
-
-  ∨η·-Σ-path
-    : (t : Δ²)
-    → {d d' : (α v00 ＝ i1) * (βα-phoa-Δ² α t ＝ i1)}
-    → (q : d ＝ d')
-    → Σ-path→
-        {A = Δ²}
-        {B = λ t → (α v00 ＝ i1) * (βα-phoa-Δ² α t ＝ i1)}
-        {x = (t , d)} {y = (t , d')}
-        (refl , q)
-      ＝ ap (t ,_) q
-  ∨η·-Σ-path t refl = refl
-
-  pushoutβ←∨η·-β
-    : (p : α v00 ＝ i1)
-    → (t : Δ²)
-    → (q : βα-phoa-Δ² α t ＝ i1)
-    → ap pushoutβ←∨η· (Σ-path→ (refl , glue (p , q)))
-      ＝ glue (p , (t , q))
-  pushoutβ←∨η·-β p t q
-    = ap (ap pushoutβ←∨η·) (∨η·-Σ-path t (glue (p , q)))
-    ∙ sym (ap-∘ pushoutβ←∨η· (t ,_) (glue (p , q)))
-    ∙ pushout-rec-apβ (p , q)
-
-  ∨η·-pushoutβ-qiso : quasi-iso ∨η·-pushoutβ
-  ∨η·-pushoutβ-qiso .fst = pushoutβ←∨η·
-  ∨η·-pushoutβ-qiso .snd .fst x
-    = to-rec ∙ sym id-to-rec where
-
-    to-rec
-      : pushoutβ←∨η· (∨η·-pushoutβ x)
-      ＝ pushout-rec pushout x
-    to-rec
-      = pushout-rec-unique _ _
-          ~refl ~refl
-          ( λ (p , (t , q)) →
-            ∙-reflr _
-            ∙ ap-∘ pushoutβ←∨η· ∨η·-pushoutβ (glue (p , (t , q)))
-            ∙ ap (ap pushoutβ←∨η·) (∨η·-pushoutβ-β p t q)
-            ∙ pushoutβ←∨η·-β p t q)
-          x
-
-    id-to-rec
-      : x ＝ pushout-rec pushout x
-    id-to-rec
-      = pushout-rec-unique _ _
-          ~refl ~refl
-          (λ a → ∙-reflr _ ∙ ap-id (glue a))
-          x
-
-  ∨η·-pushoutβ-qiso .snd .snd (t , d)
-    = to-rec ∙ sym pair-to-rec where
-
-    C : Cocone
-          (mk-span
-            ((α v00 ＝ i1) × (βα-phoa-Δ² α t ＝ i1))
-            fst snd)
-          (∨Δ²· α)
-    C = mk-cocone
-          (λ p → (t , ι₁ p))
-          (λ q → (t , ι₂ q))
-          (λ pq → Σ-path→ (refl , glue pq))
-
-    F
-      : (α v00 ＝ i1) * (βα-phoa-Δ² α t ＝ i1)
-      → ∨Δ²· α
-    F d = ∨η·-pushoutβ (pushoutβ←∨η· (t , d))
-
-    to-rec
-      : F d ＝ pushout-rec C d
-    to-rec
-      = pushout-rec-unique C F
-          ~refl ~refl
-          ( λ (p , q) →
-            ∙-reflr _
-            ∙ ap-∘ ∨η·-pushoutβ (λ d → pushoutβ←∨η· (t , d)) (glue (p , q))
-            ∙ ap (ap ∨η·-pushoutβ) (pushout-rec-apβ (p , q))
-            ∙ ∨η·-pushoutβ-β p t q)
-          d
-
-    pair-to-rec
-      : (t , d) ＝ pushout-rec C d
-    pair-to-rec
-      = pushout-rec-unique C
-          (t ,_)
-          ~refl ~refl
-          (λ pq → ∙-reflr _ ∙ sym (∨η·-Σ-path t (glue pq)))
-          d
-
-  ∨η·≃pushoutβ
-    : Pushout ∨η·-overlapβ→left ∨η·-overlapβ→right
-      ≃ ∨Δ²· α
-  ∨η·≃pushoutβ = mk≃ _ (is-equiv←qiso ∨η·-pushoutβ-qiso)
+         (λ _ → suc-is-truncated 1
+           (is-truncated←is-prop
+             (*-is-prop (is-prop-separated _ _) (is-prop-separated _ _)))))
 }
 %```
 
@@ -818,126 +694,13 @@ The analogous pushout is equivalent to #{\check{\Lambda}^2_1\mathpunct{.}\alpha}
 
 %```agda
 \agda{
-  ∨Λ[2,1]·←pushout
-    : Pushout ∨η·-overlap→left snd
-    → ∨Λ[2,1]· α
-  ∨Λ[2,1]·←pushout
-    = pushout-rec
-        (mk-cocone
-          (λ (p , t) → (t , ι₁ p))
-          (λ (t , q) → (t , ι₂ q))
-          (λ (p , (t , q)) → Σ-path→ (refl , glue (p , q))))
-
-  ∨Λ[2,1]·←pushout-β
-    : (p : α v00 ＝ i1)
-    → (t : Λ[2,1])
-    → (q : βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)
-    → ap ∨Λ[2,1]·←pushout (glue (p , (t , q)))
-      ＝ Σ-path→ (refl , glue (p , q))
-  ∨Λ[2,1]·←pushout-β p t q = pushout-rec-apβ (p , (t , q))
-
-  ∨Λ[2,1]·-Σ-path
-    : (t : Λ[2,1])
-    → {d d' : (α v00 ＝ i1) * (βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)}
-    → (q : d ＝ d')
-    → Σ-path→
-        {A = Λ[2,1]}
-        {B = λ t → (α v00 ＝ i1) * (βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)}
-        {x = (t , d)} {y = (t , d')}
-        (refl , q)
-      ＝ ap (t ,_) q
-  ∨Λ[2,1]·-Σ-path t refl = refl
-
-  pushout←∨Λ[2,1]·
-    : ∨Λ[2,1]· α
-    → Pushout ∨η·-overlap→left snd
-  pushout←∨Λ[2,1]· (t , d)
-    = pushout-rec
-        (mk-cocone
-          (λ p → ι₁ (p , t))
-          (λ q → ι₂ (t , q))
-          (λ (p , q) → glue (p , (t , q))))
-        d
-
-  pushout←∨Λ[2,1]·-β
-    : (p : α v00 ＝ i1)
-    → (t : Λ[2,1])
-    → (q : βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)
-    → ap pushout←∨Λ[2,1]· (Σ-path→ (refl , glue (p , q)))
-      ＝ glue (p , (t , q))
-  pushout←∨Λ[2,1]·-β p t q
-    = ap (ap pushout←∨Λ[2,1]·) (∨Λ[2,1]·-Σ-path t (glue (p , q)))
-    ∙ sym (ap-∘ pushout←∨Λ[2,1]· (t ,_) (glue (p , q)))
-    ∙ pushout-rec-apβ (p , q)
-
-  ∨Λ[2,1]·-pushout-qiso
-    : quasi-iso ∨Λ[2,1]·←pushout
-  ∨Λ[2,1]·-pushout-qiso .fst = pushout←∨Λ[2,1]·
-  ∨Λ[2,1]·-pushout-qiso .snd .fst x
-    = to-rec ∙ sym id-to-rec where
-
-      to-rec
-        : pushout←∨Λ[2,1]· (∨Λ[2,1]·←pushout x)
-        ＝ pushout-rec pushout x
-      to-rec
-        = pushout-rec-unique _ _
-            ~refl ~refl
-            ( λ (p , (t , q)) →
-              ∙-reflr _
-              ∙ ap-∘ pushout←∨Λ[2,1]· ∨Λ[2,1]·←pushout (glue (p , (t , q)))
-              ∙ ap (ap pushout←∨Λ[2,1]·) (∨Λ[2,1]·←pushout-β p t q)
-              ∙ pushout←∨Λ[2,1]·-β p t q)
-            x
-
-      id-to-rec
-        : x ＝ pushout-rec pushout x
-      id-to-rec
-        = pushout-rec-unique _ _
-            ~refl ~refl
-            (λ a → ∙-reflr _ ∙ ap-id (glue a))
-            x
-
-  ∨Λ[2,1]·-pushout-qiso .snd .snd (t , d)
-    = to-rec ∙ sym pair-to-rec where
-
-      C : Cocone
-            (mk-span
-              ((α v00 ＝ i1) × (βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1))
-              fst snd)
-            (∨Λ[2,1]· α)
-      C = mk-cocone
-            (λ p → (t , ι₁ p))
-            (λ q → (t , ι₂ q))
-            (λ pq → Σ-path→ (refl , glue pq))
-
-      F
-        : (α v00 ＝ i1) * (βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)
-        → ∨Λ[2,1]· α
-      F d = ∨Λ[2,1]·←pushout (pushout←∨Λ[2,1]· (t , d))
-
-      to-rec
-        : F d ＝ pushout-rec C d
-      to-rec
-        = pushout-rec-unique C F
-            ~refl ~refl
-            ( λ (p , q) →
-              ∙-reflr _
-              ∙ ap-∘ ∨Λ[2,1]·←pushout (λ d → pushout←∨Λ[2,1]· (t , d)) (glue (p , q))
-              ∙ ap (ap ∨Λ[2,1]·←pushout) (pushout-rec-apβ (p , q))
-              ∙ ∨Λ[2,1]·←pushout-β p t q)
-            d
-
-      pair-to-rec
-        : (t , d) ＝ pushout-rec C d
-      pair-to-rec
-        = pushout-rec-unique C
-            (t ,_)
-            ~refl ~refl
-            (λ pq → ∙-reflr _ ∙ sym (∨Λ[2,1]·-Σ-path t (glue pq)))
-            d
-
-  ∨Λ[2,1]·≃pushout : Pushout ∨η·-overlap→left snd ≃ ∨Λ[2,1]· α
-  ∨Λ[2,1]·≃pushout = mk≃ _ (is-equiv←qiso ∨Λ[2,1]·-pushout-qiso)
+  open module PΛ
+    = Pushout-id⊗fst-snd (α v00 ＝ i1) (λ t → βα-phoa-Δ² α (Λ[2,1]-incl t) ＝ i1)
+    renaming
+    ( Pushout→Σ* to ∨Λ[2,1]·←pushout
+    ; Pushout→Σ*-β to ∨Λ[2,1]·←pushout-β
+    ; Σ-path→-refl-, to ∨Λ[2,1]·-Σ-path
+    ; Pushout≃Σ* to ∨Λ[2,1]·≃pushout )
 }
 %```
 

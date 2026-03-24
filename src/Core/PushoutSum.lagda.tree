@@ -378,3 +378,128 @@ module _ {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
 }
 %```
 }
+
+\subtree[fre-1010]{
+\date{2026-03-24}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Pushouts of products as sums of joins}
+
+% TODO: generalise, and fit in common framework
+
+%```agda
+\agda{
+module Pushout-id⊗fst-snd
+  {𝓤 𝓥 𝓦} {T : Type 𝓤} (P : Type 𝓥) (Q : T → Type 𝓦)
+  where
+
+  Pushout→Σ*
+    : Pushout ((id: P) ⊗ (fst: Q)) (snd: (λ _ → Σ T Q))
+    → Σ T (λ t → P * Q t)
+  Pushout→Σ*
+    = pushout-rec
+        (mk-cocone
+          (λ (p , t) → (t , ι₁ p))
+          (λ (t , q) → (t , ι₂ q))
+          (λ (p , (t , q)) → Σ-path→ (refl , glue (p , q))))
+
+  Σ*→Pushout
+    : Σ T (λ t → P * Q t)
+    → Pushout ((id: P) ⊗ (fst: Q)) (snd: (λ _ → Σ T Q))
+  Σ*→Pushout (t , d)
+    = pushout-rec
+        (mk-cocone
+          (λ p → ι₁ (p , t))
+          (λ q → ι₂ (t , q))
+          (λ (p , q) → glue (p , (t , q))))
+        d
+
+  Pushout→Σ*-β
+    : (p : P) (t : T) (q : Q t)
+    → ap Pushout→Σ* (glue (p , (t , q)))
+      ＝ Σ-path→ (refl , glue (p , q))
+  Pushout→Σ*-β p t q = pushout-rec-apβ (p , (t , q))
+
+  Σ-path→-refl-,
+    : (t : T) {d d' : P * Q t} (q : d ＝ d')
+    → Σ-path→
+        {A = T} {B = λ t → P * Q t}
+        {x = (t , d)} {y = (t , d')}
+        (refl , q)
+      ＝ ap (t ,_) q
+  Σ-path→-refl-, t refl = refl
+
+  Σ*→Pushout-β
+    : (p : P) (t : T) (q : Q t)
+    → ap Σ*→Pushout (Σ-path→ (refl , glue (p , q)))
+      ＝ glue (p , (t , q))
+  Σ*→Pushout-β p t q
+    = ap (ap Σ*→Pushout) (Σ-path→-refl-, t (glue (p , q)))
+    ∙ sym (ap-∘ Σ*→Pushout (t ,_) (glue (p , q)))
+    ∙ pushout-rec-apβ (p , q)
+
+  Pushout≃Σ*-qiso : quasi-iso Pushout→Σ*
+  Pushout≃Σ*-qiso .fst = Σ*→Pushout
+  Pushout≃Σ*-qiso .snd .fst x
+    = to-rec ∙ sym id-to-rec where
+
+    to-rec
+      : Σ*→Pushout (Pushout→Σ* x) ＝ pushout-rec pushout x
+    to-rec
+      = pushout-rec-unique _ _
+          ~refl ~refl
+          ( λ (p , (t , q)) →
+            ∙-reflr _
+            ∙ ap-∘ Σ*→Pushout Pushout→Σ* (glue (p , (t , q)))
+            ∙ ap (ap Σ*→Pushout) (Pushout→Σ*-β p t q)
+            ∙ Σ*→Pushout-β p t q)
+          x
+
+    id-to-rec
+      : x ＝ pushout-rec pushout x
+    id-to-rec
+      = pushout-rec-unique _ _
+          ~refl ~refl
+          (λ a → ∙-reflr _ ∙ ap-id (glue a))
+          x
+
+  Pushout≃Σ*-qiso .snd .snd (t , d)
+    = to-rec ∙ sym pair-to-rec where
+
+    C : Cocone (mk-span (P × Q t) fst snd) (Σ T (λ t → P * Q t))
+    C = mk-cocone
+          (λ p → (t , ι₁ p))
+          (λ q → (t , ι₂ q))
+          (λ pq → Σ-path→ (refl , glue pq))
+
+    F : P * Q t → Σ T (λ t → P * Q t)
+    F d = Pushout→Σ* (Σ*→Pushout (t , d))
+
+    to-rec
+      : F d ＝ pushout-rec C d
+    to-rec
+      = pushout-rec-unique C F
+          ~refl ~refl
+          ( λ (p , q) →
+            ∙-reflr _
+            ∙ ap-∘ Pushout→Σ* (λ d → Σ*→Pushout (t , d)) (glue (p , q))
+            ∙ ap (ap Pushout→Σ*) (pushout-rec-apβ (p , q))
+            ∙ Pushout→Σ*-β p t q)
+          d
+
+    pair-to-rec
+      : (t , d) ＝ pushout-rec C d
+    pair-to-rec
+      = pushout-rec-unique C
+          (t ,_)
+          ~refl ~refl
+          (λ pq → ∙-reflr _ ∙ sym (Σ-path→-refl-, t (glue pq)))
+          d
+
+  Pushout≃Σ*
+    : Pushout ((id: P) ⊗ (fst: Q)) (snd: (λ _ → Σ T Q))
+      ≃ Σ T (λ t → P * Q t)
+  Pushout≃Σ* = mk≃ _ (is-equiv←qiso Pushout≃Σ*-qiso)
+}
+%```
+}

@@ -14,9 +14,11 @@ open import ufAxioms
 open import Core.Suspensions
 open import Core.Spheres
 open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
 open import Modalities.Subuniverses
 open import Modalities.HigherModality
 open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Separated
 open import Ergonomics.Universal
 open import Ergonomics.PushoutUniv
@@ -29,7 +31,7 @@ import Modalities.ModalMaps
 \taxon{Definition}
 \title{#{n}-truncated types}
 
-\p{A type #{X} is #{n}-truncated for #{n : \mathbb{N}} when it is
+\p{A type #{X} is #{n}-truncated for #{n : \bN} when it is
 #{n}-[separated](stt-007H) with respect to being a
 [singleton](stt-0006).  Equivalently, a type is #{n}-truncated if it
 is [null](stt-005G) with respect to #{S^{n-1}}.  }
@@ -95,7 +97,7 @@ opaque
     = mk-lift (＝-singleton←is-prop pr x y)
 
 is-prop←is-S0-null : ∀ {𝓤} {A : Type 𝓤}
-                     → is-null (const _ 𝟙 (S 0)) A
+                     → is-null (point (S 0)) A
                      → is-prop A
 is-prop←is-S0-null {A = A} null x y
   =   sym (happly (ε f) (ι₁ tt)) ∙ happly (ε f) (ι₂ tt) where
@@ -106,7 +108,7 @@ is-prop←is-S0-null {A = A} null x y
 
 is-S0-null←is-prop : ∀ {𝓤} {A : Type 𝓤}
                      → is-prop A
-                     → is-null (const _ 𝟙 (S 0)) A
+                     → is-null (point (S 0)) A
 is-S0-null←is-prop {_}{A} pr _ = is-equiv←qiso qiso where
   qiso : quasi-iso λ (a : A) (b : Susp ∅) → a
   qiso .fst f = f (ι₁ tt)
@@ -121,7 +123,7 @@ opaque
   is-truncated←null zero = is-truncated←is-prop ∘ is-prop←is-S0-null
   is-truncated←null (suc n) {A} null x y
     = is-truncated←null n (lem x y) where
-    lem : is-separated (Null-SubU (λ (_ : 𝟙) → S n) _) A
+    lem : is-separated (Null-SubU (point (S n)) _) A
     lem = is-separated←is-Σ-null (λ _ → S n) null
 
   is-null←truncated : ∀ {𝓤} n {A : Type 𝓤}
@@ -154,61 +156,94 @@ Truncation-SubU
     → SubU 𝓤 𝓤
 Truncation-SubU = n-separated-SubU singleton-SubU
 
-singleton-GSU : GSU id
-singleton-GSU .GSU.S = singleton-SubU
-singleton-GSU .GSU.S-equiv = is-single←equiv-to-single
+singleton-gSubU : gSubU id
+singleton-gSubU .gSubU.S = singleton-SubU
+singleton-gSubU .gSubU.∈S←equiv = is-single←equiv-to-single
 
-Truncation-GSU : ℕ → GSU id
-Truncation-GSU = n-separated-GSU singleton-GSU
-
+Truncation-gSubU : ℕ → gSubU id
+Truncation-gSubU = n-separated-gSubU singleton-gSubU
 opaque
   unfolding is-n-separated
-  Trunc≃SNull-GSU : ∀ {n} → GSU-equiv (Null-GSU (λ (_ : 𝟙) → S n))
-                                      (Truncation-GSU (suc n))
-  Trunc≃SNull-GSU A = (is-truncated←null _ , is-null←truncated _)
+  Trunc≃SNull-gSubU : ∀ {n} → gSubU-equiv (Null-gSubU (point (S n)))
+                                      (Truncation-gSubU (suc n))
+  Trunc≃SNull-gSubU A = (is-truncated←null _ , is-null←truncated _)
 
-singleton-GSU-is-reflective : is-globally-reflective singleton-GSU
-singleton-GSU-is-reflective .is-globally-reflective.○ A = ∅ → A
-singleton-GSU-is-reflective .is-globally-reflective.η a _ = a
-singleton-GSU-is-reflective .is-globally-reflective.has-is-reflector
+singleton-gSubU-is-reflective : is-globally-reflective singleton-gSubU
+singleton-gSubU-is-reflective .is-globally-reflective.○ A = ∅ → A
+singleton-gSubU-is-reflective .is-globally-reflective.η a _ = a
+singleton-gSubU-is-reflective .is-globally-reflective.has-is-reflector
   {𝓤} {A} = gr where
   open is-global-reflector
-  gr : is-global-reflector singleton-GSU A (∅ → A) (const A ∅)
+  gr : is-global-reflector singleton-gSubU A (∅ → A) (const A ∅)
   gr .○∈S = ∅-UP-sing
   gr .reflects Qs = is-equiv←single-to-prop
                      (is-singleton-Π (λ _ → Qs))
                      (is-prop←is-single (is-singleton-Π (λ _ → Qs)))
                      (precomp _ (const A ∅))
 
+singleton-gRSubU : gRSubU id
+singleton-gRSubU .gRSubU.GS = singleton-gSubU
+singleton-gRSubU .gRSubU.has-is-globally-reflective = singleton-gSubU-is-reflective
 
 opaque
   unfolding is-n-separated
-  Truncation-grefl : ∀ {n} → is-globally-reflective (Truncation-GSU n)
+  Truncation-grefl : ∀ {n} → is-globally-reflective (Truncation-gSubU n)
   Truncation-grefl {zero}
     = mk-gReflectors ○ η (mk-grfltor (mk-lift ○∈S) (reflects ∘ unlift))
-    where open is-globally-reflective singleton-GSU-is-reflective
+    where open is-globally-reflective singleton-gSubU-is-reflective
   Truncation-grefl {suc n} = is-globally-reflective-subtype-equiv
-                              Trunc≃SNull-GSU
+                              Trunc≃SNull-gSubU
                               (Null∙-global-reflectors (λ _ → S-∙))
 
   Truncation-refl : ∀ {𝓤} n → is-reflective (Truncation-SubU {𝓤} n)
   Truncation-refl n = is-reflective←global (Truncation-grefl)
 
-  Truncation-Σ-closed : ∀ {n} → is-globally-Σ-closed (Truncation-GSU n)
+  Truncation-Σ-closed : ∀ {n} → is-globally-Σ-closed (Truncation-gSubU n)
   Truncation-Σ-closed {zero} As Bs
     = mk-lift (Singleton-Σ (unlift As) (unlift ∘ Bs))
   Truncation-Σ-closed {suc n} {A = A} {B} As Bs
-    = Trunc≃SNull-GSU (Σ A B) .fst (Null-globally-Σ-closed
+    = Trunc≃SNull-gSubU (Σ A B) .fst (Null-globally-Σ-closed
                                      (is-null←truncated _ As)
                                      (is-null←truncated _ ∘ Bs))
 
-module Trunc {n} where
-  open GRSUInduction (Truncation-grefl {n}) Truncation-Σ-closed public
+Truncation-gRSubU : (n : ℕ) → gRSubU id
+Truncation-gRSubU n .gRSubU.GS = Truncation-gSubU n
+Truncation-gRSubU n .gRSubU.has-is-globally-reflective = Truncation-grefl {n}
 
-  open GSU (Truncation-GSU n) public renaming (S-equiv to is-truncated←equiv)
-  open GPiClosure (Truncation-grefl {n}) public
-    renaming (Π∈S to Π-is-truncated; ULift∈S to ULift-is-truncated)
+module Trunc {n} where
+  open gRSubUInduction (Truncation-gRSubU n) Truncation-Σ-closed public
+  open gSubU (Truncation-gSubU n) public
+  open gReflectiveClosure (Truncation-gRSubU n) public
   open is-globally-reflective (Truncation-grefl {n}) public
+
+
+  untrunc : ∀ {𝓤} {A : Type 𝓤} → is-truncated n A → ○ A → A
+  untrunc = unmod (reflector _)
+
+module _ {n} where
+
+  open gSubU (Truncation-gSubU n) public using () renaming
+    ( ∈S←equiv to is-truncated←equiv)
+
+  open gReflectiveClosure (Truncation-gRSubU n) public using () renaming
+    ( Π∈S to Π-is-truncated
+    ; ULift∈S to ULift-is-truncated
+    ; 𝟙∈S to 𝟙-is-truncated
+    ; ∈S←is-singleton to is-n-truncated←is-singleton
+    ; ∈S←retract to is-truncated←retract
+    ; Pullback∈S to Pullback-is-truncated
+    ; fibre∈S to fibre-is-truncated
+    ; ×∈S to ×-is-truncated
+    ; ＝∈S to ＝-is-truncated
+    ; ~∈S to ~-is-truncated
+    ; retract∈S to retract-is-truncated
+    ; biinv∈S to biinv-is-truncated
+    ; ≃∈S to Equiv-is-truncated
+    ; Equaliser∈S to Equaliser-is-truncated
+    ; Seq-lim∈S to Seq-lim-is-truncated
+    ; preidempotent-map∈S to preidempotent-map-is-truncated
+    ; qidempotent-map∈S to qidempotent-map-is-truncated
+    ; Retracts∈S to Retracts-is-truncated)
 
   Σ-is-truncated = Truncation-Σ-closed {n}
 
@@ -217,18 +252,16 @@ module Trunc {n} where
     ∅-is-suc-truncated : is-truncated (suc n) ∅
     ∅-is-suc-truncated ()
 
-  untrunc : ∀ {𝓤} {A : Type 𝓤} → is-truncated n A → ○ A → A
-  untrunc tr = unmod (reflector _) tr
 
 Trunc : ∀ {𝓤} n → Type 𝓤 → Type 𝓤
 Trunc n = Trunc.○ {n}
 
-∥_∥ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
-∥_∥ = Trunc 1
-{-# NOINLINE ∥_∥ #-}
+║_║ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+║_║ = Trunc 1
+{-# NOINLINE ║_║ #-}
 
-∥-∥-is-prop : ∀ {𝓤} {A : Type 𝓤} → is-prop ∥ A ∥
-∥-∥-is-prop = is-prop←is-truncated Trunc.○∈S
+║-║-is-prop : ∀ {𝓤} {A : Type 𝓤} → is-prop ║ A ║
+║-║-is-prop = is-prop←is-truncated Trunc.○∈S
 
 {-# DISPLAY Trunc.○ {n} A = Trunc n A #-}
 }
@@ -241,8 +274,6 @@ Trunc n = Trunc.○ {n}
 \taxon{Theorem}
 
 \p{An #{n}-truncated type is #{n+k} truncated for any #{k : ℕ}.}
-
-
 
 \quiver{
 \begin{tikzcd}
@@ -266,7 +297,7 @@ suc-is-null : ∀ {𝓘 𝓤 𝓥}
 suc-is-null {X = X}{A} AXnull i = eqv where opaque
   module eqv = is-equiv (AXnull i)
   Ideq : {x y : A} → (x ＝ y) ≃ (X i → x ＝ y)
-  Ideq {x} {y} = (mk≃ _ (＝-is-null AXnull {x} {y} i))
+  Ideq {x} {y} = (mk≃ _ (＝-is-null X AXnull {x} {y} i))
 
   module Ideq x y = _≃_ (Ideq {x} {y})
 
@@ -325,7 +356,7 @@ opaque
   is-n-truncated←is-single s zero = mk-lift s
   is-n-truncated←is-single s (suc n) x y
     = is-n-truncated←is-single
-        (＝-singleton←is-prop (is-prop←is-single s) x y) n
+        (＝-singleton←is-single s x y) n
 
   is-suc-truncated←is-prop
     : ∀ {𝓤} {A : Type 𝓤} → is-prop A → ∀ n → is-truncated (suc n) A
@@ -350,27 +381,27 @@ opaque
        λ a → mk-singl (is-equiv←single-to-prop (is-singleton←is-truncated Atr)
                          (is-prop←is-single (is-singleton←is-truncated Btr)) a)
                       (is-equiv-is-prop _)))
-≃-is-truncated (suc n) Atr Btr = Trunc.is-truncated←equiv (≃-rep e⁻¹)
-                            (Trunc.Σ-is-truncated
-                              (Trunc.Π-is-truncated (λ a → Btr))
+≃-is-truncated (suc n) Atr Btr = is-truncated←equiv (≃-rep e⁻¹)
+                            (Σ-is-truncated
+                              (Π-is-truncated (λ a → Btr))
                               λ a → is-suc-truncated←is-prop
                                        is-equiv-is-prop n)
 
 Trunc-U : ∀ n 𝓤 → Type (lsuc 𝓤)
 Trunc-U n 𝓤 = Σ (Type 𝓤) (is-truncated n)
 
-PropU = Trunc-U 1
-SetU = Trunc-U 2
+Prop-U = Trunc-U 1
+Set-U = Trunc-U 2
 
 TULift : ∀ {𝓤} n 𝓥 → Trunc-U n 𝓤 → Trunc-U n (𝓤 ⊔ 𝓥)
-TULift n 𝓥 (t , p) = (ULift 𝓥 t , Trunc.ULift-is-truncated p)
+TULift n 𝓥 (t , p) = (ULift 𝓥 t , ULift-is-truncated p)
 
 opaque
   unfolding is-n-separated
   Trunc-U-is-truncated : ∀ n {𝓤} → is-truncated (suc n) (Trunc-U n 𝓤)
   Trunc-U-is-truncated n (X , Xtr) (Y , Ytr)
-    = Trunc.is-truncated←equiv Σ-path
-        (Trunc.Σ-is-truncated (Trunc.is-truncated←equiv
+    = is-truncated←equiv Σ-path
+        (Σ-is-truncated (is-truncated←equiv
                                 (mk≃ _ (is-equiv⁻¹ UA))
                                 (≃-is-truncated n Xtr Ytr))
         (λ where refl → let is-sing = ＝-singleton←is-prop
@@ -444,18 +475,18 @@ instance
                   ⦃ _ : ∀ {a} → Is-truncated n (B a) ⦄
                 → Is-truncated n (Π A B)
   Truncated-Π ⦃ t ⦄ .has-is-truncated
-    = Trunc.Π-is-truncated λ _ → t .has-is-truncated
+    = Π-is-truncated λ _ → t .has-is-truncated
 
 instance
   Truncated-ULift : ∀ {𝓤 𝓥} {A : Type 𝓤} {n}
                   ⦃ _ : Is-truncated n A ⦄
                 → Is-truncated n (ULift 𝓥 A)
   Truncated-ULift ⦃ t ⦄ .has-is-truncated
-    = Trunc.ULift-is-truncated (t .has-is-truncated)
+    = ULift-is-truncated (t .has-is-truncated)
 
 instance
   Truncated-𝟙 : ∀ {n} → Is-truncated n 𝟙
-  Truncated-𝟙 .has-is-truncated = Trunc.𝟙∈S
+  Truncated-𝟙 .has-is-truncated = 𝟙-is-truncated
 
 instance
   Truncated-Σ
@@ -463,7 +494,7 @@ instance
         ⦃ _ : Is-truncated n A ⦄ ⦃ _ : ∀ {a} → Is-truncated n (B a) ⦄
       → Is-truncated n (Σ A B)
   Truncated-Σ ⦃ a ⦄ ⦃ b ⦄ .has-is-truncated
-    = Trunc.Σ-is-truncated (a .has-is-truncated) (λ _ → has-is-truncated b)
+    = Σ-is-truncated (a .has-is-truncated) (λ _ → has-is-truncated b)
 
 trunc! : ∀ {𝓤} {A : Type 𝓤} {n} → ⦃ _ : Is-truncated n A ⦄ → is-truncated n A
 trunc! ⦃ t ⦄ = t .has-is-truncated

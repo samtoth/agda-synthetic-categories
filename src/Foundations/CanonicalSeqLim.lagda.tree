@@ -1,0 +1,287 @@
+\title{Canonical sequential limits}
+\taxon{Module}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.FunExt
+
+module Foundations.CanonicalSeqLim where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.Nat
+open import Foundations.Sigma
+open import Foundations.SigmaPath
+open import Foundations.FibrewiseEquiv
+open import Foundations.Singleton
+open import Foundations.EquivSingleton
+open import Foundations.IdentitySystem
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.EquivHomotopy
+open import Foundations.Span
+open import Foundations.CanonicalPullbacks
+open import Foundations.PullbackPath
+open import Foundations.Square
+open import Foundations.Tower
+open import Foundations.Fork
+open import Foundations.CanonicalEqualiser
+open import Foundations.SingletonClosure
+open import Foundations.TheoremOfChoice
+}
+%```
+
+\subtree[stt-00HL]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{The canonical sequential limit of a tower}
+\taxon{Definition}
+
+\p{
+Given a [tower](stt-00HI) #{A} of types
+##{\cdots \to A_{n+1} \xrightarrow{f_n} A_n \to \cdots \xrightarrow{f_0} A_0,}
+the canonical sequential limit of #{A}, #{\lim A}, is given by the type of sequences
+of elements #{a_i : A_i} such that #{a_i = f_i(a_{i+1})} for every #{i}.
+}
+
+%```agda
+\agda{
+module _ {𝓤 : Level} where
+
+  Seq-lim : Tower 𝓤 → Type 𝓤
+  Seq-lim T
+    = Σ[ a ∶ ((n : ℕ) → Tower.Point T n) ]
+       ( (n : ℕ) → a n ＝ Tower.decr T (a (suc n)))
+
+  limit-point : (T : Tower 𝓤) → Seq-lim T → Tower.Point T zero
+  limit-point T (a , α) = a zero
+
+  shift-Tower : Tower 𝓤 → Tower 𝓤
+  shift-Tower T = mk-tower (Tower.Point T ∘ suc) (λ {n} → Tower.decr T {suc n})
+
+  Seq-lim-tail
+    : (T : Tower 𝓤)
+    → Seq-lim T
+    → Seq-lim (shift-Tower T)
+  Seq-lim-tail T (a , α) = (λ n → a (suc n)) , (λ n → α (suc n))
+
+  Seq-lim-shift-map
+    : (T : Tower 𝓤)
+    → ((n : ℕ) → Tower.Point T n)
+    → ((n : ℕ) → Tower.Point T n)
+  Seq-lim-shift-map T a n = Tower.decr T (a (suc n))
+}
+%```
+}
+
+\subtree[stt-00HM]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Equality in sequential limits}
+\taxon{Theorem}
+
+\p{
+Given a tower
+##{\cdots \to A_{n+1} \xrightarrow{f_n} A_n \to \cdots \xrightarrow{f_0} A_0}
+and two elements of its [canonical sequential limit](stt-00HL), i.e., two sequences
+of elements #{a} and #{b} equipped with equalities #{\alpha_i : a_i = f_i(a_{i+1})}
+and #{\beta_i : b_i = f_i(b_{i+1})} respectively, then equality of #{(a , \alpha)}
+and #{(b , \beta)} is equivalent to pointwise equality of #{a} and #{b},
+#{p_i : a_i = b_i} together with a coherence
+
+\quiver{
+\begin{tikzcd}
+  a_i && b_i \\
+  \\
+  f_i(a_{i+1}) && f_i(b_{i+1})
+  \arrow[from=1-1, to=1-3, "p_i", equals]
+  \arrow[from=1-1, to=3-1, "\alpha_i", equals]
+  \arrow[from=1-3, to=3-3, "\beta_i", equals]
+  \arrow[from=3-1, to=3-3, "\ap_{f_i}(p_{i+1})"', equals]
+\end{tikzcd}
+}
+}
+
+%```agda
+\agda{
+Seq-lim-htpy
+  : {𝓤 : Level} (T : Tower 𝓤)
+  → Seq-lim T → Seq-lim T → Type 𝓤
+Seq-lim-htpy T x y
+  = Σ[ p ∶ fst x ~ fst y ]
+      ((n : ℕ)
+      → Square
+        (p n)
+        (ap (Tower.decr T) (p (suc n)))
+        (snd x n)
+        (snd y n))
+
+module LimitWithFunExt (FE : FunExt-global) {𝓤 : Level} (T : Tower 𝓤) where
+  open WithFunExt-global FE
+
+  Seq-lim-htpy←Id
+    : {x y : Seq-lim T}
+    → x ＝ y
+    → Seq-lim-htpy T x y
+  Seq-lim-htpy←Id {x = x} refl = (~refl , Square-drop-j ∘ x .snd)
+
+  Seq-lim-htpy-is-torsorial
+    : (x : Seq-lim T)
+    → is-singleton (Σ (Seq-lim T) (Seq-lim-htpy T x))
+  Seq-lim-htpy-is-torsorial x
+    = is-singleton-structure←parts
+        (htpy-is-torsorial FE (fst x))
+        (fst x , ~refl)
+        (is-single←equiv-to-single
+          (Σ-Π-swap≃ _ _)
+          (Singleton-Π FE λ n →
+            is-single←equiv-to-single
+              (Σ-ap-≃ (λ q → mk-square≃Square))
+              Sing'-is-singleton))
+
+  Seq-lim-htpy←Id-is-equiv
+    : {x y : Seq-lim T}
+    → is-equiv (Seq-lim-htpy←Id {x} {y})
+  Seq-lim-htpy←Id-is-equiv {x} {y}
+    = fundamental-Id
+        (Seq-lim-htpy T x)
+        (Seq-lim-htpy-is-torsorial x)
+        (λ y → Seq-lim-htpy←Id)
+        (y)
+
+  Id≃Seq-lim-htpy
+    : {x y : Seq-lim T}
+    → (x ＝ y) ≃ Seq-lim-htpy T x y
+  Id≃Seq-lim-htpy = mk≃ Seq-lim-htpy←Id Seq-lim-htpy←Id-is-equiv
+
+  Id←Seq-lim-htpy
+    : {x y : Seq-lim T}
+    → Seq-lim-htpy T x y
+    → x ＝ y
+  Id←Seq-lim-htpy = is-equiv.bwd Seq-lim-htpy←Id-is-equiv
+
+  ap-limit-point-Id←Seq-lim-htpy
+    : {x y : Seq-lim T}
+    → (h : Seq-lim-htpy T x y)
+    → ap (limit-point T) (Id←Seq-lim-htpy h) ＝ fst h zero
+  ap-limit-point-Id←Seq-lim-htpy {x} h
+    = fst-htpy-zero (Id←Seq-lim-htpy h)
+    ∙ ap (λ k → fst k zero) (is-equiv.ε Seq-lim-htpy←Id-is-equiv h)
+    where
+      fst-htpy-zero
+        : {x y : Seq-lim T}
+        → (p : x ＝ y)
+        → ap (limit-point T) p ＝ fst (Seq-lim-htpy←Id p) zero
+      fst-htpy-zero refl = refl
+}
+%```
+}
+
+\subtree[stt-00I5]{
+\date{2026-03-16}
+\author{fredrikbakke}
+\title{Sequential limits as equalisers}
+\taxon{Theorem}
+
+\p{
+The canonical sequential limit of a [tower](stt-00HI) #{T} is the
+[equaliser](stt-00H6) of the identity and the shift map
+#{(a,n) \mapsto f_n(a_{n+1})} on the type of sequences
+#{\prod_{(n : \bN)} A_n}.
+
+\quiver{
+\begin{tikzcd}
+  \lim A_n && \prod_{(n : \bN)} A_n && \prod_{(n : \bN)} A_n
+	\arrow["\id", from=1-3, to=1-5, shift left]
+	\arrow["\textsf{shift}"', from=1-3, to=1-5, shift right]
+	\arrow[from=1-1, to=1-3]
+\end{tikzcd}
+}
+}
+
+%```agda
+\agda{
+module LimitWithFunExt-equaliser (FE : FunExt-global) {𝓤 : Level} (T : Tower 𝓤) where
+  open WithFunExt-global FE
+
+  Seq-lim-fork : Fork id (Seq-lim-shift-map T) (Seq-lim T)
+  Seq-lim-fork = fst , (funext→ ∘ snd)
+
+  Seq-lim-equaliser-gap
+    : Seq-lim T → Equaliser id (Seq-lim-shift-map T)
+  Seq-lim-equaliser-gap
+    = Equaliser-gap id (Seq-lim-shift-map T) Seq-lim-fork
+
+  Seq-lim-equaliser-gap-is-equiv
+    : is-equiv (Seq-lim-equaliser-gap)
+  Seq-lim-equaliser-gap-is-equiv = is-equiv←qiso qiso where
+    qiso : quasi-iso Seq-lim-equaliser-gap
+    qiso .fst (a , p) = (a , happly p)
+    qiso .snd .fst (a , α) = Σ-path→ (refl , funext.ε α)
+    qiso .snd .snd (a , p) = Σ-path→ (refl , funext.η p)
+
+  Seq-lim≃Equaliser
+    : Seq-lim T ≃ Equaliser id (Seq-lim-shift-map T)
+  Seq-lim≃Equaliser
+    = mk≃ Seq-lim-equaliser-gap Seq-lim-equaliser-gap-is-equiv
+}
+%```
+}
+
+\subtree[stt-00I6]{
+\date{2026-03-16}
+\author{fredrikbakke}
+\title{Sequential limits as pullbacks}
+\taxon{Theorem}
+
+\p{
+The canonical sequential limit of a [tower](stt-00HI) #{T} is the
+[pullback](stt-003J) of the diagonal
+#{\Delta : \prod_{(n : \bN)} A_n \to (\prod_{(n : \bN)} A_n)^2}
+and the pairing
+#{({\id},\textsf{shift}) : \prod_{(n : \bN)} A_n \to (\prod_{(n : \bN)} A_n)^2}
+of the identity with the [shift map](stt-00HL)
+#{(a,n) \mapsto f_n(a_{n+1})}.
+
+\quiver{
+\begin{tikzcd}
+  {\lim A_n} && {\prod_{(n : \bN)} A_n} \\
+  \\
+  {\prod_{(n : \bN)} A_n} && {(\prod_{(n : \bN)} A_n)^2}
+	\arrow["{\pi_1}", from=1-1, to=1-3]
+	\arrow["{\pi_2}"', from=1-1, to=3-1]
+	\arrow["\Delta", from=1-3, to=3-3]
+	\arrow["{(\id, \textsf{shift})}"', from=3-1, to=3-3]
+	\arrow["\lrcorner" very near start, draw=none, from=1-1, to=3-3]
+\end{tikzcd}
+}
+}
+
+\p{
+The pullback presentation of sequential limits is derived from the
+[equaliser presentation](stt-00I5) via the general fact that
+[equalisers are pullbacks](stt-00H8).
+}
+
+%```agda
+\agda{
+module LimitWithFunExt-pullback (FE : FunExt-global) where
+  open WithFunExt-global FE
+  open LimitWithFunExt-equaliser FE
+
+  module _ {𝓤} (T : Tower 𝓤) where
+
+    Seq-lim≃Pullback
+      : Seq-lim T
+      ≃ Pullback
+          (λ b → (b , b))
+          (λ a → (a , Seq-lim-shift-map T a))
+    Seq-lim≃Pullback
+      = Seq-lim≃Equaliser T ∙≃ Equaliser≃Pullback-diagonal
+}
+%```
+}

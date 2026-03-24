@@ -1,0 +1,1208 @@
+\title{Idempotent maps}
+\taxon{Module}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.FunExt
+
+module Foundations.Idempotent where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.Sigma
+open import Foundations.Unit
+open import Foundations.Nat
+open import Foundations.Square
+open import Foundations.CanonicalEqualiser
+open import Foundations.SigmaPath
+open import Foundations.PathReasoning
+open import Foundations.Tower
+open import Foundations.CanonicalSeqLim
+open import Foundations.Span
+open import Foundations.Fork
+open import Foundations.Pullbacks
+open import Foundations.CanonicalPullbacks
+open import Foundations.IdentitySystem
+open import Foundations.Univalence
+open import Foundations.FunctionInverses
+open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentIsomorphism
+open import Foundations.EquivHomotopy
+open import Foundations.IdentityEquiv
+open import Foundations.Retract
+open import Foundations.FibrewiseEquiv
+open import Foundations.SigmaProperties
+open import Foundations.Singleton
+open import Foundations.EquivSingleton
+open import Foundations.EquivContrFibre
+open import Foundations.SingletonClosure
+open import Foundations.TheoremOfChoice
+import Foundations.EquivProp as EProp
+import Foundations.HomotopyEquiv as HEquiv
+}
+% ```
+
+\subtree[stt-00H9]{
+\taxon{Definition}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Preidempotent maps}
+
+\p{
+A \em{preidempotent map} is a map #{f : X \to X} such that #{f \circ f \sim f}. The
+data of a [homotopy](stt-001M) #{f \circ f \sim f} is called a \em{preidempotence}.
+}
+\p{
+In set-level mathematics, this concept is better known as an "idempotent map".
+However, in homotopical mathematics such as our present setting, the preidempotence
+condition #{f \circ f \sim f} is not enough to ensure a well-behaved notion of
+idempotence in general. For instance, one would expect idempotents to split, but this
+is not true for all preidempotent maps in the homotopical setting of univalent
+foundations. Instead, we must ask for additional data to ensure the homotopy
+#{f \circ f \sim f} itself is well-enough behaved. This leads to the definitions of
+[quasiidempotent](stt-00II) and [(coherently) idempotent](stt-00IG) maps.
+}
+\p{
+Our terminology follows that of [[michaelshulman]] \citek{shulman-idempotents-2017}
+and so we designate the somewhat derogatory term "preidempotent" for the reason
+described above.
+}
+
+% ```agda
+\agda{
+preidempotence
+  : ∀ {𝓤} {X : Type 𝓤} → (X → X) → Type 𝓤
+preidempotence f = f ∘ f ~ f
+
+preidempotent-map
+  : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+preidempotent-map X = Σ[ f ∶ (X → X) ] preidempotence f
+}
+% ```
+}
+
+\subtree[stt-00II]{
+\taxon{Definition}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Quasiidempotent maps}
+
+\p{
+A map #{f : X \to X} is \em{quasiidempotent} if it comes equipped with a
+\em{quasiidempotence}: a [homotopy](stt-001M) #{I : f \circ f \sim f} such that
+#{f I \sim I f}.
+}
+\p{
+While the single extra condition of #{f I \sim I f} compared to
+[preidempotent maps](stt-00H9) is not enough for the notion of quasiidempotence to
+present a fully coherent notion of idempotence of maps in homotopical mathematics, it
+\em{is} enough for us to be able to show [that #{f} splits](stt-00HC). We show this
+following [[michaelshulman]]'s work \citek{shulman-idempotents-2017}.
+}
+\p{
+Our terminology follows that of [[michaelshulman]] \citek{shulman-idempotents-2017}
+and so we designate the somewhat derogatory term "quasiidempotent" for the reason
+described above.
+}
+
+% ```agda
+\agda{
+qcoh-preidempotence
+  : ∀ {𝓤} {X : Type 𝓤} (f : X → X)
+  → preidempotence f
+  → Type 𝓤
+qcoh-preidempotence f I = (f ◂ I) ~ (I ▸ f)
+
+qidempotence
+  : ∀ {𝓤} {X : Type 𝓤}
+  → (X → X) → Type 𝓤
+qidempotence f = Σ[ I ∶ preidempotence f ] qcoh-preidempotence f I
+
+qidempotent-map
+  : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+qidempotent-map X = Σ[ f ∶ (X → X) ] qidempotence f
+}
+% ```
+}
+
+\subtree{
+\taxon{Theorem}
+\date{2026-03-17}
+\author{fredrikbakke}
+\title{Equality of quasiidempotences}
+
+\p{
+Equalities of quasiidempotences are characterised by homotopies between the
+underlying preidempotences together with a compatible homotopy between the
+quasicoherences.
+}
+
+% ```agda
+\agda{
+module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
+
+  qidempotence-coherence
+    : (H K : qidempotence f)
+    → (H .fst ~ K .fst)
+    → Type 𝓤
+  qidempotence-coherence H K ρ
+    = (H .snd ~∙ ρ ∘ f) ~ (ap (ap f) ∘ ρ ~∙ K .snd)
+
+  qidempotence-htpy
+    : qidempotence f
+    → qidempotence f
+    → Type 𝓤
+  qidempotence-htpy H K
+    = Σ[ ρ ∶ H .fst ~ K .fst ] qidempotence-coherence H K ρ
+
+  refl-qidempotence-htpy
+    : (H : qidempotence f)
+    → qidempotence-htpy H H
+  refl-qidempotence-htpy (I , Q)
+    = ~refl
+    , (λ x → ∙-reflr (Q x) ∙ sym (∙-refll (Q x)))
+
+module QIdempotenceWithFunExt (FE : FunExt-global) where
+  open WithFunExt-global FE
+  module EP = EProp FE
+  open EP
+
+  module _
+    {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+    (H : qidempotence f)
+    where
+
+    qidempotence-htpy-is-torsorial
+      : is-singleton (Σ[ K ∶ qidempotence f ] qidempotence-htpy H K)
+    qidempotence-htpy-is-torsorial
+      = is-singleton-structure←parts
+          (htpy-is-torsorial FE (H .fst))
+          (_ , ~refl)
+          (is-single←equiv-to-single
+            (Σ-ap-≃-fst (HEquiv.~∙≃ FE ~refl))
+            (htpy-is-torsorial FE (H .snd ~∙ ~refl)))
+
+  qidempotence-htpy←Id
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+      {H K : qidempotence f}
+    → H ＝ K
+    → qidempotence-htpy H K
+  qidempotence-htpy←Id {H = H} refl
+    = refl-qidempotence-htpy H
+
+  qidempotence-htpy-is-equiv
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+      (H K : qidempotence f)
+    → is-equiv (qidempotence-htpy←Id {H = H} {K = K})
+  qidempotence-htpy-is-equiv H
+    = fundamental-Id
+        (qidempotence-htpy H)
+        (qidempotence-htpy-is-torsorial H)
+        (λ _ → qidempotence-htpy←Id)
+
+  Id≃qidempotence-htpy
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+      (H K : qidempotence f)
+    → (H ＝ K) ≃ qidempotence-htpy H K
+  Id≃qidempotence-htpy H K
+    = mk≃ qidempotence-htpy←Id (qidempotence-htpy-is-equiv H K)
+
+  Id←qidempotence-htpy
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+      {H K : qidempotence f}
+    → qidempotence-htpy H K
+    → H ＝ K
+  Id←qidempotence-htpy {H = H} {K = K}
+    = _≃_.bwd (Id≃qidempotence-htpy H K)
+}
+% ```
+}
+
+\subtree[stt-00IH]{
+\taxon{Theorem}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Limit presentation of quasiidempotent maps}
+
+\p{
+We present the type of [quasiidempotent maps](stt-00II) as a [pullback](stt-003I).
+A preidempotent map #{(f,I)} determines, for each #{x : X}, a pair of identifications
+in the total identity type of #{X}, #{\Sigma_{(x,y : X)}(x = y)}:
+namely the equality #{\ap_f(I(x)) : f(f(f(x))) = f(f(x))} and the equality
+#{I(f(x)) : f(f(f(x))) = f(f(x))}. Equivalently, these are two points of the total
+identity type lying over the same pair #{(f(f(f(x))),f(f(x)))}. A quasicoherence of
+the preidempotence is exactly a family of fillers between these two identifications.
+}
+
+\p{
+Therefore, #{\textsf{QIdem}(X)} is the pullback of the boundary map of a
+preidempotent map against the forgetful map from fillers to their boundaries:
+\quiver{
+\begin{tikzcd}
+		\textsf{QIdem}(X) && (X \to \textsf{QData}(X)) \\
+		\\
+	\textsf{PreIdem}(X) && (X \to \textsf{QBoundary}(X))
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["{\fst^X}", from=1-3, to=3-3]
+	\arrow["\textsf{boundary}", from=3-1, to=3-3]
+	\arrow["\lrcorner" very near start, phantom, from=1-1, to=3-3]
+\end{tikzcd}
+}
+Here #{\textsf{boundary}} is the map formalised as \code{quasicoherence-boundary-map}.
+}
+
+\agda{
+quasicoherence-boundary
+  : {𝓤 : Level}
+  → Type 𝓤 → Type 𝓤
+quasicoherence-boundary X
+  = Σ[ uv ∶ (total-Id X × total-Id X) ]
+      (uv .fst .fst ＝ uv .snd .fst)
+
+quasicoherence-filler
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-boundary X
+  → Type 𝓤
+quasicoherence-filler ((u , v) , p)
+  = Idᵈ
+      ( ap (λ (x , y) → x ＝ y) p)
+      ( u .snd)
+      ( v .snd)
+
+quasicoherence-data
+  : {𝓤 : Level} → Type 𝓤 → Type 𝓤
+quasicoherence-data X
+  = Σ[ B ∶ quasicoherence-boundary X ] quasicoherence-filler B
+
+quasicoherence-boundary-map
+  : {𝓤 : Level} {X : Type 𝓤}
+  → preidempotent-map X
+  → (a : X)
+  → quasicoherence-boundary X
+quasicoherence-boundary-map (f , I) a
+  = ( ( ((f (f (f a)) , f (f a)) , ap f (I a))
+      , ((f (f (f a)) , f (f a)) , I (f a)))
+    , refl)
+
+quasicoherence-data≃total-Id
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-data X
+  ≃ total-Id (total-Id X)
+quasicoherence-data≃total-Id
+  = Σ-assoc ∙≃ Σ-ap-≃ (λ _ → Σ-path)
+
+quasicoherence-data≃
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-data X ≃ X
+quasicoherence-data≃ {X = X}
+  = quasicoherence-data≃total-Id
+  ∙≃ total-Id≃ {X = total-Id X}
+  ∙≃ total-Id≃ {X = X}
+
+module QIdemWithFunExt (FE : FunExt-global) where
+  open WithFunExt-global FE
+
+  quasicoherence-filler≃fibre
+    : {𝓤 : Level} {X : Type 𝓤}
+      (B : quasicoherence-boundary X)
+    → quasicoherence-filler B
+    ≃ fibre fst B
+  quasicoherence-filler≃fibre {X = X} B
+    = fibre-straighten {A = quasicoherence-boundary X} quasicoherence-filler B e⁻¹
+
+  quasicoherence-forget
+    : {𝓤 : Level} {X : Type 𝓤}
+    → (X → quasicoherence-data X)
+    → (X → quasicoherence-boundary X)
+  quasicoherence-forget = fst ∘_
+
+  quasicoherence-forget-fibre←qcoh-preidempotence
+    : {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+      (I : preidempotence f)
+    → qcoh-preidempotence f I
+    → fibre
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map (f , I))
+  quasicoherence-forget-fibre←qcoh-preidempotence {X = X} {f = f} I
+    = _≃_.fwd
+        ( EProp.Π-ap-≃ FE {A = X} (λ a
+          → quasicoherence-filler≃fibre (quasicoherence-boundary-map (f , I) a))
+        ∙≃ Σ-Π-swap≃ _ _
+        ∙≃ Σ-ap-≃ (λ _ → funext≃ e⁻¹))
+
+  qcoh-preidempotence≃quasicoherence-forget-fibre
+    : {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+      (I : preidempotence f)
+    → qcoh-preidempotence f I
+    ≃ fibre
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map (f , I))
+  qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I
+    = mk≃
+        (quasicoherence-forget-fibre←qcoh-preidempotence {X = X} {f = f} I)
+        (_≃_.has-is-eqv
+          ( EProp.Π-ap-≃ FE {A = X}
+              (quasicoherence-filler≃fibre ∘ quasicoherence-boundary-map (f , I))
+          ∙≃ Σ-Π-swap≃ _ _
+          ∙≃ Σ-ap-≃ (λ _ → funext≃ e⁻¹)))
+
+  qidempotent-map-pullback-cone
+    : {𝓤 : Level} {X : Type 𝓤}
+    → Cone
+        (mk-cospan
+          (X → quasicoherence-boundary X)
+          (quasicoherence-forget {X = X})
+          (quasicoherence-boundary-map {X = X}))
+        (qidempotent-map X)
+  qidempotent-map-pullback-cone {X = X}
+    = mk-cone
+        (λ (f , I , Q)
+         → quasicoherence-forget-fibre←qcoh-preidempotence {f = f} I Q .fst)
+        (λ (f , I , _) → (f , I))
+        (λ (f , I , Q)
+         → quasicoherence-forget-fibre←qcoh-preidempotence {f = f} I Q .snd)
+
+  qidempotent-map-pullback-gap
+    : {𝓤 : Level} {X : Type 𝓤}
+    → qidempotent-map X
+    → Pullback
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map {X = X})
+  qidempotent-map-pullback-gap {X = X}
+    = gap (qidempotent-map-pullback-cone {X = X})
+
+  qidempotent-map-pullback-gap-is-equiv
+    : {𝓤 : Level} {X : Type 𝓤}
+    → is-equiv (qidempotent-map-pullback-gap {X = X})
+  qidempotent-map-pullback-gap-is-equiv {X = X} = is-equiv←qiso qiso where
+
+    qiso
+      : quasi-iso (qidempotent-map-pullback-gap {X = X})
+    qiso .fst (Q , (f , I) , p)
+      = f , I
+      , _≃_.bwd
+          (qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I)
+          (Q , p)
+    qiso .snd .fst (f , I , Q)
+      = ap
+          (λ r → f , I , r)
+          (is-equiv.η (_≃_.has-is-eqv (qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I)) Q)
+    qiso .snd .snd (Q , (f , I) , p)
+      = ap
+          (λ r → fst r , (f , I) , snd r)
+          (is-equiv.ε
+            (_≃_.has-is-eqv (qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I))
+            (Q , p))
+
+  qidempotent-map≃pullback
+    : {𝓤 : Level} {X : Type 𝓤}
+    → qidempotent-map X
+    ≃ Pullback
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map {X = X})
+  qidempotent-map≃pullback {X = X}
+    = mk≃
+        (qidempotent-map-pullback-gap)
+        (qidempotent-map-pullback-gap-is-equiv {X = X})
+}
+% ```
+}
+
+\subtree{
+\taxon{Construction}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{The sequential splitting of a preidempotent map}
+
+\p{
+Given a map #{f : A \to A}, then we may form its
+\em{sequential splitting} as the [sequential limit](Foundations.CanonicalSeqLim) of
+the [tower](Foundations.Tower)
+##{\cdots \to A \xrightarrow{f} A \to \cdots \to A \xrightarrow{f} A,}
+i.e., the type of sequences #{a} of elements of #{A} such that #{a_i = f(a_{i+1})}
+for all #{i}. When #{f} is [preidempotent](stt-00H9) this type factors #{f}.
+}
+
+% ```agda
+\agda{
+module Splitting
+  {𝓤 : Level} {X : Type 𝓤}
+  (f : X → X)
+  where
+
+  type : Type 𝓤
+  type = Seq-lim (tower←endomap f)
+
+  inclusion : type → X
+  inclusion = limit-point (tower←endomap f)
+
+  shift : type → type
+  shift (a , α)
+    = ( (λ n → f (f (a (suc n))))
+      , (λ n → ap (f ∘ f) (α (suc n))))
+
+  map-retraction
+    : preidempotence f
+    → X → type
+  map-retraction I x
+    = ((λ _ → f x) , (λ _ → sym (I x)))
+
+  factorisation
+    : (I : preidempotence f)
+    → inclusion ∘ map-retraction I ~ f
+  factorisation I x = refl
+}
+% ```
+}
+
+\subtree[stt-00HB]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Retracts give quasiidempotent maps}
+
+\p{
+A retract #{A \xrightarrow{i} X \xrightarrow{r} A} such that #{r \circ i \sim \id}
+determines a quasiidempotent map on #{X}, #{i \circ r}.
+}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {X : Type 𝓥} where
+
+  retraction-htpy-nat
+    : {i : A → X} {r : X → A} (rs : r ∘ i ~ id)
+    → (x : X) → ap r (ap i (rs (r x))) ＝ rs (r (i (r x)))
+  retraction-htpy-nat {i = i} {r = r} rs x
+    = ap r (ap i p)
+        ＝⟨ sym (∙-reflr (ap r (ap i p))) ⟩
+      ap r (ap i p) ∙ refl
+        ＝⟨ ap (ap r (ap i p) ∙_) (sym (∙-sym p)) ⟩
+      ap r (ap i p) ∙ (p ∙ sym p)
+        ＝⟨ sym (∙-assoc (ap r (ap i p)) p (sym p)) ⟩
+      (ap r (ap i p) ∙ p) ∙ sym p
+        ＝⟨ ap (_∙ sym p) (sym nat-rs) ⟩
+      (rs (r (i (r x))) ∙ p) ∙ sym p
+        ＝⟨ ∙-assoc (rs (r (i (r x)))) p (sym p) ⟩
+      rs (r (i (r x))) ∙ (p ∙ sym p)
+        ＝⟨ ap (rs (r (i (r x))) ∙_) (∙-sym p) ⟩
+      rs (r (i (r x))) ∙ refl
+        ＝⟨ ∙-reflr (rs (r (i (r x)))) ⟩
+      rs (r (i (r x))) ∎ where
+
+    p : r (i (r x)) ＝ r x
+    p = rs (r x)
+
+    nat-rs
+      : rs (r (i (r x))) ∙ p
+      ＝ ap r (ap i p) ∙ p
+    nat-rs
+      = rs (r (i (r x))) ∙ p
+          ＝⟨ ap (rs (r (i (r x))) ∙_) (sym (ap-id p)) ⟩
+        rs (r (i (r x))) ∙ ap id p
+          ＝⟨ homotopy-natural rs p ⟩
+        ap (r ∘ i) p ∙ rs (r x)
+          ＝⟨ ap (_∙ p) (ap-∘ r i p) ⟩
+        ap r (ap i p) ∙ p ∎
+
+  quasiidempotence←section-retraction
+    : (i : A → X) (r : X → A)
+      (rs : r ∘ i ~ id)
+    → qidempotence (i ∘ r)
+  quasiidempotence←section-retraction i r rs
+    = I , Q where
+
+    I : preidempotence (i ∘ r)
+    I x = ap i (rs (r x))
+
+    Q : qcoh-preidempotence (i ∘ r) I
+    Q x = ap-∘ i r (I x) ∙ ap (ap i) (retraction-htpy-nat rs x)
+
+  qidempotent-map←retract
+    : retract A X
+    → qidempotent-map X
+  qidempotent-map←retract (i , r , rs)
+    = (i ∘ r , quasiidempotence←section-retraction i r rs)
+}
+% ```
+}
+
+\subtree[stt-00HC]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Splitting construction on quasiidempotent maps}
+
+\p{
+Any quasiidempotent map #{f : A \to A} splits its domain. I.e., there is a type
+#{X} such that #{X} is a retract of #{A} and factors #{f}.
+}
+
+\p{
+We show that the sequential limit of the [tower](Foundations.Tower)
+##{\cdots \to A \xrightarrow{f} A \to \cdots \to A \xrightarrow{f} A}
+is a retract of #{A} that factors #{f}, following
+\citet{Thm 5.3}{shulman-idempotents-2017}.
+}
+
+\p{
+The construction uses two different levels of coherence. The type
+#{\textsf{Splitting.type}(f)} and its inclusion into #{A} were already defined
+above for any endomap #{f}. Moreover, a preidempotence #{I : f \circ f \sim f} alone
+already gives the converse map
+#{\textsf{Splitting.map-retraction}(I) : A \to \textsf{Splitting.type}(f)}
+and the factorisation #{i \circ r \sim f}. What remains is to show that,
+assuming a full quasiidempotence, this converse map is also a retraction of the
+inclusion.
+}
+
+% ```agda
+\agda{
+module IdemWithFunExt (FE : FunExt-global) where
+  open WithFunExt-global FE
+  open LimitWithFunExt FE
+
+  module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} (H : qidempotence f) where
+    open Splitting f
+
+    path-shift-Splitting-type~id
+      : (aα : type)
+      → (n : ℕ) → f (f (aα .fst (suc n))) ＝ (aα .fst n)
+    path-shift-Splitting-type~id (a , α) n
+      = I (a (suc n)) ∙ sym (α n)
+      where
+      I = H .fst
+      Q = H .snd
+
+    square-shift-Splitting-type~id
+      : (aα : type)
+        (n : ℕ)
+      → Square
+          (path-shift-Splitting-type~id aα n)
+          (ap f (path-shift-Splitting-type~id aα (suc n)))
+          (ap (f ∘ f) (aα .snd (suc n)))
+          (aα .snd n)
+    square-shift-Splitting-type~id (a , α) n = mk-square
+      ( path-shift-Splitting-type~id (a , α) n ∙ α n
+          ＝⟨ ∙-assoc (I (a (suc n))) (sym (α n)) (α n) ⟩
+        I (a (suc n)) ∙ (sym (α n) ∙ α n)
+          ＝⟨ ap (I (a (suc n)) ∙_) (∙-sym' (α n)) ⟩
+        I (a (suc n)) ∙ refl
+          ＝⟨ ∙-reflr (I (a (suc n))) ⟩
+        I (a (suc n))
+          ＝⟨ sym rhs→I ⟩
+        ap (f ∘ f) (α (suc n))
+        ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n)) ∎)
+      where
+      I = H .fst
+      Q = H .snd
+
+      rhs→I
+        : ap (f ∘ f) (α (suc n))
+        ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n))
+        ＝ I (a (suc n))
+      rhs→I
+        = ap (f ∘ f) (α (suc n))
+          ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n))
+            ＝⟨ ap (ap (f ∘ f) (α (suc n)) ∙_)
+                  (ap-∙ f (I (a (suc (suc n)))) (sym (α (suc n)))) ⟩
+          ap (f ∘ f) (α (suc n))
+          ∙ (ap f (I (a (suc (suc n)))) ∙ ap f (sym (α (suc n))))
+              ＝⟨ ap (ap (f ∘ f) (α (suc n)) ∙_)
+                  (ap (ap f (I (a (suc (suc n)))) ∙_)
+                      (ap-sym f (α (suc n)))) ⟩
+          ap (f ∘ f) (α (suc n))
+          ∙ (ap f (I (a (suc (suc n)))) ∙ sym (ap f (α (suc n))))
+              ＝⟨ sym (∙-assoc _ _ _) ⟩
+          ( ap (f ∘ f) (α (suc n)) ∙ ap f (I (a (suc (suc n)))))
+          ∙ sym (ap f (α (suc n)))
+              ＝⟨ ap (_∙ sym (ap f (α (suc n))))
+                  (ap (ap (f ∘ f) (α (suc n)) ∙_)
+                      (Q (a (suc (suc n))))) ⟩
+          ( ap (f ∘ f) (α (suc n)) ∙ I (f (a (suc (suc n)))))
+          ∙ sym (ap f (α (suc n)))
+              ＝⟨ ap (_∙ sym (ap f (α (suc n))))
+                  (sym (homotopy-natural I (α (suc n)))) ⟩
+          (I (a (suc n)) ∙ ap f (α (suc n))) ∙ sym (ap f (α (suc n)))
+              ＝⟨ ∙.cancell _ (∙-sym (ap f (α (suc n)))) ⟩
+          I (a (suc n)) ∎
+
+    opaque
+      shift-Splitting-type~id
+        : shift ~ id
+      shift-Splitting-type~id aα
+        = Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-shift-Splitting-type~id aα
+            , square-shift-Splitting-type~id aα)
+
+      ap-inclusion-shift-Splitting-type~id
+        : (aα : type)
+        → ap inclusion
+             (shift-Splitting-type~id aα)
+        ＝ path-shift-Splitting-type~id aα 0
+      ap-inclusion-shift-Splitting-type~id aα
+        = ap-limit-point-Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-shift-Splitting-type~id aα
+            , square-shift-Splitting-type~id aα)
+}
+% ```
+
+\p{
+We first introduce the shift endomap on the splitting type. On a coherent sequence
+#{(a,\alpha)}, it discards the initial entry and then whiskers the tail by
+#{f \circ f}. The quasicoherence data are used exactly to show that this shift is
+homotopic to the identity, first levelwise by
+\code{path-shift-Splitting-type~id}, and then coherently by
+\code{square-shift-Splitting-type~id}. Function extensionality and the universal
+property of sequential limits turn these data into
+\code{shift-Splitting-type~id}.
+}
+
+% ```agda
+\agda{
+    path-compute-retraction-Splitting-type
+      : (aα : type)
+      → (n : ℕ) → f (aα .fst 0) ＝ f (f (aα .fst (suc n)))
+    path-compute-retraction-Splitting-type (a , α) 0
+      = ap f (α 0)
+    path-compute-retraction-Splitting-type (a , α) (suc n)
+      = path-compute-retraction-Splitting-type (a , α) n
+      ∙ I (a (suc n))
+      ∙ ap f (α (suc n))
+      where
+      I = H .fst
+      Q = H .snd
+
+    square-compute-retraction-Splitting-type
+      : (aα : type)
+        (n : ℕ)
+      → Square
+          (path-compute-retraction-Splitting-type aα n)
+          (ap f (path-compute-retraction-Splitting-type aα (suc n)))
+          (sym (H .fst (aα .fst 0)))
+          (ap (f ∘ f) (aα .snd (suc n)))
+    square-compute-retraction-Splitting-type (a , α) 0
+      = mk-square (sym rhs) where
+      I = H .fst
+      Q = H .snd
+
+      ξ : (n : ℕ) → f (a 0) ＝ f (f (a (suc n)))
+      ξ = path-compute-retraction-Splitting-type (a , α)
+
+      step
+        : ap (f ∘ f) (α 0) ∙ ap f (I (a 1))
+        ＝ I (a 0) ∙ ap f (α 0)
+      step
+        = ap (f ∘ f) (α 0) ∙ ap f (I (a 1))
+            ＝⟨ ap (ap (f ∘ f) (α 0) ∙_) (Q (a 1)) ⟩
+        ap (f ∘ f) (α 0) ∙ I (f (a 1))
+            ＝⟨ sym (homotopy-natural I (α 0)) ⟩
+        I (a 0) ∙ ap f (α 0) ∎
+
+      rhs
+        : sym (I (a 0)) ∙ ap f (ξ 1)
+        ＝ ξ 0 ∙ ap (f ∘ f) (α 1)
+      rhs
+        = sym (I (a 0)) ∙ ap f (ξ 1)
+            ＝⟨ ap (sym (I (a 0)) ∙_)
+                   (ap-∙∙ f (ξ 0) (I (a 1)) (ap f (α 1))) ⟩
+        sym (I (a 0))
+        ∙ (ap f (ξ 0) ∙ ap f (I (a 1)) ∙ ap f (ap f (α 1)))
+            ＝⟨ ap (sym (I (a 0)) ∙_)
+                (ap (λ q → ap f (ξ 0) ∙ (ap f (I (a 1)) ∙ q))
+                    (sym (ap-∘ f f (α 1)))) ⟩
+        sym (I (a 0))
+        ∙ (ap f (ξ 0) ∙ ap f (I (a 1)) ∙ ap (f ∘ f) (α 1))
+            ＝⟨ ap (sym (I (a 0)) ∙_)
+                (sym (∙-assoc (ap f (ξ 0)) (ap f (I (a 1)))
+                      (ap (f ∘ f) (α 1)))
+                 ∙ ap (_∙ ap (f ∘ f) (α 1))
+                      (ap (_∙ ap f (I (a 1))) (sym (ap-∘ f f (α 0))))) ⟩
+        sym (I (a 0))
+        ∙ ( (ap (f ∘ f) (α 0) ∙ ap f (I (a 1)))
+          ∙ ap (f ∘ f) (α 1))
+            ＝⟨ ap (sym (I (a 0)) ∙_) (ap (_∙ ap (f ∘ f) (α 1)) step) ⟩
+        sym (I (a 0))
+          ∙ ((I (a 0) ∙ ap f (α 0))
+            ∙ ap (f ∘ f) (α 1))
+            ＝⟨ ap (sym (I (a 0)) ∙_)
+                   (∙-assoc (I (a 0)) (ap f (α 0)) (ap (f ∘ f) (α 1))) ⟩
+        sym (I (a 0))
+        ∙ (I (a 0) ∙ (ap f (α 0) ∙ ap (f ∘ f) (α 1)))
+            ＝⟨ sym (∙-assoc (sym (I (a 0))) (I (a 0))
+                     (ap f (α 0) ∙ ap (f ∘ f) (α 1))) ⟩
+        (sym (I (a 0)) ∙ I (a 0))
+        ∙ (ap f (α 0) ∙ ap (f ∘ f) (α 1))
+            ＝⟨ ap (_∙ (ap f (α 0) ∙ ap (f ∘ f) (α 1))) (∙-sym' (I (a 0))) ⟩
+        refl ∙ (ap f (α 0) ∙ ap (f ∘ f) (α 1))
+            ＝⟨ ∙-refll _ ⟩
+        ξ 0 ∙ ap (f ∘ f) (α 1) ∎
+}
+% ```
+
+
+\p{
+For the inductive step we fill the following diagram, following
+\citek{shulman-idempotents-2017}:
+
+\quiver{
+\begin{tikzcd}
+	f(a_0) &&& f(f(a_{n+1})) &&& f(a_{n+1}) \\
+	\\
+	f(f(a_0)) &&& f(f(f(a_{n+2}))) &&& f(f(a_{n+2}))
+	\arrow["{\xi_{n+1}}", from=1-1, to=1-4]
+	\arrow["{I(a_{n+1})}", from=1-4, to=1-7]
+	\arrow["{I(a_0)^{-1}}"', from=1-1, to=3-1]
+	\arrow["{f(f(\alpha_{n+1}))}" description, from=1-4, to=3-4]
+	\arrow["{f(\alpha_{n+1})}", from=1-7, to=3-7]
+	\arrow["{f(\xi_n) \cdot I(a_{n+1}) \cdot f(\alpha_{n+1})}"', from=3-1, to=3-4]
+	\arrow["{I(f(a_{n+2}))}", from=3-4, to=3-7, shift left=3]
+	\arrow["{f(I(a_{n+2}))}"', from=3-4, to=3-7, shift right=3]
+	\arrow["Q"{anchor=center, pos=.5}, draw=none, from=3-4, to=3-7]
+	\arrow["{\Xi_n}"{anchor=center, pos=.5}, draw=none, from=1-1, to=3-4]
+	\arrow["{\text{naturality}}"{anchor=center, pos=.5}, draw=none, from=1-4, to=3-7]
+\end{tikzcd}
+}
+}
+
+\ul{
+\li{#{\xi} is formalised as \code{path-compute-retraction-Splitting-type}.}
+\li{#{\Xi} is formalised as \code{square-compute-retraction-Splitting-type}.}
+}
+
+\p{
+In particular, the left-hand square labelled #{\Xi_n} is the inductive hypothesis.
+}
+
+% ```agda
+\agda{
+    square-compute-retraction-Splitting-type (a , α) (suc n)
+      = mk-square (sym rhs) where
+      I = H .fst
+      Q = H .snd
+      ξ = path-compute-retraction-Splitting-type (a , α)
+      Ξ = square-compute-retraction-Splitting-type (a , α)
+
+      step
+        : ap (f ∘ f) (α (suc n)) ∙ ap f (I (a (suc (suc n))))
+        ＝ I (a (suc n)) ∙ ap f (α (suc n))
+      step
+        = ap (f ∘ f) (α (suc n)) ∙ ap f (I (a (suc (suc n))))
+            ＝⟨ ap (ap (f ∘ f) (α (suc n)) ∙_) (Q (a (suc (suc n)))) ⟩
+        ap (f ∘ f) (α (suc n)) ∙ I (f (a (suc (suc n))))
+            ＝⟨ sym (homotopy-natural I (α (suc n))) ⟩
+        I (a (suc n)) ∙ ap f (α (suc n)) ∎
+
+      rhs
+        : sym (I (a 0)) ∙ ap f (ξ (suc (suc n)))
+        ＝ ξ (suc n) ∙ ap (f ∘ f) (α (suc (suc n)))
+      rhs
+        = sym (I (a 0)) ∙ ap f (ξ (suc (suc n)))
+            ＝⟨ ap (sym (I (a 0)) ∙_)
+                   (ap-∙∙ f (ξ (suc n)) (I (a (suc (suc n)))) (ap f (α (suc (suc n))))) ⟩
+        sym (I (a 0))
+        ∙ (ap f (ξ (suc n))
+          ∙ ap f (I (a (suc (suc n))))
+          ∙ ap f (ap f (α (suc (suc n)))))
+            ＝⟨ sym (∙-assoc _ _ _) ⟩
+        ( sym (I (a 0)) ∙ ap f (ξ (suc n)))
+        ∙ (ap f (I (a (suc (suc n)))) ∙ ap f (ap f (α (suc (suc n)))))
+            ＝⟨ ap (_∙ (ap f (I (a (suc (suc n)))) ∙ ap f (ap f (α (suc (suc n))))))
+                   (sym (un-square (Ξ n))) ⟩
+        ( ξ n ∙ ap (f ∘ f) (α (suc n)))
+        ∙ (ap f (I (a (suc (suc n)))) ∙ ap f (ap f (α (suc (suc n)))))
+            ＝⟨ ∙-assoc _ _ _ ⟩
+        ξ n
+        ∙ (ap (f ∘ f) (α (suc n))
+        ∙ (ap f (I (a (suc (suc n)))) ∙ ap f (ap f (α (suc (suc n))))))
+            ＝⟨ ap (ξ n ∙_) (sym (∙-assoc _ _ _)) ⟩
+        ξ n
+        ∙ ((ap (f ∘ f) (α (suc n)) ∙ ap f (I (a (suc (suc n)))))
+        ∙ ap f (ap f (α (suc (suc n)))))
+            ＝⟨ ap (λ q → ξ n ∙ (q ∙ ap f (ap f (α (suc (suc n)))))) step ⟩
+        ξ n
+        ∙ ((I (a (suc n)) ∙ ap f (α (suc n)))
+        ∙ ap f (ap f (α (suc (suc n)))))
+            ＝⟨ ap (ξ n ∙_) (∙-assoc _ _ _) ⟩
+        ξ n
+        ∙ (I (a (suc n))
+        ∙ (ap f (α (suc n)) ∙ ap f (ap f (α (suc (suc n))))))
+            ＝⟨ ap (λ q → ξ n ∙ (I (a (suc n)) ∙ (ap f (α (suc n)) ∙ q)))
+                (sym (ap-∘ f f (α (suc (suc n))))) ⟩
+        ξ n
+        ∙ ( I (a (suc n))
+          ∙ (ap f (α (suc n)) ∙ ap (f ∘ f) (α (suc (suc n)))))
+            ＝⟨ sym (∙-assoc _ _ _) ⟩
+        ( ξ n ∙ I (a (suc n)))
+        ∙ (ap f (α (suc n)) ∙ ap (f ∘ f) (α (suc (suc n))))
+            ＝⟨ sym (∙-assoc _ _ _) ⟩
+        ( ( ξ n ∙ I (a (suc n)))
+          ∙ ap f (α (suc n)))
+        ∙ ap (f ∘ f) (α (suc (suc n)))
+            ＝⟨ ap (_∙ ap (f ∘ f) (α (suc (suc n)))) (∙-assoc _ _ _) ⟩
+        ξ (suc n) ∙ ap (f ∘ f) (α (suc (suc n))) ∎
+}
+% ```
+
+\p{
+Taken together, the base case and the inductive step produce a coherent homotopy from
+the composite
+#{\textsf{Splitting.map-retraction}(\fst H) \circ \textsf{Splitting.inclusion}}
+to the shift.
+}
+
+% ```agda
+\agda{
+    opaque
+      compute-retraction-Splitting-type
+        : map-retraction (H .fst)
+        ∘ inclusion
+        ~ shift
+      compute-retraction-Splitting-type aα
+        = Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-compute-retraction-Splitting-type aα
+            , square-compute-retraction-Splitting-type aα)
+
+      ap-inclusion-compute-retraction-Splitting-type
+        : (aα : type)
+        → ap inclusion
+            (compute-retraction-Splitting-type aα)
+        ＝ path-compute-retraction-Splitting-type aα 0
+      ap-inclusion-compute-retraction-Splitting-type aα
+        = ap-limit-point-Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-compute-retraction-Splitting-type aα
+            , square-compute-retraction-Splitting-type aα)
+}
+% ```
+
+\p{
+The retracting homotopy is now obtained by composing the comparison
+\code{compute-retraction-Splitting-type} with the previously constructed
+\code{shift-Splitting-type~id}. This yields the promised retract of #{A} by its
+sequential splitting type.
+}
+
+% ```agda
+\agda{
+    retract-Splitting-type
+      : retract (type) X
+    retract-Splitting-type
+      = ( inclusion
+        , map-retraction (H .fst)
+        , compute-retraction-Splitting-type ~∙ shift-Splitting-type~id)
+}
+% ```
+}
+
+\subtree[stt-00HD]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{The splitting construction of a retract is a retract}
+
+\p{
+If a quasiidempotent comes from an actual retract, then its sequential splitting
+carrier retracts back to the original carrier.
+}
+
+\p{
+This theorem is due to [[michaelshulman]] \citet{Thm 6.2}{shulman-idempotents-2017}.
+}
+
+% ```agda
+\agda{
+module SplitRetractWithFunExt (FE : FunExt-global) where
+  open IdemWithFunExt FE
+  open LimitWithFunExt FE
+  open RetractWithFunExt FE
+
+  module _
+    {𝓤 𝓥} {A : Type 𝓤} {X : Type 𝓥}
+    (R@(s , r , rs) : retract A X)
+    (let Hq = snd (qidempotent-map←retract R))
+    (let L = retract-Splitting-type Hq)
+    (let w = L .snd .snd)
+    where
+    open Splitting (s ∘ r)
+
+    map-section-retract-Splitting-type
+      : A → type
+    map-section-retract-Splitting-type a
+      = ((λ _ → s a) , (λ _ → sym (ap s (rs a))))
+
+    retract-Splitting-type←retract
+      : retract (type) A
+    retract-Splitting-type←retract
+      = ( r ∘ inclusion
+        , map-section-retract-Splitting-type
+        , compute-retraction-Splitting-type (snd (qidempotent-map←retract R))
+        ~∙ shift-Splitting-type~id (snd (qidempotent-map←retract R)))
+
+    split-retract-equiv
+      : type ≃ A
+    split-retract-equiv
+      = mk≃
+          (r ∘ inclusion)
+          (is-equiv←qiso qiso) where
+      qiso : quasi-iso (r ∘ inclusion)
+      qiso .fst = map-section-retract-Splitting-type
+      qiso .snd .fst = retract-Splitting-type←retract .snd .snd
+      qiso .snd .snd x = rs x
+
+    compare-splittings-inclusion
+      : L .fst
+      ~ comp-retract (retract←equiv split-retract-equiv) R .fst
+    compare-splittings-inclusion z
+      = sym (ap (L .fst) (w z))
+
+    compare-splittings-retraction
+      : L .snd .fst
+      ~ comp-retract (retract←equiv split-retract-equiv) R .snd .fst
+    compare-splittings-retraction = ~refl
+
+    nat-rs←retract
+      : ∀ {x y : X}
+        (p : x ＝ (s ∘ r) y)
+      → rs (r x) ∙ ap r p
+        ＝ ap ((r ∘ s) ∘ r) p
+        ∙ rs (r ((s ∘ r) y))
+    nat-rs←retract {x = x} {y} p
+      = rs (r x) ∙ ap r p
+          ＝⟨ ap (rs (r x) ∙_) (sym (ap-id (ap r p))) ⟩
+        rs (r x) ∙ ap id (ap r p)
+          ＝⟨ homotopy-natural rs (ap r p) ⟩
+        ap (r ∘ s) (ap r p) ∙ rs (r ((s ∘ r) y))
+          ＝⟨ ap (_∙ rs (r ((s ∘ r) y))) (sym (ap-∘ (r ∘ s) r p)) ⟩
+        ap ((r ∘ s) ∘ r) p ∙ rs (r ((s ∘ r) y)) ∎
+
+    compare-splittings-compute
+      : (a : (n : ℕ) → X)
+        (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
+      → ap (r ∘ inclusion)
+            (compute-retraction-Splitting-type Hq (a , α))
+      ＝ ap ((r ∘ s) ∘ r) (α 0)
+    compare-splittings-compute a α
+      = ap-∘ r inclusion
+          (compute-retraction-Splitting-type Hq (a , α))
+      ∙ ap (ap r) (ap-inclusion-compute-retraction-Splitting-type Hq (a , α))
+      ∙ sym (ap-∘ r (s ∘ r) (α 0))
+
+    compare-splittings-shift
+      : (a : (n : ℕ) → X)
+        (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
+      → ap (r ∘ inclusion )
+            (shift-Splitting-type~id Hq (a , α))
+      ＝ ap r (fst Hq (a 1)) ∙ sym (ap r (α 0))
+    compare-splittings-shift a α
+      = ap-∘ r inclusion (shift-Splitting-type~id Hq (a , α))
+      ∙ ap (ap r) (ap-inclusion-shift-Splitting-type~id Hq (a , α))
+      ∙ ap-∙ r (fst Hq (a 1)) (sym (α 0))
+      ∙ ap (ap r (fst Hq (a 1)) ∙_) (ap-sym r (α 0))
+
+    opaque
+      unfolding compute-retraction-Splitting-type
+      unfolding shift-Splitting-type~id
+
+      compare-splittings-section
+        : (z : type)
+        → ap (r ∘ inclusion) (w z)
+        ＝ rs (r (inclusion z))
+      compare-splittings-section (a , α)
+        = ap (r ∘ inclusion) (w (a , α))
+              ＝⟨⟩
+          ap ( r ∘ inclusion)
+              ( compute-retraction-Splitting-type Hq (a , α)
+              ∙ shift-Splitting-type~id Hq (a , α))
+              ＝⟨ ap-∙
+                  (r ∘ inclusion)
+                  (compute-retraction-Splitting-type Hq (a , α))
+                  (shift-Splitting-type~id Hq (a , α)) ⟩
+          ap (r ∘ inclusion)
+             (compute-retraction-Splitting-type Hq (a , α))
+          ∙ ap (r ∘ inclusion)
+              (shift-Splitting-type~id Hq (a , α))
+              ＝⟨ ap₂ _∙_
+                  (compare-splittings-compute a α)
+                  (compare-splittings-shift a α) ⟩
+          ap ((r ∘ s) ∘ r) (α 0)
+          ∙ (ap r (fst Hq (a 1)) ∙ sym (ap r (α 0)))
+              ＝⟨ ap (ap ((r ∘ s) ∘ r) (α 0) ∙_)
+                  (ap (_∙ sym (ap r (α 0)))
+                      (retraction-htpy-nat rs (a 1))) ⟩
+          ap ((r ∘ s) ∘ r) (α 0)
+          ∙ (rs (r ((s ∘ r) (a 1))) ∙ sym (ap r (α 0)))
+              ＝⟨ sym (∙-assoc _ _ _) ⟩
+          (ap ((r ∘ s) ∘ r) (α 0)
+            ∙ rs (r ((s ∘ r) (a 1))))
+          ∙ sym (ap r (α 0))
+              ＝⟨ ap (_∙ sym (ap r (α 0))) (sym (nat-rs←retract (α 0))) ⟩
+          (rs (r (a 0)) ∙ ap r (α 0))
+          ∙ sym (ap r (α 0))
+              ＝⟨ ∙.cancell _ (∙-sym (ap r (α 0))) ⟩
+          rs (r (a 0))
+          ∎
+
+    compare-splittings-map-retraction
+      : (z : type)
+      → ap (L .snd .fst) (compare-splittings-inclusion z)
+      ＝ sym (ap (map-section-retract-Splitting-type)
+                 (rs (r (inclusion z))))
+    compare-splittings-map-retraction z
+      = ap (L .snd .fst) (compare-splittings-inclusion z)
+          ＝⟨ ap-sym (L .snd .fst) (ap inclusion (w z)) ⟩
+        sym (ap (L .snd .fst) (ap inclusion (w z)))
+          ＝⟨ ap
+              ( sym)
+              ( ap-∘ (map-section-retract-Splitting-type)
+                     (r)
+                     (ap inclusion (w z))
+              ∙ ap
+                  ( ap map-section-retract-Splitting-type)
+                  ( sym (ap-∘ r inclusion (w z))
+                  ∙ compare-splittings-section z)) ⟩
+        sym (ap (map-section-retract-Splitting-type)
+                (rs (r (inclusion z)))) ∎
+
+    compare-splittings-coherence
+      : coherence-retract-htpy
+          L
+          (comp-retract (retract←equiv split-retract-equiv) R)
+          compare-splittings-inclusion
+          compare-splittings-retraction
+    compare-splittings-coherence z
+      = w z
+          ＝⟨ sym (∙-refll (w z)) ⟩
+        refl ∙ w z
+          ＝⟨ ap (_∙ w z) (sym (∙-sym' p)) ⟩
+        (sym p ∙ p) ∙ w z
+          ＝⟨ ∙-assoc (sym p) p (w z) ⟩
+        sym p ∙ (p ∙ w z)
+          ＝⟨ ap (_∙ (p ∙ w z)) (sym (compare-splittings-map-retraction z)) ⟩
+        ( ap (L .snd .fst) (compare-splittings-inclusion z)
+        ∙ (comp-retract (retract←equiv split-retract-equiv) R) .snd .snd z)
+        ∎ where
+      p : map-section-retract-Splitting-type
+            ( r (s (r (inclusion z))))
+        ＝ map-section-retract-Splitting-type
+            ( r (inclusion z))
+      p = ap (map-section-retract-Splitting-type)
+             (rs (r (inclusion z)))
+
+    compare-splittings-htpy
+      : retract-htpy
+          ( retract-Splitting-type (snd (qidempotent-map←retract R)))
+          ( comp-retract (retract←equiv split-retract-equiv) R)
+    compare-splittings-htpy
+      = ( compare-splittings-inclusion
+        , compare-splittings-retraction
+        , compare-splittings-coherence)
+}
+% ```
+}
+
+\subtree[stt-00I7]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Corollary}
+\title{The universe of retracts is a retract of quasiidempotents}
+
+\p{
+Combining the [splitting construction](stt-00HD) with the
+[equality principle](stt-00H4) for the [universe of retracts](stt-00H5), we obtain a
+[retract](stt-00HE) from the universe of retracts of #{A} into the type of
+[quasiidempotent maps](stt-00II) of #{A}.
+}
+
+% ```agda
+\agda{
+module RetractsQIdempotentsWithFunExtUnivalence
+  (FE : FunExt-global)
+  (UA : Univalence)
+  where
+
+  open IdemWithFunExt FE
+  open SplitRetractWithFunExt FE
+  open RetractsWithFunExtUnivalence FE UA
+
+  qidempotent←Retracts
+    : {𝓤 𝓥  : Level} {A : Type 𝓤}
+    → Retracts 𝓥 A
+    → qidempotent-map A
+  qidempotent←Retracts (_ , R) = qidempotent-map←retract R
+
+  Retracts←qidempotent-map
+    : {𝓤 : Level} {A : Type 𝓤}
+    → qidempotent-map A
+    → Retracts 𝓤 A
+  Retracts←qidempotent-map H
+    = ( Splitting.type (H .fst)
+      , retract-Splitting-type (H .snd))
+
+  retracts-qidempotent-map-retract
+    : {𝓤 : Level} {A : Type 𝓤}
+    → retract (Retracts 𝓤 A) (qidempotent-map A)
+  retracts-qidempotent-map-retract
+    = ( qidempotent←Retracts
+      , Retracts←qidempotent-map
+      , λ (_ , R)
+      → Id←Retracts-equiv (split-retract-equiv R
+                          , compare-splittings-htpy R))
+}
+% ```
+}
+
+\subtree[stt-00IG]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Coherently idempotent maps}
+
+\p{
+A \em{(coherently) idempotent map} is a map #{f : X \to X} equipped with a sequence
+of [quasiidempotences](stt-00II) #{H} indexed by the
+[natural numbers](Foundations.Nat) such that #{H_n} is the [splitting](stt-00HC) of
+#{H_{n+1}} for all #{n}.
+}
+
+% ```agda
+\agda{
+module CoherentIdemWithFunExt (FE : FunExt-global) where
+  open IdemWithFunExt FE
+
+  module _ {𝓤 : Level} {X : Type 𝓤}  where
+
+    step-qidempotence
+      : {f : X → X} → qidempotence f → qidempotence f
+    step-qidempotence H
+      = snd (qidempotent-map←retract (retract-Splitting-type H))
+
+    idempotence-coherence
+      : {f : X → X}
+      → (ℕ → qidempotence f)
+      → Type 𝓤
+    idempotence-coherence {f = f} H
+      = (n : ℕ)
+      → qidempotence-htpy (H n) (step-qidempotence {f = f} (H (suc n)))
+
+    idempotence
+      : (X → X) → Type 𝓤
+    idempotence f
+      = Σ[ H ∶ (ℕ → qidempotence f) ] idempotence-coherence {f = f} H
+
+  idempotent-map : {𝓤 : Level} → Type 𝓤 → Type 𝓤
+  idempotent-map X = Σ[ f ∶ (X → X) ] idempotence f
+}
+% ```
+}

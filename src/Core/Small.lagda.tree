@@ -1,0 +1,635 @@
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Module}
+\title{Small types}
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Core.Small where
+
+open import Foundations.Prelude
+open import Foundations.Idempotent
+open import Foundations.IdentitySystem
+open import Foundations.FunExt
+open import Foundations.Univalence
+open import Core.Image
+open import Core.FibredJoin
+open import Core.Slice
+open import ufAxioms
+}
+% ```
+
+\subtree[stt-00HN]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Smallness at a universe level}
+
+\p{
+A type #{A : \UU} is \em{small at level} #{\UV} if it is [equivalent](stt-001U) to
+some type in #{\UV}.
+}
+
+\p{
+Assuming [univalence](Foundations.Univalence) then
+[being small is a proposition](stt-00HZ), which justifies the terminology
+\code{is-small}.
+}
+
+% ```agda
+\agda{
+is-small
+  : (𝓥 : Level) {𝓤 : Level}
+  → Type 𝓤
+  → Type (lsuc 𝓥 ⊔ 𝓤)
+is-small 𝓥 A = Σ[ B ∶ Type 𝓥 ] (A ≃ B)
+}
+% ```
+}
+
+\subtree[stt-00HS]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Local smallness}
+
+\p{
+We say that a type is \em{#{n}-locally small} at level #{\UV} if its #{n}th
+identity types are [small](stt-00HN) at that level. In particular, a type is
+\em{locally small} if its identity types are small.
+}
+
+% ```agda
+\agda{
+is-n-locally-small
+  : ℕ
+  → (𝓥 : Level) {𝓤 : Level}
+  → Type 𝓤
+  → Type (lsuc 𝓥 ⊔ 𝓤)
+is-n-locally-small zero 𝓥 A = is-small 𝓥 A
+is-n-locally-small (suc n) 𝓥 A
+  = (x y : A) → is-n-locally-small n 𝓥 (x ＝ y)
+
+is-locally-small
+  : (𝓥 : Level) {𝓤 : Level}
+  → Type 𝓤
+  → Type (lsuc 𝓥 ⊔ 𝓤)
+is-locally-small = is-n-locally-small 1
+}
+% ```
+}
+
+\subtree[stt-00HZ]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Equality of smallness}
+
+\p{
+Equality on the type \code{is-small} is characterised by an [equivalence](stt-001U)
+of carrier types such that the obvious triangle commutes. Consequently,
+\code{is-small} is a [proposition](stt-0009). In fact, this is [equivalent](stt-001U)
+to the [univalence axiom](Foundations.Univalence).
+}
+
+% ```agda
+\agda{
+open WithFunExt-global global-funext
+module WUA = WithGlobalUnivalence UA
+
+is-small-equiv
+  : {𝓤 𝓥 𝓦 : Level} {A : Type 𝓤}
+  → is-small 𝓥 A
+  → is-small 𝓦 A
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-small-equiv (B , f) (C , g)
+  = Σ[ e ∶ B ≃ C ] (_≃_.fwd (f ∙≃ e) ~ _≃_.fwd g)
+
+id-is-small-equiv
+  : {𝓤 𝓥 : Level} {A : Type 𝓤}
+    (S : is-small 𝓥 A)
+  → is-small-equiv S S
+id-is-small-equiv (_ , _)
+  = idequiv , ~refl
+
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤}
+  where
+
+  is-small-equiv-is-torsorial
+    : (S : is-small 𝓥 A)
+    → is-singleton (Σ[ T ∶ is-small 𝓥 A ] is-small-equiv S T)
+  is-small-equiv-is-torsorial S
+    = is-singleton-structure←parts
+        (WUA.equiv-is-torsorial (S .fst))
+        (_ , idequiv)
+        (is-single←equiv-to-single
+          ( ( Σ-ap-≃-fst ≃-rep
+            ∙≃ remove-singleton-structure
+                  (htpy-is-torsorial global-funext
+                    (_≃_.fwd (S .snd ∙≃ idequiv)))
+                  (_≃_.fwd (S .snd ∙≃ idequiv) , ~refl)) e⁻¹)
+          (mk-singl
+            ((S .snd ∙≃ idequiv) ._≃_.has-is-eqv)
+            (λ x → is-equiv-is-prop _ _)))
+
+  small-equiv←Id
+    : {S T : is-small 𝓥 A}
+    → S ＝ T
+    → is-small-equiv S T
+  small-equiv←Id {S = S} refl = id-is-small-equiv S
+
+  small-equiv←Id-is-equiv
+    : (S T : is-small 𝓥 A)
+    → is-equiv (small-equiv←Id {S = S} {T = T})
+  small-equiv←Id-is-equiv S
+    = fundamental-Id
+        (is-small-equiv S)
+        (is-small-equiv-is-torsorial S)
+        (λ _ → small-equiv←Id)
+
+  Id≃is-small-equiv
+    : (S T : is-small 𝓥 A)
+    → (S ＝ T) ≃ is-small-equiv S T
+  Id≃is-small-equiv S T = mk≃ small-equiv←Id (small-equiv←Id-is-equiv S T)
+
+  Id←is-small-equiv
+    : {S T : is-small 𝓥 A}
+    → is-small-equiv S T
+    → S ＝ T
+  Id←is-small-equiv {S = S} {T = T} = _≃_.bwd (Id≃is-small-equiv S T)
+
+  any-is-small-equiv
+    : (S T : is-small 𝓥 A)
+    → is-small-equiv S T
+  any-is-small-equiv (_ , f) (_ , g)
+    = (f e⁻¹) ∙≃ g , (_≃_.fwd g ◂ _≃_.η f)
+
+  is-small-is-prop
+    : is-prop (is-small 𝓥 A)
+  is-small-is-prop S T = Id←is-small-equiv (any-is-small-equiv S T)
+
+is-n-locally-small-is-prop
+  : {𝓤 𝓥 : Level} {n : ℕ} {A : Type 𝓤}
+  → is-prop (is-n-locally-small n 𝓥 A)
+is-n-locally-small-is-prop {n = zero}
+  = is-small-is-prop
+is-n-locally-small-is-prop {n = suc n}
+  = is-prop-Π λ _ → is-prop-Π λ _ → is-n-locally-small-is-prop {n = n}
+
+is-locally-small-is-prop
+  : {𝓤 𝓥 : Level} {A : Type 𝓤}
+  → is-prop (is-locally-small 𝓥 A)
+is-locally-small-is-prop = is-n-locally-small-is-prop {n = 1}
+}
+% ```
+}
+
+\subtree[stt-00HO]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Types are small at their own level}
+
+% ```agda
+\agda{
+self-is-small : {𝓤 : Level} {A : Type 𝓤} → is-small 𝓤 A
+self-is-small {A = A} = (A , idequiv)
+}
+% ```
+}
+
+\subtree[stt-00HU]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Smallness is preserved by equivalences}
+
+% ```agda
+\agda{
+is-small←equiv
+  : {𝓤 𝓥 𝓦 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  → A ≃ B
+  → is-small 𝓦 A
+  → is-small 𝓦 B
+is-small←equiv e (X , f) = X , ((e e⁻¹) ∙≃ f)
+
+is-n-locally-small←equiv
+  : {𝓤 𝓥 𝓦 : Level} (n : ℕ) {A : Type 𝓤} {B : Type 𝓥}
+  → A ≃ B
+  → is-n-locally-small n 𝓦 A
+  → is-n-locally-small n 𝓦 B
+is-n-locally-small←equiv zero e H
+  = is-small←equiv e H
+is-n-locally-small←equiv (suc n) eq sep b b'
+  = is-n-locally-small←equiv
+      n
+      (＝-equiv (eq e⁻¹) e⁻¹)
+      (sep (bwd b) (bwd b')) where open _≃_ eq
+
+is-locally-small←equiv
+  : {𝓤 𝓥 𝓦 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  → A ≃ B
+  → is-locally-small 𝓦 A
+  → is-locally-small 𝓦 B
+is-locally-small←equiv = is-n-locally-small←equiv 1
+}
+% ```
+}
+
+\subtree[stt-00HP]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Universe lifts are small}
+
+% ```agda
+\agda{
+ULift-is-small
+  : {𝓤 : Level} (𝓥 : Level) {A : Type 𝓤}
+  → is-small 𝓤 (ULift 𝓥 A)
+ULift-is-small 𝓥 {A = A}
+  = (A , unlift≃)
+}
+% ```
+}
+
+\subtree[stt-00HT]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Small types are locally small}
+
+% ```agda
+\agda{
+＝-is-small
+  : {𝓤 𝓥 : Level} {A : Type 𝓤}
+  → is-small 𝓥 A
+  → (x y : A)
+  → is-small 𝓥 (x ＝ y)
+＝-is-small (_ , e) x y
+  = ( e ._≃_.fwd x ＝ e ._≃_.fwd y , ＝-equiv e )
+
+suc-is-n-locally-small
+  : {n : ℕ} {𝓤 𝓥 : Level} {A : Type 𝓤}
+  → is-n-locally-small n 𝓥 A
+  → is-n-locally-small (suc n) 𝓥 A
+suc-is-n-locally-small {n = zero} H
+  = ＝-is-small H
+suc-is-n-locally-small {n = suc n} H x y
+  = suc-is-n-locally-small {n = n} (H x y)
+}
+% ```
+}
+
+\subtree[stt-00HQ]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Small types are closed under dependent sums}
+
+% ```agda
+\agda{
+Σ-is-small
+  : {𝓤 𝓥 𝓦 𝓛 : Level}
+    {A : Type 𝓤}
+    {B : A → Type 𝓛}
+  → is-small 𝓥 A
+  → ((a : A) → is-small 𝓦 (B a))
+  → is-small (𝓥 ⊔ 𝓦) (Σ A B)
+Σ-is-small {B = B} (A' , e) H
+  = ( Σ[ a' ∶ A' ] fst (H (_≃_.bwd e a'))
+    , (Σ-ap-≃-fst-bwd e e⁻¹)
+    ∙≃ Σ-ap-≃ (λ a' → snd (H (_≃_.bwd e a'))) )
+}
+% ```
+}
+
+\subtree[stt-00HR]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Small types are closed under dependent products}
+
+% ```agda
+\agda{
+Π-is-small
+  : {𝓤 𝓥 𝓦 𝓛 : Level}
+    {A : Type 𝓤}
+    {B : A → Type 𝓛}
+  → is-small 𝓥 A
+  → ((a : A) → is-small 𝓦 (B a))
+  → is-small (𝓥 ⊔ 𝓦) (Π A B)
+Π-is-small {B = B} (A' , e) H
+  = ( Π A' (λ a' → fst (H (_≃_.bwd e a')))
+    , precomp-Π-≃ B (e e⁻¹)
+    ∙≃ Π-ap-≃ (λ a' → snd (H (_≃_.bwd e a'))) )
+}
+% ```
+}
+
+
+\subtree[stt-00HW]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Small types are closed under retracts}
+
+\p{
+Given a [small](stt-00HN) type #{A}, then any [retract](stt-00HE) of #{A} is again
+small.
+}
+
+\p{
+This appears as \citet{Thm 2.13}{de-jong-escardo-2023}, and is a consequence of the
+[splitting construction on quasiidempotent maps](stt-00HC).
+}
+
+% ```agda
+\agda{
+Splitting-type-is-small
+  : {𝓤 𝓥 : Level} {X : Type 𝓤}
+    (f : X → X)
+  → is-small 𝓥 X
+  → is-small 𝓥 (Splitting.type f)
+Splitting-type-is-small {X = X} f Xsmall
+  = Σ-is-small
+      (Π-is-small self-is-small (λ _ → Xsmall))
+      (λ a → Π-is-small self-is-small
+        (λ n → ＝-is-small Xsmall (a n) (f (a (suc n)))))
+
+is-small←retract
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+  → retract A B
+  → is-small 𝓦 B
+  → is-small 𝓦 A
+is-small←retract R Bsmall
+  = is-small←equiv
+      (SplitRetractWithFunExt.split-retract-equiv global-funext R)
+      (Splitting-type-is-small (fst (qidempotent-map←retract R)) Bsmall)
+
+is-n-locally-small←retract
+  : {𝓤 𝓥 𝓦 : Level} (n : ℕ)
+    {A : Type 𝓤} {B : Type 𝓥}
+  → retract A B
+  → is-n-locally-small n 𝓦 B
+  → is-n-locally-small n 𝓦 A
+is-n-locally-small←retract zero R H
+  = is-small←retract R H
+is-n-locally-small←retract (suc n) R H x y
+  = is-n-locally-small←retract n
+      (retract-＝ R)
+      (H (R .fst x) (R .fst y))
+
+is-locally-small←retract
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+  → retract A B
+  → is-locally-small 𝓦 B
+  → is-locally-small 𝓦 A
+is-locally-small←retract = is-n-locally-small←retract 1
+}
+% ```
+}
+
+\subtree[stt-00I8]{
+\date{2026-03-18}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{The universe of retracts of a small type is small}
+
+\p{
+For any type #{A} in #{\UU}, the [universe of retracts](stt-00H5) of #{A} in #{\UU}
+is #{\UU}-[small](stt-00HN).
+}
+
+\p{
+This is a consequence of [retract closure of small types](stt-00HW), using that the
+universe of retracts [is a retract of the type of quasiidempotent maps](stt-00I7).
+}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} where
+
+  preidempotence-is-small
+    : (f : A → A)
+    → is-small 𝓥 A
+    → is-small 𝓥 (preidempotence f)
+  preidempotence-is-small f Asmall
+    = Π-is-small Asmall
+        (λ a → ＝-is-small Asmall (f (f a)) (f a))
+
+  qcoh-preidempotence-is-small
+    : (f : A → A)
+      (I : preidempotence f)
+    → is-small 𝓥 A
+    → is-small 𝓥 (qcoh-preidempotence f I)
+  qcoh-preidempotence-is-small f I Asmall
+    = Π-is-small Asmall
+        (λ a → ＝-is-small
+          (＝-is-small Asmall (f (f (f a))) (f (f a)))
+          (ap f (I a))
+          (I (f a)))
+
+  qidempotence-is-small
+    : (f : A → A)
+    → is-small 𝓥 A
+    → is-small 𝓥 (qidempotence f)
+  qidempotence-is-small f Asmall
+    = Σ-is-small
+        (preidempotence-is-small f Asmall)
+        (λ I → qcoh-preidempotence-is-small f I Asmall)
+
+  qidempotent-map-is-small
+    : is-small 𝓥 A
+    → is-small 𝓥 (qidempotent-map A)
+  qidempotent-map-is-small Asmall
+    = Σ-is-small
+        (Π-is-small Asmall (λ _ → Asmall))
+        (λ f → qidempotence-is-small f Asmall)
+
+module _ {𝓥 : Level} {A : Type 𝓥} where
+
+  Retracts-is-small
+    : is-small 𝓥 (Retracts 𝓥 A)
+  Retracts-is-small
+    = is-small←retract
+        (retracts-qidempotent-map-retract)
+        (qidempotent-map-is-small self-is-small)
+}
+% ```
+}
+
+\subtree[stt-00I3]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Small maps}
+
+\p{
+A map is \em{small} at level #{\UW} if all of its [fibres](stt-000M) are
+[small](stt-00HN) at that level.
+}
+
+% ```agda
+\agda{
+is-small-map
+  : {𝓤 𝓥 : Level} (𝓦 : Level)
+    {A : Type 𝓤} {B : Type 𝓥}
+  → (A → B)
+  → Type (lsuc 𝓦 ⊔ 𝓤 ⊔ 𝓥)
+is-small-map 𝓦 {B = B} f = (b : B) → is-small 𝓦 (fibre f b)
+}
+% ```
+}
+
+\subtree[stt-00IR]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{The identity system associated to a locally small type}
+
+%```agda
+\agda{
+identity-system←is-locally-small
+  : {𝓥 𝓦 : Level}
+    {B : Type 𝓥}
+  → is-locally-small 𝓦 B
+  → Identity-system B 𝓦
+identity-system←is-locally-small {𝓦 = 𝓦} {B} Bls
+  = mk-identity-system (λ x y → fst (Bls x y)) (λ {x} {y} → snd (Bls x y) e⁻¹)
+}
+%```
+}
+
+\subtree[stt-00I4]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Small maps with small codomain have small domain}
+
+\p{
+If the codomain of a [small map](stt-00I3) is [small](stt-00HN), then the domain is
+[small](stt-00HN).
+}
+
+% ```agda
+\agda{
+is-small-domain←small-map
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤}
+    {B : Type 𝓥}
+  → {f : A → B}
+  → is-small 𝓦 B
+  → is-small-map 𝓦 f
+  → is-small 𝓦 A
+is-small-domain←small-map {f = f} Bsmall fsmall
+  = is-small←equiv
+      (total≃total-fibre f)
+      (Σ-is-small Bsmall fsmall)
+}
+% ```
+}
+
+\subtree[stt-00HY]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\author{samueltoth}
+\taxon{Theorem}
+\title{Type theoretic replacement}
+
+\p{
+If the domain of a map is [small](stt-00HN) at level #{\UW} and the codomain is
+[locally small](stt-00HS) at that level, then the [image](Core.Image) of the map is
+[small](stt-00HN).
+}
+
+\p{
+This theorem makes use of the [modified join construction](stt-008G) and is due to
+[[egbertrijke]] \citet{Thm 4.6}{rijke-2017}.
+}
+
+% ```agda
+\agda{
+record has-small-image
+  {𝓤 𝓥 : Level} (𝓦 : Level)
+  {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B)
+  : Typeω where
+  field
+    carrier : Type 𝓦
+    incl : carrier → B
+    has-is-image : is-image f incl
+
+replacement
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤}
+    {B : Type 𝓥}
+  → (f : A → B)
+  → is-small 𝓦 A
+  → is-locally-small 𝓦 B
+  → has-small-image 𝓦 f
+replacement {𝓦 = 𝓦} {B = B} f (A' , e) Bls = result
+  where
+
+  module Img = Im' ⦃ identity-system←is-locally-small Bls ⦄ (f ∘ _≃_.bwd e)
+
+  result : has-small-image 𝓦 f
+  result .has-small-image.carrier = Img.Im'
+  result .has-small-image.incl = Img.incl
+  result .has-small-image.has-is-image = is-image←equiv-domain e Img.Im-is-image
+
+is-small←is-image
+  : {𝓤 𝓥 𝓦 𝓘 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+  → (f : A → B)
+  → is-small 𝓦 A
+  → is-locally-small 𝓦 B
+  → {I : Type 𝓘} {i : I → B}
+  → is-image f i
+  → is-small 𝓦 I
+is-small←is-image f Asmall Bls {I} {i} im
+  = is-small←equiv
+      (is-image-equiv f im
+        (replacement f Asmall Bls .has-small-image.has-is-image)
+        e⁻¹)
+      (self-is-small)
+
+canonical-image-is-small
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (f : A → B)
+  → is-small 𝓦 A
+  → is-locally-small 𝓦 B
+  → is-small 𝓦 (canonical-image f)
+canonical-image-is-small f Asmall Bls
+  = is-small←is-image f Asmall Bls (canonical-image-is-image f)
+}
+% ```
+}
+
+\subtree[stt-00H0]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Corollary}
+\title{Images of small maps with small codomains are small}
+
+% ```agda
+\agda{
+canonical-image-is-small←is-small-map
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+  → (f : A → B)
+  → is-small 𝓦 B
+  → is-small-map 𝓦 f
+  → is-small 𝓦 (canonical-image f)
+canonical-image-is-small←is-small-map f Bsmall fsmall
+  = canonical-image-is-small f
+      (is-small-domain←small-map Bsmall fsmall)
+      (＝-is-small Bsmall)
+}
+% ```
+}

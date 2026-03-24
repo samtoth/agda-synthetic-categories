@@ -6,16 +6,18 @@
 
 %```agda
 \agda{
-{-# OPTIONS --allow-unsolved-metas #-}
 module Core.UniversalFibration where
 
 open import Foundations.Prelude
+
+open import ufAxioms
 
 open import Ergonomics.Extensionality
 
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.PiSection
+open import Core.Small
 }
 %```
 
@@ -68,13 +70,9 @@ record is-universal {α : Level → Level → Level}
     : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → (ff : f ∈ᶠ 𝓕)
       → is-cartesian (arrow-map ff)
   arrow-map-is-cartesian ff = classifies ff .centre .snd
--- is-globally-universal u 𝓕
---   = u ∈ 𝓕
---   × (∀ {𝓤 𝓥} (X : Arrow 𝓤 𝓥) → X ∈ 𝓕 → Σ[ F ∶ Arrow-map (X .f) π ] is-cartesian F ) where
 
 Type∙ : ∀ 𝓤 → Type (lsuc 𝓤)
 Type∙ 𝓤 = Σ[ A ∶ Type 𝓤 ] A
-
 
 Type∙-fam : ∀ 𝓤 → Fam (lsuc 𝓤) 𝓤
 Type∙-fam 𝓤 = (Type 𝓤 , id)
@@ -82,31 +80,55 @@ Type∙-fam 𝓤 = (Type 𝓤 , id)
 Type∙-π : ∀ 𝓤 → Type∙ 𝓤 → Type 𝓤
 Type∙-π 𝓤 = arrow←Fam (Type∙-fam 𝓤)
 
-is-small : ∀ {𝓥} → Type 𝓥 → (𝓤 : Level) → Type (𝓥 ⊔ lsuc 𝓤)
-is-small A 𝓤 = Σ[ B ∶ Type 𝓤 ] (A ≃ B)
-
-is-small-map : ∀ {𝓥 𝓦} → Arrow 𝓥 𝓦 → (𝓤 : Level) → Type (𝓥 ⊔ 𝓦 ⊔ lsuc 𝓤)
-is-small-map f 𝓤 = ∀ x → is-small (fibre (Arrow.f f) x) 𝓤
-
 small-gClass : ∀ 𝓤 → gClass-maps (λ 𝓥 𝓦 → lsuc 𝓤 ⊔ 𝓥 ⊔ 𝓦)
-small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.family f = is-small-map f 𝓤
-small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.has-is-subtype = {!!}
-small-gClass 𝓤 .gClass-maps.stable-equiv = {!!}
+small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.family f
+  = is-small-map 𝓤 (f .Arrow.f)
+small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.has-is-subtype _
+  = is-prop-Π (λ _ → is-small-is-prop)
+small-gClass 𝓤 .gClass-maps.stable-equiv F Fe fsmall y
+  = is-small←equiv (mk≃ _ (inverse-is-cartesian←is-equiv F Fe y) e⁻¹)
+                   (fsmall (is-equiv.bwd (Fe .snd) y))
 
 Small : ∀ 𝓤 {𝓥 𝓦} → Subtype (Arrow 𝓥 𝓦) (lsuc 𝓤 ⊔ 𝓥 ⊔ 𝓦)
 Small 𝓤 = small-gClass 𝓤 .gClass-maps.𝓕
 
+postcomp-≃-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → (e : B ≃ C) → is-equiv (λ (p : A ≃ B) → p ∙≃ e)
+postcomp-≃-is-equiv e = is-equiv←qiso
+  (_∙≃ e e⁻¹
+  , (λ a → ext! (λ x → _≃_.η e (_≃_.fwd a x)))
+  , λ b → ext! (λ a → _≃_.ε e (_≃_.fwd b a)))
+
+
+postcomp-≃ᶠ-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓦' 𝓜'} {F : Fam 𝓤 𝓥} {G : Fam 𝓦 𝓜} {H : Fam 𝓦' 𝓜'}
+    → (e : G ≃ᶠ H)
+    → is-equiv (postcomp-≃ᶠ {F = F}{H = H} e)
+postcomp-≃ᶠ-is-equiv (e , b)
+  = map-Σ-is-equiv (postcomp-equiv (e ._≃_.has-is-eqv))
+                   λ a → postcomp-Π-equiv
+                           (λ {i} → postcomp-≃-is-equiv (b (a i)))
+
+postcomp-≃ᶠ-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓦' 𝓜'} {F : Fam 𝓤 𝓥} {G : Fam 𝓦 𝓜} {H : Fam 𝓦' 𝓜'}
+    → (e : G ≃ᶠ H)
+    → Cart-fam-map F G ≃ Cart-fam-map F H
+postcomp-≃ᶠ-equiv {F = F} {H = H} e
+  = mk≃ _ (postcomp-≃ᶠ-is-equiv {H = H} e)
+
 char-cart-type∙
   : ∀ {𝓤 𝓥 𝓜} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y}
-    → (Σ (Arrow-map f (Type∙-π 𝓜)) is-cartesian) ≃ is-small-map (mk-arrow f) 𝓜
+    → (Σ (Arrow-map f (Type∙-π 𝓜)) is-cartesian) ≃ is-small-map 𝓜 f
 char-cart-type∙ {𝓜 = 𝓜} {f = f}
   =    Σ (Arrow-map f (Type∙-π 𝓜)) is-cartesian
-  ≃⟨ {!Cart-fam-map←cart-arrow-map!} ⟩
+  ≃⟨ Cart-fam-map≃cart-arrow-map ⟩
        Cart-fam-map (fibre-fam f) (fibre-fam (Type∙-π 𝓜))
-  ≃⟨ {!fibre-fam-arrow←Fam≃ᶠ!} ⟩
+  ≃⟨ postcomp-≃ᶠ-equiv {H = Type∙-fam 𝓜}
+                       (fibre-fam-arrow←Fam≃ᶠ (Type∙-fam 𝓜) ) ⟩
        Cart-fam-map (fibre-fam f) (Type∙-fam 𝓜)
   ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
-       (∀ a → is-small (fibre f a) 𝓜) ≃∎
+       (∀ a → is-small 𝓜 (fibre f a)) ≃∎
 
 opaque
   Type-is-universal-small-map
@@ -116,9 +138,10 @@ opaque
   Type-is-universal-small-map .is-universal.classifies {f = f} fsm
     = is-single←equiv-to-single
         (char-cart-type∙ e⁻¹)
-        (mk-singl fsm {!λ _ → is-small-is-prop _ _!})
+        (mk-singl fsm (is-prop-Π (λ a → is-small-is-prop) _))
 
-module Type-is-universal {𝓤} = is-universal (Type-is-universal-small-map {𝓤})
+module Type-is-universal {𝓤}
+  = is-universal (Type-is-universal-small-map {𝓤})
 
 Lift
   : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} {E : Type 𝓥} {B : Type 𝓦}

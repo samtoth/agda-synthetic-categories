@@ -11,9 +11,16 @@
 \agda{
 open import Foundations.Prelude
 open import Algebra.Lattice
+open import Synthetic.Tiny2
 
 module Synthetic.Categories.Spaces
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+  (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
+  (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                    → is-tiny-structure Δ¹ A (√ A) √ε)
+  (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
   where
 
 open import ufAxioms
@@ -32,7 +39,8 @@ open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
-open import Modalities.Flat.Flat renaming (ε to ε♭)
+
+open import Modalities.Cohesion.Flat
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
@@ -40,7 +48,7 @@ open import Core.OrthogonalClosure
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
-open import Synthetic.Tiny Δ¹
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 %```
 
@@ -61,7 +69,7 @@ developed for [amazing right adjoints](stt-00AA) we can construct a universe.
 
 %```agda
 \agda{
-is-covariant-is-relative : is-relative is-covariant
+is-covariant-is-relative : is-relative Δ¹ is-covariant
 is-covariant-is-relative {A = A} P = (fwd , bwd) where
   fwd : is-covariant P → (x : Δ¹ → A) → is-covariant (P ∘ x)
   fwd cov f h = cov (f ∘ h)
@@ -69,11 +77,13 @@ is-covariant-is-relative {A = A} P = (fwd , bwd) where
   bwd : ((x : Δ¹ → A) → is-covariant (P ∘ x)) → is-covariant P
   bwd cov h x₀ = cov h id x₀
 
-open AFib is-covariant is-covariant-is-relative public
+open Amazingly Δ¹ √ √ε is-tiny-str
+               types-separate
+               is-covariant is-covariant-is-relative public
   renaming (is-afib to is-acov;
             UFib to Space;
             UFib∙ to Space∙;
-            F-π-is-fib to Space-π-is-covariant)
+            UFib-π-is-fib to Space-π-is-covariant)
 }
 %```
 }
@@ -101,6 +111,67 @@ groupoids-in-Space A gpd
 %```
 }
 
+\subtree{
+
+%```agda
+\agda{
+opaque
+  ×-is-acov : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤}{B : Type 𝓥}
+              → is-acov A → is-acov B → is-acov (A × B)
+  ×-is-acov {𝓤}{𝓥} a b = need ((_ , a) , (_ , b)) where
+    @♭ ϕ : (x : Δ¹ → Space 𝓤 × Space 𝓥)
+         → is-covariant (λ i → x i .fst .fst × x i .snd .fst)
+    ϕ Γ = ×-is-covariant
+               {P = fst ∘ fst ∘ Γ}
+               {Q = fst ∘ snd ∘ Γ}
+               (UFib-is-fib (fst ∘ Γ))
+               (UFib-is-fib (snd ∘ Γ))
+
+    ϕ̂ : Π (Space 𝓤 × Space 𝓥)
+              (√ᵈ (λ g → is-covariant (λ i → g i .fst .fst × g i .snd .fst)))
+    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+
+    need : (Γ : Space 𝓤 × Space 𝓥) → (is-acov (Γ .fst .fst × Γ .snd .fst))
+    need g = tr (class-Ty-large)
+                (happly
+                  ( ap ε♭ (transpose-naturality
+                                (mod♭ is-covariant)
+                                (λ a → a .fst .fst × a .snd .fst))
+                  ∙ ε♭-natural (transpose (mod♭ is-covariant)))
+                      g)
+                (ϕ̂ g)
+
+opaque
+  Σ-is-acov
+    : ∀ {@♭ 𝓤 𝓥}{A : Type 𝓤}{B : A → Type 𝓥}
+      → is-acov A → (∀ a → is-acov (B a)) → is-acov (Σ A B)
+  Σ-is-acov {𝓤}{𝓥} a b = need ((_ , a) , (λ i → _ , b i)) where
+    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤 ⊔ 𝓥))
+    Γ = Σ[ (A , _) ∶ Space 𝓤 ] (A → Space 𝓥)
+
+    @♭ πΓ : Γ → Type (𝓤 ⊔ 𝓥)
+    πΓ Γ = Σ (Γ .fst .fst) (fst ∘ Γ .snd)
+
+    @♭ ϕ : (x : Δ¹ → Γ) → is-covariant (λ i → Σ (x i .fst .fst) (fst ∘ x i .snd))
+    ϕ x = Σ-is-covariant
+            {B = fst ∘ fst ∘ x}
+            {C = λ i a → x i .snd a .fst}
+            (UFib-is-fib (fst ∘ x))
+            (UFib-is-fib (uncurry (snd ∘ x)))
+
+    @♭ ϕ̂ : Π Γ (√ᵈ(λ a → is-covariant (λ i → Σ (a i .fst .fst) (fst ∘ a i .snd))))
+    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+
+    need : (x : Γ) → is-acov (Σ (x .fst .fst) (fst ∘ x .snd))
+    need x = tr (class-Ty-large)
+                (happly
+                  ( ap ε♭ (transpose-naturality (mod♭ is-covariant) πΓ)
+                  ∙ ε♭-natural (transpose (mod♭ is-covariant)))
+                  x)
+                (ϕ̂ x)
+}
+%```
+}
 
 \subtree[stt-00AT]{
 \title{#{\mathcal{S}} is directed univalent}

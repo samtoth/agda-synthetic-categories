@@ -1,0 +1,138 @@
+\title{Crisp lifting properties}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-02-17}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Modalities.Cohesion.CrispLifts where
+
+open import Foundations.Prelude
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+
+open import Modalities.Instances.Truncation
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.PullbackPower
+open import Core.Orthogonal
+}
+%```
+
+\subtree[tot-0001]{
+\title{Crisp squares}
+\taxon{Construction}
+
+\p{Since #{\flat} is a functor, we have an action on commuting squares.}
+
+
+%```agda
+\agda{
+♭Square
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-map f g)
+    → Arrow-map (♭-map f) (♭-map g)
+♭Square F .Arrow-map.top = ♭-map (F .Arrow-map.top)
+♭Square F .Arrow-map.bot = ♭-map (F .Arrow-map.bot)
+♭Square F .Arrow-map.comm (mod♭ x) = ap♭ mod♭ (F .Arrow-map.comm x)
+}
+%```
+
+
+\p{In \ref{stt-0058}, we observed that the #{\flat} modality preserves pullbacks.
+We can express this property in terms of cartesian squares:}
+
+%```agda
+\agda{
+♭-is-cartesian
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-map f g)
+    → @♭ is-cartesian F
+    → is-cartesian (♭Square F)
+♭-is-cartesian F Fc
+  = is-cartesian←gap-is-equiv
+      (♭Square F)
+      (is-equiv~∘ {f = _≃_.bwd (♭-pb-repr3 _ _)}
+                  {g = ♭-pb' ∘ ♭-map (gap-map←square F)}
+        (λ where (mod♭ x) → pullback-path→
+                             ( refl
+                             , refl
+                             , strong-J♭
+                                  (λ _ p → mapply♭ (mod♭ p) ＝ ap♭ mod♭ p ∙ refl)
+                                  refl
+                                  (Arrow-map.comm F x)))
+        (is-equiv⁻¹ (♭-pb-repr3 _ _ ._≃_.has-is-eqv))
+        (is-equiv-∘ (is-equiv⁻¹ (♭-pres-pb ._≃_.has-is-eqv))
+                    (♭-map-is-equiv (gap-is-equiv←is-cartesian F Fc))))
+}
+%```
+}
+
+\subtree[tot-0000]{
+\taxon{Definition}
+\title{Crisp orthogonality}
+
+\p{Crisp maps #{f} and #{g} are called crisply orthogonal iff the
+[crisp square](tot-0001) of the [pullback power](stt-004D) is cartesian.
+(Note that this is not the same as #{\flat f} being orthogonal
+to #{\flat g}.)}
+
+%```agda
+\agda{
+are-♭-orthogonal
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} (@♭ f : A → B) (@♭ g : C → D)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+are-♭-orthogonal f g
+  = is-cartesian (♭Square (power-hom f g))
+
+is-♭-orthogonal-type
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      (@♭ f : A → B) (@♭ X : Type 𝓦)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-♭-orthogonal-type f X = is-equiv (♭-map (precomp X f))
+}
+%```
+
+\p{We also have that any crisp pair of maps are #{\flat}-orthogonal if they are
+orthogonal. The converse may not hold in general.}
+
+%```agda
+\agda{
+are-♭-orthogonal←are-orthogonal
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+    → @♭ are-orthogonal f g → are-♭-orthogonal f g
+are-♭-orthogonal←are-orthogonal fg
+  = ♭-is-cartesian _ (is-cartesian←orthogonal fg)
+}
+%```
+}
+
+\subtree{
+\title{Orthogonality at the terminal map}
+\taxon{Lemma}
+
+%```agda
+\agda{
+are-♭-orthogonal-!←is-orthogonal-type
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ X : Type 𝓦}
+    → is-♭-orthogonal-type f X → are-♭-orthogonal f (! {A = X})
+are-♭-orthogonal-!←is-orthogonal-type {f = f}{X} fo
+  = is-cartesian←is-equiv _
+      ( fo
+      , ♭-map-is-equiv
+          (is-equiv←single-to-prop
+            (is-singleton←is-truncated trunc!)
+            (is-prop←is-truncated trunc!)
+            _)
+      )
+}
+%```
+}

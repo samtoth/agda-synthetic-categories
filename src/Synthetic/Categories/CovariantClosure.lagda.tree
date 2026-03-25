@@ -24,7 +24,13 @@ private
 
 open import ufAxioms
 
+open import Ergonomics.Auto
 open import Ergonomics.Extensionality
+open import Ergonomics.Notations.Orthogonality
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open notation
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Categories.Simplicial Δ¹ I I-distr
@@ -73,6 +79,128 @@ is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
         (Pc f Px₀)
         (Pc f Px₀ .centre)
         (Qc f Qx₀))
+}
+%```
+}
+
+
+
+\subtree{
+\title{Sums of covariant families}
+
+%```agda
+\agda{
+opaque
+  Σ-is-covariant
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} → {C : (a : A) → B a → Type 𝓦}
+      → is-covariant B → is-covariant (uncurry C)
+      → is-covariant (λ a → Σ (B a) (C a))
+  Σ-is-covariant {A = A} {B}{C} Bc Cc
+    = is-covariant⇔is-left-fibration _ .snd is-left where
+
+    is-left : is-left-fibration (fst {B = λ a → Σ (B a) (C a)})
+    is-left
+      = right-orthogonal-∘ (const _ 𝟙 i0)
+          {g = fst} {fst ∘ _≃_.bwd Σ-assoc}
+          (is-covariant⇔is-left-fibration B .fst Bc)
+          (right-orthogonal-∘ (const _ 𝟙 i0)
+            (is-covariant⇔is-left-fibration (uncurry C) .fst Cc)
+            (⊥equiv (const _ 𝟙 i0) _ (is-equiv⁻¹ (Σ-assoc ._≃_.has-is-eqv))))
+}
+%```
+}
+
+\subtree{
+\title{Functions from contravariant families to covariant families}
+
+%```agda
+\agda{
+is-contravariant : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
+               → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-contravariant {A = A} B
+    = ∀ (x : Δ¹ → A) (x₁ : B (x i1))
+      → is-singleton (Σ[ x₀ ∶ B (x i0)] Homᵈ (B ∘ x) x₀ x₁)
+
+tr-contra
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-contravariant P → (h : Δ¹ → A) → P (h i1) → P (h i0)
+tr-contra pc h x₁ = pc h x₁ .centre .fst
+
+opaque
+  lemma
+    : ∀ {𝓥 𝓦} {A : Δ¹ → Type 𝓥} → {B : Δ¹ → Type 𝓦}
+      → is-contravariant A → is-covariant B
+      → ∀ (x₀ : A i0 → B i0)
+      → is-singleton (Σ[ x ∶ ((i : Δ¹) → A i → B i) ] (x i0 ＝ x₀))
+  lemma {A = A} {B = B} Ac Bc f₀ = mk-singl cent {!!} where
+
+    coe-cov : ∀ {i j} → i ≤ j → B i → B j
+    coe-cov {i}{j} p
+      = tr B {!!}
+      ∘ tr-cov {P = B} Bc (λ l → (l ∨ i) ∧ (i ∨ j))
+      ∘ tr B {!!}
+
+    coe-cov-id : ∀ {i} (p : i ≤ i) → coe-cov p ~ id
+    coe-cov-id = {!!}
+
+    coe-i←0 : ∀ i → B i0 → B i
+    coe-i←0 i = coe-cov auto!
+
+    coe-0←0 : coe-i←0 i0 ~ id
+    coe-0←0 = coe-cov-id auto!
+
+    coe-0←i : ∀ i → A i → A i0
+    coe-0←i i  = tr A 0-init
+               ∘ tr-contra {P = A} Ac (_∧ i)
+               ∘ tr A (sym (∧-comm ∙ 1-top))
+
+    coe-contra : ∀ {i j} → i ≤ j → A j → A i
+    coe-contra {i}{j} p
+      = tr A {!!}
+      ∘ tr-contra {P = A} Ac (λ l → (l ∨ i) ∧ (i ∨ j))
+      ∘ tr A {!!}
+
+    coe-0←0-contra : coe-0←i i0 ＝ id
+    coe-0←0-contra = {!!}
+
+    cent : Σ[ f ∶ (∀ i → A i → B i) ] (f i0 ＝ f₀)
+    cent .fst i = coe-i←0 i ∘ f₀ ∘ coe-0←i i
+    cent .snd = ap₂ (λ x y → x ∘ f₀ ∘ y) (funext→ coe-0←0) coe-0←0-contra
+
+    centr : ∀ x → cent ＝ x
+    centr (g , refl) = is-equiv.bwd
+      (Hom-gpd
+        (Σ-is-groupoid
+          (Π-is-groupoid (λ _ → Π-is-groupoid λ _ → {!is-groupoid←is-covariant!}))
+          (λ i → ＝-is-groupoid (Π-is-groupoid λ _ → {!!}))))
+      h where
+      H : (i j : Δ¹) → A i → B i
+      H i j = coe-cov (∧-≤-eliml ≤-refl)
+            ∘ g  (i ∧ j)
+            ∘ coe-contra (∧-≤-eliml auto!)
+
+      r : ∀ j → H i0 j ＝ g i0
+      r = {!!}
+
+      h : Hom _ cent (g , refl)
+      h .Homᵈ.hom j = ((λ i → H i j) , r j)
+      h .Homᵈ.hom0 = Σ-path→
+        ( {!!}
+        , {!!})
+      h .Homᵈ.hom1 = Σ-path→
+        ( {!!}
+        , {!!})
+
+
+opaque
+  Π-is-covariant
+    : ∀ {𝓥 𝓦} {A : Δ¹ → Type 𝓥} → {B : Δ¹ → Type 𝓦}
+      → is-contravariant A → is-covariant B
+      → is-covariant (λ a → A a → B a)
+  Π-is-covariant {A = A} {B} Ac Bc p x₀
+    = is-single←equiv-to-single
+        {!!}
+        (lemma {A = A ∘ p} {!!} (covariant-base-change {P = B} p Bc) x₀)
 }
 %```
 }

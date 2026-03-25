@@ -7,6 +7,8 @@ primitive
   primEraseEquality : {𝓤 : Level} {A : Type 𝓤} {x y : A} → x ＝ y → x ＝ y
 
 open import Foundations.FunExt
+open import Foundations.Retract
+open import Foundations.Idempotent
 
 
 postulate
@@ -18,9 +20,12 @@ open fe public
 
 import Foundations.CanonicalPullbacks
 open Foundations.CanonicalPullbacks.WithFunExt global-funext public
+open Foundations.CanonicalPullbacks.WithFunExt-gap global-funext public
 import Foundations.PathSplit
 open Foundations.PathSplit.PSWithFunExt global-funext public
 open import Foundations.EquivProp global-funext public
+open import Foundations.BiinvertibleMap public
+open Foundations.BiinvertibleMap.WithFunExt global-funext public
 open import Foundations.EmptyUP global-funext public
 open import Foundations.SingletonClosure public hiding (Singleton-Π)
 open import Foundations.PropClosure public hiding (is-prop-Π)
@@ -28,6 +33,10 @@ open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
 open import Foundations.NullHomotopy global-funext public
+open Foundations.Idempotent.IdemWithFunExt global-funext public
+open Foundations.Idempotent.QIdemWithFunExt global-funext public
+open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
+open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
 open HE public
@@ -75,6 +84,7 @@ postulate
 
 
 open WithGlobalUnivalence UA public
+open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
 
 import Foundations.Straightening
 

@@ -16,6 +16,7 @@ open import Foundations.Singleton public
 open import Foundations.Functions public
 open import Foundations.Straightening public
 open import Foundations.FunctionInverses public
+open import Foundations.Retract public
 open import Foundations.Homotopy public
 open import Foundations.QuasiIsomorphism public
 open import Foundations.CoherentIsomorphism public
@@ -38,12 +39,18 @@ open import Foundations.PathReasoning public
 open import Foundations.FibrePath public
 open import Foundations.Span public hiding (Cocone-path→)
 open import Foundations.3for2 public
+open import Foundations.6for2 public
 open import Foundations.Pullbacks public
 open import Foundations.CanonicalPullbacks public
 open import Foundations.PullbackPath public
+open import Foundations.Fork public
+open import Foundations.Equaliser public
+open import Foundations.CanonicalEqualiser public
+open import Foundations.Tower public
+open import Foundations.CanonicalSeqLim public
 open import Foundations.PathSplit public
 open import Foundations.Lift public
-open import Foundations.TypeSequence public
+open import Foundations.Cotower public
 open import Foundations.SequentialColimits public
 open import Foundations.PropMapEmbedding public
 open import Foundations.EquivalenceRelation public

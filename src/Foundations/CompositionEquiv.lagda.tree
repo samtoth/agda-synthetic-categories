@@ -23,6 +23,8 @@ open import Foundations.FunctionInverses
 open import Foundations.FunExt
 open import Foundations.EquivContrFibre
 open import Foundations.DependentIdentity
+open import Foundations.Embedding
+open import Foundations.Unit
 }
 % ```
 
@@ -42,7 +44,7 @@ If #{f} has a quasi-inverse, then so do
 % ```agda
 \agda{
 postcomp-ret : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
-             → retract f → retract (postcomp C f)
+             → retraction f → retraction (postcomp C f)
 postcomp-ret (g , r) = (g ∘_ , λ h → WithFunExtω.funext→ FE (r ▸ h))
 
 postcomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
@@ -51,7 +53,7 @@ postcomp-qinv {f = f} (g , ret , sec) = (g ∘_) , ret∘ , sec∘ where
   sec∘ : section-witness (_∘_ f) (g ∘_)
   sec∘ h  = WithFunExtω.funext→ FE (sec ▸ h)
 
-  ret∘ : retract-witness (_∘_ f) (g ∘_)
+  ret∘ : retraction-witness (_∘_ f) (g ∘_)
   ret∘ h = WithFunExtω.funext→ FE (ret ▸ h)
 
 postcomp-equiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
@@ -69,7 +71,7 @@ postcomp-Π-qinv : ∀ {𝓤 𝓥 𝓦} {C : Type 𝓦}
                       → (∀ {q} → quasi-iso (f {q}))
                       → quasi-iso {A = ∀ c → A c} {B = ∀ c → B c} (f ∘_)
 postcomp-Π-qinv {f = f} eq = (λ g c → eq .fst (g c)) , ret , sec where
-   ret : retract-witness (λ g a → f (g a)) (λ g c → eq .fst (g c))
+   ret : retraction-witness (λ g a → f (g a)) (λ g c → eq .fst (g c))
    ret f = WithFunExtω.funext→ FE (λ c → eq .snd .fst (f c))
 
    sec : section-witness  (λ g a → f (g a)) (λ g c → eq .fst (g c))
@@ -98,7 +100,7 @@ postcomp-Π-⇔ f .snd = postcomp-Π (snd ∘ f)
 precomp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {C : Type 𝓦}
              → quasi-iso f → quasi-iso {B = A → C} (_∘ f)
 precomp-qinv {f = f} (g , η , ε) = (_∘ g) , η∘ , ε∘ where
-  η∘ : retract-witness (_∘ f) (_∘ g)
+  η∘ : retraction-witness (_∘ f) (_∘ g)
   η∘ h = WithFunExtω.funext→ FE (h ◂ ε)
 
   ε∘ : section-witness (_∘ f) (_∘ g)
@@ -183,9 +185,72 @@ is-equiv←postcomp f H = is-equiv←qiso iso where
   iso .snd .fst = happly
     (ap fst
       (is-prop←is-single (is-contr-map←is-equiv H f)
-                          ((bwd id ∘ f) , ap (_∘ f) (ε id))
-                          (id , refl)))
+                         (bwd id ∘ f , ap (_∘ f) (ε id))
+                         (id , refl)))
   iso .snd .snd = happly (ε id)
+}
+% ```
+}
+
+\subtree[stt-00IN]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{Equivalences from precomposition at the domain and codomain}
+\taxon{Theorem}
+
+\p{
+We can deduce that a map #{f : A \to B} is an [equivalence](stt-001U) from conditions
+on its precomposition maps at its domain and codomain:
+
+\ul{
+\li{If #{A^f} and #{B^f} are equivalences then #{f} is an equivalence.}
+}
+More generally,
+\ul{
+\li{If #{A^f} has a section and #{B^f} is an embedding then #{f} is an equivalence.}
+}
+}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+
+  retraction←section-precomp-dom
+    : section (precomp A f)
+    → retraction f
+  retraction←section-precomp-dom sec
+    = (sec .fst id , happly (sec .snd id))
+
+  retraction←is-equiv-precomp-dom
+    : is-equiv (precomp A f)
+    → retraction f
+  retraction←is-equiv-precomp-dom eq
+    = retraction←section-precomp-dom (is-equiv.section-fwd eq)
+
+  is-equiv←embedding-precomp-cod←retraction
+    : retraction f
+    → is-embedding (precomp B f)
+    → is-equiv f
+  is-equiv←embedding-precomp-cod←retraction (r , ret) pre
+    = is-equiv←qiso
+        ( r , ret , happly (unap pre (WithFunExtω.funext→ FE (f ◂ ret))))
+
+  is-equiv←embedding-precomp-cod←section-precomp-dom
+    : section (precomp A f)
+    → is-embedding (precomp B f)
+    → is-equiv f
+  is-equiv←embedding-precomp-cod←section-precomp-dom sec
+    = is-equiv←embedding-precomp-cod←retraction
+        (retraction←section-precomp-dom sec)
+
+  is-equiv←equiv-precomp-dom-cod
+    : is-equiv (precomp A f)
+    → is-equiv (precomp B f)
+    → is-equiv f
+  is-equiv←equiv-precomp-dom-cod feq geq
+    = is-equiv←embedding-precomp-cod←section-precomp-dom
+        (is-equiv.section-fwd feq)
+        (is-embedding←is-equiv geq)
 }
 % ```
 }

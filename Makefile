@@ -10,20 +10,21 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --rewriting --guardedness --flat-split --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve
 
 help:
 	@echo "Available targets:"
-	@echo "  make build-forest      # Generate Everything.agda + Agda/Forester trees/html"
-	@echo "  make typecheck         # Generate Everything.agda and typecheck with agda"
-	@echo "  make watch-agda        # Rebuild Agda output when src/ changes"
+	@echo "  make build-forest               # Generate Everything.agda + Agda/Forester trees/html"
+	@echo "  make sync-forest-src            # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
+	@echo "  make typecheck                  # Generate Everything.agda and typecheck with agda"
+	@echo "  make watch-agda                 # Rebuild Agda output when src/ changes"
 	@echo "  make watch-forest [PORT=<port>] # Run forester watch server (default: 1313)"
 	@echo "  make server [PORT=<port>]       # Run watch-agda + watch-forest together (default: 1313)"
 	@echo "  make serve [PORT=<port>]        # Serve ./result with python http.server (default: 1313)"
-	@echo "  make check-dup         # Find duplicate subtree references (DIR=... optional)"
-	@echo "  make clean-agda        # Remove generated agda artifacts"
-	@echo "  make clean-forester    # Remove generated forester artifacts"
-	@echo "  make clean             # Remove all generated build artifacts"
+	@echo "  make check-dup                  # Find duplicate subtree references (DIR=... optional)"
+	@echo "  make clean-agda                 # Remove generated agda artifacts"
+	@echo "  make clean-forester             # Remove generated forester artifacts"
+	@echo "  make clean                      # Remove all generated build artifacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
 	@bash ./scripts/generateEverything.sh
@@ -45,6 +46,16 @@ typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
 	@TIMEFORMAT='Typecheck elapsed: %3lR'; \
 	time Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) -i src "$(EVERYTHING_FILE)"
+
+sync-forest-src:
+	@mkdir -p "$(AUTOGEN_DIR)"
+	@find ./src -name '*.lagda.tree' | while read -r file; do \
+		rel=$${file#./src/}; \
+		newname=$${rel//\//.}; \
+		newname=$${newname/.lagda/}; \
+		dest="$(AUTOGEN_DIR)/$$newname"; \
+		cp "$$file" "$$dest"; \
+	done
 
 build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
@@ -115,21 +126,10 @@ check-dup:
 		exit err ; \
 	}'
 
-
-check-forest-no-typecheck:
-	@mkdir -p "$(AUTOGEN_DIR)" "$(HTML_DIR)"
-	@find ./src -name '*.lagda.tree' | while read -r file; do \
-		rel=$${file#./src/}; \
-		newname=$${rel//\//.}; \
-		newname=$${newname/.lagda/}; \
-		dest="$(AUTOGEN_DIR)/$$newname"; \
-		mkdir -p "$$(dirname "$$dest")"; \
-		cp "$$file" "$$dest"; \
-		echo "Copied $$file -> $$dest"; \
-	done
+check-forest-no-typecheck: sync-forest-src
+	@mkdir -p "$(HTML_DIR)"
 	@$(MAKE) --no-print-directory check-dup
 	@forester build
-
 
 clean-agda:
 	@chmod -R u+w _build 2>/dev/null || true
@@ -145,5 +145,6 @@ clean-forester:
 	@find . -type d \( -name autogen \) -prune -exec rm -rf {} +
 
 clean: clean-agda clean-forester
+
 serve:
 	@python3 -m http.server "$(PORT)" -d result

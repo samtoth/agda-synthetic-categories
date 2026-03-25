@@ -35,6 +35,7 @@ open import Foundations.CompositionFibres global-funext public
 open import Foundations.NullHomotopy global-funext public
 open Foundations.Idempotent.IdemWithFunExt global-funext public
 open Foundations.Idempotent.QIdemWithFunExt global-funext public
+open Foundations.Idempotent.QIdemWithFunExt2 global-funext public
 open Foundations.Idempotent.CohIdemWithFunExt global-funext public
 open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
@@ -84,7 +85,6 @@ postulate
 
 
 open WithGlobalUnivalence UA public
-open Foundations.Idempotent.QIdemWithFunExt2 global-funext public
 open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
 open Foundations.Idempotent.RetractsIdemWithFunExtUnivalence global-funext UA public
 

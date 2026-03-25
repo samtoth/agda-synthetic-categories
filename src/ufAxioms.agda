@@ -35,7 +35,7 @@ open import Foundations.CompositionFibres global-funext public
 open import Foundations.NullHomotopy global-funext public
 open Foundations.Idempotent.IdemWithFunExt global-funext public
 open Foundations.Idempotent.QIdemWithFunExt global-funext public
-open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
+open Foundations.Idempotent.CohIdemWithFunExt global-funext public
 open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext

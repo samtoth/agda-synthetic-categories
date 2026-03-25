@@ -84,7 +84,9 @@ postulate
 
 
 open WithGlobalUnivalence UA public
+open Foundations.Idempotent.QIdemWithFunExt2 global-funext public
 open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
+open Foundations.Idempotent.RetractsIdemWithFunExtUnivalence global-funext UA public
 
 import Foundations.Straightening
 

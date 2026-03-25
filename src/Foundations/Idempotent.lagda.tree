@@ -1234,14 +1234,13 @@ to #{f}.
 % ```agda
 \agda{
 is-split-idempotent
-  : ∀ {𝓤} (𝓥 : Level) {X : Type 𝓤}
+  : {𝓤 : Level} (𝓥 : Level) {X : Type 𝓤}
   → (X → X) → Type (𝓤 ⊔ lsuc 𝓥)
 is-split-idempotent 𝓥 {X} f
-  = Σ[ R ∶ Retracts 𝓥 X ]
-     ( retract-Retracts R .fst ∘ retract-Retracts R .snd .fst ~ f)
+  = Σ[ R ∶ Retracts 𝓥 X ] (R .snd .fst ∘ R .snd .snd .fst ~ f)
 
 split-idempotent-map
-  : ∀ {𝓤} (𝓥 : Level) (X : Type 𝓤)
+  : {𝓤 : Level} (𝓥 : Level) (X : Type 𝓤)
   → Type (𝓤 ⊔ lsuc 𝓥)
 split-idempotent-map 𝓥 X = Σ[ f ∶ (X → X) ] is-split-idempotent 𝓥 f
 }
@@ -1265,7 +1264,7 @@ module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
     → carrier-Retracts (R .fst)
     → carrier-Retracts (S .fst)
   compare-type-split-idempotent R S
-    = retract-Retracts (S .fst) .snd .fst ∘ retract-Retracts (R .fst) .fst
+    = S .fst .snd .snd .fst ∘ R .fst .snd .fst
 
   compare-type-split-idempotent-section
     : ∀ {𝓥 𝓦}
@@ -1275,16 +1274,10 @@ module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
       ∘ compare-type-split-idempotent R S
       ~ id
   compare-type-split-idempotent-section R S z
-    = ap
-        (retract-Retracts (R .fst) .snd .fst)
-        (S .snd (retract-Retracts (R .fst) .fst z))
-    ∙ sym
-        ( ap
-          (retract-Retracts (R .fst) .snd .fst)
-          (R .snd (retract-Retracts (R .fst) .fst z)))
-    ∙ retract-Retracts (R .fst) .snd .snd
-        (retract-Retracts (R .fst) .snd .fst (retract-Retracts (R .fst) .fst z))
-    ∙ retract-Retracts (R .fst) .snd .snd z
+    = ap (R .fst .snd .snd .fst) (S .snd (R .fst .snd .fst z))
+    ∙ sym (ap (R .fst .snd .snd .fst) (R .snd (R .fst .snd .fst z)))
+    ∙ R .fst .snd .snd .snd (R .fst .snd .snd .fst (R .fst .snd .fst z))
+    ∙ R .fst .snd .snd .snd z
 
   essentially-unique-splitting-type-is-split-idempotent
     : ∀ {𝓥 𝓦}
@@ -1338,18 +1331,15 @@ module SplitIdemWithFunExt (FE : FunExt-global) {𝓤 𝓥 : Level} {X : Type �
     = tr qidempotence
         (funext→ (H .snd))
         (quasiidempotence←section-retraction
-          (retract-Retracts (H .fst) .fst)
-          (retract-Retracts (H .fst) .snd .fst)
-          (retract-Retracts (H .fst) .snd .snd))
+          (H .fst .snd .fst)
+          (H .fst .snd .snd .fst)
+          (H .fst .snd .snd .snd))
 
   split-idempotent-map≃Retracts
     : split-idempotent-map 𝓥 X ≃ Retracts 𝓥 X
   split-idempotent-map≃Retracts
     = Σ-comm
-    ∙≃ Σ-singleton
-         ( λ R
-         → htpy-is-torsorial FE
-             (retract-Retracts R .fst ∘ retract-Retracts R .snd .fst))
+    ∙≃ Σ-singleton (λ R → htpy-is-torsorial FE (R .snd .fst ∘ R .snd .snd .fst))
 }
 % ```
 }
@@ -1387,43 +1377,24 @@ module SplittingWithFunExt
     : (a : ℕ → A)
     → (b : (n : ℕ) → B (a n))
     → ((n : ℕ) → (a n , b n) ＝ (a (suc n) , f (a (suc n)) (b (suc n))))
-      ≃
-      Σ[ p ∶ ((n : ℕ) → a n ＝ a (suc n)) ]
-        ((n : ℕ)
-        → Idᵈ (ap B (p n)) (b n) (f (a (suc n)) (b (suc n))))
+    ≃  Σ[ p ∶ ((n : ℕ) → a n ＝ a (suc n)) ]
+        ((n : ℕ) → Idᵈ (ap B (p n)) (b n) (f (a (suc n)) (b (suc n))))
   split-total-map-paths a b
-    = EProp.Π-ap-≃ FE
-        ( λ n →
-          Σ-path
-            {x = (a n , b n)}
-            {y = (a (suc n) , f (a (suc n)) (b (suc n)))} e⁻¹)
+    = EProp.Π-ap-≃ FE ( λ n → Σ-path e⁻¹)
     ∙≃ Σ-Π-swap≃
-          (λ n → a n ＝ a (suc n))
-          ( λ n p →
-            Idᵈ (ap B p) (b n) (f (a (suc n)) (b (suc n))))
+        (λ n → a n ＝ a (suc n))
+        (λ n p → Idᵈ (ap B p) (b n) (f (a (suc n)) (b (suc n))))
 
   splitting-total-map
     : Splitting.type (total-map f)
     ≃ Σ A (λ a → Splitting.type (f a))
   splitting-total-map
-    = Σ-ap-≃-fst
-        (Σ-Π-swap≃ (λ _ → A) (λ _ a → B a))
+    = Σ-ap-≃-fst (Σ-Π-swap≃ (λ _ → A) (λ _ a → B a))
     ∙≃ Σ-assoc
-    ∙≃ Σ-ap-≃
-          ( λ a →
-            Σ-ap-≃
-              (split-total-map-paths a))
+    ∙≃ Σ-ap-≃ (λ a → Σ-ap-≃ (split-total-map-paths a))
     ∙≃ Σ-assoc e⁻¹
     ∙≃ Σ-interchange
-          {A = ℕ → A}
-          {B = λ a → (n : ℕ) → B (a n)}
-          {C = λ a → (n : ℕ) → a n ＝ a (suc n)}
-          {D = λ a b p →
-            (n : ℕ)
-            → Idᵈ (ap B (p n)) (b n) (f (a (suc n)) (b (suc n)))}
-    ∙≃ ( Σ-ap-≃-fst-bwd {B = splitting-fibre-total-map}
-            (split-retract-equiv {A = A} {X = A} idretract)
-        e⁻¹)
+    ∙≃ Σ-ap-≃-fst-bwd (split-retract-equiv {A = A} {X = A} idretract) e⁻¹
 }
 % ```
 }

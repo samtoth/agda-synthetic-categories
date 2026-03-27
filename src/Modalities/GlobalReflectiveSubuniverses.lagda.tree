@@ -12,12 +12,15 @@ module Modalities.GlobalReflectiveSubuniverses where
 open import Foundations.Prelude
 open import Foundations.CanonicalEqualiser
 open import Foundations.Idempotent
+
 open import ufAxioms
-open import Foundations.BiinvertibleMap
+
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
+
 open import Core.Postwhisker
 open import Core.PiSection
+
 open import Ergonomics.Extensionality
 open import Ergonomics.Universal
 }
@@ -115,6 +118,8 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   reflector A = mk-rfltor (○ A) η
                   (is-reflector←global has-is-reflector)
 
+
+
 is-reflective←global : ∀ {α} {GS : gSubU α} → is-globally-reflective GS
                      → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
 is-reflective←global (mk-gReflectors ○ η has-is-reflector)
@@ -198,6 +203,12 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
   ∈S←is-singleton sing = in-SubU←η-retraction
                            (reflector _)
                            (retraction←singleton-dom sing η)
+
+
+  ○-is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → is-singleton (○ A)
+  ○-is-singleton {A = A} sa = is-single←equiv-to-single
+    (mk≃ _ (η-is-equiv←in-SubU (reflector A) (∈S←is-singleton sa)))
+    sa
 
   ＝∈S
     : {𝓦 : Level} {X : Type 𝓦}
@@ -490,6 +501,131 @@ that #{\textsf{Retracts}_{\UU}(A)}
 %```
 }
 
+\subtree[stt-00JO]{
+\title{Functoriality of reflective subuniverses}
+\taxon{Construction}
+\author{samueltoth}
+
+%```agda
+\agda{
+module gReflectiveReasoning {α} (RS : gRSubU α) where
+  open gRSubU RS public
+  open gReflectiveClosure RS public
+
+  has-is-reflective : ∀ {𝓤} → is-reflective (S {𝓤})
+  has-is-reflective = is-reflective←global has-is-globally-reflective
+
+  ○-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → ○ (A → B) → ○ A → ○ B
+  ○-map = ○-rec (Π∈S (λ _ → ○∈S)) λ f → ○-rec ○∈S λ x → η (f x)
+
+  ○-map-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {a : A}
+      → ○-map (η f) (η a) ＝ η (f a)
+  ○-map-β {f = f} {a}
+    = ○-rec (Π∈S (λ _ → ○∈S)) (λ f → ○-rec ○∈S λ x → η (f x)) (η f) (η a)
+        ＝⟨ happly (○-rec-β _ _ f) (η a) ⟩
+      ○-rec ○∈S (η ∘ f) (η a)
+        ＝⟨ ○-rec-β ○∈S (η ∘ f) a ⟩
+      η (f a) ∎
+}
+%```
+}
+
+
+\subtree[stt-00JP]{
+\title{Testing equivalence at modal types}
+\taxon{Lemma}
+\author{samueltoth}
+
+\p{For an arbitrary map #{f : A \to B}, if the induced precomposition map at
+every type #{Y}: #{Y^f : Y^B \to Y^A} is an equivalence, then #{f} is an
+equivalence. If #{A} and #{B} are both modal types, then it suffices to check
+precomposition only at modal types.}
+
+%```agda
+\agda{
+  is-equiv←precomp-modal
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → A ∈ S → B ∈ S
+      → {f : A → B}
+      → (∀ {𝓦} {Y : Type 𝓦} → Y ∈ S → is-equiv (precomp Y f))
+      → is-equiv f
+  is-equiv←precomp-modal A∈S B∈S {f = f} Yo = is-equiv←qiso lemma where
+    module e {𝓦} {Y : Type 𝓦} Y∈S = is-equiv (Yo {𝓦}{Y} Y∈S)
+    open e
+
+    lemma : quasi-iso _
+    lemma .fst = bwd A∈S id
+    lemma .snd .fst = happly (ε A∈S id)
+    lemma .snd .snd = happly
+      (ap fst
+        (is-prop←is-single
+          (is-contr-map←is-equiv (Yo B∈S) f)
+          (f ∘ bwd A∈S id , ap (postcomp _ f) (ε A∈S id))
+          (id , refl)))
+}
+%```
+}
+
+\subtree[stt-00JQ]{
+\taxon{Lemma}
+\author{samueltoth}
+
+\p{Even if a reflective subuniverse is not #{\Sigma}-closed, we have an
+equivalence #{\bigcirc (\Sigma_a P_a) \toeq \bigcirc (\Sigma_a \bigcirc P_a)}.}
+
+\proof{
+\p{
+We show that #{\bigcirc (\Sigma_a \bigcirc P_a)} is a reflector for
+#{\Sigma_a P_a}, and then by \ref{stt-00JP}, reflectors are unique up to
+equivalence.
+}
+}
+
+%```agda
+\agda{
+  module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+      Σ○-η : Σ _ P → ○ (Σ _ (○ ∘ P))
+      Σ○-η (x , y) = η (x , η y)
+
+      Σ○ : ○ (Σ A P) → ○ (Σ A (○ ∘ P))
+      Σ○ = ○-rec ○∈S Σ○-η
+
+      Σ○-up : ∀ {𝓠} {Y : Type 𝓠}
+             → Y ∈ S
+             → is-equiv (precomp Y Σ○-η)
+      Σ○-up {Y = Y} Ys
+        = is-equiv-∘
+            uncurry-is-equiv
+            (is-equiv-∘
+              (postcomp-Π-equiv (reflects Ys))
+              (is-equiv-∘
+                curry-is-equiv
+                (reflects Ys))) where
+        fact : precomp Y Σ○-η
+             ~ uncurry
+             ∘ postcomp-Π (λ a → precomp Y η)
+             ∘ curry
+             ∘ precomp Y η
+        fact = ~refl
+
+      Σ○-is-global-reflector
+        : is-global-reflector GS (Σ A P) (○ (Σ A (○ ∘ P))) (Σ○-η)
+      Σ○-is-global-reflector .is-global-reflector.○∈S = ○∈S
+      Σ○-is-global-reflector .is-global-reflector.reflects = Σ○-up
+
+      Σ○-is-equiv : is-equiv Σ○
+      Σ○-is-equiv = is-equiv←precomp-modal ○∈S ○∈S
+        λ Y∈S → 3-for-2~ (fact ~⁻¹) (reflects Y∈S) (Σ○-up Y∈S) where
+        fact : ∀ {𝓦} {Y : Type 𝓦} → precomp _ η ∘ precomp Y Σ○ ~ precomp _ Σ○-η
+        fact x = funext→ (λ a → ap x (○-rec-β ○∈S _ a))
+
+      Σ○≃ : ○ (Σ A P) ≃ ○ (Σ A (○ ∘ P))
+      Σ○≃ = mk≃ _ Σ○-is-equiv
+}
+%```
+}
+
 \subtree[stt-007D]{
 \taxon{Theorem}
 \title{Induction for #{\Sigma}-closed [global reflective subuniverses](stt-007C)}
@@ -518,8 +654,9 @@ funext), thus we can apply the inverse map to get a homotopy #{\pi
 \agda{
 module gRSubUInduction {α}
         (RS : gRSubU α)
+        (let Sref' = is-reflective←global (RS .gRSubU.has-is-globally-reflective))
         (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
-  open gRSubU RS
+  open gReflectiveReasoning RS
 
   opaque
     ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
@@ -566,6 +703,31 @@ module gRSubUInduction {α}
                             (ind PS)
   ind-is-equiv = is-equiv←qiso ∘ ind-qiso
 
+
+  ○-map-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-equiv (○-map (η f))
+  ○-map-is-equiv {f = f} fe = is-equiv←qiso
+    ( ○-map (η bwd)
+    , ind (λ _ → ＝∈S ○∈S)
+          (λ a → ap (○-map (η bwd)) ○-map-β ∙ ○-map-β ∙ ap η (eta a))
+    , ind (λ _ → ＝∈S ○∈S)
+          (λ b → ap (○-map (η f)) ○-map-β ∙ ○-map-β ∙ ap η (ε b))
+    ) where open is-equiv fe renaming (η to eta)
+
+  ○-≃ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → ○ A ≃ ○ B
+  ○-≃ e = mk≃ (○-map (η (_≃_.fwd e))) (○-map-is-equiv (e ._≃_.has-is-eqv))
+
+  Σ-is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → is-connected Sref' A → (∀ a → is-connected Sref' (B a))
+      → is-connected Sref' (Σ A B)
+  Σ-is-connected {A = A}{B} Ac Bc
+    = is-single←equiv-to-single
+        ((○ (Σ A B)       ≃⟨ Σ○≃ B ⟩
+          ○ (Σ A (○ ∘ B)) ≃⟨ ○-≃ (Σ-singleton Bc) ⟩
+          ○ A             ≃∎) e⁻¹)
+        Ac
 
   return = η
   _>>=_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}

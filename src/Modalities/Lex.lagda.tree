@@ -1,0 +1,304 @@
+\title{Lex modalities}
+\author{samueltoth}
+\date{2026-03-04}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Modalities.Lex where
+
+open import Foundations.Prelude
+
+open import ufAxioms
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ModalMaps
+open import Modalities.ModalEquivalences
+open import Modalities.ConnectedMaps
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+}
+%```
+
+\subtree[stt-00JN]{
+\taxon{Construction}
+
+\p{For any reflective subuniverse, we can construct a map
+#{\bigcirc (a =_A b) \to \eta(a) =_{\bigcirc A} \eta(b)}.}
+
+%```agda
+\agda{
+module _ {α} (GR : gRSubU α)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
+             (let open gRSubUEquivMap GR)
+             (Σ-is-modal : is-globally-Σ-closed GS)
+             where
+  open gRSubUInduction GR Σ-is-modal
+
+  opaque
+    mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → ○ (a ＝ b) → η a ＝ η b
+    mapply-○ = ○-rec (＝∈S ○∈S) (ap η)
+
+    mapply-refl
+      : ∀ {𝓤} {A : Type 𝓤} {a : A} → mapply-○ (η (refl)) ＝ refl: η a
+    mapply-refl = ○-rec-β (＝∈S ○∈S) (ap η) refl
+}
+%```
+}
+
+\subtree[stt-00JI]{
+\taxon{Construction}
+\title{Modal naturalilty square}
+
+\p{We construct the square witnessing the naturality of the modal unit:}
+
+\quiver{
+\begin{tikzcd}
+	A && {\bigcirc A} \\
+	\\
+	B && {\bigcirc B}
+	\arrow["{\eta_a}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{\bigcirc f}", from=1-3, to=3-3]
+	\arrow["{\eta_B}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+  η-square
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → Arrow-map f (○₁ f)
+  η-square f .Arrow-map.top = η
+  η-square f .Arrow-map.bot = η
+  η-square f .Arrow-map.comm a = sym (○₁-β f a)
+
+  η-fibre-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → ∀ b → fibre f b → fibre (○₁ f) (η b)
+  η-fibre-map f = arrow-fibre (η-square f)
+}
+%```
+}
+
+\subtree[stt-00JU]{
+\title{Lex modalities}
+
+\p{In \citek{RSS2020}, there are a number of equivalent conditions for when we
+call a modality \em{lex}. In this formalisation we take the following as
+our default:}
+
+
+\subtree[stt-00JG]{
+\taxon{Definition}
+\title{Modal extensionality}
+
+\p{In analogy to function types, we say that a modalitiy satisfies modal
+extensionality if the [canonical map](stt-00JN)
+#{\bigcirc (a =_A b) \to \eta(a) =_{\bigcirc A} \eta(b)} is an equivalence.}
+
+%```agda
+\agda{
+module _ {α} (GR : gRSubU α)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
+             (let open gRSubUEquivMap GR)
+             (let rfl = is-reflective←gRSubU GR)
+             (let grfl = GR .gRSubU.has-is-globally-reflective)
+             (Σ-is-modal : is-globally-Σ-closed GS)
+             (mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+                         → ○ (a ＝ b) → η a ＝ η b)
+             where
+  open gRSubUInduction GR Σ-is-modal
+
+  is-lex : Typeω
+  is-lex = ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-equiv (mapply-○ {a = a}{b})
+}
+%```
+}
+
+%```agda
+\agda{
+  module Lex (lex : is-lex) where
+    ○-modext→ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → η a ＝ η b → ○ (a ＝ b)
+    ○-modext→ = is-equiv.bwd lex
+}
+%```
+
+\p{We now fomrmalise a small subset of \citet{Thm 3.1}{RSS2020},
+in particular, we show the following facts are implied by the lexness of a
+modality:}
+
+\subtree[stt-00J9]{
+\title{Equality types are connected}
+\taxon{Lemma}
+
+%```agda
+\agda{
+    ＝-is-connected
+      : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+        → is-connected rfl A → is-connected rfl (a ＝ b)
+    ＝-is-connected Ac
+      = is-single←equiv-to-single
+          ((mk≃ _ lex) e⁻¹)
+          (＝-singleton←is-prop (is-prop←is-single Ac) (η _) (η _))
+}
+%```
+}
+
+\subtree[stt-00JC]{
+\title{Maps between connected types are connected}
+\taxon{Lemma}
+
+%```agda
+\agda{
+    is-connected←cod+dom-is-connected
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        → is-connected rfl A → is-connected rfl B
+        → ∀ (f : A → B) → is-connected-map rfl f
+    is-connected←cod+dom-is-connected Ac Bc f b
+      = Σ-is-connected Ac λ _ → ＝-is-connected Bc
+
+}
+%```
+}
+
+\subtree[stt-00JD]{
+\title{Connected maps are left cancellative}
+\taxon{Lemma}
+
+%```agda
+\agda{
+    is-connected-left-cancel
+      : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+          {f : A → B} {g : B → C}
+        → is-connected-map rfl g → is-connected-map rfl (g ∘ f)
+        → is-connected-map rfl f
+    is-connected-left-cancel {f = f}{g} fconn gfconn b
+      = is-single←equiv-to-single
+          (○-≃ (fibre-unstable-octahedron {f = g} {f} b e⁻¹))
+          (is-connected←cod+dom-is-connected
+            (gfconn (g b))
+            (fconn  (g b))
+            _
+            (b , refl))
+}
+%```
+}
+
+\subtree[stt-00JE]{
+\title{Modal equivalences are connected maps}
+\taxon{Lemma}
+
+\p{Note that the converse holds regardless of the lexness.}
+
+%```agda
+\agda{
+    is-connected←is-modal-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+        → is-modal-equiv grfl f
+        → is-connected-map rfl f
+    is-connected←is-modal-equiv {A = A} {B} {f} feq
+      = is-connected-left-cancel {f = f} {g = η}
+          (η-is-connected grfl Σ-is-modal)
+          (is-connected-map-~
+            grfl
+            (sym ∘ η-square GR Σ-is-modal f .Arrow-map.comm)
+            (is-connected-map-∘ grfl Σ-is-modal
+              {f = ○₁ f} {η}
+              (η-is-connected grfl Σ-is-modal)
+              (is-connected-map←is-equiv grfl
+                (gRSubUModalEquivalences.is-gmodal-equiv←up-gmodal-equiv
+                  GR f
+                  (gRSubUModalEquivalences.up-gmodal-equiv←is-modal-equiv
+                    GR feq)))))
+}
+%```
+}
+
+\subtree[stt-00JJ]{
+\title{Maps are fibrewise connected if the total map is connected}
+\taxon{Lemma}
+
+\todo{The formalisation of this, which follows from the
+[3x3 lemma for pullbacks](https://github.com/samtoth/agda-synthetic-categories/issues/74),
+is still TODO.}
+}
+
+\p{Under the assumption of \ref{stt-00JJ}, we have the following lemmas:}
+
+\subtree[stt-00JX]{
+\title{Fibre maps of connected arrow maps are connected}
+\taxon{Lemma}
+
+\p{Given a connected map of arrows #{f \to g}, the induced map on fibres is
+connected.}
+
+%```agda
+\agda{
+    module _
+      (is-fibrewise-connected←is-total-connected
+        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+            {P : A → Type 𝓦} {Q : B → Type 𝓜}
+          → (g : (a : A) → P a → Q (f a))
+          → is-connected-map rfl f
+          → is-connected-map {A = Σ A P} {B = Σ B Q} rfl (map-Σ f g)
+          → ∀ a → is-connected-map rfl (g a)) where
+      fibre-map-is-connected
+        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+            {f : A → B} {g : X → Y}
+          → (F : Arrow-map f g)
+          → (let module F = Arrow-map F)
+          → is-connected-map rfl F.bot
+          → is-connected-map rfl F.top
+          → ∀ a → is-connected-map rfl (arrow-fibre F a)
+      fibre-map-is-connected {A = A}{B}{X}{Y}{f = f}{g} F bconn tconn b
+        = is-fibrewise-connected←is-total-connected
+            (F .Arrow-map.bot)
+            {P = fibre f} {Q = fibre g}
+            (arrow-fibre F)
+            bconn
+            (is-connected-map←is-arrow-equiv⁻¹ grfl Σ-is-modal
+              amap amap-is-equiv tconn)
+            b where
+        module F = Arrow-map F
+        amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
+                         (map-Σ F.bot (arrow-fibre F)) F.top
+        amap .Arrow-map.top = total←total-fibre f
+        amap .Arrow-map.bot = total←total-fibre g
+        amap .Arrow-map.comm = ~refl
+
+        amap-is-equiv : is-Arrow-equiv amap
+        amap-is-equiv .fst = total≃total-fibre f ._≃_.has-is-eqv
+        amap-is-equiv .snd = total≃total-fibre g ._≃_.has-is-eqv
+}
+%```
+}
+
+\subtree[stt-00JS]{
+\title{The modal unit naturality square is a connected arrow map}
+\taxon{Lemma}
+
+%```agda
+\agda{
+      η-fibre-map-is-equiv
+        : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+          → ∀ a → is-connected-map rfl (η-fibre-map GR Σ-is-modal f a)
+      η-fibre-map-is-equiv {A = A} {B} {f} b
+        = fibre-map-is-connected amap
+            (η-is-connected grfl Σ-is-modal)
+            (η-is-connected grfl Σ-is-modal) b where
+        amap : Arrow-map f (○₁ f)
+        amap .Arrow-map.top = η
+        amap .Arrow-map.bot = η
+        amap .Arrow-map.comm a = sym (○₁-β f a)
+}
+%```
+}
+}

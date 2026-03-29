@@ -124,7 +124,7 @@ module IdSReasoning {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) wh
         P₀ ∎  where
 
       lem : SingS-is-single a .central (_ , IdS₀) ＝ refl
-      lem = is-prop←is-single (Singleton-Id (SingS-is-single a) _ _) _ _
+      lem = is-prop←is-single (＝-is-single (SingS-is-single a) _ _) _ _
 
   trS : ∀ {𝓦} {B : A → Type 𝓦} {a b : A} (p : IdS a b) → B a → B b
   trS {_}{B} p ba = IdSJ (B ∘ fst) ba p
@@ -177,7 +177,7 @@ is-singleton-structure←parts : ∀ {𝓤 𝓥 𝓦 𝓜}{A : Type 𝓤} {B : A
                  → is-singleton (Σ[ b ∶ B a ] Rb a b c)
                  → is-singleton (Σ[ t@(a , b) ∶ (Σ A B)] Σ (Ra a) (Rb a b))
 is-singleton-structure←parts aR t@(a , c) bR
-  = is-single←equiv-to-single Σ-interchange (Singleton-Σ' aR t bR)
+  = is-single←equiv-to-single Σ-interchange (Σ-is-single' aR t bR)
 
 
 ap-equiv←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : A} →

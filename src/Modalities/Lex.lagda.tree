@@ -16,6 +16,8 @@ open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ModalMaps
+open import Modalities.ModalEquivalences
+open import Modalities.ConnectedMaps
 
 open import Core.Arrow
 open import Core.ArrowEquiv
@@ -32,7 +34,9 @@ open import Core.Orthogonal
 %```agda
 \agda{
 module _ {α} (GR : gRSubU α)
-             (let open gReflectiveReasoning GR)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
+             (let open gRSubUEquivMap GR)
              (Σ-is-modal : is-globally-Σ-closed GS)
              where
   open gRSubUInduction GR Σ-is-modal
@@ -70,14 +74,14 @@ module _ {α} (GR : gRSubU α)
 \agda{
   η-square
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      → Arrow-map f (○-map (η f))
+      → Arrow-map f (○₁ f)
   η-square f .Arrow-map.top = η
   η-square f .Arrow-map.bot = η
-  η-square f .Arrow-map.comm _ = sym ○-map-β
+  η-square f .Arrow-map.comm a = sym (○₁-β f a)
 
   η-fibre-map
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      → ∀ b → fibre f b → fibre (○-map (η f)) (η b)
+      → ∀ b → fibre f b → fibre (○₁ f) (η b)
   η-fibre-map f = arrow-fibre (η-square f)
 }
 %```
@@ -102,9 +106,11 @@ extensionality if the [canonical map](stt-00JN)
 %```agda
 \agda{
 module _ {α} (GR : gRSubU α)
-             (let open gReflectiveReasoning GR)
-             (let rfl = has-is-reflective)
-             (let grfl = has-is-globally-reflective)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
+             (let open gRSubUEquivMap GR)
+             (let rfl = is-reflective←gRSubU GR)
+             (let grfl = GR .gRSubU.has-is-globally-reflective)
              (Σ-is-modal : is-globally-Σ-closed GS)
              (mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A}
                          → ○ (a ＝ b) → η a ＝ η b)
@@ -182,22 +188,6 @@ modality:}
             (fconn  (g b))
             _
             (b , refl))
-
-    opaque
-      is-connected←is-arrow-equiv⁻¹
-        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-            {f : A → B} {g : X → Y}
-          → (F : Arrow-map f g)
-          → (let module F = Arrow-map F)
-          → is-Arrow-equiv F
-          → is-connected-map rfl g
-          → is-connected-map rfl f
-      is-connected←is-arrow-equiv⁻¹ {f = f} {g = g} F fe fconn
-        = is-connected-left-cancel
-            (is-connected←is-equiv grfl (fe .snd))
-            (is-connected-~ grfl (sym ∘ F .Arrow-map.comm)
-               (is-connected-∘ grfl Σ-is-modal
-                 (is-connected←is-equiv grfl (fe .fst)) fconn))
 }
 %```
 }
@@ -217,13 +207,17 @@ modality:}
     is-connected←is-modal-equiv {A = A} {B} {f} feq
       = is-connected-left-cancel {f = f} {g = η}
           (η-is-connected grfl Σ-is-modal)
-          (is-connected-~
+          (is-connected-map-~
             grfl
             (sym ∘ η-square GR Σ-is-modal f .Arrow-map.comm)
-            (is-connected-∘ grfl Σ-is-modal
-              {f = ○-map (η f)} {η}
+            (is-connected-map-∘ grfl Σ-is-modal
+              {f = ○₁ f} {η}
               (η-is-connected grfl Σ-is-modal)
-              (is-connected←is-equiv grfl feq)))
+              (is-connected-map←is-equiv grfl
+                (gRSubUModalEquivalences.is-gmodal-equiv←up-gmodal-equiv
+                  GR f
+                  (gRSubUModalEquivalences.up-gmodal-equiv←is-modal-equiv
+                    GR feq)))))
 }
 %```
 }
@@ -270,7 +264,8 @@ connected.}
             {P = fibre f} {Q = fibre g}
             (arrow-fibre F)
             bconn
-            (is-connected←is-arrow-equiv⁻¹ amap amap-is-equiv tconn)
+            (is-connected-map←is-arrow-equiv⁻¹ grfl Σ-is-modal
+              amap amap-is-equiv tconn)
             b where
         module F = Arrow-map F
         amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
@@ -299,10 +294,10 @@ connected.}
         = fibre-map-is-connected amap
             (η-is-connected grfl Σ-is-modal)
             (η-is-connected grfl Σ-is-modal) b where
-        amap : Arrow-map f (○-map (η f))
+        amap : Arrow-map f (○₁ f)
         amap .Arrow-map.top = η
         amap .Arrow-map.bot = η
-        amap .Arrow-map.comm _ = sym ○-map-β
+        amap .Arrow-map.comm a = sym (○₁-β f a)
 }
 %```
 }

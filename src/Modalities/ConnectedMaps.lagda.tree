@@ -1,0 +1,933 @@
+\date{2026-03-19}
+\title{Connected maps}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Modalities.ConnectedMaps where
+
+open import ufAxioms
+open import Foundations.Prelude
+open import Foundations.SingletonClosure
+open import Foundations.EquivOfSingleton
+open import Core.Surjection
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ModalMaps
+open import Modalities.ModalEquivalences
+open import Modalities.Instances.Truncation
+open import Core.Arrow
+open import Core.ArrowRetract
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.ArrowEquiv
+open import Core.CocartesianSquare
+open import Core.PullbackPower
+open import Ergonomics.Notations.Orthogonality
+open notation
+}
+%```
+
+\subtree[fre-LMAB]{
+\taxon{Definition}
+\title{Universal property of #{K}-connected maps}
+
+\p{
+Given a global subuniverse #{K} and a map #{f : A \to B}, then #{f} satisfies the
+\em{universal property of #{K}-connected maps} if for every #{K}-valued family of
+types #{U} over #{B}, the dependent precomposition map
+#{\prod_{b : B} U(b) \to \prod_{a : A} U(f(a))} is an equivalence.
+}
+
+% ```agda
+\agda{
+up-gconnected-map : ∀ {α 𝓤 𝓥} (K : gSubU α)
+                    → {A : Type 𝓤} {B : Type 𝓥}
+                    → (A → B)
+                    → Typeω
+up-gconnected-map K f
+  = ∀ {𝓚} {U : _ → Type 𝓚}
+  → (∀ b → U b ∈ gSubU.S K)
+  → is-equiv (precomp-Π U f)
+
+gconnected-map-!-fibre
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → Typeω
+gconnected-map-!-fibre K f
+  = ∀ b → up-gmodal-equiv K (!: fibre f b)
+
+gconnected-fibres
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → Typeω
+gconnected-fibres K f
+  = ∀ b {𝓚} {U : Type 𝓚}
+    → U ∈ gSubU.S K
+    → is-equiv (const U (fibre f b))
+}
+%```
+}
+
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{#{K}-Connected maps}
+
+\p{
+If #{K} is a reflective subuniverse, a map is \em{#{K}-connected} if all of its
+fibres have contractible reflections.
+}
+
+\agda{
+module _ {α} (RS : gRSubU α) where
+  open gRSubU RS
+
+  is-gconnected-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (A → B) → Type _
+  is-gconnected-map {B = B} f = (b : B) → is-singleton (○ (fibre f b))
+
+is-connected-map : ∀ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+                     {S : SubU (𝓤 ⊔ 𝓥) 𝓜}
+                   → is-reflective S
+                   → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-connected-map rfl f = ∀ b → is-connected rfl (fibre f b)
+}
+%```
+}
+
+\subtree[stt-0A2A]{
+\title{Modal units are connected iff the modality is #{\Sigma}-closed}
+\taxon{Lemma}
+\author{samueltoth}
+
+%```agda
+\agda{
+η-is-connected
+  : ∀ {α} {G : gSubU α} → (Gr : is-globally-reflective G)
+  → is-globally-Σ-closed G
+  → ∀ {𝓤}{A : Type 𝓤}
+  → is-connected-map (is-reflective←global Gr)
+                     (Gr .is-globally-reflective.η {A = A})
+η-is-connected Gr GΣ {_}{A} x
+  = mk-singl
+      (ind {P = λ x → ○ (fibre η x)}
+           (λ _ → ○∈S) (λ a → η (a , refl)) x)
+      (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y) where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU _ Gr)
+  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+}
+%```
+}
+
+
+\subtree[stt-0A2B]{
+\title{Connected maps are closed under composition and are right cancellable}
+\taxon{Lemma}
+\author{samueltoth}
+\author{fredrikbakke}
+
+% ```agda
+\agda{
+up-gconnected-map-∘
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : B → C)
+  → up-gconnected-map K f
+  → up-gconnected-map K g
+  → up-gconnected-map K (g ∘ f)
+up-gconnected-map-∘ K f g fconn gconn U∈K
+  = is-equiv-∘ (fconn (U∈K ∘ g)) (gconn U∈K)
+
+up-gconnected-map-right-cancel
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : B → C)
+  → up-gconnected-map K f
+  → up-gconnected-map K (g ∘ f)
+  → up-gconnected-map K g
+up-gconnected-map-right-cancel K f g fconn gfconn U∈K
+  = 3-for-2 (fconn (U∈K ∘ g)) (gfconn U∈K)
+}
+%```
+
+%```agda
+\agda{
+module _ {α} {G : gSubU α}
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU _ Gr)
+  is-connected-map-~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} → f ~ g
+      → is-connected-map Grfl f → is-connected-map Grfl g
+  is-connected-map-~ = funext-rec _ λ where refl → id
+
+  is-connected-map←is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-connected-map Grfl f
+  is-connected-map←is-equiv feq b = ○-is-singleton (is-contr-map←is-equiv feq b)
+
+
+module _ {α} {G : gSubU α}
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         (GΣ : is-globally-Σ-closed G)
+         where
+  open gRSubU (mk-gRSubU _ Gr)
+  open gRSubUEquivMap (mk-gRSubU _ Gr)
+  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+
+  is-connected-map-right-cancel-iff
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
+        {g : A → B}
+      → is-connected-map Grfl g
+      → is-connected-map Grfl f
+      ⇔ is-connected-map Grfl (f ∘ g)
+  is-connected-map-right-cancel-iff {f = f}{g} gconn
+    = ( (λ fc c → is-single←equiv-to-single (eqv c e⁻¹) (fc c))
+       , λ fgc c → is-single←equiv-to-single (eqv c) (fgc c)) where
+    eqv : ∀ z → ○ (fibre (f ∘ g) z) ≃ ○ (fibre f z)
+    eqv z
+      = ○ (fibre (f ∘ g) z) ≃⟨ ○-≃ (fibre-∘ z) ⟩
+        ○ (Σ (fibre f z) (λ x → fibre g (fst x)))
+                            ≃⟨ mk≃ _ (Σ○-is-equiv (mk-gRSubU _ Gr) _) ⟩
+        ○ (Σ (fibre f z) (λ x → ○ (fibre g (fst x))))
+                            ≃⟨ ○-≃ (Σ-singleton (λ x → gconn (fst x))) ⟩
+        ○ (fibre f z)       ≃∎
+
+  is-connected-map-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
+        {g : A → B}
+      → is-connected-map Grfl g
+      → is-connected-map Grfl f
+      → is-connected-map Grfl (f ∘ g)
+  is-connected-map-∘ gc = is-connected-map-right-cancel-iff gc .fst
+
+  is-connected-map←is-arrow-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → (F : Arrow-map f g)
+      → (let module F = Arrow-map F)
+      → is-Arrow-equiv F
+      → is-connected-map Grfl f
+      → is-connected-map Grfl g
+  is-connected-map←is-arrow-equiv {f = f} {g = g} F fe fconn
+    = is-connected-map-right-cancel-iff
+        {f = g} {F .Arrow-map.top}
+        (is-connected-map←is-equiv Gr (fe .fst)) .snd
+        (is-connected-map-~ Gr
+          (F .Arrow-map.comm)
+          (is-connected-map-∘ fconn (is-connected-map←is-equiv Gr (fe .snd))))
+
+  is-connected-map←is-arrow-equiv⁻¹
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → (F : Arrow-map f g)
+      → (let module F = Arrow-map F)
+      → is-Arrow-equiv F
+      → is-connected-map Grfl g
+      → is-connected-map Grfl f
+  is-connected-map←is-arrow-equiv⁻¹ F fe
+    = is-connected-map←is-arrow-equiv
+        (Arrow⁻¹←is-Arrow-equiv F fe)
+        (Arrow⁻¹-is-equiv F fe)
+}
+%```
+}
+
+\subtree[stt-02AE]{
+\author{fredrikbakke}
+\author{samueltoth}
+\taxon{Theorem}
+\title{Connected maps are left orthogonal to modal maps}
+
+% ```agda
+\agda{
+up-gconnected-map⇔orthogonal-map
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → up-gconnected-map K f
+  → {𝓦 𝓛 : Level} {C : Type 𝓦} {D : Type 𝓛}
+    (g : C → D)
+  → is-gmodal-map K g
+  → are-orthogonal f g
+up-gconnected-map⇔orthogonal-map K f fconn g g∈K
+  = orthogonal←precomp-Π λ h → fconn (λ b → g∈K (h b))
+
+up-gconnected-map←orthogonal-map
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → (∀ {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛}
+        (g : C → D)
+        → is-gmodal-map K g
+        → are-orthogonal f g)
+    → up-gconnected-map K f
+up-gconnected-map←orthogonal-map K f orth {U = U} U∈K
+  = is-equiv←Arrow-equiv⁻¹ {F = eq .fst} (eq .snd)
+      (precomp-Π←orthogonal id (orth fst fst∈K)) where
+
+  fst∈K : is-gmodal-map K (fst {B = U})
+  fst∈K b = gSubU.∈S←equiv K (fibre-straighten U b e⁻¹) (U∈K b)
+
+  eq = precomp-Π-straighten-Arrow-equiv U f
+}
+%```
+
+% ```agda
+\agda{
+module _ {α} (GR : gRSubU α)
+              where
+  open gRSubU GR
+  open gReflectiveClosure GR
+  open gRSubUEquivMap GR
+  open gRSubUModalEquivalences GR
+  connected⊥modal : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+                    → is-connected-map (is-reflective←gRSubU GR) f
+                    → is-modal-map S g
+                    → f ⊥ g
+  connected⊥modal {f = f} {g = g} fconn gmod
+    = orthogonal←is-cartesian
+        (λ h → is-equiv←Arrow-equiv⁻¹ {F = amap h}
+                 (amap-is-equiv h)
+                 (up fconn (gmod ∘ h))) where
+    up
+      : is-connected-map (is-reflective←gRSubU GR) f
+      → up-gconnected-map GS f
+    up fconn {U = U} U∈S
+      = is-equiv-∘
+          {f = fact1}
+          fact1-is-equiv
+          (postcomp-Π-equiv (λ {b}
+            → is-equiv-∘
+                (reflects (U∈S b))
+                (is-equiv⁻¹ (sing-ev-is-equiv global-funext (fconn b))))) where
+      fact1 : (b : (∀ z → fibre f z → U z)) → (∀ a → U (f a))
+      fact1 g a = g (f a) (a , refl)
+
+      fact1-is-equiv : is-equiv fact1
+      fact1-is-equiv = is-equiv←qiso
+        ((λ where g b (x , refl) → g x)
+        , (λ g → funext→ (λ b → funext→ (λ where (a , refl) → refl)) )
+        , ~refl )
+
+    amap : ∀ h → Arrow-map (arrow-fibre (power-hom f g) h)
+                           (precomp-Π (λ b → fibre g (h b)) f)
+    amap h .Arrow-map.top = fibre-postcomp≃ g h ._≃_.fwd
+    amap h .Arrow-map.bot = fibre-postcomp≃ g (h ∘ f) ._≃_.fwd
+    amap h .Arrow-map.comm (k , refl) = refl
+
+    amap-is-equiv : ∀ h → is-Arrow-equiv (amap h)
+    amap-is-equiv h .fst = fibre-postcomp≃ g h ._≃_.has-is-eqv
+    amap-is-equiv h .snd = fibre-postcomp≃ g (h ∘ f) ._≃_.has-is-eqv
+}
+%```
+}
+
+\subtree{
+\date{2026-03-20}
+\author{fredrikbakke}
+\taxon{Proposition}
+\title{Closure properties of #{K}-connected maps}
+
+\p{
+Connected maps are stable under homotopies, retracts of arrows, and cobase change.
+}
+
+% ```agda
+\agda{
+up-gconnected-map-homotopy
+  : ∀ {α 𝓤 𝓥}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B}
+    → f ~ g
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+up-gconnected-map-homotopy K {f = f} {g = g} H fconn
+  = up-gconnected-map←orthogonal-map K g λ h hmodal
+      → left-orthogonal-homotopy h H
+          (up-gconnected-map⇔orthogonal-map K f fconn h hmodal)
+
+up-gconnected-map-∘~
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {h : A → C}
+      (f : A → B) (g : B → C)
+    → h ~ g ∘ f
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+    → up-gconnected-map K h
+up-gconnected-map-∘~ K f g H fconn gconn
+  = up-gconnected-map-homotopy K (H ~⁻¹)
+      (up-gconnected-map-∘ K f g fconn gconn)
+
+up-gconnected-map-right-cancel~
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {h : A → C}
+      (f : A → B) (g : B → C)
+    → h ~ g ∘ f
+    → up-gconnected-map K f
+    → up-gconnected-map K h
+    → up-gconnected-map K g
+up-gconnected-map-right-cancel~ K f g H fconn hconn
+  = up-gconnected-map-right-cancel K f g fconn
+      (up-gconnected-map-homotopy K H hconn)
+
+up-gconnected-map←retraction-arrow-map
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → retraction-arrow-map F
+    → up-gconnected-map K g
+    → up-gconnected-map K f
+up-gconnected-map←retraction-arrow-map K {f = f} {g = g} F R gconn
+  = up-gconnected-map←orthogonal-map K f λ h hmodal
+      → left-orthogonal-retraction f g F R h
+          (up-gconnected-map⇔orthogonal-map K g gconn h hmodal)
+
+up-gconnected-map←cocartesian
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → is-cocartesianω F
+    → up-gconnected-map K f
+    → up-gconnected-map K g
+up-gconnected-map←cocartesian K {f = f} {g = g} F cocart fconn
+  = up-gconnected-map←orthogonal-map K g λ h hmodal
+      → left-orthogonal-pushout F cocart h
+          (up-gconnected-map⇔orthogonal-map K f fconn h hmodal)
+
+up-gconnected-map-ι₂
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : A → C)
+    → up-gconnected-map K f
+    → up-gconnected-map K (ι₂ {f = f} {g = g})
+up-gconnected-map-ι₂ K f g
+  = up-gconnected-map←cocartesian K
+      (Pushout-square (mk-span _ f g))
+      (Pushout-square-is-cocartesian (mk-span _ f g))
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{#{K}-connected maps are #{K}-equivalences}
+
+% ```agda
+\agda{
+up-gmodal-equiv←up-gconnected-map
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → up-gconnected-map K f
+  → up-gmodal-equiv K f
+up-gmodal-equiv←up-gconnected-map K f fconn U∈K = fconn (λ _ → U∈K)
+
+module gRSubUConnectedModalEquivalences {α} (RS : gRSubU α) where
+  open gRSubU RS
+  open gRSubUModalEquivalences RS
+
+}
+%```
+}
+
+\subtree[stt-0A2C]{
+\taxon{Lemma}
+\author{samueltoth}
+
+\p{Any map which is both modal and connected is an equivalence. Combined later
+with the universal property of connected maps, this also yields the
+universal-property formulation.}
+
+%```agda
+\agda{
+module _ {α} {G : gSubU α} (let SU = SubU←global G)
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         (GΣ : is-globally-Σ-closed G)
+         where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU G Gr)
+  open gRSubUInduction (mk-gRSubU G Gr) GΣ
+
+  is-equiv←is-modal←is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-modal-map SU f → is-connected-map Grfl f
+      → is-equiv f
+  is-equiv←is-modal←is-connected m c
+    = is-equiv←is-contr-map λ b
+      → is-single←equiv-to-single
+          (mk≃ _ (η-is-equiv←in-SubU (reflector (fibre _ b)) (m b)) e⁻¹)
+          (c b)
+}
+%```
+}
+
+\subtree{
+\author{samueltoth}
+\taxon{Lemma}
+\title{Connected maps have the dependent universal property}
+
+%```agda
+\agda{
+module _ {α} (GR : gRSubU α) where
+  open gRSubU GR
+
+  up-gconnected-map←is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-connected-map (is-reflective←global has-is-globally-reflective) f
+      → up-gconnected-map GS f
+  up-gconnected-map←is-connected {f = f} fconn {U = X} X∈S
+    = is-equiv-∘
+        {f = fact1}
+        (fact1-is-equiv)
+        (postcomp-Π-equiv (λ {b}
+          → is-equiv-∘
+              (reflects (X∈S b))
+              (is-equiv⁻¹ (sing-ev-is-equiv global-funext (fconn b))))) where
+    fact1 : (b : (∀ z → fibre f z → X z)) → (∀ a → X (f a))
+    fact1 g a = g (f a) (a , refl)
+
+    fact1-is-equiv : is-equiv fact1
+    fact1-is-equiv = is-equiv←qiso
+      ((λ where g b (x , refl) → g x)
+      , (λ g → funext→ (λ b → funext→ (λ where (a , refl) → refl)) )
+      , ~refl )
+}
+%```
+}
+
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Unique dependent extension property of #{K}-connected maps}
+
+\p{
+#{K}-Connectedness is equivalent to saying every section of a #{K}-valued
+family over the domain uniquely extends along the map.
+}
+
+% ```agda
+\agda{
+up-gconnected-map⇔unique-extensions
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → up-gconnected-map K f
+    → ∀ {𝓚} {U : B → Type 𝓚}
+    → (∀ b → U b ∈ gSubU.S K)
+    → (h : Π A (U ∘ f))
+    → is-singleton (Ext f h)
+up-gconnected-map⇔unique-extensions K f fconn U∈K h
+  = is-contr-map←is-equiv (fconn U∈K) h
+
+up-gconnected-map←unique-extensions
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → (∀ {𝓚} {U : B → Type 𝓚}
+        → (∀ b → U b ∈ gSubU.S K)
+        → (h : Π A (U ∘ f))
+        → is-singleton (Ext f h))
+  → up-gconnected-map K f
+up-gconnected-map←unique-extensions K f ext {U = U} U∈K
+  = is-equiv←is-contr-map λ h → ext U∈K h
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Terminal projection and constant-map criteria on fibres}
+
+\p{
+For the fibres of a map, asking that the terminal projections be #{K}-equivalences is
+equivalent to asking that the fibres satisfy the universal property of
+#{K}-connected types.
+}
+
+% ```agda
+\agda{
+gconnected-map-!-fibres⇔gconnected-fibres
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → gconnected-map-!-fibre K f
+  → gconnected-fibres K f
+gconnected-map-!-fibres⇔gconnected-fibres K f fib-eq b U∈K
+  = is-equiv-const←precomp-! (fib-eq b U∈K)
+
+gconnected-map-!-fibres←gconnected-fibres
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → gconnected-fibres K f
+  → gconnected-map-!-fibre K f
+gconnected-map-!-fibres←gconnected-fibres K f fib-const b U∈K
+  = is-equiv-precomp-!←const (fib-const b U∈K)
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Fibrewise connected maps are connected}
+
+\p{
+If each fibre of #{f} is #{K}-connected, i.e., for each #{b} and each #{K}-type #{U},
+the constant map #{U \to (\fibre{f}{b} \to U)} is an equivalence, then #{f} is
+#{K}-connected.
+}
+
+% ```agda
+\agda{
+up-gconnected-map←gconnected-fibres
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → gconnected-fibres K f
+  → up-gconnected-map K f
+up-gconnected-map←gconnected-fibres K f fibre-const {U = U} U∈K
+  = is-equiv←Arrow-equiv⁻¹ {F = eq .fst} (eq .snd)
+      (postcomp-Π-equiv λ {b} → fibre-const b (U∈K b)) where
+  eq = precomp-Π-fibre-const-Arrow-equiv U f
+
+up-gconnected-map←fibre-terminal-equiv
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+  → gconnected-map-!-fibre K f
+  → up-gconnected-map K f
+up-gconnected-map←fibre-terminal-equiv K f fibterm
+  = up-gconnected-map←gconnected-fibres K f
+      (gconnected-map-!-fibres⇔gconnected-fibres K f fibterm)
+}
+%```
+}
+
+
+\subtree[fre-0315]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\title{#{K}-Connected maps, given reflections of fibres}
+
+\agda{
+module gReflectorConnectedMaps
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (f : A → B)
+    (R𝟙 : gReflector GS 𝟙)
+    (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
+    (Rf : (b : B) → gReflector GS (fibre f b)) where
+  module One = gReflector R𝟙
+
+  reflected-fibres-singleton
+    : Type _
+  reflected-fibres-singleton = ∀ b → is-singleton (gReflector.○ (Rf b))
+
+  reflected-fibres-singleton←gconnected-map-!-fibre
+    : gconnected-map-!-fibre GS f
+    → reflected-fibres-singleton
+  reflected-fibres-singleton←gconnected-map-!-fibre fibterm b
+    = is-single←equiv-to-single
+        (mk≃ (gReflectorMap.○₁ (Rf b) R𝟙 (! {A = fibre f b}))
+          (gReflectorModalEquivalences.is-gmodal-equiv←up-gmodal-equiv
+            (Rf b) R𝟙 (! {A = fibre f b}) (fibterm b))
+          e⁻¹)
+        ○𝟙-singleton
+
+  gconnected-map-!-fibre←reflected-fibres-singleton
+    : reflected-fibres-singleton
+    → gconnected-map-!-fibre GS f
+  gconnected-map-!-fibre←reflected-fibres-singleton sing b
+    = gReflectorModalEquivalences.up-gmodal-equiv←is-gmodal-equiv
+        (Rf b) R𝟙 (! {A = fibre f b})
+        (is-equiv←single-to-prop
+          (sing b)
+          (is-prop←is-single ○𝟙-singleton)
+          (gReflectorMap.○₁ (Rf b) R𝟙 (! {A = fibre f b})))
+}
+%```
+}
+
+\subtree[fre-0316]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Reflectors of #{\Sigma}-closed reflective global subuniverses are connected}
+
+\agda{
+module gRSubUReflectorConnected {α}
+    (RS : gRSubU α)
+    (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
+  open gRSubU RS
+  open gReflectiveClosure RS
+  open gRSubUEquivMap RS
+  open gRSubUInduction RS SΣ
+  open gRSubUModalEquivalences RS
+
+  η-connected-map
+    : ∀ {𝓤} {A : Type 𝓤}
+    → up-gconnected-map GS (η {A = A})
+  η-connected-map {A = A} {U = U} U∈S
+    = is-equiv⁻¹ (ind-is-equiv U∈S)
+
+  η∘-connected-map←up-gmodal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → up-gmodal-equiv GS f
+    → up-gconnected-map GS (η {A = B} ∘ f)
+  η∘-connected-map←up-gmodal-equiv {A = A} {B = B} f feq {U = U} U∈S
+    = homotopy-is-equiv {f = rhs} {g = precomp-Π U (η ∘ f)}
+        (comm ~⁻¹) rhs-is-equiv where
+    mid
+      : Π (○ B) U
+      → Π A (λ a → U (○₁ f (η a)))
+    mid = precomp-Π (U ∘ ○₁ f) η ∘ precomp-Π U (○₁ f)
+
+    rhs
+      : Π (○ B) U → Π A (U ∘ η ∘ f)
+    rhs = postcomp-Π (λ a → tr U (○₁-β f a)) ∘ mid
+
+    rhs-is-equiv
+      : is-equiv rhs
+    rhs-is-equiv
+      = is-equiv-∘
+          (postcomp-Π-equiv λ {a} → coe-is-equiv (ap U (○₁-β f a)))
+          (is-equiv-∘
+            (η-connected-map (U∈S ∘ ○₁ f))
+            (precomp-Π-is-equiv (is-gmodal-equiv←up-gmodal-equiv f feq)))
+
+    comm
+      : precomp-Π U (η ∘ f)
+      ~ rhs
+    comm h = funext→ λ a → sym (apᵈ h (○₁-β f a))
+
+  is-gmodal-equiv←up-gconnected-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → up-gconnected-map GS f
+    → is-gmodal-equiv f
+  is-gmodal-equiv←up-gconnected-map f fconn
+    = is-gmodal-equiv←up-gmodal-equiv f
+        (up-gmodal-equiv←up-gconnected-map GS f fconn)
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Connections between certain fibre conditions on a map with #{K}-reflections}
+
+%```agda
+\agda{
+module gReflectorFibres
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (f : A → B)
+    (Rf : (b : B) → gReflector GS (fibre f b)) where
+
+  η-fibre-section
+    : Π A (λ a → gReflector.○ (Rf (f a)))
+  η-fibre-section a = gReflector.η (Rf (f a)) (a , refl)
+
+  fibre-local-centre←over
+    : (b : B)
+    → null-homotopy
+        (precomp-Π-over-fibres (λ b → gReflector.○ (Rf b)) f η-fibre-section b)
+    → Σ[ u ∶ gReflector.○ (Rf b) ]
+        ((x : fibre f b) → u ＝ gReflector.η (Rf b) x)
+  fibre-local-centre←over b (u , H)
+    = u , λ where (a , refl) → H (a , refl)
+
+  reflected-fibre-singleton←local-centre
+    : {b : B}
+    → Σ[ u ∶ gReflector.○ (Rf b) ]
+        ((x : fibre f b) → u ＝ gReflector.η (Rf b) x)
+    → is-singleton (gReflector.○ (Rf b))
+  reflected-fibre-singleton←local-centre {b} (u , H)
+    = mk-singl u (happly p) where
+    module Fb = gReflector (Rf b)
+
+    p : const Fb.○ Fb.○ u ＝ id
+    p = unap
+          (is-embedding←is-equiv (Fb.reflects Fb.○∈S))
+          (funext→ H)
+
+  fibre-precomp-Π-η-fibre≃Π-local-centre-over
+    : fibre (precomp-Π (λ b → gReflector.○ (Rf b)) f) η-fibre-section
+      ≃ ((b : B)
+        → null-homotopy
+            (precomp-Π-over-fibres (λ b → gReflector.○ (Rf b)) f
+              η-fibre-section b))
+  fibre-precomp-Π-η-fibre≃Π-local-centre-over
+    = fibre-precomp-Π-null-homotopy≃
+        (λ b → gReflector.○ (Rf b)) f η-fibre-section
+
+  merely-fibre-local-centre←surjective-precomp-Π
+    : (∀ {𝓚} {U : B → Type 𝓚}
+        → ((b : B) → U b ∈ gSubU.S GS)
+        → is-surjective (precomp-Π U f))
+    → ((b : B)
+      → ║ Σ[ u ∶ gReflector.○ (Rf b) ]
+            ((x : fibre f b) → u ＝ gReflector.η (Rf b) x) ║)
+  merely-fibre-local-centre←surjective-precomp-Π surj b
+    = Trunc.○-rec Trunc.○∈S
+        (Trunc.η ∘ fibre-local-centre←over b ∘ ev b)
+        (Trunc.○-rec Trunc.○∈S
+          (Trunc.η ∘ fibre-precomp-Π-η-fibre≃Π-local-centre-over ._≃_.fwd)
+          (surj (λ b → gReflector.○∈S (Rf b)) η-fibre-section))
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Fibre reflection conditions for #{K}-connected maps}
+
+%```agda
+\agda{
+module gReflectorConnectedCharacterisation
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (f : A → B)
+    (R𝟙 : gReflector GS 𝟙)
+    (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
+    (Rf : (b : B) → gReflector GS (fibre f b)) where
+  open gReflectorConnectedMaps f R𝟙 ○𝟙-singleton Rf
+  open gReflectorFibres f Rf
+
+  reflected-fibres-singleton←merely-local-centre
+    : ((b : B)
+      → ║ Σ[ u ∶ gReflector.○ (Rf b) ]
+            ((x : fibre f b) → u ＝ gReflector.η (Rf b) x) ║)
+    → reflected-fibres-singleton
+  reflected-fibres-singleton←merely-local-centre mere b
+    = Trunc.○-rec
+        (is-truncated←is-prop is-single-is-prop)
+        reflected-fibre-singleton←local-centre
+        (mere b)
+
+  gconnected-map-!-fibre←merely-local-centre
+    : ((b : B)
+      → ║ Σ[ u ∶ gReflector.○ (Rf b) ]
+            ((x : fibre f b) → u ＝ gReflector.η (Rf b) x) ║)
+    → gconnected-map-!-fibre GS f
+  gconnected-map-!-fibre←merely-local-centre mere
+    = gconnected-map-!-fibre←reflected-fibres-singleton
+        (reflected-fibres-singleton←merely-local-centre mere)
+
+  up-gconnected-map←merely-local-centre
+    : ((b : B)
+      → ║ Σ[ u ∶ gReflector.○ (Rf b) ]
+           ((x : fibre f b) → u ＝ gReflector.η (Rf b) x) ║)
+    → up-gconnected-map GS f
+  up-gconnected-map←merely-local-centre mere
+    = up-gconnected-map←fibre-terminal-equiv GS f
+        (gconnected-map-!-fibre←merely-local-centre mere)
+}
+%```
+}
+
+\subtree[fre-0319]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Corollary}
+\title{Equivalent conditions for connected maps in reflective global subuniverses}
+
+%```agda
+\agda{
+module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
+  open gRSubU RS
+  open gRSubUEquivMap RS
+  open gRSubUModalEquivalences RS
+
+  module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+    module Ch = gReflectorConnectedCharacterisation
+      f
+      (gReflector←gRSubU RS 𝟙)
+      (○𝟙-is-single RS)
+      (λ b → gReflector←gRSubU RS (fibre f b))
+    open Ch
+    module LC = gReflectorFibres f (λ b → gReflector←gRSubU RS (fibre f b))
+
+    gconnected-map-!-fibre←fibre-connected
+      : is-gconnected-map RS f
+      → gconnected-map-!-fibre GS f
+    gconnected-map-!-fibre←fibre-connected fconn
+      = gconnected-map-!-fibres←gconnected-fibres GS f fib-const where
+
+      fib-const : gconnected-fibres GS f
+      fib-const b U∈S
+        = (is-equiv-∘
+            (reflects {A = fibre f b} U∈S)
+            (sing-const-is-equiv global-funext (fconn b)))
+
+    is-gconnected-map←gconnected-map-!-fibre
+      : gconnected-map-!-fibre GS f
+      → is-gconnected-map RS f
+    is-gconnected-map←gconnected-map-!-fibre fibterm b
+      = is-single←equiv-to-single
+          (mk≃ (○₁ (! {A = fibre f b}))
+            (is-gmodal-equiv←up-gmodal-equiv (! {A = fibre f b}) (fibterm b))
+            e⁻¹)
+          (○𝟙-is-single RS)
+
+    is-gconnected-map←up-gconnected-map
+      : up-gconnected-map GS f
+      → is-gconnected-map RS f
+    is-gconnected-map←up-gconnected-map fconn
+      = reflected-fibres-singleton←merely-local-centre
+          (LC.merely-fibre-local-centre←surjective-precomp-Π
+            (λ U∈K y → Trunc.η
+              ( is-equiv.bwd (fconn U∈K) y
+              , is-equiv.ε (fconn U∈K) y)))
+
+    up-gconnected-map←is-gconnected-map
+      : is-gconnected-map RS f
+      → up-gconnected-map GS f
+    up-gconnected-map←is-gconnected-map fconn
+      = up-gconnected-map←fibre-terminal-equiv GS f
+          (gconnected-map-!-fibre←fibre-connected fconn)
+}
+%```
+}

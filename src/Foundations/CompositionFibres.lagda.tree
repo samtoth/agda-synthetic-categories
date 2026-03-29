@@ -17,8 +17,12 @@ open import Foundations.CoherentIsomorphism
 open import Foundations.Functions
 open import Foundations.Homotopy
 open import Foundations.Sigma
-open import Foundations.SigmaPath
 open import Foundations.Identity
+open import Foundations.Straightening
+open import Foundations.PiProperties
+open import Foundations.TheoremOfChoice
+open import Foundations.CompositionEquiv FE
+open import Foundations.FibrewiseEquiv
 open import Foundations.FibrePath
 open import Foundations.EquivProp FE
 
@@ -32,21 +36,84 @@ open WithFunExt-global FE
 
 %```agda
 \agda{
-fibre-postcomp≃
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} (f : A → B) (h : C → B)
-    → fibre (postcomp C f) h ≃  Π C (fibre f ∘ h)
-fibre-postcomp≃ f h = mk≃ fwd (is-equiv←qiso fwd-qiso) where
-  fwd : fibre (postcomp _ f) h → Π _ (fibre f ∘ h)
-  fwd (g , p) c = (g c , happly p c)
+module _
+  {𝓤 𝓥 𝓦}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  (f : A → B) (h : C → B)
+  where
 
-  fwd-qiso : quasi-iso fwd
-  fwd-qiso .fst g = (fst ∘ g , funext→ (snd ∘ g))
-  fwd-qiso .snd .fst (h , p) = Σ-path→ (refl , (_≃_.η funext≃ p))
-  fwd-qiso .snd .snd g
-    = funext→ (λ a → Σ-path→ ( refl
-                             , happly (_≃_.ε funext≃ (snd ∘ g)) a)
-                             )
+  fibre-postcomp≃
+    : fibre (postcomp C f) h ≃ Π C (fibre f ∘ h)
+  fibre-postcomp≃
+    = Σ-ap-≃ (λ _ → funext≃) ∙≃ Σ-Π-swap≃ (λ _ → A) (λ c a → f a ＝ h c) e⁻¹
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Characterisation of fibres of dependent postcomposition}
+
+%```agda
+\agda{
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {C : Type 𝓤}
+  {A : C → Type 𝓥}
+  {B : C → Type 𝓦}
+  (f : (c : C) → A c → B c)
+  (h : Π C B)
+  where
+
+  fibre-postcomp-Π≃
+    : fibre (postcomp-Π f) h ≃ Π C (λ c → fibre (f c) (h c))
+  fibre-postcomp-Π≃
+    = Σ-ap-≃ (λ _ → funext≃) ∙≃ Σ-Π-swap≃ A (λ c a → f c a ＝ h c) e⁻¹
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Dependent functions as sections over fibres}
+
+\p{
+Given a family #{U} over #{B} and a map #{f : A \to B}, dependent functions
+#{(a : A) \to U(f(a))} are equivalently families of functions out of each fibre
+#{\fibre{f}{b}}.
+}
+
+%```agda
+\agda{
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (U : B → Type 𝓦)
+  (f : A → B)
+  where
+
+  precomp-Π-over-fibres
+    : Π A (U ∘ f) → Π B (λ b → fibre f b → U b)
+  precomp-Π-over-fibres h b (a , p) = tr U p (h a)
+
+  precomp-Π-over-fibres-is-equiv
+    : is-equiv precomp-Π-over-fibres
+  precomp-Π-over-fibres-is-equiv
+    = is-equiv←qiso (bwd , ~refl , ε) where
+    bwd : Π B (λ b → fibre f b → U b) → Π A (U ∘ f)
+    bwd h a = h (f a) (a , refl)
+
+    ε : precomp-Π-over-fibres ∘ bwd ~ id
+    ε h = funext→ (λ _ → funext→ (λ where (a , refl) → refl))
+
+  precomp-Π-over-fibres≃
+    : Π A (U ∘ f) ≃ Π B (λ b → fibre f b → U b)
+  precomp-Π-over-fibres≃
+    = mk≃ precomp-Π-over-fibres precomp-Π-over-fibres-is-equiv
 }
 %```
 }

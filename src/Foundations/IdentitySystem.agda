@@ -22,7 +22,7 @@ open import Foundations.EquivHomotopy
 open import Foundations.EquivSingleton
 
 module _ {𝓤} (A : Type 𝓤) (a₀ : A) where
-  Reflexive-ppred : ∀ 𝓥 → Type _
+  Reflexive-ppred : ∀ 𝓥 → Type (𝓤 ⊔ lsuc 𝓥)
   Reflexive-ppred 𝓥 = Σ[ R ∶ (A → Type 𝓥) ] R a₀
 
   SingR : ∀ {𝓥} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
@@ -38,7 +38,7 @@ idtoppred (R , R₀) _ p = tr _ p R₀
 
 is-identity-system-at : ∀ {𝓤 𝓥} → (A : Type 𝓤) → (a₀ : A)
                       → Reflexive-ppred A a₀ 𝓥
-                      → Type _
+                      → Type (𝓤 ⊔ 𝓥)
 is-identity-system-at A a₀ (R , R₀) = is-fibrewise-equiv (idtoppred (R , R₀))
 
 
@@ -78,10 +78,10 @@ mk-identity-system I eq = ids where
 module IdSReasoning {𝓤 𝓥} {A : Type 𝓤} (Id : Identity-system A 𝓥) where
   open Identity-system Id
 
-  SingS : A → Type _
+  SingS : A → Type (𝓤 ⊔ 𝓥)
   SingS a = SingR A a IdS
 
-  SingS' : A → Type _
+  SingS' : A → Type (𝓤 ⊔ 𝓥)
   SingS' a = SingR' A a IdS
 
   tr←idtopred : ∀ {a b : A} → (p : a ＝ b) → tr _ p (IdS₀ {a}) ＝ IdS←Id p

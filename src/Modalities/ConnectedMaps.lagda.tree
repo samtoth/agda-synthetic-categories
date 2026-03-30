@@ -24,6 +24,7 @@ open import Modalities.ModalEquivalences
 open import Modalities.Instances.Truncation
 open import Core.Arrow
 open import Core.ArrowRetract
+open import Core.Lifts
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.ArrowEquiv
@@ -81,8 +82,7 @@ up-connected-fibres K f
 %```
 }
 
-
-\subtree{
+\subtree[fre-1003]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Definition}
@@ -116,19 +116,18 @@ is-connected-map' {B = B} rfl f = (b : B) → is-connected' rfl (fibre f b)
 %```agda
 \agda{
 η-is-connected
-  : ∀ {α} {G : gSubU α} → (Gr : is-globally-reflective G)
-  → is-globally-Σ-closed G
+  : ∀ {α} (RS : gRSubU α)
+  → is-globally-Σ-closed (gRSubU.GS RS)
   → ∀ {𝓤}{A : Type 𝓤}
-  → is-connected-map' (is-reflective←global Gr)
-                     (Gr .is-globally-reflective.η {A = A})
-η-is-connected Gr GΣ {_} {A} x
+  → is-connected-map RS (gRSubU.η RS {A = A})
+η-is-connected RS GΣ {_} {A} x
   = mk-singl
       (ind {P = λ x → ○ (fibre η x)}
            (λ _ → ○∈S) (λ a → η (a , refl)) x)
       (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y) where
-  open is-globally-reflective Gr
-  open gReflectiveClosure (mk-gRSubU _ Gr)
-  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+  open gRSubU RS
+  open gReflectiveClosure RS
+  open gRSubUInduction RS GΣ
 }
 %```
 }
@@ -167,39 +166,35 @@ up-connected-map-right-cancel K f g fconn gfconn U∈K
 
 %```agda
 \agda{
-module _ {α} {G : gSubU α}
-         (Gr : is-globally-reflective G)
-         (let Grfl = is-reflective←global Gr)
+module _ {α} (RS : gRSubU α)
          where
-  open is-globally-reflective Gr
-  open gReflectiveClosure (mk-gRSubU _ Gr)
+  open gRSubU RS
+  open gReflectiveClosure RS
 
   is-connected-map'-~
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} → f ~ g
-      → is-connected-map' Grfl f → is-connected-map' Grfl g
+      → is-connected-map RS f → is-connected-map RS g
   is-connected-map'-~ = funext-rec _ λ where refl → id
 
   is-connected-map←is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → is-equiv f → is-connected-map' Grfl f
+      → is-equiv f → is-connected-map RS f
   is-connected-map←is-equiv feq b = ○-is-singleton (is-contr-map←is-equiv feq b)
 
 
-module _ {α} {G : gSubU α}
-         (Gr : is-globally-reflective G)
-         (let Grfl = is-reflective←global Gr)
-         (GΣ : is-globally-Σ-closed G)
+module _ {α} (RS : gRSubU α)
+         (SΣ : is-globally-Σ-closed (gRSubU.GS RS))
          where
-  open gRSubU (mk-gRSubU _ Gr)
-  open gRSubUEquivMap (mk-gRSubU _ Gr)
-  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+  open gRSubU RS
+  open gReflectiveReasoning RS
+  open gRSubUInduction RS SΣ
 
   is-connected-map'-right-cancel-iff
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
         {g : A → B}
-      → is-connected-map' Grfl g
-      → is-connected-map' Grfl f
-      ⇔ is-connected-map' Grfl (f ∘ g)
+      → is-connected-map RS g
+      → is-connected-map RS f
+      ⇔ is-connected-map RS (f ∘ g)
   is-connected-map'-right-cancel-iff {f = f}{g} gconn
     = ( (λ fc c → is-single←equiv-to-single (eqv c e⁻¹) (fc c))
        , λ fgc c → is-single←equiv-to-single (eqv c) (fgc c)) where
@@ -207,7 +202,7 @@ module _ {α} {G : gSubU α}
     eqv z
       = ○ (fibre (f ∘ g) z) ≃⟨ ○-≃ (fibre-∘ z) ⟩
         ○ (Σ (fibre f z) (λ x → fibre g (fst x)))
-                            ≃⟨ mk≃ _ (Σ○-is-equiv (mk-gRSubU _ Gr) _) ⟩
+                            ≃⟨ mk≃ _ (Σ○-is-equiv RS _) ⟩
         ○ (Σ (fibre f z) (λ x → ○ (fibre g (fst x))))
                             ≃⟨ ○-≃ (Σ-singleton (λ x → gconn (fst x))) ⟩
         ○ (fibre f z)       ≃∎
@@ -215,26 +210,25 @@ module _ {α} {G : gSubU α}
   is-connected-map'-∘
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
         {g : A → B}
-      → is-connected-map' Grfl g
-      → is-connected-map' Grfl f
-      → is-connected-map' Grfl (f ∘ g)
+      → is-connected-map RS g
+      → is-connected-map RS f
+      → is-connected-map RS (f ∘ g)
   is-connected-map'-∘ gc = is-connected-map'-right-cancel-iff gc .fst
 
   is-connected-map←is-arrow-equiv
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
         {f : A → B} {g : X → Y}
       → (F : Arrow-map f g)
-      → (let module F = Arrow-map F)
       → is-Arrow-equiv F
-      → is-connected-map' Grfl f
-      → is-connected-map' Grfl g
+      → is-connected-map RS f
+      → is-connected-map RS g
   is-connected-map←is-arrow-equiv {f = f} {g = g} F fe fconn
     = is-connected-map'-right-cancel-iff
         {f = g} {F .Arrow-map.top}
-        (is-connected-map←is-equiv Gr (fe .fst)) .snd
-        (is-connected-map'-~ Gr
+        (is-connected-map←is-equiv RS (fe .fst)) .snd
+        (is-connected-map'-~ RS
           (F .Arrow-map.comm)
-          (is-connected-map'-∘ fconn (is-connected-map←is-equiv Gr (fe .snd))))
+          (is-connected-map'-∘ fconn (is-connected-map←is-equiv RS (fe .snd))))
 
   is-connected-map←is-arrow-equiv⁻¹
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
@@ -242,8 +236,8 @@ module _ {α} {G : gSubU α}
       → (F : Arrow-map f g)
       → (let module F = Arrow-map F)
       → is-Arrow-equiv F
-      → is-connected-map' Grfl g
-      → is-connected-map' Grfl f
+      → is-connected-map RS g
+      → is-connected-map RS f
   is-connected-map←is-arrow-equiv⁻¹ F fe
     = is-connected-map←is-arrow-equiv
         (Arrow⁻¹←is-Arrow-equiv F fe)
@@ -294,12 +288,13 @@ up-connected-map←orthogonal-map K f orth {U = U} U∈K
 
 % ```agda
 \agda{
-module _ {α} (GR : gRSubU α)
-              where
+module _ {α} (GR : gRSubU α) where
+
   open gRSubU GR
   open gReflectiveClosure GR
-  open gRSubUEquivMap GR
+  open gReflectiveReasoning GR
   open gRSubUModalEquivalences GR
+
   connected⊥modal : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
                       {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
                     → is-connected-map' (is-reflective←gRSubU GR) f
@@ -343,7 +338,7 @@ module _ {α} (GR : gRSubU α)
 %```
 }
 
-\subtree{
+\subtree[fre-1004]{
 \date{2026-03-20}
 \author{fredrikbakke}
 \taxon{Proposition}
@@ -439,7 +434,7 @@ up-connected-map-ι₂ K f g
 %```
 }
 
-\subtree{
+\subtree[fre-1005]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -473,18 +468,14 @@ universal-property formulation.}
 
 %```agda
 \agda{
-module _ {α} {G : gSubU α} (let SU = SubU←global G)
-         (Gr : is-globally-reflective G)
-         (let Grfl = is-reflective←global Gr)
-         (GΣ : is-globally-Σ-closed G)
-         where
-  open is-globally-reflective Gr
-  open gReflectiveClosure (mk-gRSubU G Gr)
-  open gRSubUInduction (mk-gRSubU G Gr) GΣ
+module _ {α} (RS : gRSubU α) where
+
+  open gRSubU RS
+  open gReflectiveClosure RS
 
   is-equiv←is-modal←is-connected
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → is-modal-map' SU f → is-connected-map' Grfl f
+      → is-modal-map GS f → is-connected-map RS f
       → is-equiv f
   is-equiv←is-modal←is-connected m c
     = is-equiv←is-contr-map λ b
@@ -495,42 +486,7 @@ module _ {α} {G : gSubU α} (let SU = SubU←global G)
 %```
 }
 
-\subtree{
-\author{samueltoth}
-\taxon{Lemma}
-\title{Connected maps have the dependent universal property}
-
-%```agda
-\agda{
-module _ {α} (GR : gRSubU α) where
-  open gRSubU GR
-
-  up-connected-map←is-connected
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → is-connected-map' (is-reflective←global has-is-globally-reflective) f
-      → up-connected-map GS f
-  up-connected-map←is-connected {f = f} fconn {U = X} X∈S
-    = is-equiv-∘
-        {f = fact1}
-        (fact1-is-equiv)
-        (postcomp-Π-equiv (λ {b}
-          → is-equiv-∘
-              (reflects (X∈S b))
-              (is-equiv⁻¹ (sing-ev-is-equiv global-funext (fconn b))))) where
-    fact1 : (b : (∀ z → fibre f z → X z)) → (∀ a → X (f a))
-    fact1 g a = g (f a) (a , refl)
-
-    fact1-is-equiv : is-equiv fact1
-    fact1-is-equiv = is-equiv←qiso
-      ((λ where g b (x , refl) → g x)
-      , (λ g → funext→ (λ b → funext→ (λ where (a , refl) → refl)) )
-      , ~refl )
-}
-%```
-}
-
-
-\subtree{
+\subtree[fre-1007]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Theorem}
@@ -570,7 +526,7 @@ up-connected-map←unique-extensions K f ext {U = U} U∈K
 %```
 }
 
-\subtree{
+\subtree[fre-1008]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -605,7 +561,7 @@ up-connected-!-fibres←up-connected-fibres K f fib-const b U∈K
 %```
 }
 
-\subtree{
+\subtree[fre-1009]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Theorem}
@@ -751,7 +707,7 @@ module gRSubUReflectorConnected {α}
     (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
   open gRSubU RS
   open gReflectiveClosure RS
-  open gRSubUEquivMap RS
+  open gReflectiveReasoning RS
   open gRSubUInduction RS SΣ
   open gRSubUModalEquivalences RS
 
@@ -792,7 +748,7 @@ module gRSubUReflectorConnected {α}
 %```
 }
 
-\subtree{
+\subtree[fre-1010]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -860,7 +816,7 @@ module gReflectorFibres
 %```
 }
 
-\subtree{
+\subtree[fre-1011]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Theorem}
@@ -929,7 +885,7 @@ module gReflectorConnectedCharacterisation
 \agda{
 module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
   open gRSubU RS
-  open gRSubUEquivMap RS
+  open gReflectiveReasoning RS
   open gRSubUModalEquivalences RS
 
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where

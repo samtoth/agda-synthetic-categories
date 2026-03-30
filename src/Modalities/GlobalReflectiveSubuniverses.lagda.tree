@@ -571,16 +571,16 @@ that #{\textsf{Retracts}_{\UU}(A)}
 %```
 }
 
-\subtree{
+\subtree[fre-1003]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \author{samueltoth}
-\taxon{Lemma}
-\title{The reflected map of a modal equivalence is an equivalence}
+\taxon{Construction}
+\title{The functorial action of reflective subuniverses}
 
 %```agda
 \agda{
-module gRSubUEquivMap {α} (RS : gRSubU α) where
+module gReflectiveReasoning {α} (RS : gRSubU α) where
   open gRSubU RS
 
   ○₁
@@ -613,13 +613,13 @@ module gRSubUEquivMap {α} (RS : gRSubU α) where
       ○₁ g (η (f a))        ＝⟨ sym (ap (○₁ g) (○₁-β f a)) ⟩
       ○₁ g (○₁ f (η a))     ∎
 
-  section-○₁
+  ○₁-section
     : ∀ {𝓤 𝓥}
         {A : Type 𝓤} {B : Type 𝓥}
         {f : A → B}
     → section f
     → section (○₁ f)
-  section-○₁ {f = f} (s , sec)
+  ○₁-section {f = f} (s , sec)
     = ○₁ s
     , λ y
       → ○₁ f (○₁ s y)   ＝⟨ sym (○₁-∘ f s y) ⟩
@@ -627,19 +627,47 @@ module gRSubUEquivMap {α} (RS : gRSubU α) where
         ○₁ id y          ＝⟨ ○₁-id y ⟩
         y                ∎
 
-  retraction-○₁
+  ○₁-retraction
     : ∀ {𝓤 𝓥}
         {A : Type 𝓤} {B : Type 𝓥}
         {f : A → B}
     → retraction f
     → retraction (○₁ f)
-  retraction-○₁ {f = f} (r , ret)
+  ○₁-retraction {f = f} (r , ret)
     = ○₁ r
     , λ y
       → ○₁ r (○₁ f y)   ＝⟨ sym (○₁-∘ r f y) ⟩
         ○₁ (r ∘ f) y     ＝⟨ ap (λ h → ○₁ h y) (funext→ ret) ⟩
         ○₁ id y          ＝⟨ ○₁-id y ⟩
         y                ∎
+
+  ○₁-is-biinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-biinv f → is-biinv (○₁ f)
+  ○₁-is-biinv (sec , ret)
+    = ○₁-section sec , ○₁-retraction ret
+
+  is-equiv-○₁
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-equiv (○₁ f)
+  is-equiv-○₁ = is-equiv←is-biinv ∘ ○₁-is-biinv ∘ is-biinv←is-equiv
+
+  ○-biinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → biinv A B → biinv (○ A) (○ B)
+  ○-biinv (f , bi)
+    = ○₁ f , ○₁-is-biinv bi
+
+  ○-retract
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B → retract (○ A) (○ B)
+  ○-retract (f , ret)
+    = ○₁ f , ○₁-retraction ret
+
+  ○-≃
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B → ○ A ≃ ○ B
+  ○-≃ e = mk≃ (○₁ (_≃_.fwd e)) (is-equiv-○₁ (e ._≃_.has-is-eqv))
 }
 %```
 }
@@ -778,10 +806,9 @@ funext), thus we can apply the inverse map to get a homotopy #{\pi
 \agda{
 module gRSubUInduction {α}
         (RS : gRSubU α)
-        (let Sref' = is-reflective←global (RS .gRSubU.has-is-globally-reflective))
         (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
   open gRSubU RS
-  open gRSubUEquivMap RS
+  open gReflectiveReasoning RS
   open gReflectiveClosure RS
 
   opaque
@@ -811,7 +838,6 @@ module gRSubUInduction {α}
           ＝⟨⟩
         f a ∎       where open ind PS f
 
-
   ind-qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
                (PS : ∀ a → P a ∈ S)
              → quasi-iso {A = (a : A) → P (η a)} {B = (a : ○ A) → P a}
@@ -828,21 +854,6 @@ module gRSubUInduction {α}
                             {B = (a : ○ A) → P a}
                             (ind PS)
   ind-is-equiv = is-equiv←qiso ∘ ind-qiso
-
-
-  ○₁-is-equiv
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → is-equiv f → is-equiv (○₁ f)
-  ○₁-is-equiv {f = f} fe = is-equiv←qiso
-    ( ○₁ bwd
-    , ind (λ _ → ＝∈S ○∈S)
-          (λ a → ap (○₁ bwd) (○₁-β f a) ∙ ○₁-β bwd (f a) ∙ ap η (eta a))
-    , ind (λ _ → ＝∈S ○∈S)
-          (λ b → ap (○₁ f) (○₁-β bwd b) ∙ ○₁-β f (bwd b) ∙ ap η (ε b))
-    ) where open is-equiv fe renaming (η to eta)
-
-  ○-≃ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → ○ A ≃ ○ B
-  ○-≃ e = mk≃ (○₁ (_≃_.fwd e)) (○₁-is-equiv (e ._≃_.has-is-eqv))
 
   return = η
   _>>=_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}

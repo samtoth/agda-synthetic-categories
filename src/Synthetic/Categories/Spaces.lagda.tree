@@ -9,6 +9,7 @@
 
 %```agda
 \agda{
+{-# OPTIONS --lossy-unification #-}
 open import Foundations.Prelude
 open import Algebra.Lattice
 open import Synthetic.Tiny2
@@ -39,14 +40,19 @@ open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
 
 open import Modalities.Cohesion.Flat
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
@@ -118,57 +124,116 @@ groupoids-in-Space A gpd
 opaque
   ×-is-acov : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤}{B : Type 𝓥}
               → is-acov A → is-acov B → is-acov (A × B)
-  ×-is-acov {𝓤}{𝓥} a b = need ((_ , a) , (_ , b)) where
+  ×-is-acov {𝓤}{𝓥} a b = need ((mk-ufib _ a) , (mk-ufib _ b)) where
+    open Space
     @♭ ϕ : (x : Δ¹ → Space 𝓤 × Space 𝓥)
-         → is-covariant (λ i → x i .fst .fst × x i .snd .fst)
+         → is-covariant (λ i → x i .fst .Car × x i .snd .Car)
     ϕ Γ = ×-is-covariant
-               {P = fst ∘ fst ∘ Γ}
-               {Q = fst ∘ snd ∘ Γ}
+               {P = Car ∘ fst ∘ Γ}
+               {Q = Car ∘ snd ∘ Γ}
                (UFib-is-fib (fst ∘ Γ))
                (UFib-is-fib (snd ∘ Γ))
 
     ϕ̂ : Π (Space 𝓤 × Space 𝓥)
-              (√ᵈ (λ g → is-covariant (λ i → g i .fst .fst × g i .snd .fst)))
+              (√ᵈ (λ g → is-covariant (λ i → g i .fst .Car × g i .snd .Car)))
     ϕ̂ = ε♭ (rintro (mod♭ ϕ))
 
-    need : (Γ : Space 𝓤 × Space 𝓥) → (is-acov (Γ .fst .fst × Γ .snd .fst))
+    need : (Γ : Space 𝓤 × Space 𝓥) → (is-acov (Γ .fst .Car × Γ .snd .Car))
     need g = tr (class-Ty-large)
                 (happly
                   ( ap ε♭ (transpose-naturality
                                 (mod♭ is-covariant)
-                                (λ a → a .fst .fst × a .snd .fst))
+                                (λ a → a .fst .Car × a .snd .Car))
                   ∙ ε♭-natural (transpose (mod♭ is-covariant)))
                       g)
                 (ϕ̂ g)
+
+instance
+  ×-Is-acov
+    : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤}{B : Type 𝓥}
+        ⦃ _ : is-acov A ⦄ ⦃ _ : is-acov B ⦄
+      → is-acov (A × B)
+  ×-Is-acov = ×-is-acov auto! auto!
 
 opaque
   Σ-is-acov
     : ∀ {@♭ 𝓤 𝓥}{A : Type 𝓤}{B : A → Type 𝓥}
       → is-acov A → (∀ a → is-acov (B a)) → is-acov (Σ A B)
-  Σ-is-acov {𝓤}{𝓥} a b = need ((_ , a) , (λ i → _ , b i)) where
+  Σ-is-acov {𝓤}{𝓥} a b = need ((mk-ufib _ a) , (λ i → mk-ufib _ (b i))) where
+    open Space
     @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤 ⊔ 𝓥))
-    Γ = Σ[ (A , _) ∶ Space 𝓤 ] (A → Space 𝓥)
+    Γ = Σ[ A ∶ Space 𝓤 ] (A .Car → Space 𝓥)
 
     @♭ πΓ : Γ → Type (𝓤 ⊔ 𝓥)
-    πΓ Γ = Σ (Γ .fst .fst) (fst ∘ Γ .snd)
+    πΓ Γ = Σ (Γ .fst .Car) (Car ∘ Γ .snd)
 
-    @♭ ϕ : (x : Δ¹ → Γ) → is-covariant (λ i → Σ (x i .fst .fst) (fst ∘ x i .snd))
+    @♭ ϕ : (x : Δ¹ → Γ) → is-covariant (λ i → Σ (x i .fst .Car) (Car ∘ x i .snd))
     ϕ x = Σ-is-covariant
-            {B = fst ∘ fst ∘ x}
-            {C = λ i a → x i .snd a .fst}
+            {B = Car ∘ fst ∘ x}
+            {C = λ i a → x i .snd a .Car}
             (UFib-is-fib (fst ∘ x))
             (UFib-is-fib (uncurry (snd ∘ x)))
 
-    @♭ ϕ̂ : Π Γ (√ᵈ(λ a → is-covariant (λ i → Σ (a i .fst .fst) (fst ∘ a i .snd))))
+    @♭ ϕ̂ : Π Γ (√ᵈ(λ a → is-covariant (λ i → Σ (a i .fst .Car) (Car ∘ a i .snd))))
     ϕ̂ = ε♭ (rintro (mod♭ ϕ))
 
-    need : (x : Γ) → is-acov (Σ (x .fst .fst) (fst ∘ x .snd))
+    need : (x : Γ) → is-acov (Σ (x .fst .Car) (Car ∘ x .snd))
     need x = tr (class-Ty-large)
                 (happly
                   ( ap ε♭ (transpose-naturality (mod♭ is-covariant) πΓ)
                   ∙ ε♭-natural (transpose (mod♭ is-covariant)))
                   x)
                 (ϕ̂ x)
+
+instance
+  Σ-Is-acov
+    : ∀ {@♭ 𝓤 𝓥}{A : Type 𝓤}{B : A → Type 𝓥}
+      → ⦃ _ : is-acov A ⦄ ⦃ _ : ∀ {a} → is-acov (B a) ⦄
+      → is-acov (Σ A B)
+  Σ-Is-acov = Σ-is-acov auto! (λ _ → auto!)
+
+opaque
+  ＝-is-acov
+    : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A}
+      → is-acov A → is-acov (a ＝ b)
+  ＝-is-acov {𝓤}{A} ac = need (mk-ufib A ac , _ , _) where
+    open Space
+    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤))
+    Γ = Σ (Space 𝓤) (λ A → A .Car × A .Car)
+
+    @♭ σ : Γ → Type 𝓤
+    σ x = x .snd .fst ＝ x .snd .snd
+
+    @♭ ϕ : ∀ (g : Δ¹ → Γ)
+           → is-covariant (λ i → g i .snd .fst ＝ g i .snd .snd)
+    ϕ g = then where
+      A' : Δ¹ → Type 𝓤
+      A' = Car ∘ fst ∘ g
+
+      A'-is-cov : is-covariant A'
+      A'-is-cov = UFib-is-fib (fst ∘ g)
+
+      a b : Π Δ¹ A'
+      a = fst ∘ snd ∘ g
+      b = snd ∘ snd ∘ g
+
+      then : is-covariant (λ i → a i ＝ b i)
+      then = {!!}
+
+    @♭ ϕ̂ : Π Γ (√ᵈ λ a → is-covariant λ i → a i .snd .fst ＝ a i .snd .snd)
+    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+
+    need : (x : Γ) → is-acov (x .snd .fst ＝ x .snd .snd)
+    need x = tr class-Ty-large
+                (happly
+                  ( ap ε♭ (transpose-naturality (mod♭ is-covariant) σ)
+                  ∙ ε♭-natural (transpose (mod♭ is-covariant))) x)
+                (ϕ̂ x)
+
+instance
+  ＝-is-Acov : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A} ⦃ _ : is-acov A ⦄
+             → is-acov (a ＝ b)
+  ＝-is-Acov = ＝-is-acov auto!
 }
 %```
 }
@@ -183,11 +248,17 @@ between them.}
 
 %```agda
 \agda{
-tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → Space 𝓤) → fst (f i0) → fst (f i1)
-tr-𝓢 = tr-cov {P = fst} Space-π-is-covariant
+tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → Space 𝓤) → Space.Car (f i0) → Space.Car (f i1)
+tr-𝓢 = tr-cov {P = Space.Car} Space-π-is-covariant
+
+tr-𝓢-unique : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤)
+                {F : Space.Car (f i0) → Space.Car (f i1)}
+              → ∀ x → (Homᵈ (Space.Car ∘ f) x (F x))
+              → tr-𝓢 f x ＝ F x
+tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
 
 dua→ : ∀ {@♭ 𝓤} → (Δ¹ → Space 𝓤)
-     → Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (fst A → fst B)
+     → Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (Space.Car A → Space.Car B)
 dua→ h = (h i0 , h i1 , tr-𝓢 h)
 }
 %```
@@ -195,3 +266,159 @@ dua→ h = (h i0 , h i1 , tr-𝓢 h)
 
 \remark{It remains to be shown that this map is an equivalence.}
 }
+
+
+%```agda
+\agda{
+J-set : ∀ {𝓤 𝓥} {A : Type 𝓤} {a : A} → is-set A → (P : a ＝ a → Type 𝓥)
+        → P refl → ∀ p → P p
+J-set Aset P pr p = tr P (Aset _ _ refl p) pr
+
+J-set! : ∀ {𝓤 𝓥} {A : Type 𝓤} {a : A} ⦃ _ : Is-truncated 2 A ⦄
+         → (P : a ＝ a → Type 𝓥)
+        → P refl → ∀ p → P p
+J-set! P pr p = tr P (is-set←is-truncated trunc! _ _ refl p) pr
+
+opaque
+  unfolding Square
+  Square-tors-hor : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (p : a ＝ b)
+                → is-singleton (Σ _ (λ q → Square p q refl refl))
+  Square-tors-hor refl = Sing-is-singleton
+
+module DUA
+  ⦃ _ : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄ → (∀ {i} → is-acov (i ＝ i0 → A)) ⦄
+  (non-triv : i1 ＝ i0 → ∅)
+  (let open Space)
+  (lem6-8 : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Car → g i .Car)
+        → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i))
+  where
+
+  Gl : ∀ {@♭ 𝓤} → (A B : Space (𝓘 ⊔ 𝓤)) (f : Car A → Car B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
+  Gl A B f i
+    = mk-ufib (Σ[ b ∶ Car B ] ((i ＝ i0) → fibre f b)) auto! where
+    instance
+      _ : is-acov (Car A)
+      _ = A .has-is-afib
+      _ : is-acov (Car B)
+      _ = B .has-is-afib
+
+  GlΣ : ∀ {@♭ 𝓤} → (Σ[ A ∶ Space (𝓘 ⊔ 𝓤)] Σ[ B ∶ Space (𝓘 ⊔ 𝓤)] (Car A → Car B))
+        → (Δ¹ → Space (𝓘 ⊔ 𝓤))
+  GlΣ {𝓤} x = Gl {𝓤} (x .fst) (x .snd .fst) (x .snd .snd)
+
+
+  SpaceΣ-Path
+    : ∀ {@♭ 𝓤} (x y : (Σ[ A ∶ Space (𝓘 ⊔ 𝓤)] Σ[ B ∶ Space (𝓘 ⊔ 𝓤)] (Car A → Car B)))
+      → Type (𝓘 ⊔ 𝓤)
+  SpaceΣ-Path (A , B , f) (X , Y , g)
+    = Σ[ e ∶ A .Car ≃ X .Car ] Σ[ p ∶ B .Car ≃ Y .Car ]
+        (p ._≃_.fwd ∘ f ~ g ∘ e ._≃_.fwd)
+
+  Gl-path : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
+            → Gl A B f i .Car → Gl A B f i .Car → Type (𝓘 ⊔ 𝓤)
+  Gl-path {f = f} i x y
+    = Σ[ p ∶ x .fst ＝ y .fst ]
+       (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
+                 (Square (x .snd pi .snd) (y .snd pi .snd) (ap f q) p))
+
+  Gl-path-refl : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
+                 → (x : Gl A B f i .Car) → Gl-path {A = A}{B}{f} i x x
+  Gl-path-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
+
+  opaque
+    Gl-path-is-torsorial
+      : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
+        → (x : Gl A B f i .Car) → is-singleton (Σ _ (Gl-path {A = A}{B}{f} i x))
+    Gl-path-is-torsorial i x
+      = is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          (is-single←equiv-to-single
+            (Σ-Π-swap≃ _ λ p y → Σ[ q ∶ x .snd p .fst ＝ y .fst ]
+                                   Square (x .snd p .snd) (y .snd) (ap _ q) refl)
+            (is-singleton-Π (λ where
+              refl → is-singleton-structure←parts
+                       Sing-is-singleton
+                       (_ , refl)
+                       (Square-tors-hor (x .snd refl .snd)))))
+
+  IdS-Gl : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
+           → Identity-system (Gl A B f i .Car) (𝓘 ⊔ 𝓤)
+  IdS-Gl i .Identity-system.IdS = Gl-path i
+  IdS-Gl {A = A}{B}{f} i .Identity-system.IdS←Id refl
+    = Gl-path-refl {A = A} {B}{f} i _
+  IdS-Gl i .Identity-system.has-is-ids a
+    = fundamental-Id _ (Gl-path-is-torsorial i a) _
+
+  Gl-path→ : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
+            → {x y : Gl A B f i .Car} → Gl-path {A = A}{B}{f} i x y → x ＝ y
+  Gl-path→ {A = A}{B} i = Id←IdS ⦃ IdS-Gl {A = A}{B} i ⦄
+
+  induced-map : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Car A → Car B)
+                → Gl A B f i0 .Car → Gl A B f i1 .Car
+  induced-map f (b , p) = (b , ¡ ∘ non-triv)
+
+  tr-Gl-hom : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Car A → Car B)
+              → ∀ x → Homᵈ (Space.Car ∘ Gl A B f) x (induced-map {A = A}{B} f x)
+  tr-Gl-hom f x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
+  tr-Gl-hom f x .Homᵈ.hom0 = Σ-path→ (refl , (funext→ (J-set! _ refl)))
+  tr-Gl-hom f x .Homᵈ.hom1 = Σ-path→ (refl , (funext→ (λ x → ¡ (non-triv x))))
+
+  tr-Gl : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Car A → Car B)
+          → tr-𝓢 (Gl A B f) ~ induced-map f
+  tr-Gl f x = tr-𝓢-unique (Gl _ _ f) {F = induced-map f} x
+                          (tr-Gl-hom f x)
+
+  opaque
+    dua-section : ∀ {@♭ 𝓤} x → SpaceΣ-Path {𝓤} (dua→ (GlΣ {𝓤} x)) x
+    dua-section a .fst = mk≃ (fst ∘ ev refl ∘ snd)
+      (is-equiv-∘
+        {f = total←total-fibre (a .snd .snd)}
+        {g = total-map (λ _ → ev refl)}
+        (total≃total-fibre _ ._≃_.has-is-eqv)
+        (is-total-equiv←is-fibrewise-equiv
+          (λ _ → sing-ev-is-equiv global-funext (mk-singl refl (J-set! _ refl)))))
+    dua-section a .snd .fst = mk≃ fst
+      (singleton-fst-is-equiv λ _ → is-singleton-Π (λ x → ¡ (non-triv x)))
+    dua-section (A , B , f) .snd .snd x@(b , p)
+      = (fst ∘ tr-𝓢 (Gl A B f)) x
+      ＝⟨ ap fst (tr-Gl f x) ⟩
+        x .fst
+      ＝⟨ sym (p refl .snd) ⟩
+        f (p refl .fst)
+      ∎
+
+  opaque
+    dua-retract→ : ∀ {@♭ 𝓤} f i → f i .Car → GlΣ {𝓤} (dua→ f) i .Car
+    dua-retract→ f i x .fst = coe-cov (UFib-is-fib f) 1-top x
+    dua-retract→ f i x .snd refl = (x , sym (coe-cov-0≤1 (UFib-is-fib f) 1-top x))
+
+
+    dua-retract : ∀ {@♭ 𝓤} f i → f i .Car ≃ GlΣ {𝓤} (dua→ f) i .Car
+    dua-retract f i ._≃_.fwd = dua-retract→ f i
+    dua-retract f i ._≃_.has-is-eqv
+      = lem6-8 f (GlΣ (dua→ f)) (dua-retract→ f)
+                 (∂Δ¹-UP→
+                   ( is-equiv←qiso fr0
+                   , is-equiv←qiso fr1))
+                 i where
+      fr0 : quasi-iso (dua-retract→ f i0)
+      fr0 .fst x = x .snd refl .fst
+      fr0 .snd .fst = ~refl
+      fr0 .snd .snd a = Gl-path→ {A = f i0}{f i1} i0
+        ( coe-cov-0≤1 (UFib-is-fib f) 1-top (fr0 .fst a) ∙ a .snd refl .snd
+        , J-set! _
+            ( refl
+            , mk-square
+                (sym'∙ (coe-cov-0≤1 (UFib-is-fib f) 1-top (a .snd refl .fst))
+                       (a .snd refl .snd))))
+
+      fr1 : quasi-iso (dua-retract→ f i1)
+      fr1 .fst x = x .fst
+      fr1 .snd .fst x = coe-cov-id (UFib-is-fib f) _ x
+      fr1 .snd .snd (a , b)
+        = Σ-path→
+            ( (coe-cov-id (UFib-is-fib f) _ a)
+            , funext→ (λ x → ¡ (non-triv x)))
+}
+%```

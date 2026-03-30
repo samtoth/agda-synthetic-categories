@@ -43,7 +43,7 @@ instance
   IdS-Πi {A = A} {B} ⦃ s ⦄ .has-is-ids f
     = fundamental-Id _
          (is-single←equiv-to-single (Σ-Π-swapᵢ≃ {P = IdS ⦃ s ⦄ f})
-           (is-singleton-Πᵢ (SingS-is-single f))) _
+           (Πᵢ-is-single (SingS-is-single f))) _
 
 _＝ₑ_ : ∀ {𝓤 : Level} {A : Type 𝓤} {𝓥 : Level}
           ⦃ r : Identity-system A 𝓥 ⦄

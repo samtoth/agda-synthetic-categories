@@ -14,10 +14,10 @@ open import Foundations.Prelude
 open import Foundations.Pointed
 open import ufAxioms using (global-funext)
 open import Foundations.CompositionEquiv global-funext
+open import Modalities.Subuniverses using (SubU ; is-reflective)
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ModalEquivalences
-open import Modalities.ConnectedMaps
 }
 %```
 
@@ -34,11 +34,11 @@ maps at #{X} into every #{K}-type is an equivalence.
 
 % ```agda
 \agda{
-up-gconnected
+up-connected
   : ∀ {α 𝓤} (K : gSubU α)
       (A : Type 𝓤)
   → Typeω
-up-gconnected K A
+up-connected K A
   = {𝓥 : Level} {U : Type 𝓥}
   → U ∈ gSubU.S K
   → is-equiv (const U A)
@@ -47,6 +47,8 @@ up-gconnected K A
 }
 
 \subtree{
+\date{2025-08-05}
+\author{samueltoth}
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Module}
@@ -59,15 +61,18 @@ contractible.
 
 % ```agda
 \agda{
-module gRSubUConnectedTypes {α} (RS : gRSubU α) where
-  open gRSubU RS
+is-connected
+  : ∀ {α 𝓤} → gRSubU α → Type 𝓤 → Type _
+is-connected K A = is-singleton (gRSubU.○ K A)
 
-  is-connected
-    : ∀ {𝓤} → Type 𝓤 → Type _
-  is-connected A = is-singleton (○ A)
+is-connected' : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} → is-reflective S
+               → Type 𝓤 → Type 𝓤
+is-connected' {S = S} Sref A = is-singleton (○ A) where
+  open is-reflective Sref
 }
-%```
+% ```
 }
+
 
 \subtree[fre-ABAB]{
 \date{2026-03-28}
@@ -83,9 +88,9 @@ pointed maps into #{Y} is contractible.
 
 % ```agda
 \agda{
-up-gconnected∗
+up-connected∗
   : ∀ {α 𝓤} (K : gSubU α) (X∗ : Type∗ 𝓤) → Typeω
-up-gconnected∗ K X∗
+up-connected∗ K X∗
   = {𝓥 : Level} {Y : Type 𝓥}
   → Y ∈ gSubU.S K
   → (y : Y)
@@ -127,20 +132,20 @@ evaluation at #{x} is.
 \agda{
 module _ {α 𝓤} (K : gSubU α) {A : Type 𝓤} (a : A) where
 
-  ev-is-equiv←up-gconnected
-    : up-gconnected K A
+  ev-is-equiv←up-connected
+    : up-connected K A
     → {𝓥 : Level} {Y : Type 𝓥}
     → Y ∈ gSubU.S K
     → is-equiv (ev: Y a)
-  ev-is-equiv←up-gconnected conn U∈K
+  ev-is-equiv←up-connected conn U∈K
     = 3-for-2' (conn U∈K) id-is-equiv
 
-  up-gconnected←ev-is-equiv
+  up-connected←ev-is-equiv
     : ( {𝓥 : Level} {Y : Type 𝓥}
       → Y ∈ gSubU.S K
       → is-equiv (ev: Y a))
-    → up-gconnected K A
-  up-gconnected←ev-is-equiv ev-eq U∈K
+    → up-connected K A
+  up-connected←ev-is-equiv ev-eq U∈K
     = 3-for-2 (ev-eq U∈K) id-is-equiv
 }
 %```
@@ -156,19 +161,19 @@ criterion for pointed types.
 \agda{
 module _ {α 𝓤} (K : gSubU α) (X∗ : Type∗ 𝓤) where
 
-  up-gconnected∗←up-gconnected
-    : up-gconnected K (X∗ .carrier)
-    → up-gconnected∗ K X∗
-  up-gconnected∗←up-gconnected conn U∈K y
+  up-connected∗←up-connected
+    : up-connected K (X∗ .carrier)
+    → up-connected∗ K X∗
+  up-connected∗←up-connected conn U∈K y
     = is-single←equiv-to-single
         (Hom∗≃fibre-ev X∗ y e⁻¹)
-        (is-contr-map←is-equiv (ev-is-equiv←up-gconnected K (X∗ .pt) conn U∈K) y)
+        (is-contr-map←is-equiv (ev-is-equiv←up-connected K (X∗ .pt) conn U∈K) y)
 
-  up-gconnected←up-gconnected∗
-    : up-gconnected∗ K X∗
-    → up-gconnected K (X∗ .carrier)
-  up-gconnected←up-gconnected∗ pconn
-    = up-gconnected←ev-is-equiv K (X∗ .pt) λ U∈K
+  up-connected←up-connected∗
+    : up-connected∗ K X∗
+    → up-connected K (X∗ .carrier)
+  up-connected←up-connected∗ pconn
+    = up-connected←ev-is-equiv K (X∗ .pt) λ U∈K
       → is-equiv←is-contr-map λ y
         → is-single←equiv-to-single (Hom∗≃fibre-ev X∗ y) (pconn U∈K y)
 }
@@ -191,70 +196,89 @@ the terminal projection #{!_A} is a #{K}-equivalence.
 \agda{
 module _ {α 𝓤} (K : gSubU α) where
 
-  up-gmodal-equiv-!←gconnected
+  up-modal-equiv-!←connected
     : (A : Type 𝓤)
-    → up-gconnected K A
-    → up-gmodal-equiv K (!: A)
-  up-gmodal-equiv-!←gconnected A const-eq U∈K
+    → up-connected K A
+    → up-modal-equiv K (!: A)
+  up-modal-equiv-!←connected A const-eq U∈K
     = is-equiv-precomp-!←const (const-eq U∈K)
 
-  up-gconnected←terminal-equiv
+  up-connected←terminal-equiv
     : (A : Type 𝓤)
-    → up-gmodal-equiv K (!: A)
-    → up-gconnected K A
-  up-gconnected←terminal-equiv A term-eq U∈K
+    → up-modal-equiv K (!: A)
+    → up-connected K A
+  up-connected←terminal-equiv A term-eq U∈K
     = is-equiv-const←precomp-! (term-eq U∈K)
 }
 %```
 }
 
-\subtree[stt-00J4]{
+\subtree[stt-00J2]{
 \date{2026-03-28}
 \author{fredrikbakke}
 \taxon{Corollary}
-\title{Pointed fibre criterion for connected maps with sections}
+\title{Pointed criterion via terminal projections}
 
 \p{
-If a map #{f : A \to B} is equipped with a [section](stt-000H), then each fibre is
-canonically pointed. In this case we can use the characterisation of pointed
-connected types to obtain another characterisation of connectedness of #{f}.
+Equivalently, the pointed criterion is the same as asking that the terminal
+projection of the underlying type be a #{K}-equivalence.
 }
 
 % ```agda
 \agda{
 module _
-  {α 𝓤 𝓥} (K : gSubU α)
-  {A : Type 𝓤} {B : Type 𝓥}
-  (f : A → B)
+  {α 𝓤} (K : gSubU α) (X∗ : Type∗ 𝓤)
   where
 
-  pointed-gconnected-fibres
-    : section f
-    → Typeω
-  pointed-gconnected-fibres (s , sec)
-    = (b : B) → up-gconnected∗ K (mk-type∗ (fibre f b) (s b , sec b))
+  private
+    module X = Type∗ X∗
 
-  gconnected-fibres←pointed-gconnected-fibres
-    : (σ : section f)
-    → pointed-gconnected-fibres σ
-    → gconnected-fibres K f
-  gconnected-fibres←pointed-gconnected-fibres (s , sec) pconn b
-    = up-gconnected←up-gconnected∗ K (mk-type∗ (fibre f b) (s b , sec b)) (pconn b)
+  up-modal-equiv-!←up-connected∗
+    : up-connected∗ K X∗
+    → up-modal-equiv K (!: X.carrier)
+  up-modal-equiv-!←up-connected∗ pconn
+    = up-modal-equiv-!←connected K X.carrier
+        (up-connected←up-connected∗ K X∗ pconn)
 
-  pointed-gconnected-fibres←gconnected-fibres
-    : (σ : section f)
-    → gconnected-fibres K f
-    → pointed-gconnected-fibres σ
-  pointed-gconnected-fibres←gconnected-fibres (s , sec) fconn b
-    = up-gconnected∗←up-gconnected K (mk-type∗ (fibre f b) (s b , sec b)) (fconn b)
-
-  up-gconnected-map←pointed-gconnected-fibres
-    : (σ : section f)
-    → pointed-gconnected-fibres σ
-    → up-gconnected-map K f
-  up-gconnected-map←pointed-gconnected-fibres σ pconn
-    = up-gconnected-map←gconnected-fibres K f
-        (gconnected-fibres←pointed-gconnected-fibres σ pconn)
+  up-connected∗←up-modal-equiv-!
+    : up-modal-equiv K (!: X.carrier)
+    → up-connected∗ K X∗
+  up-connected∗←up-modal-equiv-! teq
+    = up-connected∗←up-connected K X∗
+        (up-connected←terminal-equiv K X.carrier teq)
 }
 %```
+}
+
+
+\subtree[aut-D70062]{
+\title{}
+\taxon{}
+\author{samueltoth}
+
+%```agda
+\agda{
+module _
+  {α}
+  (RS : gRSubU α)
+  (let Sref' = is-reflective←global (RS .gRSubU.has-is-globally-reflective))
+  (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
+  open gRSubU RS
+  open gRSubUEquivMap RS
+  open gReflectiveClosure RS
+  open gRSubUInduction RS SΣ
+
+  Σ-is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → is-connected RS A → (∀ a → is-connected RS (B a))
+      → is-connected RS (Σ A B)
+  Σ-is-connected {A = A}{B} Ac Bc
+    = is-single←equiv-to-single
+        ((○ (Σ A B)       ≃⟨ Σ○≃ RS B ⟩
+          ○ (Σ A (○ ∘ B)) ≃⟨ ○-≃ (Σ-singleton Bc) ⟩
+          ○ A             ≃∎) e⁻¹)
+        Ac
+}
+%```
+
 }

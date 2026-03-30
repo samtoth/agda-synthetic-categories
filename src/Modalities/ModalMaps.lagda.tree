@@ -10,8 +10,19 @@
 \agda{
 module Modalities.ModalMaps  where
 
+open import ufAxioms
+
 open import Foundations.Prelude
 open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.PullbackPower
+open import Core.Orthogonal
+open import Ergonomics.Notations.Orthogonality
+open notation
 }
 % ```
 
@@ -27,6 +38,15 @@ is-modal-map : ∀ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
                  (S : SubU (𝓤 ⊔ 𝓥) 𝓜)
                → (A → B) → Type _
 is-modal-map S f = ∀ b → fibre f b ∈ S
+
+is-modal←is-modal-!
+  : ∀ {𝓤 𝓜} {A : Type 𝓤}
+      (S : SubU 𝓤 𝓜)
+    → is-modal-map S (!: A) → A ∈ S
+is-modal←is-modal-! S f
+  = tr (_∈ S)
+       (ua (Σ-singleton (λ _ → ＝-is-single←is-prop (λ _ _ → refl) tt tt)))
+           (f tt)
 }
 % ```
 
@@ -35,7 +55,7 @@ Likewise, if #{S} is in addition a [reflective subuniverse](stt-0041) a map is
 #{S}-connected when all of its fibres are.
 }
 
-% ```agda
+%```agda
 \agda{
 is-connected-map : ∀ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
                      {S : SubU (𝓤 ⊔ 𝓥) 𝓜}
@@ -43,5 +63,262 @@ is-connected-map : ∀ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥}
                    → (A → B) → Type (𝓤 ⊔ 𝓥)
 is-connected-map rfl f = ∀ b → is-connected rfl (fibre f b)
 }
-% ```
+%```
+
+\p{We call a map a modal equivalence if #{○ f : ○ A → ○ B} is an equivalence.}
+
+%```
+\agda{
+is-modal-equiv
+  : ∀ {𝓤 𝓥 α} {A : Type 𝓤} {B : Type 𝓥}
+      {S : gSubU α}
+    → is-globally-reflective S → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-modal-equiv Srfl f = is-equiv (○-map (η f)) where
+  open gReflectiveReasoning (mk-gRSubU _ Srfl)
+}
+%```
+
+\p{Finally we say that a map #{f : A → B} has the universal property
+of a modal equivalence if for all modal types #{X}, precomposition
+#{X^B \to X^A} is an equivalence.}
+
+%```agda
+\agda{
+up-gmodal-equiv
+  : ∀ {𝓤 𝓥 α} {A : Type 𝓤} {B : Type 𝓥}
+    → gRSubU α
+    → (A → B) → Typeω
+up-gmodal-equiv GS f = ∀ {𝓧} {X : Type 𝓧} → X ∈ S → is-equiv (precomp X f)
+  where open gRSubU GS
+}
+%```
+
+%```agda
+\agda{
+up-gmodal-connected
+  : ∀ {𝓤 𝓥 α} {A : Type 𝓤} {B : Type 𝓥}
+    → gSubU α
+    → (A → B) → Typeω
+up-gmodal-connected {B = B} GS f
+  = ∀ {𝓧} {X : B → Type 𝓧} → (∀ b → X b ∈ S) → is-equiv (precomp-Π X f)
+  where open gSubU GS
+}
+%```
+}
+
+\subtree[stt-0A2A]{
+\title{Modal units are connected iff the modality is #{\Sigma}-closed}
+\taxon{Lemma}
+
+%```agda
+\agda{
+η-is-connected
+  : ∀ {α} {G : gSubU α} → (Gr : is-globally-reflective G)
+  → is-globally-Σ-closed G
+  → ∀ {𝓤}{A : Type 𝓤}
+  → is-connected-map (is-reflective←global Gr)
+                     (Gr .is-globally-reflective.η {A = A})
+η-is-connected Gr GΣ {_}{A} x
+  = mk-singl
+      (ind {P = λ x → ○ (fibre η x)}
+           (λ _ → ○∈S) (λ a → η (a , refl)) x)
+      (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y) where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU _ Gr)
+  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+}
+%```
+}
+
+\subtree[stt-0A2B]{
+\title{Connected maps are closed under composition and are right cancellable}
+\taxon{Lemma}
+
+%```agda
+\agda{
+module _ {α} {G : gSubU α}
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU _ Gr)
+  is-connected-~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} → f ~ g
+      → is-connected-map Grfl f → is-connected-map Grfl g
+  is-connected-~ = funext-rec _ λ where refl → id
+
+  is-connected←is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-connected-map Grfl f
+  is-connected←is-equiv feq b = ○-is-singleton (is-contr-map←is-equiv feq b)
+
+
+module _ {α} {G : gSubU α}
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         (GΣ : is-globally-Σ-closed G)
+         where
+  open gReflectiveReasoning (mk-gRSubU _ Gr)
+  open gRSubUInduction (mk-gRSubU _ Gr) GΣ
+
+  is-connected-right-cancel-iff
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
+        {g : A → B}
+      → is-connected-map Grfl g
+      → is-connected-map Grfl f
+      ⇔ is-connected-map Grfl (f ∘ g)
+  is-connected-right-cancel-iff {f = f}{g} gconn
+    = ( (λ fc c → is-single←equiv-to-single (eqv c e⁻¹) (fc c))
+       , λ fgc c → is-single←equiv-to-single (eqv c) (fgc c)) where
+    eqv : ∀ z → ○ (fibre (f ∘ g) z) ≃ ○ (fibre f z)
+    eqv z
+      = ○ (fibre (f ∘ g) z) ≃⟨ ○-≃ (fibre-∘ z) ⟩
+        ○ (Σ (fibre f z) (λ x → fibre g (fst x)))
+                            ≃⟨ mk≃ _ (Σ○-is-equiv _) ⟩
+        ○ (Σ (fibre f z) (λ x → ○ (fibre g (fst x))))
+                            ≃⟨ ○-≃ (Σ-singleton (λ x → gconn (fst x))) ⟩
+        ○ (fibre f z)       ≃∎
+
+  is-connected-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
+        {g : A → B}
+      → is-connected-map Grfl g
+      → is-connected-map Grfl f
+      → is-connected-map Grfl (f ∘ g)
+  is-connected-∘ gc = is-connected-right-cancel-iff gc .fst
+
+  is-connected←is-arrow-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → (F : Arrow-map f g)
+      → (let module F = Arrow-map F)
+      → is-Arrow-equiv F
+      → is-connected-map Grfl f
+      → is-connected-map Grfl g
+  is-connected←is-arrow-equiv {f = f} {g = g} F fe fconn
+    = is-connected-right-cancel-iff
+        {f = g} {F .Arrow-map.top}
+        (is-connected←is-equiv Gr (fe .fst)) .snd
+        (is-connected-~ Gr
+          (F .Arrow-map.comm)
+          (is-connected-∘ fconn (is-connected←is-equiv Gr (fe .snd))))
+}
+%```
+}
+
+\subtree[stt-0A2C]{
+\taxon{Lemma}
+\author{samueltoth}
+
+
+\p{Any map which is both modal and connected is an equivalence.}
+
+%```agda
+\agda{
+module _ {α} {G : gSubU α} (let SU = SubU←global G)
+         (Gr : is-globally-reflective G)
+         (let Grfl = is-reflective←global Gr)
+         (GΣ : is-globally-Σ-closed G)
+         where
+  open is-globally-reflective Gr
+  open gReflectiveClosure (mk-gRSubU G Gr)
+  open gRSubUInduction (mk-gRSubU G Gr) GΣ
+
+  is-equiv←is-modal←is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-modal-map SU f → is-connected-map Grfl f
+      → is-equiv f
+  is-equiv←is-modal←is-connected m c
+    = is-equiv←is-contr-map λ b
+      → is-single←equiv-to-single
+          (mk≃ _ (η-is-equiv←in-SubU (reflector (fibre _ b)) (m b)) e⁻¹)
+          (c b)
+}
+%```
+}
+
+
+\subtree[stt-02AD]{
+\title{Modal equivalences have the universal property of modal
+equivalences}
+\taxon{Lemma}
+
+%```agda
+\agda{
+module _ {α} (GR : gRSubU α) where
+  open gReflectiveReasoning GR
+
+  up-gmodal-equiv←is-modal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-modal-equiv has-is-globally-reflective f → up-gmodal-equiv GR f
+  up-gmodal-equiv←is-modal-equiv {f = f} ○fe {_}{X} X∈S
+    = is-equiv←Arrow-equiv {F = amap} amap-is-equiv (precomp-equiv ○fe) where
+    amap : Arrow-map (precomp X (○-map (η f))) (precomp X f)
+    amap .Arrow-map.top = precomp X η
+    amap .Arrow-map.bot = precomp X η
+    amap .Arrow-map.comm f = funext→ (λ a → ap f ○-map-β)
+
+    amap-is-equiv : is-Arrow-equiv amap
+    amap-is-equiv .fst = reflects X∈S
+    amap-is-equiv .snd = reflects X∈S
+
+  up-gmodal-connected←is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-connected-map (is-reflective←global has-is-globally-reflective) f
+      → up-gmodal-connected GS f
+  up-gmodal-connected←is-connected {f = f} fconn {X = X} X∈S
+    = is-equiv-∘
+        {f = fact1}
+        fact1-is-equiv
+        (postcomp-Π-equiv (λ {b}
+          → is-equiv-∘
+              (reflects (X∈S b))
+              (is-equiv⁻¹ (sing-ev-is-equiv global-funext (fconn b))))) where
+    fact1 : (b : (∀ z → fibre f z → X z)) → (∀ a → X (f a))
+    fact1 g a = g (f a) (a , refl)
+
+    fact1-is-equiv : is-equiv fact1
+    fact1-is-equiv = is-equiv←qiso
+      ((λ where g b (x , refl) → g x)
+      , (λ g → funext→ (λ b → funext→ (λ where (a , refl) → refl)) )
+      , ~refl )
+
+    _ : precomp-Π X f
+         ~ fact1
+         ∘ postcomp-Π (λ b → precomp _ η ∘ const _ (○ (fibre f b)))
+    _ = ~refl
+}
+%```
+}
+
+\subtree[stt-02AE]{
+\title{Connected maps are left orthogonal to modal maps}
+\taxon{Theorem}
+
+%```agda
+\agda{
+module _ {α} (GR : gRSubU α)
+              where
+  open gReflectiveReasoning GR
+  connected⊥modal : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+                      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+                    → is-connected-map has-is-reflective f
+                    → is-modal-map S g
+                    → f ⊥ g
+  connected⊥modal {f = f} {g = g} fconn gmod
+    = orthogonal←is-cartesian
+        (λ h → is-equiv←Arrow-equiv⁻¹ {F = amap h}
+                 (amap-is-equiv h)
+                 (up-gmodal-connected←is-connected GR fconn (gmod ∘ h))) where
+    amap : ∀ h → Arrow-map (arrow-fibre (power-hom f g) h)
+                           (precomp-Π (λ b → fibre g (h b)) f)
+    amap h .Arrow-map.top = fibre-postcomp≃ g h ._≃_.fwd
+    amap h .Arrow-map.bot = fibre-postcomp≃ g (h ∘ f) ._≃_.fwd
+    amap h .Arrow-map.comm (k , refl) = refl
+
+    amap-is-equiv : ∀ h → is-Arrow-equiv (amap h)
+    amap-is-equiv h .fst = fibre-postcomp≃ g h ._≃_.has-is-eqv
+    amap-is-equiv h .snd = fibre-postcomp≃ g (h ∘ f) ._≃_.has-is-eqv
+}
+%```
 }

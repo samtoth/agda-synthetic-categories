@@ -308,11 +308,39 @@ module DUA
 
 
   SpaceΣ-Path
-    : ∀ {@♭ 𝓤} (x y : (Σ[ A ∶ Space (𝓘 ⊔ 𝓤)] Σ[ B ∶ Space (𝓘 ⊔ 𝓤)] (Car A → Car B)))
-      → Type (𝓘 ⊔ 𝓤)
+    : ∀ {@♭ 𝓤} (x y : (Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (Car A → Car B)))
+      → Type 𝓤
   SpaceΣ-Path (A , B , f) (X , Y , g)
     = Σ[ e ∶ A .Car ≃ X .Car ] Σ[ p ∶ B .Car ≃ Y .Car ]
         (p ._≃_.fwd ∘ f ~ g ∘ e ._≃_.fwd)
+
+  SpaceΣ-Path-refl
+    : ∀ {@♭ 𝓤} (x : (Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (Car A → Car B)))
+      → SpaceΣ-Path x x
+  SpaceΣ-Path-refl x = (idequiv , idequiv , ~refl)
+
+  opaque
+    SpaceΣ-Path-is-torsorial
+      : ∀ {@♭ 𝓤} (x : (Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (Car A → Car B)))
+        → is-singleton (Σ _ (SpaceΣ-Path x))
+    SpaceΣ-Path-is-torsorial (A , B , f)
+      = is-singleton-structure←parts
+         (SingS-is-single A)
+         (A , idequiv)
+         (is-singleton-structure←parts
+           (SingS-is-single B)
+           (B , idequiv)
+           (SingS-is-single f))
+
+  instance
+    SpaceΣ-IdS
+      : ∀ {@♭ 𝓤}
+        → Identity-system ((Σ[ A ∶ Space 𝓤 ] Σ[ B ∶ Space 𝓤 ] (Car A → Car B)))
+                          𝓤
+    SpaceΣ-IdS .Identity-system.IdS = SpaceΣ-Path
+    SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
+    SpaceΣ-IdS .Identity-system.has-is-ids x
+      = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
 
   Gl-path : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Car A → Car B} i
             → Gl A B f i .Car → Gl A B f i .Car → Type (𝓘 ⊔ 𝓤)
@@ -370,7 +398,7 @@ module DUA
                           (tr-Gl-hom f x)
 
   opaque
-    dua-section : ∀ {@♭ 𝓤} x → SpaceΣ-Path {𝓤} (dua→ (GlΣ {𝓤} x)) x
+    dua-section : ∀ {@♭ 𝓤} x → SpaceΣ-Path {𝓤 ⊔ 𝓘} (dua→ (GlΣ {𝓤} x)) x
     dua-section a .fst = mk≃ (fst ∘ ev refl ∘ snd)
       (is-equiv-∘
         {f = total←total-fibre (a .snd .snd)}
@@ -420,5 +448,11 @@ module DUA
         = Σ-path→
             ( (coe-cov-id (UFib-is-fib f) _ a)
             , funext→ (λ x → ¡ (non-triv x)))
+
+  dua : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})
+  dua {𝓤} = is-equiv←qiso
+    ( GlΣ {𝓤}
+    , (λ a → ext! (λ i → dua-retract {𝓤} a i e⁻¹))
+    , λ a → ext! (dua-section a))
 }
 %```

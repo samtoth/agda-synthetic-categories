@@ -106,6 +106,7 @@ open gReflectiveClosure Segal-gRSubU public using () renaming
   ; ＝∈S to ＝-is-segal
   ; ~∈S to ~-is-segal
   ; fibre∈S to fibre-is-segal
+  ; Ext∈S to Ext-is-segal
   ; ×∈S to ×-is-segal
   ; retract∈S to retract-is-segal
   ; biinv∈S to biinv-is-segal
@@ -142,13 +143,6 @@ is-segal-equiv
 is-segal-equiv f
   = ∀ {𝓠} {Q : Type 𝓠} → is-segal Q → is-equiv (precomp Q f)
 
-is-precategory-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → (f : A → B) → Typeω
-is-precategory-equiv f
-  = ∀ {𝓠} {Q : Type 𝓠}
-    → is-simplicial Q → is-segal Q → is-equiv (precomp Q f)
-
 is-segal-equiv-∘
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
       {f : B → C} {g : A → B} → is-segal-equiv f
@@ -180,25 +174,138 @@ is-segal←is-prop
 A \em{precategory} is a [simplicial](stt-00AC) [Segal type](stt-00AI).
 }
 
-\p{
-We show that the universe of precategories again forms a simplicial type.
-}
-
 %```agda
 \agda{
+fam-is-precategory-dom : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
+fam-is-precategory-dom (inl _) = Λ[2,1]
+fam-is-precategory-dom (inr ij) = fam-is-simplicial ij
+
+fam-is-precategory-cod : 𝟙 ⊎ (Δ¹ × Δ¹) → Type (lzero ⊔ 𝓘)
+fam-is-precategory-cod (inl _) = Δ²
+fam-is-precategory-cod (inr _) = ULift 𝓘 𝟙
+
+fam-is-precategory
+  : (s : 𝟙 ⊎ (Δ¹ × Δ¹)) → fam-is-precategory-dom s → fam-is-precategory-cod s
+fam-is-precategory (inl _) = Λ[2,1]-incl
+fam-is-precategory (inr ij) = mk-lift ∘ !
+
+is-precategory : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-precategory = is-local fam-is-precategory
+
+Precat-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Precat-SubU = Local-SubU fam-is-precategory _
+
+Precat-gSubU : gSubU (_⊔ 𝓘)
+Precat-gSubU = Local-gSubU fam-is-precategory
+
+Precat-is-globally-reflective
+  : is-globally-reflective Precat-gSubU
+Precat-is-globally-reflective = Local-global-reflectors fam-is-precategory
+
+Precat-gRSubU : gRSubU (_⊔ 𝓘)
+Precat-gRSubU .gRSubU.GS = Precat-gSubU
+Precat-gRSubU .gRSubU.has-is-globally-reflective = Precat-is-globally-reflective
+
+open gSubU Precat-gSubU public using () renaming
+  ( ∈S←equiv to is-precategory←equiv)
+
+open gReflectiveClosure Precat-gRSubU public using () renaming
+  ( Π∈S to Π-is-precategory
+  ; ULift∈S to ULift-is-precategory
+  ; 𝟙∈S to 𝟙-is-precategory
+  ; ∈S←is-singleton to is-precategory←is-singleton
+  ; ∈S←retract to is-precategory←retract
+  ; Pullback∈S to Pullback-is-precategory
+  ; fibre∈S to fibre-is-precategory
+  ; Ext∈S to Ext-is-precategory
+  ; ×∈S to ×-is-precategory
+  ; ＝∈S to ＝-is-precategory
+  ; ~∈S to ~-is-precategory
+  ; retract∈S to retract-is-precategory
+  ; biinv∈S to biinv-is-precategory
+  ; ≃∈S to ≃-is-precategory
+  ; Equaliser∈S to Equaliser-is-precategory
+  ; Seq-lim∈S to Seq-lim-is-precategory
+  ; preidempotent-map∈S to preidempotent-map-is-precategory
+  ; qidempotent-map∈S to qidempotent-map-is-precategory
+  ; Retracts∈S to Retracts-is-precategory)
+
+module Precat where
+  open gSubU Precat-gSubU public using ()
+  open gRSubU Precat-gRSubU public
+  open gReflectiveClosure Precat-gRSubU public
+
+is-precategory-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (f : A → B) → Typeω
+is-precategory-equiv f
+  = ∀ {𝓠} {Q : Type 𝓠} → is-precategory Q → is-equiv (precomp Q f)
+
+is-precategory←is-segal×is-simplicial
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-segal A × is-simplicial A
+  → is-precategory A
+is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inl *) = apc tt
+is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inr ij)
+  = is-local-sing←is-null
+      (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
+      (λ _ → mk-lift ∘ !)
+      simp ij
+
+is-segal×is-simplicial←is-precategory
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-precategory A
+  → is-segal A × is-simplicial A
+is-segal×is-simplicial←is-precategory {A = X} pcat
+  = ((λ _ → pcat (inl tt))
+    , is-null←is-local-sing
+        (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
+        (λ _ → mk-lift ∘ !)
+        (λ ij → pcat (inr ij)))
+
+is-segal×is-simplicial-is-prop
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-prop (is-segal A × is-simplicial A)
+is-segal×is-simplicial-is-prop {A = A}
+  = is-prop-Σ (is-local-is-prop A) (λ _ → is-null-is-prop A)
+
+is-precategory≃is-segal×is-simplicial
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-precategory A ≃ (is-segal A × is-simplicial A)
+is-precategory≃is-segal×is-simplicial {A = A}
+  = mk≃ is-segal×is-simplicial←is-precategory
+      (is-equiv←inverse
+        (is-local-is-prop A)
+        is-segal×is-simplicial-is-prop
+        is-precategory←is-segal×is-simplicial)
+
+is-segal←is-precategory
+  : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-segal A
+is-segal←is-precategory pcat = fst (is-segal×is-simplicial←is-precategory pcat)
+
+is-simplicial←is-precategory
+  : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-simplicial A
+is-simplicial←is-precategory pcat = snd (is-segal×is-simplicial←is-precategory pcat)
+
+is-triangulated←is-precategory
+  : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-triangulated A
+is-triangulated←is-precategory pcat
+  = simp-is-triangulated (is-simplicial←is-precategory pcat)
+
 Precategory-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
-Precategory-U 𝓤
-  = Null-in-gSubU {𝓤 = 𝓘} fam-is-simplicial Segal-gSubU 𝓤
+Precategory-U 𝓤 = Σ[ A ∶ Type (𝓘 ⊔ 𝓤) ] is-precategory A
 
 Precategory-U-is-simplicial
   : {𝓤 : Level} → is-simplicial (Precategory-U 𝓤)
 Precategory-U-is-simplicial {𝓤}
-  = Null-in-gSubU-is-null←is-prop
-      {𝓤 = 𝓘} {𝓥 = 𝓤}
-      {P = fam-is-simplicial}
-      {S = Segal-gSubU}
-      (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
-      (λ _ → Π-is-segal)
+  = is-simplicial←equiv
+      ((Σ-ap-≃ λ A → is-precategory≃is-segal×is-simplicial {A = A}) e⁻¹)
+      (Null-in-gSubU-is-null←is-prop
+        {𝓤 = 𝓘} {𝓥 = 𝓤}
+        {P = fam-is-simplicial}
+        {S = Segal-gSubU}
+        (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+        (λ _ → Π-is-segal))
 }
 %```
 }

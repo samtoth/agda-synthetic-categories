@@ -14,21 +14,24 @@ open import Foundations.Prelude
 open import Algebra.Lattice
 open import Synthetic.Tiny2
 open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
+import Synthetic.Cubes as C
 
 module Synthetic.Categories.Spaces
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  (let open Lattice I renaming (0l to i0; 1l to i1))
+  (let open C Δ¹ i0 i1)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
   (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
                     → is-tiny-structure Δ¹ A (√ A) √ε)
-  (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-                                   {@♭ f : A → B} → Types-separate f)
+  (@♭ cubes-detect-cont : detects-continuity {I = ℕ} □^_)
   (@♭ simplicial-conn : detects-connectivity (point Δ¹))
+  (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
   where
 
 open import ufAxioms
 
-open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
 open Poly  hiding (L[x]; Δ²)
 open is-distributive I-distr
@@ -45,18 +48,50 @@ open import Modalities.Instances.Nullification
 open import Modalities.Instances.Truncation
 
 open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.Lifts
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
 
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.PullbackPower
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
+open import Core.FunctorialPullback
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.Boundaries Δ¹ I I-distr
 open import Synthetic.Categories.Covariant Δ¹ I I-distr
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+
+opaque
+  prop-is-♭-discrete : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-prop A → is-♭-discrete A
+  prop-is-♭-discrete = (simplicial-conn .fst ∘ prop-is-null∙ (λ _ → i0))
+
+  cubes-separate : family-separates □^_
+  cubes-separate = family-separates←detects-continuity □^_ cubes-detect-cont
+
+  cubes-separate' : ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
+                     → @♭ ((∀ {@♭ n} → is-equiv (♭-map (postcomp (□^ n) f))))
+                     → is-equiv f
+  cubes-separate' fa eq = cubes-separate fa
+                     ((is-equiv←Arrow-equiv {F = amap} amap-is-equiv (eq {0}))) eq where
+    open Arrow fa
+    amap : Arrow-map (♭-map (postcomp (□^ 0) f)) (♭-map f)
+    amap .Arrow-Π.top = ♭-map (ev (mk-lift tt))
+    amap .Arrow-Π.bot = ♭-map (ev (mk-lift tt))
+    amap .Arrow-Π.comm (mod♭ f) = refl
+
+    amap-is-equiv : is-Arrow-equiv amap
+    amap-is-equiv .fst = ♭-map-is-equiv (sing-ev-is-equiv global-funext single!)
+    amap-is-equiv .snd = ♭-map-is-equiv (sing-ev-is-equiv global-funext single!)
+
+
+  types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                     {@♭ f : A → B} → Types-separate f
+  types-separate {f = f} a = cubes-separate' (mk-arrow f) a
 }
 %```
 
@@ -238,6 +273,175 @@ instance
 %```
 }
 
+\subtree{
+\title{Equivalences of homs in spaces}
+\taxon{Lemma}
+
+
+%```agda
+\agda{
+opaque
+  ♭-map-total-is-equiv
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}{@♭ C : A → Type 𝓦}
+      → (@♭ f : ∀ a → B a → C a)
+    → is-equiv (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
+                          {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
+                          (♭-ind _ (λ a → ♭-map (f a))))
+    → is-equiv (♭-map (total-map f))
+  ♭-map-total-is-equiv {B = B} {C = C} f fe
+    = is-equiv←Arrow-equiv {F = amap}
+        (♭-commΣ _ ._≃_.has-is-eqv , ♭-commΣ _ ._≃_.has-is-eqv)
+        fe where
+    amap : Arrow-map (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
+                                {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
+                                (♭-ind _ (λ a → ♭-map (f a))))
+                     (♭-map (total-map f))
+    amap .Arrow-Π.top = ♭-Σ _
+    amap .Arrow-Π.bot = ♭-Σ _
+    amap .Arrow-Π.comm (mod♭ a , mod♭ b) = refl
+
+[Δ¹,𝓢]-is-equiv
+  : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Space.Car → g i .Space.Car)
+    → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i)
+[Δ¹,𝓢]-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
+  @♭ Y : Type (lsuc (𝓤 ⊔ 𝓘))
+  Y = Σ[ F ∶ (Δ¹ → Space 𝓤) ] Σ[ G ∶ (Δ¹ → Space 𝓤)]
+        Σ[ α' ∶ (∀ i → F i .Space.Car → G i .Space.Car) ]
+          ∀ i → is-equiv (α' i)
+
+  @♭ X : Type (lsuc (𝓤 ⊔ 𝓘))
+  X = Σ[ F ∶ (Δ¹ → Space 𝓤) ] Σ[ G ∶ (Δ¹ → Space 𝓤)]
+        Σ[ α' ∶ (∀ i → F i .Space.Car → G i .Space.Car) ]
+          ∀ x → is-equiv (α' (∂Δ¹-incl x))
+
+  @♭ forget : Y → X
+  forget = total-map
+            (λ X → total-map
+              (λ Y → total-map (λ α → precomp-Π _ ∂Δ¹-incl)))
+
+  @♭ Γ : ℕ → Type 𝓘
+  Γ n = □^ n × Δ¹
+
+  open Space
+
+  @♭ Y' : ∀ n → Type (lsuc (𝓘 ⊔ 𝓤))
+  Y' n = Σ[ F ∶ (Γ n → Space 𝓤) ] Σ[ G ∶ (Γ n → Space 𝓤)]
+          Σ[ α' ∶ (∀ i → F i .Space.Car → G i .Space.Car) ]
+            ∀ i → is-equiv (α' i)
+
+  @♭ X' : ∀ n → Type (lsuc (𝓘 ⊔ 𝓤))
+  X' n = Σ[ F ∶ (Γ n → Space 𝓤) ] Σ[ G ∶ (Γ n → Space 𝓤)]
+          Σ[ α' ∶ (∀ i → F i .Space.Car → G i .Space.Car) ]
+            ∀ i → is-equiv (α' (i .fst , ∂Δ¹-incl (i .snd)))
+
+  @♭ arr : ∀ (@♭ n)
+        → Arrow-map
+            ((postcomp (□^ n) forget))
+            {C = Y' n} {X' n}
+            (total-map (λ F → total-map λ G → total-map
+              (λ α → precomp-Π _ (total-map (λ _ → ∂Δ¹-incl)))))
+  arr n .Arrow-Π.top F
+    = ( uncurry (fst ∘ F) , uncurry (fst ∘ snd ∘ F)
+      , uncurry (fst ∘ snd ∘ snd ∘ F) , uncurry (snd ∘ snd ∘ snd ∘ F))
+  arr n .Arrow-Π.bot F
+    = ( uncurry (fst ∘ F) , uncurry (fst ∘ snd ∘ F)
+      , uncurry (fst ∘ snd ∘ snd ∘ F) , uncurry (snd ∘ snd ∘ snd ∘ F))
+  arr n .Arrow-Π.comm = ~refl
+
+  @♭ arr-is-equiv : ∀ (@♭ n) → is-Arrow-equiv (arr n)
+  arr-is-equiv = {!!}
+
+  module _ (@♭ n) (@♭ F G : Γ n → Space 𝓤) (@♭ α : ∀ i → F i .Car → G i .Car) where
+     @♭ F̂ : Type (𝓘 ⊔ 𝓤)
+     F̂ = Σ (Γ n) (Car ∘ F)
+
+     @♭ Ĝ : Type (𝓘 ⊔ 𝓤)
+     Ĝ = Σ (Γ n) (Car ∘ G)
+
+     @♭ α̂ : F̂ → Ĝ
+     α̂ = total-map α
+
+     @♭ lemma
+       : @♭ (∀ (k : Σ (□^ n) (λ _ → ∂Δ¹)) → (is-equiv (α (k .fst , ∂Δ¹-incl (k .snd)))))
+         → ⟨♭| Π (Γ n) (λ k → is-equiv (α k)) ⟩
+     lemma k = mod♭ (is-fibrewise-equiv←is-total-equiv
+                      (cubes-separate'
+                        (mk-arrow α̂)
+                        λ {m} → part3 m)) where module _ (@♭ m : ℕ) where
+       @♭ make-orthogonality
+         : Arrow-map (postcomp (□^ m) α̂)
+                       {C = Pullback {B = F̂}fst (ev (□-0 {m}))}
+                       {D = Pullback {B = Ĝ}fst (ev (□-0 {m}))}
+                       (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl))
+       make-orthogonality .Arrow-Π.top = {!!} ∘ pullback-power (point □-0) fst
+       make-orthogonality .Arrow-Π.bot = {!!} ∘ pullback-power (point □-0) fst
+       make-orthogonality .Arrow-Π.comm = {!!}
+
+       @♭ final-map : (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| F (k □-0) .Car ⟩)
+                    → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| G (k □-0) .Car ⟩)
+       final-map = total-map (♭-ind _ λ a → ♭-map (α (a □-0)))
+
+       @♭ refactor
+         : Arrow-map
+             {A = ⟨♭| Pullback {B = F̂}fst (ev (□-0 {m}))⟩}
+             {B = ⟨♭| Pullback {B = Ĝ}fst (ev (□-0 {m}))⟩}
+             (♭-map (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl)))
+             (final-map)
+       refactor .Arrow-Π.top (mod♭ ((a , a') , b , p))
+                = (mod♭ b , mod♭ (tr (Car ∘ F) p a'))
+       refactor .Arrow-Π.bot (mod♭ ((a , a') , b , p))
+                = (mod♭ b , mod♭ (tr (Car ∘ G) p a'))
+       refactor .Arrow-Π.comm (mod♭ ((x , x') , y , p))
+         = {!!}
+         -- = strong-J♭ (λ b p → {!!}) {!!} p
+
+       @♭ part4 : is-equiv final-map
+       part4 = is-total-equiv←is-fibrewise-equiv
+         (♭-ind _ λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
+                                (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-0)))
+                                (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-1)))
+                                (snd (x □-0)))
+
+       @♭ part3 : is-equiv (♭-map (postcomp (□^ m) α̂))
+       part3 = is-equiv←Arrow-equiv⁻¹
+                 {F = paste-squares refactor (♭Square make-orthogonality)}
+                 {!!}
+                 part4
+
+     @♭ part2 : is-equiv (♭-map (precomp-Π (λ k → is-equiv (α k))
+                                        (total-map (λ _ → ∂Δ¹-incl))))
+     part2 = is-equiv←inverse
+               (♭-is-prop (is-prop-Π (λ a → is-equiv-is-prop)))
+               (♭-is-prop (is-prop-Π (λ a → is-equiv-is-prop)))
+               (♭-ind _ lemma)
+
+
+  part1 : is-equiv forget
+  part1 = cubes-separate'
+    (mk-arrow forget)
+    (λ {n} → is-equiv←Arrow-equiv⁻¹
+       {F = ♭Square (arr n)}
+       ( ♭-map-is-equiv (arr-is-equiv n .fst)
+       , ♭-map-is-equiv (arr-is-equiv n .snd))
+       (♭-map-total-is-equiv _
+         (is-total-equiv←is-fibrewise-equiv
+           (♭-ind _ λ F → ♭-map-total-is-equiv _
+             (is-total-equiv←is-fibrewise-equiv
+               (♭-ind _ λ G → ♭-map-total-is-equiv _
+                 (is-total-equiv←is-fibrewise-equiv
+                   (♭-ind _ (λ α → part2 n F G α)))))))))
+
+  part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
+  part1' = is-fibrewise-equiv←is-total-equiv
+              {f = λ α → precomp-Π _ ∂Δ¹-incl}
+              (is-fibrewise-equiv←is-total-equiv
+                (is-fibrewise-equiv←is-total-equiv
+                  part1 f) g) α
+}
+%```
+}
+
+
 \subtree[stt-00AT]{
 \title{#{\mathcal{S}} is directed univalent}
 \taxon{Theorem}
@@ -262,9 +466,6 @@ dua→ : ∀ {@♭ 𝓤} → (Δ¹ → Space 𝓤)
 dua→ h = (h i0 , h i1 , tr-𝓢 h)
 }
 %```
-
-
-\remark{It remains to be shown that this map is an equivalence.}
 }
 
 

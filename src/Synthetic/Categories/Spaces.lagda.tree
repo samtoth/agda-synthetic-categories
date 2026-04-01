@@ -300,10 +300,35 @@ opaque
     amap .Arrow-Π.bot = ♭-Σ _
     amap .Arrow-Π.comm (mod♭ a , mod♭ b) = refl
 
-[Δ¹,𝓢]-is-equiv
+transport-NT-lemma
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+    → (α : ∀ x → F x → G x) → ∀ x y (x' : F x) (p : x ＝ y)
+    →  tr G p (α x x')
+    ＝ α y (tr F p x')
+transport-NT-lemma α x y x' refl = refl
+
+
+□-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
+□-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
+□-0-is-left-anodyne {suc zero} r 0r = 0r
+□-0-is-left-anodyne {suc (suc m)} r 0r
+  = left-orthogonal-equiv
+      (point □-0 ⊗ point i0) (point □-0) a ae r
+      (left-orthogonal-× (point □-0) (point i0) r
+        (□-0-is-left-anodyne {suc m} r 0r) 0r) where
+  a : Arrow-map (point □-0 ⊗ point i0) (point (□-0 , i0))
+  a .Arrow-Π.top = !
+  a .Arrow-Π.bot = id
+  a .Arrow-Π.comm = ~refl
+
+  ae : is-Arrow-equiv a
+  ae .fst = sing-!-is-equiv single!
+  ae .snd = id-is-equiv
+
+Cov-NT-is-equiv
   : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Space.Car → g i .Space.Car)
     → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i)
-[Δ¹,𝓢]-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
+Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
   @♭ Y : Type (lsuc (𝓤 ⊔ 𝓘))
   Y = Σ[ F ∶ (Δ¹ → Space 𝓤) ] Σ[ G ∶ (Δ¹ → Space 𝓤)]
         Σ[ α' ∶ (∀ i → F i .Space.Car → G i .Space.Car) ]
@@ -321,6 +346,11 @@ opaque
 
   @♭ Γ : ℕ → Type 𝓘
   Γ n = □^ n × Δ¹
+
+  @♭ Γ-is-truncated : ∀ n {k} → is-truncated (k + 2) (Γ n)
+  Γ-is-truncated zero = trunc!
+  Γ-is-truncated (suc zero) = trunc!
+  Γ-is-truncated (suc (suc n)) = trunc!
 
   open Space
 
@@ -349,7 +379,16 @@ opaque
   arr n .Arrow-Π.comm = ~refl
 
   @♭ arr-is-equiv : ∀ (@♭ n) → is-Arrow-equiv (arr n)
-  arr-is-equiv = {!!}
+  arr-is-equiv n .fst =
+    is-equiv←qiso
+      ( (λ F g → ( curry (fst F) g , curry (F .snd .fst) g
+                 , curry (F .snd .snd .fst) g , curry (F .snd .snd .snd) g))
+      , ~refl , ~refl)
+  arr-is-equiv n .snd =
+    is-equiv←qiso
+      ( (λ F g → ( curry (fst F) g , curry (F .snd .fst) g
+                 , curry (F .snd .snd .fst) g , curry (F .snd .snd .snd) g))
+      , ~refl , ~refl)
 
   module _ (@♭ n) (@♭ F G : Γ n → Space 𝓤) (@♭ α : ∀ i → F i .Car → G i .Car) where
      @♭ F̂ : Type (𝓘 ⊔ 𝓤)
@@ -362,7 +401,8 @@ opaque
      α̂ = total-map α
 
      @♭ lemma
-       : @♭ (∀ (k : Σ (□^ n) (λ _ → ∂Δ¹)) → (is-equiv (α (k .fst , ∂Δ¹-incl (k .snd)))))
+       : @♭ (∀ (k : Σ (□^ n) (λ _ → ∂Δ¹))
+         → (is-equiv (α (k .fst , ∂Δ¹-incl (k .snd)))))
          → ⟨♭| Π (Γ n) (λ k → is-equiv (α k)) ⟩
      lemma k = mod♭ (is-fibrewise-equiv←is-total-equiv
                       (cubes-separate'
@@ -373,13 +413,49 @@ opaque
                        {C = Pullback {B = F̂}fst (ev (□-0 {m}))}
                        {D = Pullback {B = Ĝ}fst (ev (□-0 {m}))}
                        (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl))
-       make-orthogonality .Arrow-Π.top = {!!} ∘ pullback-power (point □-0) fst
-       make-orthogonality .Arrow-Π.bot = {!!} ∘ pullback-power (point □-0) fst
-       make-orthogonality .Arrow-Π.comm = {!!}
+       make-orthogonality .Arrow-Π.top = orthogonal-point-gap-map □-0
+       make-orthogonality .Arrow-Π.bot = orthogonal-point-gap-map □-0
+       make-orthogonality .Arrow-Π.comm x = pullback-path→
+         ( refl
+         , refl
+         , ap (_∙ refl) (ap-id (ap (ev tt) (sym (funext→ ~refl)) ∙ refl)))
+
+       make-orthogonality-is-equiv : is-Arrow-equiv make-orthogonality
+       make-orthogonality-is-equiv .fst
+         = orthogonal-point-pullback-condition □-0
+             (□-0-is-left-anodyne fst
+               (is-covariant⇔is-left-fibration (Car ∘ F) .fst (UFib-is-fib F)))
+       make-orthogonality-is-equiv .snd
+         = orthogonal-point-pullback-condition □-0
+             (□-0-is-left-anodyne fst
+               (is-covariant⇔is-left-fibration (Car ∘ G) .fst (UFib-is-fib G)))
 
        @♭ final-map : (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| F (k □-0) .Car ⟩)
                     → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| G (k □-0) .Car ⟩)
        final-map = total-map (♭-ind _ λ a → ♭-map (α (a □-0)))
+
+       @♭ refactor-map
+         : ∀ (@♭ K : Γ n → Space 𝓤)
+             (let @♭ K̂ = Σ _ (Car ∘ K))
+         → ⟨♭| Pullback {B = K̂}fst (ev (□-0 {m}))⟩
+         → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| K (k □-0) .Car ⟩)
+       refactor-map K (mod♭ ((a , a') , b , p))
+          = (mod♭ b , mod♭ (tr (Car ∘ K) p a'))
+
+       @♭ refactor-map-is-equiv
+         : ∀ (@♭ K : Γ n → Space 𝓤) → is-equiv (refactor-map K)
+       refactor-map-is-equiv K = is-equiv←qiso
+         ( (λ where (mod♭ f , mod♭ g) → mod♭ ((f □-0 , g) , f , refl))
+         , (λ where
+               (mod♭ ((a , a') , b , p))
+                 → mapply♭
+                     (mod♭ (pullback-path→
+                             ( Σ-path→ (sym p , tr∙tr-sym p a')
+                             , refl
+                             , is-set←is-truncated
+                                 (Γ-is-truncated n)
+                                 _ _ _ refl))))
+         , λ where (mod♭ a , mod♭ b) → refl)
 
        @♭ refactor
          : Arrow-map
@@ -387,13 +463,18 @@ opaque
              {B = ⟨♭| Pullback {B = Ĝ}fst (ev (□-0 {m}))⟩}
              (♭-map (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl)))
              (final-map)
-       refactor .Arrow-Π.top (mod♭ ((a , a') , b , p))
-                = (mod♭ b , mod♭ (tr (Car ∘ F) p a'))
-       refactor .Arrow-Π.bot (mod♭ ((a , a') , b , p))
-                = (mod♭ b , mod♭ (tr (Car ∘ G) p a'))
+       refactor .Arrow-Π.top = refactor-map F
+       refactor .Arrow-Π.bot = refactor-map G
        refactor .Arrow-Π.comm (mod♭ ((x , x') , y , p))
-         = {!!}
-         -- = strong-J♭ (λ b p → {!!}) {!!} p
+         = Σ-path→ (refl
+                   , mapply♭
+                       (mod♭ (ap (λ p → tr (Car ∘ G) p (α x x'))
+                                 (ap (_∙ refl) (ap-id p) ∙ ∙-reflr _)
+                             ∙ transport-NT-lemma α x (y □-0) x' p)))
+
+       @♭ refactor-is-equiv : is-Arrow-equiv refactor
+       refactor-is-equiv .fst = refactor-map-is-equiv F
+       refactor-is-equiv .snd = refactor-map-is-equiv G
 
        @♭ part4 : is-equiv final-map
        part4 = is-total-equiv←is-fibrewise-equiv
@@ -405,7 +486,9 @@ opaque
        @♭ part3 : is-equiv (♭-map (postcomp (□^ m) α̂))
        part3 = is-equiv←Arrow-equiv⁻¹
                  {F = paste-squares refactor (♭Square make-orthogonality)}
-                 {!!}
+                 (paste-squares-is-equiv
+                   _ refactor-is-equiv
+                   _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
                  part4
 
      @♭ part2 : is-equiv (♭-map (precomp-Π (λ k → is-equiv (α k))
@@ -431,12 +514,13 @@ opaque
                  (is-total-equiv←is-fibrewise-equiv
                    (♭-ind _ (λ α → part2 n F G α)))))))))
 
-  part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
-  part1' = is-fibrewise-equiv←is-total-equiv
-              {f = λ α → precomp-Π _ ∂Δ¹-incl}
-              (is-fibrewise-equiv←is-total-equiv
+  opaque
+    part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
+    part1' = is-fibrewise-equiv←is-total-equiv
+                {f = λ α → precomp-Π _ ∂Δ¹-incl}
                 (is-fibrewise-equiv←is-total-equiv
-                  part1 f) g) α
+                  (is-fibrewise-equiv←is-total-equiv
+                    part1 f) g) α
 }
 %```
 }
@@ -490,8 +574,6 @@ module DUA
   ⦃ _ : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄ → (∀ {i} → is-acov (i ＝ i0 → A)) ⦄
   (non-triv : i1 ＝ i0 → ∅)
   (let open Space)
-  (lem6-8 : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Car → g i .Car)
-        → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i))
   where
 
   Gl : ∀ {@♭ 𝓤} → (A B : Space (𝓘 ⊔ 𝓤)) (f : Car A → Car B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
@@ -626,11 +708,12 @@ module DUA
     dua-retract : ∀ {@♭ 𝓤} f i → f i .Car ≃ GlΣ {𝓤} (dua→ f) i .Car
     dua-retract f i ._≃_.fwd = dua-retract→ f i
     dua-retract f i ._≃_.has-is-eqv
-      = lem6-8 f (GlΣ (dua→ f)) (dua-retract→ f)
-                 (∂Δ¹-UP→
-                   ( is-equiv←qiso fr0
-                   , is-equiv←qiso fr1))
-                 i where
+      = Cov-NT-is-equiv
+          f (GlΣ (dua→ f)) (dua-retract→ f)
+          (∂Δ¹-UP→
+            ( is-equiv←qiso fr0
+            , is-equiv←qiso fr1))
+          i where
       fr0 : quasi-iso (dua-retract→ f i0)
       fr0 .fst x = x .snd refl .fst
       fr0 .snd .fst = ~refl

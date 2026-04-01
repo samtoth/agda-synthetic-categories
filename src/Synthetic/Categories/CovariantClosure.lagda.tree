@@ -171,6 +171,12 @@ tr-contra
     → is-contravariant P → (h : Δ¹ → A) → P (h i1) → P (h i0)
 tr-contra pc h x₁ = pc h x₁ .centre .fst
 
+contravariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-contravariant P → is-contravariant (P ∘ f)
+contravariant-base-change f P p x₁ = P (f ∘ p) x₁
+
 coe-cov : ∀ {𝓤} {B : Δ¹ → Type 𝓤} {i j} → is-covariant B → i ≤ j → B i → B j
 coe-cov {_} {B}{i}{j} Bc p
    = tr B (ap₂ _∧_ (∨-comm ∙ 1-coinit) (≤-max p) ∙ ∧-comm ∙ 1-top)
@@ -216,6 +222,10 @@ opaque
       .Homᵈ.hom j → tr B (q i0 ∙ sym (q j)) x
       .Homᵈ.hom0  → ap (λ K → tr B K x) prop!
       .Homᵈ.hom1  → ap (λ K → tr B K x) prop!))
+
+  coe-cov-＝ : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-covariant B)
+                 {i j} (p : i ＝ j) (q : i ≤ j) → coe-cov {B = B} bc q ~ tr B p
+  coe-cov-＝ bc refl q = coe-cov-id bc _
 
 
 opaque
@@ -292,6 +302,27 @@ opaque
 --         ( {!!}
 --         , {!!})
 
+postulate
+  coe-contra : ∀ {𝓤} {B : Δ¹ → Type 𝓤} {i j}
+               → is-contravariant B → i ≤ j → B j → B i
+
+-- coe-cov {_} {B}{i}{j} Bc p
+--    = tr B (ap₂ _∧_ (∨-comm ∙ 1-coinit) (≤-max p) ∙ ∧-comm ∙ 1-top)
+--    ∘ tr-cov {P = B} Bc (λ l → (l ∨ i) ∧ (i ∨ j))
+--    ∘ tr B (sym (ap₂ _∧_ (∨-comm ∙ 0-bottom) (≤-max p) ∙ p))
+
+  coe-contra-0≤1
+    : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-contravariant B)
+        (p : i0 ≤ i1) → coe-contra {B = B} bc p ~ tr-contra bc id
+
+
+  coe-contra-id : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-contravariant B)
+                    {i} (p : i ≤ i) → coe-contra {B = B} bc p ~ id
+
+opaque
+  coe-contra-＝ : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-contravariant B)
+                 {i j} (p : i ＝ j) (q : i ≤ j) → coe-contra {B = B} bc q ~ tr B (sym p)
+  coe-contra-＝ bc refl q = coe-contra-id bc _
 
 -- opaque
 --   Π-is-covariant
@@ -299,9 +330,66 @@ opaque
 --       → is-contravariant A → is-covariant B
 --       → is-covariant (λ a → A a → B a)
 --   Π-is-covariant {A = A} {B} Ac Bc p x₀
---     = is-single←equiv-to-single
---         {!!}
---         (lemma {A = A ∘ p} {!!} (covariant-base-change {P = B} p Bc) x₀)
+--     = mk-singl cent centr where
+--       open Homᵈ
+
+--       Bp : is-covariant (B ∘ p)
+--       Bp = covariant-base-change {P = B} p Bc
+
+--       Ap : is-contravariant (A ∘ p)
+--       Ap = contravariant-base-change {P = A} p Ac
+
+--       map : ∀ i → A (p i) → B (p i)
+--       map i = coe-cov Bp 0-init
+--             ∘ x₀
+--             ∘ coe-contra Ap 0-init
+
+--       cent : Σ (A (p i1) → B (p i1)) (Homᵈ ((λ a → A a → B a) ∘ p) x₀)
+--       cent .fst = map i1
+--       cent .snd .hom i = map i
+--       cent .snd .hom0 = ap (_∘ (x₀ ∘ coe-contra Ap 0-init))
+--                            (funext→ (coe-cov-id Bp 0-init))
+--                       ∙ ap (x₀ ∘_) (funext→ (coe-contra-id Ap 0-init))
+--       cent .snd .hom1 = refl
+
+--       centr : ∀ x → cent ＝ x
+--       centr (f , p) = {!!}
+
+--       cent' : Σ[ f ∶ (∀ i → A (p i) → B (p i)) ] (f i0 ＝ x₀)
+--       cent' .fst = map
+--       cent' .snd = ap₂ (λ x y → x ∘ x₀ ∘ y)
+--                        (funext→ (coe-cov-id Bp 0-init))
+--                        (funext→ (coe-contra-id Ap 0-init))
+
+--       centr' : ∀ x → cent' ＝ x
+--       centr' (g , refl)
+--         = is-equiv.bwd (Hom-gpd {!!})
+--                        {!!} where
+
+--         H : (i j : Δ¹) → A (p i) → B (p i)
+--         H i j = coe-cov {B = B ∘ p} Bp (∧-≤-eliml ≤-refl)
+--               ∘ g (i ∧ j)
+--               ∘ coe-contra {B = A ∘ p} Ap (∧-≤-eliml ≤-refl)
+
+--         r : ∀ j → H i0 j ＝ g i0
+--         r j = H i0 j
+--           ＝⟨⟩ coe-cov Bp (∧-≤-eliml ≤-refl) ∘ g (i0 ∧ j)
+--               ∘ coe-contra {B = A ∘ p} Ap (∧-≤-eliml ≤-refl)
+--           ＝⟨ ap₂ (λ x y → x ∘ g (i0 ∧ j) ∘ y)
+--                   (funext→ (coe-cov-＝ Bp 0-init _))
+--                   (funext→ (coe-contra-＝ Ap 0-init _))  ⟩
+--             tr (B ∘ p) 0-init ∘ g (i0 ∧ j) ∘ tr (A ∘ p) (sym 0-init)
+--           ＝⟨ {!!} ⟩
+--              g i0
+--           ∎
+-- --       r : ∀ j → H i0 j ＝ g i0
+-- --       r = {!!}
+
+--         h : Hom (Σ ((i : Δ¹) → A (p i) → B (p i)) (λ f → f i0 ＝ g i0))
+--                 cent' (g , refl)
+--         h .hom j = ((λ i → H i j) , r j)
+--         h .hom0 = fibre-path→ ((funext→ (λ a → {!!})) , {!!})
+--         h .hom1 = fibre-path→ ({!!} , {!!})
 }
 %```
 }

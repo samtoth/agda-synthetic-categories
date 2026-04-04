@@ -8,7 +8,6 @@
 
 %```agda
 \agda{
-{-# OPTIONS --allow-unsolved-metas #-}
 module Synthetic.Tiny2 where
 
 open import Foundations.Prelude
@@ -22,6 +21,7 @@ open import Modalities.Instances.Truncation
 open import Ergonomics.Extensionality
 
 open import Core.Arrow
+open import Core.ArrowEquiv
 open import Core.PiSection
 open import Core.UniversalFibration
 open import Core.Small
@@ -158,7 +158,54 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
         {@♭ f : ((I → Γ) → A)} {@♭ g : Γ → √ A}
       → is-equiv (transpose-unique {f = f}{g})
-  transpose-unique-is-equiv = {!!}
+  transpose-unique-is-equiv {Γ = Γ} {A} {f} {g}
+    = is-equiv←Arrow-equiv⁻¹
+        {F = test}
+        test-is-equiv
+        (♭-map-is-equiv transpose-unique'-is-equiv) where
+    lemma : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x : A} {@♭ y : ⟨♭| A ⟩}
+            → mod♭ (ε♭ y) ＝ y
+    lemma {y = mod♭ y} = refl
+
+    lemma⁻¹ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x : A}{@♭ y}
+            → ⟨♭| x ＝ ε♭ y ⟩ → ⟨♭| (mod♭ x ＝ y) ⟩
+    lemma⁻¹ {x = x} {y} = ♭-map ((_∙ lemma {x = x}) ∘ mapply♭) ∘ comult
+
+    lemma⁻¹-refl : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x}{@♭ y : ⟨♭| A ⟩}
+                   → (@♭ p : mod♭ x ＝ y)
+                   → lemma⁻¹ {y = y} (mod♭ (ap ε♭ p)) ＝ mod♭ p
+    lemma⁻¹-refl {y = mod♭ y}
+      = strong-J♭ (λ _ p → lemma⁻¹ (mod♭ (ap ε♭ p)) ＝ mod♭ p) refl
+
+    map : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+          → ⟨♭| a ＝ b ⟩ → ⟨♭| mod♭ a ＝ mod♭ b ⟩
+    map (mod♭ p) = mod♭ (ap♭ mod♭ p)
+
+    map-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+                   → is-equiv (map {a = a}{b})
+    map-is-equiv
+      = homotopy-is-equiv
+          {f = ♭-map mapply♭ ∘ comult }
+          (♭-ind _
+            (strong-J♭
+              (λ b p → (♭-map mapply♭ ∘ comult) (mod♭ p) ＝ mod♭ (ap♭ mod♭ p))
+              refl))
+          (is-equiv-∘
+            (♭-map-is-equiv mapply♭-is-equiv)
+            comult-is-equiv)
+
+    test : Arrow-map (transpose-unique {Γ = Γ} {A}{f}{g})
+                     (♭-map (transpose-unique' {Γ = Γ} {A}{mod♭ f}{mod♭ g}))
+    test .Arrow-Π.top = map
+    test .Arrow-Π.bot = lemma⁻¹
+    test .Arrow-Π.comm (mod♭ p) = lemma⁻¹-refl _
+
+
+    test-is-equiv : is-Arrow-equiv test
+    test-is-equiv .fst = map-is-equiv
+    test-is-equiv .snd = is-equiv-∘
+      (♭-map-is-equiv (is-equiv-∘ (∙-is-equiv' lemma) mapply♭-is-equiv))
+      comult-is-equiv
 
   transpose-naturality
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓦} {@♭ A : Type 𝓥}
@@ -235,10 +282,6 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
            (f : ⟨♭| (B → C) ⟩) (g : ⟨♭| (A → B)⟩) → ⟨♭| (A → C)⟩
   _∘♭_ f = ♭-map' (♭-map (postcomp _) f)
 
-  thing1 : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-           → (_∘♭_ (mod♭ √ε)) ~ ♭-map {B = A → B} (postcomp A √ε)
-  thing1 (mod♭ x) = refl
-
   ♭-map-∘
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
         (@♭ f : B → C) (@♭ g : A → B) → ♭-map (f ∘ g) ~ ♭-map f ∘ ♭-map g
@@ -249,23 +292,6 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
         (f : ⟨♭| (B → C)⟩) (g : ⟨♭| (A → B)⟩)
       → ♭-map' (f ∘♭ g) ~ ♭-map' f ∘ ♭-map' g
   ♭-map-∘♭ (mod♭ f) (mod♭ g) (mod♭ a) = refl
-
-  -- √₁-∘ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
-  --          {f : ⟨♭| (B → C) ⟩} {g : ⟨♭| (A → B)⟩}
-  --          → √₁ (f ∘♭ g) ＝ √₁ f ∘♭ √₁ g
-  -- √₁-∘ {f = f♭}{g♭}
-  --   =    √₁ (f♭ ∘♭ g♭)
-  --   ＝⟨⟩
-  --        transpose (♭-map (precomp _ √ε) (f♭ ∘♭ g♭))
-  --   ＝⟨⟩
-  --        transpose (♭-map (precomp _ √ε) (♭-map' (♭-map (postcomp _) f♭) g♭))
-  --   ＝⟨ sym (ap transpose (♭-map-∘♭ (mod♭ (precomp _ √ε)) (♭-map (postcomp _) f♭) g♭)) ⟩
-  --        transpose (♭-map' (mod♭ (precomp _ √ε) ∘♭ ♭-map (postcomp _) f♭) g♭)
-  --   ＝⟨ {!!} ⟩
-  --        ♭-map' (♭-map (postcomp _) (√₁ f♭)) (√₁ g♭)
-  --   ＝⟨⟩
-  --        (√₁ f♭ ∘♭ √₁ g♭)
-  --   ∎
 
   opaque
     √ε-nat
@@ -280,7 +306,7 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
       ~⟨⟩
         ♭-map' (((mod♭ √ε ∘♭_) ∘ ♭-map (postcomp I)) (√₁ (mod♭ f)))
       ~⟨ happly (ap ♭-map'
-                ( happly (ap (_∘ ♭-map (postcomp I)) (funext→ thing1)) (√₁ (mod♭ f))
+                ( happly (ap (_∘ ♭-map (postcomp I)) (funext→ lemma)) (√₁ (mod♭ f))
                 ∙ sym (♭-map-∘ (postcomp _ √ε) (postcomp I) (√₁ (mod♭ f))))) ⟩
         ♭-map' (♭-map (postcomp _ √ε ∘ postcomp I) (√₁ (mod♭ f)))
       ~⟨ happly (ap ♭-map' (is-equiv.ε is-tiny-str (mod♭ (f ∘ √ε)))) ⟩
@@ -289,7 +315,11 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
         ♭-map (f ∘ √ε)
       ~⟨ ♭-map-∘ f √ε ⟩
         ♭-map f ∘ ♭-map √ε
-      ~∎
+      ~∎ where
+      lemma : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+               → (_∘♭_ (mod♭ √ε)) ~ ♭-map {B = A → B} (postcomp A √ε)
+      lemma (mod♭ x) = refl
+
 
   √ε-naturality-square
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
@@ -402,7 +432,7 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
 
   private
     √Type∙-π : ∀ {@♭ 𝓤} → ⟨♭| (√(Σ (Type 𝓤) id) → √(Type 𝓤)) ⟩
-    √Type∙-π = √₁ (mod♭ (Type∙-π _))
+    √Type∙-π = √₁ (mod♭ (Type-π _))
 
   classify-√ : ∀ {@♭ 𝓤} → √(Type 𝓤) → Type (lsuc 𝓤)
   classify-√
@@ -416,10 +446,10 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
 
   opaque
     transpose-lift♭ : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
-           → ⟨♭| Lift (Type∙-π 𝓥) A ⟩
+           → ⟨♭| Lift (Type-π 𝓥) A ⟩
            ≃ ⟨♭| Lift (ε♭ (√Type∙-π {𝓥})) (ε♭ (transpose (mod♭ A))) ⟩
     transpose-lift♭ {𝓤}{𝓥}{Γ}{A}
-      =   ⟨♭| Lift (Type∙-π 𝓥) A ⟩
+      =   ⟨♭| Lift (Type-π 𝓥) A ⟩
       ≃⟨ ♭-commΣ _ e⁻¹ ⟩
           (Σ[♭ l ∶ ((I → Γ) → Type∙ 𝓥) ] ⟨♭| fst ∘ l ＝ A  ⟩)
       ≃⟨ Σ-ap-≃-fst-bwd exp⊣√ e⁻¹ ⟩
@@ -496,6 +526,16 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
                    ∙ ε♭-natural (transpose (mod♭ A)))
                    x)
 
+    √ᵈ-naturality-path
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'}
+          (@♭ A : (I → Γ) → Type 𝓥)
+        → (@♭ σ : Δ → Γ)
+        → √ᵈ (A ∘ postcomp I σ) ＝ (√ᵈ A ∘ σ)
+    √ᵈ-naturality-path A σ
+      = ap (classify-√ ∘_)
+            ( ap ε♭ (transpose-naturality (mod♭ A) σ)
+            ∙ ε♭-natural (transpose (mod♭ A)) )
+
     √ᵈ-naturality-is-equiv'
       : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : (I → Γ) → Type 𝓥}
         → (@♭ σ : Δ → Γ)
@@ -507,33 +547,16 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
         → (@♭ σ : Δ → Γ)
         → is-fibrewise-equiv (√ᵈ-naturality→ A σ)
     √ᵈ-naturality-is-equiv σ a = tr-is-equiv _
-
-
-  -- √εᵈ : ∀ {@♭ 𝓥}  {@♭ B : I → Type 𝓥}
-  --       → ∀ (@♭ i) → (Π I (√ᵈ (B ∘ ev i))) → B i
-  -- √εᵈ i f = {!relim!}
-
-  -- √ᵈ-is-singleton
-  --   : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) →  Type 𝓥}
-  --     → ⟨♭| Π _ (is-singleton ∘ A) ⟩ → ⟨♭| Π _ (is-singleton ∘ √ᵈ A)⟩
-  -- √ᵈ-is-singleton = {!!}
-
-  -- ♭-is-single←equiv-to-single
-  --   : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Γ → Type 𝓥} {@♭ B : Γ → Type 𝓥}
-  --     → ⟨♭| (∀ g → A g ≃ B g) ⟩
-  --     → ⟨♭| Π _ (is-singleton ∘ A)⟩ → ⟨♭| Π _ (is-singleton ∘ B)⟩
-  -- ♭-is-single←equiv-to-single (mod♭ e) (mod♭ x)
-  --   = mod♭ λ a → is-single←equiv-to-single (e a) (x a)
 }
 %```
 }
 
 \subtree{
-\title{Global points of the amazing right adjoint}
+\title{Amazing properties}
 
 %```agda
 \agda{
-module Global {@♭ 𝓘} (@♭ I : Type 𝓘)
+module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
             (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
             (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
             (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
@@ -546,11 +569,19 @@ module Global {@♭ 𝓘} (@♭ I : Type 𝓘)
   open Tiny I √ √ε is-tiny-str types-separate prop-is-disc
   open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc
 
-  lemm : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
-  lemm (mod♭ a) = ♭-map (ev tt) (transpose (mod♭ (const _ _ a)))
+  global-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
+  global-√ = ♭-map (ev tt) ∘ transpose ∘ ♭-map (const _ _)
+
+  global-√-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-equiv (global-√ {A = A})
+  global-√-is-equiv
+    = is-equiv-∘
+        (♭-map-is-equiv (unit-ev-is-equiv))
+        (is-equiv-∘
+          (is-equiv⁻¹ is-tiny-str)
+          (♭-map-is-equiv (sing-const-is-equiv global-funext single!)))
 
   global-√-point : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ A → √ A
-  global-√-point a = ε♭ (lemm (mod♭ a))
+  global-√-point a = ε♭ (global-√ (mod♭ a))
 
   global-⊤ : ∀ (@♭ 𝓤) → √ (Prop-U 𝓤)
   global-⊤ 𝓤 = global-√-point (ULift 𝓤 𝟙 , trunc!)
@@ -565,6 +596,30 @@ module Global {@♭ 𝓘} (@♭ I : Type 𝓘)
           prop-class x
           trunc!
           (is-truncated←is-prop (√prop-is-set _ _)))
+
+  is-amazingly-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → ⟨♭| ((I → Γ) → Prop-U 𝓥) ⟩ → ⟨♭| (Γ → Prop-U (lsuc 𝓥)) ⟩
+  is-amazingly-prop = ♭-map (postcomp _ classify-√-prop) ∘ transpose
+
+  is-amazingly
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → (@♭ A : (I → Γ) → Type 𝓥)
+      → @♭ (∀ g → is-prop (A g))
+      → (Γ → Type (lsuc 𝓥))
+  is-amazingly A Ap
+    = fst
+    ∘ (ε♭ (is-amazingly-prop
+            (mod♭ λ g → (A g , is-truncated←is-prop (Ap g)))))
+
+  is-amazingly-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (I → Γ) → Type 𝓥)
+        (@♭ Ap : ∀ x → is-prop (A x))
+      → ∀ g → is-prop (is-amazingly A Ap g)
+  is-amazingly-is-prop A Ap
+    = is-prop←is-truncated
+    ∘ snd
+    ∘ ε♭ (is-amazingly-prop (mod♭ (λ g → A g , is-truncated←is-prop (Ap g))))
 }
 %```
 }
@@ -572,7 +627,7 @@ module Global {@♭ 𝓘} (@♭ I : Type 𝓘)
 \subtree{
 %```agda
 \agda{
-module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
+module AmazinglyFibrant {@♭ 𝓘} (@♭ I : Type 𝓘)
             (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
             (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
             (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
@@ -581,11 +636,13 @@ module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
                                    {@♭ f : A → B} → Types-separate f)
             {@♭ α : Level → Level → Level}
             (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
-            (@♭ rel-fib : is-relative I is-fib)
+            (@♭ is-fib-is-prop
+                  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-fib B))
+            (@♭ rel-fib : is-relative-fam I is-fib)
             (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
                                → is-prop A → is-♭-discrete A)
+            (open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc)
             where
-  open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc
   open Tiny I √ √ε is-tiny-str types-separate prop-is-disc public
   private
     map : ∀ {𝓤} → 𝟙 → (Prop-U 𝓤)
@@ -599,49 +656,133 @@ module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
     @♭ ϕ : Π (√ A) (√ᵈ (λ x → √ε x ＝ √ε x))
     ϕ = ε♭ (rintro {Γ = √ A}{A = λ x → √ε x ＝ √ε x} (mod♭ ~refl))
 
-  test : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-         → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
-         → ⟨♭| Π (I → (√ A × √ A)) (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) ⟩
-  test = relim
+  is-afib : ∀ {@♭ 𝓤} → Type 𝓤 → Type (lsuc (α 𝓘 𝓤))
+  is-afib = √ᵈ is-fib
 
-  test2 : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-          → ⟨♭| Π (A × A) (λ g → fst g ＝ snd g) ⟩
-          → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
-  test2
-    = rintro
-    ∘ ♭-map (precomp-Π (λ z → fst z ＝ snd z) λ x → (√ε (fst ∘ x) , √ε (snd ∘ x)))
+  record UFib (@♭ 𝓤) : Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤)) where
+    constructor mk-ufib
+    field
+      Car : Type 𝓤
+      has-is-afib : is-afib Car
 
-  global-Σ-pres→
-    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : A → Type 𝓦}
-      → ⟨♭| (Γ → √ (Σ A B))⟩ ≃ ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε)))⟩
-  global-Σ-pres→ {Γ = Γ}{A}{B}
-    = ⟨♭| (Γ → √ (Σ A B)) ⟩   ≃⟨ exp⊣√ e⁻¹ ⟩
-      ⟨♭| ((I → Γ) → Σ A B) ⟩ ≃⟨ ♭≃ (Σ-Π-swap≃ _ _) ⟩
-      ⟨♭| Σ ((x : I → Γ) → A) (λ f → (x : I → Γ) → B (f x)) ⟩
-                              ≃⟨ ♭-commΣ _ e⁻¹ ⟩
-      Σ♭ ((I → Γ) → A) (λ (@♭ x) → ⟨♭| ((x₁ : I → Γ) → B (x x₁)) ⟩)
-                              ≃⟨ mk≃ (map-Σ _ (♭-ind _ (λ x → {!!}))) (map-Σ-is-equiv
-                                {Y = ♭-ind _ (λ f → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩)}
-                                (exp⊣√ ._≃_.has-is-eqv)
-                                (♭-ind _ (λ x → {!!}))) ⟩
-      Σ ⟨♭| ((b : Γ) → √ A) ⟩
-       (♭-ind _
-        (λ (@♭ f) → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩))
-                              ≃⟨ Σ-ap-≃ (♭-ind _
-                                (λ f → mk≃ (♭-map (postcomp-Π
-                                                  (λ g → √ᵈ-naturality← (B ∘ √ε) f g))
-                                           ∘ rintro {A = B ∘ √ε ∘ postcomp _ f})
-                                           (is-equiv-∘ (♭-map-is-equiv
-                                             (postcomp-Π-equiv (√ᵈ-naturality-is-equiv' f _)))
-                                             rintro-is-equiv))) ⟩
-      Σ ⟨♭| (Γ → √ A) ⟩ (♭-ind _
-                         (λ (@♭ f) →
-                            ⟨♭|
-                            (∀ x → √ᵈ (B ∘ √ε) (f x))
-                            ⟩))                       ≃⟨ ♭-commΣ _ ⟩
-      ⟨♭| Σ[ f ∶ ((x : Γ) → √ A)]
-           ((x : Γ) → (√ᵈ (B ∘ √ε) (f x))) ⟩               ≃⟨ ♭≃ (Σ-Π-swap≃ _ _ e⁻¹) ⟩
-      ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε))) ⟩ ≃∎
+  UFib∙ : ∀ (@♭ 𝓤) → Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤))
+  UFib∙ 𝓤 = Σ (UFib 𝓤) UFib.Car
+
+  UFib-π : ∀ {@♭ 𝓤} → UFib∙ 𝓤 → UFib 𝓤
+  UFib-π = fst
+
+  UFib-π-is-fib : ∀ {@♭ 𝓤} → is-fib (UFib.Car {𝓤})
+  UFib-π-is-fib = rel-fib _ .snd
+    (ε♭ (relim (mod♭ (λ a → √ᵈ-naturality→ _ UFib.Car a (a .UFib.has-is-afib)))))
+
+  UFib-is-fib : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (P : A → UFib 𝓥)
+                → is-fib (UFib.Car ∘ P)
+  UFib-is-fib P
+    = is-pullback-stable-fam←is-relative
+        I is-fib rel-fib P UFib.Car
+        UFib-π-is-fib
+
+  liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
+              → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
+  liftFib {A = A} {P = P} .fst fib
+    = ♭-map (postcomp-Π (√ᵈ-naturality← _ _))
+            (rintro (♭-map (rel-fib P .fst) fib))
+  liftFib {A = A} {P = P} .snd
+    = ♭-map (UFib-is-fib ∘ (λ af a → (mk-ufib (P a) (af a))))
+
+
+  module UIdS
+           (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+                              (@♭ A : (I → Γ) → Type 𝓥)
+                            → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+           where
+    is-afib-is-prop
+      : ∀ {@♭ 𝓤} {A : Type 𝓤} → is-prop (is-afib A)
+    is-afib-is-prop = √ᵈ-is-prop is-fib is-fib-is-prop _
+
+
+    Car-is-emb : ∀ {@♭ 𝓤} → is-prop-map (UFib.Car {𝓤})
+    Car-is-emb X = is-prop←equiv-to-prop
+      (equiv←qiso
+        (mk-iso
+         (λ a → (mk-ufib X a , refl))
+         ( (λ where (a , refl) → a .UFib.has-is-afib)
+         , ~refl
+         , λ where (a , refl) → refl)))
+      (is-afib-is-prop {A = X})
+
+    instance
+      UFib-IdS : ∀ {@♭ 𝓤} → Identity-system (UFib 𝓤) 𝓤
+      UFib-IdS {𝓤} = IdS←Embedding {f = UFib.Car} Car-is-emb (IdS-ua {𝓤})
+}
+%```
+}
+
+
+
+%```agda
+\agda{
+  -- √₁-∘ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+  --          {f : ⟨♭| (B → C) ⟩} {g : ⟨♭| (A → B)⟩}
+  --          → √₁ (f ∘♭ g) ＝ √₁ f ∘♭ √₁ g
+  -- √₁-∘ {f = f♭}{g♭}
+  --   =    √₁ (f♭ ∘♭ g♭)
+  --   ＝⟨⟩
+  --        transpose (♭-map (precomp _ √ε) (f♭ ∘♭ g♭))
+  --   ＝⟨⟩
+  --        transpose (♭-map (precomp _ √ε) (♭-map' (♭-map (postcomp _) f♭) g♭))
+  --   ＝⟨ sym (ap transpose (♭-map-∘♭ (mod♭ (precomp _ √ε)) (♭-map (postcomp _) f♭) g♭)) ⟩
+  --        transpose (♭-map' (mod♭ (precomp _ √ε) ∘♭ ♭-map (postcomp _) f♭) g♭)
+  --   ＝⟨ {!!} ⟩
+  --        ♭-map' (♭-map (postcomp _) (√₁ f♭)) (√₁ g♭)
+  --   ＝⟨⟩
+  --        (√₁ f♭ ∘♭ √₁ g♭)
+  --   ∎
+
+
+  -- test : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+  --        → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
+  --        → ⟨♭| Π (I → (√ A × √ A)) (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) ⟩
+  -- test = relim
+
+  -- test2 : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+  --         → ⟨♭| Π (A × A) (λ g → fst g ＝ snd g) ⟩
+  --         → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
+  -- test2
+  --   = rintro
+  --   ∘ ♭-map (precomp-Π (λ z → fst z ＝ snd z) λ x → (√ε (fst ∘ x) , √ε (snd ∘ x)))
+
+  -- global-Σ-pres→
+  --   : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : A → Type 𝓦}
+  --     → ⟨♭| (Γ → √ (Σ A B))⟩ ≃ ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε)))⟩
+  -- global-Σ-pres→ {Γ = Γ}{A}{B}
+  --   = ⟨♭| (Γ → √ (Σ A B)) ⟩   ≃⟨ exp⊣√ e⁻¹ ⟩
+  --     ⟨♭| ((I → Γ) → Σ A B) ⟩ ≃⟨ ♭≃ (Σ-Π-swap≃ _ _) ⟩
+  --     ⟨♭| Σ ((x : I → Γ) → A) (λ f → (x : I → Γ) → B (f x)) ⟩
+  --                             ≃⟨ ♭-commΣ _ e⁻¹ ⟩
+  --     Σ♭ ((I → Γ) → A) (λ (@♭ x) → ⟨♭| ((x₁ : I → Γ) → B (x x₁)) ⟩)
+  --                             ≃⟨ mk≃ (map-Σ _ (♭-ind _ (λ x → {!!}))) (map-Σ-is-equiv
+  --                               {Y = ♭-ind _ (λ f → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩)}
+  --                               (exp⊣√ ._≃_.has-is-eqv)
+  --                               (♭-ind _ (λ x → {!!}))) ⟩
+  --     Σ ⟨♭| ((b : Γ) → √ A) ⟩
+  --      (♭-ind _
+  --       (λ (@♭ f) → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩))
+  --                             ≃⟨ Σ-ap-≃ (♭-ind _
+  --                               (λ f → mk≃ (♭-map (postcomp-Π
+  --                                                 (λ g → √ᵈ-naturality← (B ∘ √ε) f g))
+  --                                          ∘ rintro {A = B ∘ √ε ∘ postcomp _ f})
+  --                                          (is-equiv-∘ (♭-map-is-equiv
+  --                                            (postcomp-Π-equiv (√ᵈ-naturality-is-equiv' f _)))
+  --                                            rintro-is-equiv))) ⟩
+  --     Σ ⟨♭| (Γ → √ A) ⟩ (♭-ind _
+  --                        (λ (@♭ f) →
+  --                           ⟨♭|
+  --                           (∀ x → √ᵈ (B ∘ √ε) (f x))
+  --                           ⟩))                       ≃⟨ ♭-commΣ _ ⟩
+  --     ⟨♭| Σ[ f ∶ ((x : Γ) → √ A)]
+  --          ((x : Γ) → (√ᵈ (B ∘ √ε) (f x))) ⟩               ≃⟨ ♭≃ (Σ-Π-swap≃ _ _ e⁻¹) ⟩
+  --     ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε))) ⟩ ≃∎
 
   -- √-pres-Σ→ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
   --             → √ (Σ A B) → Σ (√ A) (√ᵈ (B ∘ √ε))
@@ -680,57 +821,5 @@ module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
   --       (√ᵈ-is-singleton (mod♭ (λ a → Sing-is-singleton {a = √ε a}))))
   --      -- ({!♭-map (postcomp-Π ?)!}
   --      -- (ε♭ (√ᵈ-is-singleton (mod♭ (λ _ → Sing-is-singleton)))))
-
-  is-afib : ∀ {@♭ 𝓤} → Type 𝓤 → Type (lsuc (α 𝓘 𝓤))
-  is-afib = √ᵈ is-fib
-
-  is-afib-is-prop : ∀ {@♭ 𝓤} {A : Type 𝓤} → is-prop (is-afib A)
-  is-afib-is-prop = {!!}
-
-  record UFib (@♭ 𝓤) : Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤)) where
-    constructor mk-ufib
-    field
-      Car : Type 𝓤
-      has-is-afib : is-afib Car
-
-  UFib∙ : ∀ (@♭ 𝓤) → Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤))
-  UFib∙ 𝓤 = Σ (UFib 𝓤) UFib.Car
-
-  UFib-π : ∀ {@♭ 𝓤} → UFib∙ 𝓤 → UFib 𝓤
-  UFib-π = fst
-
-  UFib-π-is-fib : ∀ {@♭ 𝓤} → is-fib (UFib.Car {𝓤})
-  UFib-π-is-fib = rel-fib _ .snd
-    (ε♭ (relim (mod♭ (λ a → √ᵈ-naturality→ _ UFib.Car a (a .UFib.has-is-afib)))))
-
-  UFib-is-fib : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (P : A → UFib 𝓥)
-                → is-fib (UFib.Car ∘ P)
-  UFib-is-fib P
-    = is-pullback-stable←is-relative
-        I is-fib rel-fib UFib.Car P
-        UFib-π-is-fib
-
-  liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
-              → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
-  liftFib {A = A} {P = P} .fst fib
-    = ♭-map (postcomp-Π (√ᵈ-naturality← _ _))
-            (rintro (♭-map (rel-fib P .fst) fib))
-  liftFib {A = A} {P = P} .snd
-    = ♭-map (UFib-is-fib ∘ (λ af a → (mk-ufib (P a) (af a))))
-
-  Car-is-emb : ∀ {@♭ 𝓤} → is-prop-map (UFib.Car {𝓤})
-  Car-is-emb X = is-prop←equiv-to-prop
-    (equiv←qiso
-      (mk-iso
-       (λ a → (mk-ufib X a , refl))
-       ( (λ where (a , refl) → a .UFib.has-is-afib)
-       , ~refl
-       , λ where (a , refl) → refl)))
-    (is-afib-is-prop {A = X})
-
-  instance
-    UFib-IdS : ∀ {@♭ 𝓤} → Identity-system (UFib 𝓤) 𝓤
-    UFib-IdS {𝓤} = IdS←Embedding {f = UFib.Car} Car-is-emb (IdS-ua {𝓤})
 }
 %```
-}

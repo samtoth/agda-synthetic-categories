@@ -52,6 +52,16 @@ straightening-arrow-map p .snd .fst
   = total≃total-fibre p ._≃_.has-is-eqv
 straightening-arrow-map p .snd .snd = id-is-equiv
 
+unstraightening-arrow-map
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → Arrow-equiv p (fst: fibre p)
+unstraightening-arrow-map p .fst .Arrow-Π.top = refl-fibre p
+unstraightening-arrow-map p .fst .Arrow-Π.bot = id
+unstraightening-arrow-map p .fst .Arrow-Π.comm = ~refl
+unstraightening-arrow-map p .snd .fst
+  = is-equiv⁻¹ (total≃total-fibre p ._≃_.has-is-eqv)
+unstraightening-arrow-map p .snd .snd = id-is-equiv
+
 record gClass-maps (α : Level → Level → Level) : Typeω where
   field
     𝓕 : ∀ {𝓤 𝓥} → Subtype (Arrow 𝓤 𝓥) (α 𝓤 𝓥)
@@ -60,8 +70,8 @@ record gClass-maps (α : Level → Level → Level) : Typeω where
           {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
         → (F : Arrow-map f g)
         → is-Arrow-equiv F
-        → f ∈ᵃ 𝓕
         → g ∈ᵃ 𝓕
+        → f ∈ᵃ 𝓕
 
   𝓕-fam : ∀ {𝓤 𝓥} {X : Type 𝓤} → Subtype (X → Type 𝓥) (α (𝓤 ⊔ 𝓥) 𝓤)
   𝓕-fam .Subtype.family P = (fst: P) ∈ᵃ 𝓕
@@ -71,8 +81,8 @@ record gClass-maps (α : Level → Level → Level) : Typeω where
             → fibre p ∈ 𝓕-fam → p ∈ᵃ 𝓕
   𝓕←𝓕-fam p fib∈𝓕
     = stable-equiv
-        (straightening-arrow-map p .fst)
-        (straightening-arrow-map p .snd)
+        (unstraightening-arrow-map p .fst)
+        (unstraightening-arrow-map p .snd)
         fib∈𝓕
 }
 %```
@@ -134,6 +144,15 @@ is-relative I is-fib
   = ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
     → (p ∈ᵃ 𝓕 ⇔ (∀ (x : I → B) → pullback-arrow x p ∈ᵃ 𝓕)) where
     open gClass-maps is-fib
+
+is-relative-fam
+  : ∀ {𝓘} {α : Level → Level → Level}
+    → Type 𝓘
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → Typeω
+is-relative-fam I is-fib
+  = ∀ {𝓤 𝓥} {B : Type 𝓤} (P : B → Type 𝓥)
+    → (is-fib P) ⇔ (∀ (x : I → B) → is-fib (P ∘ x))
 }
 %```
 }
@@ -154,6 +173,14 @@ is-pullback-stable is-fib
     → p ∈ᵃ 𝓕 → pullback-arrow σ p ∈ᵃ 𝓕 where
     open gClass-maps is-fib
 
+is-pullback-stable-fam
+  : ∀ {α : Level → Level → Level}
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → Typeω
+is-pullback-stable-fam is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} (σ : A → B) (P : B → Type 𝓥)
+    → is-fib P → is-fib (P ∘ σ)
+
 opaque
   is-pullback-stable←is-relative
     : ∀ {α : Level → Level → Level} {𝓘}
@@ -163,9 +190,18 @@ opaque
   is-pullback-stable←is-relative I is-fib rel σ p fib
     = rel (pullback-arrow σ p) .snd λ
         x → is-fib .gClass-maps.stable-equiv
-              (inv-Arrow-equiv (pullback-arrow-∘ σ x p) .fst)
-              (inv-Arrow-equiv (pullback-arrow-∘ σ x p) .snd)
+              ((pullback-arrow-∘ σ x p) .fst)
+              ((pullback-arrow-∘ σ x p) .snd)
               (rel p .fst fib (σ ∘ x))
+
+is-pullback-stable-fam←is-relative
+  : ∀ {α : Level → Level → Level} {𝓘}
+    → (I : Type 𝓘)
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → is-relative-fam I is-fib
+    → is-pullback-stable-fam is-fib
+is-pullback-stable-fam←is-relative I is-fib rel σ P Pf
+  = rel (P ∘ σ) .snd (λ x → rel P .fst Pf (σ ∘ x))
 }
 %```
 }
@@ -211,8 +247,8 @@ small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.family f
 small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.has-is-subtype _
   = is-prop-Π (λ _ → is-small-is-prop)
 small-gClass 𝓤 .gClass-maps.stable-equiv F Fe fsmall y
-  = is-small←equiv (mk≃ _ (inverse-is-cartesian←is-equiv F Fe y) e⁻¹)
-                   (fsmall (is-equiv.bwd (Fe .snd) y))
+  = is-small←equiv (mk≃ _ (is-cartesian←is-equiv F Fe y) e⁻¹)
+                   (fsmall (Arrow-Π.bot F y))
 
 Small : ∀ 𝓤 {𝓥 𝓦} → Subtype (Arrow 𝓥 𝓦) (lsuc 𝓤 ⊔ 𝓥 ⊔ 𝓦)
 Small 𝓤 = small-gClass 𝓤 .gClass-maps.𝓕
@@ -357,7 +393,7 @@ module SubuniversalFibration
   𝓕-gSubU .gSubU.S .Subtype.family A = (!: A) ∈ᵃ 𝓕
   𝓕-gSubU .gSubU.S .Subtype.has-is-subtype x = ∈-is-prop 𝓕 (mk-arrow (!: x))
   𝓕-gSubU .gSubU.∈S←equiv e af
-    = stable-equiv (!-map _) (!-map-is-equiv (e ._≃_.has-is-eqv)) af
+    = stable-equiv (!-map _) (!-map-is-equiv (is-equiv⁻¹ (e ._≃_.has-is-eqv))) af
 
   open gSubU 𝓕-gSubU using () renaming
     ( S to 𝓕-ty
@@ -447,6 +483,76 @@ module SubuniversalFibration
     = is-single←equiv-to-single
         (char-cart-U∙ e⁻¹)
         (mk-singl ff (∈-is-prop (and-small-gClass _ F .gClass-maps.𝓕) _ ff))
+
+  module UFib-classifies {𝓤} = is-universal (UFib-classifies {𝓤})
+  open UFib-classifies public
+}
+%```
+}
+
+\subtree[tot-KKSP]{
+\taxon{Example}
+\title{The small embedding classifier}
+
+
+%```agda
+\agda{
+is-embedding←pullback-of-embedding
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤}{B : Type 𝓥}{C : Type 𝓦}{D : Type 𝓜}
+      {f : A → B} {g : C → D}
+    → (F : Arrow-map f g)
+    → is-cartesian F
+    → is-embedding g
+    → is-embedding f
+is-embedding←pullback-of-embedding F c g
+  = is-embedding←is-prop-map
+      (λ a → is-prop←equiv-to-prop
+               (mk≃ _ (c a) e⁻¹)
+               (is-prop-map←is-embedding g _))
+
+is-embedding-gClass : gClass-maps _⊔_
+is-embedding-gClass .gClass-maps.𝓕 .Subtype.family f
+  = is-embedding (f .Arrow.f)
+is-embedding-gClass .gClass-maps.𝓕 .Subtype.has-is-subtype f
+  = is-prop-Πᵢ (is-prop-Πᵢ is-equiv-is-prop)
+is-embedding-gClass .gClass-maps.stable-equiv F Fe
+  = is-embedding←pullback-of-embedding F (is-cartesian←is-equiv F Fe)
+
+module Emb-gClass = gClass-maps (is-embedding-gClass)
+
+fibre-! : ∀ {𝓤} {A : Type 𝓤} → fibre (!: A) tt ≃ A
+fibre-! = mk≃ fst (singleton-fst-is-equiv (λ _ → single!))
+
+is-prop←!-is-embedding
+  : ∀ {𝓤} {A : Type 𝓤} → is-embedding (!: A) → is-prop A
+is-prop←!-is-embedding e = is-prop←equiv-to-prop
+                     fibre-!
+                     (is-prop-map←is-embedding e tt)
+
+
+!-is-embedding←is-prop
+  : ∀ {𝓤} {A : Type 𝓤} → is-prop A → is-embedding (!: A)
+!-is-embedding←is-prop ap
+  = is-embedding←is-prop-map
+      (λ _ → is-prop←equiv-to-prop (fibre-! e⁻¹) ap)
+
+
+is-embedding-is-fibrewise : is-relative 𝟙 is-embedding-gClass
+is-embedding-is-fibrewise p .fst pe x
+  = Emb-gClass.stable-equiv
+      (!-map _)
+      (!-map-is-equiv (pullback-point≃fibre p (x tt) ._≃_.has-is-eqv))
+      (!-is-embedding←is-prop (is-prop-map←is-embedding pe (x tt)))
+is-embedding-is-fibrewise p .snd pm
+  = is-embedding←is-prop-map λ
+      x → is-prop←!-is-embedding
+            (Emb-gClass.stable-equiv
+              (!-map _)
+              (!-map-is-equiv (fibre≃pullback-point p x ._≃_.has-is-eqv))
+              (pm (point x)))
+
+module PropUniversal
+  = SubuniversalFibration is-embedding-gClass is-embedding-is-fibrewise
 }
 %```
 }

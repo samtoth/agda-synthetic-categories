@@ -15,11 +15,13 @@ open import ufAxioms
 open import Ergonomics.Extensionality
 
 open import Modalities.Instances.Truncation
+open import Modalities.GlobalSubuniverses
 
 open import Core.Arrow
 open import Core.ArrowEquiv
 open import Core.PiSection
 open import Core.Small
+open import Core.Cube
 }
 %```
 
@@ -34,9 +36,21 @@ under equivalence of arrows.}
 
 %```agda
 \agda{
-_∈ᶠ_ : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤}{Y : Type 𝓥}
+infix 30 _∈ᵃ_
+
+_∈ᵃ_ : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤}{Y : Type 𝓥}
        → (X → Y) → Subtype (Arrow 𝓤 𝓥) 𝓦 → Type 𝓦
-f ∈ᶠ 𝓕 = mk-arrow f ∈ 𝓕
+f ∈ᵃ 𝓕 = mk-arrow f ∈ 𝓕
+
+straightening-arrow-map
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → Arrow-equiv (fst: fibre p) p
+straightening-arrow-map p .fst .Arrow-Π.top = fst ∘ snd
+straightening-arrow-map p .fst .Arrow-Π.bot = id
+straightening-arrow-map p .fst .Arrow-Π.comm a = sym (a .snd .snd)
+straightening-arrow-map p .snd .fst
+  = total≃total-fibre p ._≃_.has-is-eqv
+straightening-arrow-map p .snd .snd = id-is-equiv
 
 record gClass-maps (α : Level → Level → Level) : Typeω where
   field
@@ -46,11 +60,116 @@ record gClass-maps (α : Level → Level → Level) : Typeω where
           {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
         → (F : Arrow-map f g)
         → is-Arrow-equiv F
-        → f ∈ᶠ 𝓕
-        → g ∈ᶠ 𝓕
+        → f ∈ᵃ 𝓕
+        → g ∈ᵃ 𝓕
+
+  𝓕-fam : ∀ {𝓤 𝓥} {X : Type 𝓤} → Subtype (X → Type 𝓥) (α (𝓤 ⊔ 𝓥) 𝓤)
+  𝓕-fam .Subtype.family P = (fst: P) ∈ᵃ 𝓕
+  𝓕-fam .Subtype.has-is-subtype P = ∈-is-prop 𝓕 (mk-arrow (fst: P))
+
+  𝓕←𝓕-fam : ∀ {𝓤 𝓥} {A : Type 𝓤} {E : Type 𝓥} (p : E → A)
+            → fibre p ∈ 𝓕-fam → p ∈ᵃ 𝓕
+  𝓕←𝓕-fam p fib∈𝓕
+    = stable-equiv
+        (straightening-arrow-map p .fst)
+        (straightening-arrow-map p .snd)
+        fib∈𝓕
 }
 %```
 }
+
+\subtree[tot-00AO]{
+\title{Relative notions of fibrancy}
+\taxon{Definition}
+
+\p{Fixing a type #{I}, and given #{\mathcal{F}} a family of predicates over
+families of types #{A \to \UU}, we say that #{\mathcal{F}} is #{I}-relative for
+some type #{I} if #{P} is fibrant iff for any map #{x : I \to A}, #{P \circ x}
+is fibrant. If #{\mathcal{F}} is #{1}-relative, then we call it a fibrewise
+condition.
+}
+
+%```agda
+\agda{
+pullback-arrow : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+                 → (f : A → B) → (p : E → B) → (Pullback f p → A)
+pullback-arrow f p = pb.π₁
+
+pullback-arrow-map
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+    → (f : A → B) → (p : E → B)
+    → Arrow-map (pullback-arrow f p) p
+pullback-arrow-map f p .Arrow-Π.top = pb.π₂
+pullback-arrow-map f p .Arrow-Π.bot = f
+pullback-arrow-map f p .Arrow-Π.comm = pb.filler
+
+pullback-arrow-map-is-cartesian
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+    → (f : A → B) → (p : E → B)
+    → is-cartesian (pullback-arrow-map f p)
+pullback-arrow-map-is-cartesian f p
+  = is-cartesian←is-pullback _ pullback-is-pullback
+
+pullback-arrow-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {E : Type 𝓜}
+      (g : B → C) (f : A → B) (p : E → C)
+    → Arrow-equiv (pullback-arrow f (pullback-arrow g p)) (pullback-arrow (g ∘ f) p)
+pullback-arrow-∘ g f p = ( mk-amap (gap-map←square lem) id ~refl
+                         , gap-is-equiv←is-cartesian lem lem-is-cart
+                         , id-is-equiv) where
+  lem : Arrow-map (pullback-arrow f (pullback-arrow g p)) p
+  lem = paste-squares (pullback-arrow-map g p)
+                      (pullback-arrow-map f (pullback-arrow g p))
+
+  lem-is-cart : is-cartesian lem
+  lem-is-cart = compose-cartesian
+                  (pullback-arrow-map-is-cartesian g p)
+                  (pullback-arrow-map-is-cartesian f (pullback-arrow g p))
+
+is-relative : ∀ {𝓘} {α : Level → Level → Level}
+              → Type 𝓘
+              → gClass-maps α
+              → Typeω
+is-relative I is-fib
+  = ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → (p ∈ᵃ 𝓕 ⇔ (∀ (x : I → B) → pullback-arrow x p ∈ᵃ 𝓕)) where
+    open gClass-maps is-fib
+}
+%```
+}
+
+\subtree[tot-00BB]{
+\taxon{Theorem}
+\title{Relative fibrations are pullback stable}
+
+\p{Any notion of fibration which is relative is pullback stable.}
+
+%```agda
+\agda{
+is-pullback-stable : ∀ {α : Level → Level → Level}
+                     → gClass-maps α
+                     → Typeω
+is-pullback-stable is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} {E : Type 𝓥} (σ : A → B) (p : E → B)
+    → p ∈ᵃ 𝓕 → pullback-arrow σ p ∈ᵃ 𝓕 where
+    open gClass-maps is-fib
+
+opaque
+  is-pullback-stable←is-relative
+    : ∀ {α : Level → Level → Level} {𝓘}
+      → (I : Type 𝓘)
+      → (P : gClass-maps α)
+      → is-relative I P → is-pullback-stable P
+  is-pullback-stable←is-relative I is-fib rel σ p fib
+    = rel (pullback-arrow σ p) .snd λ
+        x → is-fib .gClass-maps.stable-equiv
+              (inv-Arrow-equiv (pullback-arrow-∘ σ x p) .fst)
+              (inv-Arrow-equiv (pullback-arrow-∘ σ x p) .snd)
+              (rel p .fst fib (σ ∘ x))
+}
+%```
+}
+
 
 %```agda
 \agda{
@@ -60,16 +179,16 @@ record is-universal {α : Level → Level → Level}
       (class : gClass-maps α) : Typeω where
   open gClass-maps class
   field
-    univ-is-fib : π ∈ᶠ 𝓕
-    classifies : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → f ∈ᶠ 𝓕
+    univ-is-fib : π ∈ᵃ 𝓕
+    classifies : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → f ∈ᵃ 𝓕
                  → is-singleton (Σ (Arrow-map f π) is-cartesian)
 
-  arrow-map : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → f ∈ᶠ 𝓕
+  arrow-map : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → f ∈ᵃ 𝓕
               → Arrow-map f π
   arrow-map ff = classifies ff .centre .fst
 
   arrow-map-is-cartesian
-    : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → (ff : f ∈ᶠ 𝓕)
+    : ∀ {𝓤 𝓥} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y} → (ff : f ∈ᵃ 𝓕)
       → is-cartesian (arrow-map ff)
   arrow-map-is-cartesian ff = classifies ff .centre .snd
 
@@ -79,8 +198,12 @@ Type∙ 𝓤 = Σ[ A ∶ Type 𝓤 ] A
 Type∙-fam : ∀ 𝓤 → Fam (lsuc 𝓤) 𝓤
 Type∙-fam 𝓤 = (Type 𝓤 , id)
 
-Type∙-π : ∀ 𝓤 → Type∙ 𝓤 → Type 𝓤
-Type∙-π 𝓤 = arrow←Fam (Type∙-fam 𝓤)
+Type-π : ∀ 𝓤 → Type∙ 𝓤 → Type 𝓤
+Type-π 𝓤 = arrow←Fam (Type∙-fam 𝓤)
+
+fibre-Type-π : ∀ {𝓤} b → fibre (Type-π 𝓤) b ≃ b
+fibre-Type-π b = fibre-straighten id b
+
 
 small-gClass : ∀ 𝓤 → gClass-maps (λ 𝓥 𝓦 → lsuc 𝓤 ⊔ 𝓥 ⊔ 𝓦)
 small-gClass 𝓤 .gClass-maps.𝓕 .Subtype.family f
@@ -121,11 +244,11 @@ postcomp-≃ᶠ-equiv {F = F} {H = H} e
 
 char-cart-type∙
   : ∀ {𝓤 𝓥 𝓜} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y}
-    → (Σ (Arrow-map f (Type∙-π 𝓜)) is-cartesian) ≃ is-small-map 𝓜 f
+    → (Σ (Arrow-map f (Type-π 𝓜)) is-cartesian) ≃ is-small-map 𝓜 f
 char-cart-type∙ {𝓜 = 𝓜} {f = f}
-  =    Σ (Arrow-map f (Type∙-π 𝓜)) is-cartesian
+  =    Σ (Arrow-map f (Type-π 𝓜)) is-cartesian
   ≃⟨ Cart-fam-map≃cart-arrow-map ⟩
-       Cart-fam-map (fibre-fam f) (fibre-fam (Type∙-π 𝓜))
+       Cart-fam-map (fibre-fam f) (fibre-fam (Type-π 𝓜))
   ≃⟨ postcomp-≃ᶠ-equiv {H = Type∙-fam 𝓜}
                        (fibre-fam-arrow←Fam≃ᶠ (Type∙-fam 𝓜) ) ⟩
        Cart-fam-map (fibre-fam f) (Type∙-fam 𝓜)
@@ -134,7 +257,7 @@ char-cart-type∙ {𝓜 = 𝓜} {f = f}
 
 opaque
   Type-is-universal-small-map
-    : ∀ {𝓤} → is-universal (Type∙-π 𝓤) (small-gClass 𝓤)
+    : ∀ {𝓤} → is-universal (Type-π 𝓤) (small-gClass 𝓤)
   Type-is-universal-small-map .is-universal.univ-is-fib A
     = (A , remove-singleton-structure Sing'-is-singleton (_ , refl))
   Type-is-universal-small-map .is-universal.classifies {f = f} fsm
@@ -161,25 +284,25 @@ Lift←arrow-map
 Lift←arrow-map F A = arrow-fibre (postcomp-square F _) A
 
 section-type∙ : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} (A : Γ → Type (𝓥 ⊔ 𝓦))
-                → Lift (Type∙-π _) A → Π Γ A
+                → Lift (Type-π _) A → Π Γ A
 section-type∙ A = is-equiv.bwd (extension←Π-is-equiv A)
 
 universal-section
   : ∀ {𝓤 𝓥 𝓦 𝓜} {Γ : Type 𝓤} {E : Type 𝓥} {B : Type 𝓦} {p : E → B}
       (A : Γ → B)
-    → (ff : p ∈ᶠ Small 𝓜)
+    → (ff : p ∈ᵃ Small 𝓜)
     → Lift p A
     → Π Γ (is-universal.arrow-map Type-is-universal-small-map ff .Arrow-Π.bot ∘ A)
 universal-section {𝓤} {𝓥} {𝓦} {𝓜} {p  = p} A fsm
   = section-type∙ {𝓥 = 𝓜} {𝓜}
       (Arrow-Π.bot (is-universal.arrow-map Type-is-universal-small-map fsm) ∘ A)
-  ∘ Lift←arrow-map {f = p}{g = Type∙-π 𝓜}
+  ∘ Lift←arrow-map {f = p}{g = Type-π 𝓜}
                    (is-universal.arrow-map Type-is-universal-small-map fsm) A
 
 universal-section-is-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜} {Γ : Type 𝓤} {E : Type 𝓥} {B : Type 𝓦} {p : E → B}
       (A : Γ → B)
-    → (ff : p ∈ᶠ Small 𝓜)
+    → (ff : p ∈ᵃ Small 𝓜)
     → is-equiv (universal-section A ff)
 universal-section-is-equiv A fsm
   = is-equiv-∘
@@ -189,3 +312,141 @@ universal-section-is-equiv A fsm
           A)
 }
 %```
+
+
+\subtree{
+\title{Subuniversal fibrations}
+\taxon{construction}
+
+\p{If #{\mathcal{F}} is a fibrewise relative class of maps, then we can
+construct a universal fibration.}
+
+\remark{This is a shadow of a more general fact that any class of maps which
+is relative with respect to a \em{tiny} type has a universal fibration.}
+
+%```agda
+\agda{
+!-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Arrow-map (!: A) (!: B)
+!-map f .Arrow-Π.top = f
+!-map f .Arrow-Π.bot = id
+!-map f .Arrow-Π.comm = ~refl
+
+!-map-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-equiv f → is-Arrow-equiv (!-map f)
+!-map-is-equiv fe = (fe , id-is-equiv)
+
+module _ where
+  open gClass-maps
+  and-small-gClass
+    : ∀ {α : Level → Level → Level} 𝓤 → gClass-maps α
+      → gClass-maps λ 𝓥 𝓦 → α 𝓥 𝓦 ⊔ (lsuc 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  and-small-gClass 𝓥 F .𝓕 .Subtype.family f = f ∈ Small 𝓥 × f ∈ F .𝓕
+  and-small-gClass 𝓥 F .𝓕 .Subtype.has-is-subtype x
+    = is-prop-Σ (∈-is-prop (Small 𝓥) x) λ _ → ∈-is-prop (F .𝓕) x
+  and-small-gClass 𝓥 F .stable-equiv {f = f}{g = g}a ae (fs , ff)
+    = (stable-equiv (small-gClass 𝓥) a ae fs , stable-equiv F a ae ff)
+
+module SubuniversalFibration
+         {α : Level → Level → Level} (F : gClass-maps α)
+         (F-rel : is-relative 𝟙 F) where
+  open gClass-maps F
+  open is-universal
+
+  𝓕-gSubU : gSubU (λ 𝓤 → α 𝓤 lzero)
+  𝓕-gSubU .gSubU.S .Subtype.family A = (!: A) ∈ᵃ 𝓕
+  𝓕-gSubU .gSubU.S .Subtype.has-is-subtype x = ∈-is-prop 𝓕 (mk-arrow (!: x))
+  𝓕-gSubU .gSubU.∈S←equiv e af
+    = stable-equiv (!-map _) (!-map-is-equiv (e ._≃_.has-is-eqv)) af
+
+  open gSubU 𝓕-gSubU using () renaming
+    ( S to 𝓕-ty
+    ; ∈S←equiv to 𝓕-ty←is-equiv
+    ; ≃∈S←equiv to equiv-𝓕-ty)
+
+  U : ∀ 𝓤 → Type (lsuc 𝓤 ⊔ α 𝓤 lzero)
+  U 𝓤 = Σ[ A ∶ Type 𝓤 ] (!: A)  ∈ᵃ 𝓕
+
+  U∙ : ∀ 𝓤 → Type (lsuc 𝓤 ⊔ α 𝓤 lzero)
+  U∙ 𝓤 = Σ[ A ∶ Type∙ 𝓤 ] (A .fst) ∈ 𝓕-ty
+
+  U∙-repr : ∀ {𝓤} → U∙ 𝓤 ≃ Σ (U 𝓤) (fst)
+  U∙-repr = Σ-assoc ∙≃ (Σ-ap-≃ (λ A → ×-swap) ∙≃ Σ-assoc e⁻¹)
+
+  U-π : ∀ 𝓤 → U∙ 𝓤 → U 𝓤
+  U-π _ = total-map-fst fst
+
+  U∙-fam : ∀ 𝓤 → Fam (α 𝓤 lzero ⊔ lsuc 𝓤) 𝓤
+  U∙-fam 𝓤 = (U 𝓤 , fst)
+
+  straighten-U-π : ∀ {𝓤} → fibre-fam (U-π 𝓤) ≃ᶠ U∙-fam 𝓤
+  straighten-U-π {𝓤}
+    = concat≃ᶠ (U∙-fam 𝓤)
+       (idequiv , lemma)
+       (fibre-fam-arrow←Fam≃ᶠ (U∙-fam 𝓤)) where
+    lemma : (a : Σ (Type 𝓤) (λ A → A ∈ 𝓕-ty)) →
+             fibre-fam (U-π 𝓤) .snd a ≃
+             fibre-fam (arrow←Fam (U∙-fam 𝓤)) .snd (_≃_.fwd idequiv a)
+    lemma (A , Af)
+      = (Σ[ B ∶ U∙ 𝓤 ] (U-π 𝓤 B ＝ (A , Af)))
+      ≃⟨ (Σ-ap-≃-fst {B = λ B → U-π 𝓤 B ＝ (A , Af)} (U∙-repr e⁻¹)) e⁻¹ ⟩
+        (Σ[ B ∶ Σ (U 𝓤) fst ] (fst B ＝ (A , Af)))
+      ≃∎
+
+  fibre-U-π : ∀ {𝓤} b → fibre (U-π 𝓤) b ≃ b .fst
+  fibre-U-π b = fibre-total-map-fst _ (b .fst) (b .snd) ∙≃ fibre-Type-π (b .fst)
+
+  U-π-is-small : ∀ {𝓤} → is-small-map 𝓤 (U-π 𝓤)
+  U-π-is-small b = (b .fst , fibre-U-π b)
+
+  test-fibres : ∀ {𝓤 𝓥}{A : Type 𝓤}{B : Type 𝓥} (f : A → B)
+               → (f ∈ᵃ 𝓕) ⇔ (∀ x → (fibre f x) ∈ 𝓕-ty)
+  test-fibres f .fst ff b = 𝓕-ty←is-equiv (pullback-point≃fibre f b)
+                                          (F-rel f .fst ff (point b))
+  test-fibres f .snd ff
+    = F-rel f .snd λ x → 𝓕-ty←is-equiv
+                           (fibre≃pullback-point f (x tt))
+                           (ff (x tt))
+
+  opaque
+    U-π-is-fibrant : ∀ {𝓤} → U-π 𝓤 ∈ᵃ 𝓕
+    U-π-is-fibrant = F-rel (U-π _) .snd λ
+      x → 𝓕-ty←is-equiv
+            (fibre-U-π _ e⁻¹ ∙≃ fibre≃pullback-point _ _)
+            (x tt .snd)
+
+  is-small-fibration : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} 𝓦 → (A → B)
+                       → Type (α 𝓤 𝓥 ⊔ 𝓤 ⊔ 𝓥 ⊔ lsuc 𝓦)
+  is-small-fibration 𝓦 p = p ∈ᵃ and-small-gClass 𝓦 F .gClass-maps.𝓕
+
+
+  char-cart-U∙
+    : ∀ {𝓤 𝓥 𝓜} {X : Type 𝓤}{Y : Type 𝓥} {f : X → Y}
+      → (Σ (Arrow-map f (U-π 𝓜)) is-cartesian) ≃ (is-small-fibration 𝓜 f)
+  char-cart-U∙ {𝓜 = 𝓜} {f = f}
+    =    Σ (Arrow-map f (U-π 𝓜)) is-cartesian
+    ≃⟨ Cart-fam-map≃cart-arrow-map ⟩
+         Cart-fam-map (fibre-fam f) (fibre-fam (U-π 𝓜))
+    ≃⟨ postcomp-≃ᶠ-equiv {H = U∙-fam 𝓜} straighten-U-π ⟩
+         Cart-fam-map (fibre-fam f) (U∙-fam 𝓜)
+    ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
+         (∀ y → Σ[ A ∶ (Σ[ A ∶ Type 𝓜 ] (!: A) ∈ᵃ 𝓕)]
+                   (fibre f y ≃ A .fst))
+    ≃⟨ postcomp-Π-≃ (λ y → Σ-assoc ∙≃ (Σ-ap-≃
+      (λ A → ×-swap ∙≃ Σ-ap-≃ (λ e → equiv-𝓕-ty (e e⁻¹))) ∙≃ Σ-assoc e⁻¹)) ⟩
+         (∀ y → is-small 𝓜 (fibre f y) × (fibre f y) ∈ 𝓕-ty)
+    ≃⟨ Σ-Π-swap≃ _ _ ⟩
+         is-small-map 𝓜 f × (∀ y → (!: fibre f y) ∈ᵃ 𝓕)
+    ≃⟨ (idequiv ×≃ equiv←logical (is-prop-Π (λ _ → ∈-is-prop 𝓕 _))
+                                 (∈-is-prop 𝓕 _) (test-fibres f ⇔⁻¹)) ⟩
+         is-small-fibration 𝓜 f ≃∎
+
+  UFib-classifies : ∀ {𝓤} → is-universal (U-π 𝓤) (and-small-gClass 𝓤 F)
+  UFib-classifies .univ-is-fib = (U-π-is-small , U-π-is-fibrant)
+  UFib-classifies .classifies {f = f} ff
+    = is-single←equiv-to-single
+        (char-cart-U∙ e⁻¹)
+        (mk-singl ff (∈-is-prop (and-small-gClass _ F .gClass-maps.𝓕) _ ff))
+}
+%```
+}

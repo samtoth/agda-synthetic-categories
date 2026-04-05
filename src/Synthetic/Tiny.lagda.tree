@@ -16,6 +16,7 @@ open import ufAxioms
 open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.FlatLex
 open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
 open import Modalities.Instances.Truncation
 
 open import Ergonomics.Extensionality
@@ -29,38 +30,37 @@ open import Core.Small
 %```
 
 
-\transclude{stt-00BC}
-
-\subtree{
+\subtree[tot-0K01]{
 \title{Idea}
 
-\p{In type theory, we can represent the situation where a type #{I} has a right
-adjoint using with the following judgement (Where #{\mathcal{P}} represents
-exponentiating the context by #{I}):}
 
-##{
-\frac{\mathcal{P}(\Gamma) \vdash A}{\Gamma \vdash \sqrt[I]{A}}
-}
-
-\p{In addition, you need rules expressing the unit and counit of the adjunction.
-It is clearly not possible to introduce this type as an axiom inside of type
-theory; but there have been structural extensions to type theory that allow this
-type to be represented. Firstly, it fits within the general framework of
-[multimode type theory](GKNB21) and this approach is taken in \citek{GWB2024} to
-define the category of spaces. Secondly, Mitchel Riley \citek{MR2024} introduced a
-bespoke type theory that incorporates a tiny object.}
-
-\p{Seperately, \citek{LOPS2018} make use of the [flat
-modality](Modalities.Flat.Flat) to postulate an amazing right adjoint. In this
-module we formalise a similar construction, except instead of postulating the
-adjunction directly, we postulate a type former with #{\beta} and #{\eta} laws
-roughly based off Mitchel Riley's work.  }
+\p{Let #{I} be some object in a cartesian-closed set-category #{C}, then we
+say #{I} is \em{tiny} or \em{atomic} if there is a further right adjoint to
+exponentiation #{-^I}. In \citek{LOPS2018}, it was demonstrated that this
+right adjoint can be internalised and used to construct universes. The recent
+work by Gratzer, Weinberger and Buchholtz use the same idea to construct
+universes of Spaces \citek{GWB2024} and of Categories \citek{GWB2026}.
+Internalising tiny types is made difficult by the fact that we may prove a no
+go theorem that states that, internally, if #{-^I} has a right adjoint, then
+this right adjoint must be the identity, and hence #{I} must be contractible.
+This bad situation may be fixed by using the #{\flat} modality, which in our
+intended model is modelled by the global sections functor.}
 }
 
 
 \subtree[tot-0001]{
 \title{Tiny types}
 \taxon{Definition}
+
+\p{
+We say that a type #{I} is tiny if for each crisp type #{A}, there exists:
+\ul{
+  \li{A crisp type #{A_I}}
+  \li{A crisp map #{\epsilon : (A_I)^I \to A}}
+}
+Subject to the condition that the induced map #{\flat(\Gamma \to A_I) \to
+\flat(\Gamma^I \to A)} is an equivalence.
+}
 
 %```agda
 \agda{
@@ -71,42 +71,14 @@ is-tiny-structure I A √A √ε
   = ∀ {@♭ 𝓤} {@♭ X : Type 𝓤}
     → is-equiv {A = ⟨♭| (X → √A) ⟩} {B = ⟨♭| ((I → X) → A) ⟩}
                (♭-map (postcomp _ √ε ∘ postcomp I))
-
-record Σω {𝓤} (A : Type 𝓤) (B : A → Typeω) : Typeω where
-  constructor _,_
-  field
-    fstω : A
-    sndω : B fstω
-
-open Σω
-
-Σω♭ : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) (B : @♭ A → Typeω)
-     → Typeω
-Σω♭ A B = Σω ⟨♭| A ⟩ λ where (mod♭ a) → B a
-
-@♭ sndω♭ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ B : @♭ A → Typeω}
-           → (@♭ x : Σω♭ A B) → B (ε♭ (fstω x))
-sndω♭ (mod♭ x , y) = y
-
-syntax Σω♭ A (λ x → B) = Σω[♭ x ∶ A ] B
-
-
-is-tiny : ∀ {@♭ 𝓘} → @♭ Type 𝓘 → Typeω
-is-tiny I
-  = ∀ {@♭ 𝓤} → Σω[♭ √ ∶ (∀ (@♭ A : Type 𝓤) → Type 𝓤) ]
-                 Σω[♭ √ε ∶ (∀ {@♭ A : Type 𝓤} → (I → √ A) → A) ]
-                   (∀ {@♭ A : Type 𝓤} → is-tiny-structure I A (√ A) √ε)
-
-Types-separate
-  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B) → Typeω
-Types-separate f
-  = @♭ (∀ {@♭ 𝓤 }{@♭ Γ : Type 𝓤} →  is-equiv (♭-map (postcomp Γ f)))
-    → is-equiv f
 }
 %```
 }
 
 \subtree[tot-23JK]{
+\title{The tiny adjunction}
+
+\p{We expose an interfaces into the basic properties of tiny types.}
 
 %```agda
 \agda{
@@ -117,7 +89,6 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
                               → is-tiny-structure I A (√ A) √ε)
             (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
                                    {@♭ f : A → B} → Types-separate f)
-            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-prop A → is-♭-discrete A)
             where
   module is-tiny {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ X : Type 𝓥}
     = is-equiv (is-tiny-str {𝓤} {A} {𝓥} {X})
@@ -282,22 +253,29 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
            (f : ⟨♭| (B → C) ⟩) (g : ⟨♭| (A → B)⟩) → ⟨♭| (A → C)⟩
   _∘♭_ f = ♭-map' (♭-map (postcomp _) f)
 
-  ♭-map-∘
-    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
-        (@♭ f : B → C) (@♭ g : A → B) → ♭-map (f ∘ g) ~ ♭-map f ∘ ♭-map g
-  ♭-map-∘ f g (mod♭ a) = refl
-
   ♭-map-∘♭
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
         (f : ⟨♭| (B → C)⟩) (g : ⟨♭| (A → B)⟩)
       → ♭-map' (f ∘♭ g) ~ ♭-map' f ∘ ♭-map' g
   ♭-map-∘♭ (mod♭ f) (mod♭ g) (mod♭ a) = refl
+}
+%```
+}
 
+
+\subtree[tot-0PKB]{
+\title{Naturality of the counit}
+\taxon{Lemma}
+
+\p{The counit map is a natural transformation.}
+
+%```agda
+\agda{
   opaque
     √ε-nat
       : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
           {@♭ f : Γ → A}
-        → ♭-map' (mod♭ √ε) ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
+        → ♭-map √ε ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
         ~ ♭-map f ∘ ♭-map √ε
     √ε-nat {f = f}
       = ♭-map' (mod♭ √ε) ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
@@ -307,13 +285,13 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
         ♭-map' (((mod♭ √ε ∘♭_) ∘ ♭-map (postcomp I)) (√₁ (mod♭ f)))
       ~⟨ happly (ap ♭-map'
                 ( happly (ap (_∘ ♭-map (postcomp I)) (funext→ lemma)) (√₁ (mod♭ f))
-                ∙ sym (♭-map-∘ (postcomp _ √ε) (postcomp I) (√₁ (mod♭ f))))) ⟩
+                ∙ sym (♭-∘ (postcomp _ √ε) (postcomp I) (√₁ (mod♭ f))))) ⟩
         ♭-map' (♭-map (postcomp _ √ε ∘ postcomp I) (√₁ (mod♭ f)))
       ~⟨ happly (ap ♭-map' (is-equiv.ε is-tiny-str (mod♭ (f ∘ √ε)))) ⟩
         ♭-map' (mod♭ (f ∘ √ε))
       ~⟨⟩
         ♭-map (f ∘ √ε)
-      ~⟨ ♭-map-∘ f √ε ⟩
+      ~⟨ ♭-∘ f √ε ⟩
         ♭-map f ∘ ♭-map √ε
       ~∎ where
       lemma : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -332,7 +310,7 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
 %```
 }
 
-\subtree{
+\subtree[tot-0012]{
 \title{The amazing right adjoint preserves limits}
 \taxon{Lemma}
 
@@ -357,9 +335,9 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
     √𝟙-Is-truncated
       = truncation-instance 0 (is-truncated←is-singleton √1-is-single)
 
-  √-is-single' : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+  √-is-single : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
                 → @♭ is-singleton A → is-singleton (√ A)
-  √-is-single' {A = A} as
+  √-is-single {A = A} as
     = is-single←equiv-to-single
         (mk≃ _ (types-separate {f = √ε ∘ const _ _} lemma) e⁻¹)
         as where
@@ -377,17 +355,20 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
             (♭-map-is-equiv (is-equiv←single-to-prop single! (λ _ _ → prop!) _))
             is-tiny-str)
 
-  √-is-single : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                → is-singleton A → is-singleton (√ A)
-  √-is-single {A = A} as
-    = ♭-ind (λ _ → is-singleton (√ A))
-            (λ as' → √-is-single' as')
-            (is-equiv.bwd (prop-is-disc is-single-is-prop) as)
+  module _ (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                           → is-prop A → is-♭-discrete A)
+           where
+    √-is-single' : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                  → is-singleton A → is-singleton (√ A)
+    √-is-single' {A = A} as
+      = ♭-ind (λ _ → is-singleton (√ A))
+              (λ as' → √-is-single as')
+              (is-equiv.bwd (prop-is-disc is-single-is-prop) as)
 
-  √-is-prop : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ is-prop A → is-prop (√ A)
-  √-is-prop x = is-prop←is-single-if-inhabited
-    (√ε ∘ const _ _
-    ∘ ε♭ (transpose (mod♭ λ a → √-is-single (mk-singl (√ε a) (x _)))))
+    √-is-prop : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ is-prop A → is-prop (√ A)
+    √-is-prop x = is-prop←is-single-if-inhabited
+      (√ε ∘ const _ _
+      ∘ ε♭ (transpose (mod♭ λ a → √-is-single' (mk-singl (√ε a) (x _)))))
 
   global-√-pres-×
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
@@ -414,8 +395,37 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
 %```
 }
 
-\subtree{
+\subtree[tot-0BAS]{
 \title{The dependent amazing right adjoint}
+\taxon{Theorem}
+
+\p{For any tiny type #{I}, we may construct a dependent version of the amazing
+right adjoint, written #{\sqrt[I]{-} : \flat(\Gamma^I \to \Type) \to \Type^+}.
+It satisfies the following universal property:}
+
+##{\flat(\Pi_{\Gamma^I} P) \simeq \flat(\Pi_{\Gamma} \sqrt[I]{P})}
+
+\proof{
+\p{We use the theory of [universal fibrations](). There is a map
+#{\pi_I : \UU^{\bullet}_I \to \UU_I} which is at least #{\UU^+}-small
+, and so by the fact #{\pi : {\UU^+}^{\bullet} \to \UU^+} classifies #{\UU^+}-small
+maps, we have a cartesian square from #{\pi_I} to #{\pi}, and
+in particular that lifts of #{\pi_I} against some #{A : \Gamma \to \UU_I}
+are equivalent to sections (#{\Pi}-types) of the induced map #{\Gamma \to \UU}.}
+
+\p{Finally to finish the proof, we show that lifts of #{\pi} along
+#{A : \Gamma^I \to \UU} can be transposed across the adjunction to give
+lifts of #{\pi_I} along #{\bar{A} : \Gamma \to \UU_I}.}
+}
+
+\remark{
+\p{Notice that this construction bumps the universe level. In \citek{GWB2024}
+the cubes separate axiom is used to show that the map #{\pi_I} is actually
+#{\UU}-small. For the sake of generality we do not want to assume cubes separate
+here. It would be interesting to investigate if it follows that this map is
+#{\UU}-small without any further axioms, for example by making use of the similar
+but weaker theorem that types separate.}
+}
 
 %```agda
 \agda{
@@ -426,9 +436,8 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
                               → is-tiny-structure I A (√ A) √ε)
             (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
                                    {@♭ f : A → B} → Types-separate f)
-            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                               → is-prop A → is-♭-discrete A) where
-  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc
+             where
+  open Tiny I √ √ε is-tiny-str types-separate
 
   private
     √Type∙-π : ∀ {@♭ 𝓤} → ⟨♭| (√(Σ (Type 𝓤) id) → √(Type 𝓤)) ⟩
@@ -503,7 +512,13 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
         → ⟨♭| Π Γ (√ᵈ A) ⟩
         → ⟨♭| Π (I → Γ) A ⟩
     relim = is-equiv.bwd rintro-is-equiv
+}
+%```
 
+\p{We also record the naturality laws that #{\sqrt[I]{-}} enjoys.}
+
+%```agda
+\agda{
     √ᵈ-naturality→
       : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'}
           (@♭ A : (I → Γ) → Type 𝓥)
@@ -551,8 +566,130 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
 %```
 }
 
-\subtree{
+
+\subtree[tot-4031]{
+\title{Amazingly fibrant types}
+\taxon{Theorem}
+
+\p{For any tiny type #{I} and #{\mathcal{F}}, a class of [#{I}-relative]()
+propostions, we may construct universes #{U_{\mathcal{F}}} which classifies
+#{\UU}-small maps in #{\mathcal{F}}.
+}
+
+\proof{
+We use the dependent form of the amazing right adjoint. The universal property
+gives us that the family #{U_{\mathcal{F}} \to \UU} is fibrant, and since any
+relative class of maps is pullback stable, every family #{A \to U_{\mathcal{F}}}
+is a pullback of this universal one and hence is fibrant. On the other hand
+any covariant family #{P : A \to \UU} can be shown to factor through
+#{U_{\mathcal{F}}}.
+}
+
+%```agda
+\agda{
+module AmazinglyFibrant {@♭ 𝓘} (@♭ I : Type 𝓘)
+            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                              → is-tiny-structure I A (√ A) √ε)
+            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
+            {@♭ α : Level → Level → Level}
+            (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+            (@♭ is-fib-is-prop
+                  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-fib B))
+            (@♭ rel-fib : is-relative-fam I is-fib)
+            (open Dependent√ I √ √ε is-tiny-str types-separate)
+            where
+  open Tiny I √ √ε is-tiny-str types-separate  public
+  private
+    map : ∀ {𝓤} → 𝟙 → (Prop-U 𝓤)
+    map _ = (ULift _ 𝟙 , trunc!)
+
+  is-afib : ∀ {@♭ 𝓤} → Type 𝓤 → Type (lsuc (α 𝓘 𝓤))
+  is-afib = √ᵈ is-fib
+
+  record UFib (@♭ 𝓤) : Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤)) where
+    constructor mk-ufib
+    field
+      Car : Type 𝓤
+      has-is-afib : is-afib Car
+
+  UFib∙ : ∀ (@♭ 𝓤) → Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤))
+  UFib∙ 𝓤 = Σ (UFib 𝓤) UFib.Car
+
+  UFib-π : ∀ {@♭ 𝓤} → UFib∙ 𝓤 → UFib 𝓤
+  UFib-π = fst
+
+  UFib-π-is-fib : ∀ {@♭ 𝓤} → is-fib (UFib.Car {𝓤})
+  UFib-π-is-fib = rel-fib _ .snd
+    (ε♭ (relim (mod♭ (λ a → √ᵈ-naturality→ _ UFib.Car a (a .UFib.has-is-afib)))))
+
+  UFib-is-fib : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (P : A → UFib 𝓥)
+                → is-fib (UFib.Car ∘ P)
+  UFib-is-fib P
+    = is-pullback-stable-fam←is-relative
+        I is-fib rel-fib P UFib.Car
+        UFib-π-is-fib
+
+  liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
+              → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
+  liftFib {A = A} {P = P} .fst fib
+    = ♭-map (postcomp-Π (√ᵈ-naturality← _ _))
+            (rintro (♭-map (rel-fib P .fst) fib))
+  liftFib {A = A} {P = P} .snd
+    = ♭-map (UFib-is-fib ∘ (λ af a → (mk-ufib (P a) (af a))))
+}
+%```
+
+\p{In order to show that being amazingly fibrant is a proposition, and therefore
+that the universe we have constructed is univalent, we need that the tiny type
+former preserves propositions. This is at the moment left for future work.}
+
+%```agda
+\agda{
+  module UIdS
+           (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+                              (@♭ A : (I → Γ) → Type 𝓥)
+                            → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+           where
+    is-afib-is-prop
+      : ∀ {@♭ 𝓤} {A : Type 𝓤} → is-prop (is-afib A)
+    is-afib-is-prop = √ᵈ-is-prop is-fib is-fib-is-prop _
+
+
+    Car-is-emb : ∀ {@♭ 𝓤} → is-prop-map (UFib.Car {𝓤})
+    Car-is-emb X = is-prop←equiv-to-prop
+      (equiv←qiso
+        (mk-iso
+         (λ a → (mk-ufib X a , refl))
+         ( (λ where (a , refl) → a .UFib.has-is-afib)
+         , ~refl
+         , λ where (a , refl) → refl)))
+      (is-afib-is-prop {A = X})
+
+    instance
+      UFib-IdS : ∀ {@♭ 𝓤} → Identity-system (UFib 𝓤) 𝓤
+      UFib-IdS {𝓤} = IdS←Embedding {f = UFib.Car} Car-is-emb (IdS-ua {𝓤})
+}
+%```
+}
+
+
+\subtree[tot-0L13]{
 \title{Amazing properties}
+
+\p{We give a partial formalisation of an alternative construction for amazing
+properties. Instead of using the small map classifier, we may use the small
+embedding classifier, so that we directly get a function
+#{\textrm{is-amazingly} : \flat(A^I \to \textrm{HProp}) \to A \to \textrm{HProp}}.}
+
+\remark{This formalisation is incomplete for similar reasons to the previous
+construction, in order to make use of the embedding classifier, we need to
+show the map #{1 \to \textrm{HProp}_I} that picks out #{\top}, is an embedding,
+which requires showing that (this time the non-dependent) tiny type former
+preserves sets. This boils down to characterising the identity type in
+amazing right adjoints.}
 
 %```agda
 \agda{
@@ -563,11 +700,9 @@ module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
                               → is-tiny-structure I A (√ A) √ε)
             (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
                                    {@♭ f : A → B} → Types-separate f)
-            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                               → is-prop A → is-♭-discrete A)
             (@♭ √prop-is-set : ∀ {@♭ 𝓤} → is-set (√ (Prop-U 𝓤))) where
-  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc
-  open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc
+  open Tiny I √ √ε is-tiny-str types-separate
+  open Dependent√ I √ √ε is-tiny-str types-separate
 
   global-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
   global-√ = ♭-map (ev tt) ∘ transpose ∘ ♭-map (const _ _)
@@ -624,193 +759,39 @@ module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
 %```
 }
 
-\subtree[tot-4031]{
+\subtree[tot-0QWC]{
+\title{Paths in amazing right adjoints}
+\taxon{Lemma}
+
+\p{Given #{a, b : A_I}, the type #{\sqrt[I]{\epsilon a = \epsilon b}} is an
+identity system for #{A}.}
+
+\todo{This proof remains to be formalised}
+
+\proof{
+\p{We show #{\sqrt[I]{\epsilon a = \epsilon {-}}} is torsorial, or equivalently
+that the first projection #{P = \Sigma_{a,b : A_I} \sqrt[I]{\epsilon a =
+\epsilon b} \to A_I} is an equivalence.
+
+We may use the types separate principal so that it suffices to show the induced
+map #{\flat(\Gamma \to P) \to \flat(\Gamma \to A_I)} is an equiv.
+
+Finally, we may use the universal property of dependent and non-dependent
+amazing right ajoints so that we can show the canonical map #{\flat(\Gamma^I \to
+A) \to \flat(\Gamma^I \to \Sigma_{x, y} x =_A y)} is an equivalence.  }
+}
+
 %```agda
 \agda{
-module AmazinglyFibrant {@♭ 𝓘} (@♭ I : Type 𝓘)
-            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
-            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
-            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                              → is-tiny-structure I A (√ A) √ε)
-            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-                                   {@♭ f : A → B} → Types-separate f)
-            {@♭ α : Level → Level → Level}
-            (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
-            (@♭ is-fib-is-prop
-                  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-fib B))
-            (@♭ rel-fib : is-relative-fam I is-fib)
-            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                               → is-prop A → is-♭-discrete A)
-            (open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc)
-            where
-  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc public
-  private
-    map : ∀ {𝓤} → 𝟙 → (Prop-U 𝓤)
-    map _ = (ULift _ 𝟙 , trunc!)
-
   √-Path : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √ A → √ A → Type (lsuc 𝓤)
-  √-Path {_}{A} a b = √ᵈ (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) (a , b)
+  √-Path {_}{A} a b = √ᵈ σ (a , b) where
+    @♭ σ : (I → √ A × √ A) → Type _
+    σ = uncurry _＝_ ∘ (√ε ⊗ √ε) ∘ Σ-Π-swap (λ _ → √ A) _
 
   √-Path-refl : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (a : √ A) → √-Path a a
   √-Path-refl {A = A} a = √ᵈ-naturality← _ (Δ× (√ A)) a (ϕ a) where
-    @♭ ϕ : Π (√ A) (√ᵈ (λ x → √ε x ＝ √ε x))
+    @♭ ϕ : Π (√ A) (√ᵈ (uncurry _＝_ ∘ Δ× A ∘ √ε))
     ϕ = ε♭ (rintro {Γ = √ A}{A = λ x → √ε x ＝ √ε x} (mod♭ ~refl))
-
-  is-afib : ∀ {@♭ 𝓤} → Type 𝓤 → Type (lsuc (α 𝓘 𝓤))
-  is-afib = √ᵈ is-fib
-
-  record UFib (@♭ 𝓤) : Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤)) where
-    constructor mk-ufib
-    field
-      Car : Type 𝓤
-      has-is-afib : is-afib Car
-
-  UFib∙ : ∀ (@♭ 𝓤) → Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤))
-  UFib∙ 𝓤 = Σ (UFib 𝓤) UFib.Car
-
-  UFib-π : ∀ {@♭ 𝓤} → UFib∙ 𝓤 → UFib 𝓤
-  UFib-π = fst
-
-  UFib-π-is-fib : ∀ {@♭ 𝓤} → is-fib (UFib.Car {𝓤})
-  UFib-π-is-fib = rel-fib _ .snd
-    (ε♭ (relim (mod♭ (λ a → √ᵈ-naturality→ _ UFib.Car a (a .UFib.has-is-afib)))))
-
-  UFib-is-fib : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (P : A → UFib 𝓥)
-                → is-fib (UFib.Car ∘ P)
-  UFib-is-fib P
-    = is-pullback-stable-fam←is-relative
-        I is-fib rel-fib P UFib.Car
-        UFib-π-is-fib
-
-  liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
-              → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
-  liftFib {A = A} {P = P} .fst fib
-    = ♭-map (postcomp-Π (√ᵈ-naturality← _ _))
-            (rintro (♭-map (rel-fib P .fst) fib))
-  liftFib {A = A} {P = P} .snd
-    = ♭-map (UFib-is-fib ∘ (λ af a → (mk-ufib (P a) (af a))))
-
-
-  module UIdS
-           (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-                              (@♭ A : (I → Γ) → Type 𝓥)
-                            → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
-           where
-    is-afib-is-prop
-      : ∀ {@♭ 𝓤} {A : Type 𝓤} → is-prop (is-afib A)
-    is-afib-is-prop = √ᵈ-is-prop is-fib is-fib-is-prop _
-
-
-    Car-is-emb : ∀ {@♭ 𝓤} → is-prop-map (UFib.Car {𝓤})
-    Car-is-emb X = is-prop←equiv-to-prop
-      (equiv←qiso
-        (mk-iso
-         (λ a → (mk-ufib X a , refl))
-         ( (λ where (a , refl) → a .UFib.has-is-afib)
-         , ~refl
-         , λ where (a , refl) → refl)))
-      (is-afib-is-prop {A = X})
-
-    instance
-      UFib-IdS : ∀ {@♭ 𝓤} → Identity-system (UFib 𝓤) 𝓤
-      UFib-IdS {𝓤} = IdS←Embedding {f = UFib.Car} Car-is-emb (IdS-ua {𝓤})
-}
-%```
-}
-
-
-
-%```agda
-\agda{
-  -- √₁-∘ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
-  --          {f : ⟨♭| (B → C) ⟩} {g : ⟨♭| (A → B)⟩}
-  --          → √₁ (f ∘♭ g) ＝ √₁ f ∘♭ √₁ g
-  -- √₁-∘ {f = f♭}{g♭}
-  --   =    √₁ (f♭ ∘♭ g♭)
-  --   ＝⟨⟩
-  --        transpose (♭-map (precomp _ √ε) (f♭ ∘♭ g♭))
-  --   ＝⟨⟩
-  --        transpose (♭-map (precomp _ √ε) (♭-map' (♭-map (postcomp _) f♭) g♭))
-  --   ＝⟨ sym (ap transpose (♭-map-∘♭ (mod♭ (precomp _ √ε)) (♭-map (postcomp _) f♭) g♭)) ⟩
-  --        transpose (♭-map' (mod♭ (precomp _ √ε) ∘♭ ♭-map (postcomp _) f♭) g♭)
-  --   ＝⟨ {!!} ⟩
-  --        ♭-map' (♭-map (postcomp _) (√₁ f♭)) (√₁ g♭)
-  --   ＝⟨⟩
-  --        (√₁ f♭ ∘♭ √₁ g♭)
-  --   ∎
-
-
-  -- test : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-  --        → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
-  --        → ⟨♭| Π (I → (√ A × √ A)) (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) ⟩
-  -- test = relim
-
-  -- test2 : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-  --         → ⟨♭| Π (A × A) (λ g → fst g ＝ snd g) ⟩
-  --         → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
-  -- test2
-  --   = rintro
-  --   ∘ ♭-map (precomp-Π (λ z → fst z ＝ snd z) λ x → (√ε (fst ∘ x) , √ε (snd ∘ x)))
-
-  -- global-Σ-pres→
-  --   : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : A → Type 𝓦}
-  --     → ⟨♭| (Γ → √ (Σ A B))⟩ ≃ ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε)))⟩
-  -- global-Σ-pres→ {Γ = Γ}{A}{B}
-  --   = ⟨♭| (Γ → √ (Σ A B)) ⟩   ≃⟨ exp⊣√ e⁻¹ ⟩
-  --     ⟨♭| ((I → Γ) → Σ A B) ⟩ ≃⟨ ♭≃ (Σ-Π-swap≃ _ _) ⟩
-  --     ⟨♭| Σ ((x : I → Γ) → A) (λ f → (x : I → Γ) → B (f x)) ⟩
-  --                             ≃⟨ ♭-commΣ _ e⁻¹ ⟩
-  --     Σ♭ ((I → Γ) → A) (λ (@♭ x) → ⟨♭| ((x₁ : I → Γ) → B (x x₁)) ⟩)
-  --                             ≃⟨ mk≃ (map-Σ _ (♭-ind _ (λ x → {!!}))) (map-Σ-is-equiv
-  --                               {Y = ♭-ind _ (λ f → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩)}
-  --                               (exp⊣√ ._≃_.has-is-eqv)
-  --                               (♭-ind _ (λ x → {!!}))) ⟩
-  --     Σ ⟨♭| ((b : Γ) → √ A) ⟩
-  --      (♭-ind _
-  --       (λ (@♭ f) → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩))
-  --                             ≃⟨ Σ-ap-≃ (♭-ind _
-  --                               (λ f → mk≃ (♭-map (postcomp-Π
-  --                                                 (λ g → √ᵈ-naturality← (B ∘ √ε) f g))
-  --                                          ∘ rintro {A = B ∘ √ε ∘ postcomp _ f})
-  --                                          (is-equiv-∘ (♭-map-is-equiv
-  --                                            (postcomp-Π-equiv (√ᵈ-naturality-is-equiv' f _)))
-  --                                            rintro-is-equiv))) ⟩
-  --     Σ ⟨♭| (Γ → √ A) ⟩ (♭-ind _
-  --                        (λ (@♭ f) →
-  --                           ⟨♭|
-  --                           (∀ x → √ᵈ (B ∘ √ε) (f x))
-  --                           ⟩))                       ≃⟨ ♭-commΣ _ ⟩
-  --     ⟨♭| Σ[ f ∶ ((x : Γ) → √ A)]
-  --          ((x : Γ) → (√ᵈ (B ∘ √ε) (f x))) ⟩               ≃⟨ ♭≃ (Σ-Π-swap≃ _ _ e⁻¹) ⟩
-  --     ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε))) ⟩ ≃∎
-
-  -- √-pres-Σ→ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
-  --             → √ (Σ A B) → Σ (√ A) (√ᵈ (B ∘ √ε))
-  -- √-pres-Σ→ x .fst = ε♭ (transpose (mod♭ (λ g → fst (√ε g)))) x
-  -- √-pres-Σ→ {B = B} x .snd
-  --   =  √ᵈ-naturality←
-  --        (B ∘ √ε) (ε♭ (√₁ (mod♭ fst))) x
-  --        (tr classify-√
-  --            (happly (ap (ε♭ ∘ transpose)
-  --                        (mapply♭ (mod♭ (sym (ap (B ∘_) (ap (√ε ∘_)
-  --                          (postcomp I (ε♭ (√₁ (mod♭ fst)))
-  --                       ＝⟨ {!!} ⟩ {!!} ∎) ∙ {!!})))))) x)
-  --            (ε♭ (rintro (mod♭ (λ g → snd (√ε g)))) x))
-
-
-  -- √-pres-Σ← : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
-  --             → Σ (√ A) (√ᵈ (B ∘ √ε)) → √ (Σ A B)
-  -- √-pres-Σ← {B = B}
-  --   = ε♭ ( transpose (mod♭ λ g → √ε (fst ∘ g)
-  --        , (ε♭ (relim (mod♭ λ g → √ᵈ-naturality→ (B ∘ √ε) fst g (g .snd))) g)))
-
-  -- √-pres-Σ-is-equiv
-  --   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
-  --     → is-equiv (√-pres-Σ→ {B = B})
-  -- √-pres-Σ-is-equiv {A = A}{B} = is-equiv←qiso
-  --   ( √-pres-Σ←
-  --   , (λ a → {!!})
-  --   , {!!})
 
   -- √-Path-is-torsorial
   --   : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (a : √ A) → is-singleton (Σ _ (√-Path a))
@@ -823,3 +804,4 @@ module AmazinglyFibrant {@♭ 𝓘} (@♭ I : Type 𝓘)
   --      -- (ε♭ (√ᵈ-is-singleton (mod♭ (λ _ → Sing-is-singleton)))))
 }
 %```
+}

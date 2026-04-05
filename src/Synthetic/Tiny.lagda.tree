@@ -1,46 +1,35 @@
-\date{2025-07-02}
+\date{2026-03-14}
 \title{Synthetic Tiny objects}
 \author{samueltoth}
 \taxon{Module}
 \import{stt-macros}
 
-\subtree[stt-00B9]{
-\taxon{Warning}
-\p{This module uses some strong rewrite rules which I am not certain have semantic
-justification, it is likely that it will be rewritten to a more orhodox foundation
-in the future. Nonetheless the interface exposed in \ref{stt-00AA}
-and \ref{stt-00AH} will hopefully remain intact.}
-}
 
-\subtree[stt-00BA]{
-\taxon{Warning}
-\p{Instantiating this module at a particular type axiomitises that the type
-has an amazing right adjoint. There are types for which this is not sound.}
-}
 
 %```agda
 \agda{
-open import Foundations.Prelude
+module Synthetic.Tiny where
 
-module Synthetic.Tiny {@♭ 𝓘} (@♭ I : Type 𝓘) where
+open import Foundations.Prelude
+open import ufAxioms
 
 open import Modalities.Cohesion.Flat
-open import ufAxioms
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Instances.Truncation
+
+open import Ergonomics.Extensionality
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+open import Core.PiSection
+open import Core.UniversalFibration
+open import Core.Small
 }
 %```
 
 
-\subtree[stt-00BC]{
-\title{Internally Tiny Object}
-\date{2025-11-17}
-\taxon{Definition}
-
-\p{In a cartesian closed category #{\CC}, for each object #{I}, there is an
-adjunction #{- \times I \dashv -^I}. The object is called (internally)-\em{tiny}
-or sometimes \em{atomic} if #{-^I} has a further right adjoint, which we will
-call #{\sqrt[I]{-}}. This right adjoint is also referred to as \em{the amazing
-right adjoint} - terminology which stems from synthetic differential geometry.}
-}
+\transclude{stt-00BC}
 
 \subtree{
 \title{Idea}
@@ -62,369 +51,775 @@ define the category of spaces. Secondly, Mitchel Riley \citek{MR2024} introduced
 bespoke type theory that incorporates a tiny object.}
 
 \p{Seperately, \citek{LOPS2018} make use of the [flat
-modality](Modalities.Cohesion.Flat) to postulate an amazing right adjoint. In this
+modality](Modalities.Flat.Flat) to postulate an amazing right adjoint. In this
 module we formalise a similar construction, except instead of postulating the
 adjunction directly, we postulate a type former with #{\beta} and #{\eta} laws
 roughly based off Mitchel Riley's work.  }
 }
 
-\subtree[stt-00AG]{
-\taxon{Notation}
 
-\p{We first define some notation that allows the posulated rules for the
-[root type](stt-00A8) to appear close to how they would be presented in the
-description of a type theory.}
+\subtree[tot-0001]{
+\title{Tiny types}
+\taxon{Definition}
+
+%```agda
+\agda{
+is-tiny-structure
+  : ∀ {@♭ 𝓤 𝓥} (@♭ I : Type 𝓤) (@♭ A : Type 𝓥)
+      (@♭ √A : Type 𝓥) (@♭ √ε : (I → √A) → A) → Typeω
+is-tiny-structure I A √A √ε
+  = ∀ {@♭ 𝓤} {@♭ X : Type 𝓤}
+    → is-equiv {A = ⟨♭| (X → √A) ⟩} {B = ⟨♭| ((I → X) → A) ⟩}
+               (♭-map (postcomp _ √ε ∘ postcomp I))
+
+record Σω {𝓤} (A : Type 𝓤) (B : A → Typeω) : Typeω where
+  constructor _,_
+  field
+    fstω : A
+    sndω : B fstω
+
+open Σω
+
+Σω♭ : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) (B : @♭ A → Typeω)
+     → Typeω
+Σω♭ A B = Σω ⟨♭| A ⟩ λ where (mod♭ a) → B a
+
+@♭ sndω♭ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ B : @♭ A → Typeω}
+           → (@♭ x : Σω♭ A B) → B (ε♭ (fstω x))
+sndω♭ (mod♭ x , y) = y
+
+syntax Σω♭ A (λ x → B) = Σω[♭ x ∶ A ] B
+
+
+is-tiny : ∀ {@♭ 𝓘} → @♭ Type 𝓘 → Typeω
+is-tiny I
+  = ∀ {@♭ 𝓤} → Σω[♭ √ ∶ (∀ (@♭ A : Type 𝓤) → Type 𝓤) ]
+                 Σω[♭ √ε ∶ (∀ {@♭ A : Type 𝓤} → (I → √ A) → A) ]
+                   (∀ {@♭ A : Type 𝓤} → is-tiny-structure I A (√ A) √ε)
+
+Types-separate
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B) → Typeω
+Types-separate f
+  = @♭ (∀ {@♭ 𝓤 }{@♭ Γ : Type 𝓤} →  is-equiv (♭-map (postcomp Γ f)))
+    → is-equiv f
+}
+%```
+}
+
+\subtree[tot-23JK]{
+
+%```agda
+\agda{
+module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
+            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                              → is-tiny-structure I A (√ A) √ε)
+            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
+            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-prop A → is-♭-discrete A)
+            where
+  module is-tiny {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ X : Type 𝓥}
+    = is-equiv (is-tiny-str {𝓤} {A} {𝓥} {X})
+
+  transpose : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+              → ⟨♭| ((I → Γ) → A)⟩ → ⟨♭| (Γ → √ A) ⟩
+  transpose = is-equiv.bwd is-tiny-str
+
+  untranspose : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+              → (Γ → √ A) → ((I → Γ) → A)
+  untranspose = postcomp _ √ε ∘ postcomp I
+
+  transpose-unique'
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        {f : ⟨♭| ((I → Γ) → A)⟩} {g : ⟨♭| (Γ → √ A) ⟩}
+      → ♭-map untranspose g ＝ f
+      → g ＝ transpose f
+  transpose-unique' {f = f} H = unap-equiv is-tiny-str (H ∙ is-tiny.ε⁻¹ f)
+
+  transpose-unique'-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        {f : ⟨♭| ((I → Γ) → A)⟩} {g : ⟨♭| (Γ → √ A) ⟩}
+      → is-equiv (transpose-unique' {f = f}{g})
+  transpose-unique'-is-equiv{f = f}{g}
+    = is-equiv-∘
+        (unap-equiv-is-equiv is-tiny-str)
+        (∙-is-equiv' (is-tiny.ε⁻¹ f))
+
+  transpose-unique
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        {@♭ f : ((I → Γ) → A)} {@♭ g : Γ → √ A}
+      → ⟨♭| (untranspose g) ＝ f ⟩
+      → ⟨♭| g ＝ ε♭ (transpose (mod♭ f)) ⟩
+  transpose-unique {g = g}
+    = ♭-map (ap ε♭ ∘ transpose-unique' {g = mod♭ g}) ∘ ap♭' mod♭
+
+  transpose-unique-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        {@♭ f : ((I → Γ) → A)} {@♭ g : Γ → √ A}
+      → is-equiv (transpose-unique {f = f}{g})
+  transpose-unique-is-equiv {Γ = Γ} {A} {f} {g}
+    = is-equiv←Arrow-equiv⁻¹
+        {F = test}
+        test-is-equiv
+        (♭-map-is-equiv transpose-unique'-is-equiv) where
+    lemma : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x : A} {@♭ y : ⟨♭| A ⟩}
+            → mod♭ (ε♭ y) ＝ y
+    lemma {y = mod♭ y} = refl
+
+    lemma⁻¹ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x : A}{@♭ y}
+            → ⟨♭| x ＝ ε♭ y ⟩ → ⟨♭| (mod♭ x ＝ y) ⟩
+    lemma⁻¹ {x = x} {y} = ♭-map ((_∙ lemma {x = x}) ∘ mapply♭) ∘ comult
+
+    lemma⁻¹-refl : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ x}{@♭ y : ⟨♭| A ⟩}
+                   → (@♭ p : mod♭ x ＝ y)
+                   → lemma⁻¹ {y = y} (mod♭ (ap ε♭ p)) ＝ mod♭ p
+    lemma⁻¹-refl {y = mod♭ y}
+      = strong-J♭ (λ _ p → lemma⁻¹ (mod♭ (ap ε♭ p)) ＝ mod♭ p) refl
+
+    map : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+          → ⟨♭| a ＝ b ⟩ → ⟨♭| mod♭ a ＝ mod♭ b ⟩
+    map (mod♭ p) = mod♭ (ap♭ mod♭ p)
+
+    map-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+                   → is-equiv (map {a = a}{b})
+    map-is-equiv
+      = homotopy-is-equiv
+          {f = ♭-map mapply♭ ∘ comult }
+          (♭-ind _
+            (strong-J♭
+              (λ b p → (♭-map mapply♭ ∘ comult) (mod♭ p) ＝ mod♭ (ap♭ mod♭ p))
+              refl))
+          (is-equiv-∘
+            (♭-map-is-equiv mapply♭-is-equiv)
+            comult-is-equiv)
+
+    test : Arrow-map (transpose-unique {Γ = Γ} {A}{f}{g})
+                     (♭-map (transpose-unique' {Γ = Γ} {A}{mod♭ f}{mod♭ g}))
+    test .Arrow-Π.top = map
+    test .Arrow-Π.bot = lemma⁻¹
+    test .Arrow-Π.comm (mod♭ p) = lemma⁻¹-refl _
+
+
+    test-is-equiv : is-Arrow-equiv test
+    test-is-equiv .fst = map-is-equiv
+    test-is-equiv .snd = is-equiv-∘
+      (♭-map-is-equiv (is-equiv-∘ (∙-is-equiv' lemma) mapply♭-is-equiv))
+      comult-is-equiv
+
+  transpose-naturality
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓦} {@♭ A : Type 𝓥}
+      → (P : ⟨♭| ((I → Γ) → A)⟩)
+      → (@♭ σ : Δ → Γ)
+      → transpose (♭-map (precomp _ (postcomp I σ)) P)
+      ＝ ♭-map (precomp _ σ) (transpose P)
+  transpose-naturality (mod♭ P) σ = sym (transpose-unique'
+    ( (♭-map untranspose ∘ ♭-map (precomp (√ _) σ)) (transpose (mod♭ P))
+    ＝⟨ sym (♭-∘ untranspose (precomp _ σ) _) ⟩
+       ♭-map (untranspose ∘ precomp _ σ) (transpose (mod♭ P))
+    ＝⟨⟩
+       ♭-map (precomp _  (postcomp _ σ) ∘ untranspose) (transpose (mod♭ P))
+    ＝⟨ ♭-∘ _ untranspose (transpose (mod♭ P)) ⟩
+       ♭-map (precomp _  (postcomp _ σ)) (♭-map untranspose (transpose (mod♭ P)))
+    ＝⟨ ap (♭-map _) (is-tiny.ε (mod♭ P)) ⟩
+      ♭-map (precomp _ (postcomp I σ)) (mod♭ P) ∎))
+
+  untranspose-naturality
+    : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : Type 𝓥}
+       → (σ : Δ → Γ)
+       → (f : Γ → √ A)
+       → untranspose (f ∘ σ) ＝ untranspose f ∘ postcomp _ σ
+  untranspose-naturality σ f = refl
+
+  exp⊣√ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+          → ⟨♭| ((I → A) → B) ⟩ ≃ ⟨♭| (A → √ B) ⟩
+  exp⊣√ ._≃_.fwd = _
+  exp⊣√ ._≃_.has-is-eqv = is-equiv⁻¹ is-tiny-str
+}
+%```
+}
 
 \subtree{
-\title{Technical remark}
-
-\p{We make the substitution operation (which is just function composition)
-opaque, so that we can make use of rewriting to make substitution commute with
-new type formers definitionally. We prove functoriality of substitution inside
-the opaque block, and then \em{re-expose} this computational behaviour using
-rewrite rules.}
-}
+\title{Functoriality of the amazing right adjoint}
+\taxon{Lemma}
 
 %```agda
 \agda{
-module LFNotation where
-  infixl 20 _⊢_
-  _⊢_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
-  A ⊢ B = A → B
-  ty-syntax : ∀ {@♭ 𝓤} (@♭ Γ : Type 𝓤) 𝓥 → Type (𝓤 ⊔ lsuc 𝓥)
-  ty-syntax Γ 𝓥 = Γ → Type 𝓥
+  √₁ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} → ⟨♭| (A → B) ⟩ → ⟨♭| (√ A → √ B)⟩
+  √₁ {B = B} = transpose ∘ ♭-map (precomp B √ε)
 
-  syntax ty-syntax Γ 𝓥 = Γ ⊢ ty 𝓥
-  tm-syntax : ∀ {@♭ 𝓤 𝓥} (@♭ Γ : Type 𝓤) (A : Γ ⊢ ty 𝓥)
-              → Type (𝓤 ⊔ 𝓥)
-  tm-syntax Γ A = Π _ A
+  √₁-id : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √₁ (mod♭ id) ＝ mod♭ (id {A = √ A})
+  √₁-id = sym (transpose-unique' refl)
 
-  syntax tm-syntax Γ A = Γ ⊢ tm A
 
-  infixl 20 _⨾_
-  _⨾_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
-  Γ ⨾ A = Γ × A
+  √₁-nat : ∀ {@♭ 𝓤 𝓥 𝓥'} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓥'}
+          → (f : ⟨♭| (B → A)⟩)
+          → untranspose {Γ = Γ} {A} ∘ postcomp _ (ε♭ (√₁ f))
+          ＝ postcomp _ (ε♭ f) ∘ untranspose
+  √₁-nat {Γ = Γ} {A} (mod♭ f)
+    =     untranspose ∘ postcomp Γ (ε♭ (√₁ (mod♭ f)))
+    ＝⟨⟩
+          untranspose ∘ postcomp Γ (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ f))))
+    ＝⟨⟩
+          (λ x → untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))) ∘ x))
+    ＝⟨⟩
+         postcomp _ (untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))))) ∘ postcomp I
+    ＝⟨ ap (_∘ postcomp I)
+           (ap (postcomp _) (sym (ε♭-natural (transpose (mod♭ (f ∘ √ε)))) )) ⟩
+         postcomp _ (ε♭ (♭-map untranspose (transpose (mod♭ (f ∘ √ε)))))
+       ∘ postcomp I
+    ＝⟨ ap (_∘ postcomp I) (ap (postcomp _) (ap ε♭ (is-tiny.ε (mod♭ (f ∘ √ε))))) ⟩
+          postcomp _ (f ∘ √ε) ∘ postcomp I
+    ＝⟨⟩
+          postcomp (I → _) f ∘ untranspose
+    ∎
 
+  ♭-map' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+             (f : ⟨♭| (A → B)⟩) → ⟨♭| A ⟩ → ⟨♭| B ⟩
+  ♭-map' (mod♭ f) = ♭-map f
+
+  _∘♭_ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+           (f : ⟨♭| (B → C) ⟩) (g : ⟨♭| (A → B)⟩) → ⟨♭| (A → C)⟩
+  _∘♭_ f = ♭-map' (♭-map (postcomp _) f)
+
+  ♭-map-∘
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+        (@♭ f : B → C) (@♭ g : A → B) → ♭-map (f ∘ g) ~ ♭-map f ∘ ♭-map g
+  ♭-map-∘ f g (mod♭ a) = refl
+
+  ♭-map-∘♭
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+        (f : ⟨♭| (B → C)⟩) (g : ⟨♭| (A → B)⟩)
+      → ♭-map' (f ∘♭ g) ~ ♭-map' f ∘ ♭-map' g
+  ♭-map-∘♭ (mod♭ f) (mod♭ g) (mod♭ a) = refl
 
   opaque
-   _[_] : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
-        → (Δ ⊢ ty 𝓦)
-        → (Γ → Δ)
-        → Γ ⊢ ty 𝓦
-   A [ σ ] = A ∘ σ
+    √ε-nat
+      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+          {@♭ f : Γ → A}
+        → ♭-map' (mod♭ √ε) ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
+        ~ ♭-map f ∘ ♭-map √ε
+    √ε-nat {f = f}
+      = ♭-map' (mod♭ √ε) ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
+      ~⟨ ♭-map-∘♭ (mod♭ √ε) (♭-map (postcomp I) (√₁ (mod♭ f))) ~⁻¹ ⟩
+        ♭-map' (mod♭ √ε ∘♭ ♭-map (postcomp I) (√₁ (mod♭ f)))
+      ~⟨⟩
+        ♭-map' (((mod♭ √ε ∘♭_) ∘ ♭-map (postcomp I)) (√₁ (mod♭ f)))
+      ~⟨ happly (ap ♭-map'
+                ( happly (ap (_∘ ♭-map (postcomp I)) (funext→ lemma)) (√₁ (mod♭ f))
+                ∙ sym (♭-map-∘ (postcomp _ √ε) (postcomp I) (√₁ (mod♭ f))))) ⟩
+        ♭-map' (♭-map (postcomp _ √ε ∘ postcomp I) (√₁ (mod♭ f)))
+      ~⟨ happly (ap ♭-map' (is-equiv.ε is-tiny-str (mod♭ (f ∘ √ε)))) ⟩
+        ♭-map' (mod♭ (f ∘ √ε))
+      ~⟨⟩
+        ♭-map (f ∘ √ε)
+      ~⟨ ♭-map-∘ f √ε ⟩
+        ♭-map f ∘ ♭-map √ε
+      ~∎ where
+      lemma : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+               → (_∘♭_ (mod♭ √ε)) ~ ♭-map {B = A → B} (postcomp A √ε)
+      lemma (mod♭ x) = refl
 
-   _[_]tm : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
-               {A : Δ ⊢ ty 𝓦}
-               (a : Δ ⊢ tm A)
-               (σ : Γ → Δ)
-             → Γ ⊢ tm (A [ σ ])
-   a [ σ ]tm = a ∘ σ
 
-   subst-functorial
-     : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥} {@♭ Θ : Type 𝓦}
-         (A : Θ ⊢ ty 𝓜)
-         (σ : Δ → Θ) (δ : Γ → Δ)
-       → (A [ σ ]) [ δ ] ＝ (A [ σ ∘ δ ])
-   subst-functorial _ _ _ = refl
-
-   subst-id
-     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-         (A : Γ ⊢ ty 𝓥)
-       → A [ id ] ＝ A
-   subst-id = ~refl
-
-  wk-ty : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (A : Type 𝓥) → Γ ⊢ ty 𝓥
-  wk-ty = const _ _
-
-  {-# REWRITE subst-functorial subst-id #-}
+  √ε-naturality-square
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        {@♭ f : Γ → A}
+      → Arrow-map (♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))) (♭-map f)
+  √ε-naturality-square .Arrow-Π.top = ♭-map √ε
+  √ε-naturality-square .Arrow-Π.bot = ♭-map √ε
+  √ε-naturality-square {f = f} .Arrow-Π.comm = √ε-nat
 }
 %```
 }
 
-\subtree[stt-00AF]{
-\title{The Root type former}
-\taxon{Definition}
+\subtree{
+\title{The amazing right adjoint preserves limits}
+\taxon{Lemma}
 
 %```agda
 \agda{
-open LFNotation
-}
-%```
+  √1-is-single : is-singleton (√ 𝟙)
+  √1-is-single = is-single←equiv-to-single
+    (mk≃ _ (types-separate {f = √ε ∘ const _ _} lemma) e⁻¹)
+    𝟙-is-singleton where
+    lemma : ∀ {@♭ 𝓦} {@♭ X : Type 𝓦} → is-equiv (♭-map (postcomp X _))
+    lemma
+      = homotopy-is-equiv
+          {f = ♭-map (λ _ _ → tt) ∘ (♭-map (postcomp _ √ε ∘ postcomp I)) }
+          (λ a → is-prop←is-single (♭-is-single single!) _ _)
+          (is-equiv-∘ {f = ♭-map (λ _ _ → tt)}
+            (♭-map-is-equiv
+              (is-equiv←single-to-prop single! (λ _ _ → prop!) _))
+            is-tiny-str)
 
-\p{We also expose notation for exponentiating a context by #{I}, and show that
-this has a functorial action by substution, as well as the unit and counit of
-the adjunction #{-;I \dashv \mathcal{P}(-)}.}
+  instance
+    √𝟙-Is-truncated : ∀ {n} → Is-truncated n (√ 𝟙)
+    √𝟙-Is-truncated
+      = truncation-instance 0 (is-truncated←is-singleton √1-is-single)
 
-%```agda
-\agda{
-private
-  𝓟 : ∀ {𝓤} (A : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
-  𝓟 A = I → A
+  √-is-single' : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                → @♭ is-singleton A → is-singleton (√ A)
+  √-is-single' {A = A} as
+    = is-single←equiv-to-single
+        (mk≃ _ (types-separate {f = √ε ∘ const _ _} lemma) e⁻¹)
+        as where
+    instance
+      @♭ _ : ∀ {n} → Is-truncated n A
+      _ = truncation-instance 0 (is-truncated←is-singleton as)
 
-  𝓟₁ : ∀ {𝓤 𝓥} {Γ : Type 𝓤} {Δ : Type 𝓥}
-     → (Γ → Δ) → (𝓟 Γ → 𝓟 Δ)
-  𝓟₁ = postcomp _
+    lemma : ∀ {@♭ 𝓦} {@♭ X : Type 𝓦}
+            → is-equiv (♭-map (postcomp X (√ε ∘ const _ _)))
+    lemma
+      = homotopy-is-equiv
+          {f = ♭-map (λ _ _ → as .centre) ∘ (♭-map (postcomp _ √ε ∘ postcomp I))}
+          (λ a → is-prop←is-single (♭-is-single single!) _ _)
+          (is-equiv-∘
+            (♭-map-is-equiv (is-equiv←single-to-prop single! (λ _ _ → prop!) _))
+            is-tiny-str)
 
-  unit : ∀ {𝓤} {Γ : Type 𝓤} → Γ → (𝓟 (Γ ⨾ I))
-  unit g i = g , i
+  √-is-single : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                → is-singleton A → is-singleton (√ A)
+  √-is-single {A = A} as
+    = ♭-ind (λ _ → is-singleton (√ A))
+            (λ as' → √-is-single' as')
+            (is-equiv.bwd (prop-is-disc is-single-is-prop) as)
 
-  counit : ∀ {𝓤} {Γ : Type 𝓤} → (𝓟 Γ ⨾ I) → Γ
-  counit (g , i) = g i
-}
-%```
+  √-is-prop : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ is-prop A → is-prop (√ A)
+  √-is-prop x = is-prop←is-single-if-inhabited
+    (√ε ∘ const _ _
+    ∘ ε♭ (transpose (mod♭ λ a → √-is-single (mk-singl (√ε a) (x _)))))
 
+  global-√-pres-×
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
+      → ⟨♭| (Γ → √ A × √ B)⟩ ≃ ⟨♭| (Γ → √(A × B))⟩
+  global-√-pres-× {Γ = Γ}{A}{B}
+    = ⟨♭| (Γ → √ A × √ B) ⟩                    ≃⟨ ♭≃ (Σ-Π-swap≃ (λ _ → √ A) (λ _ _ → √ B)) ⟩
+      ⟨♭| (Γ → √ A) × (Γ → √ B)⟩               ≃⟨ ♭-pres-× ⟩
+      ⟨♭| (Γ → √ A)⟩ × ⟨♭| (Γ → √ B) ⟩         ≃⟨ (exp⊣√ ×≃ exp⊣√) e⁻¹ ⟩
+      ⟨♭| ((I → Γ) → A)⟩ × ⟨♭| ((I → Γ) → B) ⟩ ≃⟨ ♭-pres-× e⁻¹ ⟩
+      ⟨♭| (((I → Γ) → A) × ((I → Γ) → B)) ⟩    ≃⟨ ♭≃ (Σ-Π-swap≃ (λ _ → A) (λ _ _ → B)) e⁻¹ ⟩
+      ⟨♭| ((I → Γ) → A × B) ⟩                  ≃⟨ exp⊣√ ⟩
+      ⟨♭| (Γ → √ (A × B)) ⟩                    ≃∎
 
-\p{With this notation in hand, we can write the formation, introduction and
-elimination rules as well as their laws in Agda in a readable way. We also make
-as many things as possible commute using rewriting (whilst keeping the confluence
-checker happy).}
+  pack-√×
+    : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → (√ A × √ B) → √(A × B)
+  pack-√× = ε♭ (global-√-pres-× ._≃_.fwd (mod♭ id))
 
-%```agda
-\agda{
-postulate
-  √ : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-      → @♭ (𝓟 Γ) ⊢ ty 𝓥
-      ---------------------
-      →  Γ ⊢ ty 𝓥
-
-  √-nat
-    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
-        (@♭ σ : Γ → Δ)
-        (@♭ A : 𝓟 Δ ⊢ ty 𝓦)
-      → (√ A) [ σ ] ＝ √ (A [ 𝓟₁ σ ])
-
-
-{-# REWRITE √-nat #-}
-
-postulate
-  rintro
-    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} →
-          {@♭ A : 𝓟 Γ ⊢ ty 𝓥} → (@♭ a : 𝓟 Γ ⊢ tm A)
-      → ----------------------------------------------
-                    Γ ⊢ tm (√ A)
-
-  relim
-    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (𝓟 (Γ ⨾ I)) ⊢ ty 𝓥} →
-         @♭ ((Γ ⨾ I) ⊢ tm (√ A))
-      → ------------------------
-          Γ ⊢ tm (A [ unit ])
-
-  relim-β
-    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : 𝓟 (Γ ⨾ I) ⊢ ty 𝓥} →
-            (@♭ a : 𝓟 (Γ ⨾ I) ⊢ tm A)
-     → ------------------------------------------
-          relim (rintro a) ~ (a [ unit ]tm)
-
-  relim-η
-    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : 𝓟 Γ ⊢ ty 𝓥} →
-            (@♭ a : Γ ⊢ tm √ A)
-      → --------------------------------------
-          a ~ rintro (relim  (a [ counit ]tm))
-
-
-  R-nat
-   : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥}
-       {@♭ A : 𝓟 Δ ⊢ ty 𝓦} (@♭ σ : Γ → Δ)
-     → (@♭ f : (𝓟 Δ) ⊢ tm A)
-     → rintro f [ σ ]tm ＝ rintro (f [ 𝓟₁ σ ]tm)
-
-{-# REWRITE R-nat relim-β #-}
-
-
-opaque
-   unfolding _[_]
-   tm-subst-functorial
-     : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓥} {@♭ Θ : Type 𝓦}
-         {A : Θ ⊢ ty 𝓜}
-         (a : Θ ⊢ tm A)
-         (σ : Δ → Θ) (δ : Γ → Δ)
-       → (a [ σ ]tm) [ δ ]tm ＝ (a [ σ ∘ δ ]tm)
-   tm-subst-functorial _ _ _ = refl
-
-   tm-subst-id
-     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-         {A : Γ ⊢ ty 𝓥}
-         (a : Γ ⊢ tm A)
-       → a [ id ]tm ＝ a
-   tm-subst-id = ~refl
+  unpack-√×
+    : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}{@♭ B : Type 𝓥}
+      → √(A × B) → √ A × √ B
+  unpack-√× = ε♭ (_≃_.bwd global-√-pres-× (mod♭ id))
 }
 %```
 }
 
-\subtree[stt-00AA]{
-\title{Root is a right adjoint}
-\taxon{Theorem}
-
-\p{We can now derive the adjunction as it is presented in \citek{LOPS2024} -
-including a dependent version of the left adjoint.}
+\subtree{
+\title{The dependent amazing right adjoint}
 
 %```agda
 \agda{
-module LOPS where
-  L : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-      → @♭ ( A ⊢ tm (√ (wk-ty B))) → (𝓟 A → B)
-  L f = relim (f [ counit ]tm)
+module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
+            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                              → is-tiny-structure I A (√ A) √ε)
+            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
+            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                               → is-prop A → is-♭-discrete A) where
+  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc
 
-  R : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-      → @♭ (𝓟 A → B) → Π A (√ (wk-ty B))
-  R = rintro
+  private
+    √Type∙-π : ∀ {@♭ 𝓤} → ⟨♭| (√(Σ (Type 𝓤) id) → √(Type 𝓤)) ⟩
+    √Type∙-π = √₁ (mod♭ (Type-π _))
 
-  LR : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-           {@♭ f : 𝓟 A → B}
-         → L (R f) ＝ f
-  LR {f = f}
-      =    L (R f)
-         ＝⟨⟩
-           relim ((rintro f) [ counit ]tm)
-         ＝⟨⟩
-           relim (rintro (f [ 𝓟₁ counit ]tm))
-         ＝⟨⟩ -- ⟨ funext→ (relim-β (f [ 𝓟₁ counit ]tm)) ⟩
-           (f [ 𝓟₁ counit ]tm) [ unit ]tm
-         ＝⟨ lem ⟩
-           f ∎ where
-    opaque
-      unfolding _[_]
-      lem : ((f [ 𝓟₁ counit ]tm) [ unit ]tm) ＝ f
-      lem = refl
+  classify-√ : ∀ {@♭ 𝓤} → √(Type 𝓤) → Type (lsuc 𝓤)
+  classify-√
+    = Type-is-universal.arrow-map {f = ε♭ (√Type∙-π)}
+                                  (λ _ → self-is-small) .Arrow-map.bot
 
+  √ᵈ : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} → @♭ ((I → Γ) → Type 𝓥) → Γ → Type (lsuc 𝓥)
+  √ᵈ A = classify-√ ∘ ε♭ (transpose (mod♭ A))
 
-  RL : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-         {@♭ f : Π A (√ (wk-ty B))}
-       → R (L f) ＝ f
-  RL {f = f} = sym (funext→ (relim-η f))
-
-
-  L' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : 𝓟 A → Type 𝓥}
-      → @♭ ( A ⊢ tm (√ B)) → (Π (𝓟 A) B)
-  L' f = relim (f [ counit ]tm)
-}
-%```
-}
-
-\subtree[stt-00AO]{
-\title{Relative notions of fibrancy}
-\taxon{Definition}
-
-\p{Fixing a type #{I}, and given #{\mathcal{F}} a family of predicates over
-families of types #{A \to \UU}, we say that #{\mathcal{F}} is #{I}-relative for
-some type #{I} if #{P} is fibrant iff for any map #{x : I \to A}, #{P \circ x}
-is fibrant.
-}
-
-%```agda
-\agda{
-is-relative : ∀ {α : Level → Level → Level}
-              → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
-              → Typeω
-is-relative is-fib
-  = ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
-    → (is-fib P ⇔ (∀ (x : I → A) → is-fib (P ∘ x) ))
-}
-%```
-}
-
-\subtree[stt-00BB]{
-\taxon{Theorem}
-\title{Relative fibrations are pullback stable}
-
-\p{Any notion of fibration which is relative is pullback stable.}
-
-%```agda
-\agda{
-is-pullback-stable : ∀ {α : Level → Level → Level}
-                     → (∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
-                     → Typeω
-is-pullback-stable is-fib
-  = ∀ {𝓤 𝓤' 𝓥} {Γ : Type 𝓤'} {A : Type 𝓤} (P : A → Type 𝓥) (σ : Γ → A)
-    → is-fib P → is-fib (P ∘ σ)
-
-is-pullback-stable←is-relative
-  : ∀ {α : Level → Level → Level}
-    → (P : ∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (α 𝓤 𝓥))
-    → is-relative P → is-pullback-stable P
-is-pullback-stable←is-relative is-fib rel P σ fib
-  = rel (P ∘ σ) .snd (λ x → rel P .fst fib (σ ∘ x))
-}
-%```
-}
-
-
-\subtree[stt-00AH]{
-\taxon{Construction}
-\title{A universe that weakly classifies relative fibrations}
-
-\p{We first fix a notion of fibrancy #{\mathcal{F}}, which is predicate on type
-families, and ask that it is relative in the sense of \ref{stt-00AO}}
-
-\p{From this we can define the notation of \em{amazing fibrancy}, which is a
-predicate on a type - not a type family. Informally, amazing fibrancy says that
-a type is fibrant over any arbitrary context.}
-
-\p{The universe of fibrant types can then be defined to be the types which are
-amazingly fibrant. There is a map #{\pi : \UU_{\mathcal{F}} \to \UU}, and
-#{\UU_{\mathcal{F}}} is characterised by the property that a map #{A \to \UU}
-factors through #{\pi} iff it is fibrant.}
-
-%```agda
-\agda{
-module AFib
-       {@♭ α : Level → Level → Level}
-       (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
-       (@♭ rel-fib : is-relative is-fib)
-       where
-  open LOPS
-
-  is-afib : ∀ {@♭ 𝓤} (A : Type 𝓤) → Type (α 𝓘 𝓤)
-  is-afib {𝓤} = √ is-fib
-
-  UFib : ∀ (@♭ 𝓤) → Type (α 𝓘 𝓤 ⊔ lsuc 𝓤)
-  UFib 𝓤 = Σ[ A ∶ Type 𝓤 ] is-afib A
-
-  UFib∙ : ∀ (@♭ 𝓤) → Type (α 𝓘 𝓤 ⊔ lsuc 𝓤)
-  UFib∙ 𝓤 = Σ (UFib 𝓤) fst
-
-  F-π-is-fib : ∀ {@♭ 𝓤} → is-fib (fst {B = is-afib {𝓤}})
-  F-π-is-fib {𝓤} = rel-fib _ .snd ϕ̃ where
-    opaque
-      unfolding _[_]
-      ϕ : UFib 𝓤 ⊢ tm ((√ is-fib) [ fst ])
-      ϕ = snd
-
-    ϕ' : UFib 𝓤 ⊢ tm √ (is-fib [ 𝓟₁ fst ])
-    ϕ' = ϕ
-
-    opaque
-      unfolding _[_]
-      ϕ̃ : (x : 𝓟 (UFib 𝓤)) → is-fib (fst ∘ x)
-      ϕ̃ = L' ϕ'
-
-  UFib-fib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} → (P : A → UFib 𝓥)
-             → is-fib (fst ∘ P)
-  UFib-fib {A = A} P
-    = is-pullback-stable←is-relative is-fib rel-fib _ P F-π-is-fib
+  {-# INLINE √ᵈ #-}
 
   opaque
-    unfolding _[_]
-    rel-fib♭ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
-               → is-fib B ⇔ (𝓟 A ⊢ tm (is-fib [ 𝓟₁ B ]))
-    rel-fib♭ B = rel-fib B
+    transpose-lift♭ : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
+           → ⟨♭| Lift (Type-π 𝓥) A ⟩
+           ≃ ⟨♭| Lift (ε♭ (√Type∙-π {𝓥})) (ε♭ (transpose (mod♭ A))) ⟩
+    transpose-lift♭ {𝓤}{𝓥}{Γ}{A}
+      =   ⟨♭| Lift (Type-π 𝓥) A ⟩
+      ≃⟨ ♭-commΣ _ e⁻¹ ⟩
+          (Σ[♭ l ∶ ((I → Γ) → Type∙ 𝓥) ] ⟨♭| fst ∘ l ＝ A  ⟩)
+      ≃⟨ Σ-ap-≃-fst-bwd exp⊣√ e⁻¹ ⟩
+         Σ ⟨♭| (Γ → √ (Type∙ 𝓥)) ⟩
+          (♭-ind _ (λ (@♭ l) → ⟨♭| fst ∘ l ＝ A ⟩) ∘ ♭-map untranspose)
+      ≃⟨ Σ-ap-≃ (λ {(mod♭ l) → idequiv}) ⟩
+          (Σ[♭ l ∶ (Γ → √ (Type∙ 𝓥)) ] ⟨♭| fst ∘ untranspose l ＝ A ⟩)
+      ≃⟨ Σ-ap-≃ (λ {(mod♭ l) → mk≃ (f l) (feq l)}) ⟩
+          (Σ[♭ l ∶ (Γ → √ (Type∙ 𝓥)) ]
+             ⟨♭| (ε♭ √Type∙-π) ∘ l ＝ ε♭ (transpose (mod♭ A)) ⟩)
+      ≃⟨ ♭-commΣ _ ⟩
+          ⟨♭| Lift (ε♭ √Type∙-π) (ε♭ (transpose (mod♭ A))) ⟩
+      ≃∎ where
+      @♭ f : ∀ (@♭ l : Γ → √ (Type∙ 𝓥))
+             → ⟨♭| fst ∘ untranspose l ＝ A ⟩
+             → ⟨♭| ε♭ √Type∙-π ∘ l ＝ ε♭ (transpose (mod♭ A)) ⟩
+      f l  = transpose-unique ∘ ♭-map ((happly (√₁-nat (mod♭ fst)) l ∙_))
+
+      @♭ feq : ∀ (@♭ l) → is-equiv (f l)
+      feq l = is-equiv-∘
+        transpose-unique-is-equiv
+        (♭-map-is-equiv (∙-is-equiv (happly (√₁-nat (mod♭ fst)) l)))
+
+  Π←lift : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
+         → Lift (ε♭ (√Type∙-π {𝓥})) (ε♭ (transpose (mod♭ A)))
+         → Π Γ (√ᵈ A)
+  Π←lift {A = A} = universal-section (ε♭ (transpose (mod♭ A)))
+                                     (λ _ → self-is-small)
+
+  opaque
+    rintro
+      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
+        → ⟨♭| Π (I → Γ) A ⟩
+        → ⟨♭| Π Γ (√ᵈ A) ⟩
+    rintro {A = A}
+      = ♭-map Π←lift ∘ transpose-lift♭ ._≃_.fwd ∘ ♭-map (extension←Π A)
+
+    rintro-is-equiv
+      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
+        → is-equiv (rintro {A = A})
+    rintro-is-equiv
+      = is-equiv-∘
+          (♭-map-is-equiv (universal-section-is-equiv _ (λ _ → self-is-small)))
+          (is-equiv-∘
+            (transpose-lift♭ ._≃_.has-is-eqv)
+            (♭-map-is-equiv (extension←Π-is-equiv _)))
+
+
+    relim
+      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
+        → ⟨♭| Π Γ (√ᵈ A) ⟩
+        → ⟨♭| Π (I → Γ) A ⟩
+    relim = is-equiv.bwd rintro-is-equiv
+
+    √ᵈ-naturality→
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'}
+          (@♭ A : (I → Γ) → Type 𝓥)
+        → (@♭ σ : Δ → Γ)
+        → ∀ x → (√ᵈ A ∘ σ) x → (√ᵈ (A ∘ postcomp I σ)) x
+    √ᵈ-naturality→ A σ x = tr
+      classify-√
+      (sym (happly (ap ε♭ (transpose-naturality (mod♭ A) σ)
+                   ∙ ε♭-natural (transpose (mod♭ A)))
+                   x))
+
+    √ᵈ-naturality←
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'}
+          (@♭ A : (I → Γ) → Type 𝓥)
+        → (@♭ σ : Δ → Γ)
+        → ∀ x → (√ᵈ (A ∘ postcomp I σ)) x → (√ᵈ A ∘ σ) x
+    √ᵈ-naturality← A σ x = tr
+      classify-√
+      (happly (ap ε♭ (transpose-naturality (mod♭ A) σ)
+                   ∙ ε♭-natural (transpose (mod♭ A)))
+                   x)
+
+    √ᵈ-naturality-path
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'}
+          (@♭ A : (I → Γ) → Type 𝓥)
+        → (@♭ σ : Δ → Γ)
+        → √ᵈ (A ∘ postcomp I σ) ＝ (√ᵈ A ∘ σ)
+    √ᵈ-naturality-path A σ
+      = ap (classify-√ ∘_)
+            ( ap ε♭ (transpose-naturality (mod♭ A) σ)
+            ∙ ε♭-natural (transpose (mod♭ A)) )
+
+    √ᵈ-naturality-is-equiv'
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : (I → Γ) → Type 𝓥}
+        → (@♭ σ : Δ → Γ)
+        → is-fibrewise-equiv (√ᵈ-naturality← A σ)
+    √ᵈ-naturality-is-equiv' σ a = tr-is-equiv _
+
+    √ᵈ-naturality-is-equiv
+      : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : (I → Γ) → Type 𝓥}
+        → (@♭ σ : Δ → Γ)
+        → is-fibrewise-equiv (√ᵈ-naturality→ A σ)
+    √ᵈ-naturality-is-equiv σ a = tr-is-equiv _
+}
+%```
+}
+
+\subtree{
+\title{Amazing properties}
+
+%```agda
+\agda{
+module Amazingly {@♭ 𝓘} (@♭ I : Type 𝓘)
+            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                              → is-tiny-structure I A (√ A) √ε)
+            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
+            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                               → is-prop A → is-♭-discrete A)
+            (@♭ √prop-is-set : ∀ {@♭ 𝓤} → is-set (√ (Prop-U 𝓤))) where
+  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc
+  open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc
+
+  global-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
+  global-√ = ♭-map (ev tt) ∘ transpose ∘ ♭-map (const _ _)
+
+  global-√-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-equiv (global-√ {A = A})
+  global-√-is-equiv
+    = is-equiv-∘
+        (♭-map-is-equiv (unit-ev-is-equiv))
+        (is-equiv-∘
+          (is-equiv⁻¹ is-tiny-str)
+          (♭-map-is-equiv (sing-const-is-equiv global-funext single!)))
+
+  global-√-point : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ A → √ A
+  global-√-point a = ε♭ (global-√ (mod♭ a))
+
+  global-⊤ : ∀ (@♭ 𝓤) → √ (Prop-U 𝓤)
+  global-⊤ 𝓤 = global-√-point (ULift 𝓤 𝟙 , trunc!)
+
+  prop-class : ∀ {@♭ 𝓤} → 𝟙 → √ (Prop-U 𝓤)
+  prop-class = point (global-⊤ _)
+
+  classify-√-prop : ∀ {@♭ 𝓤} → √(Prop-U 𝓤) → Prop-U (lsuc 𝓤)
+  classify-√-prop x
+    = ( fibre prop-class x
+      , fibre-is-truncated'
+          prop-class x
+          trunc!
+          (is-truncated←is-prop (√prop-is-set _ _)))
+
+  is-amazingly-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → ⟨♭| ((I → Γ) → Prop-U 𝓥) ⟩ → ⟨♭| (Γ → Prop-U (lsuc 𝓥)) ⟩
+  is-amazingly-prop = ♭-map (postcomp _ classify-√-prop) ∘ transpose
+
+  is-amazingly
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → (@♭ A : (I → Γ) → Type 𝓥)
+      → @♭ (∀ g → is-prop (A g))
+      → (Γ → Type (lsuc 𝓥))
+  is-amazingly A Ap
+    = fst
+    ∘ (ε♭ (is-amazingly-prop
+            (mod♭ λ g → (A g , is-truncated←is-prop (Ap g)))))
+
+  is-amazingly-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (I → Γ) → Type 𝓥)
+        (@♭ Ap : ∀ x → is-prop (A x))
+      → ∀ g → is-prop (is-amazingly A Ap g)
+  is-amazingly-is-prop A Ap
+    = is-prop←is-truncated
+    ∘ snd
+    ∘ ε♭ (is-amazingly-prop (mod♭ (λ g → A g , is-truncated←is-prop (Ap g))))
+}
+%```
+}
+
+\subtree[tot-4031]{
+%```agda
+\agda{
+module AmazinglyFibrant {@♭ 𝓘} (@♭ I : Type 𝓘)
+            (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+            (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+            (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                              → is-tiny-structure I A (√ A) √ε)
+            (@♭ types-separate : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+                                   {@♭ f : A → B} → Types-separate f)
+            {@♭ α : Level → Level → Level}
+            (@♭ is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+            (@♭ is-fib-is-prop
+                  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-fib B))
+            (@♭ rel-fib : is-relative-fam I is-fib)
+            (@♭ prop-is-disc : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                               → is-prop A → is-♭-discrete A)
+            (open Dependent√ I √ √ε is-tiny-str types-separate prop-is-disc)
+            where
+  open Tiny I √ √ε is-tiny-str types-separate prop-is-disc public
+  private
+    map : ∀ {𝓤} → 𝟙 → (Prop-U 𝓤)
+    map _ = (ULift _ 𝟙 , trunc!)
+
+  √-Path : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √ A → √ A → Type (lsuc 𝓤)
+  √-Path {_}{A} a b = √ᵈ (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) (a , b)
+
+  √-Path-refl : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (a : √ A) → √-Path a a
+  √-Path-refl {A = A} a = √ᵈ-naturality← _ (Δ× (√ A)) a (ϕ a) where
+    @♭ ϕ : Π (√ A) (√ᵈ (λ x → √ε x ＝ √ε x))
+    ϕ = ε♭ (rintro {Γ = √ A}{A = λ x → √ε x ＝ √ε x} (mod♭ ~refl))
+
+  is-afib : ∀ {@♭ 𝓤} → Type 𝓤 → Type (lsuc (α 𝓘 𝓤))
+  is-afib = √ᵈ is-fib
+
+  record UFib (@♭ 𝓤) : Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤)) where
+    constructor mk-ufib
+    field
+      Car : Type 𝓤
+      has-is-afib : is-afib Car
+
+  UFib∙ : ∀ (@♭ 𝓤) → Type (lsuc (α 𝓘 𝓤 ⊔ 𝓤))
+  UFib∙ 𝓤 = Σ (UFib 𝓤) UFib.Car
+
+  UFib-π : ∀ {@♭ 𝓤} → UFib∙ 𝓤 → UFib 𝓤
+  UFib-π = fst
+
+  UFib-π-is-fib : ∀ {@♭ 𝓤} → is-fib (UFib.Car {𝓤})
+  UFib-π-is-fib = rel-fib _ .snd
+    (ε♭ (relim (mod♭ (λ a → √ᵈ-naturality→ _ UFib.Car a (a .UFib.has-is-afib)))))
+
+  UFib-is-fib : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (P : A → UFib 𝓥)
+                → is-fib (UFib.Car ∘ P)
+  UFib-is-fib P
+    = is-pullback-stable-fam←is-relative
+        I is-fib rel-fib P UFib.Car
+        UFib-π-is-fib
 
   liftFib : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
               → ⟨♭| is-fib P ⟩ ⇔ ⟨♭| (∀ a → is-afib (P a)) ⟩
-  liftFib {A = A} {P = P} .fst (mod♭ fib)
-    = mod♭ x' where
-      x : (a : A) → (is-afib [ P ]) a
-      x = rintro {Γ = A} {is-fib [ 𝓟₁ P ]} (rel-fib♭ P .fst fib)
+  liftFib {A = A} {P = P} .fst fib
+    = ♭-map (postcomp-Π (√ᵈ-naturality← _ _))
+            (rintro (♭-map (rel-fib P .fst) fib))
+  liftFib {A = A} {P = P} .snd
+    = ♭-map (UFib-is-fib ∘ (λ af a → (mk-ufib (P a) (af a))))
 
-      opaque
-       unfolding _[_]
-       x' : (a : A) → is-afib (P a)
-       x' = x
-  liftFib {P = P} .snd (mod♭ afib) = mod♭ (UFib-fib (λ a → _ , afib a))
 
-  U-classifies : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ P : A → Type 𝓥}
-                 → @♭ is-fib P → A → UFib 𝓥
-  U-classifies {P = P} ifib a = (P a , ε♭ (liftFib .fst (mod♭ ifib)) a)
+  module UIdS
+           (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+                              (@♭ A : (I → Γ) → Type 𝓥)
+                            → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+           where
+    is-afib-is-prop
+      : ∀ {@♭ 𝓤} {A : Type 𝓤} → is-prop (is-afib A)
+    is-afib-is-prop = √ᵈ-is-prop is-fib is-fib-is-prop _
+
+
+    Car-is-emb : ∀ {@♭ 𝓤} → is-prop-map (UFib.Car {𝓤})
+    Car-is-emb X = is-prop←equiv-to-prop
+      (equiv←qiso
+        (mk-iso
+         (λ a → (mk-ufib X a , refl))
+         ( (λ where (a , refl) → a .UFib.has-is-afib)
+         , ~refl
+         , λ where (a , refl) → refl)))
+      (is-afib-is-prop {A = X})
+
+    instance
+      UFib-IdS : ∀ {@♭ 𝓤} → Identity-system (UFib 𝓤) 𝓤
+      UFib-IdS {𝓤} = IdS←Embedding {f = UFib.Car} Car-is-emb (IdS-ua {𝓤})
 }
 %```
 }
+
+
+
+%```agda
+\agda{
+  -- √₁-∘ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+  --          {f : ⟨♭| (B → C) ⟩} {g : ⟨♭| (A → B)⟩}
+  --          → √₁ (f ∘♭ g) ＝ √₁ f ∘♭ √₁ g
+  -- √₁-∘ {f = f♭}{g♭}
+  --   =    √₁ (f♭ ∘♭ g♭)
+  --   ＝⟨⟩
+  --        transpose (♭-map (precomp _ √ε) (f♭ ∘♭ g♭))
+  --   ＝⟨⟩
+  --        transpose (♭-map (precomp _ √ε) (♭-map' (♭-map (postcomp _) f♭) g♭))
+  --   ＝⟨ sym (ap transpose (♭-map-∘♭ (mod♭ (precomp _ √ε)) (♭-map (postcomp _) f♭) g♭)) ⟩
+  --        transpose (♭-map' (mod♭ (precomp _ √ε) ∘♭ ♭-map (postcomp _) f♭) g♭)
+  --   ＝⟨ {!!} ⟩
+  --        ♭-map' (♭-map (postcomp _) (√₁ f♭)) (√₁ g♭)
+  --   ＝⟨⟩
+  --        (√₁ f♭ ∘♭ √₁ g♭)
+  --   ∎
+
+
+  -- test : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+  --        → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
+  --        → ⟨♭| Π (I → (√ A × √ A)) (λ g → √ε (fst ∘ g) ＝ √ε (snd ∘ g)) ⟩
+  -- test = relim
+
+  -- test2 : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+  --         → ⟨♭| Π (A × A) (λ g → fst g ＝ snd g) ⟩
+  --         → ⟨♭| Π (√ A × √ A) (uncurry √-Path) ⟩
+  -- test2
+  --   = rintro
+  --   ∘ ♭-map (precomp-Π (λ z → fst z ＝ snd z) λ x → (√ε (fst ∘ x) , √ε (snd ∘ x)))
+
+  -- global-Σ-pres→
+  --   : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : A → Type 𝓦}
+  --     → ⟨♭| (Γ → √ (Σ A B))⟩ ≃ ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε)))⟩
+  -- global-Σ-pres→ {Γ = Γ}{A}{B}
+  --   = ⟨♭| (Γ → √ (Σ A B)) ⟩   ≃⟨ exp⊣√ e⁻¹ ⟩
+  --     ⟨♭| ((I → Γ) → Σ A B) ⟩ ≃⟨ ♭≃ (Σ-Π-swap≃ _ _) ⟩
+  --     ⟨♭| Σ ((x : I → Γ) → A) (λ f → (x : I → Γ) → B (f x)) ⟩
+  --                             ≃⟨ ♭-commΣ _ e⁻¹ ⟩
+  --     Σ♭ ((I → Γ) → A) (λ (@♭ x) → ⟨♭| ((x₁ : I → Γ) → B (x x₁)) ⟩)
+  --                             ≃⟨ mk≃ (map-Σ _ (♭-ind _ (λ x → {!!}))) (map-Σ-is-equiv
+  --                               {Y = ♭-ind _ (λ f → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩)}
+  --                               (exp⊣√ ._≃_.has-is-eqv)
+  --                               (♭-ind _ (λ x → {!!}))) ⟩
+  --     Σ ⟨♭| ((b : Γ) → √ A) ⟩
+  --      (♭-ind _
+  --       (λ (@♭ f) → ⟨♭| ((x : I → Γ) → B (√ε (f ∘ x))) ⟩))
+  --                             ≃⟨ Σ-ap-≃ (♭-ind _
+  --                               (λ f → mk≃ (♭-map (postcomp-Π
+  --                                                 (λ g → √ᵈ-naturality← (B ∘ √ε) f g))
+  --                                          ∘ rintro {A = B ∘ √ε ∘ postcomp _ f})
+  --                                          (is-equiv-∘ (♭-map-is-equiv
+  --                                            (postcomp-Π-equiv (√ᵈ-naturality-is-equiv' f _)))
+  --                                            rintro-is-equiv))) ⟩
+  --     Σ ⟨♭| (Γ → √ A) ⟩ (♭-ind _
+  --                        (λ (@♭ f) →
+  --                           ⟨♭|
+  --                           (∀ x → √ᵈ (B ∘ √ε) (f x))
+  --                           ⟩))                       ≃⟨ ♭-commΣ _ ⟩
+  --     ⟨♭| Σ[ f ∶ ((x : Γ) → √ A)]
+  --          ((x : Γ) → (√ᵈ (B ∘ √ε) (f x))) ⟩               ≃⟨ ♭≃ (Σ-Π-swap≃ _ _ e⁻¹) ⟩
+  --     ⟨♭| (Γ → Σ (√ A) (√ᵈ (B ∘ √ε))) ⟩ ≃∎
+
+  -- √-pres-Σ→ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+  --             → √ (Σ A B) → Σ (√ A) (√ᵈ (B ∘ √ε))
+  -- √-pres-Σ→ x .fst = ε♭ (transpose (mod♭ (λ g → fst (√ε g)))) x
+  -- √-pres-Σ→ {B = B} x .snd
+  --   =  √ᵈ-naturality←
+  --        (B ∘ √ε) (ε♭ (√₁ (mod♭ fst))) x
+  --        (tr classify-√
+  --            (happly (ap (ε♭ ∘ transpose)
+  --                        (mapply♭ (mod♭ (sym (ap (B ∘_) (ap (√ε ∘_)
+  --                          (postcomp I (ε♭ (√₁ (mod♭ fst)))
+  --                       ＝⟨ {!!} ⟩ {!!} ∎) ∙ {!!})))))) x)
+  --            (ε♭ (rintro (mod♭ (λ g → snd (√ε g)))) x))
+
+
+  -- √-pres-Σ← : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+  --             → Σ (√ A) (√ᵈ (B ∘ √ε)) → √ (Σ A B)
+  -- √-pres-Σ← {B = B}
+  --   = ε♭ ( transpose (mod♭ λ g → √ε (fst ∘ g)
+  --        , (ε♭ (relim (mod♭ λ g → √ᵈ-naturality→ (B ∘ √ε) fst g (g .snd))) g)))
+
+  -- √-pres-Σ-is-equiv
+  --   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+  --     → is-equiv (√-pres-Σ→ {B = B})
+  -- √-pres-Σ-is-equiv {A = A}{B} = is-equiv←qiso
+  --   ( √-pres-Σ←
+  --   , (λ a → {!!})
+  --   , {!!})
+
+  -- √-Path-is-torsorial
+  --   : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (a : √ A) → is-singleton (Σ _ (√-Path a))
+  -- √-Path-is-torsorial {A = A}
+  --   = (ε♭: (∀ a → is-singleton (Σ _ (√-Path a))))
+  --      (♭-is-single←equiv-to-single
+  --       (mod♭ (λ g → {!mk≃ (√-pres-Σ→) ?!}))
+  --       (√ᵈ-is-singleton (mod♭ (λ a → Sing-is-singleton {a = √ε a}))))
+  --      -- ({!♭-map (postcomp-Π ?)!}
+  --      -- (ε♭ (√ᵈ-is-singleton (mod♭ (λ _ → Sing-is-singleton)))))
+}
+%```

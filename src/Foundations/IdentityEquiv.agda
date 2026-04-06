@@ -69,4 +69,3 @@ fibre'≃fibre
       (f : A → B) (b : B)
   → fibre' f b ≃ fibre f b
 fibre'≃fibre f b = Σ-ap-≃ λ _ → sym≃
-

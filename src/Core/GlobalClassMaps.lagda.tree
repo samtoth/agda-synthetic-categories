@@ -1,0 +1,182 @@
+\title{Global classes of maps}
+\taxon{Module}
+\date{2026-04-06}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.GlobalClassMaps where
+
+open import Foundations.Prelude
+
+open import ufAxioms
+
+open import Core.Arrow
+open import Core.ArrowEquiv
+}
+%```
+
+\subtree[stt-00KN]{
+\title{Global classes of maps}
+\author{samueltoth}
+\taxon{Definition}
+
+\p{A global class of maps is a family of subtypes of #{\textsf{Arrow}(\UU,\UV)}
+for each pair of universes #{\UU, \UV}. We ask for this class to be stable
+under equivalence of arrows.}
+
+%```agda
+\agda{
+infix 30 _∈ᵃ_
+
+_∈ᵃ_ : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤}{Y : Type 𝓥}
+       → (X → Y) → Subtype (Arrow 𝓤 𝓥) 𝓦 → Type 𝓦
+f ∈ᵃ 𝓕 = mk-arrow f ∈ 𝓕
+
+straightening-arrow-map
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → Arrow-equiv (fst: fibre p) p
+straightening-arrow-map p .fst .Arrow-Π.top = fst ∘ snd
+straightening-arrow-map p .fst .Arrow-Π.bot = id
+straightening-arrow-map p .fst .Arrow-Π.comm a = sym (a .snd .snd)
+straightening-arrow-map p .snd .fst
+  = total≃total-fibre p ._≃_.has-is-eqv
+straightening-arrow-map p .snd .snd = id-is-equiv
+
+unstraightening-arrow-map
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → Arrow-equiv p (fst: fibre p)
+unstraightening-arrow-map p .fst .Arrow-Π.top = refl-fibre p
+unstraightening-arrow-map p .fst .Arrow-Π.bot = id
+unstraightening-arrow-map p .fst .Arrow-Π.comm = ~refl
+unstraightening-arrow-map p .snd .fst
+  = is-equiv⁻¹ (total≃total-fibre p ._≃_.has-is-eqv)
+unstraightening-arrow-map p .snd .snd = id-is-equiv
+
+record gClass-maps (α : Level → Level → Level) : Typeω where
+  field
+    𝓕 : ∀ {𝓤 𝓥} → Subtype (Arrow 𝓤 𝓥) (α 𝓤 𝓥)
+    stable-equiv
+      : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤}{B : Type 𝓥} {f : A → B}
+          {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+        → (F : Arrow-map f g)
+        → is-Arrow-equiv F
+        → g ∈ᵃ 𝓕
+        → f ∈ᵃ 𝓕
+
+  𝓕-fam : ∀ {𝓤 𝓥} {X : Type 𝓤} → Subtype (X → Type 𝓥) (α (𝓤 ⊔ 𝓥) 𝓤)
+  𝓕-fam .Subtype.family P = (fst: P) ∈ᵃ 𝓕
+  𝓕-fam .Subtype.has-is-subtype P = ∈-is-prop 𝓕 (mk-arrow (fst: P))
+
+  𝓕←𝓕-fam : ∀ {𝓤 𝓥} {A : Type 𝓤} {E : Type 𝓥} (p : E → A)
+            → fibre p ∈ 𝓕-fam → p ∈ᵃ 𝓕
+  𝓕←𝓕-fam p fib∈𝓕
+    = stable-equiv
+        (unstraightening-arrow-map p .fst)
+        (unstraightening-arrow-map p .snd)
+        fib∈𝓕
+}
+%```
+}
+
+\subtree[stt-00L1]{
+\title{Pullback stables classes of maps}
+\author{samueltoth}
+\taxon{Definition}
+
+\p{A class of maps #{\mathcal{F}} is pullback stable when foreach
+#{p \in \mathcal{F}}, the pullback along any map #{f^*(p)} is also in
+#{\mathcal{F}}.}
+
+%```agda
+\agda{
+is-pullback-stable
+  : ∀ {α : Level → Level → Level}
+    → gClass-maps α
+    → Typeω
+is-pullback-stable is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} {E : Type 𝓥} (σ : A → B) (p : E → B)
+    → p ∈ᵃ 𝓕 → pullback-arrow σ p ∈ᵃ 𝓕 where
+    open gClass-maps is-fib
+
+is-pullback-stable-fam
+  : ∀ {α : Level → Level → Level}
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → Typeω
+is-pullback-stable-fam is-fib
+  = ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} (σ : A → B) (P : B → Type 𝓥)
+    → is-fib P → is-fib (P ∘ σ)
+}
+%```
+}
+
+\subtree[stt-00K1]{
+\title{Relative classes of maps}
+\author{samueltoth}
+\taxon{Definition}
+
+\p{Fixing a type #{I}, and given #{\mathcal{F}} a family of predicates over
+families of types #{A \to \UU}, we say that #{\mathcal{F}} is #{I}-relative for
+some type #{I} if #{P} is fibrant iff for any map #{x : I \to A}, #{P \circ x}
+is fibrant. If #{\mathcal{F}} is #{1}-relative, then we call it a fibrewise
+class of maps.
+}
+
+%```agda
+\agda{
+is-relative
+  : ∀ {𝓘} {α : Level → Level → Level}
+    → Type 𝓘
+    → gClass-maps α
+    → Typeω
+is-relative I is-fib
+  = ∀ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B)
+    → (p ∈ᵃ 𝓕 ⇔ (∀ (x : I → B) → pullback-arrow x p ∈ᵃ 𝓕)) where
+    open gClass-maps is-fib
+
+is-relative-fam
+  : ∀ {𝓘} {α : Level → Level → Level}
+    → Type 𝓘
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → Typeω
+is-relative-fam I is-fib
+  = ∀ {𝓤 𝓥} {B : Type 𝓤} (P : B → Type 𝓥)
+    → (is-fib P) ⇔ (∀ (x : I → B) → is-fib (P ∘ x))
+}
+%```
+}
+
+\subtree[stt-00K2]{
+\taxon{Theorem}
+\author{samueltoth}
+\title{Relative classes of maps are pullback stable}
+
+\p{Any class of maps which is relative is pullback stable.}
+
+%```agda
+\agda{
+opaque
+  is-pullback-stable←is-relative
+    : ∀ {α : Level → Level → Level} {𝓘}
+      → (I : Type 𝓘)
+      → (P : gClass-maps α)
+      → is-relative I P → is-pullback-stable P
+  is-pullback-stable←is-relative I is-fib rel σ p fib
+    = rel (pullback-arrow σ p) .snd λ
+        x → is-fib .gClass-maps.stable-equiv
+              ((pullback-arrow-∘ σ x p) .fst)
+              ((pullback-arrow-∘ σ x p) .snd)
+              (rel p .fst fib (σ ∘ x))
+
+is-pullback-stable-fam←is-relative
+  : ∀ {α : Level → Level → Level} {𝓘}
+    → (I : Type 𝓘)
+    → (is-fib : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (α 𝓤 𝓥))
+    → is-relative-fam I is-fib
+    → is-pullback-stable-fam is-fib
+is-pullback-stable-fam←is-relative I is-fib rel σ P Pf
+  = rel (P ∘ σ) .snd (λ x → rel P .fst Pf (σ ∘ x))
+}
+%```
+}

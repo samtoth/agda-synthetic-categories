@@ -150,6 +150,14 @@ fundamental-Id {a₀ = a₀} R Sing-sing f
                                       (is-prop←is-single Sing-sing)
                                       (total-map f))
 
+fundamental-Id⁻¹
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a₀}
+      (R : A → Type 𝓥)
+    → is-singleton (Σ[ b ∶ A ] R b)
+    → ((b : A) → a₀ ＝ b → R b)
+    → {b : A} → R b → a₀ ＝ b
+fundamental-Id⁻¹ R tor f {b} = is-equiv.bwd (fundamental-Id R tor f b)
+
 remove-singleton-structure
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
       {Ra : A → Type 𝓦}

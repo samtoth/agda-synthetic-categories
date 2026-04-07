@@ -61,8 +61,7 @@ inclusion of the interval #{\partial\Delta^1 \hookrightarrow \Delta^1}.
 
 %```agda
 \agda{
-is-ff
-  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-ff : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
 is-ff = are-orthogonal ∂Δ¹-incl
 
 ff-map : {𝓤 𝓥 : Level} → Type 𝓤 → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
@@ -73,7 +72,7 @@ open RightOrthogonalClassClosure (point ∂Δ¹-incl) public using () renaming
   ; ∈R←equiv to is-ff←equiv
   ; ∈R←equiv' to is-ff←equiv'
   ; ∈R-iff←equiv to is-ff-iff←equiv
-  ; ∈R←retraction to is-ff←retract
+  ; ∈R←retraction to is-ff←retraction
   ; ∈R-∘ to is-ff-∘
   ; ∈R-left-cancel to is-ff-left-cancel)
 
@@ -114,6 +113,156 @@ is-ff'←is-equiv {f = F} Fe {x} {y}
   eq2 a = 3-for-2 {f = total-map-fst F}
             (total-is-equiv←fst-is-equiv Fe)
             (is-fibrewise-equiv←is-total-equiv eq1 a)
+}
+%```
+}
+
+\subtree[fre-4004]{
+\title{Equivalence of definitions of fully faithfulness}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-04-05}
+
+\p{
+The orthogonality-based and action-on-homs based predicates are equivalent.
+}
+\proof{
+\p{
+Let #{\iota : \partial\Delta^1 \hookrightarrow \Delta^1} be the boundary inclusion.
+Given a map #{f : A \to B}, then we have an equivalence of arrows
+
+\quiver{
+\begin{tikzcd}
+(\Delta^1 \to A) && \Sigma_{(x\ y : A)\Hom_A(x,y)}
+\Hom(\iota , f) && \Sigma_{(x\ y : A)\Hom_B(f(x),f(y))}
+\arrow["\sim", from=1-1, to=1-3]
+\arrow["\pullpow{\iota}{f}", from=1-1, to=3-1]
+\arrow["\sim", from=3-1, to=3-3]
+\arrow["\Sigma\Sigma{\mathrm{ap\text{-}hom}_f}", from=1-3, to=3-3]
+\end{tikzcd}
+}
+
+The left map is an equivalence iff #{f} is right orthogonal to the boundary inclusion
+of #{\Delta^1}, and, since total maps are equivalences if and only if they're
+fibrewise equivalences, the right map is an equivalence iff #{f}'s action on homs is
+an equivalence.
+}
+}
+
+%```agda
+\agda{
+module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+
+  arr-map-∂Δ¹-incl→ΣΣHom
+    : Arrow-map ∂Δ¹-incl f
+    → Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+  arr-map-∂Δ¹-incl→ΣΣHom F
+    = ( F .Arrow-map.top ∂Δ¹-0
+      , F .Arrow-map.top ∂Δ¹-1
+      , mk-hom
+          (F .Arrow-map.bot)
+          (F .Arrow-map.comm ∂Δ¹-0)
+          (F .Arrow-map.comm ∂Δ¹-1))
+
+  ΣΣHom→arr-map-∂Δ¹-incl
+    : Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+    → Arrow-map ∂Δ¹-incl f
+  ΣΣHom→arr-map-∂Δ¹-incl (x , y , h)
+    = mk-amap (∂Δ¹-UP→ (x , y)) (ext .fst) ext-comm
+    where
+    ext : Ext ∂Δ¹-incl (make-∂Δ¹ (f y) (f x))
+    ext = Hom≃Ext-∂Δ¹-incl ._≃_.fwd h
+
+    ext-comm
+      : precomp-Π (λ _ → B) ∂Δ¹-incl (ext .fst)
+      ~ postcomp-Π (λ a → f) (∂Δ¹-UP→ (x , y))
+    ext-comm a = ext .snd a ∙ sym (happly (f∘∂Δ¹-UP→＝make-∂Δ¹ f x y) a)
+
+  ΣΣHom→arr-map-∂Δ¹-incl-sec
+    : ∀ (x y : A) (h : Hom B (f x) (f y))
+    → (x , y , h) ＝ arr-map-∂Δ¹-incl→ΣΣHom (ΣΣHom→arr-map-∂Δ¹-incl (x , y , h))
+  ΣΣHom→arr-map-∂Δ¹-incl-sec x y h@(mk-hom hh p0 p1)
+    = Σ-path→
+        ( refl
+        , Σ-path→
+            ( refl
+            , Hom-ext→
+                ( ~refl
+                , ap (λ q → p0 ∙ sym q) (happly funext-redex ∂Δ¹-0) ∙ ∙-reflr _
+                , ap (λ q → p1 ∙ sym q) (happly funext-redex ∂Δ¹-1) ∙ ∙-reflr _)))
+
+  arr-map-∂Δ¹-incl≃ΣΣHom
+    : Arrow-map ∂Δ¹-incl f
+    ≃ Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+  arr-map-∂Δ¹-incl≃ΣΣHom = equiv←qiso qiso where
+    qiso : Arrow-map ∂Δ¹-incl f ≅ (Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y))
+    qiso ._≅_.fwd = arr-map-∂Δ¹-incl→ΣΣHom
+    qiso ._≅_.fwd-iso .fst = ΣΣHom→arr-map-∂Δ¹-incl
+    qiso ._≅_.fwd-iso .snd .fst F
+      = Arrow-map-path→
+          ( happly (∂Δ¹-UP-η (F .Arrow-map.top))
+          , ~refl
+          , λ where
+              (mk-lift false)
+                → ap (λ p → (Arrow-Π.comm F ∂Δ¹-0 ∙ sym p)
+                          ∙ ap f (happly (∂Δ¹-UP-η (Arrow-Π.top F)) ∂Δ¹-0))
+                     (happly funext-redex ∂Δ¹-0)
+                ∙ ap (λ p → (Arrow-Π.comm F ∂Δ¹-0 ∙ refl) ∙ ap f p)
+                     (happly funext-redex ∂Δ¹-0)
+                ∙ ∙-reflr _
+                ∙ ∙-reflr _
+              (mk-lift true)
+                → ap (λ p → (Arrow-Π.comm F ∂Δ¹-1 ∙ sym p)
+                          ∙ ap f (happly (∂Δ¹-UP-η (Arrow-Π.top F)) ∂Δ¹-1))
+                     (happly funext-redex ∂Δ¹-1)
+                ∙ ap (λ p → (Arrow-Π.comm F ∂Δ¹-1 ∙ refl) ∙ ap f p)
+                     (happly funext-redex ∂Δ¹-1)
+                ∙ ∙-reflr _
+                ∙ ∙-reflr _)
+    qiso ._≅_.fwd-iso .snd .snd (x , y , h) = sym (ΣΣHom→arr-map-∂Δ¹-incl-sec x y h)
+
+  total-ap-hom
+    : Σ[ x ∶ A ] Σ[ y ∶ A ] Hom A x y
+    → Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+  total-ap-hom = total-map λ x → total-map λ y → ap-hom f {x} {y}
+
+  total-ap-hom-square
+    : Arrow-map (pullback-power ∂Δ¹-incl f) total-ap-hom
+  total-ap-hom-square .Arrow-map.top = total-hom ._≃_.fwd
+  total-ap-hom-square .Arrow-map.bot = arr-map-∂Δ¹-incl→ΣΣHom
+  total-ap-hom-square .Arrow-map.comm l = refl
+
+  total-ap-hom-square-is-equiv : is-Arrow-equiv total-ap-hom-square
+  total-ap-hom-square-is-equiv
+    = total-hom ._≃_.has-is-eqv
+    , arr-map-∂Δ¹-incl≃ΣΣHom ._≃_.has-is-eqv
+
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  is-ff'←is-ff : is-ff f → is-ff' f
+  is-ff'←is-ff ι⊥f {x} {y}
+    = is-fibrewise-equiv←is-total-equiv
+        (is-fibrewise-equiv←is-total-equiv
+            (is-equiv←Arrow-equiv
+              {F = CompareFF.total-ap-hom-square f}
+              (CompareFF.total-ap-hom-square-is-equiv f)
+              (pb-power-is-equiv←orthogonal ι⊥f))
+          (x))
+        (y)
+
+  is-ff←is-ff' : is-ff' f → is-ff f
+  is-ff←is-ff' ap-hom-is-eqv
+    = orthogonal←pb-power-is-equiv
+        (is-equiv←Arrow-equiv⁻¹
+          {F = CompareFF.total-ap-hom-square f}
+          (CompareFF.total-ap-hom-square-is-equiv f)
+          (is-total-equiv←is-fibrewise-equiv λ x →
+             is-total-equiv←is-fibrewise-equiv λ y → ap-hom-is-eqv {x} {y}))
+
+  is-ff⇔is-ff' : is-ff f ⇔ is-ff' f
+  is-ff⇔is-ff' = (is-ff'←is-ff , is-ff←is-ff')
 }
 %```
 }

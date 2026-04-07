@@ -169,7 +169,7 @@ module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
     = ~refl
     , (λ x → ∙-reflr (Q x) ∙ sym (∙-refll (Q x)))
 
-module QIdempotenceWithFunExt (FE : FunExt-global) where
+module QIdemWithFunExt (FE : FunExt-global) where
   open WithFunExt-global FE
   module EP = EProp FE
   open EP
@@ -307,7 +307,7 @@ quasicoherence-data≃ {X = X}
   ∙≃ total-Id≃ {X = total-Id X}
   ∙≃ total-Id≃ {X = X}
 
-module QIdemWithFunExt (FE : FunExt-global) where
+module QIdemWithFunExt2 (FE : FunExt-global) where
   open WithFunExt-global FE
 
   quasicoherence-filler≃fibre
@@ -1178,8 +1178,9 @@ of [quasiidempotences](stt-00II) #{H} indexed by the
 
 % ```agda
 \agda{
-module CoherentIdemWithFunExt (FE : FunExt-global) where
+module CohIdemWithFunExt (FE : FunExt-global) where
   open IdemWithFunExt FE
+  open QIdemWithFunExt FE
 
   module _ {𝓤 : Level} {X : Type 𝓤}  where
 
@@ -1203,6 +1204,236 @@ module CoherentIdemWithFunExt (FE : FunExt-global) where
 
   idempotent-map : {𝓤 : Level} → Type 𝓤 → Type 𝓤
   idempotent-map X = Σ[ f ∶ (X → X) ] idempotence f
+
+  module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
+
+    idempotence≃Splitting-step-qidempotence
+      : idempotence f ≃ Splitting.type step-qidempotence
+    idempotence≃Splitting-step-qidempotence
+      = Σ-ap-≃ λ H
+      → EProp.Π-ap-≃ FE λ n
+      → Id≃qidempotence-htpy
+          (H n)
+          (step-qidempotence {f = f} (H (suc n))) e⁻¹
+}
+% ```
+}
+
+\subtree[stt-006V]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Split idempotent maps}
+
+\p{
+A map #{f : X \to X} is \em{split idempotent} if there is a
+[retract](stt-00HE) of #{X} whose inclusion-retraction composite is homotopic
+to #{f}.
+}
+
+% ```agda
+\agda{
+is-split-idem
+  : {𝓤 : Level} (𝓥 : Level) {X : Type 𝓤}
+  → (X → X) → Type (𝓤 ⊔ lsuc 𝓥)
+is-split-idem 𝓥 {X} f
+  = Σ[ R ∶ Retracts 𝓥 X ] (R .snd .fst ∘ R .snd .snd .fst ~ f)
+
+split-idempotent-map
+  : {𝓤 : Level} (𝓥 : Level) (X : Type 𝓤)
+  → Type (𝓤 ⊔ lsuc 𝓥)
+split-idempotent-map 𝓥 X = Σ[ f ∶ (X → X) ] is-split-idem 𝓥 f
+}
+% ```
+}
+
+\subtree[stt-006W]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{The splitting type of a split idempotent map is essentially unique}
+
+% ```agda
+\agda{
+module _ {𝓤 : Level} {X : Type 𝓤} {f : X → X} where
+
+  ←Retracts←split
+    : ∀ {𝓥 𝓦}
+    → (R : is-split-idem 𝓥 f)
+    → (S : is-split-idem 𝓦 f)
+    → carrier-Retracts (R .fst)
+    → carrier-Retracts (S .fst)
+  ←Retracts←split R S
+    = S .fst .snd .snd .fst ∘ R .fst .snd .fst
+
+  ←Retracts←split-sec
+    : ∀ {𝓥 𝓦}
+    → (R : is-split-idem 𝓥 f)
+    → (S : is-split-idem 𝓦 f)
+    → ←Retracts←split S R
+      ∘ ←Retracts←split R S
+      ~ id
+  ←Retracts←split-sec R S z
+    = ap (R .fst .snd .snd .fst) (S .snd (R .fst .snd .fst z))
+    ∙ sym (ap (R .fst .snd .snd .fst) (R .snd (R .fst .snd .fst z)))
+    ∙ R .fst .snd .snd .snd (R .fst .snd .snd .fst (R .fst .snd .fst z))
+    ∙ R .fst .snd .snd .snd z
+
+  ess-unique-splitting-type←split
+    : ∀ {𝓥 𝓦}
+    → (R : is-split-idem 𝓥 f)
+    → (S : is-split-idem 𝓦 f)
+    → carrier-Retracts (R .fst) ≃ carrier-Retracts (S .fst)
+  ess-unique-splitting-type←split R S
+    = mk≃ (←Retracts←split R S) (is-equiv←qiso qiso)
+    where
+    qiso : quasi-iso (←Retracts←split R S)
+    qiso .fst = ←Retracts←split S R
+    qiso .snd .fst = ←Retracts←split-sec R S
+    qiso .snd .snd = ←Retracts←split-sec S R
+}
+% ```
+}
+
+\subtree[stt-006Y]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Split idempotent maps are equivalent to retracts}
+
+\p{
+For a fixed type #{X}, specifying a split idempotent endomap on #{X} is
+equivalent to specifying a retract of #{X}.
+}
+
+% ```agda
+\agda{
+module SplitIdemWithFunExt (FE : FunExt-global) {𝓤 𝓥 : Level} {X : Type 𝓤} where
+  open WithFunExt-global FE
+  open IdemWithFunExt FE
+
+  split←qidempotence
+    : {f : X → X}
+    → qidempotence f
+    → is-split-idem 𝓤 f
+  split←qidempotence {f} H
+    = ( Splitting.type f
+      , retract-Splitting-type H)
+    , Splitting.factorisation f (H .fst)
+
+  qidempotence←split
+    : {f : X → X}
+    → is-split-idem 𝓥 f
+    → qidempotence f
+  qidempotence←split H
+    = tr qidempotence
+        (funext→ (H .snd))
+        (quasiidempotence←section-retraction
+          (H .fst .snd .fst)
+          (H .fst .snd .snd .fst)
+          (H .fst .snd .snd .snd))
+
+  split-idempotent-map≃Retracts
+    : split-idempotent-map 𝓥 X ≃ Retracts 𝓥 X
+  split-idempotent-map≃Retracts
+    = Σ-comm
+    ∙≃ Σ-singleton (λ R → htpy-is-torsorial FE (R .snd .fst ∘ R .snd .snd .fst))
+}
+% ```
+}
+
+\subtree[stt-0072]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{The splitting type of a total endomap}
+
+\p{
+If an endomap on a dependent sum preserves the base point definitionally, then
+its splitting type is the dependent sum of the splitting types on the fibres.
+}
+
+% ```agda
+\agda{
+module SplittingWithFunExt
+  (FE : FunExt-global)
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+  (f : (a : A) → B a → B a)
+  where
+  open WithFunExt-global FE
+  open SplitRetractWithFunExt FE
+
+  split-total-map-paths
+    : (a : ℕ → A)
+    → (b : (n : ℕ) → B (a n))
+    → ((n : ℕ) → (a n , b n) ＝ (a (suc n) , f (a (suc n)) (b (suc n))))
+    ≃  Σ[ p ∶ ((n : ℕ) → a n ＝ a (suc n)) ]
+        ( (n : ℕ) → Idᵈ (ap B (p n)) (b n) (f (a (suc n)) (b (suc n))))
+  split-total-map-paths a b
+    = EProp.Π-ap-≃ FE ( λ n → Σ-path e⁻¹)
+    ∙≃ Σ-Π-swap≃
+        (λ n → a n ＝ a (suc n))
+        (λ n p → Idᵈ (ap B p) (b n) (f (a (suc n)) (b (suc n))))
+
+  splitting-total-map
+    : Splitting.type (total-map f)
+    ≃ Σ A (λ a → Splitting.type (f a))
+  splitting-total-map
+    = Σ-ap-≃-fst (Σ-Π-swap≃ (λ _ → A) (λ _ → B))
+    ∙≃ Σ-assoc
+    ∙≃ Σ-ap-≃ (λ a → Σ-ap-≃ (split-total-map-paths a))
+    ∙≃ Σ-assoc e⁻¹
+    ∙≃ Σ-interchange
+    ∙≃ Σ-ap-≃-fst-bwd (split-retract-equiv {A = A} {X = A} idretract) e⁻¹
+}
+% ```
+}
+
+\subtree[stt-006R]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{The universe of retracts is equivalent to the type of idempotent maps}
+
+\p{
+The splitting type of the composite map
+#{\mathrm{QIdem}(X) \to \mathrm{Retracts}(X) \to \mathrm{QIdem}(X)} is the type of
+[idempotent maps](stt-00IG) on #{X}, but these maps already split, so by
+[essential uniqueness](stt-006W) of splitting types, the universe of retracts of
+#{X} is equivalent to the type of idempotent maps on #{X}.
+}
+
+% ```agda
+\agda{
+module RetractsIdemWithFunExtUnivalence
+  (FE : FunExt-global)
+  (UA : Univalence)
+  {𝓤 : Level} {X : Type 𝓤}
+  where
+  open CohIdemWithFunExt FE
+  open SplittingWithFunExt FE
+  open SplitRetractWithFunExt FE
+  open RetractsQIdempotentsWithFunExtUnivalence FE UA
+
+  step-qidempotent-map : qidempotent-map X → qidempotent-map X
+  step-qidempotent-map (f , H) = f , step-qidempotence H
+
+  retracts≃Splitting-step-qidempotent-map
+    : Retracts 𝓤 X ≃ Splitting.type step-qidempotent-map
+  retracts≃Splitting-step-qidempotent-map
+    = (split-retract-equiv retracts-qidempotent-map-retract) e⁻¹
+
+  Splitting-step-qidempotent-map≃idempotent-map
+    : Splitting.type step-qidempotent-map ≃ idempotent-map X
+  Splitting-step-qidempotent-map≃idempotent-map
+    = splitting-total-map (λ f → step-qidempotence {f = f})
+    ∙≃ Σ-ap-≃ (λ f → idempotence≃Splitting-step-qidempotence {f = f} e⁻¹)
+
+  Retracts≃idempotent-map
+    : Retracts 𝓤 X ≃ idempotent-map X
+  Retracts≃idempotent-map
+    = retracts≃Splitting-step-qidempotent-map
+    ∙≃ Splitting-step-qidempotent-map≃idempotent-map
 }
 % ```
 }

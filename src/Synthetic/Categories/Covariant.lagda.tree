@@ -82,6 +82,11 @@ is-covariant {A = A} B
 
 {-# INJECTIVE_FOR_INFERENCE is-covariant #-}
 
+is-covariant-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-covariant B)
+is-covariant-is-prop B
+  = is-prop-Π (λ a → is-prop-Π (λ b → is-single-is-prop))
+
 is-covariant-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
     → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
@@ -102,6 +107,12 @@ is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
 tr-cov : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
        → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
 tr-cov cov h = fst ∘ centre ∘ cov h
+
+tr-cov-filler
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (Pc : is-covariant P) → (h : Δ¹ → A)
+    → ∀ p → Homᵈ (P ∘ h) p (tr-cov {P = P} Pc h p)
+tr-cov-filler cov h = snd ∘ centre ∘ cov h
 
 tr-cov-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
@@ -131,6 +142,10 @@ left (right) endpoint of #{\Delta^1}.}
 is-left-fibration : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
                     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
 is-left-fibration f = (point i0) ⊥ f
+
+is-left-anodyne
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
+is-left-anodyne f = is-anodyne f (point i0)
 
 is-right-fibration : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
                     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
@@ -191,15 +206,15 @@ lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
   by-contracting-singletons ._≅_.fwd-iso .snd .fst (_ , h , p , refl) = refl
   by-contracting-singletons ._≅_.fwd-iso .snd .snd = ~refl
 
-  because-pi-types-are-extensions
+  because-pi-types-are-lifts
     : (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
        ≃
       (Σ[ (f , p) ∶ fibre (postcomp Δ¹ (λ r → fst r)) f ]
        (tr B (happly p i0) (snd (f i0)) ＝ x₀))
-  because-pi-types-are-extensions
+  because-pi-types-are-lifts
     = Σ-ap-≃-fst
         {B = λ where (f , p) → tr B (happly p i0) (snd (f i0)) ＝ x₀}
-        (mk≃ (extension←Π {B = B} f) (extension←Π-is-equiv f))
+        (mk≃ (Lift←Π {B = B} f) (Lift←Π-is-equiv f))
 
   by-funext
     : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ＝ f) ]
@@ -284,7 +299,7 @@ lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
                                        ≃⟨ equiv←qiso by-contracting-singletons ⟩
 
         (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
-                                       ≃⟨ because-pi-types-are-extensions ⟩
+                                       ≃⟨ because-pi-types-are-lifts ⟩
 
         (Σ[ (f , p) ∶ fibre (postcomp Δ¹ (λ r → fst r)) f ]
          (tr B (happly p i0) (snd (f i0)) ＝ x₀))
@@ -561,6 +576,53 @@ tr-cov-∘ apc P cov g f x'
         ( tr-cov-hom cov g (tr-cov-hom cov f x')
         , Compᵈ apc P (is-inner-family←is-covariant cov) g f
                 (tr-cov-over cov g _) (tr-cov-over cov f _)))
+}
+%```
+}
+
+\subtree[stt-00K3]{
+\title{Coercing along inequalities in #{\Delta^1}}
+\taxon{Lemma}
+
+\p{Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.
+consequently, for covariant families over #{\Delta^1}, we may coerce along
+#{i \le j}. Since #{i \le j} is a proposition, we have the coercing along
+#{i \le i} for any #{i} is the identity and coercing along #{0 \le 1} is the
+same as covariant transport over the canonical morphisms from #{0} to #{1} given
+by #{id : \Delta^1 \to \Delta^1}.}
+
+%```agda
+\agda{
+Δ¹-hom←≤  : ∀ {i j} → i ≤ j → Hom Δ¹ i j
+Δ¹-hom←≤ {i} {j} p .Homᵈ.hom l = (l ∨ i) ∧ (i ∨ j)
+Δ¹-hom←≤ p .Homᵈ.hom0 = ap₂ _∧_ (∨-comm ∙ 0-bottom) (≤-max p) ∙ p
+Δ¹-hom←≤ p .Homᵈ.hom1 = ap₂ _∧_ (∨-comm ∙ 1-coinit) (≤-max p) ∙ ∧-comm ∙ 1-top
+
+Δ¹-hom-≤-refl : ∀ {i} (p : i ≤ i) → Δ¹-hom←≤ p ＝ idH i
+Δ¹-hom-≤-refl {i} p
+  = Hom-ext→ ((λ a → ap ((a ∨ i) ∧_) ∨-idem ∙ ∨-∧-abs') , prop! , prop!)
+
+Δ¹-hom-0≤1 : (p : i0 ≤ i1) → Δ¹-hom←≤ p ＝ 0≤1
+Δ¹-hom-0≤1 p
+  = Hom-ext→ ((λ a → ap₂ _∧_ 0-bottom 1-coinit ∙ 1-top) , prop! , prop!)
+
+
+coe-cov : ∀ {𝓤} {B : Δ¹ → Type 𝓤} {i j} → is-covariant B → i ≤ j → B i → B j
+coe-cov {_} {B}{i}{j} Bc p = tr-cov-hom Bc (Δ¹-hom←≤ p)
+
+opaque
+  coe-cov-id : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-covariant B)
+                 {i} (p : i ≤ i) → coe-cov {B = B} bc p ~ id
+  coe-cov-id {B = B} bc {i} p x = happly (ap (tr-cov-hom bc) (Δ¹-hom-≤-refl p)) x
+                              ∙ tr-cov-idH B bc x
+
+  coe-cov-＝ : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-covariant B)
+                 {i j} (p : i ＝ j) (q : i ≤ j) → coe-cov {B = B} bc q ~ tr B p
+  coe-cov-＝ bc refl q = coe-cov-id bc _
+
+  coe-cov-0≤1 : ∀ {𝓤} {B : Δ¹ → Type 𝓤} (bc : is-covariant B)
+                  (p : i0 ≤ i1) → coe-cov {B = B} bc p ＝ tr-cov bc id
+  coe-cov-0≤1 {B = B} bc p = ap (tr-cov-hom bc) (Δ¹-hom-0≤1 p)
 }
 %```
 }

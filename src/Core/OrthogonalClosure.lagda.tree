@@ -84,13 +84,13 @@ power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .fst = ~refl
 power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .snd a
     = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-prewhisker-funext _)
 
-orthogonal←pullback
+orthogonal←base-change
   : ∀ {𝓤 𝓥 𝓐 𝓑 𝓒 𝓓} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
       {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
       {g : A → B} {h : C → D}
     → (F : Arrow-map g h) → is-cartesian F
     → are-orthogonal f h → are-orthogonal f g
-orthogonal←pullback {X = X} {Y} f {A} {g = g}{h} F cart orth
+orthogonal←base-change {X = X} {Y} f {A} {g = g}{h} F cart orth
   = orthogonal←is-cartesian
      (front-cartesian←cartesian-cube
        (power-hom f g) (power-hom f h)
@@ -120,7 +120,6 @@ right-orthogonal←equiv f F Fe o
         (postcomp-square-is-equiv F Fe , postcomp-square-is-equiv F Fe)
         (is-cartesian←orthogonal o))
 
-
 right-orthogonal←equiv'
   : ∀ {𝓤 𝓥 𝓐 𝓑 𝓒 𝓓} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
       {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
@@ -142,6 +141,30 @@ right-orthogonal-iff←equiv
     → are-orthogonal f h ⇔ are-orthogonal f g
 right-orthogonal-iff←equiv f F Fe
   = (right-orthogonal←equiv f F Fe , right-orthogonal←equiv' f F Fe)
+
+right-orthogonal-id
+  : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+      {A : Type 𝓦}
+    → are-orthogonal f (id: A)
+right-orthogonal-id f {A = A}
+  = orthogonal←is-cartesian
+      (is-cartesian←dom+cod-is-equiv
+        (power-hom f (id: A))
+        (postcomp-equiv id-is-equiv)
+        (postcomp-equiv id-is-equiv))
+
+right-orthogonal←is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+      {A : Type 𝓦} {B : Type 𝓛}
+      {g : A → B}
+    → is-equiv g
+    → are-orthogonal f g
+right-orthogonal←is-equiv f {B = B} {g = g} geq
+  = right-orthogonal←equiv
+      f
+      (mk-amap g (id: B) ~refl)
+      (geq , id-is-equiv)
+      (right-orthogonal-id f)
 }
 %```
 }
@@ -180,8 +203,12 @@ right-orthogonal←retraction f F ret orth
 }
 
 \subtree[stt-00BW]{
-\title{Right orthogonal maps are left cancellative}
+\title{Composition and left cancellation closure of right orthogonal maps}
 \taxon{Lemma}
+\date{2025-12}
+\author{samueltoth}
+\date{2026-04-07}
+\author{fredrikbakke}
 
 %```agda
 \agda{
@@ -209,6 +236,40 @@ right-orthogonal-left-cancel f fg fgh
           Arrow-map-path-refl
           (rotate-is-cartesian _ (is-cartesian←orthogonal fgh))
           (rotate-is-cartesian _ (is-cartesian←orthogonal fg))))
+
+right-orthogonal-homotopy
+  : ∀ {𝓧 𝓨 𝓤 𝓥} {X : Type 𝓧} {Y : Type 𝓨} (f : X → Y)
+      {A : Type 𝓤} {B : Type 𝓥} {g h : A → B}
+    → g ~ h
+    → f ⊥ g
+    → f ⊥ h
+right-orthogonal-homotopy f {A = A} {B = B} {g = g} {h = h} H
+  = right-orthogonal←equiv' f
+      (mk-amap (id: A) (id: B) H)
+      (id-square-is-equiv {f = g})
+
+right-orthogonal-∘~
+  : ∀ {𝓧 𝓨 𝓤 𝓥 𝓦} {X : Type 𝓧} {Y : Type 𝓨} (f : X → Y)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {g : B → C} {h : A → B} {k : A → C}
+    → g ∘ h ~ k
+    → f ⊥ g
+    → f ⊥ h
+    → f ⊥ k
+right-orthogonal-∘~ f H fg fh
+  = right-orthogonal-homotopy f H (right-orthogonal-∘ f fg fh)
+
+right-orthogonal-left-cancel~
+  : ∀ {𝓧 𝓨 𝓤 𝓥 𝓦} {X : Type 𝓧} {Y : Type 𝓨} (f : X → Y)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {g : B → C} {h : A → B} {k : A → C}
+    → k ~ g ∘ h
+    → f ⊥ g
+    → f ⊥ k
+    → f ⊥ h
+right-orthogonal-left-cancel~ f H fg fk
+  = right-orthogonal-left-cancel f fg
+      (right-orthogonal-homotopy f H fk)
 }
 %```
 }
@@ -743,14 +804,14 @@ module RightOrthogonalClassClosure
     → (X → Y) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   ∈R g = (i : I) → are-orthogonal (f i) g
 
-  ∈R←pullback
+  ∈R←base-change
     : ∀ {𝓦 𝓛 𝓜 𝓝} {X : Type 𝓦} {Y : Type 𝓛}
         {Z : Type 𝓜} {W : Type 𝓝}
         {g : X → Y} {h : Z → W}
       → (F : Arrow-map g h) → is-cartesian F
       → ∈R h → ∈R g
-  ∈R←pullback F cart orth i
-    = orthogonal←pullback (f i) F cart (orth i)
+  ∈R←base-change F cart orth i
+    = orthogonal←base-change (f i) F cart (orth i)
 
   ∈R←equiv
     : ∀ {𝓦 𝓛 𝓜 𝓝} {X : Type 𝓦} {Y : Type 𝓛}
@@ -769,6 +830,14 @@ module RightOrthogonalClassClosure
       → ∈R g → ∈R h
   ∈R←equiv' F Fe orth i
     = right-orthogonal←equiv' (f i) F Fe (orth i)
+
+  ∈R←is-equiv
+    : ∀ {𝓦 𝓛} {X : Type 𝓦} {Y : Type 𝓛}
+        {g : X → Y}
+      → is-equiv g
+      → ∈R g
+  ∈R←is-equiv geq i
+    = right-orthogonal←is-equiv (f i) geq
 
   ∈R-iff←equiv
     : ∀ {𝓦 𝓛 𝓜 𝓝} {X : Type 𝓦} {Y : Type 𝓛}
@@ -803,6 +872,29 @@ module RightOrthogonalClassClosure
       → ∈R h
   ∈R-left-cancel og ogh i
     = right-orthogonal-left-cancel (f i) (og i) (ogh i)
+
+  ∈R←homotopy
+    : ∀ {𝓦 𝓛} {X : Type 𝓦} {Y : Type 𝓛}
+        {g h : X → Y}
+      → g ~ h → ∈R g → ∈R h
+  ∈R←homotopy H og i
+    = right-orthogonal-homotopy (f i) H (og i)
+
+  ∈R-∘~
+    : ∀ {𝓦 𝓛 𝓜} {X : Type 𝓦} {Y : Type 𝓛} {Z : Type 𝓜}
+        {g : Y → Z} {h : X → Y} {k : X → Z}
+      → g ∘ h ~ k → ∈R g → ∈R h → ∈R k
+  ∈R-∘~ H og oh i
+    = right-orthogonal-∘~ (f i) H (og i) (oh i)
+
+  ∈R-left-cancel~
+    : ∀ {𝓦 𝓛 𝓜} {X : Type 𝓦} {Y : Type 𝓛} {Z : Type 𝓜}
+        {g : Y → Z} {h : X → Y} {k : X → Z}
+      → k ~ g ∘ h
+      → ∈R g → ∈R k
+      → ∈R h
+  ∈R-left-cancel~ H og ok i
+    = right-orthogonal-left-cancel~ (f i) H (og i) (ok i)
 }
 %```
 }

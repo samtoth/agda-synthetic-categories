@@ -1,0 +1,136 @@
+\title{Cohesive connectivity}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-02-17}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Modalities.Cohesion.Connectivity where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Modalities.GlobalSubuniverses
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+
+open import Core.Arrow
+open import Core.PullbackPower
+}
+%```
+
+\subtree[stt-00IZ]{
+\title{Flat discrete types}
+\taxon{Definition}
+
+\p{We call crisp types #{\flat}-discrete if the map #{\modflat{A} \to A} is an
+equivalence.}
+
+%```agda
+\agda{
+is-♭-discrete : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤
+is-♭-discrete A = is-equiv (ε♭ {A = A})
+
+♭-is-♭-discrete : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♭-discrete ⟨♭| A ⟩
+♭-is-♭-discrete = is-equiv⁻¹ comult-is-equiv
+}
+%```
+}
+
+\subtree[stt-00JH]{
+\taxon{Lemma}
+
+\p{Given a crisp #{\flat}-discrete type #{A}, and any other crisp type #{B}, the
+canonical map #{\modflat{A \to \modflat{B}} \to \modflat{A \to B}} is an
+equivalence.}
+
+%```agda
+\agda{
+♭-discrete-UP : ∀ {@♭ 𝓤 𝓥}  {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+        → @♭ is-♭-discrete A
+        → is-equiv {A = ⟨♭| (A → ⟨♭| B ⟩) ⟩} (♭-map (postcomp _ ε♭))
+♭-discrete-UP ad = is-equiv←qiso
+  ( (λ where (mod♭ f) → mod♭ λ a → ♭-map f (is-equiv.bwd ad a))
+  , (λ where (mod♭ f) → mapply♭ (mod♭ (funext→ (λ a
+                           → ♭-∘ ε♭ f _
+                           ∙ ♭-map-ε♭ _
+                           ∙ ε♭-natural (is-equiv.bwd ad a)
+                           ∙ ap f (is-equiv.ε ad a)))))
+  , (λ where (mod♭ f) → mapply♭ (mod♭ (funext→ (λ a
+                           → ε♭-natural {f = f} (is-equiv.bwd ad a)
+                           ∙ ap f (is-equiv.ε ad a) )))))
+}
+%```
+}
+
+\subtree[stt-00J0]{
+\title{Detecting Connectivity}
+\taxon{Definition}
+
+
+\p{We say that a family of types #{G} \em{detects connectivity} if the [#{\flat}
+discrete types](stt-00IZ) are exactly the #{G}-null types.}
+
+%```agda
+\agda{
+detects-connectivity : ∀ {𝓘 𝓤} {I : Type 𝓘} (G : I → Type 𝓤) → Typeω
+detects-connectivity G
+  = ∀ {@♭ 𝓤} {@♭ X : Type 𝓤} → is-null G X ⇔ is-♭-discrete X
+}
+%```
+
+\p{If #{G} detects connectivitiy then nullification at #{G} gives a modality
+#{ʃ} which is a left adjoint to #{\flat} \citet{9.15}{shulman-2017}}
+
+%```agda
+\agda{
+module ∫ {@♭ 𝓘 𝓤} {@♭ I : Type 𝓘} (@♭ G : I → Type 𝓤)
+         (@♭ Gconn : detects-connectivity G)
+         where
+  private
+    ∫-GSU : gSubU ((𝓤 ⊔ 𝓘) ⊔_)
+    ∫-GSU = Null-gSubU G
+
+  open gSubU ∫-GSU public
+  open gReflectiveClosure (Null-gRSubU G) public
+  open gRSubUInduction (Null-gRSubU G) Null-globally-Σ-closed public
+
+
+  open is-globally-reflective (Null-globally-reflective {A = G})
+    public renaming (○ to ∫; ○∈S to ∫∈S)
+
+  ∫-is-♭-discrete
+    : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♭-discrete (∫ A)
+  ∫-is-♭-discrete = Gconn .fst ∫∈S
+
+  ∫-♭-discrete-reflection
+    : ∀ {𝓤} {@♭ 𝓥} {A : Type 𝓤} {@♭ B : Type 𝓥} → is-♭-discrete B
+      → is-equiv {A = ∫ A → B} (_∘ η)
+  ∫-♭-discrete-reflection bd = reflects (Gconn .snd bd)
+
+  ∫-♭-discrete-rec
+    : ∀ {𝓤} {@♭ 𝓥} {A : Type 𝓤} {@♭ B : Type 𝓥} → is-♭-discrete B
+      → (A → B) → (∫ A → B)
+  ∫-♭-discrete-rec bd = is-equiv.bwd (∫-♭-discrete-reflection bd)
+
+  ∫⊣♭-transpose : ∀ {@♭ 𝓤 𝓥}  {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+        → ⟨♭| (A → ⟨♭| B ⟩) ⟩ → ⟨♭| (∫ A → B) ⟩
+  ∫⊣♭-transpose = ♭-map (postcomp _ ε♭)
+                ∘ ♭-map (∫-♭-discrete-rec ♭-is-♭-discrete)
+
+  ∫⊣♭ : ∀ {@♭ 𝓤 𝓥}  {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+        → ⟨♭| (A → ⟨♭| B ⟩) ⟩ ≃ ⟨♭| (∫ A → B) ⟩
+  ∫⊣♭ = mk≃ (∫⊣♭-transpose)
+    (is-equiv-∘
+      (♭-discrete-UP ∫-is-♭-discrete)
+      (♭-map-is-equiv (is-equiv⁻¹ (∫-♭-discrete-reflection ♭-is-♭-discrete))))
+}
+%```
+}

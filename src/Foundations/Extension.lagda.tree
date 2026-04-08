@@ -9,7 +9,6 @@
 \agda{
 module Foundations.Extension where
 
-
 open import Foundations.Universes
 open import Foundations.Identity
 open import Foundations.Functions
@@ -49,25 +48,25 @@ triangle commutes: }
 \end{tikzcd}
 }
 
-\p{The type of extensions of #{p} along #{i} is exactly the fibres of the map
-#{i^* : X^B \to X^A} at #{p}. We can also generalise this to a dependent
-type #{X} over #{B}.}
+\p{The type of extensions of #{p} along #{i} is the type of maps #{B \to X}
+together with a homotopy witnessing that precomposition with #{i} agrees with
+#{p}. We can also generalise this to a dependent type #{X} over #{B}.}
 
 %```agda
 \agda{
 Ext : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (i : A → B)
         {X : B → Type 𝓦} (p : Π A (X ∘ i)) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
-Ext i {X} p = fibre (precomp-Π X i) p
+Ext {B = B} i {X} p = Σ[ f ∶ Π B X ] (precomp-Π X i f ~ p)
 
 Ext-Id→
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {i j : A → B} (H : i ＝ j)
       {X : Type 𝓦} (p : A → X) → Ext j p → Ext i p
-Ext-Id→ H p = total-map (λ a → ap (a ∘_) H ∙_)
+Ext-Id→ H p = total-map (λ f q a → ap f (happly H a) ∙ q a)
 
 Ext-∅
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
     → FunExt-global → Ext {B = A} ¡ {λ _ → B} ¡ ≃ (A → B)
-Ext-∅ FE = mk≃ fst (singleton-fst-is-equiv λ x → Singleton-Id (∅-UP-sing FE) _ _)
+Ext-∅ FE = mk≃ fst (singleton-fst-is-equiv λ x → Π-is-single FE λ ())
 }
 %```
 }
@@ -104,22 +103,20 @@ along #{j}.
 %```agda
 \agda{
 Ext-compose : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-                (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X )
-              → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
-Ext-compose {A = A}{B}{C} j i {X} p
-  = Ext (j ∘ i) p                       ≃⟨⟩
-    (Σ[ g ∶ (C → X) ] (g ∘ j ∘ i ＝ p)) ≃⟨ Σ-ap-≃ (λ g → Σ-＝singl' e⁻¹) ⟩
-    (Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X)] ((g ∘ j ＝ f) × (g ∘ j ∘ i ＝ p)))
-                                        ≃⟨ Σ-comm ∙≃ Σ-assoc e⁻¹
-                                         ∙≃ Σ-ap-≃ (λ a
-                                           → Σ-ap-≃ (λ where refl → idequiv)
-                                             ∙≃ ×-swap)
-                                             ⟩
-    (Σ[ (f , g) ∶ (B → X) × (C → X) ] ((f ∘ i ＝ p) × (g ∘ j ＝ f)))
-                                        ≃⟨ Σ-interchange ⟩
-    (Σ[ (f , H) ∶ Σ[ f ∶ (B → X)] (f ∘ i ＝ p) ] Σ[ g ∶ (C → X) ] (g ∘ j ＝ f))
-                                        ≃⟨⟩
-    (Σ[ f ∶ Ext i p ] Ext j (f .fst))   ≃∎
+                → FunExt-global
+                → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X )
+                → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
+Ext-compose {B = B} {C = C} FE j i {X} p
+  = Ext (j ∘ i) p
+      ≃⟨ Σ-ap-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙≃ Σ-assoc)) ⟩
+    Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+      ≃⟨ Σ-comm ⟩
+    Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+      ≃⟨ Σ-ap-≃ (λ f → Σ-assoc e⁻¹ ∙≃ ×-swap) ⟩
+    Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
+      ≃⟨ Σ-assoc e⁻¹ ⟩
+    (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+      ≃∎
 }
 %```
 }

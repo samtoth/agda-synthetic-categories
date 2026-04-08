@@ -27,6 +27,7 @@ private
   I[x] = Poly.L[x] I
 
 open import Modalities.Subuniverses
+open import Synthetic.Cubes Δ¹ i0 i1
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
@@ -34,6 +35,11 @@ open import Modalities.Instances.Nullification
 open import Modalities.Instances.Truncation
 
 open import Core.Join
+open import Core.Arrow
+open import Core.ArrowRetract
+open import Core.PushoutSum
+open import Foundations.Pushout
+open import Core.FunctorialPushout
 open import Core.CanonicalPushouts
 open import Core.FlatteningPushouts
 open import Core.SpanMap
@@ -84,7 +90,6 @@ open Subtype
 Λ[2,1]-incl : Λ[2,1] → Δ²
 Λ[2,1]-incl = cogap Λ[2,1]-Δ²-cocone
 
-
 [2,1]-hom : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
 [2,1]-hom C = Σ[ f ∶ (Δ¹ → C) ] Σ[ g ∶ (Δ¹ → C)] (f i1 ＝ g i0)
 
@@ -94,15 +99,6 @@ make-horn f g = pushout-rec (mk-cocone (g .Homᵈ.hom) (f .Homᵈ.hom)
 
 Δ²-diagonal : Δ¹ → Δ²
 Δ²-diagonal i = i , i
-
-Δ¹-retract-Δ² : retract Δ¹ Δ²
-Δ¹-retract-Δ² = Δ²-diagonal , Poly.Δ².t , ~refl
-
-Δ²-retract-Δ¹×Δ¹ : retract Δ² (Δ¹ × Δ¹)
-Δ²-retract-Δ¹×Δ¹
-  = (λ x → (x .Poly.Δ².s , x .Poly.Δ².t))
-  , (λ { (i , j) → (i ∨ j , j) ⦃ ∨-≤-intror ≤-refl ⦄ })
-  , λ ((i , j) ⦃ p ⦄) → Δ²-ext (∨-comm ∙ ≤-max p , refl)
 
 Δ²-diagonal-is-embedding : is-embedding Δ²-diagonal
 Δ²-diagonal-is-embedding
@@ -195,11 +191,15 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
     (Σ[ a ∶ Δ² ] (a ∈ Λ[2,1]Sub))     ≃⟨⟩
     Σ̃ Λ[2,1]Sub                       ≃∎
 
-Λ[2,1]-is-set : is-truncated 2 Λ[2,1]
-Λ[2,1]-is-set = is-truncated←equiv (Λ[2,1]≃Sub e⁻¹)
-                  (Σ-is-truncated Δ²-is-2-truncated
-                    λ a → suc-is-truncated 1
-                           (is-truncated←is-prop (∈-is-prop Λ[2,1]Sub a)))
+Λ[2,1]-is-2-truncated : is-truncated 2 Λ[2,1]
+Λ[2,1]-is-2-truncated
+  = is-truncated←equiv (Λ[2,1]≃Sub e⁻¹)
+      (Σ-is-truncated Δ²-is-2-truncated
+        λ a → suc-is-truncated 1
+                (is-truncated←is-prop (∈-is-prop Λ[2,1]Sub a)))
+
+Λ[2,1]-is-set : is-set Λ[2,1]
+Λ[2,1]-is-set = is-set←is-truncated Λ[2,1]-is-2-truncated
 }
 %```
 }
@@ -266,6 +266,96 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
       (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
            Σ[ z ∶ B (ι₂ i1)]
             Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z)    ≃∎
+}
+%```
+}
+
+\subtree[fre-A607]{
+\title{#{\Delta^1} is a retract of #{\Delta^2}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+%```agda
+\agda{
+Δ¹-retract-Δ² : retract Δ¹ Δ²
+Δ¹-retract-Δ² = Δ²-diagonal , Poly.Δ².t , ~refl
+}
+%```
+}
+
+\subtree[fre-A608]{
+\title{#{\Delta^2} is a retract of #{\Delta^1\times\Delta^1}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+%```agda
+\agda{
+Δ²-retract-Δ¹×Δ¹ : retract Δ² (Δ¹ × Δ¹)
+Δ²-retract-Δ¹×Δ¹
+  = (λ x → (x .Poly.Δ².s , x .Poly.Δ².t))
+  , (λ { (i , j) → (i ∨ j , j) ⦃ ∨-≤-intror ≤-refl ⦄ })
+  , λ ((i , j) ⦃ p ⦄) → Δ²-ext (∨-comm ∙ ≤-max p , refl)
+
+Δ²-retract-Δ¹×Δ¹' : retract Δ² (Δ¹ × Δ¹)
+Δ²-retract-Δ¹×Δ¹'
+  = (λ x → (x .Poly.Δ².s , x .Poly.Δ².t))
+  , (λ { (i , j) → (i , i ∧ j) ⦃ ∧-≤-eliml ≤-refl ⦄ })
+  , λ ((i , j) ⦃ p ⦄) → Δ²-ext (refl , ∧-comm ∙ p)
+}
+%```
+}
+
+\\subtree[fre-33A1]{
+\title{The inner horn inclusion is a retract of pushout product of the endpoint inclusions of the interval}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2025-11-24}
+\contributor{fredrikbakke}
+
+\p{
+We can display the inner horn inclusion #{\Lambda^2_1 \hookrightarrow \Delta^2}} as a
+retract of arrows of the pushout product #{\pushprod{\point(0)}{\point(1)}}.
+
+\quiver{
+\begin{tikzcd}
+	{\Lambda^2_1} && {\Lambda^2_1} && {\Lambda^2_1} \\
+	\\
+	{\Delta^2} && {\square^2} && {\Delta^2}
+	\arrow["\id", from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow["\id", from=1-3, to=1-5]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow["{(x,y)\mapsto(x,y)}"', from=3-1, to=3-3]
+	\arrow["{(x,y)\mapsto(x,x\land y)}"', from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+%```agda
+\agda{
+Λ[2,1]↪□-section : Arrow-map Λ[2,1]-incl (pushout-product (point i1) (point i0))
+Λ[2,1]↪□-section .Arrow-map.top = Pushout₁ (mk-span-map (_, _) _ (_ ,_) ~refl ~refl)
+Λ[2,1]↪□-section .Arrow-map.bot (x , y) = (x , y)
+Λ[2,1]↪□-section .Arrow-map.comm
+  = pushout-ind _ (mk-coconeᵈ ~refl ~refl
+                    λ _ → is-set←is-truncated (□-is-truncated car-is-2-truncated) _ _ _ _)
+
+Λ[2,1]↪□-ret : retraction-arrow-map Λ[2,1]↪□-section
+Λ[2,1]↪□-ret .fst .Arrow-map.top
+  = Pushout₁ (mk-span-map fst _ snd ~refl ~refl)
+Λ[2,1]↪□-ret .fst .Arrow-map.bot = Δ²-retract-Δ¹×Δ¹' .snd .fst
+Λ[2,1]↪□-ret .fst .Arrow-map.comm
+  = pushout-ind _
+      (mk-coconeᵈ
+        (λ l → Δ²-ext (refl , ∧-comm ∙ 0-init))
+        (λ l → Δ²-ext (refl , ∧-comm ∙ 1-top))
+        (λ _ → Δ²-is-set _ _ _ _))
+Λ[2,1]↪□-ret .snd .fst
+  = pushout-ind _ (mk-coconeᵈ ~refl ~refl (λ _ → Λ[2,1]-is-set _ _ _ _))
+Λ[2,1]↪□-ret .snd .snd .fst   = Δ²-retract-Δ¹×Δ¹' .snd .snd
+Λ[2,1]↪□-ret .snd .snd .snd x = Δ²-is-set _ _ _ _
 }
 %```
 }

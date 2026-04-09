@@ -51,6 +51,16 @@ id-square-is-equiv
 id-square-is-equiv .fst = id-is-equiv
 id-square-is-equiv .snd = id-is-equiv
 
+paste-squares-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦}{D : Type 𝓜}{E : Type 𝓝}{F : Type 𝓛}
+      {f : A → B} {g : C → D}{h : E → F}
+    → (G : Arrow-map g h) → is-Arrow-equiv G
+    → (F : Arrow-map f g) → is-Arrow-equiv F
+    → is-Arrow-equiv (paste-squares G F)
+paste-squares-is-equiv G Ge F Fe .fst = is-equiv-∘ (Ge .fst) (Fe .fst)
+paste-squares-is-equiv G Ge F Fe .snd = is-equiv-∘ (Ge .snd) (Fe .snd)
+
 Arrow-equiv : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
                 {Y : Type 𝓜} (f : A → B) (g : X → Y)
               → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
@@ -321,6 +331,14 @@ opaque
                    {f = sym (p a) ∙_}
                    (∙-is-equiv (sym (p a)))
                    (is-embedding←is-equiv beq)))
+
+  inverse-is-cartesian←is-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤}{B : Type 𝓥}{X : Type 𝓦}{Y : Type 𝓜}
+        {f : A → B} {g : X → Y} (F : Arrow-map f g)
+      → (Fe : is-Arrow-equiv F)
+      → is-cartesian (Arrow⁻¹←is-Arrow-equiv F Fe)
+  inverse-is-cartesian←is-equiv F Fe
+    = is-cartesian←is-equiv _ (Arrow⁻¹-is-equiv F Fe)
 }
 %```
 }
@@ -361,6 +379,71 @@ right-cancel-cartesian {a = a}{b}{H} path Hc bc b'
   hom-eq : is-Arrow-equiv hom
   hom-eq .fst = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
   hom-eq .snd = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
+}
+%```
+}
+
+\subtree[stt-00K5]{
+\title{Canonical cartesian square}
+
+\p{We encode the fact that for each map #{f : A \to B}, there are functors
+#{f^* : \Type_B \to \Type_A}. We also note that for each #{f}, there are
+cartesian maps of arrows from #{f^*(p)} to #{p}, the canonical pullback squares.}
+
+%```agda
+\agda{
+pullback-arrow : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+                 → (f : A → B) → (p : E → B) → (Pullback f p → A)
+pullback-arrow f p = pb.π₁
+
+pullback-arrow-map
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+    → (f : A → B) → (p : E → B)
+    → Arrow-map (pullback-arrow f p) p
+pullback-arrow-map f p .Arrow-Π.top = pb.π₂
+pullback-arrow-map f p .Arrow-Π.bot = f
+pullback-arrow-map f p .Arrow-Π.comm = pb.filler
+
+pullback-arrow-map-is-cartesian
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
+    → (f : A → B) → (p : E → B)
+    → is-cartesian (pullback-arrow-map f p)
+pullback-arrow-map-is-cartesian f p
+  = is-cartesian←is-pullback _ pullback-is-pullback
+
+pullback-arrow-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {E : Type 𝓜}
+      (g : B → C) (f : A → B) (p : E → C)
+    → Arrow-equiv (pullback-arrow f (pullback-arrow g p)) (pullback-arrow (g ∘ f) p)
+pullback-arrow-∘ g f p = ( mk-amap (gap-map←square lem) id ~refl
+                         , gap-is-equiv←is-cartesian lem lem-is-cart
+                         , id-is-equiv) where
+  lem : Arrow-map (pullback-arrow f (pullback-arrow g p)) p
+  lem = paste-squares (pullback-arrow-map g p)
+                      (pullback-arrow-map f (pullback-arrow g p))
+
+  lem-is-cart : is-cartesian lem
+  lem-is-cart = compose-cartesian
+                  (pullback-arrow-map-is-cartesian g p)
+                  (pullback-arrow-map-is-cartesian f (pullback-arrow g p))
+}
+%```
+}
+
+\subtree[stt-00L0]{
+\title{Arrow maps over the unit type}
+
+%```agda
+\agda{
+!-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Arrow-map (!: A) (!: B)
+!-map f .Arrow-Π.top = f
+!-map f .Arrow-Π.bot = id
+!-map f .Arrow-Π.comm = ~refl
+
+!-map-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-equiv f → is-Arrow-equiv (!-map f)
+!-map-is-equiv fe = (fe , id-is-equiv)
 }
 %```
 }

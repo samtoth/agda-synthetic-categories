@@ -10,9 +10,11 @@ module Core.Arrow where
 
 open import Foundations.Prelude
 open import ufAxioms
+
 open import Ergonomics.Representation
 open import Ergonomics.Marker
 open import Ergonomics.Extensionality
+
 open import Core.Slice
 open import Core.CanonicalPushouts
 }
@@ -1000,6 +1002,105 @@ is-cartesian←dom+cod-is-equiv F feq geq a
       (is-contr-map←is-equiv feq a)
       (is-prop←is-single (is-contr-map←is-equiv geq _))
       _
+}
+%```
+}
+
+\subtree[stt-00K7]{
+\title{Paths in maps of families}
+\taxon{Lemma}
+
+%```agda
+\agda{
+opaque
+  Fam-map-homotopy-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {F@(A , X) : Fam 𝓤 𝓥} {G@(B , Y) : Fam 𝓦 𝓜 }
+      → ∀ (a : Fam-map F G)
+      → is-singleton (Σ _ (Fam-map-homotopy {F = F}{G} a))
+  Fam-map-homotopy-is-torsorial a
+    = is-singleton-structure←parts
+        (SingS-is-single (a .fst))
+        (_ , ~refl)
+        (is-single←equiv-to-single
+          (Σ-Π-swap≃ _ _)
+          (Π-is-single (λ x → SingS-is-single (a .snd x))))
+
+instance
+  Fam-map-IdS : ∀ {𝓤 𝓥 𝓦 𝓜} {F : Fam 𝓤 𝓥} {G : Fam 𝓦 𝓜}
+                → Identity-system (Fam-map F G) (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  Fam-map-IdS .Identity-system.IdS = Fam-map-homotopy
+  Fam-map-IdS .Identity-system.IdS←Id refl = Fam-map-refl~ _
+  Fam-map-IdS .Identity-system.has-is-ids a
+    = fundamental-Id _ (Fam-map-homotopy-is-torsorial a) _
+}
+%```
+}
+
+\subtree[stt-00KQ]{
+\title{Straightening (cartesian) arrow maps}
+\taxon{Lemma}
+
+\p{We show that there is an equivalence between maps of arrows
+and maps of families. We also show that an arrow map is cartesian
+iff the corresponding map of families is cartesian.}
+
+%```agda
+\agda{
+fam-map←arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Arrow-map f g → Fam-map (fibre-fam f) (fibre-fam g)
+fam-map←arrow-map F = (F .Arrow-map.bot , arrow-fibre F)
+
+arrow-map←fam-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Fam-map (fibre-fam f) (fibre-fam g)
+    → Arrow-map f g
+arrow-map←fam-map {f = f} {g = g} (b , t)
+  = mk-amap (λ a → t (f a) (a , refl) .fst) b
+            (λ a → sym (t (f a) (a , refl) .snd))
+
+fam-map←arrow-map-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → is-equiv (fam-map←arrow-map {f = f} {g = g})
+fam-map←arrow-map-is-equiv
+  = is-equiv←qiso
+      ( arrow-map←fam-map
+      , (λ x → Arrow-map-path→ (~refl , ~refl ,
+                               (   ~∙-reflr _
+                                ~∙ ap sym ∘ ~∙-reflr _
+                                ~∙ λ _ → sym-sym)))
+      , section-fam-arr) where
+  section-fam-arr
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      → fam-map←arrow-map ∘ arrow-map←fam-map {f = f} {g = g} ~ id
+  section-fam-arr {f = f} {g = g} (b , t)
+    = Σ-path→ (refl ,
+        (funext→ (λ a → funext→
+          (λ where (x , refl) → Σ-path→ (refl , (∙-reflr _ ∙ sym-sym))))))
+
+Cart-fam-map←cart-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Σ (Arrow-map f g) is-cartesian
+    → Cart-fam-map (fibre-fam f) (fibre-fam g)
+Cart-fam-map←cart-arrow-map
+  = Cart-fam-map←is-cartesian ∘ map-Σ fam-map←arrow-map λ _ → id
+
+Cart-fam-map≃cart-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Σ (Arrow-map f g) is-cartesian
+    ≃ Cart-fam-map (fibre-fam f) (fibre-fam g)
+Cart-fam-map≃cart-arrow-map = mk≃ Cart-fam-map←cart-arrow-map
+  (is-equiv-∘
+    Cart-fam-map←is-cartesian-is-equiv
+    (map-Σ-is-equiv
+      fam-map←arrow-map-is-equiv
+      λ _ → id-is-equiv))
 }
 %```
 }

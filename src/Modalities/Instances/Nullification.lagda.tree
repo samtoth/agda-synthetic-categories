@@ -101,6 +101,15 @@ is-local←is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
                    → is-local (λ i → !: A i) X
 is-local←is-null eq i = 3-for-2' (point-is-equiv) (eq i)
 
+is-local-fst←is-null
+  : ∀ {𝓙 𝓤 𝓥} {X : Type 𝓤} {J : X → Type 𝓙} {A : Type 𝓥}
+  → is-null J A
+  → is-local (point (fst: J)) A
+is-local-fst←is-null {J = J} {A = A} Anull _
+  = 3-for-2
+      (curry-is-equiv)
+      (postcomp-Π-equiv λ {x} → Anull x)
+
 is-local-sing←is-null : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
                           {A : I → Type 𝓤}
                           {B : I → Type 𝓥}
@@ -463,21 +472,53 @@ every #{J}-null type is also #{X}-null.
 \agda{
 module _
   {𝓙 𝓤 𝓥 : Level}
-  {J : Type 𝓙} {j0 j1 : J}
-  {A : Type 𝓤} {X : Type 𝓥}
+  {X : Type 𝓥} {J : X → Type 𝓙} {A : Type 𝓤}
   where
 
   is-null-at-deformation-cone
     : (x₀ : X)
-    → (H : J → X → X)
-    → ((x : X) → H j0 x ＝ x₀)
-    → ((x : X) → H j1 x ＝ x)
-    → is-null (point J) A
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ x₀)
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J A
     → is-null (point X) A
-  is-null-at-deformation-cone x₀ H H0 H1 Anull
+  is-null-at-deformation-cone x₀ H j0 j1 H0 H1 Anull
     = is-null←is-local
-        (is-local-at-deformation-cone (point x₀ , ~refl) H H0 H1
-          (is-local←is-null Anull))
+        (is-local-at-deformation-cone (point x₀ , ~refl) H j0 j1 H0 H1
+          (is-local-fst←is-null Anull))
+}
+%```
+
+%```agda
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓤} {J : X → Type 𝓙} {Y : Type 𝓥}
+  {f : X → Y}
+  where
+
+  is-equiv←deformation-cone
+    : is-null J X
+    → (sf : section f)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ sf .fst (f x))
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-equiv f
+  is-equiv←deformation-cone Xnull (s , sec) H j0 j1 H0 H1
+    = is-equiv←qiso qiso where
+
+    qiso : quasi-iso f
+    qiso .fst = s
+    qiso .snd .fst x
+      = sym (H0 x)
+      ∙ sym (happly (is-equiv.ε (Xnull x) (λ t → H x t)) (j0 x))
+      ∙ happly (is-equiv.ε (Xnull x) (λ t → H x t)) (j1 x)
+      ∙ H1 x
+    qiso .snd .snd = sec
 }
 %```
 }

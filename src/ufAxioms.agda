@@ -28,7 +28,7 @@ open import Foundations.BiinvertibleMap public
 open Foundations.BiinvertibleMap.WithFunExt global-funext public
 open import Foundations.EmptyUP global-funext public
 open import Foundations.SingletonClosure public hiding (Π-is-single)
-open import Foundations.PropClosure public hiding (is-prop-Π)
+open import Foundations.PropClosure public hiding (Π-is-prop)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
@@ -60,15 +60,15 @@ weak-funext sb = mk-singl (centre ∘ sb) (λ x → funext→ (λ a → sb a .ce
   Π-implicit≃ ._≅_.fwd-iso .snd .fst = ~refl
   Π-implicit≃ ._≅_.fwd-iso .snd .snd = ~refl
 
-is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+Π-is-prop : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → ((a : A) → is-prop (B a))
             → is-prop (Π A B)
-is-prop-Π = Foundations.PropClosure.is-prop-Π global-funext
+Π-is-prop = Foundations.PropClosure.Π-is-prop global-funext
 
-is-prop-Πᵢ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+Πᵢ-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
              → (∀ {a} → is-prop (B a))
              → is-prop (∀ {a} → B a)
-is-prop-Πᵢ ap = is-prop←is-single-if-inhabited
+Πᵢ-is-prop ap = is-prop←is-single-if-inhabited
                   (λ f → Πᵢ-is-single
                    (λ {a} → mk-singl (f {a}) (ap f)))
 
@@ -76,7 +76,6 @@ funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
                → happly (funext→ p) ＝ p
 funext-redex {p = p} = is-equiv.ε global-funext p
-
 
 open import Foundations.Univalence
 

@@ -28,9 +28,13 @@ open import Modalities.GlobalReflectiveSubuniverses
 \title{Null types}
 
 \p{
-Given a family of types #{A_i}, we say a type #{X} is #{A} \em{null} if
+Given a family of types #{A_i}, we say a type #{X} is #{A}-\em{null} if
 it is right orthogonal to each #{A_i}. Or equivalently, if the
 obvious maps #{X \to (A_i \to X)} are equivalences for each #{i}.
+}
+\p{
+We will also say a type #{B} is #{A}-\em{anodyne} if every type that is
+#{A}-null is #{B}-null.
 }
 
 %```agda
@@ -45,7 +49,7 @@ module _
   is-null-is-prop
     : {A : I → Type 𝓤}
     → (X : Type 𝓥) → is-prop (is-null A X)
-  is-null-is-prop X = is-prop-Π λ a → is-equiv-is-prop
+  is-null-is-prop X = Π-is-prop λ a → is-equiv-is-prop
 
   null≃ : {A : I → Type 𝓤}
           {X : Type 𝓥} (_ : is-null A X) (i : I)
@@ -296,7 +300,7 @@ prop-is-null∙
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {P : I → Type 𝓤} {A : Type 𝓥}
     → (∀ i → P i) → is-prop A → is-null P A
 prop-is-null∙ p ap i
-  = is-equiv←inverse ap (is-prop-Π (λ _ → ap)) (ev (p i))
+  = is-equiv←inverse ap (Π-is-prop (λ _ → ap)) (ev (p i))
 
 Null-globally-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
                    {P : I → Type 𝓤}
@@ -339,6 +343,7 @@ module _
     ; ∈S←is-singleton to is-null←is-singleton
     ; Pullback∈S to Pullback-is-null
     ; fibre∈S to fibre-is-null
+    ; Ext∈S to Ext-is-null
     ; ×∈S to ×-is-null
     ; ＝∈S to ＝-is-null
     ; ~∈S to ~-is-null
@@ -349,17 +354,13 @@ module _
     ; Seq-lim∈S to Seq-lim-is-null
     ; preidempotent-map∈S to preidempotent-map-is-null
     ; qidempotent-map∈S to qidempotent-map-is-null
+    ; idempotent-map∈S to idempotent-map-is-null
     ; Retracts∈S to Retracts-is-null)
 
-module Null
-  {𝓘 𝓤 : Level} {I : Type 𝓘}
-  (A : I → Type 𝓤)
-  where
-
+module Null {𝓘 𝓤 : Level} {I : Type 𝓘} (A : I → Type 𝓤) where
   open gRSubUInduction (Null-gRSubU A) (Null-gRSubU-Σ-closed A) public
   open gRSubU (Null-gRSubU A) public
   open gReflectiveClosure (Null-gRSubU A) public
-
 }
 %```
 }
@@ -407,7 +408,7 @@ module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
 \subtree[stt-00GY]{
 \date{2026-03-10}
 \author{fredrikbakke}
-\title{Closure of null types under retracts in the exponent}
+\title{Closure of anodyne types under retracts}
 \taxon{Lemma}
 
 \p{
@@ -418,23 +419,102 @@ Given an #{A}-[null](stt-005G) type #{X}, then #{X} is null at any
 %```agda
 \agda{
 module _
-  {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
+  {𝓘 𝓤 𝓥 𝓧 : Level} {I : Type 𝓘}
+  {A : I → Type 𝓤}
+  {B : I → Type 𝓥}
+  {X : Type 𝓧}
   where
 
   is-null-at-retract
-    : {A : I → Type 𝓤}
-      {B : I → Type 𝓤}
-      {X : Type 𝓥}
-    → ((i : I) → retract (A i) (B i))
-    → is-null B X
-    → is-null A X
-  is-null-at-retract {A = A} {B} {X} R Bnull i
+    : ((i : I) → retract (A i) (B i)) → is-null B X → is-null A X
+  is-null-at-retract R Bnull i
     = is-equiv←incoherent-retraction-equiv
         (mk-amap id (precomp X (R i .snd .fst)) ~refl)
         (mk-amap id (precomp X (R i .fst)) ~refl
         , ~refl
         , λ h → funext→ λ a → ap h (R i .snd .snd a))
         (Bnull i)
+
+  is-null-at-equiv
+    : ((i : I) → A i ≃ B i) → is-null B X → is-null A X
+  is-null-at-equiv e = is-null-at-retract (λ i → retract←equiv (e i))
+
+  is-null-at-equiv⁻¹
+    : ((i : I) → B i ≃ A i) → is-null B X → is-null A X
+  is-null-at-equiv⁻¹ e = is-null-at-equiv (λ i → (e i) e⁻¹)
+}
+%```
+}
+
+\subtree[stt-00L9]{
+\date{2026-03-31}
+\author{fredrikbakke}
+\title{Closure of anodyne types under dependent sums}
+\taxon{Lemma}
+
+\p{
+If a type is null at a family #{X}, and for each #{i} also null at a family
+#{Y_{i}} over #{X_i}, then it is null at the family of dependent sums
+#{\sum_{(x : X_i)} Y_{i,x}}.
+}
+
+%```agda
+\agda{
+module _
+  {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+  where
+
+  is-null-at-Σ
+    : {X : I → Type 𝓤} {Y : (i : I) → X i → Type 𝓥} {A : Type 𝓦}
+    → is-null X A
+    → ((i : I) → is-null (Y i) A)
+    → is-null (λ i → Σ (X i) (Y i)) A
+  is-null-at-Σ {X = X} {Y = Y} Xnull Ynull i
+    = 3-for-2
+        (curry-is-equiv)
+        (is-equiv-∘ (postcomp-Π-equiv λ {x} → Ynull i x) (Xnull i))
+
+  is-null-at-×
+    : {X : I → Type 𝓤} {Y : I → Type 𝓥} {A : Type 𝓦}
+    → is-null X A
+    → is-null Y A
+    → is-null (λ i → X i × Y i) A
+  is-null-at-× {X = X} {Y = Y} Xnull Ynull
+    = is-null-at-Σ Xnull (λ i _ → Ynull i)
+}
+%```
+}
+
+\subtree[stt-00LB]{
+\date{2026-04-01}
+\author{fredrikbakke}
+\title{Closure of anodyne types under pushouts}
+\taxon{Lemma}
+
+\p{
+If a type is null at #{C} and local at #{f : A \to B}, then it is null at any
+pushout #{B \amalg_A C}.
+}
+
+%```agda
+\agda{
+module _
+  {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
+  {A : I → Type 𝓤} {B : I → Type 𝓥} {C : I → Type 𝓦}
+  (f : (i : I) → A i → B i) (g : (i : I) → A i → C i)
+  where
+
+  is-null-at-pushout'
+    : {𝓠 : Level} {X : Type 𝓠}
+    → is-null C X
+    → is-local f X
+    → is-null (λ i → (Pushout (f i) (g i))) X
+  is-null-at-pushout' {X = X} Cnull floc i
+    = 3-for-2
+        (is-equiv-∘
+          (pullback-equiv₁ {f = precomp X (g i)} (floc i))
+          (is-equiv-∘ (precomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω))
+        (Cnull i)
 }
 %```
 }
@@ -542,7 +622,7 @@ Null-in-gSubU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-p
   is-in-SU-and-is-null-is-prop
     : (X : Type (𝓤 ⊔ 𝓥)) → is-prop ((X ∈ SU) × is-null P X)
   is-in-SU-and-is-null-is-prop X
-    = is-prop-Σ (∈-is-prop SU X) (λ _ → is-null-is-prop X)
+    = ×-is-prop (∈-is-prop SU X) (is-null-is-prop X)
 
   qiso : quasi-iso (const U (P i))
   qiso .fst f

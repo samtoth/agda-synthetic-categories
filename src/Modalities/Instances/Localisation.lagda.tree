@@ -457,19 +457,60 @@ module _
 }
 
 
-\subtree[fre-AFKD]{
+\subtree[fre-AFKE]{
 \date{2026-04-09}
 \author{fredrikbakke}
-\title{Deformation cone argument for local types}
-\taxon{Proposition}
+\title{Deformation cone argument}
+\taxon{Theorem}
+
+\p{
+Suppose a map #{f : X \to Y} has a section #{s}, and there are maps
+#{g : J \to X}, #{H : J \to X}, and #{j_0,j_1 : X \to J} such that
+#{g(j_0(x)) = g(j_1(x))}, #{H(j_0(x)) = s(f(x))}, and #{H(j_1(x)) = x}
+for all #{x}. Then any #{g}-local type is #{f}-local.
+}
+
+%```agda
+\agda{
+module _
+  {𝓙 𝓤 𝓥 𝓦 : Level}
+  {J : Type 𝓙} {X : Type 𝓤} {Y : Type 𝓥}
+  {A : Type 𝓦}
+  {g : J → X} {f : X → Y}
+  where
+
+  is-local←deformation-cone-over
+    : is-local (point g) A
+    → (sf : section f)
+    → (H : J → X)
+    → (j0 j1 : X → J)
+    → ((x : X) → g (j0 x) ＝ g (j1 x))
+    → ((x : X) → H (j0 x) ＝ sf .fst (f x))
+    → ((x : X) → H (j1 x) ＝ x)
+    → is-local (point f) A
+  is-local←deformation-cone-over gloc (s , sec) H j0 j1 G H0 H1 _
+    = is-equiv←qiso qiso where
+
+    qiso : quasi-iso (precomp A f)
+    qiso .fst = precomp A s
+    qiso .snd .fst α = funext→ (α ◂ sec)
+    qiso .snd .snd h = funext→ λ x →
+      h (s (f x))                               ＝⟨ sym (ap h (H0 x)) ⟩
+      h (H (j0 x))                              ＝⟨ sym (happly (is-equiv.ε (gloc tt) (h ∘ H)) (j0 x)) ⟩
+      is-equiv.bwd (gloc tt) (h ∘ H) (g (j0 x)) ＝⟨ ap (is-equiv.bwd (gloc tt) (h ∘ H)) (G x) ⟩
+      is-equiv.bwd (gloc tt) (h ∘ H) (g (j1 x)) ＝⟨ happly (is-equiv.ε (gloc tt) (h ∘ H)) (j1 x) ⟩
+      h (H (j1 x))                              ＝⟨ ap h (H1 x) ⟩
+      h x                                       ∎
+}
+%```
 
 \p{
 Suppose a map #{f : X \to Y} has a section #{s}, and admits a \em{parametrised
 deformation cone}: a map
 #{H : (x : X) \to J(x) \to X} for some type family #{J} over #{X} equipped with
 sections #{j_0,j_1 : (x : X) \to J(x)}, such that #{H(x,j_0(x)) = s(f(x))} and
-#{H(x,j_1(x)) = x} for all #{x}, then any type local at the total space projection
-#{\Sigma_{(x:X)} J(x) \to X} is #{f}-local.
+#{H(x,j_1(x)) = x} for all #{x}, then any type that is local at the total space
+projection #{\Sigma_{(x:X)} J(x) \to X} is #{f}-local.
 }
 
 %```agda
@@ -490,20 +531,12 @@ module _
     → ((x : X) → H x (j0 x) ＝ sf .fst (f x))
     → ((x : X) → H x (j1 x) ＝ x)
     → is-local (point f) A
-  is-local-at-deformation-cone Jloc (s , sec) H j0 j1 H0 H1 _
-    = is-equiv←qiso qiso where
-
-    qiso : quasi-iso (precomp A f)
-    qiso .fst = precomp A s
-    qiso .snd .fst α = funext→ (α ◂ sec)
-    qiso .snd .snd h = funext→ λ x →
-      let hH (x , t) = h (H x t)
-      in h (s (f x))                 ＝⟨ sym (ap h (H0 x)) ⟩
-         hH (x , j0 x)               ＝⟨ sym (happly (is-equiv.ε (Jloc tt) hH) (x , j0 x)) ⟩
-         is-equiv.bwd (Jloc tt) hH x ＝⟨ happly (is-equiv.ε (Jloc tt) hH) (x , j1 x) ⟩
-         hH (x , j1 x)               ＝⟨ ap h (H1 x) ⟩
-         h x                         ∎
-
+  is-local-at-deformation-cone Jloc sf H j0 j1
+    = is-local←deformation-cone-over Jloc sf
+        (λ (x , t) → H x t)
+        (λ x → x , j0 x)
+        (λ x → x , j1 x)
+        (~refl)
 }
 %```
 }
@@ -518,31 +551,32 @@ module _
 \agda{
 module _
   {𝓙 𝓤 𝓥 : Level}
-  {X : Type 𝓤} {J : X → Type 𝓙} {Y : Type 𝓥}
-  {f : X → Y}
+  {J : Type 𝓙} {X : Type 𝓤} {Y : Type 𝓥}
+  {g : J → X} {f : X → Y}
   where
 
   is-equiv←local-deformation-cone
-    : is-local (point (fst: J)) X
+    : is-local (point g) X
     → (sf : section f)
-    → (H : (x : X) → J x → X)
-    → (j0 : (x : X) → J x)
-    → (j1 : (x : X) → J x)
-    → ((x : X) → H x (j0 x) ＝ sf .fst (f x))
-    → ((x : X) → H x (j1 x) ＝ x)
+    → (H : J → X)
+    → (j0 : X → J)
+    → (j1 : X → J)
+    → ((x : X) → g (j0 x) ＝ g (j1 x))
+    → ((x : X) → H (j0 x) ＝ sf .fst (f x))
+    → ((x : X) → H (j1 x) ＝ x)
     → is-equiv f
-  is-equiv←local-deformation-cone Xloc (s , sec) H j0 j1 H0 H1
+  is-equiv←local-deformation-cone Xloc (s , sec) H j0 j1 G H0 H1
     = is-equiv←qiso qiso where
 
     qiso : quasi-iso f
     qiso .fst = s
     qiso .snd .fst x
-      = let hH (x , t) = H x t
-        in s (f x)                     ＝⟨ sym (H0 x) ⟩
-           H x (j0 x)                  ＝⟨ sym (happly (is-equiv.ε (Xloc tt) hH) (x , j0 x)) ⟩
-           is-equiv.bwd (Xloc tt) hH x ＝⟨ happly (is-equiv.ε (Xloc tt) hH) (x , j1 x) ⟩
-           H x (j1 x)                  ＝⟨ H1 x ⟩
-           x                           ∎
+      = s (f x)                                  ＝⟨ sym (H0 x) ⟩
+        H (j0 x)                                 ＝⟨ sym (happly (is-equiv.ε (Xloc tt) H) (j0 x)) ⟩
+        is-equiv.bwd (Xloc tt) H (g (j0 x))      ＝⟨ ap (is-equiv.bwd (Xloc tt) H) (G x) ⟩
+        is-equiv.bwd (Xloc tt) H (g (j1 x))      ＝⟨ happly (is-equiv.ε (Xloc tt) H) (j1 x) ⟩
+        H (j1 x)                                 ＝⟨ H1 x ⟩
+        x                                        ∎
     qiso .snd .snd = sec
 }
 %```

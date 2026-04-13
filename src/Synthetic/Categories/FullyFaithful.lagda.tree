@@ -24,8 +24,10 @@ open import Data.Bool
 
 open import Core.Arrow
 open import Core.ArrowEquiv
+open import Core.Cube
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
+open import Core.Postwhisker
 open import Core.PullbackPower
 }
 %```
@@ -240,9 +242,7 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
     = total-hom ._≃_.has-is-eqv
     , arr-map-∂Δ¹-incl≃ΣΣHom ._≃_.has-is-eqv
 
-module _
-  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-  where
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 
   is-ff'←is-ff : is-ff f → is-ff' f
   is-ff'←is-ff ι⊥f {x} {y}
@@ -266,6 +266,140 @@ module _
 
   is-ff⇔is-ff' : is-ff f ⇔ is-ff' f
   is-ff⇔is-ff' = (is-ff'←is-ff , is-ff←is-ff')
+}
+%```
+}
+
+\subtree[fre-4006]{
+\title{Computing the source-target transformation associated to a map}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-13}
+
+\p{
+For any map #{f : A \to B}, the induced square between the source-target maps
+#{A^{\Delta^1} \to A \times A} and #{B^{\Delta^1} \to B \times B} is equivalent to
+the square obtained from precomposition along the boundary inclusion
+#{\partial\Delta^1 \hookrightarrow \Delta^1}.
+}
+
+%```agda
+\agda{
+src×tgt : ∀ {𝓤} {A : Type 𝓤} → (Δ¹ → A) → A × A
+src×tgt u = (u i0 , u i1)
+
+src×tgt:_ : ∀ {𝓤} (A : Type 𝓤) → (Δ¹ → A) → A × A
+src×tgt: A = src×tgt
+
+src×tgt-homotopy
+  : ∀ {𝓤} {A : Type 𝓤} (u : Δ¹ → A)
+  → ∂Δ¹-UP→ (src×tgt u) ~ precomp A ∂Δ¹-incl u
+src×tgt-homotopy u (mk-lift false) = refl
+src×tgt-homotopy u (mk-lift true) = refl
+
+src×tgt≃boundary-square
+  : ∀ {𝓤} {A : Type 𝓤}
+  → Arrow-equiv (src×tgt: A) (precomp A ∂Δ¹-incl)
+src×tgt≃boundary-square
+  = (mk-amap id (∂Δ¹-UP ._≃_.fwd) (funext→ ∘ src×tgt-homotopy))
+  , id-is-equiv
+  , ∂Δ¹-UP ._≃_.has-is-eqv
+
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+
+  src×tgt-square
+    : Arrow-map (postcomp Δ¹ f) (f ⊗ f)
+  src×tgt-square .Arrow-map.top = src×tgt
+  src×tgt-square .Arrow-map.bot = src×tgt
+  src×tgt-square .Arrow-map.comm = ~refl
+
+  src×tgt-natural-pair
+    : (xy : A × A)
+    → postcomp ∂Δ¹ f (∂Δ¹-UP→ xy)
+    ~ ∂Δ¹-UP→ ((f ⊗ f) xy)
+  src×tgt-natural-pair (x , y) (mk-lift false) = refl
+  src×tgt-natural-pair (x , y) (mk-lift true) = refl
+
+  src×tgt-square≃power-hom
+    : Cube (transpose-square src×tgt-square) (transpose-square (power-hom ∂Δ¹-incl f))
+  src×tgt-square≃power-hom
+    = mk-cube
+        (src×tgt≃boundary-square .fst)
+        (src×tgt≃boundary-square .fst)
+        ( ~refl
+        , funext→ ∘ src×tgt-natural-pair
+        , λ u
+          → ∙-reflr _
+          ∙ ∙-reflr _
+          ∙ sym (commutes-postwhisker-funext {h = f} (src×tgt-homotopy u))
+          ∙ ap funext→
+              (funext→ λ where
+                (mk-lift false) → sym (∙-reflr _)
+                (mk-lift true) → sym (∙-reflr _))
+          ∙ funext-∙
+              (src×tgt-natural-pair (src×tgt u))
+              (src×tgt-homotopy (postcomp Δ¹ f u)))
+
+  src×tgt-square≃power-hom-is-equiv : is-Cube-equiv src×tgt-square≃power-hom
+  src×tgt-square≃power-hom-is-equiv
+    = src×tgt≃boundary-square .snd
+    , src×tgt≃boundary-square .snd
+}
+%```
+}
+
+\subtree[fre-4007]{
+\title{Fully faithful maps induce cartesian transformations of source-target maps}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-04-13}
+
+\p{
+A map #{f : A \to B} is fully faithful if and only if the induced square between
+source-target maps #{A^{\Delta^1} \to A \times A} and
+#{B^{\Delta^1} \to B \times B} is cartesian.
+}
+
+\proof{
+\p{
+By \ref{fre-4006}, this source-target square is equivalent to the square
+#{\mathrm{Exp}(\partial\Delta^1\text{-}\mathrm{incl}, f)}, and that square is
+cartesian if and only if the pullback power with the boundary inclusion of
+#{\Delta^1} is an equivalence, which in turn is the orthogonality condition for fully
+faithful maps.
+}
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+
+  is-ff→is-cartesian-src×tgt-square
+    : is-ff f → is-cartesian (src×tgt-square f)
+  is-ff→is-cartesian-src×tgt-square ff
+    = front-cartesian←equiv-transpose-cube
+        (src×tgt-square≃power-hom f)
+        (src×tgt-square≃power-hom-is-equiv f)
+        (power-hom-cartesian←pullback-power
+          ∂Δ¹-incl f
+          (pb-power-is-equiv←orthogonal (ff tt)))
+
+  is-ff←is-cartesian-src×tgt-square
+    : is-cartesian (src×tgt-square f) → is-ff f
+  is-ff←is-cartesian-src×tgt-square cart _
+    = orthogonal←pb-power-is-equiv
+        (pullback-power←power-hom-cartesian
+          ∂Δ¹-incl f
+          (back-cartesian←equiv-transpose-cube
+            (src×tgt-square≃power-hom f)
+            (src×tgt-square≃power-hom-is-equiv f)
+            (cart)))
+
+  is-ff⇔is-cartesian-src×tgt-square
+    : is-ff f ⇔ is-cartesian (src×tgt-square f)
+  is-ff⇔is-cartesian-src×tgt-square
+    = ( is-ff→is-cartesian-src×tgt-square
+      , is-ff←is-cartesian-src×tgt-square)
 }
 %```
 }

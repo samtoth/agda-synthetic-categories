@@ -6,6 +6,7 @@
 
 %```agda
 \agda{
+-- {-# OPTIONS --lossy-unification #-}
 module Core.FibreInclusions where
 
 open import Foundations.Prelude
@@ -13,6 +14,9 @@ open import ufAxioms
 
 open import Core.SpanMap
 open import Core.FunctorialPullback
+open import Core.Arrow
+
+open import Ergonomics.Extensionality
 }
 %```
 
@@ -51,6 +55,17 @@ record Cospanᵈ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) 𝓤' 𝓥' 𝓦'
 π-cospanᵈ C .Cospan-map.H = ~refl
 π-cospanᵈ C .Cospan-map.K = ~refl
 
+fibre-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → (F : Cospan-map S T) → Cospanᵈ T (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+fibre-cospanᵈ F .Cospanᵈ.Centreᵈ = fibre (Cospan-map.h₂ F)
+fibre-cospanᵈ F .Cospanᵈ.Leftᵈ = fibre (Cospan-map.h₁ F)
+fibre-cospanᵈ {S = S}{T} F .Cospanᵈ.leftᵈ
+  = arrow-fibre (mk-amap (Cospan.left S) (Cospan.left T) (F .Cospan-map.H ~⁻¹))
+fibre-cospanᵈ F .Cospanᵈ.Rightᵈ = fibre (Cospan-map.h₃ F)
+fibre-cospanᵈ F .Cospanᵈ.rightᵈ
+  = arrow-fibre (mk-amap _ _ (F .Cospan-map.K ~⁻¹))
+
 pullback-cospanᵈ
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
     → (C : Cospanᵈ S 𝓤' 𝓥' 𝓦')
@@ -79,6 +94,52 @@ pullback₀-fam fc
   = Σ[ a ∶ fc .Fam-cospan.Centre ]
       (fc .Fam-cospan.Left a × fc .Fam-cospan.Right a)
 
+pullback₀-fam-path
+  : ∀ {𝓤 𝓥 𝓦} → (X : Fam-cospan 𝓤 𝓥 𝓦)
+    → pullback₀-fam X → pullback₀-fam X → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+pullback₀-fam-path X (a , b , c) (a' , b' , c')
+  = Σ[ p ∶ a ＝ a' ]
+    ( (b ＝[ ap (Fam-cospan.Left X) p ] b')
+    ×
+      (c ＝[ ap (Fam-cospan.Right X) p ] c')
+    )
+
+pullback₀-fam-path-refl
+  : ∀ {𝓤 𝓥 𝓦} → (X : Fam-cospan 𝓤 𝓥 𝓦)
+    → (x : pullback₀-fam X) → pullback₀-fam-path X x x
+pullback₀-fam-path-refl X x = (refl , refl , refl)
+
+pullback₀-fam-path←Id
+  : ∀ {𝓤 𝓥 𝓦} → (X : Fam-cospan 𝓤 𝓥 𝓦)
+    → {x y : pullback₀-fam X} → (p : x ＝ y)
+    → pullback₀-fam-path X x y
+pullback₀-fam-path←Id X refl = pullback₀-fam-path-refl X _
+
+opaque
+  pullback₀-fam-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} → (X : Fam-cospan 𝓤 𝓥 𝓦)
+      → (x : pullback₀-fam X)
+      → is-singleton (Σ _ (pullback₀-fam-path X x))
+  pullback₀-fam-path-is-torsorial X x
+    = is-singleton-structure←parts
+        Sing-is-singleton
+        (_ , refl)
+        (is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          Sing-is-singleton)
+
+opaque
+  pullback₀-fam-path←Id-is-equiv
+    : ∀ {𝓤 𝓥 𝓦} → (X : Fam-cospan 𝓤 𝓥 𝓦)
+      → {x y : pullback₀-fam X}
+      → is-equiv (pullback₀-fam-path←Id X {x = x} {y})
+  pullback₀-fam-path←Id-is-equiv X {x} {y}
+    = fundamental-Id _
+        (pullback₀-fam-path-is-torsorial X x)
+        (λ _ → pullback₀-fam-path←Id X)
+        y
+
 record Fam-cospan-map {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
                       (S : Fam-cospan 𝓤 𝓥 𝓦) (T : Fam-cospan 𝓜 𝓝 𝓛)
                       : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛) where
@@ -94,6 +155,14 @@ pullback₁-fam
     → Fam-cospan-map S T → pullback₀-fam S → pullback₀-fam T
 pullback₁-fam F = map-Σ h₂ λ c → (h₁ c ⊗ h₃ c)
   where open Fam-cospan-map F
+
+
+straighten-cospan-fam : ∀ {𝓤 𝓥 𝓦} → Fam-cospan 𝓤 𝓥 𝓦 → Cospan 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+straighten-cospan-fam A .Cospan.Centre = A .Fam-cospan.Centre
+straighten-cospan-fam A .Cospan.Left = Σ _ (A .Fam-cospan.Left)
+straighten-cospan-fam A .Cospan.left = fst
+straighten-cospan-fam A .Cospan.Right = Σ _ (A .Fam-cospan.Right)
+straighten-cospan-fam A .Cospan.right = fst
 }
 %```
 }
@@ -137,7 +206,7 @@ record fibre-inclusion
   to-fib x = (incl x , sym (null-htpy .snd x))
 
 
-module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
+module semi-straight-3x3 {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
          (B : Cospan 𝓤2 𝓤1 𝓤3)
          (A : Cospanᵈ B 𝓥2 𝓥1 𝓥3)
          (C : Cospanᵈ B 𝓦2 𝓦1 𝓦3)
@@ -182,6 +251,33 @@ module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
   vert-cospan .Centre = Pullback-of-cospan B
   vert-cospan .Left = pullback-cospanᵈ A
   vert-cospan .Right = pullback-cospanᵈ C
+
+
+  private
+    repr : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓥1 ⊔ 𝓥2 ⊔ 𝓥3 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
+    repr = Σ[ a ∶ pullback₀-fam X ] Σ[ b ∶ pullback₀-fam Z ]
+             pullback₀-fam-path Y (pullback₁-fam XY a) (pullback₁-fam ZY b)
+
+    hor-cospan-repr→ : Pullback-of-cospan hor-cospan → repr
+    hor-cospan-repr→ = total-map (λ a → total-map λ b → pullback₀-fam-path←Id Y)
+
+    lemma : pullback₀-fam vert-cospan ≃ repr
+    lemma ._≃_.fwd ((x , x' , p) , (y , y' , q) , (z , z' , r))
+       = ((x , y , z) , (x' , y' , z') , (p , q , r))
+    lemma ._≃_.has-is-eqv .is-equiv.qiso .fst
+      ((x , y , z) , (x' , y' , z') , (p , q , r))
+      = ((x , x' , p) , (y , y' , q) , (z , z' , r))
+    lemma ._≃_.has-is-eqv .is-equiv.qiso .snd .fst = ~refl
+    lemma ._≃_.has-is-eqv .is-equiv.qiso .snd .snd = ~refl
+    lemma ._≃_.has-is-eqv .is-equiv.coherent = ~refl
+
+  3x3 : pullback₀-fam vert-cospan ≃ Pullback-of-cospan hor-cospan
+  3x3 = lemma
+      ∙≃ (mk≃ hor-cospan-repr→
+                (is-total-equiv←is-fibrewise-equiv
+                  (λ a → is-total-equiv←is-fibrewise-equiv
+                    (λ b → pullback₀-fam-path←Id-is-equiv _))) e⁻¹)
+
 
 module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
          (A : Cospan 𝓥2 𝓥1 𝓥3)
@@ -229,6 +325,14 @@ module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
     Q .H = sym ∘ K F
     Q .K = sym ∘ K G
 
+  Aᵈ : Cospanᵈ B (𝓥2 ⊔ 𝓤2) (𝓥1 ⊔ 𝓤1) (𝓥3 ⊔ 𝓤3)
+  Aᵈ = fibre-cospanᵈ F
+
+  Cᵈ : Cospanᵈ B (𝓦2 ⊔ 𝓤2) (𝓦1 ⊔ 𝓤1) (𝓦3 ⊔ 𝓤3)
+  Cᵈ = fibre-cospanᵈ G
+
+  module X = semi-straight-3x3 B Aᵈ Cᵈ
+
   vert-pullback : Cospan (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3) (𝓥1 ⊔ 𝓥2 ⊔ 𝓥3) (𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
   vert-pullback .Centre = Pullback-of-cospan B
   vert-pullback .Left = Pullback-of-cospan A
@@ -236,6 +340,10 @@ module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
   vert-pullback .Right = Pullback-of-cospan C
   vert-pullback .right = Pullback₁ G
 
+  -- lemma1 : Σ (Cospan-map (straighten-cospan-fam X.vert-cospan) vert-pullback)
+  --            is-cospan-equiv
+  -- lemma1 .fst = {!!}
+  -- lemma1 .snd = {!!}
 
   hor-pullback : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
   hor-pullback .Centre = Pullback-of-cospan Y
@@ -243,7 +351,6 @@ module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
   hor-pullback .left = Pullback₁ P
   hor-pullback .Right = Pullback-of-cospan Z
   hor-pullback .right = Pullback₁ Q
-
 
   3×3 : Pullback-of-cospan vert-pullback ≅ Pullback-of-cospan hor-pullback
   3×3 ._≅_.fwd (a , b , c) .fst = (a .pb.π₁ , b .pb.π₁ , ap pb.π₁ c)
@@ -257,10 +364,30 @@ module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
     = pullback-path→ (a .pb.filler , b .pb.filler , {!!})
   3×3 ._≅_.fwd-iso .snd .fst (a , b , p)
     = pullback-path→
-        ( pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₁))
-        , pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₂))
+        ( {!!}
+        , {!!}
         , {!!})
+    -- = pullback-path→
+    --     ( pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₁ _))
+    --     , pullback-path→ (refl , refl , sym (∙-reflr _ ∙ pullback-path-ap₂ _))
+    --     , {!!})
   3×3 ._≅_.fwd-iso .snd .snd = {!!}
+
+
+record straight-3x3 {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
+         : Type (lsuc (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓥1 ⊔ 𝓥2 ⊔ 𝓥3 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)) where
+  field
+    Core : Type 𝓤2
+    L    : Core → Type 𝓤1
+    R    : Core → Type 𝓤3
+    T    : Core → Type 𝓥2
+    TL   : (c : Core) → L c → T c → Type 𝓥1
+    TR   : (c : Core) → R c → T c → Type 𝓥3
+    B    : Core → Type 𝓦2
+    BL   : (c : Core) → L c → B c → Type 𝓦1
+    BR   : (c : Core) → R c → B c → Type 𝓦3
+
+
 }
 %```
 }

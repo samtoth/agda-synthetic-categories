@@ -22,6 +22,8 @@ open import Foundations.FibrewiseEquiv
 open import Foundations.SigmaProperties
 open import Foundations.CanonicalPullbacks
 open import Foundations.Square
+open import Foundations.Singleton
+open import Foundations.IdentitySystem
 }
 % ```
 
@@ -39,44 +41,56 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type  𝓥} {C : Type 𝓦}
   pullback-Path (a , b , p) (a' , b' , q)
     = Σ[ P ∶ (a ＝ a') ] Σ[ Q ∶ (b ＝ b') ] (ap f P ∙ q ＝ p ∙ ap g Q)
 
-  pullback-path : ∀ (p q : Pullback f g) → (p ＝ q) ≃ pullback-Path p q
-  pullback-path P@(a , b , p) Q@(a' , b' , q)
-    = (a , b , p) ＝ (a' , b' , q)                     ≃⟨ Σ-path e⁻¹ ⟩
-      (Σ[ P ∶ (a ＝ a')]
-        (tr (λ a'' → Σ[ c ∶ C ]
-        (f a'' ＝ g c)) P (b , p) ＝ (b' , q)))
-                                                      ≃⟨ Σ-ap-≃ (λ
-                                                       P → equiv←Id (Σ-tr ∙-))⟩
-      Σ[ P ∶ (a ＝ a') ]
-        ((b , tr (λ a → f a ＝ g b) P p) ＝ (b' , q)) ≃⟨ Σ-ap-≃ (λ
-                                                        P → Σ-path e⁻¹) ⟩
-      (Σ[ P ∶ (a ＝ a')] Σ[ Q ∶ (b ＝ b')]
-        (tr (λ b'' → f a' ＝ g b'') Q
-          (tr (λ a'' → f a'' ＝ g b) P p) ＝ q))        ≃⟨ Σ-ap-≃ (λ
-                                                        P → Σ-ap-≃ λ
-                                                          Q → lem e⁻¹) ⟩
-      pullback-Path P Q ≃∎ where
+  opaque
+    pullback-path-is-torsorial
+      : ∀ {p : Pullback f g} → is-singleton (Σ _ (pullback-Path p))
+    pullback-path-is-torsorial
+      = is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          (is-singleton-structure←parts
+            Sing-is-singleton
+            (_ , refl)
+            Sing'-is-singleton)
 
-     lem : {P : a ＝ a'}
-      {Q : b ＝ b'} →
-      (ap f P ∙ q ＝ p ∙ ap g Q)
-       ≃
-      (tr (λ b'' → f a' ＝ g b'') Q (tr (λ a'' → f a'' ＝ g b) P p) ＝ q)
-     lem {refl} {refl} = (equiv←Id (-∙ ∙-reflr p)) ∙≃ sym≃
+  pullback-path-refl : ∀ {p : Pullback f g} → pullback-Path p p
+  pullback-path-refl .fst = refl
+  pullback-path-refl .snd .fst = refl
+  pullback-path-refl .snd .snd = sym (∙-reflr _)
+
+  pullback-path←Id : ∀ {p q : Pullback f g} → p ＝ q → pullback-Path p q
+  pullback-path←Id refl = pullback-path-refl
+
+  pullback-path-IdS : Identity-system (Pullback f g) (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  pullback-path-IdS .Identity-system.IdS = pullback-Path
+  pullback-path-IdS .Identity-system.IdS←Id = pullback-path←Id
+  pullback-path-IdS .Identity-system.has-is-ids a
+    = fundamental-Id _ pullback-path-is-torsorial _
 
   pullback-path→ : ∀ {p q : Pullback f g} → pullback-Path p q → (p ＝ q)
-  pullback-path→ (refl , refl , refl)
-    = Σ-path→ (refl , (Σ-path→ (refl , sym (∙-reflr _))))
+  pullback-path→ = Identity-system.Id←IdS pullback-path-IdS
 
-  pullback-path-ap₁
-    : ∀ {p q : Pullback f g} → {P : pullback-Path p q}
-      → ap pb.π₁ (pullback-path→ P) ＝ fst P
-  pullback-path-ap₁ {P = (refl , refl , refl)} = Σ-path-ap-fst
+  pullback-path≃ : ∀ {p q : Pullback f g} → (p ＝ q) ≃ pullback-Path p q
+  pullback-path≃ = mk≃ _ (Identity-system.has-is-ids pullback-path-IdS _ _)
 
-  postulate
+  opaque
+    pullback-path-ap₁
+      : ∀ {p q : Pullback f g} → (P : pullback-Path p q)
+        → ap pb.π₁ (pullback-path→ P) ＝ fst P
+    pullback-path-ap₁ {p}{q} P
+      = help (pullback-path→ P)
+      ∙ ap fst (Identity-system.IdS←Id←IdS pullback-path-IdS P) where
+      help : (P : p ＝ q) → ap pb.π₁ P ＝ fst (pullback-path←Id P)
+      help refl = refl
+
     pullback-path-ap₂
-      : ∀ {p q : Pullback f g} → {P : pullback-Path p q}
+      : ∀ {p q : Pullback f g} → (P : pullback-Path p q)
       → ap pb.π₂ (pullback-path→ P) ＝ fst (snd P)
+    pullback-path-ap₂ {p}{q} P
+      = help (pullback-path→ P)
+      ∙ ap (fst ∘ snd) (Identity-system.IdS←Id←IdS pullback-path-IdS P) where
+      help : (P : p ＝ q) → ap pb.π₂ P ＝ fst (snd (pullback-path←Id P))
+      help refl = refl
 }
 % ```
 }

@@ -27,15 +27,16 @@ open import Foundations.EquivProp global-funext public
 open import Foundations.BiinvertibleMap public
 open Foundations.BiinvertibleMap.WithFunExt global-funext public
 open import Foundations.EmptyUP global-funext public
-open import Foundations.SingletonClosure public hiding (Singleton-Π)
-open import Foundations.PropClosure public hiding (is-prop-Π)
+open import Foundations.SingletonClosure public hiding (Π-is-single)
+open import Foundations.PropClosure public hiding (Π-is-prop)
 open import Foundations.SingletonProp global-funext public
 open import Foundations.CompositionEquiv global-funext public
 open import Foundations.CompositionFibres global-funext public
 open import Foundations.NullHomotopy global-funext public
 open Foundations.Idempotent.IdemWithFunExt global-funext public
 open Foundations.Idempotent.QIdemWithFunExt global-funext public
-open Foundations.Idempotent.CoherentIdemWithFunExt global-funext public
+open Foundations.Idempotent.QIdemWithFunExt2 global-funext public
+open Foundations.Idempotent.CohIdemWithFunExt global-funext public
 open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
@@ -46,36 +47,35 @@ weak-funext : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
               → is-singleton ((a : A) → B a)
 weak-funext sb = mk-singl (centre ∘ sb) (λ x → funext→ (λ a → sb a .central (x a)))
 
-is-singleton-Π = weak-funext
+Π-is-single = weak-funext
 
-is-singleton-Πᵢ
+Πᵢ-is-single
   : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
   → ({a : A} → is-singleton (B a)) → is-singleton ({a : A} → B a)
-is-singleton-Πᵢ {A = A}{B} sa
-  = is-single←equiv-to-single (equiv←qiso Π-implicit≃) (is-singleton-Π (λ _ → sa)) where
+Πᵢ-is-single {A = A}{B} sa
+  = is-single←equiv-to-single (equiv←qiso Π-implicit≃) (Π-is-single (λ _ → sa)) where
   Π-implicit≃ :  Π A B ≅ ({a : A} → B a)
   Π-implicit≃ ._≅_.fwd f = f _
   Π-implicit≃ ._≅_.fwd-iso .fst f _ = f
   Π-implicit≃ ._≅_.fwd-iso .snd .fst = ~refl
   Π-implicit≃ ._≅_.fwd-iso .snd .snd = ~refl
 
-is-prop-Π : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+Π-is-prop : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → ((a : A) → is-prop (B a))
             → is-prop (Π A B)
-is-prop-Π = Foundations.PropClosure.is-prop-Π global-funext
+Π-is-prop = Foundations.PropClosure.Π-is-prop global-funext
 
-is-prop-Πᵢ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+Πᵢ-is-prop : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
              → (∀ {a} → is-prop (B a))
              → is-prop (∀ {a} → B a)
-is-prop-Πᵢ ap = is-prop←is-single-if-inhabited
-                  (λ f → is-singleton-Πᵢ
+Πᵢ-is-prop ap = is-prop←is-single-if-inhabited
+                  (λ f → Πᵢ-is-single
                    (λ {a} → mk-singl (f {a}) (ap f)))
 
 funext-redex : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                { f g : (a : A) → B a } → {p : f ~ g}
                → happly (funext→ p) ＝ p
 funext-redex {p = p} = is-equiv.ε global-funext p
-
 
 open import Foundations.Univalence
 
@@ -85,6 +85,7 @@ postulate
 
 open WithGlobalUnivalence UA public
 open Foundations.Idempotent.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
+open Foundations.Idempotent.RetractsIdemWithFunExtUnivalence global-funext UA public
 
 import Foundations.Straightening
 

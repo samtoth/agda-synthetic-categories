@@ -11,6 +11,7 @@
 \agda{
 open import Foundations.Prelude
 open import Algebra.Lattice
+open import Data.Bool
 
 module Synthetic.Categories.Groupoid
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
@@ -19,6 +20,12 @@ module Synthetic.Categories.Groupoid
 open import ufAxioms
 
 open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -26,28 +33,174 @@ open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
 
+open import Core.Arrow
+open import Core.ArrowRetract
+open import Core.CanonicalPushouts
+open import Core.Join
+
+open import Ergonomics.Extensionality
+
+open import Synthetic.Categories.Simplicial Δ¹ I I-distr
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Homotopies Δ¹ I I-distr
 }
 %```
 
-
 \subtree[stt-00B6]{
-\title{Groupoids}
+\title{#{\Delta^1}-discrete types}
+\author{samueltoth}
+\contributor{fredrikbakke}
 \taxon{Definition}
 
-\p{A type is a \em{groupoid}, or \em{simplicially discrete}, if it is local with
-respect to #{\Delta^1}. This forms a sigma closed reflective subuniverse.}
+\p{
+A type is \em{#{\Delta^1}-discrete} if it is null at #{\Delta^1}. This forms a
+#{\Sigma}-closed reflective subuniverse.
+}
 
 %```agda
 \agda{
+is-Δ¹-discrete : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-Δ¹-discrete = is-null (point Δ¹)
+
+Δ¹DiscreteType-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Δ¹DiscreteType-SubU = Null-SubU (point Δ¹) _
+
+Δ¹DiscreteType-gSubU : gSubU (_⊔ 𝓘)
+Δ¹DiscreteType-gSubU = Null-gSubU (point Δ¹)
+
+Δ¹DiscreteType-is-globally-reflective
+  : is-globally-reflective Δ¹DiscreteType-gSubU
+Δ¹DiscreteType-is-globally-reflective = Null-globally-reflective
+
+Δ¹DiscreteType-gRSubU : gRSubU (_⊔ 𝓘)
+Δ¹DiscreteType-gRSubU .gRSubU.GS = Δ¹DiscreteType-gSubU
+Δ¹DiscreteType-gRSubU .gRSubU.has-is-globally-reflective = Δ¹DiscreteType-is-globally-reflective
+
+open gSubU Δ¹DiscreteType-gSubU public using () renaming
+  ( ∈S←equiv to is-Δ¹-discrete←equiv)
+
+open gReflectiveClosure Δ¹DiscreteType-gRSubU public using () renaming
+  ( Π∈S to Π-is-Δ¹-discrete
+  ; ULift∈S to ULift-is-Δ¹-discrete
+  ; 𝟙∈S to 𝟙-is-Δ¹-discrete
+  ; ∈S←is-singleton to is-Δ¹-discrete←is-singleton
+  ; ∈S←retract to is-Δ¹-discrete←retract
+  ; Pullback∈S to Pullback-is-Δ¹-discrete
+  ; fibre∈S to fibre-is-Δ¹-discrete
+  ; ×∈S to ×-is-Δ¹-discrete
+  ; ＝∈S to ＝-is-Δ¹-discrete
+  ; ~∈S to ~-is-Δ¹-discrete
+  ; retract∈S to retract-is-Δ¹-discrete
+  ; biinv∈S to biinv-is-Δ¹-discrete
+  ; ≃∈S to ≃-is-Δ¹-discrete
+  ; Equaliser∈S to Equaliser-is-Δ¹-discrete
+  ; Seq-lim∈S to Seq-lim-is-Δ¹-discrete
+  ; preidempotent-map∈S to preidempotent-map-is-Δ¹-discrete
+  ; qidempotent-map∈S to qidempotent-map-is-Δ¹-discrete
+  ; idempotent-map∈S to idempotent-map-is-Δ¹-discrete
+  ; Retracts∈S to Retracts-is-Δ¹-discrete)
+open gRSubUHomClosure Δ¹DiscreteType-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-Δ¹-discrete)
+
+Σ-is-Δ¹-discrete : is-globally-Σ-closed Δ¹DiscreteType-gSubU
+Σ-is-Δ¹-discrete = Null-globally-Σ-closed
+
+module Δ¹Disc where
+  open gRSubUInduction Δ¹DiscreteType-gRSubU Σ-is-Δ¹-discrete public
+  open gReflectiveClosure Δ¹DiscreteType-gRSubU public
+  open gRSubU Δ¹DiscreteType-gRSubU public
+  open gRSubUHomClosure Δ¹DiscreteType-gRSubU public
+}
+%```
+
+%```agda
+\agda{
+Hom←Id
+  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
+Hom←Id refl = idH _
+
+Hom-Δ¹-discrete
+  : ∀ {𝓤} {A : Type 𝓤} → is-Δ¹-discrete A
+  → ∀ {a b} → is-equiv (Hom←Id {_}{A}{a}{b})
+Hom-Δ¹-discrete Δ¹-discrete {a} {b}
+  = is-equiv~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
+      (λ where refl → refl)
+      (is-equiv⁻¹ (_≃_.has-is-eqv Homᵈ-repr≃))
+      (is-equiv-∘ {f = g} {g = f}
+        (total-is-equiv←fst-is-equiv (Δ¹-discrete tt))
+        (is-equiv⁻¹ (Σ-＝singl ._≃_.has-is-eqv))) where
+  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+  f = _≃_.bwd Σ-＝singl
+  g : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
+    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
+  g (a , p , q) = (const _ _ a , p , q)
+}
+%```
+}
+
+\subtree[stt-00L7]{
+\title{Groupoids}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+A type is a \em{groupoid} if it is both [#{\Delta^1}-discrete](stt-00B6) and
+[simplicial](stt-00AC).
+}
+
+%```agda
+\agda{
+fam-is-groupoid : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
+fam-is-groupoid (inl _) = Δ¹
+fam-is-groupoid (inr ij) = fam-is-simplicial ij
+
 is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
-is-groupoid = is-null (point Δ¹)
+is-groupoid = is-null fam-is-groupoid
+
+is-groupoid←is-Δ¹-discrete×is-simplicial
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-Δ¹-discrete A × is-simplicial A
+  → is-groupoid A
+is-groupoid←is-Δ¹-discrete×is-simplicial (Δ¹-discrete , simp) (inl *) = Δ¹-discrete *
+is-groupoid←is-Δ¹-discrete×is-simplicial (Δ¹-discrete , simp) (inr ij) = simp ij
+
+is-Δ¹-discrete×is-simplicial←is-groupoid
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-groupoid A
+  → is-Δ¹-discrete A × is-simplicial A
+is-Δ¹-discrete×is-simplicial←is-groupoid grp
+  = (λ _ → grp (inl tt)) , (λ ij → grp (inr ij))
+
+is-Δ¹-discrete×is-simplicial-is-prop
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-prop (is-Δ¹-discrete A × is-simplicial A)
+is-Δ¹-discrete×is-simplicial-is-prop {A = A}
+  = ×-is-prop (is-null-is-prop A) (is-null-is-prop A)
+
+is-groupoid≃is-Δ¹-discrete×is-simplicial
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-groupoid A ≃ (is-Δ¹-discrete A × is-simplicial A)
+is-groupoid≃is-Δ¹-discrete×is-simplicial {A = A}
+  = mk≃ is-Δ¹-discrete×is-simplicial←is-groupoid
+      (is-equiv←inverse
+        (is-null-is-prop A)
+        is-Δ¹-discrete×is-simplicial-is-prop
+        is-groupoid←is-Δ¹-discrete×is-simplicial)
+
+is-Δ¹-discrete←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-Δ¹-discrete A
+is-Δ¹-discrete←is-groupoid grp = fst (is-Δ¹-discrete×is-simplicial←is-groupoid grp)
+
+is-simplicial←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-simplicial A
+is-simplicial←is-groupoid grp = snd (is-Δ¹-discrete×is-simplicial←is-groupoid grp)
 
 Grpd-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
-Grpd-SubU = Null-SubU (point Δ¹) _
+Grpd-SubU = Null-SubU fam-is-groupoid _
 
 Grpd-gSubU : gSubU (_⊔ 𝓘)
-Grpd-gSubU = Null-gSubU (point Δ¹)
+Grpd-gSubU = Null-gSubU fam-is-groupoid
 
 Grpd-is-globally-reflective
   : is-globally-reflective Grpd-gSubU
@@ -68,6 +221,7 @@ open gReflectiveClosure Grpd-gRSubU public using () renaming
   ; ∈S←retract to is-groupoid←retract
   ; Pullback∈S to Pullback-is-groupoid
   ; fibre∈S to fibre-is-groupoid
+  ; Ext∈S to Ext-is-groupoid
   ; ×∈S to ×-is-groupoid
   ; ＝∈S to ＝-is-groupoid
   ; ~∈S to ~-is-groupoid
@@ -78,76 +232,268 @@ open gReflectiveClosure Grpd-gRSubU public using () renaming
   ; Seq-lim∈S to Seq-lim-is-groupoid
   ; preidempotent-map∈S to preidempotent-map-is-groupoid
   ; qidempotent-map∈S to qidempotent-map-is-groupoid
+  ; idempotent-map∈S to idempotent-map-is-groupoid
   ; Retracts∈S to Retracts-is-groupoid)
+open gRSubUHomClosure Grpd-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-groupoid)
 
 Σ-is-groupoid : is-globally-Σ-closed Grpd-gSubU
 Σ-is-groupoid = Null-globally-Σ-closed
 
 module Grpd where
-
-  open gSubU Grpd-gSubU public using ()
   open gRSubUInduction Grpd-gRSubU Σ-is-groupoid public
   open gReflectiveClosure Grpd-gRSubU public
   open gRSubU Grpd-gRSubU public
-}
-%```
+  open gRSubUHomClosure Grpd-gRSubU public
 
-%```agda
-\agda{
-Hom←Id
-  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
-Hom←Id refl = idH _
+Grpd-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
+Grpd-U 𝓤 = Σ[ A ∶ Type (𝓘 ⊔ 𝓤) ] is-groupoid A
 
-Hom-gpd
-  : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A
-  → ∀ {a b} → is-equiv (Hom←Id {_}{A}{a}{b})
-Hom-gpd gpd {a} {b}
-  = is-equiv~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
-      (λ {refl → refl})
-      (is-equiv⁻¹ (_≃_.has-is-eqv Homᵈ-repr≃))
-      (is-equiv-∘ {f = g} {g = f}
-        (total-is-equiv←fst-is-equiv (gpd tt))
-        (is-equiv⁻¹ (Σ-＝singl ._≃_.has-is-eqv))) where
-  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
-  f = _≃_.bwd Σ-＝singl
-  g : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
-    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
-  g (a , p , q) = (const _ _ a , p , q)
+Grpd-U-is-simplicial
+  : {𝓤 : Level} → is-simplicial (Grpd-U 𝓤)
+Grpd-U-is-simplicial {𝓤}
+  = is-simplicial←equiv
+      ((Σ-ap-≃ λ A → is-groupoid≃is-Δ¹-discrete×is-simplicial {A = A}) e⁻¹)
+      (Null-in-gSubU-is-null←is-prop
+        {𝓤 = 𝓘} {𝓥 = 𝓤}
+        {P = fam-is-simplicial}
+        {S = Δ¹DiscreteType-gSubU}
+        (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+        (λ _ → Π-is-Δ¹-discrete))
 }
 %```
 }
-
 
 \subtree[stt-00B7]{
-\title{Groupoids are left(right)-local types}
+\title{#{\Delta^1}-discrete types are local at the end point inclusions of the interval}
 \taxon{Theorem}
+\author{samueltoth}
 
-\p{A type is a groupoid iff it is local with respect to the map #{1 \to \Delta^1}
-which picks out the left endpoint iff it is local to the map that picks out the
-right endpoint.}
+\p{
+A type is [#{\Delta^1}-discrete](stt-00B6) iff it is local with respect to the point
+inclusion #{\{0\} \to \Delta^1} iff it is local to the point inclusion
+#{\{1\} \to \Delta^1}. In particular, every [groupoid](stt-00L7) is
+left(right)-local.
+}
 
 %```agda
 \agda{
 is-left-local : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
 is-left-local = is-local (λ (_ _ : 𝟙) → i0)
 
-is-groupoid←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left-local A → is-groupoid A
-is-groupoid←is-left {_}{A} il x
-  = is-equiv~∘ lem (is-equiv⁻¹ (il x))
-                   point-is-equiv where
+is-Δ¹-discrete←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left-local A → is-Δ¹-discrete A
+is-Δ¹-discrete←is-left {_}{A} il x
+  = is-equiv~∘ (il x ◂eqv ((ε ▸ point) ~⁻¹)) (is-equiv⁻¹ (il x)) point-is-equiv where
   open is-equiv (il x)
 
-  lem : const A Δ¹ ~ bwd ∘ point
-  lem = il x ◂eqv ((ε ▸ point) ~⁻¹)
-
-
-is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left-local A
-is-left←is-groupoid {_} {A} gp x
-  =  is-equiv~∘ H point-is-equiv (is-equiv⁻¹ (gp x)) where
+is-left←is-Δ¹-discrete : ∀ {𝓤} {A : Type 𝓤} → is-Δ¹-discrete A → is-left-local A
+is-left←is-Δ¹-discrete {_} {A} gp x
+  = is-equiv~∘ (((point ◂ η) ~⁻¹) ▸eqv (gp x)) point-is-equiv (is-equiv⁻¹ (gp x)) where
   open is-equiv (gp x)
 
-  H : precomp A (point i0) ~ point ∘ bwd
-  H = ((point ◂ η) ~⁻¹) ▸eqv (gp x)
+is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left-local A
+is-left←is-groupoid = is-left←is-Δ¹-discrete ∘ is-Δ¹-discrete←is-groupoid
+}
+%```
+}
+
+\subtree[stt-00L4]{
+\title{A type is #{\Delta^1}-discrete if morphisms give equalities}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-03-30}
+
+\p{
+Any type that has a comparison map #{\Hom_A(a,b) \to (a = b)} for all #{a} and #{b}
+is [#{\Delta^1}-discrete](stt-00B6).
+}
+
+\proof{
+There is a converse map to the constant map #{\const : A \to A^{\Delta^1}} given by
+evaluation at #{0}. This map is judgmentally a retraction, so we must only show it is
+a section.
+Unfolding definitions and applying function extensionality, this boils down to
+showing, for every #{h : \Delta^1 \to A}, that #{h(0) = h(t)} for all
+#{t : \Delta^1}. Assuming a family of maps #{H_{a,b} : \Hom_A(a,b) \to (a = b)}, it
+suffices to construct a restricted morphism
+#{h|_t : \Hom_A(h(0), h(t))}, which we can: #{h|_t(j) \coloneqq h(j \land t)}.
+}
+
+%```agda
+\agda{
+is-Δ¹-discrete←Id←Hom
+  : {𝓤 : Level} {A : Type 𝓤}
+  → ({a b : A} → Hom A a b → a ＝ b)
+  → is-Δ¹-discrete A
+is-Δ¹-discrete←Id←Hom {A = A} hom→id _
+  = const-is-equiv where
+
+    restrict : (h : Δ¹ → A) (t : Δ¹) → Hom A (h i0) (h t)
+    restrict h t .Homᵈ.hom j = h (j ∧ t)
+    restrict h t .Homᵈ.hom0 = ap h 0-init
+    restrict h t .Homᵈ.hom1 = ap h (∧-comm ∙ 1-top)
+
+    const-is-equiv : is-equiv (const A Δ¹)
+    const-is-equiv
+      = is-equiv←qiso (ev i0 , ~refl , λ h → funext→ λ t → hom→id (restrict h t))
+}
+%```
+}
+
+\subtree[stt-00L5]{
+\title{The Hom types of a Segal type are #{\Delta^1}-discrete}
+\date{2026-03-30}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+If #{A} is a [Segal type](stt-00AI), then every Hom type #{\Hom_A(a,b)} is
+[#{\Delta^1}-discrete](stt-00B6). In fact, any type whose left and right homotopies
+characterise equality have #{\Delta^1}-discrete Hom types.
+}
+
+\proof{
+If left and right homotopies are extensional, then we can construct a map from
+morphisms to equalities on the Hom types themselves. Given #{f, g : \Hom_A(a,b)} and
+a morphism of morphisms #{\alpha : \Hom_{\Hom_A(a,b)}(f,g)}, viewed as a square
+#{(i,j) \mapsto \alpha(i)(j)} that is constantly #{a} on #{j = 0} and constantly #{b}
+on #{j = 1}, we apply \ref{stt-00L6} to #{\alpha} as a morphism over #{\id_b}
+to extract a diagonal #{\alpha_\Delta(i) \coloneqq \alpha(i)(i)} together with two
+composition triangles:
+\ul{
+\li{The upper triangle #{(i,j) \mapsto \alpha(j)(i)} for #{i \leq j} fills
+#{\mathrm{Hom}^2(\id_b, f, \alpha_\Delta)}, witnessing #{f \rhtpy \alpha_\Delta}.}
+\li{The lower triangle #{(i,j) \mapsto \alpha(i)(j)} for #{i \leq j} fills
+#{\mathrm{Hom}^2(g, \id_a, \alpha_\Delta)}, witnessing #{g \lhtpy \alpha_\Delta}.}
+}
+Hence #{\Hom_A(a,b)} is #{\Delta^1}-discrete.
+}
+
+%```agda
+\agda{
+Id←Hom-Hom
+  : {𝓤 : Level} {A : Type 𝓤} {a b : A}
+  → ({f g : Hom A a b} → f ~▵ g → f ＝ g)
+  → ({f g : Hom A a b} → f ▵~ g → f ＝ g)
+  → {f g : Hom A a b}
+  → Hom (Hom A a b) f g
+  → f ＝ g
+Id←Hom-Hom {b = b} left→id right→id {f} {g} α
+  = right→id (Hom2←Hom-over (idH b) f {g} α)
+  ∙ sym (left→id (~▵←Hom-over (idH b) f {g} α))
+
+Hom-is-Δ¹-discrete←homotopies-are-torsorial
+  : {𝓤 : Level} {A : Type 𝓤} {a b : A}
+  → ((f : Hom A a b) → is-singleton (Σ[ g ∶ Hom A a b ] (f ~▵ g)))
+  → ((f : Hom A a b) → is-singleton (Σ[ g ∶ Hom A a b ] (f ▵~ g)))
+  → is-Δ¹-discrete (Hom A a b)
+Hom-is-Δ¹-discrete←homotopies-are-torsorial {𝓤} {A} {a} {b} left-tors right-tors
+  = is-Δ¹-discrete←Id←Hom (Id←Hom-Hom left→id right→id) where
+
+  left→id : {f g : Hom A a b} → f ~▵ g → f ＝ g
+  left→id {f} = fundamental-Id⁻¹ (f ~▵_) (left-tors f) (λ _ → ~▵←＝)
+
+  right→id : {f g : Hom A a b} → f ▵~ g → f ＝ g
+  right→id {f} = fundamental-Id⁻¹ (f ▵~_) (right-tors f) (λ _ → ▵~←＝)
+
+Hom-is-Δ¹-discrete←is-segal
+  : {𝓤 : Level} {A : Type 𝓤}
+  → is-segal A
+  → {a b : A} → is-Δ¹-discrete (Hom A a b)
+Hom-is-Δ¹-discrete←is-segal 𝐴
+  = Hom-is-Δ¹-discrete←homotopies-are-torsorial
+      (~▵-is-torsorial 𝐴)
+      (▵~-is-torsorial 𝐴)
+}
+%```
+}
+
+\subtree[stt-00LE]{
+\title{#{\Delta^1}-discrete types are triangulated}
+\taxon{Theorem}
+\author{fredrikbakke}
+\author{samueltoth}
+\date{2026-03-31}
+
+\p{
+Any #{\Delta^1}-discrete type is triangulated, i.e., local at the inclusion of the
+triangulated square
+##{\Delta^2 \amalg_{\Delta^1} \Delta^2 \to \Delta^1 \times \Delta^1.}
+}
+
+%```agda
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤}
+  (A-Δ¹-disc : is-Δ¹-discrete A)
+  where
+
+  is-Δ¹×Δ¹-null←is-Δ¹-discrete : is-null (point (Δ¹ × Δ¹)) A
+  is-Δ¹×Δ¹-null←is-Δ¹-discrete =
+    is-null-at-× (λ _ → A-Δ¹-disc tt) (λ _ → A-Δ¹-disc tt)
+
+  is-Δ²-null←is-Δ¹-discrete : is-null (point Δ²) A
+  is-Δ²-null←is-Δ¹-discrete
+    = is-null-at-retract (λ _ → Δ²-retract-Δ¹×Δ¹) is-Δ¹×Δ¹-null←is-Δ¹-discrete
+
+  is-⧅-null←is-Δ¹-discrete : is-null (point ⧅) A
+  is-⧅-null←is-Δ¹-discrete
+    = is-null-at-pushout'
+        (point Δ²-diagonal)
+        (point Δ²-diagonal)
+        (is-Δ²-null←is-Δ¹-discrete)
+        (λ _ → 3-for-2' (is-Δ²-null←is-Δ¹-discrete tt) (A-Δ¹-disc tt))
+
+  is-triangulated←is-Δ¹-discrete : is-triangulated A
+  is-triangulated←is-Δ¹-discrete _
+    = 3-for-2' (is-Δ¹×Δ¹-null←is-Δ¹-discrete tt) (is-⧅-null←is-Δ¹-discrete tt)
+}
+%```
+}
+
+\subtree[stt-00LF]{
+\title{#{\Delta^1}-discrete types are Segal}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-04-07}
+
+%```agda
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤}
+  (A-Δ¹-disc : is-Δ¹-discrete A)
+  where
+
+  is-Λ[2,1]-null←is-Δ¹-discrete : is-null (point Λ[2,1]) A
+  is-Λ[2,1]-null←is-Δ¹-discrete
+    = is-null-at-equiv⁻¹
+        (λ _ → pushout-comm {f = point i0} {g = point i1})
+        (is-null-at-pushout'
+          (point (point i0))
+          (point (point i1))
+          (A-Δ¹-disc)
+          (is-left←is-Δ¹-discrete A-Δ¹-disc))
+
+  is-segal←is-Δ¹-discrete : is-segal A
+  is-segal←is-Δ¹-discrete _
+    = 3-for-2'
+        (is-Δ²-null←is-Δ¹-discrete A-Δ¹-disc tt)
+        (is-Λ[2,1]-null←is-Δ¹-discrete tt)
+}
+%```
+
+%```agda
+\agda{
+is-segal←is-groupoid
+  : {𝓤 : Level} {A : Type 𝓤} → is-groupoid A → is-segal A
+is-segal←is-groupoid grp
+  = is-segal←is-Δ¹-discrete (is-Δ¹-discrete←is-groupoid grp)
+
+is-precategory←is-groupoid
+  : {𝓤 : Level} {A : Type 𝓤} → is-groupoid A → is-precategory A
+is-precategory←is-groupoid grp
+  = is-precategory←is-segal×is-simplicial
+      (is-segal←is-groupoid grp , is-simplicial←is-groupoid grp)
 }
 %```
 }

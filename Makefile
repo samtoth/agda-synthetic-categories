@@ -96,10 +96,10 @@ server:
 check-dup:
 	@DIR="$(DUP_DIR)"; \
 	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[stt-[0-9A-Z]{4}\]' "$$DIR"; \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
 		find "$$DIR" -name '*.tree'; \
 	} | awk '\
-	/subtree\[stt-/ { \
+	/subtree\[/ { \
 		split($$0, a, ":"); \
 		id = a[3]; \
 		sub(/^subtree\[/, "", id); \

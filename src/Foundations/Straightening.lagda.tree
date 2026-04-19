@@ -10,11 +10,14 @@ module Foundations.Straightening where
 
 open import Foundations.Universes
 open import Foundations.Functions
+open import Foundations.Homotopy
 open import Foundations.Sigma
 open import Foundations.SigmaPath
 open import Foundations.SigmaProperties
+open import Foundations.Singleton
 open import Foundations.Identity
 open import Foundations.DependentIdentity
+open import Foundations.IdentitySystem
 open import Foundations.QuasiIsomorphism
 open import Foundations.CoherentIsomorphism
 open import Foundations.Univalence
@@ -70,50 +73,71 @@ be called \em{fibred} and the staightened version \em{indexed}.}
 
 %```agda
 \agda{
+Bundle : ∀ {𝓤} → Type 𝓤 → (𝓥 : Level) → Type (𝓤 ⊔ lsuc 𝓥)
+Bundle {𝓤} B 𝓥 = Σ[ E ∶ Type 𝓥 ] (E → B)
+
+straighten : ∀ {𝓤 𝓥 B} → Bundle {𝓤} B 𝓥 → B → Type (𝓤 ⊔ 𝓥)
+straighten (E , p) = fibre p
+
+unstraighten : ∀ {𝓤 𝓥 B} → (B → Type 𝓥) → Bundle {𝓤} B (𝓤 ⊔ 𝓥)
+unstraighten {B} P = (Σ _ P , fst)
+
+Bundle-equiv
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤} (E : Bundle B 𝓥) (E' : Bundle B 𝓦)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Bundle-equiv (E , π) (E' , π') = Σ[ e ∶ E ≃ E' ] (π' ∘ e ._≃_.fwd ~ π)
+
+Bundle-idequiv
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} → {E : Bundle B 𝓥}
+    → Bundle-equiv E E
+Bundle-idequiv = (idequiv , ~refl)
+
+Bundle-equiv←Id
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} → {E E' : Bundle B 𝓥}
+    → E ＝ E' → Bundle-equiv E E'
+Bundle-equiv←Id refl = Bundle-idequiv
+
+unstraighten-straighten-bundle-equiv
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} (e : Bundle B 𝓥)
+    → Bundle-equiv (unstraighten (straighten e)) e
+unstraighten-straighten-bundle-equiv (E , π)
+  = (total≃total-fibre π , λ (a , b , p) → p)
+
 module WithUA {𝓤} (UU : is-univalent 𝓤)(FE : FunExt-global) where
   open WithLocalUnivalence UU
   open WithFunExt-global FE
 
-  Bundle : Type 𝓤 → Type (lsuc 𝓤)
-  Bundle B = Σ[ E ∶ Type 𝓤 ] (E → B)
+  Bundle-equiv-is-torsorial
+    : ∀ {B : Type 𝓤} → (E : Bundle B 𝓤)
+      → is-singleton (Σ _ (Bundle-equiv E))
+  Bundle-equiv-is-torsorial (E , π)
+    = is-singleton-structure←parts
+        (equiv-is-torsorial E)
+        (_ , idequiv)
+        (homotopy-is-torsorial' π)
 
-  straighten : ∀ {B} → Bundle B → B → Type 𝓤
-  straighten (E , p) = fibre p
+  Bundle-equiv←Id-is-equiv
+    : ∀ {B : Type 𝓤} → {E E' : Bundle B 𝓤}
+      → is-equiv (Bundle-equiv←Id {E = E}{E'})
+  Bundle-equiv←Id-is-equiv
+    = fundamental-Id _ (Bundle-equiv-is-torsorial _) (λ _ → Bundle-equiv←Id) _
 
-  unstraighten : ∀ {B} → (B → Type 𝓤) → Bundle B
-  unstraighten {B} P = (Σ _ P , fst)
+  Bundle-ua
+    : ∀ {B : Type 𝓤} → {E E' : Bundle B 𝓤}
+      → Bundle-equiv E E' → E ＝ E'
+  Bundle-ua = is-equiv.bwd Bundle-equiv←Id-is-equiv
 
-  straighten-qiso : ∀ {B} → quasi-iso (straighten {B})
-  straighten-qiso .fst = unstraighten
+  straighten-qiso : ∀ {B} → quasi-iso (straighten {𝓤}{𝓤}{B})
+  straighten-qiso .fst = unstraighten {𝓤}{𝓤}
   straighten-qiso .snd .snd P
     = funext→ (λ b → ua (fibre-straighten P b))
-  straighten-qiso .snd .fst (E , p)
-    = Σ-path→
-      ( ua (total≃total-fibre p)
-      , tr-ap1 (ua (total≃total-fibre p)) fst ∙ ap (fst ∘_) (sym-coe-ua)
-      )
-    where
-    tr-ap1 : ∀ {A A' B : Type 𝓤} (p : A ＝ A') f
-             → tr (λ A → A → B) p f ＝ λ x → f (coe (sym p) x)
-    tr-ap1 refl f = refl
+  straighten-qiso .snd .fst E
+    = Bundle-ua (unstraighten-straighten-bundle-equiv E)
 
-    lem : ∀ {A} → idequiv e⁻¹ ＝ idequiv {𝓤} {A}
-    lem = ≃-path→ FE refl
-
-    ua-sym : ∀ {A B} {e : A ≃ B} → sym (ua e) ＝ ua (e e⁻¹)
-    ua-sym = equiv-J (λ _ e → sym (ua e) ＝ ua (e e⁻¹))
-                     (ap sym (ua-idequiv) ∙ sym (ap ua lem ∙ ua-idequiv))
-                     _ _
-
-    sym-coe-ua : ∀ {A B} → {e : A ≃ B} → coe (sym (ua e)) ＝ _≃_.bwd e
-    sym-coe-ua {A} {e = e} = ≃-ind (λ _ e → coe (sym (ua e)) ＝ _≃_.bwd e)
-                              (λ where .A refl → ap coe ua-sym ∙ coe-ua)
-                               _ e
-
-  straighten-is-equiv : ∀ {B} → is-equiv (straighten {B})
+  straighten-is-equiv : ∀ {B} → is-equiv (straighten {𝓤}{𝓤}{B})
   straighten-is-equiv = is-equiv←qiso straighten-qiso
 
-  straighten≃ : ∀ {B} → Bundle B ≃ (B → Type 𝓤)
+  straighten≃ : ∀ {B} → Bundle B 𝓤 ≃ (B → Type 𝓤)
   straighten≃ = mk≃ _ straighten-is-equiv
 }
 %```

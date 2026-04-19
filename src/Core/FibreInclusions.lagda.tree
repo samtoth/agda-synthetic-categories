@@ -21,6 +21,42 @@ open import Ergonomics.Representation
 }
 %```
 
+\subtree[tot-023F]{
+\title{Fibre inclusion}
+\taxon{Definition}
+
+%```agda
+\agda{
+null-htpy-fibre-map
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+      (f : A → B) (g : Q → A) → (x : null-homotopy (f ∘ g))
+    → Q → fibre f (x .fst)
+null-htpy-fibre-map f g x q = g q , sym (x .snd q)
+
+is-fibre-incl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+      (f : A → B) (g : Q → A) → null-homotopy (f ∘ g)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-fibre-incl f g n = is-equiv (null-htpy-fibre-map f g n)
+
+record fibre-inclusion
+         {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) 𝓦
+         : Type (𝓤 ⊔ 𝓥 ⊔ lsuc 𝓦)
+         where
+  field
+    { Fib } : Type 𝓦
+    incl : Fib → A
+    null-htpy : null-homotopy (f ∘ incl)
+    has-is-fibre-incl : is-fibre-incl f incl null-htpy
+
+  * : B
+  * = null-htpy .fst
+
+  to-fib : Fib → fibre f *
+  to-fib x = (incl x , sym (null-htpy .snd x))
+}
+%```
+}
 
 \subtree[stt-003L]{
 \title{Displayed Cospans}
@@ -290,26 +326,26 @@ Cospan-bundle-equiv←components ((e1 , H1) , (e2 , H2) , (e3 , H3) , (K1 , K2 ,
 
 %```agda
 \agda{
-straighten-cospan
+straighten-cospan-bundle
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} → (B : Cospan 𝓤 𝓥 𝓦)
     → Cospan-bundle B 𝓤' 𝓥' 𝓦' → Cospanᵈ B (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
-straighten-cospan B (E , p) = fibre-cospanᵈ p
+straighten-cospan-bundle B (E , p) = fibre-cospanᵈ p
 
-unstraighten-cospan
+unstraighten-cospan-bundle
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} (B : Cospan 𝓤 𝓥 𝓦)
     → Cospanᵈ B 𝓤' 𝓥' 𝓦' → Cospan-bundle B (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
-unstraighten-cospan B E = (Σ-cospan E , π-cospanᵈ E)
+unstraighten-cospan-bundle B E = (Σ-cospan E , π-cospanᵈ E)
 
-unstraighten-straighten-cospan-equiv
+unstraighten-straighten-cospan-bundle-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {B : Cospan 𝓤 𝓥 𝓦}
       (E : Cospan-bundle B 𝓤' 𝓥' 𝓦')
     → Cospan-bundle-equiv B
-        (unstraighten-cospan _ (straighten-cospan _ E))
+        (unstraighten-cospan-bundle _ (straighten-cospan-bundle _ E))
         E
-unstraighten-straighten-cospan-equiv E
+unstraighten-straighten-cospan-bundle-equiv E
   = Cospan-bundle-equiv←components x where
   x : Cospan-bundle-equiv-components _
-        (unstraighten-cospan _ (straighten-cospan _ E)) E
+        (unstraighten-cospan-bundle _ (straighten-cospan-bundle _ E)) E
   x .fst = unstraighten-straighten-bundle-equiv _
   x .snd .fst = unstraighten-straighten-bundle-equiv _
   x .snd .snd .fst = unstraighten-straighten-bundle-equiv _
@@ -320,28 +356,39 @@ unstraighten-straighten-cospan-equiv E
   x .snd .snd .snd .snd .snd .snd (a , b , p)
     = sym (∙-reflr _ ∙ ap (_∙ ap _ p) sym-sym)
 
-straighten-unstraighten-cospan-equiv
+straighten-unstraighten-cospanᵈ-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {B : Cospan 𝓤 𝓥 𝓦}
       (E : Cospanᵈ B 𝓤' 𝓥' 𝓦')
-    → Cospanᵈ-equiv B (straighten-cospan _ (unstraighten-cospan _ E)) E
-straighten-unstraighten-cospan-equiv E .fst = fibre-straighten _
-straighten-unstraighten-cospan-equiv E .snd .fst = fibre-straighten _
-straighten-unstraighten-cospan-equiv E .snd .snd .fst l (_ , refl) = refl
-straighten-unstraighten-cospan-equiv E .snd .snd .snd .fst = fibre-straighten _
-straighten-unstraighten-cospan-equiv E .snd .snd .snd .snd _ (_ , refl) = refl
+    → Cospanᵈ-equiv B
+        (straighten-cospan-bundle _ (unstraighten-cospan-bundle _ E))
+        E
+straighten-unstraighten-cospanᵈ-equiv E .fst = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .fst = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .fst l
+  (_ , refl) = refl
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .snd .fst
+  = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .snd .snd
+  _ (_ , refl) = refl
 
-straighten-cospan-is-equiv
+straighten-cospan-bundle-is-equiv
   : ∀ {𝓤 𝓥 𝓦} {B : Cospan 𝓤 𝓥 𝓦}
-    → is-equiv (straighten-cospan {𝓤' = 𝓤}{𝓥}{𝓦} B)
-straighten-cospan-is-equiv = is-equiv←qiso
-  ( unstraighten-cospan _
-  , (ext! ∘ unstraighten-straighten-cospan-equiv)
-  , (ext! ∘ straighten-unstraighten-cospan-equiv))
+    → is-equiv (straighten-cospan-bundle {𝓤' = 𝓤}{𝓥}{𝓦} B)
+straighten-cospan-bundle-is-equiv = is-equiv←qiso
+  ( unstraighten-cospan-bundle _
+  , (ext! ∘ unstraighten-straighten-cospan-bundle-equiv)
+  , (ext! ∘ straighten-unstraighten-cospanᵈ-equiv))
 }
 %```
 }
 
 \subtree[tot-0HFN]{
+\title{Pullbacks of displayed cospans}
+\taxon{Construction}
+
+\p{We can take the pullback of a displayed cospan #{C} to obtain a family over
+the pullback of the cospan over which #{C'} was displayed.}
+
 %```agda
 \agda{
 pullback-cospanᵈ
@@ -374,91 +421,81 @@ lemma-fibreᵈ-path-is-equiv refl
       (is-total-equiv←is-fibrewise-equiv λ a → ∙-is-equiv' (sym (∙-reflr _)))
       (fibre-path≃ ._≃_.has-is-eqv)
 
--- LEMMA-I
---   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
---     → (F : Cospan-map S T)
---     → (let open Cospan-map F)
---     → ∀ c
---   → (Σ[ a ∶ fibre h₁ (c .pb.π₁)] (Σ[ b ∶ fibre h₃ (c .pb.π₂)]
---         fibreᵈ-path {f = h₂} (c .pb.filler)
---                              (Cospanᵈ.leftᵈ (fibre-cospanᵈ F) _ a)
---                              (Cospanᵈ.rightᵈ (fibre-cospanᵈ F) _ b)))
---   → Σ (Pullback-of-cospan _) (λ z → pullback-Path (Pullback₁ F z) c)
--- LEMMA-I F c ((a  , p) , (b , q) , r) .fst = (a , b , r .fst)
--- LEMMA-I F c ((a  , p) , (b , q) , r) .snd .fst = p
--- LEMMA-I F c ((a , p) , (b , q) , r) .snd .snd .fst = q
--- LEMMA-I F c@(x , y , p) ((a , refl) , (b , refl) , (r , s)) .snd .snd .snd
---   = sym (lbr＝t←Square p sq') ∙ sym (∙-reflr _) where
---     open Cospan-map F
---     sq : Square (ap h₂ r) (c .pb.filler)
---                 (sym (sym (H a)) ∙ refl)
---                 (sym (sym (K b)) ∙ refl)
---     sq = mk-square s
+fibre-pullback₁
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+      (F : Cospan-map S T)
+    → ∀ c → pullback-cospanᵈ (fibre-cospanᵈ F) c → fibre (Pullback₁ F) c
+fibre-pullback₁ {S = S}{T} F c
+  = total-map (λ a → pullback-path→)
+  ∘ map
+  ∘ total-map
+      (λ a → total-map (λ b → lemma-fibreᵈ-path {f = Cospan-map.h₂ F} (c .pb.filler)))
+  module fibre-pb where
+    open Cospan-map F
+    lemma : ∀ {𝓤} {A : Type 𝓤} {a b c d e f : A}
+              (p : a ＝ b) (q : b ＝ c) (r : a ＝ d) (s : d ＝ e) t (v : f ＝ c)
+            → s ∙ sym (sym t) ∙ v ＝ (sym r ∙ p) ∙ q
+            → p ∙ q ＝ (r ∙ s ∙ t) ∙ v
+    lemma refl q refl refl refl v = sym
 
---     sq' : Square (ap h₂ r) (c .pb.filler) (H a) (K b)
---     sq' = coe (ap₂ (Square (ap h₂ r) p)
---                    (∙-reflr _ ∙ sym-sym)
---                    (∙-reflr _ ∙ sym-sym))
---               sq
+    lemma-is-equiv
+      : ∀ {𝓤} {A : Type 𝓤} {a b c d e f : A}
+          (p : a ＝ b) (q : b ＝ c) (r : a ＝ d) (s : d ＝ e) t (v : f ＝ c)
+        → is-equiv (lemma p q r s t v)
+    lemma-is-equiv refl q refl refl refl v = sym-is-equiv
 
+    map : (Σ[ a ∶ fibre h₁ (c .pb.π₁)]
+           Σ[ b ∶ fibre h₃ (c .pb.π₂)]
+            fibreᵈ-path (c .pb.filler)
+                        (fibre-cospanᵈ F .Cospanᵈ.leftᵈ  _ a)
+                        (fibre-cospanᵈ F .Cospanᵈ.rightᵈ _ b))
+        → Σ[ x ∶ Pullback-of-cospan S ] pullback-Path (Pullback₁ F x) c
+    map ((a , p) , (b , q) , r , s)
+      = ( (a , b , r)
+        , p
+        , q
+        , lemma (ap T.left p) (c .pb.filler)
+                (sym (H a)) (ap h₂ r)
+                (K b) (ap T.right q) s)
 
--- LEMMA-I-is-equiv
---   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
---     → (F : Cospan-map S T)
---     → (let open Cospan-map F)
---     → is-fibrewise-equiv (LEMMA-I F)
--- LEMMA-I-is-equiv F c = is-equiv←qiso
---   ( inv
---   , ret
---   , sec) where
---   inv : _
---   inv ((a , b , p) , q , r , s) .fst = (a , q)
---   inv ((a , b , p) , q , r , s) .snd .fst = (b , r)
---   inv ((a , b , p) , q , r , s) .snd .snd .fst = p
---   inv ((a , b , p) , refl , refl , s) .snd .snd .snd = {!!}
+    map-is-equiv : quasi-iso map
+    map-is-equiv .fst ((a , b , r) , p , q , s)
+      = ( (a , p)
+        , (b , q)
+        , (r , is-equiv.bwd (lemma-is-equiv
+                                    (ap T.left p) (c .pb.filler)
+                                    (sym (H a)) (ap h₂ r)
+                                    (K b) (ap T.right q)) s))
+    map-is-equiv .snd .fst ((a , p) , (b , q) , (r , s))
+      = Σ-path→ (refl , (Σ-path→
+          (refl , (Σ-path→
+            ( refl
+            , is-equiv.η (lemma-is-equiv (ap T.left p) (c .pb.filler) (sym (H a))
+                                         (ap h₂ r) (K b) (ap T.right q)) s)))))
+    map-is-equiv .snd .snd ((a , b , r) , p , q , s)
+      = Σ-path→
+          (refl
+          , (pullback-path→
+              ( refl , refl
+              , is-equiv.ε⁻¹ (lemma-is-equiv (ap T.left p) (c .pb.filler)
+                                             (sym (H a))
+                                             (ap h₂ r) (K b) (ap T.right q)) s
+              ∙ sym (∙-reflr _))))
 
---   ret : _
---   ret ((a , refl) , (b , refl) , r)
---     = Σ-path→
---         ( refl
---         , Σ-path→
---            ( refl
---            , fibre-path→ (refl , {!!})))
-
---   sec : _
---   sec ((a , b , p) , refl , refl , s)
---     = Σ-path→
---         ( refl
---         , Σ-path→
---             ( refl
---             , Σ-path→
---                 ( refl
---                 , {!!})))
-
--- straighten-cospanᵈ⁻¹
---   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
---     → (F : Cospan-map S T)
---     → ∀ c
---     → pullback-cospanᵈ (fibre-cospanᵈ F) c
---     → fibre (Pullback₁ F) c
--- straighten-cospanᵈ⁻¹ F c
---   = total-map (λ a → pullback-path→)
---   ∘ LEMMA-I F c
---   ∘ total-map (λ a → total-map (λ b → lemma-fibreᵈ-path {f = Cospan-map.h₂ F} (c .pb.filler)))
-
--- straighten-cospanᵈ⁻¹-is-equiv
---   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
---     → (F : Cospan-map S T)
---     → is-fibrewise-equiv (straighten-cospanᵈ⁻¹ F)
--- straighten-cospanᵈ⁻¹-is-equiv F c
---   = is-equiv-∘
---       {f = total-map (λ _ → pullback-path→)}
---       (is-total-equiv←is-fibrewise-equiv (λ _ → pullback-path-is-equiv))
---       (is-equiv-∘ {f = LEMMA-I F c}
---         (LEMMA-I-is-equiv F c)
---         (is-total-equiv←is-fibrewise-equiv
---           (λ _ → is-total-equiv←is-fibrewise-equiv
---            (λ _ → lemma-fibreᵈ-path-is-equiv (c .pb.filler)))))
+opaque
+  fibre-pullback₁-is-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+        (F : Cospan-map S T)
+      → is-fibrewise-equiv (fibre-pullback₁ F)
+  fibre-pullback₁-is-equiv F c
+    = is-equiv-∘
+        {f = total-map (λ _ → pullback-path→)}
+        (is-total-equiv←is-fibrewise-equiv (λ _ → pullback-path-is-equiv))
+        (is-equiv-∘ {f = fibre-pb.map F c}
+          (is-equiv←qiso (fibre-pb.map-is-equiv F c))
+          (is-total-equiv←is-fibrewise-equiv
+            (λ _ → is-total-equiv←is-fibrewise-equiv
+             (λ _ → lemma-fibreᵈ-path-is-equiv (c .pb.filler)))))
 
 -- straighten-cospanᵈ
 --   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
@@ -543,6 +580,7 @@ fibred-product-path→ X = is-equiv.bwd (fibred-product-path←Id-is-equiv X)
 record Bi-fam-map {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
                       (S : Bi-fam 𝓤 𝓥 𝓦) (T : Bi-fam 𝓜 𝓝 𝓛)
                       : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛) where
+  constructor mk-bi-fam-map
   module S = Bi-fam S
   module T = Bi-fam T
   field
@@ -550,12 +588,53 @@ record Bi-fam-map {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
     h₁ : ∀ c → S.Left c → T.Left (h₂ c)
     h₃ : ∀ c → S.Right c → T.Right (h₂ c)
 
-Bi-fam-map-is-equiv
+is-bi-fam-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
       (F : Bi-fam-map S T) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
-Bi-fam-map-is-equiv F = is-equiv h₂ × is-fibrewise-equiv h₁ × is-fibrewise-equiv h₃
+is-bi-fam-equiv F = is-equiv h₂ × is-fibrewise-equiv h₁ × is-fibrewise-equiv h₃
   where open Bi-fam-map F
 
+Bi-fam-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+    → Bi-fam 𝓤 𝓥 𝓦 → Bi-fam 𝓜 𝓝 𝓛 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
+Bi-fam-equiv A B = Σ[ F ∶ Bi-fam-map A B ] is-bi-fam-equiv F
+
+Bi-fam-equiv-components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+    → Bi-fam 𝓤 𝓥 𝓦 → Bi-fam 𝓜 𝓝 𝓛 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
+Bi-fam-equiv-components A B
+  = Σ[ C ∶ A .Centre ≃ B .Centre ]
+      ( (∀ c → A .Left c ≃ B .Left (C ._≃_.fwd c))
+      × (∀ c → A .Right c ≃ B .Right (C ._≃_.fwd c)))
+  where open Bi-fam
+
+Bi-fam-equiv←components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv-components S T → Bi-fam-equiv S T
+Bi-fam-equiv←components (C , L , R)
+  =
+  ( mk-bi-fam-map (C .fwd) (fwd ∘ L) (fwd ∘ R)
+  , has-is-eqv C
+  , has-is-eqv ∘ L
+  , has-is-eqv ∘ R)
+  where open _≃_
+
+components←Bi-fam-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv S T → Bi-fam-equiv-components S T
+components←Bi-fam-equiv (mk-bi-fam-map C L R , e1 , e2 , e3)
+  =
+  ( (mk≃ C e1)
+  , (λ c → mk≃ (L c) (e2 c))
+  , (λ c → mk≃ (R c) (e3 c)))
+
+Bi-fam-equiv≃components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv S T ≃ Bi-fam-equiv-components S T
+Bi-fam-equiv≃components
+  = mk≃ components←Bi-fam-equiv
+        (mk-eqv (Bi-fam-equiv←components , ~refl , ~refl)
+                ~refl)
 
 fibred-product₁
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
@@ -566,103 +645,118 @@ fibred-product₁ F = map-Σ h₂ λ c → (h₁ c ⊗ h₃ c)
 fibred-product₁-is-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
     → (F : Bi-fam-map S T)
-    → Bi-fam-map-is-equiv F
+    → is-bi-fam-equiv F
     → is-equiv (fibred-product₁ F)
 fibred-product₁-is-equiv F (ec , ea , eb)
   = map-Σ-is-equiv ec λ c → ⊗-is-equiv (ea c) (eb c)
 
-pullback-fam≃
+fibred-product≃
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
-    → Σ (Bi-fam-map S T) Bi-fam-map-is-equiv
+    → Σ (Bi-fam-map S T) is-bi-fam-equiv
     → fibred-product S ≃ fibred-product T
-pullback-fam≃ (F , Fe) = mk≃ (fibred-product₁ F) (fibred-product₁-is-equiv _ Fe)
-
--- TODO: Naming wrong!!
--- straighten-cospan-fam : ∀ {𝓤 𝓥 𝓦} → Bi-fam 𝓤 𝓥 𝓦 → Cospan 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
--- straighten-cospan-fam A .Cospan.Centre = A .Bi-fam.Centre
--- straighten-cospan-fam A .Cospan.Left = Σ _ (A .Bi-fam.Left)
--- straighten-cospan-fam A .Cospan.left = fst
--- straighten-cospan-fam A .Cospan.Right = Σ _ (A .Bi-fam.Right)
--- straighten-cospan-fam A .Cospan.right = fst
-
--- hor-unstraighten-cospan
---   : ∀ {𝓤 𝓥 𝓦} → Cospan 𝓤 𝓥 𝓦 → Bi-fam 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
--- unstraighten-cospan S .Bi-fam.Centre = S .Cospan.Centre
--- unstraighten-cospan S .Bi-fam.Left = fibre (S .Cospan.left)
--- unstraighten-cospan S .Bi-fam.Right = fibre (S .Cospan.right)
-
--- hor-straighten-unstr-cospan : ∀ {𝓤 𝓥 𝓦} {S : Cospan 𝓤 𝓥 𝓦}
---          → Σ (Cospan-map (straighten-cospan-fam (unstraighten-cospan S)) S)
---              is-cospan-equiv
--- straighten-unstr-cospan .fst = mk-cospan-map (total←total-fibre _) id (total←total-fibre _)
---                             (λ {(_ , _ , refl) → refl}) λ {(_ , _ , refl) → refl}
--- straighten-unstr-cospan .snd = ( total≃total-fibre _ ._≃_.has-is-eqv
---               , id-is-equiv
---               , total≃total-fibre _ ._≃_.has-is-eqv)
-
--- unstraighten-pullback
---   : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
---     → fibred-product (unstraighten-cospan F)
---     → Pullback-of-cospan F
--- unstraighten-pullback F (c , (l , p) , (r , q)) = (l , r , p ∙ sym q)
-
--- unstraighten-pullback-is-equiv
---   : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
---     → is-equiv (unstraighten-pullback F)
--- unstraighten-pullback-is-equiv F = is-equiv←qiso
---   ( (λ x → _ , (x .pb.π₁ , x .pb.filler) , (x .pb.π₂ , refl))
---   , (λ where (c , (l , p) , (r , refl)) → fibred-product-path→ _
---                                             (refl
---                                             , fibre-path→
---                                                 (refl , sym (∙-reflr _))
---                                             , refl))
---   , λ x → pullback-path→ (refl , refl , sym (∙-reflr _ ∙ ∙-reflr _)))
+fibred-product≃ (F , Fe) = mk≃ (fibred-product₁ F) (fibred-product₁-is-equiv _ Fe)
 }
 %```
 }
 
+\subtree[tot-002A]{
+\title{Straightening for bi-families}
+\taxon{Construction}
+\p{We show that cospans straighten into bi-families and hence a fibred product
+of a bi-family is equivalent to a pullback of the unstraightened cospan.}
 
-\subtree[tot-023F]{
-\title{Fibre inclusion}
-\taxon{Definition}
+%```agda
+\agda{
+unstraighten-bi-fam : ∀ {𝓤 𝓥 𝓦} → Bi-fam 𝓤 𝓥 𝓦 → Cospan 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+unstraighten-bi-fam A .Cospan.Centre = A .Bi-fam.Centre
+unstraighten-bi-fam A .Cospan.Left = Σ _ (A .Bi-fam.Left)
+unstraighten-bi-fam A .Cospan.left = fst
+unstraighten-bi-fam A .Cospan.Right = Σ _ (A .Bi-fam.Right)
+unstraighten-bi-fam A .Cospan.right = fst
 
+straighten-cospan
+  : ∀ {𝓤 𝓥 𝓦} → Cospan 𝓤 𝓥 𝓦 → Bi-fam 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+straighten-cospan S .Bi-fam.Centre = S .Cospan.Centre
+straighten-cospan S .Bi-fam.Left = fibre (S .Cospan.left)
+straighten-cospan S .Bi-fam.Right = fibre (S .Cospan.right)
+
+unstr-str-cospan
+  : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦)
+    → Cospan-equiv (unstraighten-bi-fam (straighten-cospan S)) S
+unstr-str-cospan S .fst
+  = mk-cospan-map
+     (total←total-fibre _)
+     id
+     (total←total-fibre _)
+     (sym ∘ snd ∘ snd)
+     (sym ∘ snd ∘ snd)
+unstr-str-cospan S .snd
+  = ( total←total-fibre-is-equiv (Cospan.left S)
+    , id-is-equiv
+    , total←total-fibre-is-equiv (Cospan.right S))
+
+str-unstr-bi-fam
+  : ∀ {𝓤 𝓥 𝓦} (F : Bi-fam 𝓤 𝓥 𝓦)
+    → Bi-fam-equiv (straighten-cospan (unstraighten-bi-fam F)) F
+str-unstr-bi-fam F = Bi-fam-equiv←components
+  ( idequiv
+  , fibre-straighten _
+  , fibre-straighten _)
+
+unstraighten-fibre-product
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → fibred-product (straighten-cospan F)
+    → Pullback-of-cospan F
+unstraighten-fibre-product F (c , (l , p) , (r , q)) = (l , r , p ∙ sym q)
+
+straighten-pullback
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → Pullback-of-cospan F
+    → fibred-product (straighten-cospan F)
+straighten-pullback F (l , r , p) = (_ , (l , p) , (r , refl))
+
+unstraighten-fibre-product-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → is-equiv (unstraighten-fibre-product F)
+unstraighten-fibre-product-is-equiv F = is-equiv←qiso
+  ( straighten-pullback F
+  , (λ { (c , (l , p) , (r , refl))
+             → fibred-product-path→ _
+                 ( refl
+                 , fibre-path→ (refl , sym (∙-reflr _))
+                 , refl)})
+  , λ x → pullback-path→ (refl , refl , sym (∙-reflr _ ∙ ∙-reflr _)))
+
+straighten-pullback≃
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → Pullback-of-cospan F
+    ≃ fibred-product (straighten-cospan F)
+straighten-pullback≃ F
+  = mk≃ (straighten-pullback F)
+        (is-equiv⁻¹ (unstraighten-fibre-product-is-equiv F))
+}
+%```
+}
+
+\subtree[tot-0833]{
+\title{Straightening cospan maps}
 
 
 %```agda
 \agda{
-
-null-htpy-fibre-map
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
-      (f : A → B) (g : Q → A) → (x : null-homotopy (f ∘ g))
-    → Q → fibre f (x .fst)
-null-htpy-fibre-map f g x q = g q , sym (x .snd q)
-
-is-fibre-incl
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
-      (f : A → B) (g : Q → A) → null-homotopy (f ∘ g)
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
-is-fibre-incl f g n = is-equiv (null-htpy-fibre-map f g n)
-
-record fibre-inclusion
-         {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) 𝓦
-         : Type (𝓤 ⊔ 𝓥 ⊔ lsuc 𝓦)
-         where
-  field
-    { Fib } : Type 𝓦
-    incl : Fib → A
-    null-htpy : null-homotopy (f ∘ incl)
-    has-is-fibre-incl : is-fibre-incl f incl null-htpy
-
-  * : B
-  * = null-htpy .fst
-
-  to-fib : Fib → fibre f *
-  to-fib x = (incl x , sym (null-htpy .snd x))
+Bi-fam-map←Cospan-map
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Cospan-map S T → Bi-fam-map (straighten-cospan S) (straighten-cospan T)
+Bi-fam-map←Cospan-map F = mk-bi-fam-map h₂ (fam-map←arrow-map left-amap .snd)
+                                           (fam-map←arrow-map right-amap .snd)
+  where open Cospan-map F
 }
 %```
 }
 
 \subtree[tot-0395]{
+\title{A straightened 3x3 lemma for pullbacks}
+\taxon{Lemma}
 
 %```agda
 \agda{
@@ -734,144 +828,189 @@ module semi-straight-3x3 {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
   comparison-map : Pullback-of-cospan hor-cospan → fibred-product vert-cospan
   comparison-map = _≃_.bwd lemma ∘ hor-cospan-repr→
 
-  comparison-map-is-equiv : is-equiv comparison-map
-  comparison-map-is-equiv
-    = is-equiv-∘
-        (is-equiv⁻¹ (_≃_.has-is-eqv lemma))
-        ((is-total-equiv←is-fibrewise-equiv
-            (λ a → is-total-equiv←is-fibrewise-equiv
-              (λ b → fibred-product-path←Id-is-equiv _))))
+  opaque
+    comparison-map-is-equiv : is-equiv comparison-map
+    comparison-map-is-equiv
+      = is-equiv-∘
+          (is-equiv⁻¹ (_≃_.has-is-eqv lemma))
+          ((is-total-equiv←is-fibrewise-equiv
+              (λ a → is-total-equiv←is-fibrewise-equiv
+                (λ b → fibred-product-path←Id-is-equiv _))))
 
   3×3 : Pullback-of-cospan hor-cospan ≃ fibred-product vert-cospan
   3×3 = mk≃ comparison-map comparison-map-is-equiv
+}
+%```
 
--- module _ {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
---          (A : Cospan 𝓥2 𝓥1 𝓥3)
---          (B : Cospan 𝓤2 𝓤1 𝓤3)
---          (C : Cospan 𝓦2 𝓦1 𝓦3)
---          (F : Cospan-map A B)
---          (G : Cospan-map C B)
---          where
---   open Cospan
---   open Cospan-map
+\subtree[tot-000I]{
+\title{The 3x3 lemma for pullbacks}
 
---   private
---     X : Cospan 𝓤1 𝓥1 𝓦1
---     X .Centre = B .Left
---     X .Left = A .Left
---     X .left = Cospan-map.h₁ F
---     X .Right = C .Left
---     X .right = Cospan-map.h₁ G
+%```agda
+\agda{
+module 3×3 {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
+         (A : Cospan 𝓥2 𝓥1 𝓥3)
+         (B : Cospan 𝓤2 𝓤1 𝓤3)
+         (C : Cospan 𝓦2 𝓦1 𝓦3)
+         (F : Cospan-map A B)
+         (G : Cospan-map C B)
+         where
+  open Cospan
+  open Cospan-map
 
---     Y : Cospan 𝓤2 𝓥2 𝓦2
---     Y .Centre = B .Centre
---     Y .Left = A .Centre
---     Y .left = Cospan-map.h₂ F
---     Y .Right = C .Centre
---     Y .right = Cospan-map.h₂ G
+  private
+    X : Cospan 𝓤1 𝓥1 𝓦1
+    X .Centre = B .Left
+    X .Left = A .Left
+    X .left = Cospan-map.h₁ F
+    X .Right = C .Left
+    X .right = Cospan-map.h₁ G
 
---     Z : Cospan 𝓤3 𝓥3 𝓦3
---     Z .Centre = B .Right
---     Z .Left = A .Right
---     Z .left = h₃ F
---     Z .Right = C .Right
---     Z .right = h₃ G
+    Y : Cospan 𝓤2 𝓥2 𝓦2
+    Y .Centre = B .Centre
+    Y .Left = A .Centre
+    Y .left = Cospan-map.h₂ F
+    Y .Right = C .Centre
+    Y .right = Cospan-map.h₂ G
 
---     P : Cospan-map X Y
---     P .h₁ = left A
---     P .h₂ = left B
---     P .h₃ = left C
---     P .H = sym ∘ H F
---     P .K = sym ∘ H G
+    Z : Cospan 𝓤3 𝓥3 𝓦3
+    Z .Centre = B .Right
+    Z .Left = A .Right
+    Z .left = h₃ F
+    Z .Right = C .Right
+    Z .right = h₃ G
 
---     Q : Cospan-map Z Y
---     Q .h₁ = right A
---     Q .h₂ = right B
---     Q .h₃ = right C
---     Q .H = sym ∘ K F
---     Q .K = sym ∘ K G
+    P : Cospan-map X Y
+    P .h₁ = left A
+    P .h₂ = left B
+    P .h₃ = left C
+    P .H = sym ∘ H F
+    P .K = sym ∘ H G
 
---   Aᵈ : Cospanᵈ B (𝓥2 ⊔ 𝓤2) (𝓥1 ⊔ 𝓤1) (𝓥3 ⊔ 𝓤3)
---   Aᵈ = fibre-cospanᵈ F
+    Q : Cospan-map Z Y
+    Q .h₁ = right A
+    Q .h₂ = right B
+    Q .h₃ = right C
+    Q .H = sym ∘ K F
+    Q .K = sym ∘ K G
 
---   Cᵈ : Cospanᵈ B (𝓦2 ⊔ 𝓤2) (𝓦1 ⊔ 𝓤1) (𝓦3 ⊔ 𝓤3)
---   Cᵈ = fibre-cospanᵈ G
+  Aᵈ : Cospanᵈ B (𝓥2 ⊔ 𝓤2) (𝓥1 ⊔ 𝓤1) (𝓥3 ⊔ 𝓤3)
+  Aᵈ = fibre-cospanᵈ F
 
---   module X = semi-straight-3x3 B Aᵈ Cᵈ
+  Cᵈ : Cospanᵈ B (𝓦2 ⊔ 𝓤2) (𝓦1 ⊔ 𝓤1) (𝓦3 ⊔ 𝓤3)
+  Cᵈ = fibre-cospanᵈ G
 
---   vert-pullback : Cospan (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3) (𝓥1 ⊔ 𝓥2 ⊔ 𝓥3) (𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
---   vert-pullback .Centre = Pullback-of-cospan B
---   vert-pullback .Left = Pullback-of-cospan A
---   vert-pullback .left = Pullback₁ F
---   vert-pullback .Right = Pullback-of-cospan C
---   vert-pullback .right = Pullback₁ G
+  private
+    X' : Bi-fam 𝓤1 (𝓤1 ⊔ 𝓥1) (𝓤1 ⊔ 𝓦1)
+    X' = straighten-cospan X
 
---   hor-pullback : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
---   hor-pullback .Centre = Pullback-of-cospan Y
---   hor-pullback .Left = Pullback-of-cospan X
---   hor-pullback .left = Pullback₁ P
---   hor-pullback .Right = Pullback-of-cospan Z
---   hor-pullback .right = Pullback₁ Q
+    Y' : Bi-fam 𝓤2 (𝓤2 ⊔ 𝓥2) (𝓤2 ⊔ 𝓦2)
+    Y' = straighten-cospan Y
 
---   hor-compare : Cospan-map X.hor-cospan hor-pullback
---   hor-compare .h₁ = unstraighten-pullback X
---   hor-compare .h₂ = unstraighten-pullback Y
---   hor-compare .h₃ = unstraighten-pullback Z
---   hor-compare .H (c , (l , refl) , (r , q))
---     = pullback-path→
---         ( refl
---         , refl
---         , sym (∙-reflr _ ∙ {!!}) )
---   hor-compare .K (c , (l , refl) , (r , q))
---     = pullback-path→
---         ( refl
---         , refl
---         , ap (sym (sym (K F l)) ∙_)
---              ( ap₂ _∙_
---                    (ap-sym (right B) q)
---                    (sym sym-sym)
---              ∙ sym (∙-symsym (sym (sym (K G r))) (ap (right B) q)))
---         ∙ ap (_∙ (sym (sym (sym (K G r))
---         ∙ ap (right B) q))) (sym (∙-reflr _))
---         ∙ sym (∙-reflr _))
+    Z' : Bi-fam 𝓤3 (𝓤3 ⊔ 𝓥3) (𝓤3 ⊔ 𝓦3)
+    Z' = straighten-cospan Z
 
---   hor-compare-is-equiv : is-cospan-equiv hor-compare
---   hor-compare-is-equiv .fst = unstraighten-pullback-is-equiv _
---   hor-compare-is-equiv .snd .fst = unstraighten-pullback-is-equiv _
---   hor-compare-is-equiv .snd .snd = unstraighten-pullback-is-equiv _
+    P' : Bi-fam-map X' Y'
+    P' = Bi-fam-map←Cospan-map P
 
---   vert-compare : Bi-fam-map (unstraighten-cospan vert-pullback) X.vert-cospan
---   vert-compare .Bi-fam-map.h₂ = id
---   vert-compare .Bi-fam-map.h₁ = straighten-cospanᵈ _
---   vert-compare .Bi-fam-map.h₃ = straighten-cospanᵈ _
+    Q' : Bi-fam-map Z' Y'
+    Q' = Bi-fam-map←Cospan-map Q
 
---   vert-compare-is-equiv : Bi-fam-map-is-equiv vert-compare
---   vert-compare-is-equiv
---     = ( id-is-equiv
---       , (λ c → is-equiv⁻¹ (straighten-cospanᵈ⁻¹-is-equiv F c))
---       , (λ c → is-equiv⁻¹ (straighten-cospanᵈ⁻¹-is-equiv G c)))
+  module X = semi-straight-3x3 B Aᵈ Cᵈ
 
---   3×3 : Pullback-of-cospan vert-pullback ≃ Pullback-of-cospan hor-pullback
---   3×3 = (mk≃ (unstraighten-pullback _) (unstraighten-pullback-is-equiv _)) e⁻¹
---       ∙≃ pullback-fam≃ (vert-compare , vert-compare-is-equiv)
---       ∙≃ X.3×3
---       ∙≃ Pullback₁≃ (hor-compare , hor-compare-is-equiv)
+  vert-cospan : Cospan (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3) (𝓥1 ⊔ 𝓥2 ⊔ 𝓥3) (𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)
+  vert-cospan .Centre = Pullback-of-cospan B
+  vert-cospan .Left   = Pullback-of-cospan A
+  vert-cospan .left   = Pullback₁ F
+  vert-cospan .Right  = Pullback-of-cospan C
+  vert-cospan .right  = Pullback₁ G
 
+  vert-bifam : Bi-fam (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3)
+                      (𝓥1 ⊔ 𝓤1 ⊔ (𝓥2 ⊔ 𝓤2) ⊔ (𝓥3 ⊔ 𝓤3))
+                      (𝓦1 ⊔ 𝓤1 ⊔ (𝓦2 ⊔ 𝓤2) ⊔ (𝓦3 ⊔ 𝓤3))
+  vert-bifam .Bi-fam.Centre = Pullback-of-cospan B
+  vert-bifam .Bi-fam.Left   = pullback-cospanᵈ Aᵈ
+  vert-bifam .Bi-fam.Right  = pullback-cospanᵈ Cᵈ
 
-record straight-3x3 {𝓤1 𝓤2 𝓤3 𝓥1 𝓥2 𝓥3 𝓦1 𝓦2 𝓦3}
-         : Type (lsuc (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓥1 ⊔ 𝓥2 ⊔ 𝓥3 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ 𝓦3)) where
-  field
-    Core : Type 𝓤2
-    L    : Core → Type 𝓤1
-    R    : Core → Type 𝓤3
-    T    : Core → Type 𝓥2
-    TL   : (c : Core) → L c → T c → Type 𝓥1
-    TR   : (c : Core) → R c → T c → Type 𝓥3
-    B    : Core → Type 𝓦2
-    BL   : (c : Core) → L c → B c → Type 𝓦1
-    BR   : (c : Core) → R c → B c → Type 𝓦3
+  hor-cospan : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
+  hor-cospan .Centre = Pullback-of-cospan Y
+  hor-cospan .Left   = Pullback-of-cospan X
+  hor-cospan .left   = Pullback₁ P
+  hor-cospan .Right  = Pullback-of-cospan Z
+  hor-cospan .right  = Pullback₁ Q
 
+  hor-cospan' : Cospan (𝓤2 ⊔ 𝓥2 ⊔ 𝓦2) (𝓤1 ⊔ 𝓥1 ⊔ 𝓦1) (𝓤3 ⊔ 𝓥3 ⊔ 𝓦3)
+  hor-cospan' .Centre = fibred-product Y'
+  hor-cospan' .Left   = fibred-product X'
+  hor-cospan' .left   = fibred-product₁ P'
+  hor-cospan' .Right  = fibred-product Z'
+  hor-cospan' .right  = fibred-product₁ Q'
 
+  hor-unstr : Cospan-equiv-components hor-cospan' hor-cospan
+  hor-unstr .fst = straighten-pullback≃ Y e⁻¹
+  hor-unstr .snd .fst = straighten-pullback≃ X e⁻¹
+  hor-unstr .snd .snd .fst (c , (l , refl) , (r , q)) = pullback-path→
+        ( refl
+        , refl
+        , ap (sym (sym (H F l)) ∙_)
+             (sym (∙-symsym _ _
+                  ∙ ap₂ _∙_
+                        (sym (ap-sym (left B) q))
+                        sym-sym))
+        ∙ sym (ap (_∙ sym (sym (sym (H G r)) ∙ ap (left B) q)) (∙-reflr _))
+        ∙ sym (∙-reflr _))
+  hor-unstr .snd .snd .snd .fst = straighten-pullback≃ Z e⁻¹
+  hor-unstr .snd .snd .snd .snd (c , (l , refl) , (r , q)) = pullback-path→
+        ( refl
+        , refl
+        , ap (sym (sym (K F l)) ∙_)
+             ( ap₂ _∙_
+                   (ap-sym (right B) q)
+                   (sym sym-sym)
+             ∙ sym (∙-symsym (sym (sym (K G r))) (ap (right B) q)))
+        ∙ ap (_∙ (sym (sym (sym (K G r))
+        ∙ ap (right B) q))) (sym (∙-reflr _))
+        ∙ sym (∙-reflr _))
+
+  opaque
+    hor-unstr' : Cospan-equiv hor-cospan' hor-cospan
+    hor-unstr' = Cospan-equiv←components hor-unstr
+
+  vert-compare : Bi-fam-map vert-bifam (straighten-cospan vert-cospan)
+  vert-compare .Bi-fam-map.h₂ = id
+  vert-compare .Bi-fam-map.h₁ = fibre-pullback₁ _
+  vert-compare .Bi-fam-map.h₃ = fibre-pullback₁ _
+
+  vert-compare-is-equiv : is-bi-fam-equiv vert-compare
+  vert-compare-is-equiv
+    = ( id-is-equiv
+      , fibre-pullback₁-is-equiv F
+      , fibre-pullback₁-is-equiv G)
+
+  comparison-map
+    : Pullback-of-cospan hor-cospan → Pullback-of-cospan vert-cospan
+  comparison-map = unstraighten-fibre-product vert-cospan
+                 ∘ fibred-product₁ vert-compare
+                 ∘ X.comparison-map
+                 ∘ _≃_.bwd (Pullback₁≃ hor-unstr')
+
+  opaque
+    comparison-map-is-equiv
+      : is-equiv comparison-map
+    comparison-map-is-equiv
+      = is-equiv-∘
+          {f = unstraighten-fibre-product vert-cospan}
+          {g = fibred-product₁ vert-compare ∘ X.comparison-map
+             ∘ _≃_.bwd (Pullback₁≃ hor-unstr')}
+          (unstraighten-fibre-product-is-equiv vert-cospan)
+          (is-equiv-∘
+            {f = fibred-product₁ vert-compare}
+            (fibred-product₁-is-equiv vert-compare vert-compare-is-equiv)
+            (is-equiv-∘ {f = X.comparison-map}
+               X.comparison-map-is-equiv
+               (is-equiv⁻¹ (_≃_.has-is-eqv (Pullback₁≃ hor-unstr')))))
+
+  3×3 : Pullback-of-cospan hor-cospan ≃ Pullback-of-cospan vert-cospan
+  3×3 = mk≃ comparison-map comparison-map-is-equiv
 }
 %```
 }

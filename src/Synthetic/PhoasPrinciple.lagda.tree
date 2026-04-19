@@ -1,0 +1,174 @@
+\date{2026-03-18}
+\title{Phoa's principle}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.PhoasPrinciple
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+
+  Δ²←Δ^2 : Δ^ 2 → Δ²
+  Δ²←Δ^2 (j ·:≥: i) = (j , i)
+
+open import Synthetic.Cubes Δ¹ i0 i1
+}
+%```
+
+\subtree[fre-0006]{
+\date{2026-03-18}
+\author{fredrikbakke}
+\title{Phoa's principle}
+\taxon{Definition}
+
+\p{
+\em{Phoa's principle} states that every endofunction on the interval
+#{\alpha : \Delta^1 \to \Delta^1} can be written as a linear polynomial
+##{\alpha(i) = α(0) \lor α(1) \land i}.
+}
+
+%```agda
+\agda{
+phoas-principle : Type 𝓘
+phoas-principle
+  = (α : Δ¹ → Δ¹) (i : Δ¹)
+  → α i ＝ α i0 ∨ (α i1 ∧ i)
+}
+%```
+}
+
+\subtree[fre-0007]{
+\date{2026-03-18}
+\author{fredrikbakke}
+\title{Phoa's principle for #{\Delta^n}}
+\taxon{Theorem}
+
+%```agda
+\agda{
+formula-phoa-Δ^
+  : ∀ {n}
+  → (Δ^ n → Δ¹)
+  → Δ^ n
+  → Δ¹
+formula-phoa-Δ^ {zero} α · = α ·
+formula-phoa-Δ^ {suc n} α (x :≥: j)
+  = formula-phoa-Δ^ (λ y → α (y :≥: i0)) x
+  ∨ (formula-phoa-Δ^ (α ∘ Δ-σ-last) x ∧ j)
+
+abstract
+  phoa-Δ^
+    : phoas-principle →
+      ∀ {n}
+    → (α : Δ^ n → Δ¹)
+    → (t : Δ^ n)
+    → α t ＝ formula-phoa-Δ^ α t
+  phoa-Δ^ phoa {zero} α · = refl
+  phoa-Δ^ phoa {suc n} α ((x :≥: j) ⦃ p ⦄)
+    = α (x :≥: j)
+        ＝⟨ ap α (Δ-ext (Δ-refl :≥: sym (∧-comm ∙ p))) ⟩
+      α ((x :≥: (last-Δ x ∧ j)) ⦃ ∧-≤-eliml ≤-refl ⦄)
+        ＝⟨ phoa (λ k → α ((x :≥: (last-Δ x ∧ k)) ⦃ ∧-≤-eliml ≤-refl ⦄)) j ⟩
+      α ((x :≥: (last-Δ x ∧ i0)) ⦃ ∧-≤-eliml ≤-refl ⦄)
+      ∨ (α ((x :≥: (last-Δ x ∧ i1)) ⦃ ∧-≤-eliml ≤-refl ⦄) ∧ j)
+        ＝⟨ ap₂ _∨_
+              (ap α (Δ-ext (Δ-refl :≥: (∧-comm ∙ 0-init))))
+              (ap (_∧ j) (ap α (Δ-ext (Δ-refl :≥: 1-top)))) ⟩
+      α (x :≥: i0)
+      ∨ (α (x :≥: last-Δ x) ∧ j)
+        ＝⟨ ap₂ _∨_
+              (phoa-Δ^ phoa (λ y → α (y :≥: i0)) x)
+              (ap (_∧ j) (phoa-Δ^ phoa (α ∘ Δ-σ-last) x)) ⟩
+      formula-phoa-Δ^ (λ y → α (y :≥: i0)) x
+      ∨ (formula-phoa-Δ^ (α ∘ Δ-σ-last) x ∧ j)
+        ∎
+}
+%```
+}
+
+\subtree[fre-0008]{
+\date{2026-03-18}
+\author{fredrikbakke}
+\title{Phoa's formula for #{\Delta^2}}
+\taxon{Corollary}
+
+
+\p{
+Assuming [phoa's principle](fre-0006) then every function
+#{\alpha : \Delta^2 \to \Delta^1} is of the form
+##{ α (j \ge i) ＝ α (0 \ge 0) \lor (α (1 \ge 0) \land j) \lor (α (1 \ge 1) \land i).}
+}
+
+%```agda
+\agda{
+βα-phoa-Δ² : (α : Δ² → Δ¹) → Δ² → Δ¹
+βα-phoa-Δ² α (j , i)
+  = (α ((i1 , i0) ⦃ ≤-bot ⦄) ∧ j)
+  ∨ (α ((i1 , i1) ⦃ ≤-refl ⦄) ∧ i)
+
+βα-phoa-Δ²≤s : (α : Δ² → Δ¹) → (t : Δ²) → βα-phoa-Δ² α t ≤ t .Poly.Δ².s
+βα-phoa-Δ²≤s α ((j , i) ⦃ p ⦄) = ∨-UP (∧-≤-elimr ≤-refl , ∧-≤-elimr p)
+
+abstract
+  phoa-Δ²
+    : phoas-principle
+    → (α : Δ² → Δ¹)
+    → (t : Δ²)
+    → α t ＝ α ((i0 , i0) ⦃ ≤-refl ⦄) ∨ βα-phoa-Δ² α t
+  phoa-Δ² phoa α ((j , i) ⦃ p ⦄)
+    = let
+        v00 : Δ²
+        v00 = (i0 , i0) ⦃ ≤-refl ⦄
+        v10 : Δ²
+        v10 = (i1 , i0) ⦃ ≤-bot ⦄
+        v11 : Δ²
+        v11 = (i1 , i1) ⦃ ≤-refl ⦄
+      in
+      α ((j , i) ⦃ p ⦄)
+        ＝⟨ phoa-Δ^ phoa (α ∘ Δ²←Δ^2) (j ·:≥: i) ⟩
+      formula-phoa-Δ^ (α ∘ Δ²←Δ^2) (j ·:≥: i)
+        ＝⟨⟩
+      formula-phoa-Δ^ (λ where (·≥: k) → α ((k , i0) ⦃ ≤-bot ⦄)) (·≥: j)
+        ∨ (formula-phoa-Δ^ (λ where (·≥: k) → α ((k , k) ⦃ ≤-refl ⦄)) (·≥: j) ∧ i)
+        ＝⟨ ap₂ _∨_
+              (ap₂ _∨_ (ap α Poly.Δ²-refl) (ap (_∧ j) (ap α Poly.Δ²-refl)))
+              (ap (_∧ i)
+                (ap₂ _∨_ (ap α Poly.Δ²-refl) (ap (_∧ j) refl))) ⟩
+      (α v00 ∨ (α v10 ∧ j))
+        ∨ ((α v00 ∨ (α v11 ∧ j)) ∧ i)
+        ＝⟨ ap ((α v00 ∨ (α v10 ∧ j)) ∨_) distrib-∧-∨' ⟩
+      (α v00 ∨ (α v10 ∧ j))
+        ∨ ((α v00 ∧ i) ∨ ((α v11 ∧ j) ∧ i))
+        ＝⟨ ∨-assoc ⟩
+      ((α v00 ∨ (α v10 ∧ j))
+        ∨ (α v00 ∧ i))
+        ∨ ((α v11 ∧ j) ∧ i)
+        ＝⟨ ap (_∨ ((α v11 ∧ j) ∧ i))
+            (sym ∨-assoc
+            ∙ ap (α v00 ∨_) ∨-comm
+            ∙ ∨-assoc
+            ∙ ap (_∨ (α v10 ∧ j)) (∨-∧-abs {α v00} {i})) ⟩
+      (α v00 ∨ (α v10 ∧ j))
+        ∨ ((α v11 ∧ j) ∧ i)
+        ＝⟨ ap₂ _∨_ refl (sym ∧-assoc ∙ ap (α v11 ∧_) (∧-comm ∙ p)) ⟩
+      (α v00 ∨ (α v10 ∧ j))
+        ∨ (α v11 ∧ i)
+        ＝⟨ sym ∨-assoc ⟩
+      α v00 ∨ ((α v10 ∧ j) ∨ (α v11 ∧ i))
+        ∎
+}
+%```
+}

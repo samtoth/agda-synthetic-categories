@@ -1,0 +1,322 @@
+\title{Fibred products}
+\taxon{Module}
+\date{2026-04-20}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Core.FibredProducts where
+
+open import Foundations.Prelude
+
+open import Core.FunctorialPullback
+open import Core.Arrow
+
+open import Ergonomics.Extensionality
+}
+%```
+
+
+\subtree[tot-0041]{
+\title{Bi-families}
+\taxon{Definition}
+
+\p{We say a bi-familily is a base type, together with a pair of types indexed
+over the base.}
+
+
+%```agda
+\agda{
+record Bi-fam 𝓤 𝓥 𝓦 : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦)) where
+  field
+    Centre : Type 𝓤
+    Left : Centre → Type 𝓥
+    Right : Centre → Type 𝓦
+
+}
+%```
+}
+
+\subtree[tot-0042]{
+\title{Maps of bi-families}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Bi-fam-map {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+                      (S : Bi-fam 𝓤 𝓥 𝓦) (T : Bi-fam 𝓜 𝓝 𝓛)
+                      : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛) where
+  constructor mk-bi-fam-map
+  module S = Bi-fam S
+  module T = Bi-fam T
+  field
+    h₂ : S.Centre → T.Centre
+    h₁ : ∀ c → S.Left c → T.Left (h₂ c)
+    h₃ : ∀ c → S.Right c → T.Right (h₂ c)
+}
+%```
+}
+
+\subtree[tot-0043]{
+\title{Equivalences of bi-families}
+\taxon{Definition}
+
+%```agda
+\agda{
+is-bi-fam-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+      (F : Bi-fam-map S T) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
+is-bi-fam-equiv F = is-equiv h₂ × is-fibrewise-equiv h₁ × is-fibrewise-equiv h₃
+  where open Bi-fam-map F
+
+Bi-fam-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+    → Bi-fam 𝓤 𝓥 𝓦 → Bi-fam 𝓜 𝓝 𝓛 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
+Bi-fam-equiv A B = Σ[ F ∶ Bi-fam-map A B ] is-bi-fam-equiv F
+
+Bi-fam-equiv-components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+    → Bi-fam 𝓤 𝓥 𝓦 → Bi-fam 𝓜 𝓝 𝓛 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓛)
+Bi-fam-equiv-components A B
+  = Σ[ C ∶ A .Centre ≃ B .Centre ]
+      ( (∀ c → A .Left c ≃ B .Left (C ._≃_.fwd c))
+      × (∀ c → A .Right c ≃ B .Right (C ._≃_.fwd c)))
+  where open Bi-fam
+
+Bi-fam-equiv←components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv-components S T → Bi-fam-equiv S T
+Bi-fam-equiv←components (C , L , R)
+  =
+  ( mk-bi-fam-map (C .fwd) (fwd ∘ L) (fwd ∘ R)
+  , has-is-eqv C
+  , has-is-eqv ∘ L
+  , has-is-eqv ∘ R)
+  where open _≃_
+
+components←Bi-fam-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv S T → Bi-fam-equiv-components S T
+components←Bi-fam-equiv (mk-bi-fam-map C L R , e1 , e2 , e3)
+  =
+  ( (mk≃ C e1)
+  , (λ c → mk≃ (L c) (e2 c))
+  , (λ c → mk≃ (R c) (e3 c)))
+
+Bi-fam-equiv≃components
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-equiv S T ≃ Bi-fam-equiv-components S T
+Bi-fam-equiv≃components
+  = mk≃ components←Bi-fam-equiv
+        (mk-eqv (Bi-fam-equiv←components , ~refl , ~refl)
+                ~refl)
+}
+%```
+}
+
+\subtree[tot-03SD]{
+\title{Fibred products}
+\taxon{Definition}
+
+\p{The fibred product of a [bi-family](tot-0041) is given by an element in
+the base, together with elements in each family over that element. This is
+a straightened analogue of the pullback of a span.}
+
+%```agda
+\agda{
+fibred-product : ∀ {𝓤 𝓥 𝓦} → Bi-fam 𝓤 𝓥 𝓦 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+fibred-product fc
+  = Σ[ a ∶ fc .Bi-fam.Centre ]
+      (fc .Bi-fam.Left a × fc .Bi-fam.Right a)
+}
+%```
+}
+
+\subtree[tot-003SF]{
+\title{Taking fibred products is functorial}
+\taxon{Lemma}
+
+\p{Taking the fibred products gives a functor #{\textsf{Bi-fam} \to \Type}.
+Here we record the action on morphisms, and on equivalences.}
+
+%```agda
+\agda{
+fibred-product₁
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Bi-fam-map S T → fibred-product S → fibred-product T
+fibred-product₁ F = map-Σ h₂ λ c → (h₁ c ⊗ h₃ c)
+  where open Bi-fam-map F
+
+fibred-product₁-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → (F : Bi-fam-map S T)
+    → is-bi-fam-equiv F
+    → is-equiv (fibred-product₁ F)
+fibred-product₁-is-equiv F (ec , ea , eb)
+  = map-Σ-is-equiv ec λ c → ⊗-is-equiv (ea c) (eb c)
+
+fibred-product≃
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {S : Bi-fam 𝓤 𝓥 𝓦} {T : Bi-fam 𝓜 𝓝 𝓛}
+    → Σ (Bi-fam-map S T) is-bi-fam-equiv
+    → fibred-product S ≃ fibred-product T
+fibred-product≃ (F , Fe) = mk≃ (fibred-product₁ F) (fibred-product₁-is-equiv _ Fe)
+}
+%```
+}
+
+\subtree[tot-03SE]{
+\title{Paths in fibred products}
+\taxon{Lemma}
+
+%```agda
+\agda{
+fibred-product-path
+  : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+    → fibred-product X → fibred-product X → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+fibred-product-path X (a , b , c) (a' , b' , c')
+  = Σ[ p ∶ a ＝ a' ]
+    ( (b ＝[ ap (Bi-fam.Left X) p ] b')
+    ×
+      (c ＝[ ap (Bi-fam.Right X) p ] c')
+    )
+
+fibred-product-path-refl
+  : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+    → (x : fibred-product X) → fibred-product-path X x x
+fibred-product-path-refl X x = (refl , refl , refl)
+
+fibred-product-path←Id
+  : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+    → {x y : fibred-product X} → (p : x ＝ y)
+    → fibred-product-path X x y
+fibred-product-path←Id X refl = fibred-product-path-refl X _
+
+opaque
+  fibred-product-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+      → (x : fibred-product X)
+      → is-singleton (Σ _ (fibred-product-path X x))
+  fibred-product-path-is-torsorial X x
+    = is-singleton-structure←parts
+        Sing-is-singleton
+        (_ , refl)
+        (is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          Sing-is-singleton)
+
+opaque
+  fibred-product-path←Id-is-equiv
+    : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+      → {x y : fibred-product X}
+      → is-equiv (fibred-product-path←Id X {x = x} {y})
+  fibred-product-path←Id-is-equiv X {x} {y}
+    = fundamental-Id _
+        (fibred-product-path-is-torsorial X x)
+        (λ _ → fibred-product-path←Id X)
+        y
+
+fibred-product-path→
+    : ∀ {𝓤 𝓥 𝓦} → (X : Bi-fam 𝓤 𝓥 𝓦)
+      → {x y : fibred-product X}
+      → fibred-product-path X x y → x ＝ y
+fibred-product-path→ X = is-equiv.bwd (fibred-product-path←Id-is-equiv X)
+}
+%```
+}
+
+\subtree[tot-002A]{
+\title{Straightening for bi-families}
+\taxon{Construction}
+\p{We show that cospans straighten into bi-families and hence a fibred product
+of a bi-family is equivalent to a pullback of the unstraightened cospan.}
+
+%```agda
+\agda{
+unstraighten-bi-fam : ∀ {𝓤 𝓥 𝓦} → Bi-fam 𝓤 𝓥 𝓦 → Cospan 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+unstraighten-bi-fam A .Cospan.Centre = A .Bi-fam.Centre
+unstraighten-bi-fam A .Cospan.Left = Σ _ (A .Bi-fam.Left)
+unstraighten-bi-fam A .Cospan.left = fst
+unstraighten-bi-fam A .Cospan.Right = Σ _ (A .Bi-fam.Right)
+unstraighten-bi-fam A .Cospan.right = fst
+
+straighten-cospan
+  : ∀ {𝓤 𝓥 𝓦} → Cospan 𝓤 𝓥 𝓦 → Bi-fam 𝓤 (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+straighten-cospan S .Bi-fam.Centre = S .Cospan.Centre
+straighten-cospan S .Bi-fam.Left = fibre (S .Cospan.left)
+straighten-cospan S .Bi-fam.Right = fibre (S .Cospan.right)
+
+unstr-str-cospan
+  : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦)
+    → Cospan-equiv (unstraighten-bi-fam (straighten-cospan S)) S
+unstr-str-cospan S .fst
+  = mk-cospan-map
+     (total←total-fibre _)
+     id
+     (total←total-fibre _)
+     (sym ∘ snd ∘ snd)
+     (sym ∘ snd ∘ snd)
+unstr-str-cospan S .snd
+  = ( total←total-fibre-is-equiv (Cospan.left S)
+    , id-is-equiv
+    , total←total-fibre-is-equiv (Cospan.right S))
+
+str-unstr-bi-fam
+  : ∀ {𝓤 𝓥 𝓦} (F : Bi-fam 𝓤 𝓥 𝓦)
+    → Bi-fam-equiv (straighten-cospan (unstraighten-bi-fam F)) F
+str-unstr-bi-fam F = Bi-fam-equiv←components
+  ( idequiv
+  , fibre-straighten _
+  , fibre-straighten _)
+
+unstraighten-fibre-product
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → fibred-product (straighten-cospan F)
+    → Pullback-of-cospan F
+unstraighten-fibre-product F (c , (l , p) , (r , q)) = (l , r , p ∙ sym q)
+
+straighten-pullback
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → Pullback-of-cospan F
+    → fibred-product (straighten-cospan F)
+straighten-pullback F (l , r , p) = (_ , (l , p) , (r , refl))
+
+unstraighten-fibre-product-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → is-equiv (unstraighten-fibre-product F)
+unstraighten-fibre-product-is-equiv F = is-equiv←qiso
+  ( straighten-pullback F
+  , (λ { (c , (l , p) , (r , refl))
+             → fibred-product-path→ _
+                 ( refl
+                 , fibre-path→ (refl , sym (∙-reflr _))
+                 , refl)})
+  , λ x → pullback-path→ (refl , refl , sym (∙-reflr _ ∙ ∙-reflr _)))
+
+straighten-pullback≃
+  : ∀ {𝓤 𝓥 𝓦} (F : Cospan 𝓤 𝓥 𝓦)
+    → Pullback-of-cospan F
+    ≃ fibred-product (straighten-cospan F)
+straighten-pullback≃ F
+  = mk≃ (straighten-pullback F)
+        (is-equiv⁻¹ (unstraighten-fibre-product-is-equiv F))
+}
+%```
+}
+
+\subtree[tot-0833]{
+\title{Straightening cospan maps}
+\taxon{Lemma}
+
+%```agda
+\agda{
+Bi-fam-map←Cospan-map
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Cospan-map S T → Bi-fam-map (straighten-cospan S) (straighten-cospan T)
+Bi-fam-map←Cospan-map F = mk-bi-fam-map h₂ (fam-map←arrow-map left-amap .snd)
+                                           (fam-map←arrow-map right-amap .snd)
+  where open Cospan-map F
+}
+%```
+}

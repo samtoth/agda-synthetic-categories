@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 AGDA_DATADIR ?= _build
 AUTOGEN_DIR ?= trees/stt/autogen
-HTML_DIR ?= output/html
+HTML_DIR ?= output/agda-synthetic-categories/html
 EVERYTHING_FILE ?= src/Everything.agda
 WATCH_DIR ?= src
 PORT ?= 1313
@@ -59,7 +59,7 @@ sync-forest-src:
 
 build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
-	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" "$(EVERYTHING_FILE)" -j
+	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" "$(EVERYTHING_FILE)" -j
 
 watch-agda:
 	@$(MAKE) --no-print-directory build-forest
@@ -96,10 +96,10 @@ server:
 check-dup:
 	@DIR="$(DUP_DIR)"; \
 	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[stt-[0-9A-Z]{4}\]' "$$DIR"; \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
 		find "$$DIR" -name '*.tree'; \
 	} | awk '\
-	/subtree\[stt-/ { \
+	/subtree\[/ { \
 		split($$0, a, ":"); \
 		id = a[3]; \
 		sub(/^subtree\[/, "", id); \

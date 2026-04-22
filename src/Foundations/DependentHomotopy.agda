@@ -13,7 +13,7 @@ Homotopyᵈ : ∀ {𝓤 𝓥} {A : Type 𝓤}
               → (P : B ~ C)
               → (f : ∀ a → B a)
               → (g : ∀ a → C a)
-              → Type _
+              → Type (𝓤 ⊔ 𝓥)
 Homotopyᵈ {A = A} P f g = ∀ (a : A) → Idᵈ (P a) (f a) (g a)
 
 Homotopyᵈ-syntax : ∀ {𝓤 𝓥} {A : Type 𝓤}
@@ -22,7 +22,7 @@ Homotopyᵈ-syntax : ∀ {𝓤 𝓥} {A : Type 𝓤}
               → (P : B ~ C)
               → (f : ∀ a → B a)
               → (g : ∀ a → C a)
-              → Type _
+              → Type (𝓤 ⊔ 𝓥)
 Homotopyᵈ-syntax = Homotopyᵈ
 
 syntax Homotopyᵈ-syntax P f g = f ~[ P ] g

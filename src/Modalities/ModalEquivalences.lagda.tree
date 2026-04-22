@@ -1,0 +1,279 @@
+\date{2026-03-19}
+\title{Modal equivalences}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+
+
+%```agda
+\agda{
+module Modalities.ModalEquivalences where
+
+open import ufAxioms
+open import Foundations.Prelude
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ModalMaps
+open import Core.Arrow
+open import Core.ArrowRetract
+open import Core.Orthogonal
+open import Core.ArrowEquiv
+}
+%```
+
+\subtree[stt-00MS]{
+\taxon{Definition}
+\title{Universal property of modal equivalences}
+\author{fredrikbakke}
+
+\p{
+Given a global subuniverse #{K} and a map #{f : A \to B}, then #{f} is a
+#{K}-\em{equivalence} if for every type #{U} in #{K},
+the precomposition map #{U^f} is an equivalence.
+}
+
+\p{
+We use the abbreviation \code{up} for "universal property".
+}
+
+% ```agda
+\agda{
+up-modal-equiv : ∀ {α 𝓤 𝓥} (K : gSubU α)
+                 → {A : Type 𝓤} {B : Type 𝓥}
+                 → (A → B)
+                 → Typeω
+up-modal-equiv K f
+  = ∀ {𝓚} {U : Type 𝓚}
+  → U ∈ gSubU.S K
+  → is-equiv (precomp U f)
+
+is-modal-equiv
+  : ∀ {α 𝓤 𝓥} (K : gRSubU α) → {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-modal-equiv K f = is-equiv (gReflectiveReasoning.○₁ K f)
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{3-for-2 for modal equivalences}
+
+\p{
+Global #{K}-equivalences satisfy the 3-for-2 property. Given a commuting triangle of
+#{K}-equivalences, if two of the three maps are #{K}-equivalences then so is the
+third.
+}
+
+% ```agda
+\agda{
+up-modal-equiv-∘
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : B → C)
+    → up-modal-equiv K f
+    → up-modal-equiv K g
+    → up-modal-equiv K (g ∘ f)
+up-modal-equiv-∘ K f g fe ge U∈K
+  = is-equiv-∘ (fe U∈K) (ge U∈K)
+
+up-modal-equiv-right-cancel
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : B → C)
+    → up-modal-equiv K f
+    → up-modal-equiv K (g ∘ f)
+    → up-modal-equiv K g
+up-modal-equiv-right-cancel K f g fe gfe U∈K
+  = 3-for-2 (fe U∈K) (gfe U∈K)
+
+up-modal-equiv-left-cancel
+  : ∀ {α 𝓤 𝓥 𝓦}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → B) (g : B → C)
+    → up-modal-equiv K g
+    → up-modal-equiv K (g ∘ f)
+    → up-modal-equiv K f
+up-modal-equiv-left-cancel K f g ge gfe U∈K
+  = 3-for-2' (ge U∈K) (gfe U∈K)
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{#{K}-equivalences are closed under retracts of arrows}
+
+\p{
+If #{f} is a retract of #{g} as an arrow, and #{g} is a global #{K}-equivalence,
+then so is #{f}.
+}
+
+% ```agda
+\agda{
+up-modal-equiv←incoherent-retraction-arrow-map
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → incoherent-retraction-arrow-map F
+    → up-modal-equiv K g
+    → up-modal-equiv K f
+up-modal-equiv←incoherent-retraction-arrow-map K {f = f} {g = g} F R ge U∈K
+  = is-equiv←incoherent-retraction-equiv
+      (precomp-square (R .fst) _)
+      precomp-incoh
+      (ge U∈K)
+  where
+  precomp-incoh
+    : incoherent-retraction-arrow-map (precomp-square (R .fst) _)
+  precomp-incoh
+    = precomp-square F _
+    , ( (λ a → ap (a ∘_) (funext→ (R .snd .snd)))
+      , (λ a → ap (a ∘_) (funext→ (R .snd .fst))))
+
+up-modal-equiv←retraction-arrow-map
+  : ∀ {α 𝓤 𝓥 𝓦 𝓛}
+      (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
+      (F : Arrow-map f g)
+    → retraction-arrow-map F
+    → up-modal-equiv K g
+    → up-modal-equiv K f
+up-modal-equiv←retraction-arrow-map K F R
+  = up-modal-equiv←incoherent-retraction-arrow-map K F
+      (R .fst , (R .snd .fst , R .snd .snd .fst))
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Modal equivalences with local domain and codomain}
+
+\p{
+If a #{K}-equivalence has both domain and codomain in #{K}, then it is an actual
+equivalence.
+}
+
+% ```agda
+\agda{
+is-equiv←up-modal-equiv-domain-codomain
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → A ∈ gSubU.S K
+    → B ∈ gSubU.S K
+    → up-modal-equiv K f
+    → is-equiv f
+is-equiv←up-modal-equiv-domain-codomain K f A∈K B∈K feq
+  = is-equiv←equiv-precomp-dom-cod (feq A∈K) (feq B∈K)
+}
+%```
+}
+
+\subtree{
+\date{2026-03-19}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\taxon{Module}
+\title{Modal equivalences, given reflections of domains}
+
+\p{
+If #{f : A \to B} is a map between types with #{K}-reflections, then we say #{f} is
+a #{K}-equivalence if its reflection is an equivalence.
+}
+
+\agda{
+module gReflectorModalEquivalences
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (RA : gReflector GS A)
+    (RB : gReflector GS B) where
+  open gSubU GS
+  module A = gReflector RA
+  module B = gReflector RB
+  module F = gReflectorMap RA RB
+
+  is-modal-equiv-reflectors
+    : (A → B) → Type (𝓤 ⊔ 𝓥)
+  is-modal-equiv-reflectors f = is-equiv (F.○₁ f)
+
+  precomp-○₁-is-equiv←up-modal-equiv
+    : (f : A → B)
+    → up-modal-equiv GS f
+    → ∀ {𝓚} {U : Type 𝓚}
+    → U ∈ S
+    → is-equiv (precomp U (F.○₁ f))
+  precomp-○₁-is-equiv←up-modal-equiv f feq {U = U} U∈S
+    = 3-for-2
+        (A.reflects U∈S)
+        (is-equiv-~∘ comm (feq U∈S) (B.reflects U∈S))
+    where
+    comm
+      : precomp U A.η ∘ precomp U (F.○₁ f)
+      ~ precomp U f ∘ precomp U B.η
+    comm h = funext→ λ a → ap h (F.○₁-β f a)
+
+  is-modal-equiv-reflectors←up-modal-equiv
+    : (f : A → B)
+    → up-modal-equiv GS f
+    → is-modal-equiv-reflectors f
+  is-modal-equiv-reflectors←up-modal-equiv f feq
+    = is-equiv←equiv-precomp-dom-cod
+        (precomp-○₁-is-equiv←up-modal-equiv f feq A.○∈S)
+        (precomp-○₁-is-equiv←up-modal-equiv f feq B.○∈S)
+
+  up-modal-equiv←is-modal-equiv-reflectors
+    : (f : A → B)
+    → is-modal-equiv-reflectors f
+    → up-modal-equiv GS f
+  up-modal-equiv←is-modal-equiv-reflectors f feq {U = U} U∈S
+    = 3-for-2' (B.reflects U∈S)
+        (homotopy-is-equiv
+          {f = precomp U A.η ∘ precomp U (F.○₁ f)}
+          {g = precomp U f ∘ precomp U B.η}
+          comm
+          (is-equiv-∘ (A.reflects U∈S) (precomp-equiv feq)))
+    where
+    comm
+      : precomp U A.η ∘ precomp U (F.○₁ f)
+      ~ precomp U f ∘ precomp U B.η
+    comm h = funext→ λ a → ap h (F.○₁-β f a)
+
+module _ {α} (RS : gRSubU α) where
+
+  is-modal-equiv←up-modal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → up-modal-equiv (gRSubU.GS RS) f
+      → is-modal-equiv RS f
+  is-modal-equiv←up-modal-equiv {A = A} {B = B} {f = f}
+    = gReflectorModalEquivalences.is-modal-equiv-reflectors←up-modal-equiv
+        (gReflector←gRSubU RS A)
+        (gReflector←gRSubU RS B)
+        f
+
+  up-modal-equiv←is-modal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-modal-equiv RS f
+      → up-modal-equiv (gRSubU.GS RS) f
+  up-modal-equiv←is-modal-equiv {A = A} {B = B} {f = f}
+    = gReflectorModalEquivalences.up-modal-equiv←is-modal-equiv-reflectors
+        (gReflector←gRSubU RS A)
+        (gReflector←gRSubU RS B)
+        f
+}
+%```
+}

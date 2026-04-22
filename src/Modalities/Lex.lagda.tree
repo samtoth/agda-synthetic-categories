@@ -16,6 +16,9 @@ open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ModalMaps
+open import Modalities.ModalEquivalences
+open import Modalities.ConnectedTypes
+open import Modalities.ConnectedMaps
 
 open import Core.Arrow
 open import Core.ArrowEquiv
@@ -32,10 +35,11 @@ open import Core.Orthogonal
 %```agda
 \agda{
 module _ {α} (GR : gRSubU α)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
              (let open gReflectiveReasoning GR)
              (Σ-is-modal : is-globally-Σ-closed GS)
              where
-  open gRSubUInduction GR Σ-is-modal
 
   opaque
     mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → ○ (a ＝ b) → η a ＝ η b
@@ -70,14 +74,14 @@ module _ {α} (GR : gRSubU α)
 \agda{
   η-square
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      → Arrow-map f (○-map (η f))
+      → Arrow-map f (○₁ f)
   η-square f .Arrow-map.top = η
   η-square f .Arrow-map.bot = η
-  η-square f .Arrow-map.comm _ = sym ○-map-β
+  η-square f .Arrow-map.comm a = sym (○₁-β f a)
 
   η-fibre-map
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      → ∀ b → fibre f b → fibre (○-map (η f)) (η b)
+      → ∀ b → fibre f b → fibre (○₁ f) (η b)
   η-fibre-map f = arrow-fibre (η-square f)
 }
 %```
@@ -102,9 +106,9 @@ extensionality if the [canonical map](stt-00JN)
 %```agda
 \agda{
 module _ {α} (GR : gRSubU α)
+             (let open gRSubU GR)
+             (let open gReflectiveClosure GR)
              (let open gReflectiveReasoning GR)
-             (let rfl = has-is-reflective)
-             (let grfl = has-is-globally-reflective)
              (Σ-is-modal : is-globally-Σ-closed GS)
              (mapply-○ : ∀ {𝓤} {A : Type 𝓤} {a b : A}
                          → ○ (a ＝ b) → η a ＝ η b)
@@ -125,9 +129,10 @@ module _ {α} (GR : gRSubU α)
 }
 %```
 
-\p{We now fomrmalise a small subset of \citet{Thm 3.1}{RSS2020},
-in particular, we show the following facts are implied by the lexness of a
-modality:}
+\p{
+We now formalise a small subset of \citet{Thm 3.1}{RSS2020}, in particular, we show
+the following facts are implied by the lexness of a modality:
+}
 
 \subtree[stt-00J9]{
 \title{Equality types are connected}
@@ -137,7 +142,7 @@ modality:}
 \agda{
     ＝-is-connected
       : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-        → is-connected rfl A → is-connected rfl (a ＝ b)
+        → is-connected GR A → is-connected GR (a ＝ b)
     ＝-is-connected Ac
       = is-single←equiv-to-single
           ((mk≃ _ lex) e⁻¹)
@@ -154,11 +159,10 @@ modality:}
 \agda{
     is-connected←cod+dom-is-connected
       : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-        → is-connected rfl A → is-connected rfl B
-        → ∀ (f : A → B) → is-connected-map rfl f
+        → is-connected GR A → is-connected GR B
+        → ∀ (f : A → B) → is-connected-map GR f
     is-connected←cod+dom-is-connected Ac Bc f b
-      = Σ-is-connected Ac λ _ → ＝-is-connected Bc
-
+      = Σ-is-connected GR Ac λ _ → ＝-is-connected Bc
 }
 %```
 }
@@ -172,8 +176,8 @@ modality:}
     is-connected-left-cancel
       : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
           {f : A → B} {g : B → C}
-        → is-connected-map rfl g → is-connected-map rfl (g ∘ f)
-        → is-connected-map rfl f
+        → is-connected-map GR g → is-connected-map GR (g ∘ f)
+        → is-connected-map GR f
     is-connected-left-cancel {f = f}{g} fconn gfconn b
       = is-single←equiv-to-single
           (○-≃ (fibre-unstable-octahedron {f = g} {f} b e⁻¹))
@@ -182,22 +186,6 @@ modality:}
             (fconn  (g b))
             _
             (b , refl))
-
-    opaque
-      is-connected←is-arrow-equiv⁻¹
-        : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-            {f : A → B} {g : X → Y}
-          → (F : Arrow-map f g)
-          → (let module F = Arrow-map F)
-          → is-Arrow-equiv F
-          → is-connected-map rfl g
-          → is-connected-map rfl f
-      is-connected←is-arrow-equiv⁻¹ {f = f} {g = g} F fe fconn
-        = is-connected-left-cancel
-            (is-connected←is-equiv grfl (fe .snd))
-            (is-connected-~ grfl (sym ∘ F .Arrow-map.comm)
-               (is-connected-∘ grfl Σ-is-modal
-                 (is-connected←is-equiv grfl (fe .fst)) fconn))
 }
 %```
 }
@@ -212,18 +200,20 @@ modality:}
 \agda{
     is-connected←is-modal-equiv
       : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-        → is-modal-equiv grfl f
-        → is-connected-map rfl f
+        → is-modal-equiv GR f
+        → is-connected-map GR f
     is-connected←is-modal-equiv {A = A} {B} {f} feq
       = is-connected-left-cancel {f = f} {g = η}
-          (η-is-connected grfl Σ-is-modal)
-          (is-connected-~
-            grfl
+          (η-is-connected GR Σ-is-modal)
+          (is-connected-map'-~ GR
             (sym ∘ η-square GR Σ-is-modal f .Arrow-map.comm)
-            (is-connected-∘ grfl Σ-is-modal
-              {f = ○-map (η f)} {η}
-              (η-is-connected grfl Σ-is-modal)
-              (is-connected←is-equiv grfl feq)))
+            (is-connected-map'-∘ GR Σ-is-modal
+              {f = ○₁ f} {η}
+              (η-is-connected GR Σ-is-modal)
+              (is-connected-map←is-equiv GR
+                (is-modal-equiv←up-modal-equiv GR
+                  (up-modal-equiv←is-modal-equiv
+                    GR feq)))))
 }
 %```
 }
@@ -253,24 +243,25 @@ connected.}
         : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
             {P : A → Type 𝓦} {Q : B → Type 𝓜}
           → (g : (a : A) → P a → Q (f a))
-          → is-connected-map rfl f
-          → is-connected-map {A = Σ A P} {B = Σ B Q} rfl (map-Σ f g)
-          → ∀ a → is-connected-map rfl (g a)) where
+          → is-connected-map GR f
+          → is-connected-map GR {A = Σ A P} {B = Σ B Q} (map-Σ f g)
+          → ∀ a → is-connected-map GR (g a)) where
       fibre-map-is-connected
         : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
             {f : A → B} {g : X → Y}
           → (F : Arrow-map f g)
           → (let module F = Arrow-map F)
-          → is-connected-map rfl F.bot
-          → is-connected-map rfl F.top
-          → ∀ a → is-connected-map rfl (arrow-fibre F a)
+          → is-connected-map GR F.bot
+          → is-connected-map GR F.top
+          → ∀ a → is-connected-map GR (arrow-fibre F a)
       fibre-map-is-connected {A = A}{B}{X}{Y}{f = f}{g} F bconn tconn b
         = is-fibrewise-connected←is-total-connected
             (F .Arrow-map.bot)
             {P = fibre f} {Q = fibre g}
             (arrow-fibre F)
             bconn
-            (is-connected←is-arrow-equiv⁻¹ amap amap-is-equiv tconn)
+            (is-connected-map←is-arrow-equiv⁻¹ GR Σ-is-modal
+              amap amap-is-equiv tconn)
             b where
         module F = Arrow-map F
         amap : Arrow-map {A = Σ B (fibre f)} {Σ Y (fibre g)}
@@ -294,15 +285,15 @@ connected.}
 \agda{
       η-fibre-map-is-equiv
         : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-          → ∀ a → is-connected-map rfl (η-fibre-map GR Σ-is-modal f a)
+          → ∀ a → is-connected-map GR (η-fibre-map GR Σ-is-modal f a)
       η-fibre-map-is-equiv {A = A} {B} {f} b
         = fibre-map-is-connected amap
-            (η-is-connected grfl Σ-is-modal)
-            (η-is-connected grfl Σ-is-modal) b where
-        amap : Arrow-map f (○-map (η f))
+            (η-is-connected GR Σ-is-modal)
+            (η-is-connected GR Σ-is-modal) b where
+        amap : Arrow-map f (○₁ f)
         amap .Arrow-map.top = η
         amap .Arrow-map.bot = η
-        amap .Arrow-map.comm _ = sym ○-map-β
+        amap .Arrow-map.comm a = sym (○₁-β f a)
 }
 %```
 }

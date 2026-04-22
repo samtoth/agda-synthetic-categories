@@ -1,0 +1,76 @@
+name: rename-trees
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        description: 'Should this be a dry-run?'
+        required: false
+        default: false
+
+      prefix:
+	type: string
+	description: 'Prefix of trees to rename'
+	required: true
+	default: 'tot'
+
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: agda-synthetic-categories
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      # Enable tmate debugging of manually-triggered workflows if the input option was provided
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+
+      - uses: rrbutani/use-nix-shell-action@v1
+
+      - name: Build forest
+        run: make build-forest
+
+      - name: Dry run the renamer
+      	if: ${{ inputs.dry_run == true }}
+	run: python ./scripts/rename_trees.py --dry-run '${{ inputs.prefix }}' src/ trees/
+
+      - name: Run the renamer
+      	if: ${{ inputs.dry_run == false }}
+	run: python ./scripts/rename_trees.py '${{ inputs.prefix }}' src/ trees/
+
+      - name: stage changed files
+      	if: ${{ inputs.dry_run == false }}
+	run: git add .
+
+      - name: commit changed files
+      	if: ${{ inputs.dry_run == false }}
+	run: git commit -m "Auto: renames trees"
+
+      - name: fetch from 
+      	if: ${{ inputs.dry_run == false }}
+	run: git fetch origin ${{github.ref_name}}
+
+      - name: push code to master
+      	if: ${{ inputs.dry_run == false }}
+	run: git push origin HEAD:${{github.ref_name}}
+

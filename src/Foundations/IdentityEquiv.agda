@@ -18,7 +18,8 @@ sym-qiso .snd .fst refl = refl
 sym-qiso .snd .snd refl = refl
 
 sym-is-equiv : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-equiv (sym {x = a} {b})
-sym-is-equiv = is-equiv←qiso sym-qiso
+sym-is-equiv .is-equiv.qiso = sym-qiso
+sym-is-equiv .is-equiv.coherent refl = refl
 
 sym≃ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (a ＝ b) ≃ (b ＝ a)
 sym≃ = mk≃ sym sym-is-equiv

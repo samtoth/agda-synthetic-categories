@@ -53,12 +53,12 @@ weak-funext sb = mk-singl (centre ∘ sb) (λ x → funext→ (λ a → sb a .ce
   : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
   → ({a : A} → is-singleton (B a)) → is-singleton ({a : A} → B a)
 Πᵢ-is-single {A = A}{B} sa
-  = is-single←equiv-to-single (equiv←qiso Π-implicit≃) (Π-is-single (λ _ → sa)) where
-  Π-implicit≃ :  Π A B ≅ ({a : A} → B a)
-  Π-implicit≃ ._≅_.fwd f = f _
-  Π-implicit≃ ._≅_.fwd-iso .fst f _ = f
-  Π-implicit≃ ._≅_.fwd-iso .snd .fst = ~refl
-  Π-implicit≃ ._≅_.fwd-iso .snd .snd = ~refl
+  = is-single←equiv-to-single (equiv←qiso Π-implicit≅) (Π-is-single (λ _ → sa)) where
+  Π-implicit≅ :  Π A B ≅ ({a : A} → B a)
+  Π-implicit≅ ._≅_.fwd f = f _
+  Π-implicit≅ ._≅_.fwd-iso .fst f _ = f
+  Π-implicit≅ ._≅_.fwd-iso .snd .fst = ~refl
+  Π-implicit≅ ._≅_.fwd-iso .snd .snd = ~refl
 
 Π-is-prop : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
             → ((a : A) → is-prop (B a))

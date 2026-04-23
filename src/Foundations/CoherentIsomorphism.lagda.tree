@@ -115,7 +115,7 @@ record is-equiv {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) : Type
     : ∀ {𝓦} {C : Type 𝓦}
         (g : C → B) (h : C → A)
       → g ~ f ∘ h → bwd ∘ g ~ h
-  swizzle-bwd g h K = bwd ◂ K ~∙  η ▸ h
+  swizzle-bwd g h K = bwd ◂ K ~∙ η ▸ h
 }
 % ```
 
@@ -263,7 +263,8 @@ is-equiv←is-equiv-if-cod {f = f} feqb
   = is-equiv←qiso
       ( (λ b → bwd (feqb b) b)
       , (λ a → η (feqb (f a)) a)
-      , λ b → ε (feqb b) b ) where open is-equiv
+      , λ b → ε (feqb b) b )
+    where open is-equiv
 }
 %```
 }
@@ -272,28 +273,182 @@ is-equiv←is-equiv-if-cod {f = f} feqb
 \subtree[stt-001T]{
 \title{Equivalences form an #{\infty}-groupoid over types}
 
+\p{
+We show that equivalence is a reflexive relation since the identity map is an
+equivalence, that equivalences compose, and that equivalences may be inverted. We
+construct each explicitly to maintain control over the section \em{and} retraction
+homotopies.
+}
+
+
 % ```agda
 \agda{
-id-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-equiv (id {A = A})
+id-is-equiv : ∀ {𝓤} {A : Type 𝓤} → is-equiv (id: A)
 id-is-equiv =  (mk-eqv (id , ~refl , ~refl) ~refl)
 
 idequiv : ∀ {𝓤} {A : Type 𝓤} → A ≃ A
 idequiv = mk≃ id id-is-equiv
+}
+%```
+
+%```agda
+\agda{
+is-equiv-∘-qiso
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → C} {g : A → B}
+  → is-equiv f → is-equiv g
+  → quasi-iso (f ∘ g)
+is-equiv-∘-qiso {f = f} {g} fe ge .fst = is-equiv.bwd ge ∘ is-equiv.bwd fe
+is-equiv-∘-qiso {f = f} {g} fe ge .snd .fst = is-equiv.bwd ge ◂ is-equiv.η fe ▸ g ~∙ is-equiv.η ge
+is-equiv-∘-qiso {f = f} {g} fe ge .snd .snd = f ◂ is-equiv.ε ge ▸ is-equiv.bwd fe ~∙ is-equiv.ε fe
+
+opaque
+  is-equiv-∘-coh
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : B → C} {g : A → B}
+      (fe : is-equiv f) (ge : is-equiv g)
+    → qiso-coh (is-equiv-∘-qiso fe ge)
+  is-equiv-∘-coh {f = f} {g} fe ge = coh where
+    module ef = is-equiv fe
+    module eg = is-equiv ge
+
+    ret : eg.bwd ∘ ef.bwd ∘ f ∘ g ~ id
+    ret = is-equiv-∘-qiso fe ge .snd .fst
+
+    sec : f ∘ g ∘ eg.bwd ∘ ef.bwd ~ id
+    sec = is-equiv-∘-qiso fe ge .snd .snd
+
+    coh₁
+      : ∀ a
+      → ap (f ∘ g) (ret a)
+      ＝ ap f (ap (g ∘ eg.bwd) (ef.η (g a)) ∙ eg.ε (g a))
+    coh₁ a
+      = ap (f ∘ g) (ret a)
+          ＝⟨ ap-∙ (f ∘ g) (ap eg.bwd (ef.η (g a))) (eg.η a) ⟩
+        ap (f ∘ g) (ap eg.bwd (ef.η (g a))) ∙ ap (f ∘ g) (eg.η a)
+          ＝⟨ ap (_∙ ap (f ∘ g) (eg.η a)) (ap-∘ f g (ap eg.bwd (ef.η (g a)))) ⟩
+        ap f (ap g (ap eg.bwd (ef.η (g a)))) ∙ ap (f ∘ g) (eg.η a)
+          ＝⟨ ap (_∙ ap (f ∘ g) (eg.η a)) (ap (ap f) (sym (ap-∘ g eg.bwd (ef.η (g a))))) ⟩
+        ap f (ap (g ∘ eg.bwd) (ef.η (g a))) ∙ ap (f ∘ g) (eg.η a)
+          ＝⟨ ap (ap f (ap (g ∘ eg.bwd) (ef.η (g a))) ∙_) (ap-∘ f g (eg.η a)) ⟩
+        ap f (ap (g ∘ eg.bwd) (ef.η (g a))) ∙ ap f (ap g (eg.η a))
+          ＝⟨ ap (ap f (ap (g ∘ eg.bwd) (ef.η (g a))) ∙_) (ap (ap f) (eg.coherent a)) ⟩
+        ap f (ap (g ∘ eg.bwd) (ef.η (g a))) ∙ ap f (eg.ε (g a))
+          ＝⟨ sym (ap-∙ f (ap (g ∘ eg.bwd) (ef.η (g a))) (eg.ε (g a))) ⟩
+        ap f (ap (g ∘ eg.bwd) (ef.η (g a)) ∙ eg.ε (g a))
+          ∎
+
+    coh₂
+      : ∀ a
+      → ap f (ap (g ∘ eg.bwd) (ef.η (g a)) ∙ eg.ε (g a))
+      ＝ ap f (eg.ε (ef.bwd (f (g a)))) ∙ ap f (ef.η (g a))
+    coh₂ a
+      = ap f (ap (g ∘ eg.bwd) (ef.η (g a)) ∙ eg.ε (g a))
+          ＝⟨ ap (ap f)
+               ( sym (homotopy-natural eg.ε (ef.η (g a)))
+               ∙ ap (eg.ε (ef.bwd (f (g a))) ∙_) (ap-id (ef.η (g a)))) ⟩
+        ap f (eg.ε (ef.bwd (f (g a))) ∙ ef.η (g a))
+          ＝⟨ ap-∙ f (eg.ε (ef.bwd (f (g a)))) (ef.η (g a)) ⟩
+        ap f (eg.ε (ef.bwd (f (g a)))) ∙ ap f (ef.η (g a))
+          ∎
+
+    coh₃
+      : ∀ a
+      → ap f (eg.ε (ef.bwd (f (g a)))) ∙ ap f (ef.η (g a))
+      ＝ sec (f (g a))
+    coh₃ a
+      = ap f (eg.ε (ef.bwd (f (g a)))) ∙ ap f (ef.η (g a))
+          ＝⟨ ap (ap f (eg.ε (ef.bwd (f (g a)))) ∙_) (ef.coherent (g a)) ⟩
+        ap f (eg.ε (ef.bwd (f (g a)))) ∙ ef.ε (f (g a))
+          ＝⟨⟩
+        sec (f (g a))
+          ∎
+
+    coh : qiso-coh (is-equiv-∘-qiso fe ge)
+    coh a = coh₁ a ∙ coh₂ a ∙ coh₃ a
 
 is-equiv-∘ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
                   {f : B → C} {g : A → B} →
                   is-equiv f → is-equiv g
                   → is-equiv (f ∘ g)
-is-equiv-∘ f g = is-equiv←qiso (comp-has-qiso (qiso←is-equiv g) (qiso←is-equiv f))
+is-equiv-∘ fe ge = mk-eqv (is-equiv-∘-qiso fe ge) (is-equiv-∘-coh fe ge)
 
 equiv-comp : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
              → A ≃ B → B ≃ C → A ≃ C
 equiv-comp (mk≃ f e) (mk≃ g e') = mk≃ (g ∘ f) (is-equiv-∘ e' e)
+}
+%```
+
+%```agda
+\agda{
+qiso-inv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  → (q : quasi-iso f)
+  → quasi-iso (q .fst)
+qiso-inv {f = f} (_ , η , ε) = f , ε , η
+
+
+is-equiv⁻¹-qiso
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  → (e : is-equiv f)
+  → quasi-iso (is-equiv.bwd e)
+is-equiv⁻¹-qiso e = qiso-inv (qiso←is-equiv e)
+
+opaque
+  is-equiv⁻¹-coh
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → (e : is-equiv f)
+    → qiso-coh (is-equiv⁻¹-qiso e)
+  is-equiv⁻¹-coh {A = A} {f = f} e = coh where
+    open is-equiv e
+
+    qinv : quasi-iso bwd
+    qinv = is-equiv⁻¹-qiso e
+
+    unap-ap-f
+      : ∀ {x y : A} {p q : x ＝ y}
+      → ap f p ＝ ap f q
+      → p ＝ q
+    unap-ap-f {x} {y}
+      = is-injective←retraction-witness
+          (is-injective←retraction-witness bwd η {x} {y})
+          (ap-retraction-witness bwd η {x} {y})
+
+    coh₁ : ∀ b
+      → ap (f ∘ bwd) (ε b) ＝ ε (f (bwd b))
+    coh₁ b
+      = ap (f ∘ bwd) (ε b)
+          ＝⟨ sym (∙-reflr (ap (f ∘ bwd) (ε b))) ⟩
+        ap (f ∘ bwd) (ε b) ∙ refl
+          ＝⟨ ap (ap (f ∘ bwd) (ε b) ∙_) (sym (∙-sym (ε b))) ⟩
+        ap (f ∘ bwd) (ε b) ∙ (ε b ∙ sym (ε b))
+          ＝⟨ sym (∙-assoc (ap (f ∘ bwd) (ε b)) (ε b) (sym (ε b))) ⟩
+        (ap (f ∘ bwd) (ε b) ∙ ε b) ∙ sym (ε b)
+          ＝⟨ ap ((ap (f ∘ bwd) (ε b) ∙ ε b) ∙_) (sym (ap sym (ap-id (ε b)))) ⟩
+        (ap (f ∘ bwd) (ε b) ∙ ε b) ∙ sym (ap id (ε b))
+          ＝⟨ homotopy-cancel ε (ε b) ⟩
+        ε (f (bwd b))
+          ∎
+
+    coh₂ : ∀ b
+      → ap f (ap bwd (ε b)) ＝ ε (f (bwd b))
+    coh₂ b = sym (ap-∘ f bwd (ε b)) ∙ coh₁ b
+
+    coh₃ : ∀ b
+      → ε (f (bwd b)) ＝ ap f (η (bwd b))
+    coh₃ b = sym (coherent (bwd b))
+
+    coh : qiso-coh qinv
+    coh b = unap-ap-f (coh₂ b ∙ coh₃ b)
 
 is-equiv⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
              → (e : is-equiv f) → is-equiv (is-equiv.bwd e)
-is-equiv⁻¹ {f = f} (mk-eqv e _) = is-equiv←qiso (f , e .snd .snd , e .snd .fst)
+is-equiv⁻¹ e = mk-eqv (is-equiv⁻¹-qiso e) (is-equiv⁻¹-coh e)
+}
+%```
 
+%```agda
+\agda{
 equiv←Id : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A ≃ B
 equiv←Id refl = idequiv
 

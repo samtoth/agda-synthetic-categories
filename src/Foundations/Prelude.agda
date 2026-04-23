@@ -22,7 +22,7 @@ open import Foundations.QuasiIsomorphism public
 open import Foundations.CoherentIsomorphism public
 open import Foundations.EquivSingleton public
 open import Foundations.TheoremOfChoice public
-open import Foundations.PiProperties public
+open import Foundations.Currying public
 open import Foundations.IdentityEquiv public
 open import Foundations.EquivContrFibre public
 open import Foundations.EquivHomotopy public

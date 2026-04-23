@@ -2,7 +2,7 @@ module Foundations.IdentitySystem where
 
 open import Foundations.Universes
 open import Foundations.Sigma
-open import Foundations.PiProperties
+open import Foundations.Currying
 open import Foundations.SigmaPath
 open import Foundations.SigmaProperties
 open import Foundations.FibrewiseEquiv

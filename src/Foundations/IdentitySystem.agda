@@ -13,8 +13,8 @@ open import Foundations.FunctionInverses
 open import Foundations.Homotopy
 open import Foundations.Singleton
 open import Foundations.SingletonClosure
-open import Foundations.CoherentIsomorphism
-open import Foundations.QuasiIsomorphism
+open import Foundations.CoherentEquivalence
+open import Foundations.QuasiEquivalence
 open import Foundations.TotalEquiv
 open import Foundations.EquivOfSingleton
 open import Foundations.EquivContrFibre

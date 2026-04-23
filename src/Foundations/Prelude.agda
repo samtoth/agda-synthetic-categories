@@ -18,8 +18,8 @@ open import Foundations.Straightening public
 open import Foundations.FunctionInverses public
 open import Foundations.Retract public
 open import Foundations.Homotopy public
-open import Foundations.QuasiIsomorphism public
-open import Foundations.CoherentIsomorphism public
+open import Foundations.QuasiEquivalence public
+open import Foundations.CoherentEquivalence public
 open import Foundations.EquivSingleton public
 open import Foundations.TheoremOfChoice public
 open import Foundations.Currying public

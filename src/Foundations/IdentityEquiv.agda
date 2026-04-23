@@ -2,8 +2,8 @@ module Foundations.IdentityEquiv where
 
 open import Foundations.Universes
 open import Foundations.Identity
-open import Foundations.QuasiIsomorphism
-open import Foundations.CoherentIsomorphism
+open import Foundations.QuasiEquivalence
+open import Foundations.CoherentEquivalence
 open import Foundations.Homotopy
 open import Foundations.Sigma
 open import Foundations.Functions

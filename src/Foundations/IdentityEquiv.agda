@@ -40,30 +40,30 @@ sym≃ = mk≃ sym sym-is-equiv
                → (b ＝ c) ≃ (a ＝ c)
 ＝-postcomp-≃ p = mk≃ (λ q → p ∙ q) (∙-is-equiv p)
 
-Idᵈ-const-≃
+Idᶠ-const-≃
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       (f : A → B)
       {x y : A} (p : x ＝ y)
       {l : B}
       (t : f x ＝ l)
       (r : f y ＝ l)
-    → Idᵈ (ap (λ z → f z ＝ l) p) t r ≃ (ap f (sym p) ∙ t ＝ r)
-Idᵈ-const-≃ f p t r = ＝-postcomp-≃ (sym (Idᵈ-const-coe f p t))
+    → Idᶠ (λ z → f z ＝ l) p t r ≃ (ap f (sym p) ∙ t ＝ r)
+Idᶠ-const-≃ f p t r = ＝-postcomp-≃ (sym (Idᵈ-const-coe f p t))
 
-Idᵈ-const-≃'
+Idᶠ-const-≃'
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       (f : A → B)
       {x y : A} (p : x ＝ y)
       {l : B}
       (t : l ＝ f x)
       (r : l ＝ f y)
-    → Idᵈ (ap (λ z → l ＝ f z) p) t r ≃ (t ∙ ap f p ＝ r)
-Idᵈ-const-≃' f refl t r = ＝-postcomp-≃ (∙-reflr t)
+    → Idᶠ (λ z → l ＝ f z) p t r ≃ (t ∙ ap f p ＝ r)
+Idᶠ-const-≃' f refl t r = ＝-postcomp-≃ (∙-reflr t)
 
 tr-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
                 {a b : A} (p : a ＝ b)
               → is-equiv (tr B p)
-tr-is-equiv refl = id-is-equiv
+tr-is-equiv {B = B} p = coe-is-equiv (ap B p)
 
 fibre'≃fibre
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}

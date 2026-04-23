@@ -38,14 +38,13 @@ of commutativity of natural number addition). } }
 \p{
 Given:
 \ul{
-\li{a base type #{A : \UU}}
-\li{a family #{B : A \to \UV} over A}
-\li{a path #{p : a =_A b}}
-\li{a term #{(x : B a)} over a}
-\li{a term #{(y : B b)} over b}
+\li{two types #{A,B : \UU}}
+\li{a path #{P : A =_\UU B}}
+\li{an element #{x : A}}
+\li{an element #{y : B}}
 }
 
-We define the type of dependent identifications over p, written #{x =_B^p y}.
+We define the type of dependent identifications over #{P}, written #{x \depid{P} y}.
 }
 
 
@@ -54,7 +53,6 @@ We define the type of dependent identifications over p, written #{x =_B^p y}.
 module _ {𝓤} {A : Type 𝓤} {B : Type 𝓤} (P : A ＝ B) where
   Idᵈ : A → B → Type 𝓤
   Idᵈ a b = coe P a ＝ b
-
 
 Idᵈ-syntax : ∀ {𝓤} {A B : Type 𝓤} → A ＝ B → A → B → Type 𝓤
 Idᵈ-syntax = Idᵈ
@@ -84,29 +82,6 @@ module _ {𝓤} {A B : Type 𝓤} where
 reflᵈ : ∀ {𝓤} {A : Type 𝓤} {P : A ＝ A} (_ : P ＝ refl) {a : A} → Idᵈ P a a
 reflᵈ refl = refl
 
-module _ {𝓤} {A : Type 𝓤} where
-  apᵈ : ∀ {𝓥} {B : A → Type 𝓥}
-           (f : (a  : A) → B a)
-           {a b : A}
-         → (p : a ＝ b)
-         → Idᵈ (ap B p) (f a) (f b)
-  apᵈ f refl = refl
-
-  apᵈ-is-ap : ∀ {𝓥} {B : Type 𝓥}
-              → {f : A → B}
-              → {a b : A}
-              → {p : a ＝ b}
-              → apᵈ f p ＝[ (tr-constant _ _) ∙- ]  ap f p
-  apᵈ-is-ap {p = refl} = refl
-
-apᵈ-∘ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
-          {f : Π A B}
-          {a b : A'}
-          {g : A' → A}
-          {p : a ＝ b}
-        → apᵈ (f ∘ g) p ＝[ (tr∘ B g p ∙-) ] apᵈ f (ap g p)
-apᵈ-∘ {p = refl} = refl
-
 transp-leftᵈ : ∀ {𝓤}
                  {A B : Type 𝓤} (P : A ＝ B)
                  {a : A}  {b : B}
@@ -133,4 +108,102 @@ Idᵈ-const-coe
 Idᵈ-const-coe f refl t = refl
 }
 % ```
+}
+
+\subtree[fre-703F]{
+\title{Dependent identity in a family}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-04-23}
+
+
+\p{
+Given:
+\ul{
+\li{a base type #{A : \UU}}
+\li{a family #{B : A \to \UV} over A}
+\li{a path #{p : a =_A b}}
+\li{a term #{(x : B a)} over a}
+\li{a term #{(y : B b)} over b}
+}
+
+We define the type of dependent identifications over #{p}, written #{x =_B^p y}.
+}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) {a a' : A} (p : a ＝ a') where
+
+  Idᶠ : B a → B a' → Type 𝓥
+  Idᶠ = Idᵈ (ap B p)
+
+  {-# NOINLINE Idᶠ #-}
+}
+%```
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  symᶠ : {a a' : A} {p : a ＝ a'} {x : B a} {y : B a'}
+       → Idᶠ B p x y → Idᶠ B (sym p) y x
+  symᶠ {p = refl} = sym
+
+  symᶠ' : {a a' : A} {p : a ＝ a'} {x : B a} {y : B a'}
+        → Idᶠ B (sym p) y x → Idᶠ B p x y
+  symᶠ' {p = refl} = sym
+
+  Idᶠ-inl : {a a' : A} {p : a ＝ a'} {x : B a} {y : B a'}
+          → tr B p x ＝ y → Idᶠ B p x y
+  Idᶠ-inl {p = p} h = h
+
+  Idᶠ-inr : {a a' : A} {p : a ＝ a'} {x : B a} {y : B a'}
+          → x ＝ tr B (sym p) y → Idᶠ B p x y
+  Idᶠ-inr {p = refl} h = h
+
+  Idᶠ-right : {a a' : A} {p : a ＝ a'} {x : B a} {y : B a'}
+            → Idᶠ B p x y → x ＝ tr B (sym p) y
+  Idᶠ-right {p = refl} h = h
+
+  reflᶠ : {a : A} {p : a ＝ a} → p ＝ refl → {x : B a} → Idᶠ B p x x
+  reflᶠ {a = a} {p = p} r {x = x}
+    = reflᵈ {A = B a} {P = ap B p} (ap (ap B) r ∙ ap-refl B) {a = x}
+
+  transp-leftᶠ : {a a' : A} (p : a ＝ a')
+                 {x : B a} {y : B a'}
+               → Idᶠ B p x y → {z : B a'} → y ＝ z → Idᶠ B p x z
+  transp-leftᶠ p = transp-leftᵈ (ap B p)
+
+  transIdᶠ : {a b c : A}
+             (p : a ＝ b) (q : b ＝ c)
+             {x : B a} {y : B b} {z : B c}
+           → Idᶠ B p x y → Idᶠ B q y z
+           → Idᶠ B (p ∙ q) x z
+  transIdᶠ refl refl h k = h ∙ k
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  apᶠ : ∀ {𝓥} {B : A → Type 𝓥}
+           (f : (a  : A) → B a)
+           {a b : A}
+         → (p : a ＝ b)
+         → Idᶠ B p (f a) (f b)
+  apᶠ f refl = refl
+
+  apᶠ-is-ap : ∀ {𝓥} {B : Type 𝓥}
+              → {f : A → B}
+              → {a b : A}
+              → {p : a ＝ b}
+              → apᶠ f p ＝[ (tr-constant _ _) ∙- ]  ap f p
+  apᶠ-is-ap {p = refl} = refl
+
+apᶠ-∘ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+          {f : Π A B}
+          {a b : A'}
+          {g : A' → A}
+          {p : a ＝ b}
+        → apᶠ (f ∘ g) p ＝[ (tr∘ B g p ∙-) ] apᶠ f (ap g p)
+apᶠ-∘ {p = refl} = refl
+}
+%```
 }

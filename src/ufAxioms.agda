@@ -151,9 +151,9 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 
   pushout-ind-apβ : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
                       {c : Coconeᵈ (mk-span _ f g) pushout Q} →
-                       ∀ x → apᵈ (pushout-ind Q c) (glue x) ＝ c .Coconeᵈ.filler x
+                       ∀ x → apᶠ (pushout-ind Q c) (glue x) ＝ c .Coconeᵈ.filler x
   pushout-ind-apβ {c = c} x = primEraseEquality eq where
-    postulate eq : apᵈ (pushout-ind _ c) (glue x) ＝ c .Coconeᵈ.filler x
+    postulate eq : apᶠ (pushout-ind _ c) (glue x) ＝ c .Coconeᵈ.filler x
 
   opaque
     pushout-rec : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
@@ -180,8 +180,8 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
                       {c : Cocone (mk-span _ f g)  Q} →
                        ∀ x → ap (pushout-rec c) (glue x) ＝ c .Cocone.filler x
     pushout-rec-apβ {f} {g} {Q = Q} {c} x
-      = ap (pushout-rec _) (glue x)                      ＝⟨ sym apᵈ-is-ap ⟩
-        coe (tr-cst ∙-) (apᵈ (pushout-rec c) (glue x))   ＝⟨ ap (coe (tr-cst ∙-)) (pushout-ind-apβ x) ⟩
+      = ap (pushout-rec _) (glue x)                      ＝⟨ sym apᶠ-is-ap ⟩
+        coe (tr-cst ∙-) (apᶠ (pushout-rec c) (glue x))   ＝⟨ ap (coe (tr-cst ∙-)) (pushout-ind-apβ x) ⟩
         coe (tr-cst ∙-)
           (Coconeᵈ.filler {cc = pushout}
             (Dependent←Cocone {P = λ _ → Q} c) x)        ＝⟨⟩

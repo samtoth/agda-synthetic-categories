@@ -58,7 +58,7 @@ Cocone←universal-is-equiv : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓠} {A : Type 𝓤
                   ⦃ p-u : Universal (B → Q) 𝓜 ⦄
                   ⦃ q-u : Universal (C → Q) 𝓝 ⦄
                 → is-equiv (Cocone←universal {f = f} {g = g} Q)
-Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv←qinv iso where
+Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv←qinv qinv where
   lem : ∀ {𝓤} {A : Type 𝓤} {a b c d : A}
           (p p' : a ＝ b) (q : b ＝ c) (r : d ＝ c) (s : d ＝ c)
           → p ＝ p'
@@ -67,11 +67,11 @@ Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv
   lem p p' refl r s u t
     = ap (λ a → (a ∙ sym r) ∙ s) u ∙ ∙.pulll _ (sym (ap (sym r ∙_) t) ∙ ∙-sym' r)
 
-  iso : quasi-inv (Cocone←universal Q)
-  iso .fst (mk-cocone p q filler)
+  qinv : quasi-inv (Cocone←universal Q)
+  qinv .fst (mk-cocone p q filler)
     = mk-coconeU (Univ← auto! p) (Univ← auto! q)
               λ x → happly (Univ≃.ε auto! p) _ ∙ filler x ∙ sym (happly (Univ≃.ε auto! q) _)
-  iso .snd .fst a = CoconeU-path→ _ a (Univ≃.η p-u _) (Univ≃.η q-u _)
+  qinv .snd .fst a = CoconeU-path→ _ a (Univ≃.η p-u _) (Univ≃.η q-u _)
    λ x → lem (happly (Univ≃.ε auto! _) (f x))
           (happly (ap (from p-u) (Univ≃.η p-u _)) (f x))
           (a .Coconeᵘ.filler x)
@@ -80,7 +80,7 @@ Cocone←universal-is-equiv {f = f} {g = g} Q ⦃ p-u ⦄ ⦃ q-u ⦄ = is-equiv
           (ap (λ p → happly p (f x)) (sym (Univ≃.coherent p-u (a .Coconeᵘ.p))))
           (ap (λ p → happly p (g x)) (sym (Univ≃.coherent q-u (a .Coconeᵘ.q))))
 
-  iso .snd .snd cc = Cocone-path→ _ cc (Univ≃.ε auto! _) (Univ≃.ε auto! _)
+  qinv .snd .snd cc = Cocone-path→ _ cc (Univ≃.ε auto! _) (Univ≃.ε auto! _)
    λ a → ((happly (Univ≃.ε auto! p) (f a)
         ∙ (filler a ∙ (sym (happly (Univ≃.ε auto! q) (g a)))))
         ∙  happly (Univ≃.ε auto! q) (g a)) ＝⟨ ap (_∙ happly (Univ≃.ε auto! q) (g a))

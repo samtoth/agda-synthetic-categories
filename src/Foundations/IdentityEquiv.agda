@@ -12,13 +12,13 @@ open import Foundations.FibrewiseEquiv
 open import Foundations.Embedding
 open import Foundations.EquivHomotopy
 
-sym-qiso : ∀ {𝓤} {A : Type 𝓤} {a b : A} → quasi-iso (sym {x = a} {b})
-sym-qiso .fst = sym
-sym-qiso .snd .fst refl = refl
-sym-qiso .snd .snd refl = refl
+sym-qinv : ∀ {𝓤} {A : Type 𝓤} {a b : A} → quasi-inv (sym {x = a} {b})
+sym-qinv .fst = sym
+sym-qinv .snd .fst refl = refl
+sym-qinv .snd .snd refl = refl
 
 sym-is-equiv : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-equiv (sym {x = a} {b})
-sym-is-equiv .is-equiv.qiso = sym-qiso
+sym-is-equiv .is-equiv.qinv = sym-qinv
 sym-is-equiv .is-equiv.coherent refl = refl
 
 sym≃ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (a ＝ b) ≃ (b ＝ a)

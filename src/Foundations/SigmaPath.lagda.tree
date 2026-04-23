@@ -34,6 +34,21 @@ infix 6 _＝Σ_
 _＝Σ_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → Σ A B → Σ A B → Type (𝓤 ⊔ 𝓥)
 _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .snd))
 
+Σ-path-refl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B} → x ＝Σ x
+Σ-path-refl = (refl , refl)
+
+JΣ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B}
+       (P : ∀ y → x ＝Σ y → Type 𝓦)
+     → P x Σ-path-refl
+     → ∀ {y} (q : x ＝Σ y) → P y q
+JΣ P p₀ (refl , refl) = p₀
+
+JΣ-refl : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B}
+            (P : ∀ y → x ＝Σ y → Type 𝓦)
+          → {p₀ : P x Σ-path-refl}
+          → JΣ P p₀ Σ-path-refl ＝ p₀
+JΣ-refl P = refl
+
 Σ-path-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
              → x ＝ y → x .fst ＝ y .fst
 Σ-path-fst refl = refl
@@ -43,14 +58,13 @@ _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .sn
 Σ-path-snd refl = refl
 
 Σ-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
-       → (Σ (x .fst ＝ y .fst) λ p → Idᶠ B p (x .snd) (y .snd)) ≃ (x ＝ y)
+       → (x ＝Σ y) ≃ (x ＝ y)
 Σ-path {B = B} {x = x1 , x2} {y1 , y2}
   = equiv←qiso (mk≊ to-path (from-path , ret , sec)) module Σ-path where
   to-path : Σ (x1 ＝ y1) (λ p → Idᶠ B p x2 y2) → Id (Σ _ B) (x1 , x2) (y1 , y2)
   to-path (refl , refl) = refl
 
-  from-path : (x1 , x2) ＝ (y1 , y2) →
-            Σ (x1 ＝ y1) (λ p → Idᵈ _ x2 y2)
+  from-path : (x1 , x2) ＝ (y1 , y2) → (x1 , x2) ＝Σ (y1 , y2)
   from-path p = (ap fst p , Σ-path-snd p)
 
   sec : section-witness to-path from-path
@@ -60,7 +74,7 @@ _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .sn
   ret (refl , refl) = refl
 
 Σ-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
-        → (Σ (x .fst ＝ y .fst) λ p → Idᵈ (ap B p) (x .snd) (y .snd)) → (x ＝ y)
+        → x ＝Σ y → (x ＝ y)
 Σ-path→ = Σ-path ._≃_.fwd
 
 {-# DISPLAY Σ-path.to-path = Σ-path→ #-}
@@ -76,7 +90,8 @@ _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .sn
       {x : A} {a b : A'}
       {y : B x a} {y' : B x b}
     → (p : a ＝ b) → (q : Idᵈ (ap (B x) p) y y')
-    → ap {A = Σ[ a ∶ A ] Σ A' (B a)} (fst ∘ snd) (Σ-path→ (refl , Σ-path→ (p , q))) ＝ p
+    → ap {A = Σ[ a ∶ A ] Σ A' (B a)} (fst ∘ snd) (Σ-path→ (refl , Σ-path→ (p , q)))
+    ＝ p
 Σ-path-ap-fstsnd refl refl = refl
 
 Σ-path-ap-snd : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x : A}
@@ -94,7 +109,27 @@ _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .sn
 
 % ```agda
 \agda{
-×-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B} →  ((x .fst ＝ y .fst) × (x .snd ＝ y .snd)) ≃ (x ＝ y)
+infix 6 _＝×_
+_＝×_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A × B → A × B → Type (𝓤 ⊔ 𝓥)
+x ＝× y =  (x .fst ＝ y .fst) × (x .snd ＝ y .snd)
+
+×-path-refl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x : A × B} → x ＝× x
+×-path-refl = (refl , refl)
+
+J× : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {x : A × B}
+       (P : ∀ y → x ＝× y → Type 𝓦)
+     → P x ×-path-refl
+     → ∀ {y} (q : x ＝× y) → P y q
+J× P p₀ (refl , refl) = p₀
+
+J×-refl : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {x : A × B}
+            (P : ∀ y → x ＝× y → Type 𝓦)
+          → {p₀ : P x ×-path-refl}
+          → J× P p₀ ×-path-refl ＝ p₀
+J×-refl P = refl
+
+×-path : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B}
+       → (x ＝× y) ≃ (x ＝ y)
 ×-path {x = (x , x')} {y , y'} = equiv←qiso (mk≊ f q) where
   f : (x ＝ y) × (x' ＝ y') → (x , x') ＝ (y , y')
   f (refl , refl) = refl
@@ -104,7 +139,7 @@ _＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .sn
   q .snd .fst (refl , refl) = refl
   q .snd .snd refl = refl
 
-×-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B} →  ((x .fst ＝ y .fst) × (x .snd ＝ y .snd)) → (x ＝ y)
+×-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B} →  (x ＝× y) → (x ＝ y)
 ×-path→ = ×-path ._≃_.fwd
 
 ×-path-ap-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B}

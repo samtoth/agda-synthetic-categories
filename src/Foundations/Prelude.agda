@@ -49,7 +49,7 @@ open import Foundations.CanonicalEqualiser public
 open import Foundations.Tower public
 open import Foundations.CanonicalSeqLim public
 open import Foundations.PathSplit public
-open import Foundations.Lift public
+open import Foundations.UniverseLifts public
 open import Foundations.Cotower public
 open import Foundations.SequentialColimits public
 open import Foundations.PropMapEmbedding public

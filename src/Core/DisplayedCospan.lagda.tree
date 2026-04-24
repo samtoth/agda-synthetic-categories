@@ -1,0 +1,487 @@
+\title{Displayed Cospans}
+\date{2026-04-20}
+\taxon{Module}
+\import{stt-macros}
+
+
+\subtree[tot-L002]{
+\title{Idea}
+
+\p{We define displayed Cospans, and show that there is a
+straightening/unstraightening equivalence between cospans displayed over #{B},
+and maps of cospans #{E \to B}.}
+}
+
+%```agda
+\agda{
+{-# OPTIONS --lossy-unification #-}
+module Core.DisplayedCospan where
+
+open import Foundations.Prelude
+
+open import Core.FunctorialPullback
+open import Core.Arrow
+
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+}
+%```
+
+\subtree[tot-003L]{
+\title{Displayed Cospans}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Cospanᵈ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) 𝓤' 𝓥' 𝓦'
+         : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ lsuc (𝓤' ⊔ 𝓥' ⊔ 𝓦')) where
+  open Cospan S
+  field
+    Centreᵈ : Centre → Type 𝓤'
+    Leftᵈ   : Left → Type 𝓥'
+    leftᵈ   : ∀ l → Leftᵈ l → Centreᵈ (left l)
+    Rightᵈ  : Right → Type 𝓦'
+    rightᵈ  : ∀ r → Rightᵈ r → Centreᵈ (right r)
+
+
+unquoteDecl Cospanᵈ-repr≅ Cospanᵈ-repr≃
+  = make-record-repr Cospanᵈ-repr≅ Cospanᵈ-repr≃ (quote Cospanᵈ)
+}
+%```
+}
+
+\subtree[tot-0KDL]{
+\title{Total cospan}
+\taxon{Construction}
+
+%```agda
+\agda{
+Σ-cospan
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → Cospanᵈ S 𝓤' 𝓥' 𝓦' → Cospan (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+Σ-cospan cc .Cospan.Centre = Σ _ (cc .Cospanᵈ.Centreᵈ)
+Σ-cospan cc .Cospan.Left = Σ _ (cc .Cospanᵈ.Leftᵈ)
+Σ-cospan cc .Cospan.left = map-Σ _ (cc .Cospanᵈ.leftᵈ)
+Σ-cospan cc .Cospan.Right = Σ _ (cc .Cospanᵈ.Rightᵈ)
+Σ-cospan cc .Cospan.right = map-Σ _ (cc .Cospanᵈ.rightᵈ)
+
+π-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → (C : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+    → Cospan-map (Σ-cospan C) S
+π-cospanᵈ C .Cospan-map.h₁ = fst
+π-cospanᵈ C .Cospan-map.h₂ = fst
+π-cospanᵈ C .Cospan-map.h₃ = fst
+π-cospanᵈ C .Cospan-map.H = ~refl
+π-cospanᵈ C .Cospan-map.K = ~refl
+}
+%```
+}
+
+\subtree[tot-LP21]{
+\title{The fibre of a cospan map}
+\taxon{Construction}
+
+%```agda
+\agda{
+fibre-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → (F : Cospan-map S T) → Cospanᵈ T (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+fibre-cospanᵈ F .Cospanᵈ.Centreᵈ = fibre (Cospan-map.h₂ F)
+fibre-cospanᵈ F .Cospanᵈ.Leftᵈ = fibre (Cospan-map.h₁ F)
+fibre-cospanᵈ {S = S}{T} F .Cospanᵈ.leftᵈ
+  = arrow-fibre (mk-amap (Cospan.left S) (Cospan.left T) (F .Cospan-map.H ~⁻¹))
+fibre-cospanᵈ F .Cospanᵈ.Rightᵈ = fibre (Cospan-map.h₃ F)
+fibre-cospanᵈ F .Cospanᵈ.rightᵈ
+  = arrow-fibre (mk-amap _ _ (F .Cospan-map.K ~⁻¹))
+}
+%```
+}
+
+\subtree[tot-0201]{
+\title{Equivalences of displayed cospans}
+\taxon{Definition}
+
+%```agda
+\agda{
+Cospanᵈ-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
+      (S : Cospan 𝓤 𝓥 𝓦)
+      (E : Cospanᵈ S 𝓤' 𝓥' 𝓦') (E' : Cospanᵈ S 𝓤'' 𝓥'' 𝓦'')
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦' ⊔ 𝓤'' ⊔ 𝓥'' ⊔ 𝓦'')
+Cospanᵈ-equiv S E E'
+  = Σ[ F ∶ (∀ c → E .Centreᵈ c ≃ E' .Centreᵈ c) ]
+    Σ[ L ∶ (∀ l → E .Leftᵈ l ≃ E' .Leftᵈ l)]
+    Σ[ _ ∶ (∀ l → F _ ._≃_.fwd ∘ E .leftᵈ l ~ E' .leftᵈ l ∘ L l ._≃_.fwd)]
+    Σ[ R ∶ (∀ r → E .Rightᵈ r ≃ E' .Rightᵈ r)]
+    ((∀ r → F _ ._≃_.fwd ∘ E .rightᵈ r ~ E' .rightᵈ r ∘ R r ._≃_.fwd))
+  where
+  open Cospan S
+  open Cospanᵈ
+
+Cospanᵈ-idequiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'}
+      {S : Cospan 𝓤 𝓥 𝓦}
+      (E : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+    → Cospanᵈ-equiv S E E
+Cospanᵈ-idequiv E
+  =
+  ( (λ _ → idequiv)
+  , (λ _ → idequiv)
+  , (λ _ → ~refl)
+  , (λ _ → idequiv)
+  , λ _ → ~refl)
+
+Cospanᵈ-equiv←Id
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {E E' : Cospanᵈ S 𝓤' 𝓥' 𝓦'}
+    → E ＝ E' → Cospanᵈ-equiv S E E'
+Cospanᵈ-equiv←Id refl = Cospanᵈ-idequiv _
+
+opaque
+  Cospanᵈ-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} (E : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+      → is-singleton (Σ (Cospanᵈ S 𝓤' 𝓥' 𝓦') (Cospanᵈ-equiv S E))
+  Cospanᵈ-is-torsorial E
+    = is-single←equiv-to-single
+        (Σ-ap-≃-fst (Cospanᵈ-repr≃ e⁻¹))
+        (is-singleton-structure←parts
+          (SingS-is-single _)
+          (_ , λ _ → idequiv)
+          (is-singleton-structure←parts
+            (SingS-is-single _)
+            (_ , λ _ → idequiv)
+            (is-singleton-structure←parts
+              (SingS-is-single _)
+              (_ , λ _ → ~refl)
+              (is-singleton-structure←parts
+                (SingS-is-single _)
+                (_ , λ _ → idequiv)
+                (SingS-is-single _)))))
+
+Cospanᵈ-equiv←Id-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {E E' : Cospanᵈ S 𝓤' 𝓥' 𝓦'}
+    → is-equiv (Cospanᵈ-equiv←Id {E = E}{E'})
+Cospanᵈ-equiv←Id-is-equiv
+  = fundamental-Id _ (Cospanᵈ-is-torsorial _) (λ _ → Cospanᵈ-equiv←Id) _
+
+instance
+  Cospanᵈ-IdS
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+      → Identity-system (Cospanᵈ S 𝓤' 𝓥' 𝓦') (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+  Cospanᵈ-IdS .Identity-system.IdS = Cospanᵈ-equiv _
+  Cospanᵈ-IdS .Identity-system.IdS←Id = Cospanᵈ-equiv←Id
+  Cospanᵈ-IdS .Identity-system.has-is-ids _ _ = Cospanᵈ-equiv←Id-is-equiv
+}
+%```
+}
+
+\subtree[tot-0AXS]{
+\title{Cospan bundles}
+\taxon{Definition}
+
+%```agda
+\agda{
+Cospan-bundle : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) 𝓤' 𝓥' 𝓦'
+                → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ lsuc (𝓤' ⊔ 𝓥' ⊔ 𝓦'))
+Cospan-bundle B 𝓤 𝓥 𝓦 = Σ[ E ∶ Cospan 𝓤 𝓥 𝓦 ] Cospan-map E B
+}
+%```
+}
+
+\subtree[tot-0016]{
+\title{Equivalences of cospan bundles}
+\taxon{Definition}
+
+%```agda
+\agda{
+Cospan-bundle-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''} (S : Cospan 𝓤 𝓥 𝓦)
+      (E : Cospan-bundle S 𝓤' 𝓥' 𝓦') (E' : Cospan-bundle S 𝓤'' 𝓥'' 𝓦'')
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦' ⊔ 𝓦'' ⊔ 𝓤'' ⊔ 𝓥'')
+Cospan-bundle-equiv S (E , π) (E' , π')
+  = Σ[ e ∶ Cospan-equiv E E' ]
+      Cospan-map-homotopy (cospan-map-compose π' (e .fst)) π
+
+Cospan-bundle-equiv-components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''} (S : Cospan 𝓤 𝓥 𝓦)
+      (E : Cospan-bundle S 𝓤' 𝓥' 𝓦') (E' : Cospan-bundle S 𝓤'' 𝓥'' 𝓦'')
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦' ⊔ 𝓦'' ⊔ 𝓤'' ⊔ 𝓥'')
+Cospan-bundle-equiv-components S (E , π) (E' , π')
+  = Σ[ e₁ ∶ Bundle-equiv L L' ]
+    Σ[ e₂ ∶ Bundle-equiv C C' ]
+    Σ[ e₃ ∶ Bundle-equiv R R' ]
+    Σ[ K₁ ∶ e₂ .fst .fwd ∘ left E ~ left E' ∘ e₁ .fst .fwd ]
+    Σ[ K₂ ∶ e₂ .fst .fwd ∘ right E ~ right E' ∘ e₃ .fst .fwd ]
+     (  ( (h₂ π' ◂ K₁ ~∙ H π' ▸ e₁ .fst .fwd) ~∙ left S ◂ e₁ .snd
+        ~ e₂ .snd ▸ left E ~∙ H π)
+     × (  (h₂ π' ◂ K₂ ~∙ K π' ▸ e₃ .fst .fwd) ~∙ right S ◂ e₃ .snd
+        ~ e₂ .snd ▸ right E ~∙ K π)) where
+  open Cospan
+  open Cospan-map
+  open _≃_
+  L : Bundle (S .Left) _
+  L = (E .Left , π .h₁)
+  L' : Bundle (S .Left) _
+  L' = (E' .Left , π' .h₁)
+
+  C : Bundle (S .Centre) _
+  C = (E .Centre , π .h₂)
+  C' : Bundle (S .Centre) _
+  C' = (E' .Centre , π' .h₂)
+
+  R  : Bundle (S .Right) _
+  R = (E .Right , π .h₃)
+  R'  : Bundle (Right S) _
+  R' = (E' .Right , π' .h₃)
+
+opaque
+  Cospan-bundle-equiv-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+        (E : Cospan-bundle S 𝓤' 𝓥' 𝓦')
+      → is-singleton (Σ (Cospan-bundle S 𝓤' 𝓥' 𝓦') (Cospan-bundle-equiv S E))
+  Cospan-bundle-equiv-is-torsorial {S = S} E
+    = is-singleton-structure←parts
+        (SingS-is-single _)
+        (_ , Cospan-idequiv _)
+        (is-single←equiv-to-single
+          (Σ-ap-≃ (λ a → coe≃ (ap (λ a → Cospan-map-homotopy a (E .snd))
+                                  (sym (ext! (cospan-map-compose-idr a))))))
+          (SingS-is-single' (E .snd)))
+
+Cospan-bundle-idequiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+      (E : Cospan-bundle S 𝓤' 𝓥' 𝓦')
+    → Cospan-bundle-equiv S E E
+Cospan-bundle-idequiv (E , π) = (Cospan-idequiv E , cospan-map-compose-idr π)
+
+Cospan-bundle-equiv←Id
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {E E' : Cospan-bundle S 𝓤' 𝓥' 𝓦'}
+    → E ＝ E' → Cospan-bundle-equiv S E E'
+Cospan-bundle-equiv←Id refl = Cospan-bundle-idequiv _
+
+Cospan-bundle-equiv←Id-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {E E' : Cospan-bundle S 𝓤' 𝓥' 𝓦'}
+    → is-equiv (Cospan-bundle-equiv←Id {E = E}{E'})
+Cospan-bundle-equiv←Id-is-equiv
+  = fundamental-Id _ (Cospan-bundle-equiv-is-torsorial _)
+                     (λ _ → Cospan-bundle-equiv←Id) _
+
+instance
+  Cospan-bundle-IdS
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+      → Identity-system (Cospan-bundle S 𝓤' 𝓥' 𝓦') (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+  Cospan-bundle-IdS .Identity-system.IdS = Cospan-bundle-equiv _
+  Cospan-bundle-IdS .Identity-system.IdS←Id = Cospan-bundle-equiv←Id
+  Cospan-bundle-IdS .Identity-system.has-is-ids _ _
+    = Cospan-bundle-equiv←Id-is-equiv
+
+Cospan-bundle-equiv←components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''} {S : Cospan 𝓤 𝓥 𝓦}
+      {E : Cospan-bundle S 𝓤' 𝓥' 𝓦'} {E' : Cospan-bundle S 𝓤'' 𝓥'' 𝓦''}
+    → Cospan-bundle-equiv-components S E E' → Cospan-bundle-equiv S E E'
+Cospan-bundle-equiv←components ((e1 , H1) , (e2 , H2) , (e3 , H3) , (K1 , K2 , α1 , α2))
+  = ( ( mk-cospan-map (e1 .fwd) (e2 .fwd) (e3 .fwd) K1 K2
+      , (e1 .has-is-eqv , e2 .has-is-eqv , e3 .has-is-eqv))
+    , (H1 , H2 , H3 , α1 , α2))
+  where open _≃_
+}
+%```
+}
+
+\subtree[tot-0H43]{
+\title{Striaghtening for cospans}
+\taxon{Lemma}
+
+%```agda
+\agda{
+straighten-cospan-bundle
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} → (B : Cospan 𝓤 𝓥 𝓦)
+    → Cospan-bundle B 𝓤' 𝓥' 𝓦' → Cospanᵈ B (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+straighten-cospan-bundle B (E , p) = fibre-cospanᵈ p
+
+unstraighten-cospan-bundle
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} (B : Cospan 𝓤 𝓥 𝓦)
+    → Cospanᵈ B 𝓤' 𝓥' 𝓦' → Cospan-bundle B (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+unstraighten-cospan-bundle B E = (Σ-cospan E , π-cospanᵈ E)
+
+unstraighten-straighten-cospan-bundle-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {B : Cospan 𝓤 𝓥 𝓦}
+      (E : Cospan-bundle B 𝓤' 𝓥' 𝓦')
+    → Cospan-bundle-equiv B
+        (unstraighten-cospan-bundle _ (straighten-cospan-bundle _ E))
+        E
+unstraighten-straighten-cospan-bundle-equiv E
+  = Cospan-bundle-equiv←components x where
+  x : Cospan-bundle-equiv-components _
+        (unstraighten-cospan-bundle _ (straighten-cospan-bundle _ E)) E
+  x .fst = unstraighten-straighten-bundle-equiv _
+  x .snd .fst = unstraighten-straighten-bundle-equiv _
+  x .snd .snd .fst = unstraighten-straighten-bundle-equiv _
+  x .snd .snd .snd .fst = ~refl
+  x .snd .snd .snd .snd .fst = ~refl
+  x .snd .snd .snd .snd .snd .fst (a , b , p)
+    = sym (∙-reflr _ ∙ ap (_∙ ap _ p) sym-sym)
+  x .snd .snd .snd .snd .snd .snd (a , b , p)
+    = sym (∙-reflr _ ∙ ap (_∙ ap _ p) sym-sym)
+
+straighten-unstraighten-cospanᵈ-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {B : Cospan 𝓤 𝓥 𝓦}
+      (E : Cospanᵈ B 𝓤' 𝓥' 𝓦')
+    → Cospanᵈ-equiv B
+        (straighten-cospan-bundle _ (unstraighten-cospan-bundle _ E))
+        E
+straighten-unstraighten-cospanᵈ-equiv E .fst = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .fst = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .fst l
+  (_ , refl) = refl
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .snd .fst
+  = fibre-straighten _
+straighten-unstraighten-cospanᵈ-equiv E .snd .snd .snd .snd
+  _ (_ , refl) = refl
+
+straighten-cospan-bundle-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {B : Cospan 𝓤 𝓥 𝓦}
+    → is-equiv (straighten-cospan-bundle {𝓤' = 𝓤}{𝓥}{𝓦} B)
+straighten-cospan-bundle-is-equiv = is-equiv←qiso
+  ( unstraighten-cospan-bundle _
+  , (ext! ∘ unstraighten-straighten-cospan-bundle-equiv)
+  , (ext! ∘ straighten-unstraighten-cospanᵈ-equiv))
+}
+%```
+}
+
+\subtree[tot-0HFN]{
+\title{Pullbacks of displayed cospans}
+\taxon{Construction}
+
+\p{We can take the pullback of a displayed cospan #{C} to obtain a family over
+the pullback of the cospan over which #{C'} was displayed.}
+
+%```agda
+\agda{
+pullback-cospanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}
+    → (C : Cospanᵈ S 𝓤' 𝓥' 𝓦')
+    → Pullback-of-cospan S → Type (𝓤' ⊔ 𝓥' ⊔ 𝓦')
+pullback-cospanᵈ C (l , r , p)
+  = Σ[ a ∶ Leftᵈ l ] Σ[ b ∶ Rightᵈ r ] (leftᵈ l a ＝[ ap Centreᵈ p ] rightᵈ r b)
+  where open Cospanᵈ C
+}
+%```
+}
+
+\subtree[tot-0333]{
+\title{Fibres of cospan maps}
+\taxon{Lemma}
+
+\p{Given a pair of cospans #{p : E \to B}, we may construct the fibre cospan
+displayed over #{B}, denoted #{\fibre{p}{}}. Let #{\lim p} be the induced map between
+the pullback of #{E} and the pullback of #{B}, then we have a fibrewise
+equivalence:}
+
+##{
+   \lim (\fibre{p}{-}) \simeq \fibre{\lim p}{-}
+}
+
+%```agda
+\agda{
+fibreᵈ-path
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : B} (p : x ＝ y)
+    → fibre f x → fibre f y → Type (𝓤 ⊔ 𝓥)
+fibreᵈ-path {f = f} p x' y'
+  = Σ[ q ∶ (x' .fst ＝ y' .fst) ] (ap f q ∙ y' .snd ＝ x' .snd ∙ p)
+
+lemma-fibreᵈ-path
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : B} (p : x ＝ y)
+      {x' : fibre f x} {y' : fibre f y}
+    → (x' ＝[ ap (fibre f) p ] y')
+    → Σ[ q ∶ (x' .fst ＝ y' .fst) ] (ap f q ∙ y' .snd ＝ x' .snd ∙ p)
+lemma-fibreᵈ-path refl = total-map (λ a → _∙ sym (∙-reflr _)) ∘ fibre-path←Id
+
+lemma-fibreᵈ-path-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {x y : B} (p : x ＝ y)
+      {x' : fibre f x} {y' : fibre f y}
+    → is-equiv (lemma-fibreᵈ-path p {x'}{y'})
+lemma-fibreᵈ-path-is-equiv refl
+  = is-equiv-∘
+      (is-total-equiv←is-fibrewise-equiv λ a → ∙-is-equiv' (sym (∙-reflr _)))
+      (fibre-path≃ ._≃_.has-is-eqv)
+
+fibre-pullback₁
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+      (F : Cospan-map S T)
+    → ∀ c → pullback-cospanᵈ (fibre-cospanᵈ F) c → fibre (Pullback₁ F) c
+fibre-pullback₁ {S = S}{T} F c
+  = total-map (λ a → pullback-path→)
+  ∘ map
+  ∘ total-map
+      (λ a → total-map (λ b → lemma-fibreᵈ-path {f = Cospan-map.h₂ F} (c .pb.filler)))
+  module fibre-pb where
+    open Cospan-map F
+    lemma : ∀ {𝓤} {A : Type 𝓤} {a b c d e f : A}
+              (p : a ＝ b) (q : b ＝ c) (r : a ＝ d) (s : d ＝ e) t (v : f ＝ c)
+            → s ∙ sym (sym t) ∙ v ＝ (sym r ∙ p) ∙ q
+            → p ∙ q ＝ (r ∙ s ∙ t) ∙ v
+    lemma refl q refl refl refl v = sym
+
+    lemma-is-equiv
+      : ∀ {𝓤} {A : Type 𝓤} {a b c d e f : A}
+          (p : a ＝ b) (q : b ＝ c) (r : a ＝ d) (s : d ＝ e) t (v : f ＝ c)
+        → is-equiv (lemma p q r s t v)
+    lemma-is-equiv refl q refl refl refl v = sym-is-equiv
+
+    map : (Σ[ a ∶ fibre h₁ (c .pb.π₁)]
+           Σ[ b ∶ fibre h₃ (c .pb.π₂)]
+            fibreᵈ-path (c .pb.filler)
+                        (fibre-cospanᵈ F .Cospanᵈ.leftᵈ  _ a)
+                        (fibre-cospanᵈ F .Cospanᵈ.rightᵈ _ b))
+        → Σ[ x ∶ Pullback-of-cospan S ] pullback-Path (Pullback₁ F x) c
+    map ((a , p) , (b , q) , r , s)
+      = ( (a , b , r)
+        , p
+        , q
+        , lemma (ap T.left p) (c .pb.filler)
+                (sym (H a)) (ap h₂ r)
+                (K b) (ap T.right q) s)
+
+    map-is-equiv : quasi-iso map
+    map-is-equiv .fst ((a , b , r) , p , q , s)
+      = ( (a , p)
+        , (b , q)
+        , (r , is-equiv.bwd (lemma-is-equiv
+                                    (ap T.left p) (c .pb.filler)
+                                    (sym (H a)) (ap h₂ r)
+                                    (K b) (ap T.right q)) s))
+    map-is-equiv .snd .fst ((a , p) , (b , q) , (r , s))
+      = Σ-path→ (refl , (Σ-path→
+          (refl , (Σ-path→
+            ( refl
+            , is-equiv.η (lemma-is-equiv (ap T.left p) (c .pb.filler) (sym (H a))
+                                         (ap h₂ r) (K b) (ap T.right q)) s)))))
+    map-is-equiv .snd .snd ((a , b , r) , p , q , s)
+      = Σ-path→
+          (refl
+          , (pullback-path→
+              ( refl , refl
+              , is-equiv.ε⁻¹ (lemma-is-equiv (ap T.left p) (c .pb.filler)
+                                             (sym (H a))
+                                             (ap h₂ r) (K b) (ap T.right q)) s
+              ∙ sym (∙-reflr _))))
+
+opaque
+  fibre-pullback₁-is-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+        (F : Cospan-map S T)
+      → is-fibrewise-equiv (fibre-pullback₁ F)
+  fibre-pullback₁-is-equiv F c
+    = is-equiv-∘
+        {f = total-map (λ _ → pullback-path→)}
+        (is-total-equiv←is-fibrewise-equiv (λ _ → pullback-path-is-equiv))
+        (is-equiv-∘ {f = fibre-pb.map F c}
+          (is-equiv←qiso (fibre-pb.map-is-equiv F c))
+          (is-total-equiv←is-fibrewise-equiv
+            (λ _ → is-total-equiv←is-fibrewise-equiv
+             (λ _ → lemma-fibreᵈ-path-is-equiv (c .pb.filler)))))
+}
+%```
+}

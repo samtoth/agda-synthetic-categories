@@ -1,0 +1,251 @@
+\title{Displayed Cospans}
+\date{2026-04-21}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.DisplayedSpan where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.Arrow
+open import Core.SpanMap
+
+open import Ergonomics.Representation
+}
+%```
+
+\subtree[tot-1311]{
+\title{Displayed Spans}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Spanᵈ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) 𝓤' 𝓥' 𝓦'
+           : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ lsuc (𝓤' ⊔ 𝓥' ⊔ 𝓦')) where
+  open Span S
+  field
+    Centreᵈ : Centre → Type 𝓤'
+    Leftᵈ   : Left → Type 𝓥'
+    leftᵈ   : ∀ c → Centreᵈ c → Leftᵈ (left c)
+    Rightᵈ  : Right → Type 𝓦'
+    rightᵈ  : ∀ c → Centreᵈ c → Rightᵈ (right c)
+
+unquoteDecl Cospanᵈ-repr≅ Cospanᵈ-repr≃
+  = make-record-repr Cospanᵈ-repr≅ Cospanᵈ-repr≃ (quote Spanᵈ)
+}
+%```
+}
+
+
+\subtree[tot-1KDL]{
+\title{Total span}
+\taxon{Construction}
+
+%```agda
+\agda{
+Σ-span
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦}
+    → Spanᵈ S 𝓤' 𝓥' 𝓦' → Span (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+Σ-span cc .Span.Centre = Σ _ (cc .Spanᵈ.Centreᵈ)
+Σ-span cc .Span.Left   = Σ _ (cc .Spanᵈ.Leftᵈ)
+Σ-span cc .Span.left   = map-Σ _ (cc .Spanᵈ.leftᵈ)
+Σ-span cc .Span.Right  = Σ _ (cc .Spanᵈ.Rightᵈ)
+Σ-span cc .Span.right  = map-Σ _ (cc .Spanᵈ.rightᵈ)
+
+π-spanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦}
+    → (C : Spanᵈ S 𝓤' 𝓥' 𝓦')
+    → Span-map (Σ-span C) S
+π-spanᵈ C .Span-map.h₁ = fst
+π-spanᵈ C .Span-map.h₂ = fst
+π-spanᵈ C .Span-map.h₃ = fst
+π-spanᵈ C .Span-map.H = ~refl
+π-spanᵈ C .Span-map.K = ~refl
+}
+%```
+}
+
+\subtree[tot-MO21]{
+\title{The fibre of a span map}
+\taxon{Construction}
+
+%```agda
+\agda{
+fibre-spanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {T : Span 𝓤' 𝓥' 𝓦'}
+    → (F : Span-map S T) → Spanᵈ T (𝓤 ⊔ 𝓤') (𝓥 ⊔ 𝓥') (𝓦 ⊔ 𝓦')
+fibre-spanᵈ F .Spanᵈ.Centreᵈ = fibre (Span-map.h₂ F)
+fibre-spanᵈ F .Spanᵈ.Leftᵈ = fibre (Span-map.h₁ F)
+fibre-spanᵈ {S = S}{T} F .Spanᵈ.leftᵈ
+  = arrow-fibre (mk-amap (Span.left S) (Span.left T) (F .Span-map.H ~⁻¹))
+fibre-spanᵈ F .Spanᵈ.Rightᵈ = fibre (Span-map.h₃ F)
+fibre-spanᵈ F .Spanᵈ.rightᵈ
+  = arrow-fibre (mk-amap _ _ (F .Span-map.K ~⁻¹))
+}
+%```
+}
+
+\subtree[tot-0501]{
+\title{Equifibred displayed spans}
+\taxon{Definition}
+
+%```agda
+\agda{
+is-equifibred-spanᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦}
+    → Spanᵈ S 𝓤' 𝓥' 𝓦' → Type (𝓤 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+is-equifibred-spanᵈ S
+  = is-fibrewise-equiv leftᵈ × is-fibrewise-equiv rightᵈ
+  where open Spanᵈ S
+}
+%```
+}
+
+
+\subtree[stt-008N]{
+\date{2025-08-03}
+\title{Cartesian maps of spans}
+\taxon{Definition}
+
+\p{A map between spans is said to be cartesian when each square
+is [cartesian](stt-003V) (i.e. a pullback square).}
+
+%```agda
+\agda{
+is-cartesian-span-map
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+      {𝓤' 𝓥' 𝓦'} {S' : Span 𝓤' 𝓥' 𝓦'}
+    → Span-map S S' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+is-cartesian-span-map F = is-cartesian amap-l × is-cartesian amap-r
+  where open Span-map F
+
+is-cartesian-span-map-is-prop
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+      {𝓤' 𝓥' 𝓦'} {S' : Span 𝓤' 𝓥' 𝓦'}
+      {F : Span-map S S'}
+    → is-prop (is-cartesian-span-map F)
+is-cartesian-span-map-is-prop
+  = ×-is-prop is-cartesian-is-prop is-cartesian-is-prop
+}
+%```
+}
+
+
+\subtree[tot-0617]{
+\title{Displayed cocones}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Coconeᵈᵈ
+         {𝓤 𝓥 𝓦 𝓜 𝓤' 𝓥' 𝓦' 𝓜'} {S : Span 𝓤 𝓥 𝓦}
+         (S' : Spanᵈ S 𝓤' 𝓥' 𝓦') {Q : Type 𝓜} (C : Cocone S Q)
+         (Q' : Q → Type 𝓜')
+         : Type (𝓤 ⊔ 𝓤' ⊔ 𝓥 ⊔ 𝓥' ⊔ 𝓦 ⊔ 𝓦' ⊔ 𝓜 ⊔ 𝓜') where
+  open Span S
+  open Spanᵈ S'
+  open Cocone C renaming (p to i; q to j)
+  field
+    iᵈ : ∀ l → Leftᵈ l → Q' (i l)
+    jᵈ : ∀ r → Rightᵈ r → Q' (j r)
+    fillerᵈ : ∀ c → iᵈ (left c) ∘ leftᵈ c
+                  ~[ (λ _ → ap Q' (filler c) ) ]
+                    jᵈ (right c) ∘ rightᵈ c
+
+Σ-coconeᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓤' 𝓥' 𝓦' 𝓜'} {S : Span 𝓤 𝓥 𝓦}
+      (S' : Spanᵈ S 𝓤' 𝓥' 𝓦') {Q : Type 𝓜} {C : Cocone S Q}
+      {Q' : Q → Type 𝓜'}
+    → (C' : Coconeᵈᵈ S' C Q') → Cocone (Σ-span S') (Σ _ Q')
+Σ-coconeᵈ S' C' = mk-cocone (map-Σ _ iᵈ) (map-Σ _ jᵈ)
+                            (λ a → Σ-path→ (_ , fillerᵈ _ (a .snd)))
+  where
+  open Spanᵈ S'
+  open Coconeᵈᵈ C'
+
+is-equifibred-coconeᵈ
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓤' 𝓥' 𝓦' 𝓜'} {S : Span 𝓤 𝓥 𝓦}
+      (S' : Spanᵈ S 𝓤' 𝓥' 𝓦') {Q : Type 𝓜} {C : Cocone S Q}
+      {Q' : Q → Type 𝓜'}
+    → (C' : Coconeᵈᵈ S' C Q') → Type (𝓥 ⊔ 𝓦 ⊔ 𝓥' ⊔ 𝓦' ⊔ 𝓜')
+is-equifibred-coconeᵈ S' C' = is-fibrewise-equiv iᵈ × is-fibrewise-equiv jᵈ
+  where open Coconeᵈᵈ C'
+}
+%```
+}
+
+\subtree[tot-0057]{
+\title{Equifibred displayed spans induce cocones}
+\taxon{Lemma}
+
+%```agda
+\agda{
+module _
+    {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦}
+    (S' : Spanᵈ S 𝓤' 𝓥' 𝓦') (S'-equifib : is-equifibred-spanᵈ S')
+    where
+  open Span S
+  open Spanᵈ S'
+
+  Rightᵈ←Leftᵈ : ∀ c → Leftᵈ (left c) → Rightᵈ (right c)
+  Rightᵈ←Leftᵈ c = rightᵈ c ∘ is-equiv.bwd (S'-equifib .fst c)
+
+  Rightᵈ←Leftᵈ-is-equiv : is-fibrewise-equiv (Rightᵈ←Leftᵈ)
+  Rightᵈ←Leftᵈ-is-equiv c
+    = is-equiv-∘ (S'-equifib .snd c) (is-equiv⁻¹ (S'-equifib .fst c))
+
+
+  Leftᵈ≃Rightᵈ : ∀ c → Leftᵈ (left c) ≃ Rightᵈ (right c)
+  Leftᵈ≃Rightᵈ c = mk≃ (Rightᵈ←Leftᵈ c) (Rightᵈ←Leftᵈ-is-equiv c)
+
+  Cocone←equifibred-spanᵈ
+    : Cocone S (Type (𝓥' ⊔ 𝓦'))
+  Cocone←equifibred-spanᵈ .Cocone.p = ULift 𝓦' ∘ Leftᵈ
+  Cocone←equifibred-spanᵈ .Cocone.q = ULift 𝓥' ∘ Rightᵈ
+  Cocone←equifibred-spanᵈ .Cocone.filler c
+    = ua (unlift≃ ∙≃ Leftᵈ≃Rightᵈ c ∙≃ lift≃)
+
+}
+%```
+}
+
+\subtree[tot-3258]{
+\title{Pushouts are Van-kampen}
+\taxon{Theorem}
+
+%```agda
+\agda{
+module _
+    {𝓤 𝓥 𝓦 𝓜 𝓤' 𝓥' 𝓦' 𝓜'} {S : Span 𝓤 𝓥 𝓦}
+    (S' : Spanᵈ S 𝓤' 𝓥' 𝓦') (S'-equifib : is-equifibred-spanᵈ S')
+    {Q : Type 𝓜} {Q' : Q → Type 𝓜'}
+    (C : Cocone S Q) (Cpo : is-pushoutω S C)
+    (C' : Coconeᵈᵈ S' C Q') where
+  open Span S
+  open Spanᵈ S'
+
+  -- private
+  --   PO : Pushout left right → Type (𝓥' ⊔ 𝓦')
+  --   PO = pushout-rec (Cocone←equifibred-spanᵈ S' S'-equifib)
+
+  --   FLATTENING : Σ _ PO ≃ Pushout (map-Σ {Y = Leftᵈ} left leftᵈ)
+  --                                 (map-Σ {Y = Rightᵈ} right rightᵈ)
+  --   FLATTENING = {!total-is-!} where
+
+
+  -- pushout-is-universal
+  --   : is-pushoutω (Σ-span S') (Σ-coconeᵈ S' C')
+  --   → is-equifibred-coconeᵈ S' C'
+  -- pushout-is-universal = {!!}
+
+  -- -- Is this the right way round?
+  -- pushout-descent
+  --   : is-pushoutω (Σ-span S') (Σ-coconeᵈ S' C')
+  --   → is-equifibred-coconeᵈ S' C'
+  -- pushout-descent = {!!}
+}
+%```
+}

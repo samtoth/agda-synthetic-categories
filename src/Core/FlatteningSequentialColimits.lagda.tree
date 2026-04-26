@@ -1,0 +1,124 @@
+\title{Flattening for Sequential Colimits}
+\author{samueltoth}
+\date{2025-08-19}
+\taxon{Module}
+\import{stt-macros}
+
+%```agda
+\agda{
+module Core.FlatteningSequentialColimits where
+
+open import Foundations.Prelude
+open import ufAxioms
+
+open import Core.CanonicalPushouts
+open import Core.Coequalisers
+open import Core.CanonicalSequentialColimits
+open import Core.FlatteningCoequalisers
+}
+%```
+
+
+\subtree[stt-009I]{
+\title{Flatteninig for sequential colimits}
+\taxon{Theorem}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {S : Cotower 𝓤} (P : Seq-colimit S → Type 𝓥) where
+  open Cotower S
+  total-cotower : Cotower (𝓤 ⊔ 𝓥)
+  total-cotower .Cotower.Point n = Σ (Point n) (P ∘ ι-cotower S)
+  total-cotower .Cotower.incr (a , b) = (incr a , tr P (glue-suc S a) b)
+
+  total-cotower-cocone : Seq-cocone total-cotower (Σ _ P)
+  total-cotower-cocone .Seq-cocone.ι (a , b) = (ι-cotower S a , b)
+  total-cotower-cocone .Seq-cocone.comm (a , b)
+    = Σ-path→ (glue-suc S a , refl)
+
+
+  total-cotower-colim≃ : Σ _ P ≃ Seq-colimit total-cotower
+  total-cotower-colim≃
+    = Σ _ P                              ≃⟨ total-fork≃ _ _ P ⟩
+      Coeq (total-maps id incrΣ P .fst)
+           (total-maps id incrΣ P .snd)  ≃⟨⟩
+      Coeq (total-map (λ a → tr P (sym (glue-suc _ _))))
+           (total-map-fst incrΣ)         ≃⟨ postcomp-coeq≃ (is-equiv-∘ (is-total-equiv←is-fibrewise-equiv (λ a → tr-is-equiv (glue-suc S (a .snd)))) (is-equiv⁻¹ (Σ-assoc ._≃_.has-is-eqv))) e⁻¹ ⟩
+      Coeq _ _                           ≃⟨ precomp-coeq≃~ (Σ-assoc ._≃_.has-is-eqv) LL RR ⟩
+      Coeq id (Cotower.incrΣ total-cotower) ≃⟨⟩
+      Seq-colimit total-cotower ≃∎ where
+
+    LL : id: (Σ[ n ∶ ℕ ] Σ (Point n) (P ∘ ι-cotower S))
+      ~ Σ-assoc ._≃_.fwd ∘ total-map (λ p → tr P (sym (glue-suc S (p .snd)))) ∘ (total-map (λ p → tr P (glue-suc S (p .snd))) ∘ _≃_.bwd Σ-assoc)
+    LL (n , (p , pp))
+      = Σ-path→
+          ( refl
+          , (Σ-path→
+            ( refl
+            , sym (tr∘tr-sym (glue-suc S p) pp)
+            )))
+
+    RR : Cotower.incrΣ total-cotower ~ Σ-assoc ._≃_.fwd ∘ total-map-fst incrΣ ∘ (total-map (λ p → tr P (glue-suc S (p .snd))) ∘ _≃_.bwd Σ-assoc)
+    RR (n , (p , pp)) = refl
+}
+%```
+}
+
+
+\subtree[stt-009K]{
+\title{Characterising the fibres of the sequential cogap map}
+\taxon{Theorem}
+
+\p{Let #{S} be a sequence and #{f} be a map #{\rm{colim}(S) \to Q},
+the fibres of #{f} at some #{x : Q} can be characterised using the
+[flattening lemma](stt-009I) for sequential colimits. In particular,
+since #{\fibre{f}{x} = \Sigma_{s : \rm{Colim}(S)}(f(s) = x)}, we have
+an equivalence #{\fibre{f}{x} = Colim_(\tilde{S})}, where #{\tidle{S}}
+is the [total sequence](stt-009I): }
+
+\quiver{
+\begin{tikzcd}
+	{\Sigma_{(s : S_0)}(f(\iota_0(s))= x)} && {\Sigma_{(s : S_1)}(f(\iota_1(s))=x)} && {...} \\
+	\\
+	{\fibre{f\iota_0}{x}} && {\fibre{f\iota_1}{x}} && {....}
+	\arrow["{(\rm{incr},tr_{=x}(gl))}", from=1-1, to=1-3]
+	\arrow[equals, from=1-1, to=3-1]
+	\arrow[from=1-3, to=1-5]
+	\arrow[equals, from=1-3, to=3-3]
+	\arrow["{\fibre{gl}{x}}"', from=3-1, to=3-3]
+	\arrow[from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{From the above diagram, we se that we get the slogan: \em{The fibres
+of the colimit are the colimit of fibres}.}
+
+%```agda
+\agda{
+module _ {𝓤 𝓥} {S : Cotower 𝓤} {Q : Type 𝓥} (f : Seq-colimit S → Q) (x : Q) where
+  open Cotower S
+
+  fibre-cotower : Cotower (𝓤 ⊔ 𝓥)
+  fibre-cotower .Cotower.Point n = fibre (f ∘ ι-cotower S {n}) x
+  fibre-cotower .Cotower.incr {n} (a , b) = (incr a , ap f (sym (glue-suc S a)) ∙ b)
+
+  fibre-cotower←total : Cotower-map (total-cotower (λ s → f s ＝ x)) fibre-cotower
+  fibre-cotower←total .Cotower-map.map = id
+  fibre-cotower←total .Cotower-map.comm a
+    = Σ-path→
+      ( refl
+      , sym (tr∘ (_＝ x) f (glue-suc S _)
+      ∙ coe-precomp＝ (ap f (glue-suc S _)) (a .snd)
+      ∙ ap (_∙ a .snd) (sym (ap-sym f _))))
+
+  fibre-cotower≃total : is-cotower-equiv fibre-cotower←total
+  fibre-cotower≃total n = id-is-equiv
+
+  fibre-cotower-cogap≃ : fibre f x ≃ Seq-colimit fibre-cotower
+  fibre-cotower-cogap≃
+    = fibre f x                                    ≃⟨ total-cotower-colim≃ (λ s → f s ＝ x) ⟩
+      Seq-colimit (total-cotower (λ s → f s ＝ x)) ≃⟨ mk≃ _ (seq-colimit-map-is-equiv fibre-cotower←total fibre-cotower≃total) ⟩
+      Seq-colimit fibre-cotower                    ≃∎
+}
+%```
+}

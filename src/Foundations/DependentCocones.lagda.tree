@@ -1,0 +1,104 @@
+\date{2025-04-15}
+\title{Dependent Cocones}
+\author{samueltoth}
+\taxon{Module}
+
+\import{stt-macros}
+
+% ```agda
+\agda{
+module Foundations.DependentCocones where
+
+open import Foundations.Universes
+open import Foundations.Identity
+open import Foundations.FunExt
+open import Foundations.DependentHomotopy
+open import Foundations.DependentIdentity
+open import Foundations.Homotopy
+open import Foundations.Functions
+open import Foundations.CoherentEquivalences
+open import Foundations.Spans
+open import Foundations.Pushouts
+}
+% ```
+
+
+
+\subtree[stt-002K]{
+\title{Dependent Cocones}
+\taxon{Definition}
+
+% ```agda
+\agda{
+record Coconeᵈ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦)
+               {𝓛} {Q : Type 𝓛} (cc : Cocone S Q)
+               {𝓜} (P : Q → Type 𝓜) : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛 ⊔ 𝓜) where
+  constructor mk-coconeᵈ
+  open Span S
+  open Cocone cc renaming (p to p'; q to q'; filler to filler')
+  field
+    p : (l : Left) → P (p' l)
+    q : (r : Right) → P (q' r)
+    filler : Homotopyᵈ (P ◂ filler') (p ∘ left) (q ∘ right)
+
+
+module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
+               {𝓛} {Q : Type 𝓛} {cc : Cocone S Q}
+               {𝓜} {P : Q → Type 𝓜}  where
+  open Coconeᵈ
+  open Span S
+  module cc = Cocone cc
+
+  Dependent←Cocone : ∀ {𝓛} {L : Type 𝓛} → Cocone S L → Coconeᵈ S cc (λ _ → L)
+  Dependent←Cocone (mk-cocone p' q' h')
+    = mk-coconeᵈ p' q' λ a → tr-constant _ _ ∙ h' a
+
+  record coconeᵈ~ (a b : Coconeᵈ S cc P) : Type (𝓤 ⊔ 𝓦 ⊔ 𝓥 ⊔ 𝓜) where
+    module a = Coconeᵈ a
+    module b = Coconeᵈ b
+    field
+      p~ : a.p ~ b.p
+      q~ : a.q ~ b.q
+      filler~
+        : Homotopyᵈ
+           (λ c → ap₂ (Idᵈ ((P ◂ cc.filler) c)) (p~ (left c)) (q~ (right c)))
+           a.filler
+           b.filler
+
+  record coconeᵈ-path (a b : Coconeᵈ S cc P) : Type (𝓤 ⊔ 𝓦 ⊔ 𝓥 ⊔ 𝓜) where
+    module a = Coconeᵈ a
+    module b = Coconeᵈ b
+    field
+      p＝ : a.p ＝ b.p
+      q＝ : a.q ＝ b.q
+      filler＝
+        : Idᵈ
+            (ap₂ (Homotopyᵈ (P ◂ cc.filler)) (ap (_∘ left) p＝) (ap (_∘ right) q＝))
+            a.filler
+            b.filler
+
+  from-coconeᵈ-path : ∀ {a b : Coconeᵈ S cc P} → coconeᵈ-path a b → a ＝ b
+  from-coconeᵈ-path record { p＝ = refl ; q＝ = refl ; filler＝ = refl } = refl
+}
+% ```
+}
+
+% ```agda
+\agda{
+module _ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) where
+  coconeᵈ-map : ∀ {𝓛 𝓜} {C : Type 𝓛} (C-cc : Cocone S C)
+                      → {Q : C → Type 𝓜}
+                      → ((c : C) → Q c)
+                      → Coconeᵈ S C-cc Q
+  coconeᵈ-map C f = mk-coconeᵈ (f ∘ p) (f ∘ q) (apᶠ f ∘ filler)
+    where open Cocone C
+
+  is-pushoutᵈ : ∀ {𝓛} {C : Type 𝓛} → Cocone S C → Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛))
+  is-pushoutᵈ {𝓛} {C} Cc = ∀ {Q : C → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)}
+                           → is-equiv (coconeᵈ-map Cc {Q})
+
+  is-pushoutωᵈ : ∀ {𝓛} {C : Type 𝓛} → Cocone S C → Typeω
+  is-pushoutωᵈ {𝓛} {C} Cc = ∀ {𝓜} {Q : C → Type 𝓜}
+                            → is-equiv (coconeᵈ-map Cc {Q})
+}
+% ```

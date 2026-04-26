@@ -1,0 +1,169 @@
+\date{2025-04-19}
+\taxon{Module}
+\title{(Co)Spans and (co)cones}
+\import{stt-macros}
+\author{samueltoth}
+
+% ```agda
+\agda{
+module Foundations.Spans where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.FunExt
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.Sigma
+}
+% ```
+
+\subtree[stt-0015]{
+\taxon{Definition}
+\title{Spans}
+
+\p{
+    A span is a diagram of types: #{C \xleftarrow{f} A \xrightarrow{g} B}.
+}
+
+% ```agda
+\agda{
+record Span 𝓤 𝓥 𝓦 : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦)) where
+  constructor mk-span
+  field
+    Centre : Type 𝓤
+    {Left} : Type 𝓥
+    left   : Centre → Left
+    {Right} : Type 𝓦
+    right : Centre → Right
+
+Span-path→ : ∀ {𝓤 𝓥 𝓦} {S S' : Span 𝓤 𝓥 𝓦}
+             → let module S = Span S
+                   module S' = Span S'
+             in (p : S.Centre ＝ S'.Centre)
+             → (q : S.Left ＝ S'.Left)
+             → (r : S.Right ＝ S'.Right)
+             → (h : coe r ∘ S.right ＝ S'.right ∘ coe p)
+             → (k : coe q ∘ S.left ＝ S'.left ∘ coe p)
+             → S ＝ S'
+Span-path→ refl refl refl refl refl = refl
+}
+% ```
+}
+
+\subtree[stt-0016]{
+ \taxon{Definition}
+ \title{Cocones}
+
+ \p{
+  Given a span #{s : C \xleftarrow{f} A \xrightarrow{g} B}, and a type #{Q}, we define the type of #{Q}-cocones over #{s} to be the structure with:
+   \ul{
+     \li{A function #{p : C \to Q}}
+     \li{A function #{q : B \to Q}}
+     \li{A path #{p \circ f = q \circ g}}
+}
+}
+
+% ```agda
+\agda{
+record Cocone  {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) {𝓛} (Carrier : Type 𝓛)
+        : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛))  where
+  constructor mk-cocone
+  open Span S
+  field
+    p       : Left → Carrier
+    q       : Right → Carrier
+    filler  : p ∘ left ~ q ∘ right
+
+Cocone-path→ : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {X : Type 𝓛}
+               → FunExtω 𝓛
+               → (c c' : Cocone S X)
+               → (p : c .Cocone.p ＝ c' .Cocone.p)
+               → (q : c .Cocone.q ＝ c' .Cocone.q)
+               → (c .Cocone.filler ~∙ happly q ▸ S .Span.right
+                    ~ happly p ▸ S .Span.left ~∙ c' .Cocone.filler)
+               → c ＝ c'
+Cocone-path→ fe (mk-cocone p q filler) (mk-cocone p q filler')
+             refl refl h = ap (mk-cocone p q)
+                           (WithFunExtω.funext→ fe
+                             ((~∙-reflr _ ~⁻¹) ~∙ h))
+}
+% ```
+}
+
+\p{We can dualize the above constructions to obtain:}
+
+\subtree[stt-0039]{
+\taxon{Definition}
+\title{Cospans}
+
+\p{A cospan is a diagram of types: #{C \xrightarrow{f} A \xleftarrow{g} B}.}
+
+% ```agda
+\agda{
+record Cospan 𝓤 𝓥 𝓦 : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦)) where
+  constructor mk-cospan
+  field
+    Centre : Type 𝓤
+    {Left} : Type 𝓥
+    left   : Left → Centre
+    {Right} : Type 𝓦
+    right : Right → Centre
+}
+% ```
+}
+
+
+\subtree[stt-003A]{
+ \taxon{Definition}
+ \title{Cones}
+  \p{
+  Given a cospan #{s : C \xrightarrow{f} A \xleftarrow{g} B},
+  and a type #{Q}, we define the type of #{Q}-cones over #{s} to be the
+  structure with:
+   \ul{
+     \li{A function #{i : Q \to C}}
+     \li{A function #{j : Q \to B}}
+     \li{A path #{f \circ i = g \circ j}}
+   }
+ }
+
+
+% ```agda
+\agda{
+record Cone  {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) {𝓛} (Carrier : Type 𝓛)
+        : Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛))  where
+  constructor mk-cone
+  open Cospan S
+  field
+    i       : Carrier → Left
+    j       : Carrier → Right
+    filler  : left ∘ i ~ right ∘ j
+}
+% ```
+}
+
+
+\subtree[stt-003B]{
+\title{Squares is squares}
+\taxon{Theorem}
+
+\p{When packaged together, a span with a cocone and a cospan with a cospan
+  both give the data of a commutative square}
+
+% ```agda
+\agda{
+Cocone←Cone : ∀ {𝓤 𝓥 𝓦 𝓛}
+              → Σ[ S ∶ Cospan 𝓤 𝓥 𝓦 ] Σ[ Q ∶ Type 𝓛 ] Cone S Q
+              → Σ[ S ∶ Span 𝓛 𝓥 𝓦 ] Σ[ A ∶ Type 𝓤 ] Cocone S A
+Cocone←Cone (mk-cospan Centre left right , Q , mk-cone i j filler)
+  = (mk-span Q i j) , Centre , mk-cocone left right filler
+
+Cone←Cocone : ∀ {𝓤 𝓥 𝓦 𝓛}
+              → Σ[ S ∶ Span 𝓛 𝓥 𝓦 ] Σ[ A ∶ Type 𝓤 ] Cocone S A
+              → Σ[ S ∶ Cospan 𝓤 𝓥 𝓦 ] Σ[ Q ∶ Type 𝓛 ] Cone S Q
+Cone←Cocone (mk-span Centre left right , Q , mk-cocone p q filler)
+  = (mk-cospan Q p q) , Centre , (mk-cone left right filler)
+}
+% ```
+}

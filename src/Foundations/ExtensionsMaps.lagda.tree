@@ -1,0 +1,122 @@
+\title{Extensions}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-19}
+\import{stt-macros}
+
+
+%```agda
+\agda{
+module Foundations.ExtensionsMaps where
+
+open import Foundations.Universes
+open import Foundations.Identity
+open import Foundations.Functions
+open import Foundations.Empty
+open import Foundations.Unit
+open import Foundations.Homotopy
+open import Foundations.Sigma
+open import Foundations.SigmaProperties
+open import Foundations.FibrewiseEquivalences
+open import Foundations.CoherentEquivalences
+open import Foundations.IdentityEquiv
+open import Foundations.Singletons
+open import Foundations.EmptyUP
+open import Foundations.FunExt
+open import Foundations.SingletonClosure
+}
+%```
+
+\subtree[stt-00CL]{
+\taxon{Definition}
+\title{Extension types}
+
+
+\p{Given a map #{i : A \to B}, and a map #{p : A \to X},
+which when #{i} is an embedding we consider a partial element of #{X}, we consider
+the type of maps #{B \to X} which agree with #{p} in the sense that the following
+triangle commutes: }
+
+\quiver{
+\begin{tikzcd}[cramped]
+	&& X \\
+	\\
+	A && B
+	\arrow["p", from=3-1, to=1-3]
+	\arrow["i"', from=3-1, to=3-3]
+	\arrow["f"', from=3-3, to=1-3]
+\end{tikzcd}
+}
+
+\p{The type of extensions of #{p} along #{i} is the type of maps #{B \to X}
+together with a homotopy witnessing that precomposition with #{i} agrees with
+#{p}. We can also generalise this to a dependent type #{X} over #{B}.}
+
+%```agda
+\agda{
+Ext : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (i : A → B)
+        {X : B → Type 𝓦} (p : Π A (X ∘ i)) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Ext {B = B} i {X} p = Σ[ f ∶ Π B X ] (precomp-Π X i f ~ p)
+
+Ext-Id→
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {i j : A → B} (H : i ＝ j)
+      {X : Type 𝓦} (p : A → X) → Ext j p → Ext i p
+Ext-Id→ H p = total-map (λ f q a → ap f (happly H a) ∙ q a)
+
+Ext-∅
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → FunExt-global → Ext {B = A} ¡ {λ _ → B} ¡ ≃ (A → B)
+Ext-∅ FE = mk≃ fst (singleton-fst-is-equiv λ x → Π-is-single FE λ ())
+}
+%```
+}
+
+\subtree[stt-00CM]{
+\title{Composition of extension}
+\taxon{Lemma}
+
+\p{Given a diagram as follows:}
+
+\quiver{
+\begin{tikzcd}
+	&&&& Q \\
+	\\
+	\\
+	A && B && C
+	\arrow["p", from=4-1, to=1-5]
+	\arrow["i"', from=4-1, to=4-3]
+	\arrow[dashed, from=4-3, to=1-5]
+	\arrow["j"', from=4-3, to=4-5]
+	\arrow[dashed, from=4-5, to=1-5]
+\end{tikzcd}
+}
+
+\p{We show that an extension of #{p} along #{ji} is equivalent to the pair
+of an extension #{f} of #{p} along #{i} together with an extension of #{f}
+along #{j}.
+}
+
+\proof{
+\p{By contracting singletons.}
+}
+
+%```agda
+\agda{
+Ext-compose : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                → FunExt-global
+                → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X )
+                → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
+Ext-compose {B = B} {C = C} FE j i {X} p
+  = Ext (j ∘ i) p
+      ≃⟨ Σ-ap-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙≃ Σ-assoc)) ⟩
+    Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+      ≃⟨ Σ-comm ⟩
+    Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+      ≃⟨ Σ-ap-≃ (λ f → Σ-assoc e⁻¹ ∙≃ ×-swap) ⟩
+    Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
+      ≃⟨ Σ-assoc e⁻¹ ⟩
+    (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+      ≃∎
+}
+%```
+}

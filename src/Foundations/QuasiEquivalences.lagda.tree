@@ -1,0 +1,114 @@
+\date{2025-02-21}
+\title{Quasi-equivalences}
+\taxon{Module}
+
+\import{stt-macros}
+
+\p{
+Naively, an equivalence is a function with a two-sided inverse. We can encode this
+directly in HoTT, but there is an issue; being an equivalence in this way is
+\em{not a [property](stt-0009)} of a map, but instead it is extra structure. This is
+in contrast to the (many equivalent) notions of coherent equivalence.
+}
+
+% ```agda
+\agda{
+module Foundations.QuasiEquivalences where
+
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Singletons
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+}
+% ```
+
+\subtree[stt-001K]{
+  \taxon{Definition}
+  \title{Quasi-equivalence}
+
+  \p{
+  We want to reserve the word "equivalence" for the coherent kind in
+  [[Foundations.CoherentEquivalences]], and so here we define the naive kind of
+  equivalence to be called a \em{quasi-equivalence}.
+  }
+
+
+% ```agda
+\agda{
+quasi-inv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (f : A → B) → Type (𝓤 ⊔ 𝓥)
+quasi-inv {A = A} {B} f
+  = Σ[ g ∶ (B → A)] (retraction-witness f g × section-witness f g)
+
+infix 20 _≊_
+record _≊_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk≊
+  field
+    fwd : A → B
+    fwd-qinv : quasi-inv fwd
+
+  bwd : B → A
+  bwd = fwd-qinv .fst
+
+  section-fwd : section fwd
+  section-fwd = bwd , fwd-qinv .snd .snd
+
+  retraction-fwd : retraction fwd
+  retraction-fwd = bwd , fwd-qinv .snd .fst
+
+  section-bwd : section bwd
+  section-bwd = fwd , retraction→section {g = bwd} (retraction-fwd .snd)
+
+  retraction-bwd : retraction bwd
+  retraction-bwd = fwd , section→retraction {g = fwd} (section-fwd .snd)
+}
+% ```
+}
+
+\subtree[stt-001L]{
+\taxon{Remark}
+\title{Quasi-equivalences form a groupoid on types}
+
+% ```agda
+\agda{
+id≊ : ∀ {𝓤} {A : Type 𝓤} → A ≊ A
+id≊ = mk≊ id (id , ~refl , ~refl)
+
+comp-qinv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                  {f : A → B} {g : B → C}
+                → quasi-inv f → quasi-inv g → quasi-inv (g ∘ f)
+comp-qinv {f = f} {g} (finv , fret , fsec) (ginv , gret , gsec)
+  = (finv ∘ ginv , ret , sec) where
+  sec : section-witness (g ∘ f) (finv ∘ ginv)
+  sec = g ◂ fsec ▸ ginv ~∙ gsec
+
+  ret : retraction-witness (g ∘ f) (finv ∘ ginv)
+  ret = finv ◂ gret ▸ f ~∙ fret
+
+comp-qequiv : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+            → A ≊ B → B ≊ C → A ≊ C
+comp-qequiv (mk≊ f fi) (mk≊ g gi) = mk≊ (g ∘ f) (comp-qinv fi gi)
+
+bwd-qinv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  → (q : quasi-inv f)
+  → quasi-inv (q .fst)
+bwd-qinv {f = f} (_ , η , ε) = f , ε , η
+
+inv-qequiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≊ B → B ≊ A
+inv-qequiv (mk≊ fwd qinv) = mk≊ (qinv .fst) (bwd-qinv qinv)
+
+infix 19 _≊⁻¹
+infixr 19 _∙≊_
+
+_∙≊_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+       → A ≊ B → B ≊ C → A ≊ C
+_∙≊_ = comp-qequiv
+
+_≊⁻¹ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≊ B → B ≊ A
+_≊⁻¹ = inv-qequiv
+}
+% ```
+}

@@ -1,0 +1,244 @@
+\title{Towers}
+\taxon{Module}
+\contributor{samueltoth}
+
+\import{stt-macros}
+
+%```agda
+\agda{
+module Foundations.Towers where
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Nat
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.CoherentEquivalences
+open import Foundations.QuasiEquivalences
+open import Foundations.Identity
+}
+%```
+
+\subtree[stt-00HI]{
+\title{Towers of types}
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+A \em{tower} of types is the data of an inverse sequential diagram
+##{\cdots \to A_{n+1} \xrightarrow{f_n} A_n \to \cdots \to A_1 \xrightarrow{f_0} A_0}
+where #{A} is a family of types indexed by the [natural numbers](Foundations.Nat),
+and each #{f_i} is a function.
+}
+
+%```agda
+\agda{
+record Tower (𝓤 : Level) : Type (lsuc 𝓤) where
+  constructor mk-tower
+  field
+    Point : ℕ → Type 𝓤
+    decr  : {n : ℕ} → Point (suc n) → Point n
+}
+%```
+}
+
+\subtree[stt-00HJ]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Morphisms of towers}
+\taxon{Definition}
+
+\p{
+A \em{morphism of towers} is a family of maps at each position such that the obvious
+squares commute.
+}
+
+%```agda
+\agda{
+record Tower-map {𝓤 𝓥 : Level} (A : Tower 𝓤) (B : Tower 𝓥) : Type (𝓤 ⊔ 𝓥) where
+
+  constructor mk-tower-map
+
+  module A = Tower A
+  module B = Tower B
+
+  field
+    map  : {n : ℕ} → A.Point n → B.Point n
+    comm : {n : ℕ} → B.decr ∘ map {suc n} ~ map ∘ A.decr
+}
+%```
+}
+
+\subtree[stt-00GS]{
+\title{Composing maps of towers}
+\taxon{Construction}
+
+\p{
+We compose maps of towers in the obvious way by composing their components and
+pasting together squares.
+}
+
+%```agda
+\agda{
+comp-tower-map
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Tower 𝓤} {B : Tower 𝓥} {C : Tower 𝓦}
+  → Tower-map B C
+  → Tower-map A B
+  → Tower-map A C
+comp-tower-map F G .Tower-map.map
+  = Tower-map.map F ∘ Tower-map.map G
+comp-tower-map F G .Tower-map.comm
+  = Tower-map.comm F ▸ Tower-map.map G
+  ~∙ Tower-map.map F ◂ Tower-map.comm G
+
+id-tower-map
+  : ∀ {𝓤} {A : Tower 𝓤}
+  → Tower-map A A
+id-tower-map .Tower-map.map = id
+id-tower-map .Tower-map.comm = ~refl
+}
+%```
+}
+
+\subtree[stt-00GT]{
+\title{Homotopies of maps of towers}
+\taxon{Definition}
+
+\p{
+Given a pair of maps of towers #{f, g : A \to B}, we define a \em{homotopy}
+#{f \sim g} to be a homotopy at each component #{f_n \sim g_n} together
+with a coherence condition between the squares of each maps.
+}
+
+%```agda
+\agda{
+tower-map~ : ∀ {𝓤 𝓥} {S : Tower 𝓤} {S' : Tower 𝓥}
+              (F G : Tower-map S S')
+            → Type (𝓤 ⊔ 𝓥)
+tower-map~ F G = Σ[ α ∶ (∀ {n} → map F {n} ~ map G)]
+                  (∀ {n} →  comm F ~∙ α ▸ A.decr G
+                       ~ (B.decr F ◂ α) ~∙ comm G {n})
+  where open Tower-map
+}
+%```
+}
+
+
+\subtree[stt-00GR]{
+\title{Equivalences of towers}
+\taxon{Definition}
+\date{2025-08-14}
+
+\p{
+A map of towers is an \em{equivalence} of sequences when each component is an
+equivalence.
+}
+
+%```agda
+\agda{
+is-tower-equiv : ∀ {𝓤 𝓥} {A : Tower 𝓤} {B : Tower 𝓥}
+                  (F : Tower-map A B) → Type (𝓤 ⊔ 𝓥)
+is-tower-equiv F = ∀ n → is-equiv (F .Tower-map.map {n})
+
+
+tower-map-inv←equiv : ∀ {𝓤 𝓥} {A : Tower 𝓤} {B : Tower 𝓥}
+                      {F : Tower-map A B} (Feq : is-tower-equiv F)
+                    → Tower-map B A
+tower-map-inv←equiv {A = A}{B}{F} Feq = imap where
+  open Tower-map
+  module F {n} = is-equiv (Feq n)
+  imap : Tower-map B A
+  imap .map = F.bwd
+  imap .comm = (F.η ~⁻¹) ▸ Tower.decr A ▸ F.bwd
+             ~∙ F.bwd ◂ (  (comm F ~⁻¹) ▸ F.bwd
+                        ~∙ Tower.decr B ◂ F.ε)
+}
+%```
+}
+
+\subtree[stt-00IT]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{The tower associated to an endomap}
+\taxon{Definition}
+
+\p{
+Given an endomap #{f : A \to A} then we can form the tower which repeats that endomap
+indefinitely.
+##{\cdots \to A \xrightarrow{f} A \to \cdots \to A \xrightarrow{f} A}
+}
+
+%```agda
+\agda{
+tower←endomap
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (A → A) → Tower 𝓤
+tower←endomap {A = A} f = mk-tower (λ _ → A) f
+}
+%```
+}
+
+\subtree[stt-00IW]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Constant towers}
+\taxon{Definition}
+
+\p{
+Given a type #{A} then we can form the \em{constant tower} at #{A}, which repeats the
+identity function at #{A} indefinitely.
+##{\cdots \to A \xrightarrow{\id} A \to \cdots \to A \xrightarrow{\id} A}
+}
+
+%```agda
+\agda{
+const-tower
+  : ∀ {𝓤} → Type 𝓤 → Tower 𝓤
+const-tower A = tower←endomap {A = A} id
+}
+%```
+}
+
+\subtree[stt-00GP]{
+\title{Cones over towers}
+\taxon{Definition}
+
+%```agda
+\agda{
+record Seq-cone {𝓤 𝓥} (S : Tower 𝓤) (Apex : Type 𝓥)
+         : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-seq-cone
+  open Tower S
+  field
+    π : ∀ {n} → Apex → Point n
+    comm : ∀ {n} → decr ∘ π ~ π {n}
+}
+%```
+}
+
+\subtree[stt-00GQ]{
+\title{Cones as maps of towers}
+\taxon{Theorem}
+
+\p{A cone over a tower #{B} at apex #{A} is a map #{\Delta_A \to B}}
+
+%```agda
+\agda{
+tower-map←cone : ∀ {𝓤 𝓥} {S : Tower 𝓤} {Apex : Type 𝓥}
+               → Seq-cone S Apex
+               → Tower-map (const-tower Apex) S
+tower-map←cone (mk-seq-cone π comm) = mk-tower-map π comm
+
+tower-map≃cone : ∀ {𝓤 𝓥} {S : Tower 𝓤} {Apex : Type 𝓥}
+               → Seq-cone S Apex
+               ≃ Tower-map (const-tower Apex) S
+tower-map≃cone = mk≃ _ (is-equiv←qinv qinv) where
+  qinv : quasi-inv tower-map←cone
+  qinv .fst (mk-tower-map map comm) = mk-seq-cone map comm
+  qinv .snd .fst (mk-seq-cone π comm) = refl
+  qinv .snd .snd (mk-tower-map map comm) = refl
+}
+%```
+}

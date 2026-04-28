@@ -80,6 +80,25 @@ gap (mk-cone i j filler) d = (i d , j d , filler d)
 }
 }
 
+\subtree[fre-0002]{
+\taxon{Definition}
+\title{Is-pullback}
+
+\p{
+A cone over a cospan is a pullback when its [gap map](stt-003L) is an equivalence.
+}
+
+\agda{
+is-pullback
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → A} {g : C → A}
+      {𝓜} {D : Type 𝓜}
+    → Cone (mk-cospan A f g) D
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+is-pullback C = is-equiv (gap C)
+}
+}
+
 \subtree[stt-003K]{
 \taxon{Theorem}
 \title{Canonical pullbacks are pullbacks}
@@ -98,11 +117,11 @@ repeatedly applying the universal property of sigma types:}
 }
 
 \agda{
-pullback-is-pullback
+pullback-has-up-pullback
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
       {f : B → A} {g : C → A}
     → up-pullback (mk-cospan _ f g) (pullback f g)
-pullback-is-pullback {f = f} {g = g} .up-pullback.cone-map-is-equiv Q
+pullback-has-up-pullback {f = f} {g = g} .up-pullback.cone-map-is-equiv Q
   = mk-eqv (gap , ~refl , ~refl) ~refl
 }
 }
@@ -137,28 +156,28 @@ module WithFunExt-gap (FE : FE.FunExt-global) where
   open FE.WithFunExt-global FE
   open CE FE
 
-  is-pullback←gap
+  up-pullback←is-pullback
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
         {f : B → A} {g : C → A}
         {𝓜} {D : Type 𝓜}
         (C : Cone (mk-cospan _ f g) D)
-      → is-equiv (gap C)
+      → is-pullback C
       → up-pullback (mk-cospan _ f g) C
-  is-pullback←gap C ge@(mk-eqv bwd qi) .up-pullback.cone-map-is-equiv Q
-    = is-equiv-∘ (pullback-is-pullback .up-pullback.cone-map-is-equiv Q)
+  up-pullback←is-pullback C ge@(mk-eqv bwd qi) .up-pullback.cone-map-is-equiv Q
+    = is-equiv-∘ (pullback-has-up-pullback .up-pullback.cone-map-is-equiv Q)
                  (postcomp-equiv ge)
 
-  gap-is-equiv←is-pullback
+  is-pullback←up-pullback
     : ∀ {𝓤 𝓥 𝓦}
         {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
         {f : B → A} {g : C → A}
         {𝓜} {D : Type 𝓜}
         (C : Cone (mk-cospan _ f g) D)
       → up-pullback (mk-cospan _ f g) C
-      → is-equiv (gap C)
-  gap-is-equiv←is-pullback C Cpb
+      → is-pullback C
+  is-pullback←up-pullback C Cpb
     = is-equiv←postcomp (gap C)
-      λ {_} {Q} → 3-for-2 (pullback-is-pullback .up-pullback.cone-map-is-equiv Q)
+      λ {_} {Q} → 3-for-2 (pullback-has-up-pullback .up-pullback.cone-map-is-equiv Q)
                           (Cpb .up-pullback.cone-map-is-equiv Q)
 }
 }
@@ -241,9 +260,9 @@ module _
     : Cone (mk-cospan _ (point b) f) (fibre f b)
   pullback-point-cone = mk-cone ! fst (sym ∘ snd)
 
-  pullback-point-gap-is-equiv
-    : is-equiv (gap pullback-point-cone)
-  pullback-point-gap-is-equiv = mk-eqv (bwd , ret , sec) coh where
+  pullback-point-is-pullback
+    : is-pullback pullback-point-cone
+  pullback-point-is-pullback = mk-eqv (bwd , ret , sec) coh where
     bwd : Pullback (point b) f → fibre f b
     bwd (tt , a , p) = a , sym p
     ret : retraction-witness (gap pullback-point-cone) bwd
@@ -257,7 +276,7 @@ module _
     : fibre f b ≃ Pullback (point b) f
   fibre≃pullback-point
     = mk≃ (gap pullback-point-cone)
-          (pullback-point-gap-is-equiv)
+          (pullback-point-is-pullback)
 
   pullback-point≃fibre
     : Pullback (point b) f ≃ fibre f b
@@ -297,9 +316,9 @@ module _
     : Cone (mk-cospan 𝟙 (!: A) (!: B)) (A × B)
   pullback-!-cone = mk-cone fst snd (λ _ → refl)
 
-  pullback-!-gap-is-equiv
-    : is-equiv (gap pullback-!-cone)
-  pullback-!-gap-is-equiv = mk-eqv (bwd , ~refl , sec) ~refl where
+  pullback-!-is-pullback
+    : is-pullback pullback-!-cone
+  pullback-!-is-pullback = mk-eqv (bwd , ~refl , sec) ~refl where
     bwd : Pullback (!: A) (!: B) → A × B
     bwd (x , y , p) = x , y
 
@@ -314,7 +333,7 @@ module _
   ×≃pullback-!
     : A × B ≃ Pullback (!: A) (!: B)
   ×≃pullback-!
-    = mk≃ (gap pullback-!-cone) pullback-!-gap-is-equiv
+    = mk≃ (gap pullback-!-cone) pullback-!-is-pullback
 }
 }
 
@@ -359,9 +378,9 @@ module WithFunExt (FE : FE.FunExt-global) where
     retract-cone
       = mk-cone ! (λ (s , r , _) → (s , r)) (funext→ ∘ _~⁻¹ ∘ snd ∘ snd)
 
-    retract-gap-is-equiv
-      : is-equiv (gap (retract-cone))
-    retract-gap-is-equiv = is-equiv←qinv qinv where
+    retract-is-equiv
+      : is-pullback (retract-cone)
+    retract-is-equiv = is-equiv←qinv qinv where
       qinv : quasi-inv (gap (retract-cone))
       qinv .fst (tt , (s , r) , p) = s , r , happly (sym p)
       qinv .snd .fst (s , r , p)
@@ -383,7 +402,7 @@ module WithFunExt (FE : FE.FunExt-global) where
       : retract A B
       ≃ Pullback (point id) comp-pair
     retract≃pullback
-      = mk≃ (gap (retract-cone)) (retract-gap-is-equiv)
+      = mk≃ (gap (retract-cone)) (retract-is-equiv)
 
     retract≃fibre-∘
       : fibre comp-pair id

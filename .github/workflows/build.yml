@@ -79,21 +79,39 @@ jobs:
       - name: Build
         run: nix-build
 
+      - name: Stage site artifact
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
+        run: cp -LR result site-artifact
+
       - name: Prepare benchmark page data
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
         run: |
-          mkdir -p result/benchmarks
+          mkdir -p site-artifact/benchmarks
           git fetch origin benchmark-data || true
           if git show-ref --verify --quiet refs/remotes/origin/benchmark-data; then
-            git show origin/benchmark-data:data.json > result/benchmarks/data.json
+            git show origin/benchmark-data:data.json > site-artifact/benchmarks/data.json
           fi
-          test -f result/benchmarks/data.json
-          printf 'window.BENCHMARK_DATA = ' > result/benchmarks/data.js
-          cat result/benchmarks/data.json >> result/benchmarks/data.js
+          test -f site-artifact/benchmarks/data.json
+          printf 'window.BENCHMARK_DATA = ' > site-artifact/benchmarks/data.js
+          cat site-artifact/benchmarks/data.json >> site-artifact/benchmarks/data.js
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v5
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
         with:
-          path: result/
+          path: site-artifact/
           retention-days: 1
 
   deploy:

@@ -37,7 +37,7 @@ def parse_benchmark_results(input_path):
     benchmarks = dict()
     with open(input_path, 'r') as file:
         for line in file:
-            # Match lines that end with "ms" indicating a timing result
+            # Match lines that end with `ms` indicating a timing result
             match = re.fullmatch(r'^\s*(\S+)\s+(\d+(?:,\d+)*)ms\s*$', line)
             if match:
                 name = match.group(1).strip()
@@ -65,7 +65,7 @@ def save_github_action_benchmark_json(output_path, benchmarks, memory_stats, ben
 
 
 def read_existing_csv_to_dict(csv_path, commit_hash):
-    # Initialize a dictionary to hold the CSV data
+    # Initialise a dictionary to hold the CSV data
     data_dict = {}
     fieldnames = ['name', 'unit', commit_hash]
 
@@ -98,14 +98,14 @@ def update_csv_data(data_dict, benchmarks, memory_stats, commit_hash):
 
 def write_csv_from_dict(csv_path, data_dict, fieldnames, commit_hash):
     def custom_sort(item):
-        # Sort all items that do not have unit "ms" first, then sort based on whether the name is capitalized, and then based on worst newest benchmark
+        # Sort all items that do not have unit `ms` first, then sort based on whether the name is capitalised, and then based on worst newest benchmark
         is_not_ms_unit = item['unit'] != 'ms'
 
         if is_not_ms_unit:
             # If the unit is not `ms`, preserve order
             return (False, False, 0)
         else:
-            # If the unit is `ms`, sort based on capitalization, then on newest benchmark
+            # If the unit is `ms`, sort based on capitalisation, then on newest benchmark
             return (True, item['name'][0].islower(), 0 if commit_hash not in item.keys() else -item[commit_hash])
 
     with open(csv_path, mode='w', newline='') as csvfile:

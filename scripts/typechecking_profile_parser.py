@@ -43,7 +43,7 @@ def parse_benchmark_results(input_path):
                 name = match.group(1).strip()
                 # Correctly parse and combine the number groups to handle commas in numbers
                 milliseconds = int(match.group(2).replace(',', ''))
-                benchmarks[name] = {'value': milliseconds, 'unit': 'ms'}
+                benchmarks[name] = {'value': round(milliseconds / 1000, 2), 'unit': 's'}
     return benchmarks
 
 
@@ -93,20 +93,23 @@ def update_csv_data(data_dict, benchmarks, memory_stats, commit_hash):
     for name, details in combined_data.items():
         if name not in data_dict:
             data_dict[name] = {'name': name, 'unit': details['unit']}
-        data_dict[name][commit_hash] = int(details['value'])
+        if details['unit'] == 's':
+            data_dict[name][commit_hash] = round(float(details['value']), 2)
+        else:
+            data_dict[name][commit_hash] = int(details['value'])
 
 
 def write_csv_from_dict(csv_path, data_dict, fieldnames, commit_hash):
     def custom_sort(item):
-        # Sort all items that do not have unit `ms` first, then sort based on whether the name is capitalised, and then based on worst newest benchmark
-        is_not_ms_unit = item['unit'] != 'ms'
+        # Sort all items that do not have unit `s` first, then sort based on whether the name is capitalised, and then based on worst newest benchmark
+        is_not_seconds_unit = item['unit'] != 's'
 
-        if is_not_ms_unit:
-            # If the unit is not `ms`, preserve order
+        if is_not_seconds_unit:
+            # If the unit is not `s`, preserve order
             return (False, False, 0)
         else:
-            # If the unit is `ms`, sort based on capitalisation, then on newest benchmark
-            return (True, item['name'][0].islower(), 0 if commit_hash not in item.keys() else -item[commit_hash])
+            # If the unit is `s`, sort based on capitalisation, then on newest benchmark
+            return (True, item['name'][0].islower(), 0 if commit_hash not in item.keys() else -float(item[commit_hash]))
 
     with open(csv_path, mode='w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

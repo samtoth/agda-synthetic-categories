@@ -10,13 +10,14 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --rewriting --guardedness --flat-split --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve
 
 help:
 	@echo "Available targets:"
 	@echo "  make build-forest               # Generate Everything.agda + Agda/Forester trees/html"
 	@echo "  make sync-forest-src            # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
 	@echo "  make typecheck                  # Generate Everything.agda and typecheck with agda"
+	@echo "  make benchmark-typecheck        # Clean typecheck with Agda profiling enabled"
 	@echo "  make watch-agda                 # Rebuild Agda output when src/ changes"
 	@echo "  make watch-forest [PORT=<port>] # Run forester watch server (default: 1313)"
 	@echo "  make server [PORT=<port>]       # Run watch-agda + watch-forest together (default: 1313)"
@@ -46,6 +47,15 @@ typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
 	@TIMEFORMAT='Typecheck elapsed: %3lR'; \
 	time Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) -i src "$(EVERYTHING_FILE)"
+
+# Typecheck library from clean state, sequentially, and with profiling enabled
+benchmark-typecheck: $(EVERYTHING_FILE)
+	@chmod -R u+w "$(AGDA_DATADIR)" 2>/dev/null || true
+	@rm -rf "$(AGDA_DATADIR)"
+	@find . -type f \( -name '*.agdai' -o -name '*.agdai~' \) -delete
+	@$(MAKE) --no-print-directory prepare-agda-datadir
+	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
+	@Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) --profile=modules -i src "$(EVERYTHING_FILE)" +RTS -s -RTS
 
 sync-forest-src:
 	@mkdir -p "$(AUTOGEN_DIR)"

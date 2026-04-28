@@ -55,5 +55,11 @@ in
       mkdir -p $out
       cp -Lrvf output/agda-synthetic-categories/* "$out"/
       cp -Lrvf output/html "$out"/
+      mkdir -p "$out/benchmarks"
+      cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
+      if [ -f "$out/benchmarks/data.json" ]; then
+        printf 'window.BENCHMARK_DATA = ' > "$out/benchmarks/data.js"
+        cat "$out/benchmarks/data.json" >> "$out/benchmarks/data.js"
+      fi
     '';
   }

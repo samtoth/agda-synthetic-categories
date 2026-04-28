@@ -76,23 +76,21 @@ abstract-marker = go 0 where
 \subtree[stt-0034]{
 \agda{
 private
-  -- We need this weird record (instead of a Σ-type) for two reasons.
-  -- One is universe levels. The second is that, if we're elaborating a
-  -- pre-existing
+  -- We need this weird record (instead of a Σ-type) because, if we're
+  -- elaborating a pre-existing
   --
   --   ap! p
   --
   -- (and supposing ap! had type {it : Σ Type _} → it .fst → x ≡ y), we
   -- will elaborate p against it .fst *before* running the ap-worker
   -- tactic, which very helpfully solves it := ? , [type of p] and
-  -- prevents the tactic from firing. So we also need it to be
-  -- no-eta-equality.
-  record ap-data {𝓤} {A : Type 𝓤} (x y : A) : Typeω where
+  -- prevents the tactic from firing. So we need the marker type to be
+  -- a parameter, while the data itself still uses a no-eta record.
+  record ap-data {𝓤 𝓥} {A : Type 𝓤} (x y : A) (mark : Type 𝓥)
+      : Type (𝓤 ⊔ 𝓥) where
     no-eta-equality ; pattern ; constructor mk-apdata
     field
-      𝓤-mark : Level
-      mark   : Type 𝓤-mark
-      from   : mark → x ＝ y
+      from : mark → x ＝ y
 
 
   ap-worker : ∀ {𝓤} {A : Type 𝓤} (x : A) → Term → TC 𝟙
@@ -107,18 +105,19 @@ private
           ∷  termErr t
           ∷ [])
       go _ (just m) = do
-        unify goal (con (quote mk-apdata)
-          (unknown v∷ unknown v∷
-            def (quote ap) (lam visible (abs "x" m) v∷ []) v∷
-            []))
+        unify goal
+          (con
+            (quote mk-apdata)
+            (def (quote ap) (lam visible (abs "x" m) v∷ []) v∷ []))
 
   ap!-wrapper
-    : ∀ {𝓤} {A : Type 𝓤}
+    : ∀ {𝓤 𝓥} {A : Type 𝓤}
       → {x y : A}
-      → {@(tactic ap-worker x) p : ap-data x y}
-      → p .ap-data.mark
+      → {mark : Type 𝓥}
+      → {@(tactic ap-worker x) p : ap-data x y mark}
+      → mark
       → x ＝ y
-  ap!-wrapper {p = mk-apdata _ _ from} = from
+  ap!-wrapper {p = mk-apdata from} = from
 }
 }
 

@@ -7,7 +7,7 @@ EVERYTHING_FILE ?= src/Everything.agda
 WATCH_DIR ?= src
 PORT ?= 1313
 DUP_DIR ?= ./trees/
-AGDA_FLAGS ?= --without-K --rewriting --guardedness --flat-split --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
+AGDA_FLAGS ?= --without-K --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
 .PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve

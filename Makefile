@@ -45,7 +45,7 @@ prepare-agda-datadir:
 typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
 	@TIMEFORMAT='Typecheck elapsed: %3lR'; \
-	time Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) -i src "$(EVERYTHING_FILE)"
+	time Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) -i src "$(EVERYTHING_FILE)" -j
 
 sync-forest-src:
 	@mkdir -p "$(AUTOGEN_DIR)"

@@ -15,22 +15,15 @@ intended to be imported and used by any formalisation made
 module UF where
 
 open import Foundations.Prelude
-
--- !!CAUTION!! - this is not in general sound with --without-K - use with caution.
-primitive
-  primEraseEquality : {𝓤 : Level} {A : Type 𝓤} {x y : A} → x ＝ y → x ＝ y
-
 open import Foundations.FunExt
 open import Foundations.Retracts
 open import Foundations.IdempotentMaps
-
 
 postulate
   global-funext : FunExt-global
 
 
-private module fe = WithFunExt-global global-funext
-open fe public
+open WithFunExt-global global-funext public
 
 import Foundations.CanonicalPullbacks
 open Foundations.CanonicalPullbacks.WithFunExt global-funext public
@@ -53,6 +46,7 @@ open Foundations.IdempotentMaps.QIdemWithFunExt2 global-funext public
 open Foundations.IdempotentMaps.CohIdemWithFunExt global-funext public
 open RetractWithFunExt global-funext public
 import Foundations.HomotopyEquiv
+
 module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
 open HE public
 
@@ -115,7 +109,13 @@ module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-
 open Straightening public
 
 open import Foundations.PropExt public using
-  (PropExt; logical←equiv; equiv←logical; is-equiv←inverse; logical←Id; weak-PropExt; weak-PropExt←FunExt)
+  ( PropExt
+  ; logical←equiv
+  ; equiv←logical
+  ; is-equiv←inverse
+  ; logical←Id
+  ; weak-PropExt
+  ; weak-PropExt←FunExt)
 import Foundations.PropExt as PE
 
 propExt : ∀ {𝓤} → PropExt 𝓤
@@ -137,88 +137,6 @@ Cocone-path→
     → c ＝ c'
 Cocone-path→ = Sp.Cocone-path→ global-funext
 
-
 open import Foundations.DependentCocones
-
-
-module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
-  postulate
-    Pushout : ∀ (f : A → B) (g : A → C) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
-
-    ι₁ : ∀ {f : A → B} {g : A → C} → B → Pushout f g
-
-    ι₂ :  ∀ {f : A → B} {g : A → C} → C → Pushout f g
-
-    glue : ∀ {f : A → B} {g : A → C} → ι₁ {f} {g} ∘ f ~ ι₂ ∘ g
-
-  pushout : ∀ {f : A → B} {g : A → C} → Cocone (mk-span _ f g) (Pushout f g)
-  pushout = mk-cocone ι₁ ι₂ glue
-
-  postulate
-    pushout-ind
-      : ∀ {f : A → B} {g : A → C} {𝓠} (Q : Pushout f g → Type 𝓠)
-        → Coconeᵈ (mk-span _ f g) pushout Q → (x : Pushout f g) → Q x
-
-  pushout-indβ1
-    : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
-      → {c : Coconeᵈ (mk-span _ f g) pushout Q}
-      → ∀ x → pushout-ind Q c (ι₁ x) ＝ c .Coconeᵈ.p x
-  pushout-indβ1 {c = c} x = primEraseEquality eq where
-    postulate eq : pushout-ind _ _ (ι₁ x) ＝ c .Coconeᵈ.p x
-
-  pushout-indβ2
-    : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
-      → {c : Coconeᵈ (mk-span _ f g) pushout Q}
-      → ∀ x → pushout-ind Q c (ι₂ x) ＝ c .Coconeᵈ.q x
-  pushout-indβ2 {c = c} x = primEraseEquality eq where
-    postulate eq : pushout-ind _ _ (ι₂ x) ＝ c .Coconeᵈ.q x
-
-  {-# REWRITE pushout-indβ1 pushout-indβ2 #-}
-
-  pushout-ind-apβ
-    : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Pushout f g → Type 𝓠}
-        {c : Coconeᵈ (mk-span _ f g) pushout Q}
-      → ∀ x → apᶠ (pushout-ind Q c) (glue x) ＝ c .Coconeᵈ.filler x
-  pushout-ind-apβ {c = c} x = primEraseEquality eq where
-    postulate eq : apᶠ (pushout-ind _ c) (glue x) ＝ c .Coconeᵈ.filler x
-
-  opaque
-    pushout-rec
-      : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-        → Cocone (mk-span _ f g) Q
-        → Pushout f g → Q
-    pushout-rec {Q = Q} cc@(mk-cocone p q h)
-      = pushout-ind (λ _ → Q) (Dependent←Cocone {P = λ _ → Q} cc)
-
-    pushout-recβ1
-      : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-        → {c : Cocone (mk-span _ f g) Q}
-        → ∀ x → pushout-rec c (ι₁ x) ＝ c .Cocone.p x
-    pushout-recβ1 _ = refl
-
-    pushout-recβ2
-      : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-        → {c : Cocone (mk-span _ f g) Q}
-        → ∀ x → pushout-rec c (ι₂ x) ＝ c .Cocone.q x
-    pushout-recβ2 _ = refl
-
-  {-# REWRITE pushout-recβ1 pushout-recβ2 #-}
-
-  opaque
-    unfolding pushout-rec
-    pushout-rec-apβ
-      : ∀ {f : A → B} {g : A → C} {𝓠} {Q : Type 𝓠}
-          {c : Cocone (mk-span _ f g)  Q}
-        → ∀ x → ap (pushout-rec c) (glue x) ＝ c .Cocone.filler x
-    pushout-rec-apβ {f} {g} {Q = Q} {c} x
-      = ap (pushout-rec _) (glue x)                      ＝⟨ sym apᶠ-is-ap ⟩
-        coe (tr-cst ∙-) (apᶠ (pushout-rec c) (glue x))   ＝⟨ ap (coe (tr-cst ∙-)) (pushout-ind-apβ x) ⟩
-        coe (tr-cst ∙-)
-          (Coconeᵈ.filler {cc = pushout}
-            (Dependent←Cocone {P = λ _ → Q} c) x)        ＝⟨⟩
-        coe (tr-cst ∙-) (tr-cst ∙ (c .Cocone.filler x))  ＝⟨ coe-precomp＝ tr-cst _ ⟩
-        sym tr-cst ∙ (tr-cst ∙ (c .Cocone.filler x))     ＝⟨ ∙.cancelr _ {h = tr-cst} (∙-sym' tr-cst) {f = c .Cocone.filler x} ⟩
-        Cocone.filler c x ∎ where
-         tr-cst : tr (λ _ → Q) (glue {f = f} {g} x) (pushout-rec c (ι₁ (f x))) ＝ pushout-rec c (ι₁ (f x))
-         tr-cst = tr-constant (glue x) (pushout-rec c (ι₁ (f x)))
+open import Foundations.CanonicalPushouts public
 }

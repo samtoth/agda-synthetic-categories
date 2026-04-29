@@ -7,7 +7,6 @@
 
 \transclude{stt-00AB}
 
-%```agda
 \agda{
 open import Foundations.Prelude
 open import Algebra.Lattice
@@ -16,7 +15,7 @@ module Synthetic.Categories.CoComma
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   where
 
-open import ufAxioms
+open import Axioms.UF
 
 open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
@@ -34,17 +33,15 @@ open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
 open import Modalities.Instances.Truncation
 
-open import Data.Bool
-
 open import Core.Orthogonal
 open import Core.CanonicalPushouts
-open import Core.Arrow
-open import Core.Lifts
-open import Core.PullbackPower
+open import Core.Arrows
+open import Core.LiftingSquares
+open import Core.PullbackPowers
 open import Core.ExtPullbacks
 open import Core.PiSection
-open import Core.FunctorialPullback
-open import Core.Slice
+open import Core.FunctorialityPullbacks
+open import Core.Slices
 
 open import Ergonomics.Notations.Orthogonality
 open Core.Orthogonal.notation
@@ -52,10 +49,9 @@ open import Ergonomics.Extensionality
 open import Ergonomics.Representation
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Categories.Boundaries Δ¹ I I-distr
-open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.NaturalTransformations Δ¹ I I-distr
 }
-%```
 
 \subtree[stt-00CT]{
 \title{Right cocones over a span}
@@ -65,7 +61,6 @@ open import Synthetic.Categories.NaturalTransformation Δ¹ I I-distr
 This is analogous to the type of [cocones over #{S}](stt-0016) but with the
 filler now being a morphism, not a path. This dualises \ref{stt-00C1}}
 
-%```agda
 \agda{
 record Right-cocone {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) {𝓛} (Carrier : Type 𝓛)
   : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛) where
@@ -77,8 +72,8 @@ record Right-cocone {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) {𝓛} (Carrier :
     filler : ∀ (a : Centre) → Hom Carrier (i (left a)) (j (right a))
 
 
-unquoteDecl Right-cocone-repr≅ Right-cocone-repr≃
-  = make-record-repr Right-cocone-repr≅ Right-cocone-repr≃ (quote Right-cocone)
+unquoteDecl Right-cocone-repr≊ Right-cocone-repr≃
+  = make-record-repr Right-cocone-repr≊ Right-cocone-repr≃ (quote Right-cocone)
 
 Right-cocone-path
   : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛}
@@ -118,10 +113,9 @@ instance
       → Identity-system (Right-cocone S Carrier) (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   IdS-right-cocone .Identity-system.IdS = Right-cocone-path
   IdS-right-cocone .Identity-system.IdS←Id refl = Right-cocone-path-refl
-  IdS-right-cocone .Identity-system.has-is-ids a
+  IdS-right-cocone .Identity-system.IdS←Id-is-equiv a
     = fundamental-Id _ (Right-cocone-path-is-torsorial a) _
 }
-%```
 }
 
 
@@ -133,19 +127,18 @@ instance
 over a span #{S}, we can define a canonical map #{(C \to Q) \to \mathrm{Cocone}_S(Q)}.
 We call #{C} a (right) cocomma cone when this map is an equivalence.}
 
-%```agda
 \agda{
 module _ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛} where
-  right-cocone-map : Right-cocone S Carrier
-                   → ∀ {𝓠} {Q : Type 𝓠} → (Carrier → Q) → Right-cocone S Q
+  right-cocone-map
+    : Right-cocone S Carrier
+    → ∀ {𝓠} {Q : Type 𝓠} → (Carrier → Q) → Right-cocone S Q
   right-cocone-map cc f = mk-right-cocone (f ∘ i) (f ∘ j) (ap-hom f ∘ filler) where
     open Right-cocone cc
 
   is-cocomma-cocone : Right-cocone S Carrier → Typeω
   is-cocomma-cocone cone
-    = ∀ {𝓠} {Q : Type 𝓠} → is-equiv (right-cocone-map cone {𝓠}{Q})
+    = ∀ {𝓠} {Q : Type 𝓠} → is-equiv (right-cocone-map cone {𝓠} {Q})
 }
-%```
 }
 
 \subtree[stt-00CV]{
@@ -179,11 +172,11 @@ use [pushouts](stt-0017) to give an equivalent definition for cocomma types.}
     \end{tikzcd}
 }
 
-%```agda
 \agda{
-↑-span : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-           (f : B → A) (g : B → C)
-       → Span (𝓘 ⊔ 𝓥) (𝓘 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+↑-span
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : B → A) (g : B → C)
+    → Span (𝓘 ⊔ 𝓥) (𝓘 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
 ↑-span {B = B} f g
   = mk-span _ (∂Δ¹-incl ⊗1 B)
               (uncurry (∂Δ¹-UP→ (inl ∘ f , inr ∘ g)))
@@ -215,21 +208,21 @@ _↑_ f g = Pushout (↑-span f g .Span.left) (↑-span f g .Span.right)
 ↑-is-cocomma-cocone
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → A} {g : B → C}
     → is-cocomma-cocone (↑-cocone f g)
-↑-is-cocomma-cocone {f = f} {g = g} = is-equiv←qiso qiso where
+↑-is-cocomma-cocone {f = f} {g = g} = is-equiv←qinv qinv where
   open Right-cocone
-  qiso : quasi-iso (right-cocone-map (↑-cocone f g))
-  qiso .fst cone = pushout-rec
+  qinv : quasi-inv (right-cocone-map (↑-cocone f g))
+  qinv .fst cone = pushout-rec
     (mk-cocone (uncurry (Homᵈ.hom ∘ cone .filler) ∘ ×-swap ._≃_.fwd)
                ⊎[ cone .i , cone .j ] λ
      { ((mk-lift true) ,  b) → filler cone b .Homᵈ.hom1
      ; ((mk-lift false) , b) → filler cone b .Homᵈ.hom0})
-  qiso .snd .fst f = sym
+  qinv .snd .fst f = sym
     (funext→ (pushout-rec-unique _ _ ~refl
                (λ { (inl x) → refl
                   ; (inr x) → refl})
                λ { (mk-lift true , b) → ∙-reflr _
                  ; (mk-lift false , b) → ∙-reflr _}))
-  qiso .snd .snd a = ext! (~refl , ~refl , λ b → Hom-pathᵈ←path
+  qinv .snd .snd a = ext! (~refl , ~refl , λ b → Hom-pathᵈ←path
                             ( ~refl
                             , sym (pushout-rec-apβ _)
                             , sym (pushout-rec-apβ _)))
@@ -251,11 +244,11 @@ _↑_ f g = Pushout (↑-span f g .Span.left) (↑-span f g .Span.right)
   λ { (mk-lift true  , c) → sym (un-square (r c .snd .snd))
     ; (mk-lift false , c) → sym (un-square (r c .snd .fst))}
 
-↑-UP : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓠} {Q : Type 𝓠}
-       → (Span.left S ↑ Span.right S → Q) ≃ Right-cocone S Q
+↑-UP
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓠} {Q : Type 𝓠}
+    → (Span.left S ↑ Span.right S → Q) ≃ Right-cocone S Q
 ↑-UP = mk≃ (right-cocone-map _) ↑-is-cocomma-cocone
 }
-%```
 }
 
 
@@ -269,10 +262,10 @@ This is sometimes also called the \em{blunt join}.}
 
 \p{The interval is the join #{1 \bjoin 1}.}
 
-%```agda
 \agda{
-◇-span : ∀ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥)
-       → Span (𝓘 ⊔ 𝓤 ⊔ 𝓥) (𝓘 ⊔ 𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
+◇-span
+  : ∀ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥)
+    → Span (𝓘 ⊔ 𝓤 ⊔ 𝓥) (𝓘 ⊔ 𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
 ◇-span A B = ↑-span {B = A × B} fst snd
 
 _◇_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
@@ -280,11 +273,11 @@ A ◇ B = _↑_ {B = A × B} fst snd
 
 Δ¹-is-join : is-cocomma-cocone {S = mk-span (𝟙 × 𝟙) fst snd}
                (mk-right-cocone (point i0) (point i1) λ _ → 0≤1)
-Δ¹-is-join = is-equiv←qiso qiso where
-  qiso : quasi-iso _
-  qiso .fst cc = cc .Right-cocone.filler _ .Homᵈ.hom
-  qiso .snd .fst = ~refl
-  qiso .snd .snd cc
+Δ¹-is-join = is-equiv←qinv qinv where
+  qinv : quasi-inv _
+  qinv .fst cc = cc .Right-cocone.filler _ .Homᵈ.hom
+  qinv .snd .fst = ~refl
+  qinv .snd .snd cc
     = ext! ((λ _ → hom0) , (λ _ → hom1)
            , λ _ → ( ~refl
                    , (Square-flatten-hor refl) , Square-flatten-hor refl)) where
@@ -303,33 +296,34 @@ A ◅ = 𝟙 ◇ A
 ◅-span : ∀ {𝓤} (A : Type 𝓤) → Span (𝓘 ⊔ 𝓤) (𝓘 ⊔ 𝓤) 𝓤
 ◅-span A = ◇-span 𝟙 A
 }
-%```
 }
 
 \subtree[stt-00CX]{
 \title{Functoriality of the directed join}
 \taxon{Construction}
 
-%```agda
 \agda{
-_◇₁_ : ∀ {𝓤 𝓥 𝓦 𝓜}
-         {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-         {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
-       → A ◇ C → B ◇ D
+_◇₁_
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
+    → A ◇ C → B ◇ D
 f ◇₁ g = ↑-rec (mk-right-cocone (↑-ι₁ ∘ f) (↑-ι₂ ∘ g) (↑-hom ∘ (f ⊗ g)))
 
-◇₁-id : ∀ {𝓤 𝓥} {A : Type 𝓤}  {B : Type 𝓥}
-     → id ◇₁ id ~ id {A = A ◇ A}
+◇₁-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤}  {B : Type 𝓥}
+    → id ◇₁ id ~ id: (A ◇ A)
 ◇₁-id = sym ∘ ↑-rec-unique
   ( ~refl
   , ~refl
   , λ _ → Hom-pathᵈ←path (~refl , sym (ap-id _) , sym (ap-id _)))
 
-◇₁-∘ : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
-         {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦}
-         {D : Type 𝓜} {E : Type 𝓝} {F : Type 𝓛}
-         (f : B → C) (g : A → B) (h : E → F) (j : D → E)
-       → (f ∘ g) ◇₁ (h ∘ j) ~ (f ◇₁ h) ∘ (g ◇₁ j)
+◇₁-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+      {A : Type 𝓤}  {B : Type 𝓥} {C : Type 𝓦}
+      {D : Type 𝓜} {E : Type 𝓝} {F : Type 𝓛}
+      (f : B → C) (g : A → B) (h : E → F) (j : D → E)
+    → (f ∘ g) ◇₁ (h ∘ j) ~ (f ◇₁ h) ∘ (g ◇₁ j)
 ◇₁-∘ f g h j = sym ∘ ↑-rec-unique
   ( ~refl
   , ~refl
@@ -338,5 +332,4 @@ f ◇₁ g = ↑-rec (mk-right-cocone (↑-ι₁ ∘ f) (↑-ι₂ ∘ g) (↑-h
      , sym (ap-∘ _ _ _ ∙ ap (ap _) (pushout-rec-apβ _) ∙ pushout-rec-apβ _)
      , sym (ap-∘ _ _ _ ∙ ap (ap _) (pushout-rec-apβ _) ∙ pushout-rec-apβ _)))
 }
-%```
 }

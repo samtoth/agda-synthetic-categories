@@ -1,0 +1,457 @@
+\date{2025-04-18}
+\title{Joins}
+\author{samueltoth}
+\taxon{Module}
+
+\import{stt-macros}
+
+
+\agda{
+module Core.Joins where
+
+open import Foundations.Prelude
+open import Axioms.UF
+open import Core.Suspensions
+open import Core.Arrows
+open import Core.CocartesianSquares
+open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
+open import Ergonomics.Universal
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+open import Ergonomics.Marker
+}
+
+
+\subtree[stt-002S]{
+\taxon{Definition}
+\title{Joins of types}
+
+\p{The join of types #{A} and #{B}, written #{A * B} is
+the pushout of the span
+#{A \xleftarrow{\pi_1} A \times B \xrightarrow{\pi_2} B}}
+
+\quiver{
+\begin{tikzcd}
+	{A \times B} && A \\
+	\\
+	B && {A * B}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+\end{tikzcd}
+}
+
+\agda{
+infixl 25 _*_
+
+_*_ : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+A * B = Pushout {A = A × B} fst snd
+}
+}
+
+
+\subtree[stt-002V]{
+\title{Singleton joins}
+
+\p{The join of a singleton with any type is also a singleton}
+
+\proof{
+\p{This follows from the fact that [pushing an equivalence out gives
+an equivalence](stt-0080).}
+}
+
+\agda{
+*-comm : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A * B ≃ B * A
+*-comm {A = A} {B} = pushout-comm ∙≃ (Pushout-adjust-equiv ×-swap)
+
+
+*-single'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-singleton B → is-singleton (A * B)
+*-single' {A = A} {B} sb
+  = is-single←equiv-to-single (mk≃ _ ι₂-is-equiv) sb where
+  ι₂-is-equiv : is-equiv {B = A * B} ι₂
+  ι₂-is-equiv = dom-is-equiv←cocartesian
+                  (mk-amap snd ι₁ glue)
+                  (singleton-fst-is-equiv (λ _ → sb))
+                  (up-cocartesian←up-pushout Pushout-has-up-pushout)
+
+*-single
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-singleton A → is-singleton (A * B)
+*-single sa
+  = is-single←equiv-to-single *-comm (*-single' sa)
+}
+}
+
+\subtree[stt-002W]{
+\taxon{Theorem}
+\title{Joins of propositions}
+
+\p{The universal property for joins of propositions says that
+for propositions #{P} and #{Q}, to eliminate into a proposition #{R},
+it suffices to supply #{P \to R}, and #{Q \to R}}
+
+\p{As an easy corollary, we have that the join of two propositions
+is again a proposition.}
+
+\agda{
+*-prop-disj
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      {Q : Type 𝓦}
+    → is-prop A → is-prop B
+    → is-prop Q
+    → (A * B → Q) → (A → Q) × (B → Q)
+*-prop-disj a b q f = (f ∘ ι₁ , f ∘ ι₂)
+
+
+*-prop-disj≃
+  : ∀ {𝓤 𝓥 𝓦}
+      {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+    → (pq : is-prop Q)
+    → (A * B → Q) ≃ ((A → Q) × (B → Q))
+*-prop-disj≃ {A = A} {B} {Q} pq
+ = (A * B → Q)
+      ≃⟨ Pushout-UP≃ ⟩
+   Cocone (mk-span _ fst snd) Q
+      ≃⟨ cocone-repr≃ ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] (f ∘ fst ~ g ∘ snd)
+      ≃⟨ Σ-ap-≃ (λ f → Σ-ap-≃ (λ g → curry≃)) ⟩
+   Σ[ f ∶ (A → Q) ] Σ[ g ∶ (B → Q) ] ((a : A) (b : B) → f a ＝ g b)
+      ≃⟨ Σ-ap-≃ (λ a → Σ-singleton (λ x → Π-is-single λ
+                     b → Π-is-single (λ
+                       c → ＝-is-single←is-prop pq _ _))) ⟩
+   ((A → Q) × (B → Q)) ≃∎
+
+*-prop-UP
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      {Q : Type 𝓦}
+      (ap : is-prop A) (bp : is-prop B)
+      (qp : is-prop Q)
+    → is-equiv (*-prop-disj ap bp qp)
+*-prop-UP ap bp qp = *-prop-disj≃ qp ._≃_.fwd-is-equiv
+
+opaque
+  *-prop-rec
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+      → (pq : is-prop Q)
+      → (A → Q) → (B → Q) → (A * B → Q)
+  *-prop-rec pq f g = _≃_.bwd (*-prop-disj≃ pq) (f , g)
+{-# NOINLINE *-prop-rec #-}
+
+*-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-prop A → is-prop B
+    → is-prop (A * B)
+*-is-prop aprop bprop = is-prop←is-single-if-inhabited
+  (*-prop-rec is-single-is-prop
+    (λ a → *-single (mk-singl a (aprop a)))
+    (λ b → *-single' (mk-singl b (bprop b))))
+}
+}
+
+
+\subtree[stt-009U]{
+\title{Joins with the empty type}
+
+\p{The join #{A * 0} for any type #{A} is equivalent to #{A}.}
+
+\proof{The map #{A \times 0 \to 0} is an equivalence so by
+\ref{stt-008O}, so must #{A \to A * 0}.}
+
+\agda{
+*-∅ : ∀ {𝓤} {A : Type 𝓤} → A ≃ ∅ * A
+*-∅ = mk≃ ι₂ (dom-is-equiv←cocartesian (mk-amap snd ι₁ glue)
+             (×-∅ ._≃_.fwd-is-equiv) (up-cocartesian←up-pushout
+                                     Pushout-has-up-pushout))
+}
+}
+
+\subtree[stt-009L]{
+\title{Functoriality of the join}
+\taxon{Theorem}
+
+\p{The join operator on types defines a functor
+#{\SS \times \SS \to \SS}. We define the action of #{*} on functions,
+and show that it preserves equivalences.}
+
+\agda{
+_*₁_
+  : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+      {B : Type 𝓥} {B' : Type 𝓦}
+    → (A → A') → (B → B') → A * B → A' * B'
+f *₁ g = pushout-rec (mk-cocone (ι₁ ∘ f) (ι₂ ∘ g) (glue ∘ (f ⊗ g)))
+
+*₁-is-equiv
+  : ∀ {𝓤 𝓜 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓜}
+      {B : Type 𝓥} {B' : Type 𝓦}
+    → {f : A → A'} {g : B → B'}
+    → is-equiv f → is-equiv g
+    → is-equiv (f *₁ g)
+*₁-is-equiv {A = A} {B = B} {f = f} {g} feq geq = is-equiv←qinv qinv where
+  module f = is-equiv feq
+  module g = is-equiv geq
+
+
+  opaque
+    sec : ∀ a →
+        Square (ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.ε) ∘ fst) a)
+               (((ι₂ ◂ g.ε) ∘ snd) a)
+    sec p@(a , b) = mk-square (
+      ⌜ ap ((f *₁ g) ∘ (f.bwd *₁ g.bwd)) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                    ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+      ap (f *₁ g) ⌜ ap (f.bwd *₁ g.bwd) (glue p) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                    ＝⟨ ap! (pushout-rec-apβ p) ⟩
+      ⌜ ap (f *₁ g) (glue (f.bwd a , g.bwd b)) ⌝ ∙ ((ι₂ ◂ g.ε) b)
+                                    ＝⟨ ap! (pushout-rec-apβ ((f.bwd ⊗ g.bwd) p)) ⟩
+      (glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) p ∙ (⌜ ι₂ ◂ g.ε ▸ snd ⌝) p
+                                    ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.ε a , g.ε b))
+                                            ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+      ((glue ∘ (f ⊗ g) ∘ (f.bwd ⊗ g.bwd)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.ε , g.ε))) p
+                                    ＝⟨⟩
+      (glue ~∘ ×~ (f.ε , g.ε)) p    ＝⟨ switch-~∘ glue (×~ (f.ε , g.ε)) p ⟩
+      (glue ~∘' ×~ (f.ε , g.ε)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.ε , g.ε) p)) ⟩
+       ((ι₁ ◂ fst ◂ ×~ (f.ε , g.ε)) ~∙ glue) p
+                                    ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+      ap ι₁ (f.ε a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+      ap ι₁ (f.ε a) ∙ ap id (glue p) ∎)
+
+    -- I wanted to generalise sec, and then give f.bwd and g.bwd
+    -- but because is-equiv⁻¹ goes via composing quasi-inverses it
+    -- messes with the ε
+    ret : ∀ a →
+        Square (ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue a))
+               (ap id (glue a))
+               (((ι₁ ◂ f.η) ∘ fst) a)
+               (((ι₂ ◂ g.η) ∘ snd) a)
+    ret p@(a , b) = mk-square (
+        ⌜ ap ((f.bwd *₁ g.bwd) ∘ (f *₁ g)) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (ap-∘ _ _ (glue p)) ⟩
+        ap (f.bwd *₁ g.bwd) ⌜ ap (f *₁ g) (glue p) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ p) ⟩
+        ⌜ ap (f.bwd *₁ g.bwd) (glue (f a , g b)) ⌝ ∙ ((ι₂ ◂ g.η) b)
+                                      ＝⟨ ap! (pushout-rec-apβ ((f ⊗ g) p)) ⟩
+        (glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) p ∙ (⌜ ι₂ ◂ g.η ▸ snd ⌝) p
+                                      ＝⟨ ap! ( sym (ap-∘ ι₂ snd (×-path→ (f.η a , g.η b))
+                                              ∙ ap (ap ι₂) ×-path-ap-snd)) ⟩
+        ((glue ∘ (f.bwd ⊗ g.bwd) ∘ (f ⊗ g)) ~∙ (ι₂ ∘ snd ◂ ×~ (f.η , g.η))) p
+                                      ＝⟨⟩
+        (glue ~∘ ×~ (f.η , g.η)) p    ＝⟨ switch-~∘ glue (×~ (f.η , g.η)) p ⟩
+        (glue ~∘' ×~ (f.η , g.η)) p   ＝⟨ ap (_∙ glue p) (ap-∘ ι₁ fst (×~ (f.η , g.η) p)) ⟩
+         ((ι₁ ◂ fst ◂ ×~ (f.η , g.η)) ~∙ glue) p
+                                      ＝⟨ ap (λ x → (ap ι₁ x) ∙ glue p) ×-path-ap-fst ⟩
+        ap ι₁ (f.η a) ∙ ⌜ glue p ⌝    ＝⟨ ap! (sym (ap-id (glue p))) ⟩
+        ap ι₁ (f.η a) ∙ ap id (glue p) ∎)
+
+  qinv : quasi-inv (f *₁ g)
+  qinv .fst = f.bwd *₁ g.bwd
+  qinv .snd .fst = pushout-ind _ (mk-coconeᵈ (ι₁ ◂ f.η) (ι₂ ◂ g.η)
+                    λ a → Idᵈ-func←Square
+                           {f = (f.bwd *₁ g.bwd) ∘ (f *₁ g)}
+                           {id} (glue a)
+                           (ap ι₁ (f.η (fst a))) ((ι₂ ◂ g.η) (snd a))
+                           (ret a))
+  qinv .snd .snd = pushout-ind _ (mk-coconeᵈ (ι₁ ◂ f.ε) (ι₂ ◂ g.ε)
+                   (λ a → Idᵈ-func←Square {f = (f *₁ g) ∘ (f.bwd *₁ g.bwd)} {id}
+                               (glue a) _ _
+                               (sec a)))
+
+*-≃
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+    → A ≃ C → B ≃ D → A * B ≃ C * D
+*-≃ (mk≃ l le) (mk≃ r re)
+  = mk≃ (l *₁ r) (*₁-is-equiv le re)
+}
+}
+
+\subtree[stt-00FH]{
+\taxon{Theorem}
+\date{2026-03-06}
+\author{fredrikbakke}
+\title{Null-homotopies of maps out of a join}
+
+\p{
+Given a map #{q : A * B \to Q}, each point #{a : A} determines a
+[null-homotopy](stt-00F3) of the restriction #{q \circ \iota_2 : B \to Q}. Moreover,
+null-homotopies of #{q} are equivalent to null-homotopies of this induced family over
+#{A}.
+}
+
+\agda{
+join-null-homotopy-at
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (q : A * B → Q)
+  → A
+  → null-homotopy (q ∘ ι₂)
+join-null-homotopy-at q a .fst = q (ι₁ a)
+join-null-homotopy-at q a .snd b = ap q (glue (a , b))
+
+join-rec≃null-homotopies
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (A * B → Q)
+  ≃ Σ[ r ∶ (B → Q) ] ((a : A) → null-homotopy r)
+join-rec≃null-homotopies {A = A} {B} {Q}
+  = (A * B → Q)
+      ≃⟨ Pushout-UP≃ ⟩
+    Cocone (mk-span _ fst snd) Q
+      ≃⟨ cocone-repr≃ ⟩
+    Σ[ l ∶ (A → Q) ] Σ[ r ∶ (B → Q) ] (l ∘ fst ~ r ∘ snd)
+      ≃⟨ Σ-ap-≃ (λ l → Σ-ap-≃ (λ r → curry≃)) ⟩
+    Σ[ l ∶ (A → Q) ] Σ[ r ∶ (B → Q) ] ((a : A) (b : B) → l a ＝ r b)
+      ≃⟨ Σ-comm ⟩
+    Σ[ r ∶ (B → Q) ] Σ[ l ∶ (A → Q) ] ((a : A) (b : B) → l a ＝ r b)
+      ≃⟨ Σ-ap-≃ (λ r → Σ-Π-swap≃ (λ _ → Q) (λ a q → (b : B) → q ＝ r b) e⁻¹) ⟩
+    Σ[ r ∶ (B → Q) ] ((a : A) → Σ[ q ∶ Q ] ((b : B) → q ＝ r b))
+      ≃⟨⟩
+    Σ[ r ∶ (B → Q) ] ((a : A) → null-homotopy r)
+      ≃∎
+
+join-recᵈ≃null-homotopies
+  : {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 : Level}
+    {A : Type 𝓤1}
+    {X : A → Type 𝓤2}
+    {B : A → Type 𝓤3}
+    {Y : (a : A) → X a → Type 𝓤4}
+    {Q : (a : A) (x : X a) → Type 𝓤5}
+  → ((a : A) (x : X a) → B a * Y a x → Q a x)
+  ≃ Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+     ((a : A) (b : B a) (x : X a) → null-homotopy (r a x))
+join-recᵈ≃null-homotopies
+  {A = A} {X} {B} {Y} {Q}
+  = ((a : A) (x : X a) → B a * Y a x → Q a x)
+      ≃⟨ Π-ap-≃ (λ a → Π-ap-≃ (λ _ → join-rec≃null-homotopies)) ⟩
+    ((a : A) (x : X a) → Σ[ r ∶ (Y a x → Q a x) ] ((b : B a) → null-homotopy r))
+      ≃⟨ Π-ap-≃
+            ( λ a
+              → Σ-Π-swap≃
+                  (λ x → Y a x → Q a x)
+                  (λ x r → (b : B a) → null-homotopy r)) ⟩
+    ((a : A)
+      → Σ[ r ∶ ((x : X a) → Y a x → Q a x) ]
+          ((x : X a) → (b : B a) → null-homotopy (r x)))
+      ≃⟨ Σ-Π-swap≃
+            (λ a → (x : X a) → Y a x → Q a x)
+            (λ a r → (x : X a) (b : B a) → null-homotopy (r x)) ⟩
+    (Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+      ((a : A) → (x : X a) (b : B a) → null-homotopy (r a x)))
+      ≃⟨ Σ-ap-≃ (λ _ → Π-ap-≃ (λ _ → flip≃)) ⟩
+    (Σ[ r ∶ ((a : A) (x : X a) → Y a x → Q a x) ]
+      ((a : A) → (b : B a) (x : X a) → null-homotopy (r a x)))
+      ≃∎
+
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  (q : A * B → Q)
+  (l : Q)
+  where
+
+  join-path-from-left
+    : (a : A)
+    → const Q B (q (ι₁ a)) ~ q ∘ ι₂
+  join-path-from-left a b = ap q (glue (a , b))
+
+  join-ind-paths≃null-homotopy-inner-over
+    : (r : (b : B) → l ＝ q (ι₂ b))
+    → (a : A)
+    → (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) t (r b)))
+    ≃ ((l , r) ＝ join-null-homotopy-at q a)
+  join-ind-paths≃null-homotopy-inner-over r a
+    = (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) t (r b)))
+        ≃⟨ Σ-ap-≃ (λ t → Π-ap-≃ (λ b → Idᶠ-const-≃' q (glue (a , b)) t (r b))) ⟩
+      (Σ[ t ∶ l ＝ q (ι₁ a) ]
+        ((b : B) → t ∙ join-path-from-left a b ＝ r b))
+        ≃⟨ null-homotopy-path≃
+              {f = q ∘ ι₂}
+              r
+              (join-path-from-left a)
+              e⁻¹ ⟩
+      ((l , r) ＝ join-null-homotopy-at q a)
+        ≃∎
+
+  join-ind-paths≃null-homotopy-inner
+    : (r : (b : B) → l ＝ q (ι₂ b))
+    → (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        (((a , b) : A × B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) (t a) (r b)))
+    ≃ ((a : A) → (l , r) ＝ join-null-homotopy-at q a)
+  join-ind-paths≃null-homotopy-inner r
+    = (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        (((a , b) : A × B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) (t a) (r b)))
+        ≃⟨ Σ-ap-≃ (λ t → curry≃) ⟩
+      (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+        ((a : A) (b : B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) (t a) (r b)))
+        ≃⟨ Σ-Π-swap≃
+              (λ a → l ＝ q (ι₁ a))
+              (λ a t → (b : B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) t (r b))
+              e⁻¹ ⟩
+      ((a : A)
+        → Σ[ t ∶ l ＝ q (ι₁ a) ]
+          ((b : B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) t (r b)))
+        ≃⟨ Π-ap-≃ (join-ind-paths≃null-homotopy-inner-over r) ⟩
+      ((a : A) → (l , r) ＝ join-null-homotopy-at q a)
+        ≃∎
+
+  join-ind-paths≃null-homotopy-at
+    : (((j : A * B) → l ＝ q j))
+    ≃ (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+        ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+  join-ind-paths≃null-homotopy-at
+    = (((j : A * B) → l ＝ q j))
+        ≃⟨ Pushout-UPᵈ≃ e⁻¹ ⟩
+      Coconeᵈ (mk-span _ fst snd) pushout (λ j → l ＝ q j)
+        ≃⟨ coconeD-repr≃ ⟩
+      (Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+       Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+         (((a , b) : A × B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) (t a) (r b)))
+        ≃⟨ Σ-comm ⟩
+      (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+       Σ[ t ∶ ((a : A) → l ＝ q (ι₁ a)) ]
+         (((a , b) : A × B) → Idᶠ (λ j → l ＝ q j) (glue (a , b)) (t a) (r b)))
+        ≃⟨ Σ-ap-≃ join-ind-paths≃null-homotopy-inner ⟩
+      (Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+        ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+        ≃∎
+
+join-null-homotopies≃
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤} {B : Type 𝓥} {Q : Type 𝓦}
+  → (q : A * B → Q)
+  → null-homotopy q ≃ null-homotopy (join-null-homotopy-at q)
+join-null-homotopies≃ {A = A} {B} {Q} q
+  = null-homotopy q
+      ≃⟨ Σ-ap-≃ (join-ind-paths≃null-homotopy-at q) ⟩
+    (Σ[ l ∶ Q ]
+     Σ[ r ∶ ((b : B) → l ＝ q (ι₂ b)) ]
+       ((a : A) → (l , r) ＝ join-null-homotopy-at q a))
+      ≃⟨ Σ-assoc e⁻¹ ⟩
+    null-homotopy (join-null-homotopy-at q)
+      ≃∎
+
+join-null-homotopiesᵈ≃
+  : {𝓤 𝓥 𝓦 𝓠 : Level}
+    {X : Type 𝓤}
+    {B : Type 𝓥}
+    {Y : X → Type 𝓦}
+    {Q : X → Type 𝓠}
+  → (q : (x : X) → B * Y x → Q x)
+  → ((x : X) → null-homotopy (q x))
+  ≃ null-homotopy (λ b x → join-null-homotopy-at (q x) b)
+join-null-homotopiesᵈ≃ {X = X} q
+  = ((x : X) → null-homotopy (q x))
+      ≃⟨ Π-ap-≃ (λ x → join-null-homotopies≃ (q x)) ⟩
+    ((x : X) → null-homotopy (join-null-homotopy-at (q x)))
+      ≃⟨ null-homotopy-curry≃ (λ x b → join-null-homotopy-at (q x) b) ⟩
+    null-homotopy (λ b x → join-null-homotopy-at (q x) b)
+      ≃∎
+}
+}

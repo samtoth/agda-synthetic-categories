@@ -1,0 +1,166 @@
+\title{Pushout sum of families}
+\taxon{Module}
+\date{2026-02-19}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+\agda{
+module Core.PushoutSumsFamilies where
+
+open import Axioms.UF
+
+open import Foundations.Prelude
+
+open import Core.Arrows
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.Joins
+open import Core.PushoutEquiv
+open import Core.SpanMaps
+open import Foundations.TotalEquiv
+}
+
+\subtree[stt-00EW]{
+\taxon{Definition}
+\title{Pushout sums}
+
+\p{
+Given a type family #{B : A \to \UU} and a dependent type family over #{B},
+#{Y : (a : A) \to X(a) \to \UV}, then the \em{pushout sum family} #{\pushsum_B Y} is
+the family
+
+##{\pushsum_B Y \coloneqq ((a , x) : \Sigma_A X) \mapsto B(a) * Y(a, x).}
+}
+
+\p{
+This is precisely the straightening of the [pushout sum of arrows](stt-00EX). I.e.,
+given families as above, then their pushout sum is precisely the fibre family of the
+cogap map #{\varphi}:
+
+\quiver{
+\begin{tikzcd}
+	(\Sigma_{((a , b) : \Sigma_{(a : A)} B(a))} \Sigma_{(x : X(a))}{Y(a , x)}) && (\Sigma_{((a , b) : \Sigma_{(a : A)} B(a))} X(a))\\
+	& \bullet \\
+	(\Sigma_{(a : A)} \Sigma_{(x : X(a))}{Y(a, x)}) && (\Sigma_{(a : A)} X(a))
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow[from=1-3, to=2-2]
+	\arrow[from=3-1, to=2-2]
+	\arrow[dashed, from=2-2, to=3-3, "{\varphi}"]
+	\arrow[phantom, from=1-1, to=2-2, "\ulcorner" very near end]
+\end{tikzcd}
+}
+
+This equivalence is formalised in [[stt-00F2]].
+}
+
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+         (F@(A , B) : Fam 𝓤1 𝓤2)
+         (G@(X , Y) : DepFam 𝓤3 𝓤4 F) where
+
+  base-Σ̂ᶠ : Type (𝓤1 ⊔ 𝓤3)
+  base-Σ̂ᶠ = Σ A X
+
+  fam-Σ̂ᶠ : base-Σ̂ᶠ → Type (𝓤2 ⊔ 𝓤4)
+  fam-Σ̂ᶠ (a , x) = B a * Y a x
+
+  Σ̂ᶠ : Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
+  Σ̂ᶠ = (base-Σ̂ᶠ , fam-Σ̂ᶠ)
+
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+  (F@(A , B) : Fam 𝓤1 𝓤2)
+  (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+  (H@(U , V) : Dep²Fam 𝓤5 𝓤6 F G)
+  where
+
+  Σ̂ᵈᶠ : DepFam 𝓤5 𝓤6 (Σ̂ᶠ F G)
+  Σ̂ᵈᶠ
+    = (λ (a , x) → U a x)
+    , (λ (a , x) → V a x)
+}
+}
+
+\subtree[stt-00EV]{
+\taxon{Definition}
+\title{Pushout products}
+
+\p{
+Given type families #{B : A \to \UU} and  #{Y : X \to \UV}, then the
+\em{pushout product family} #{B \pushprod Y} is the family
+
+##{B \pushprod Y \coloneqq ((a , x) : A \times X) \mapsto B(a) * Y(x).}
+}
+
+\p{
+The pushout product is a special case of pushout sums where #{X} and #{Y} are not
+dependent over #{A}.
+}
+
+\agda{
+pushout-productᶠ
+  : {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  → Fam 𝓤1 𝓤2
+  → Fam 𝓤3 𝓤4
+  → Fam (𝓤1 ⊔ 𝓤3) (𝓤2 ⊔ 𝓤4)
+pushout-productᶠ F G = Σ̂ᶠ F (Fam→DepFam F G)
+
+infixl 41 _□ᶠ_
+_□ᶠ_ = pushout-productᶠ
+}
+}
+
+\subtree[stt-00EZ]{
+\taxon{Lemma}
+\title{#{\pushsum} preserves equivalences of dependent type families over a fixed base family}
+
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6 : Level}
+         (F@(A , B) : Fam 𝓤1 𝓤2)
+         (G@(X , Y) : DepFam 𝓤3 𝓤4 F)
+         (H@(U , V) : DepFam 𝓤5 𝓤6 F)
+         (e : G ≃ᵈᶠ⟦ F ⟧ H) where
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    : base-Σ̂ᶠ F G ≃ base-Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ-base
+    = Σ-ap-≃ (λ a → e a .fst)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ-family
+    : (fp : base-Σ̂ᶠ F G)
+    → fam-Σ̂ᶠ F G fp ≃ fam-Σ̂ᶠ F H (Σ̂ᶠ-ap-≃ᵈᶠ-base ._≃_.fwd fp)
+  Σ̂ᶠ-ap-≃ᵈᶠ-family (a , x)
+    = *-≃ id≃ (e a .snd x)
+
+  Σ̂ᶠ-ap-≃ᵈᶠ : Σ̂ᶠ F G ≃ᶠ Σ̂ᶠ F H
+  Σ̂ᶠ-ap-≃ᵈᶠ = Σ̂ᶠ-ap-≃ᵈᶠ-base , Σ̂ᶠ-ap-≃ᵈᶠ-family
+}
+}
+
+\subtree[stt-00F1]{
+\taxon{Lemma}
+\title{Changing the family in the base of #{\pushsum^\rm{f}}}
+
+\agda{
+module _ {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 : Level}
+         {A : Type 𝓤1} {B : A → Type 𝓤2} {C : A → Type 𝓤3}
+         (G : DepFam 𝓤4 𝓤5 (A , B)) (e : (a : A) → B a ≃ C a) where
+
+  Σ̂ᶠ-ap-base-fam-base
+    : base-Σ̂ᶠ (A , B) G ≃ base-Σ̂ᶠ (A , C) G
+  Σ̂ᶠ-ap-base-fam-base = id≃
+
+  Σ̂ᶠ-ap-base-fam-family
+    : (fp : base-Σ̂ᶠ (A , B) G)
+    → fam-Σ̂ᶠ (A , B) G fp
+    ≃ fam-Σ̂ᶠ (A , C) G (Σ̂ᶠ-ap-base-fam-base ._≃_.fwd fp)
+  Σ̂ᶠ-ap-base-fam-family (a , x) = *-≃ (e a) id≃
+
+  Σ̂ᶠ-ap-base-fam : Σ̂ᶠ (A , B) G ≃ᶠ Σ̂ᶠ (A , C) G
+  Σ̂ᶠ-ap-base-fam = Σ̂ᶠ-ap-base-fam-base , Σ̂ᶠ-ap-base-fam-family
+}
+}

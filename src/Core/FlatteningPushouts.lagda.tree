@@ -4,19 +4,17 @@
 \author{samueltoth}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Core.FlatteningPushouts where
 
 open import Foundations.Prelude
-open import ufAxioms
+open import Axioms.UF
 open import Core.CanonicalPushouts
-open import Core.Arrow
+open import Core.Arrows
 open import Core.ArrowEquiv
 open import Ergonomics.Representation
 open import Ergonomics.Marker
 }
-%```
 
 \subtree[stt-008D]{
 \title{Flattening lemma for pushouts}
@@ -33,7 +31,7 @@ over the pushout of #{S}, we can define the total span #{\Sigma_{S}P}.
 We first note that for some arbitrary type #{Q}, dependent cones over
 #{S} at #{p \mapsto P(p) \to Q} are equivalent to cones over
 #{\Sigma_{S} P} at #{Q} - this is analogous to [currying
-functions](Foundations.PiProperties).  We then construct the following
+functions](Foundations.Currying).  We then construct the following
 square:
 }
 
@@ -53,35 +51,38 @@ square:
 map are equivalences, then so is the cocone map on the right.}
 }
 
-%```agda
 \agda{
 module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
          (f : A → B) (g : A → C) where
-  total-span : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
-               → Span _ _ _
+  total-span
+    : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+      → Span _ _ _
   total-span P .Span.Centre = Σ A (P ∘ ι₂ ∘ g)
   total-span P .Span.Left = Σ B (P ∘ ι₁)
   total-span P .Span.left (a , b) = (f a , tr P (sym (glue a)) b)
   total-span P .Span.Right = Σ C (P ∘ ι₂)
   total-span P .Span.right = total-map-fst g
 
-  total-cocone : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
-                 → Cocone (total-span P) (Σ (Pushout f g) P)
+  total-cocone
+    : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+      → Cocone (total-span P) (Σ (Pushout f g) P)
   total-cocone P .Cocone.p = total-map-fst ι₁
   total-cocone P .Cocone.q = total-map-fst ι₂
   total-cocone P .Cocone.filler (a , b)
-    = Σ-path→ ( glue a , tr∙tr-sym' (glue a) b)
+    = Σ-path→ ( glue a , tr∘tr-sym' (glue a) b)
 
-  total-is-pushout : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
-                     → is-pushoutω (total-span P) (total-cocone P)
-  total-is-pushout {𝓜} P {𝓠} {Q} = eqv where
+  total-has-up-pushout
+    : ∀ {𝓜} (P : Pushout f g → Type 𝓜)
+      → up-pushout (total-span P) (total-cocone P)
+  total-has-up-pushout {𝓜} P {𝓠} {Q} = eqv where
     module S' = Span (total-span P)
 
     Q' : Pushout f g → Type (𝓜 ⊔ 𝓠)
     Q' x = P x → Q
 
-    lem2 : ∀ {a b} (p : a ＝ b) {x} {f : P a → Q}
-           → (tr Q' p f) x ＝ f (tr P (sym p) x)
+    lem2
+      : ∀ {a b} (p : a ＝ b) {x} {f : P a → Q}
+        → (tr Q' p f) x ＝ f (tr P (sym p) x)
     lem2 refl = refl
 
     curry-cocone
@@ -96,12 +97,12 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
     H .Arrow-map.comm h
       = ap (mk-coconeᵈ (λ a b → h (ι₁ a , b)) (λ a b → h (ι₂ a , b)))
            (funext→ λ a → J {a = ι₁ (f a)} (λ z G →
-                 funext→ (λ b → lem2 G ∙ ap h (Σ-path→ (G , tr∙tr-sym' G b)))
-               ＝ apᵈ (curry h) G)
+                 funext→ (λ b → lem2 G ∙ ap h (Σ-path→ (G , tr∘tr-sym' G b)))
+               ＝ apᶠ (curry h) G)
            funext-refl
            {ι₂ (g a)} (glue a))
 
-    curry-cocone-is-equiv : quasi-iso curry-cocone
+    curry-cocone-is-equiv : quasi-inv curry-cocone
     curry-cocone-is-equiv .fst (mk-coconeᵈ p q filler)
       = mk-cocone (uncurry p) (uncurry q)
           λ where (a , b) → sym (lem2 (glue a)) ∙ happly (filler a) b
@@ -113,18 +114,17 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
       ∙ sym (∙-refll _)
     curry-cocone-is-equiv .snd .snd (mk-coconeᵈ p q filler)
       = ap (mk-coconeᵈ p q) (funext→ λ
-         a →   ap funext→ (funext→ (λ b → sym∙ (lem2 (glue a))
-                                            (happly (filler a) b)))
+         a → ap funext→ (funext→ (λ b → sym∙ (lem2 (glue a))
+                                             (happly (filler a) b)))
              ∙ _≃_.η funext≃ (filler a))
 
     arr-eq : is-Arrow-equiv H
     arr-eq .fst = curry-is-equiv
-    arr-eq .snd = is-equiv←qiso curry-cocone-is-equiv
+    arr-eq .snd = is-equiv←qinv curry-cocone-is-equiv
 
     eqv : is-equiv (cocone-map _ (total-cocone P))
-    eqv = is-equiv←Arrow-equiv⁻¹ {F = H} arr-eq Pushout-is-pushoutωᵈ
+    eqv = is-equiv←Arrow-equiv⁻¹ {F = H} arr-eq Pushout-has-upᵈ-pushout
 }
-%```
 }
 
 \subtree[stt-008S]{
@@ -134,7 +134,6 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 \p{As a consequence of the [flattening lemma](stt-008D), we can give a
 nice characterisation of fibres of [cogap maps](stt-004G). }
 
-%```agda
 \agda{
 module _ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
                 (C : Cocone S X) where
@@ -149,8 +148,7 @@ module _ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
               (total-span _ _ (Fibre-family x) .Span.right)
   cogap-fibre x = mk≃ _
     (is-equiv⁻¹
-      (cogap-is-equiv←is-pushout _
-        (total-is-pushout _ _ (Fibre-family x))))
+      (is-pushout←up-pushout _
+        (total-has-up-pushout _ _ (Fibre-family x))))
 }
-%```
 }

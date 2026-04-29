@@ -1,0 +1,214 @@
+\date{2025-02-26}
+\title{Being an equivalence is a proposition}
+\taxon{Module}
+\author{samueltoth}
+
+\import{stt-macros}
+
+\subtree[stt-001Y]{
+\taxon{Theorem}
+
+\p{Under the assumption of function extentionality, we have that for any map #{f : A \to B}, the type #{\textrm{isEquiv}(f)} is
+a [proposition](stt-0009).}
+}
+
+
+\agda{
+open import Foundations.FunExt
+
+module Foundations.IsEquivIsProp (FE : FunExt-global) where
+
+open import Foundations.Universes
+open import Foundations.Equivalences
+open import Foundations.QuasiEquivalences
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.Singletons
+open import Foundations.EquivSingleton
+open import Foundations.SingletonClosure
+open import Foundations.SingletonFibres
+open import Foundations.SigmaIdentity
+open import Foundations.FibrewiseEquivalences
+open import Foundations.FibreIdentity
+open import Foundations.TheoremOfChoice
+
+open import Foundations.CompositionEquiv FE
+}
+
+
+
+\subtree[stt-000Q]{
+\meta{HoTT}{4.2.9}
+\taxon{Lemma}
+
+
+
+\p{
+If #{f : A \to B} is an inverse then the types of sections of #{f} and retracts of #{f} are singletons.
+}
+
+\proof{
+
+\citet{4.2.9}{HoTT}
+
+\p{
+By function extensionality, the type of sections of #{f} is equivalent to #{\Sigma_{(g : B \to A)} fg = \id}, but this is
+just the fibre of #{({-} \circ f)} at #{\id}. This type is contractible because [[Foundations.SingletonFibres]].
+}
+
+\agda{
+retractions-is-singleton←qinv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → quasi-inv f → is-singleton (retraction f)
+retractions-is-singleton←qinv {f = f} fqe
+  = is-single←equiv-to-single {A = fibre (_∘ f) id}
+                              (Σ-ap-≃ (λ h → WithFunExt.funext≃ FE))
+                              (has-singleton-fibres←is-equiv
+                                (is-equiv←qinv (precomp-qinv fqe)) id)
+
+section-is-single←qinv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → quasi-inv f → is-singleton (section f)
+section-is-single←qinv {f = f} fqe
+  = is-single←equiv-to-single {A = fibre (f ∘_) id}
+                              (Σ-ap-≃ λ h → WithFunExt.funext≃ FE)
+                              (has-singleton-fibres←is-equiv
+                                (is-equiv←qinv (postcomp-qinv fqe)) id)
+}
+}
+}
+
+
+
+\subtree[stt-0020]{
+\taxon{Definition}
+
+
+\p{Following the proof given in \citet{4.2}{HoTT}, we split the type #{\textrm{is-equiv}(f)} into a section and the
+data witnissing the section map as a retraction together with the coherence. We call this latter type a section-coherence for a
+section #{s}.}
+
+\agda{
+section-coherence
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → section f → Type (𝓤 ⊔ 𝓥)
+section-coherence f (g , ε) = Σ (g ∘ f ~ id) λ η → f ◂ η ~ ε ▸ f
+}
+}
+
+\subtree[stt-0022]{
+
+\taxon{Lemma}
+
+\p{We can show that given an equivalence #{f}, and a section #{s} of f, the type of section coherences of s is a singleton.}
+
+
+\proof{
+\agda{
+Π-ap-≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦}
+    → (∀ a → B a ≃ B' a) → Π A B ≃ Π A B'
+Π-ap-≃ {A = A} {B} {B'} beq = equiv←qequiv lem where
+  module beq a = _≃_ (beq a)
+
+  lem : ((a : A) → B a) ≊ ((a : A) → B' a)
+  lem ._≊_.fwd x a = beq.fwd a (x a)
+  lem ._≊_.fwd-qinv .fst x a = beq.bwd a (x a)
+  lem ._≊_.fwd-qinv .snd .fst x
+    = WithFunExtω.funext→ FE (λ a → beq.retraction-fwd a .snd (x a))
+  lem ._≊_.fwd-qinv .snd .snd f
+    = WithFunExtω.funext→ FE (λ a → beq.section-fwd a .snd (f a))
+
+
+
+section-coherence-path
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} (sec@(g , ε) : section f)
+    → (section-coherence f sec)
+    ≃ (∀ (x : A) → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))
+section-coherence-path {f = f} (g , ε)
+  = Σ (g ∘ f ~ id) (λ η → f ◂ η ~ ε ▸ f)                        ≃⟨ Σ-Π-swap≃ _ _ e⁻¹ ⟩
+    (∀ a → Σ ((g ∘ f) a ＝ a) (λ η → ap f η ＝ ε (f a)))         ≃⟨ Π-ap-≃ (λ _ → Σ-ap-≃ lem) ⟩
+    (∀ a → Σ ((g ∘ f) a ＝ a) (λ η → ap f η ∙ refl ＝ ε (f a)))  ≃⟨ Π-ap-≃ (λ a → fibre-path≃ e⁻¹) ⟩
+    (∀ x → Id (fibre f (f x)) (g (f x) , ε (f x)) (x , refl))   ≃∎ where
+   lem
+     : ∀ {a} (p : g (f a) ＝ a)
+       → (ap f p ＝ ε (f a)) ≃ (ap f p ∙ refl ＝ ε (f a))
+   lem p = equiv←Id (ap (_＝ ε (f _)) (sym (∙-reflr _)))
+
+section-coherence-singleton
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} → is-equiv f
+    → ∀ (s : section f) → is-singleton (section-coherence f s)
+section-coherence-singleton {f = f} feq s
+  = is-single←equiv-to-single
+      (section-coherence-path s e⁻¹)
+      (Π-is-single FE λ x → ＝-is-single (has-singleton-fibres←is-equiv feq (f x)) _ _)
+}
+}
+}
+
+
+\subtree[stt-001Z]{
+
+\taxon{Proof}
+\title{Proof of theorem [\lbrack{}stt-001Y\rbrack{}](stt-001Y)}
+
+\agda{
+is-equiv-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → {f : A → B} → is-prop (is-equiv f)
+is-equiv-is-prop {f = f} = is-prop←is-single-if-inhabited
+  (λ eq → is-single←equiv-to-single ((equiv←qequiv lem) e⁻¹)
+           (Σ-is-single (section-is-single←qinv (is-equiv.qinv eq))
+                        (section-coherence-singleton eq))) where
+  lem : is-equiv f ≊ Σ (section f) (section-coherence f)
+  lem ._≊_.fwd (mk-eqv (g , η , ε) coh) = (g , ε) , (η , coh)
+  lem ._≊_.fwd-qinv .fst ((g , ε) , η , coh) = mk-eqv (g , η , ε) coh
+  lem ._≊_.fwd-qinv .snd .fst a = refl
+  lem ._≊_.fwd-qinv .snd .snd a = refl
+}
+}
+
+\subtree[stt-0021]{
+\title{Characterising the path of equivalences}
+\taxon{Corollary}
+
+\p{As an easy corollary we can characterise the equality type of an equivalence
+as homtopies of the underlying functions}
+
+
+\agda{
+≃-path : ∀ {𝓤 𝓥} → {A : Type 𝓤} {B : Type 𝓥} → (e1 e2 : A ≃ B) → Type (𝓤 ⊔ 𝓥)
+≃-path e1 e2 = fwd e1 ＝ fwd e2 where open _≃_
+
+≃-path→
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → {e1 e2 : A ≃ B}
+    → ≃-path e1 e2 → e1 ＝ e2
+≃-path→ {e1 = e1@(mk≃ f eq) } {e2@(mk≃ f' eq')} refl
+  = help (is-equiv-is-prop eq eq') where
+  help : (q : eq ＝ eq') → e1 ＝ e2
+  help refl = refl
+
+
+
+∙≃-sym
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → (e : A ≃ B) → (e' : B ≃ C)
+    → e ∙≃ e' ∙≃ e' e⁻¹ ＝ e
+∙≃-sym e e' = ≃-path→ (WithFunExt-global.funext→ FE (e'.η ▸ e.fwd))
+  where
+  module e = _≃_ e
+  module e' = _≃_ e'
+
+∙≃-sym'
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → (e : A ≃ B) → (e' : C ≃ B)
+    → (e ∙≃ e' e⁻¹) ∙≃ e' ＝ e
+∙≃-sym' e e' = ≃-path→ (WithFunExt-global.funext→ FE (e'.ε ▸ e.fwd))
+  where
+  module e = _≃_ e
+  module e' = _≃_ e'
+}
+}

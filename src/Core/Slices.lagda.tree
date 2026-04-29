@@ -1,0 +1,155 @@
+\date{2025-04-20}
+\title{Slices of types}
+\taxon{Module}
+
+\import{stt-macros}
+
+\p{
+ If we fix a type A, we can consider the slice ∞-category #{\mathcal{S}/A}
+}
+
+\agda{
+module Core.Slices where
+
+open import Foundations.Prelude
+open import Axioms.UF
+open import Ergonomics.Extensionality
+}
+
+\agda{
+Slice-map
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : Type 𝓥} (p : B → A) {𝓦}
+      {C : Type 𝓦} (q : C → A)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Slice-map {B = B} p {C = C} q = Σ[ f ∶ (B → C) ] (q ∘ f ~ p)
+
+Slice-id
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : Type 𝓥}
+      (p : B → A)
+    → Slice-map p p
+Slice-id p = id , ~refl
+
+Slice-fibre
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : Type 𝓥} {p : B → A}
+      {𝓦} {C : Type 𝓦} {q : C → A}
+    → Slice-map p q
+    → (∀ a → fibre p a → fibre q a)
+Slice-fibre (f , comm) a (b , fib) = (f b , comm b ∙ fib)
+
+Slice-family
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : A → Type 𝓥}
+      {𝓦} {C : A → Type 𝓦}
+    → Slice-map (fst {B = B}) (fst {B = C})
+    → (∀ a → B a → C a)
+Slice-family {C = C} (f , comm) a b
+  = tr C (comm (a , b)) (f (a , b) .snd)
+
+Slice-fibre-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {B : Type 𝓥} {p : B → A}
+      {𝓦} {C : Type 𝓦} {q : C → A}
+    → is-equiv (Slice-fibre {p = p} {q = q})
+Slice-fibre-is-equiv {p = p} {q = q} = is-equiv←qinv (λ where
+  .fst fmap → (λ b → fmap (p b) (b , refl) .fst)
+              , λ b → fmap (p b) (b , refl) .snd
+  .snd .fst f
+    → ext! (~refl
+           , IdS←Id
+             ( IdSJ-refl ⦃ IdS-Π ⦄ ((λ f₁ → q ∘ f₁ ~ p) ∘ fst)
+             ∙ ext! (λ a → ∙-reflr _)))
+  .snd .snd f → ext! (λ where
+    .(p b) b refl
+      → refl
+      , IdS←Id
+        ( IdSJ-refl ⦃ IdS-default ⦄ ((λ a₁ → q a₁ ＝ p b) ∘ fst)
+      ∙ ∙-reflr _)))
+}
+
+\subtree[stt-003D]{
+\taxon{Theorem}
+\title{Equivalence from fibrewise equivalence}
+
+\p{Given a pair of maps #{p : A \to C}, #{q : B \to C}, and a map #{(f , h)} from #{p} to #{q} in the slice
+category, then #{f} is an equivalence iff the induced map on fibres is an equivalence.}
+
+\remark{\p{In \lbrack{}[[Foundations.FibrewiseEquivalences]]\rbrack{}, we showed the straightened
+version of this theorem, with type families over a base.}}
+
+\p{In fact, this is just a corollary of the theorem [[stt-0030]], by considering #{\textrm{fib}_{p}}
+as a family over #{C}. The situation can be summarised as follows:}
+
+\quiver{
+\begin{tikzcd}
+	& {\Sigma_{(c : C)}\fibre{p}{c}} && {\Sigma_{(c : C)}\fibre{q}{c}} \\
+	A &&&& B \\
+	\\
+	&& C
+	\arrow[from=1-2, to=1-4]
+	\arrow["\sim", from=1-4, to=2-5]
+	\arrow["\sim", from=2-1, to=1-2]
+	\arrow["f", from=2-1, to=2-5]
+	\arrow["p"', from=2-1, to=4-3]
+	\arrow["q", from=2-5, to=4-3]
+\end{tikzcd}
+}
+
+
+\agda{
+is-equiv←on-fibres
+  : ∀ {𝓤} {C : Type 𝓤}
+      {𝓥} {A : Type 𝓥} {p : A → C}
+      {𝓦} {B : Type 𝓦} {q : B → C}
+    → (F@(f , h) : Slice-map p q)
+    → (is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F))
+    → is-equiv f
+is-equiv←on-fibres {p = p} {q = q} (f , h) fw
+  = 3-for-2' ((total≃total-fibre p) ._≃_.fwd-is-equiv)
+             (is-equiv-∘ ((total≃total-fibre q) ._≃_.fwd-is-equiv)
+                          (is-total-equiv←is-fibrewise-equiv fw))
+
+fibre-equiv←is-equiv
+  : ∀ {𝓤} {C : Type 𝓤}
+      {𝓥} {A : Type 𝓥} {p : A → C}
+      {𝓦} {B : Type 𝓦} {q : B → C}
+    → (F@(f , h) : Slice-map p q)
+    → is-equiv f
+    → (is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F))
+fibre-equiv←is-equiv {p = p} {q = q} F@(f , h) feq
+  = is-fibrewise-equiv←is-total-equiv
+     (3-for-2 {f = total←total-fibre q}
+       (total≃total-fibre q ._≃_.fwd-is-equiv)
+       (is-equiv-∘ feq ((total≃total-fibre p) ._≃_.fwd-is-equiv)))
+}
+}
+
+\subtree[stt-008J]{
+\date{2025-08-02}
+\title{Slice maps into embeddings}
+\taxon{Theorem}
+
+\p{Let #{f : A \to B} and #{g} be an [embedding](stt-008I) #{A'
+\hookrightarrow B}. The type of slice maps #{f \to g} is a
+proposition.}
+
+\proof{
+\p{Maps in the slice category are equivalent to fibrewise maps on the
+fibres, but since #{g} is an embedding, it is a [propositional
+map](Foundations.PropMapEmbedding).}
+}
+
+\agda{
+slice-embedding-is-prop
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : A → C} {g : B → C} → is-embedding g
+    → is-prop (Slice-map f g)
+slice-embedding-is-prop {f = f} {g = g} emb
+  = is-prop←equiv-to-prop
+       (mk≃ _ (is-equiv⁻¹ (Slice-fibre-is-equiv {p = f} {q = g})))
+       (Π-is-prop (λ
+         a → Π-is-prop λ _ → is-prop-map←is-embedding emb a))
+}
+}

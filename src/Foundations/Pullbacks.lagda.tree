@@ -5,33 +5,32 @@
 
 \import{stt-macros}
 
-% ```agda
 \agda{
 module Foundations.Pullbacks where
 
 open import Foundations.Universes
-open import Foundations.Span
+open import Foundations.Spans
 open import Foundations.Functions
 open import Foundations.Homotopy
-open import Foundations.CoherentIsomorphism
-open import Foundations.QuasiIsomorphism
+open import Foundations.Equivalences
+open import Foundations.QuasiEquivalences
 open import Foundations.3for2
 open import Foundations.EquivHomotopy
 open import Foundations.Sigma
-open import Foundations.FibrewiseEquiv
+open import Foundations.FibrewiseEquivalences
 open import Foundations.SigmaProperties
 open import Foundations.Identity
 open import Foundations.Unit
 }
-% ```
 
 \subtree[stt-003I]{
 \taxon{Defintition}
-\title{Is-pullback}
+\title{Universal property of pullbacks}
 
 \p{
   Given a cospan of types #{B \xrightarrow{f} A \xleftarrow{g} C}, we say that a cone
-  over the cospan is a pushout when it is the \em{universal} such cone. Spelling this
+  over the cospan satisfies the universal property of its pullback when it is the
+  \em{universal} such cone. Spelling this
   out as a diagram:
 }
 
@@ -55,53 +54,56 @@ open import Foundations.Unit
   \p{Given a particular span #{S}, #{S}-cone with centre #{D} and any other type #{Q},
      we can define a map #{(Q \to D) \to \textrm{Cone}_S(Q)} by post-composition.}
 
-% ```agda
 \agda{
-cone-map : ∀ {𝓤 𝓥 𝓦 𝓛 𝓠} (S : Cospan 𝓤 𝓥 𝓦)
-           → {D : Type 𝓛} → (C : Cone S D)
-           → {Q : Type 𝓠} → (Q → D)
-           → Cone S Q
+cone-map
+  : ∀ {𝓤 𝓥 𝓦 𝓛 𝓠} (S : Cospan 𝓤 𝓥 𝓦)
+    → {D : Type 𝓛} → (C : Cone S D)
+    → {Q : Type 𝓠} → (Q → D)
+    → Cone S Q
 cone-map S C f = mk-cone (i ∘ f) (j ∘ f) (filler ▸ f) where open Cone C
 
 module _ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) where
   open Cospan S
 
-  cone-repr≃ : {𝓛 : Level} {D : Type 𝓛}
+  cone-repr≃
+    : {𝓛 : Level} {D : Type 𝓛}
     → Cone S D
     ≃ Σ[ i ∶ (D → Left) ] Σ[ j ∶ (D → Right) ] (left ∘ i ~ right ∘ j)
   cone-repr≃ = mk≃
     (λ (mk-cone i j filler) → i , j , filler)
     (mk-eqv ((λ (i , j , filler) → mk-cone i j filler) , ~refl , ~refl) ~refl)
 }
-% ```
 
-% ```agda
+\p{We use the abbreviation \code{up} for "universal property".}
+
 \agda{
-is-pullback : ∀ {𝓤 𝓥 𝓦 𝓜} (S : Cospan 𝓤 𝓥 𝓦)
-           → {D : Type 𝓜} → (C : Cone S D)
-           → (𝓠 : Level)
-           →  Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓠) ⊔ 𝓜)
-is-pullback S C 𝓠 = ∀ {Q : Type 𝓠} → is-equiv (cone-map S C {Q})
+up-pullback'
+  : ∀ {𝓤 𝓥 𝓦 𝓜} (S : Cospan 𝓤 𝓥 𝓦)
+    → {D : Type 𝓜} → (C : Cone S D)
+    → (𝓠 : Level)
+    → Type (lsuc (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓠) ⊔ 𝓜)
+up-pullback' S C 𝓠 = ∀ {Q : Type 𝓠} → is-equiv (cone-map S C {Q})
 
-record is-pullbackω {𝓤 𝓥 𝓦 𝓛} (S : Cospan 𝓤 𝓥 𝓦)
+record up-pullback {𝓤 𝓥 𝓦 𝓛} (S : Cospan 𝓤 𝓥 𝓦)
                     {D : Type 𝓛} (C : Cone S D)
                : Typeω where
-  constructor mk-is-pullbackω
+  constructor mk-up-pullback
   field
-    has-is-pb :  ∀ {𝓠} (Q : Type 𝓠) → is-equiv (cone-map S C {Q})
+    cone-map-is-equiv :  ∀ {𝓠} (Q : Type 𝓠) → is-equiv (cone-map S C {Q})
 
   rec : ∀ {𝓠} {Q : Type 𝓠} → Cone S Q → (Q → D)
-  rec {Q = Q} = is-equiv.bwd (has-is-pb Q)
+  rec {Q = Q} = is-equiv.bwd (cone-map-is-equiv Q)
 
-  rec-β₁ : ∀ {𝓠} {Q : Type 𝓠} {C' : Cone S Q}
-           → C .Cone.i ∘ rec {𝓠}{Q} C' ＝ C' .Cone.i
-  rec-β₁ {Q = Q} {C'} = ap Cone.i (is-equiv.ε (has-is-pb Q) C')
+  rec-β₁
+    : ∀ {𝓠} {Q : Type 𝓠} {C' : Cone S Q}
+      → C .Cone.i ∘ rec {𝓠} {Q} C' ＝ C' .Cone.i
+  rec-β₁ {Q = Q} {C'} = ap Cone.i (is-equiv.ε (cone-map-is-equiv Q) C')
 
-  rec-β₂ : ∀ {𝓠} {Q : Type 𝓠} {C' : Cone S Q}
-           → C .Cone.j ∘ rec {𝓠}{Q} C' ＝ C' .Cone.j
-  rec-β₂ {Q = Q} {C'} = ap Cone.j (is-equiv.ε (has-is-pb Q) C')
+  rec-β₂
+    : ∀ {𝓠} {Q : Type 𝓠} {C' : Cone S Q}
+      → C .Cone.j ∘ rec {𝓠} {Q} C' ＝ C' .Cone.j
+  rec-β₂ {Q = Q} {C'} = ap Cone.j (is-equiv.ε (cone-map-is-equiv Q) C')
 }
-% ```
 }
 
 \subtree[stt-00GN]{
@@ -118,7 +120,6 @@ is an equivalence, then the cone map induced by #{u}
 is an equivalence.
 }
 
-%```agda
 \agda{
 module _
   {𝓤 𝓥 𝓦 𝓛 𝓜 : Level}
@@ -134,10 +135,10 @@ module _
     → is-equiv (λ (c : Cone S Y) → cone-map S c u)
   cone-map-is-equiv u leq req heq
     = is-equiv-∘
-        (is-equiv⁻¹ (_≃_.has-is-eqv (cone-repr≃ S)))
+        (is-equiv⁻¹ (_≃_.fwd-is-equiv (cone-repr≃ S)))
         (is-equiv-∘
-          (_≃_.has-is-eqv repr-precomp-equiv)
-          (_≃_.has-is-eqv (cone-repr≃ S))) where
+          (_≃_.fwd-is-equiv repr-precomp-equiv)
+          (_≃_.fwd-is-equiv (cone-repr≃ S))) where
     open Cospan S
 
     repr-precomp-equiv
@@ -147,7 +148,7 @@ module _
       = Σ[ i ∶ (Y → Left) ] Σ[ j ∶ (Y → Right) ] (left ∘ i ~ right ∘ j)
           ≃⟨ Σ-ap-≃
               ( λ i
-                →  Σ-ap-≃ (λ j → mk≃ (_▸ u) (heq i j))
+                → Σ-ap-≃ (λ j → mk≃ (_▸ u) (heq i j))
                 ∙≃ Σ-ap-≃-fst (mk≃ (precomp Right u) req)) ⟩
         Σ[ i ∶ (Y → Left) ] Σ[ j ∶ (X → Right) ] (left ∘ i ∘ u ~ right ∘ j)
           ≃⟨ Σ-ap-≃-fst (mk≃ (precomp Left u) leq) ⟩
@@ -157,15 +158,14 @@ module _
   precomp-is-equiv←cone-precomp-is-equiv
     : (u : X → Y)
       (C : Cone S X)
-    → is-pullbackω S C
+    → up-pullback S C
     → is-equiv (λ (C' : Cone S Y) → cone-map S C' u)
     → is-equiv (precomp X u)
   precomp-is-equiv←cone-precomp-is-equiv u C pb ceq
     = 3-for-2
-        (pb .is-pullbackω.has-is-pb X)
-        (is-equiv-∘ ceq (pb .is-pullbackω.has-is-pb Y))
+        (pb .up-pullback.cone-map-is-equiv X)
+        (is-equiv-∘ ceq (pb .up-pullback.cone-map-is-equiv Y))
 }
-%```
 }
 
 
@@ -175,15 +175,15 @@ module _
 \title{Identity types are pullbacks}
 \taxon{Example}
 
-%```agda
 \agda{
-Identity-pullback : ∀ {𝓤} {A : Type 𝓤} {x y : A}
-                    → is-pullbackω (mk-cospan _ (point x) (point y))
-                                   (mk-cone ! ! id)
-Identity-pullback = mk-is-pullbackω λ Q → is-equiv←qiso λ where
+Identity-pullback
+  : ∀ {𝓤} {A : Type 𝓤} {x y : A}
+    → up-pullback
+        (mk-cospan _ (point x) (point y))
+        (mk-cone ! ! id)
+Identity-pullback = mk-up-pullback λ Q → is-equiv←qinv λ where
   .fst (mk-cone i j filler) q → filler q
   .snd .fst a → refl
   .snd .snd (mk-cone i j filler) → refl
 }
-%```
 }

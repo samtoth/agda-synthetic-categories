@@ -1,0 +1,142 @@
+\title{Univalent Foundations}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\taxon{Module}
+
+\p{
+In this module we lay out the univalent foundations of the library. This module is
+intended to be imported and used by any formalisation made
+"\em{in univalent foundations}".
+}
+
+\import{stt-macros}
+
+\agda{
+module Axioms.UF where
+
+open import Foundations.Prelude
+open import Foundations.FunExt
+open import Foundations.Retracts
+open import Foundations.IdempotentMaps
+
+postulate
+  global-funext : FunExt-global
+
+
+open WithFunExt-global global-funext public
+
+import Foundations.CanonicalPullbacks
+open Foundations.CanonicalPullbacks.WithFunExt global-funext public
+open Foundations.CanonicalPullbacks.WithFunExt-gap global-funext public
+import Foundations.PathSplit
+open Foundations.PathSplit.PSWithFunExt global-funext public
+open import Foundations.IsEquivIsProp global-funext public
+open import Foundations.BiinvertibleMaps public
+open Foundations.BiinvertibleMaps.WithFunExt global-funext public
+open import Foundations.EmptyUP global-funext public
+open import Foundations.SingletonClosure public hiding (Π-is-single)
+open import Foundations.PropClosure public hiding (Π-is-prop)
+open import Foundations.SingletonProp global-funext public
+open import Foundations.CompositionEquiv global-funext public
+open import Foundations.CompositionFibres global-funext public
+open import Foundations.NullHomotopy global-funext public
+open Foundations.IdempotentMaps.IdemWithFunExt global-funext public
+open Foundations.IdempotentMaps.QIdemWithFunExt global-funext public
+open Foundations.IdempotentMaps.QIdemWithFunExt2 global-funext public
+open Foundations.IdempotentMaps.CohIdemWithFunExt global-funext public
+open RetractWithFunExt global-funext public
+import Foundations.HomotopyEquiv
+
+module HE {𝓤} = Foundations.HomotopyEquiv {𝓤} global-funext
+open HE public
+
+weak-funext
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → (∀ a → is-singleton (B a))
+    → is-singleton ((a : A) → B a)
+weak-funext sb = mk-singl (centre ∘ sb) (λ x → funext→ (λ a → sb a .central (x a)))
+
+Π-is-single = weak-funext
+
+Π-implicit≃
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+  → Π A B ≃ ({a : A} → B a)
+Π-implicit≃ ._≃_.fwd f {a} = f a
+Π-implicit≃ ._≃_.fwd-is-equiv .is-equiv.qinv .fst f a = f {a}
+Π-implicit≃ ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst = ~refl
+Π-implicit≃ ._≃_.fwd-is-equiv .is-equiv.qinv .snd .snd = ~refl
+Π-implicit≃ ._≃_.fwd-is-equiv .is-equiv.coherent = ~refl
+
+Πᵢ-is-single
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+  → ({a : A} → is-singleton (B a)) → is-singleton ({a : A} → B a)
+Πᵢ-is-single {A = A} {B} sa
+  = is-single←equiv-to-single Π-implicit≃ (Π-is-single (λ _ → sa))
+
+Π-is-prop
+  : ∀ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : A → Type 𝓥}
+    → ((a : A) → is-prop (B a))
+    → is-prop (Π A B)
+Π-is-prop = Foundations.PropClosure.Π-is-prop global-funext
+
+Πᵢ-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → (∀ {a} → is-prop (B a))
+    → is-prop (∀ {a} → B a)
+Πᵢ-is-prop ap = is-prop←is-single-if-inhabited
+                  (λ f → Πᵢ-is-single
+                   (λ {a} → mk-singl (f {a}) (ap f)))
+
+funext-redex
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : (a : A) → B a } → {p : f ~ g}
+    → happly (funext→ p) ＝ p
+funext-redex {p = p} = is-equiv.ε global-funext p
+
+open import Foundations.Univalence
+
+postulate
+  UA : Univalence
+
+
+open WithGlobalUnivalence UA public
+open Foundations.IdempotentMaps.RetractsQIdempotentsWithFunExtUnivalence global-funext UA public
+open Foundations.IdempotentMaps.RetractsIdemWithFunExtUnivalence global-funext UA public
+
+import Foundations.Straightening
+
+module Straightening {𝓤} = Foundations.Straightening.WithUA {𝓤} UA global-funext
+open Straightening public
+
+open import Foundations.PropExt public using
+  ( PropExt
+  ; logical←equiv
+  ; equiv←logical
+  ; is-equiv←inverse
+  ; logical←Id
+  ; weak-PropExt
+  ; weak-PropExt←FunExt)
+import Foundations.PropExt as PE
+
+propExt : ∀ {𝓤} → PropExt 𝓤
+propExt = PE.PropExt←Univalence global-funext UA
+
+weakPropExt : ∀ {𝓤} → weak-PropExt 𝓤 𝓤
+weakPropExt = weak-PropExt←FunExt global-funext
+
+open import Foundations.Pushouts public
+import Foundations.Spans as Sp
+
+Cocone-path→
+  : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦} {𝓛} {X : Type 𝓛}
+    → (c c' : Cocone S X)
+    → (p : c .Cocone.p ＝ c' .Cocone.p)
+    → (q : c .Cocone.q ＝ c' .Cocone.q)
+    → (c .Cocone.filler ~∙ happly q ▸ S .Span.right
+         ~ happly p ▸ S .Span.left ~∙ c' .Cocone.filler)
+    → c ＝ c'
+Cocone-path→ = Sp.Cocone-path→ global-funext
+
+open import Foundations.DependentCocones
+open import Axioms.CanonicalPushouts public
+}

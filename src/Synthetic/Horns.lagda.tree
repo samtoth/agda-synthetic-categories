@@ -1,0 +1,349 @@
+\date{2025-11-17}
+\title{Simplicial horns}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Horns
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Modalities.Subuniverses
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Core.Joins
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.PushoutSums
+open import Foundations.Pushouts
+open import Core.FunctorialityPushouts
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.SpanMaps
+
+open import Ergonomics.Extensionality
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+
+
+\subtree[stt-00AD]{
+\taxon{Definition}
+\title{The inner 2 horn}
+
+\p{We define the type #{\Lambda^2_1} by glueing a pair of intervals end to
+  end. This type comes with a canonical map into the 2-simplex.}
+
+\quiver{
+\begin{tikzcd}[cramped, sep=small]
+	1 && {\Delta^1} \\
+	\\
+	{\Delta^1} && {\Lambda^2_1} \\
+	&&& {\Delta^2}
+	\arrow["1", from=1-1, to=1-3]
+	\arrow["0"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[curve={height=-6pt}, from=1-3, to=4-4]
+	\arrow[from=3-1, to=3-3]
+	\arrow[curve={height=6pt}, from=3-1, to=4-4]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+	\arrow[dashed, from=3-3, to=4-4]
+\end{tikzcd}
+}
+
+
+\agda{
+open Subtype
+
+Λ[2,1] : Type 𝓘
+Λ[2,1] = Pushout (point i1) (point i0)
+
+Λ[2,1]-Δ²-cocone : Cocone (mk-span 𝟙 (point i1) (point i0)) Δ²
+Λ[2,1]-Δ²-cocone = mk-cocone (λ i → (i , i0)) (λ i → i1 , i)
+                          λ _ → Δ²-ext (refl , refl)
+
+Λ[2,1]-incl : Λ[2,1] → Δ²
+Λ[2,1]-incl = cogap Λ[2,1]-Δ²-cocone
+
+[2,1]-hom : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
+[2,1]-hom C = Σ[ f ∶ (Δ¹ → C) ] Σ[ g ∶ (Δ¹ → C)] (f i1 ＝ g i0)
+
+make-horn : ∀ {𝓤} {C : Type 𝓤} {x y z} → Hom C y z → Hom C x y → Λ[2,1] → C
+make-horn f g = pushout-rec (mk-cocone (g .Homᵈ.hom) (f .Homᵈ.hom)
+                              λ _ → g .Homᵈ.hom1 ∙ sym (f .Homᵈ.hom0))
+
+Δ²-diagonal : Δ¹ → Δ²
+Δ²-diagonal i = i , i
+
+Δ²-diagonal-is-embedding : is-embedding Δ²-diagonal
+Δ²-diagonal-is-embedding
+  = is-equiv←inverse (is-prop-separated _ _)
+                     (Δ²-is-set _ _)
+                     λ where p → ap Poly.Δ².s p
+}
+}
+
+\subtree[stt-00B8]{
+\taxon{Theorem}
+
+\p{The inclusion into the 2 simplex is an embedding and identifies #{\Lambda^2_1}
+with the subset of #{\Delta^2} where #{i = 1} or #{j = 0}.}
+
+\proof{
+We show that the fibres of the inclusion are equivalent to the join of the
+two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
+}
+
+\agda{
+Λ[2,1]Sub : Subtype Δ² 𝓘
+Λ[2,1]Sub .family (i , j) = (i0 ＝ j) * (i1 ＝ i)
+Λ[2,1]Sub .family-is-subtype (i , j)
+  = *-is-prop (is-prop-separated _ _) (is-prop-separated _ _)
+
+Λ[2,1]-as-subtype : ∀ a → fibre Λ[2,1]-incl a ≃ a ∈ Λ[2,1]Sub
+Λ[2,1]-as-subtype s =
+  fibre Λ[2,1]-incl s ≃⟨ cogap-fibre _ s ⟩
+  Pushout (total-fibre-span .left) (total-fibre-span .right)
+    ≃⟨ coe≃ (sym (ap (λ x → Pushout (left x) (right x))
+                     (ext! (span-map , span-map-is-equiv)))) ⟩
+  Pushout (intended-span .left) (intended-span .right)
+    ≃⟨⟩
+  (s ∈ Λ[2,1]Sub) ≃∎ where
+  open Span
+
+  total-fibre-span : Span 𝓘 𝓘 𝓘
+  total-fibre-span = total-span (point i1) (point i0)
+                                (Fibre-family Λ[2,1]-Δ²-cocone s)
+
+
+  intended-span : Span 𝓘 𝓘 𝓘
+  intended-span = mk-span ((i0 ＝ s .Poly.Δ².t) × (i1 ＝ s .Poly.Δ².s)) fst snd
+
+  span-map : Span-map intended-span total-fibre-span
+  span-map .Span-map.h₁ p = (s .Poly.Δ².s , Δ²-ext (refl , p))
+  span-map .Span-map.h₂ (p , q) = (tt , Δ²-ext (q , p))
+  span-map .Span-map.h₃ q = (s .Poly.Δ².t , Δ²-ext (q , refl))
+  span-map .Span-map.H (p , q) = Σ-path→ (sym q , Δ²-is-set _ _ _ _)
+  span-map .Span-map.K (p , q) = Σ-path→ (sym p , Δ²-is-set _ _ _ _)
+
+
+  opaque
+    h1-eq : quasi-inv (Span-map.h₁ span-map)
+    h1-eq .fst (x , p) = ap Poly.Δ².t p
+    h1-eq .snd .fst p = is-prop-separated i0 _ _ _
+    h1-eq .snd .snd (p , q) = Σ-path→ (ap Poly.Δ².s (sym q)
+                                      , Δ²-is-set _ _ _ _)
+    h2-eq : quasi-inv (Span-map.h₂ span-map)
+    h2-eq .fst (_ , p) = (ap Poly.Δ².t p , ap Poly.Δ².s p)
+    h2-eq .snd .fst (p , q) = ×-is-prop (is-prop-separated _ _)
+                                        (is-prop-separated _ _)
+                                        _ _
+    h2-eq .snd .snd (_ , p) = Σ-path→ (refl , Δ²-is-set _ _ _ _)
+
+    h3-eq : quasi-inv (Span-map.h₃ span-map)
+    h3-eq .fst x = ap Poly.Δ².s (snd x)
+    h3-eq .snd .fst p = is-prop-separated _ _ _ _
+    h3-eq .snd .snd (x , p) = Σ-path→ (sym (ap Poly.Δ².t p)
+                                      , Δ²-is-set _ _ _ _)
+
+  span-map-is-equiv : is-Span-equiv span-map
+  span-map-is-equiv .fst = is-equiv←qinv h1-eq
+  span-map-is-equiv .snd .fst = is-equiv←qinv h2-eq
+  span-map-is-equiv .snd .snd = is-equiv←qinv h3-eq
+
+
+Λ[2,1]-is-prop-map : is-prop-map Λ[2,1]-incl
+Λ[2,1]-is-prop-map x = is-prop←equiv-to-prop (Λ[2,1]-as-subtype x e⁻¹)
+                                             (∈-is-prop Λ[2,1]Sub x)
+
+Λ[2,1]≃Sub : Λ[2,1] ≃ Σ̃ Λ[2,1]Sub
+Λ[2,1]≃Sub
+  = Λ[2,1]                            ≃⟨ total≃total-fibre Λ[2,1]-incl e⁻¹ ⟩
+    total-fibre Λ[2,1]-incl           ≃⟨⟩
+    (Σ[ a ∶ Δ² ] fibre Λ[2,1]-incl a) ≃⟨ Σ-ap-≃ Λ[2,1]-as-subtype ⟩
+    (Σ[ a ∶ Δ² ] (a ∈ Λ[2,1]Sub))     ≃⟨⟩
+    Σ̃ Λ[2,1]Sub                       ≃∎
+
+Λ[2,1]-is-0-truncated : is-truncated 0 Λ[2,1]
+Λ[2,1]-is-0-truncated
+  = is-truncated←equiv (Λ[2,1]≃Sub e⁻¹)
+      (Σ-is-truncated Δ²-is-0-truncated
+        λ a → suc-is-truncated -1
+                (is-truncated←is-prop (∈-is-prop Λ[2,1]Sub a)))
+
+Λ[2,1]-is-set : is-set Λ[2,1]
+Λ[2,1]-is-set = is-set←is-truncated Λ[2,1]-is-0-truncated
+}
+}
+
+\subtree[stt-00C9]{
+\taxon{Lemma}
+
+\p{We include a useful alternative dependent universal property for inner horns.}
+
+\agda{
+Λ[2,1]-UP
+  : ∀ {𝓤} (B : Λ[2,1] → Type 𝓤)
+    → Π Λ[2,1] B
+    ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+        Σ[ z ∶ B (ι₂ i1)]
+         Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+Λ[2,1]-UP B = mk≃ (map2 ._≃_.fwd ∘ coconeᵈ-map span pushout {Q = B})
+              (is-equiv-∘ (_≃_.fwd-is-equiv map2) Pushout-has-upᵈ-pushout) where
+  span : Span lzero 𝓘 𝓘
+  span = mk-span _ (point i1) (point i0)
+
+  by-inserting-singleton
+    : (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+          Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+    ≃ (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+               (h i1 ＝ z))
+  by-inserting-singleton = equiv←qequiv qeqv where
+    qeqv : _ ≊ _
+    qeqv ._≊_.fwd (f , g , h) = (f , g i1 , g , h , refl)
+    qeqv ._≊_.fwd-qinv .fst (f , _ , g , h , refl) = (f , g , h)
+    qeqv ._≊_.fwd-qinv .snd .fst = ~refl
+    qeqv ._≊_.fwd-qinv .snd .snd (f , _ , g , h , refl) = refl
+
+  map2 : Coconeᵈ span pushout B
+       ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)]
+            Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+
+  map2
+    = Coconeᵈ span pushout B ≃⟨ coconeD-repr≃ ⟩
+
+      (Σ[ f ∶ ((l : Δ¹) → B (ι₁ l)) ]
+        Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+          ((a : 𝟙) → f i1 ＝[ ap B (glue a) ] g i0))
+
+                          ≃⟨ Σ-ap-≃ (λ f → Σ-ap-≃ (λ g → unit-UP≃ ∙≃ sym≃)) ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+          Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+
+                         ≃⟨ by-inserting-singleton ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
+              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+               (h i1 ＝ z))
+
+                          ≃⟨ Σ-ap-≃ (λ a → Σ-ap-≃ (λ b → Homᵈ-repr≃ e⁻¹)) ⟩
+
+      (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
+           Σ[ z ∶ B (ι₂ i1)]
+            Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z)    ≃∎
+}
+}
+
+\subtree[stt-00LH]{
+\title{#{Δ¹} is a retract of #{Δ²}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+\agda{
+Δ¹-retract-Δ² : retract Δ¹ Δ²
+Δ¹-retract-Δ² = Δ²-diagonal , Poly.Δ².t , ~refl
+}
+}
+
+\subtree[stt-00LI]{
+\title{#{Δ²} is a retract of #{Δ¹ × Δ¹}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+\agda{
+Δ²-retract-Δ¹×Δ¹ : retract Δ² (Δ¹ × Δ¹)
+Δ²-retract-Δ¹×Δ¹
+  = (λ x → (x .Poly.Δ².s , x .Poly.Δ².t))
+  , (λ { (i , j) → (i ∨ j , j) ⦃ ∨-≤-intror ≤-refl ⦄ })
+  , λ ((i , j) ⦃ p ⦄) → Δ²-ext (∨-comm ∙ ≤-max p , refl)
+
+Δ²-retract-Δ¹×Δ¹' : retract Δ² (Δ¹ × Δ¹)
+Δ²-retract-Δ¹×Δ¹'
+  = (λ x → (x .Poly.Δ².s , x .Poly.Δ².t))
+  , (λ { (i , j) → (i , i ∧ j) ⦃ ∧-≤-eliml ≤-refl ⦄ })
+  , λ ((i , j) ⦃ p ⦄) → Δ²-ext (refl , ∧-comm ∙ p)
+}
+}
+
+\subtree[stt-00LC]{
+\title{The inner horn inclusion is a retract of pushout product of the endpoint inclusions of the interval}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2025-11-24}
+\contributor{fredrikbakke}
+
+\p{
+We can display the inner horn inclusion #{\Lambda^2_1 \hookrightarrow \Delta^2} as a
+retract of arrows of the pushout product #{\point(0) \pushprod \point(1)}.
+
+\quiver{
+\begin{tikzcd}
+	{\Lambda^2_1} && {\Lambda^2_1} && {\Lambda^2_1} \\
+	\\
+	{\Delta^2} && {\square^2} && {\Delta^2}
+	\arrow["\id", from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow["\id", from=1-3, to=1-5]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow["{(x,y)\mapsto(x,y)}"', from=3-1, to=3-3]
+	\arrow["{(x,y)\mapsto(x,x\land y)}"', from=3-3, to=3-5]
+\end{tikzcd}
+}
+}
+
+\agda{
+Λ[2,1]↪□-section : Arrow-map Λ[2,1]-incl (pushout-product (point i1) (point i0))
+Λ[2,1]↪□-section .Arrow-map.top = Pushout₁ (mk-span-map (_, _) _ (_ ,_) ~refl ~refl)
+Λ[2,1]↪□-section .Arrow-map.bot (x , y) = (x , y)
+Λ[2,1]↪□-section .Arrow-map.comm
+  = pushout-ind _ (mk-coconeᵈ ~refl ~refl
+                    λ _ → is-set←is-truncated (□-is-truncated carrier-is-0-truncated) _ _ _ _)
+
+Λ[2,1]↪□-ret : retraction-arrow-map Λ[2,1]↪□-section
+Λ[2,1]↪□-ret .fst .Arrow-map.top
+  = Pushout₁ (mk-span-map fst _ snd ~refl ~refl)
+Λ[2,1]↪□-ret .fst .Arrow-map.bot = Δ²-retract-Δ¹×Δ¹' .snd .fst
+Λ[2,1]↪□-ret .fst .Arrow-map.comm
+  = pushout-ind _
+      (mk-coconeᵈ
+        (λ l → Δ²-ext (refl , ∧-comm ∙ 0-init))
+        (λ l → Δ²-ext (refl , ∧-comm ∙ 1-top))
+        (λ _ → Δ²-is-set _ _ _ _))
+Λ[2,1]↪□-ret .snd .fst
+  = pushout-ind _ (mk-coconeᵈ ~refl ~refl (λ _ → Λ[2,1]-is-set _ _ _ _))
+Λ[2,1]↪□-ret .snd .snd .fst   = Δ²-retract-Δ¹×Δ¹' .snd .snd
+Λ[2,1]↪□-ret .snd .snd .snd x = Δ²-is-set _ _ _ _
+}
+}

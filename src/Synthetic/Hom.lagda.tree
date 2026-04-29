@@ -5,23 +5,21 @@
 \import{stt-macros}
 
 
-%```agda
 \agda{
 open import Foundations.Prelude
 
 module Synthetic.Hom {𝓘} (I : Type 𝓘) (i0 i1 : I) where
 
-open import Foundations.IdentitySystem
+open import Foundations.IdentitySystems
 
-open import ufAxioms
+open import Axioms.UF
 
-open import Core.Arrow
+open import Core.Arrows
 open import Core.ArrowEquiv
 
 open import Ergonomics.Representation
 open import Ergonomics.Extensionality
 }
-%```
 
 \subtree[stt-00A9]{
 \title{Hom types}
@@ -39,7 +37,6 @@ certain types have a notion of fibrancy, and for those fibrant types, the hom
 type will deserve it's name.}
 }
 
-%```agda
 \agda{
 record Homᵈ {𝓤} (A : I → Type 𝓤) (a : A i0) (b : A i1) : Type (𝓤 ⊔ 𝓘) where
   constructor mk-hom
@@ -49,8 +46,8 @@ record Homᵈ {𝓤} (A : I → Type 𝓤) (a : A i0) (b : A i1) : Type (𝓤 �
     hom1 : hom i1 ＝ b
 
 
-unquoteDecl Homᵈ-repr≅ Homᵈ-repr≃
-  = make-record-repr Homᵈ-repr≅ Homᵈ-repr≃ (quote Homᵈ)
+unquoteDecl Homᵈ-repr≊ Homᵈ-repr≃
+  = make-record-repr Homᵈ-repr≊ Homᵈ-repr≃ (quote Homᵈ)
 
 λhom : ∀ {𝓤} {A : I → Type 𝓤} (f : Π I A) → Homᵈ A (f i0) (f i1)
 λhom f = mk-hom f refl refl
@@ -78,14 +75,13 @@ Hom-over {A = A} {B} f x' y'
 0≤1 .Homᵈ.hom1 = refl
 
 total-hom : ∀ {𝓤} {A : Type 𝓤} → (I → A) ≃ (Σ[ x ∶ A ] Σ[ y ∶ A ] Hom A x y)
-total-hom {A = A} = equiv←qiso
-  (mk-iso
+total-hom {A = A} = equiv←qequiv
+  (mk≊
     (λ f → (f i0 , f i1 , λhom f))
     ((λ {(a , b , mk-hom f refl refl) → f})
     , ~refl
     , (λ { (a , b , mk-hom f refl refl) → refl})))
 }
-%```
 
 \remark{
 \p{Unlike in [Cubical Agda](https://agda.readthedocs.io/en/latest/language/cubical.html)
@@ -107,16 +103,17 @@ together with a pair of identifications. To define a path in #{\Hom_A(x,y)}
 between #{f} and #{g}, we need a homotopy #{H} of the underlying maps, but also
 coherence data: #{H_{0} \sim g_0 \sim f_0} for #{i = 0,1}.}
 
-%```agda
 \agda{
-Hom-path : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
-           → Type (𝓘 ⊔ 𝓤)
+Hom-path
+  : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
+    → Type (𝓘 ⊔ 𝓤)
 Hom-path (mk-hom f p q) (mk-hom g r s)
   = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
 
 opaque
-  Hom-path-is-torsorial : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
-                       → is-singleton (Σ[ g ∶ Hom A x y ] Hom-path f g)
+  Hom-path-is-torsorial
+    : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
+      → is-singleton (Σ[ g ∶ Hom A x y ] Hom-path f g)
   Hom-path-is-torsorial f
     = is-single←equiv-to-single (Σ-ap-≃-fst (Homᵈ-repr≃ e⁻¹))
         (is-singleton-structure←parts
@@ -132,24 +129,26 @@ Hom-path-refl
 Hom-path-refl = (~refl , refl , refl)
 
 instance
-  IdS-Hom : ∀ {𝓤}{A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
+  IdS-Hom : ∀ {𝓤} {A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
   IdS-Hom .Identity-system.IdS = Hom-path
   IdS-Hom .Identity-system.IdS←Id refl = Hom-path-refl
-  IdS-Hom .Identity-system.has-is-ids f
+  IdS-Hom .Identity-system.IdS←Id-is-equiv f
     = fundamental-Id (Hom-path f) (Hom-path-is-torsorial f) _
 
 
-Hom-ext→ : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
-          → Hom-path f g → f ＝ g
+Hom-ext→
+  : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
+    → Hom-path f g → f ＝ g
 Hom-ext→ = ext!
 
-adjust-hom : ∀ {𝓤} {A : Type 𝓤} {x y x' y'} (p : x ＝ x') (q : y ＝ y')
-             → Hom A x y → Hom A x' y'
+adjust-hom
+  : ∀ {𝓤} {A : Type 𝓤} {x y x' y'} (p : x ＝ x') (q : y ＝ y')
+    → Hom A x y → Hom A x' y'
 adjust-hom p q (mk-hom fh f0 f1) = mk-hom fh (f0 ∙ p) (f1 ∙ q)
 
 adjust-hom-is-equiv
   : ∀ {𝓤} {A : Type 𝓤} {x y x' y' : A} (p : x ＝ x') (q : y ＝ y')
-  → is-equiv (adjust-hom p q)
+    → is-equiv (adjust-hom p q)
 adjust-hom-is-equiv refl refl
   = homotopy-is-equiv (λ _ → Hom-ext→ (~refl , ∙-reflr _ , ∙-reflr _))
                       id-is-equiv
@@ -172,18 +171,18 @@ Hom-pathᵈ←path
 Hom-pathᵈ←path (H , K , R)
   = (H , mk-square (K ∙ sym (∙-reflr _)) , mk-square (R ∙ sym (∙-reflr _)))
 
-Hom-pathᵈ≅path
+Hom-pathᵈ≊path
   : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
-      {f g : Hom A x y} → Hom-path f g ≅ Hom-pathᵈ refl refl f g
-Hom-pathᵈ≅path ._≅_.fwd = Hom-pathᵈ←path
-Hom-pathᵈ≅path ._≅_.fwd-iso .fst = Hom-path←pathᵈ
-Hom-pathᵈ≅path ._≅_.fwd-iso .snd .fst (H , p , q)
+      {f g : Hom A x y} → Hom-path f g ≊ Hom-pathᵈ refl refl f g
+Hom-pathᵈ≊path ._≊_.fwd = Hom-pathᵈ←path
+Hom-pathᵈ≊path ._≊_.fwd-qinv .fst = Hom-path←pathᵈ
+Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .fst (H , p , q)
   = Σ-path→ (refl , ×-path→
       ( ap (_∙ ∙-reflr _) (un-mk-square (p ∙ sym (∙-reflr _)))
         ∙ (∙-assoc p _ _) ∙ ap (p ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _
       , ap (_∙ ∙-reflr _) (un-mk-square (q ∙ sym (∙-reflr _)))
         ∙ (∙-assoc q _ _) ∙ ap (q ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _))
-Hom-pathᵈ≅path ._≅_.fwd-iso .snd .snd (J , p , q)
+Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .snd (J , p , q)
   = Σ-path→ (refl , ×-path→
      ( ap mk-square (∙-assoc (un-square p) _ _
        ∙ ap (un-square p ∙_) (∙-sym (∙-reflr _)) ∙ ∙-reflr _) ∙ mk-un-square p
@@ -193,7 +192,7 @@ Hom-pathᵈ≅path ._≅_.fwd-iso .snd .snd (J , p , q)
 Hom-pathᵈ≃path
   : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
       {f g : Hom A x y} → Hom-path f g ≃ Hom-pathᵈ refl refl f g
-Hom-pathᵈ≃path = equiv←qiso Hom-pathᵈ≅path
+Hom-pathᵈ≃path = equiv←qequiv Hom-pathᵈ≊path
 
 Hom-pathᵈ-is-torsorial
   : ∀ {𝓤} {A : Type 𝓤} {x y : A}
@@ -217,25 +216,25 @@ Hom-IdSᵈ
     → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
 Hom-IdSᵈ .Identity-system.IdS = Hom-pathᵈ refl refl
 Hom-IdSᵈ .Identity-system.IdS←Id refl = Hom-pathᵈ-refl
-Hom-IdSᵈ .Identity-system.has-is-ids a
+Hom-IdSᵈ .Identity-system.IdS←Id-is-equiv a
   = fundamental-Id _ Hom-pathᵈ-is-torsorial _
 }
-%```
 }
 
 \subtree[stt-00CE]{
 \title{Functions have an action on synthetic morphisms}
 
-%```agda
 \agda{
-ap-hom : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) {x y}
-       → Hom A x y → Hom B (f x) (f y)
+ap-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) {x y}
+    → Hom A x y → Hom B (f x) (f y)
 ap-hom f (mk-hom hom hom0 hom1)
   = mk-hom (f ∘ hom) (ap f hom0) (ap f hom1)
 
-ap-hom-over : ∀ {𝓤} {𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (f : Π A B)
-                {x y} (h : Hom A x y)
-              → Hom-over h (f x) (f y)
+ap-hom-over
+  : ∀ {𝓤} {𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (f : Π A B)
+      {x y} (h : Hom A x y)
+    → Hom-over h (f x) (f y)
 ap-hom-over F (mk-hom f hom0 hom1) .Homᵈ.hom = F ∘ f
 ap-hom-over F (mk-hom f refl hom1) .Homᵈ.hom0 = refl
 ap-hom-over F (mk-hom f hom0 refl) .Homᵈ.hom1 = refl
@@ -251,42 +250,43 @@ ap-total-hom-is-equiv
     → is-equiv f → is-equiv (ap-total-hom f)
 ap-total-hom-is-equiv {f = F} Fe
   = is-equiv←Arrow-equiv {F = fact}
-        (total-hom ._≃_.has-is-eqv , (total-hom ._≃_.has-is-eqv))
+        (total-hom ._≃_.fwd-is-equiv , (total-hom ._≃_.fwd-is-equiv))
         (postcomp-equiv Fe) where
   fact : Arrow-map (postcomp I F) (ap-total-hom F)
   fact .Arrow-map.top = total-hom ._≃_.fwd
   fact .Arrow-map.bot = total-hom ._≃_.fwd
   fact .Arrow-map.comm = ~refl
 }
-%```
 }
 
 
 \subtree[stt-00DO]{
-\title{Morphisms in #{\Sigma} types}
+\title{Morphisms in #{Σ}-types}
 \taxon{Remark}
 
 \p{We can characterise morphisms in #{\Sigma} types as a pairs of a morphism,
 and a dependent morphism.
 #[\Hom_{\Sigma_A B}((x,x'), (y, y')) \simeq \Sigma_{f : \Hom_A(x,y)} \Hom_f(x',y')]}
 
-%```agda
 \agda{
-Hom-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
-        → (Σ[ f ∶ Hom A x y ] Hom-over f x' y') → Hom (Σ A P) (x , x') (y , y')
+Hom-Σ
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+    → (Σ[ f ∶ Hom A x y ] Hom-over f x' y') → Hom (Σ A P) (x , x') (y , y')
 Hom-Σ (mk-hom f refl refl , mk-hom f' refl refl) = λhom (λ i → f i , f' i)
 
-Hom-Σ-fst : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
-            → Hom (Σ A P) (x , x') (y , y') → Hom A x y
+Hom-Σ-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+    → Hom (Σ A P) (x , x') (y , y') → Hom A x y
 Hom-Σ-fst (mk-hom f refl refl) = λhom (fst ∘ f)
 
-Hom-Σ-snd : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
-            → (f : Hom (Σ A P) (x , x') (y , y'))
-            → Hom-over (Hom-Σ-fst f) x' y'
+Hom-Σ-snd
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
+    → (f : Hom (Σ A P) (x , x') (y , y'))
+    → Hom-over (Hom-Σ-fst f) x' y'
 Hom-Σ-snd (mk-hom f refl refl) = λhom (snd ∘ f)
 
 Hom-Σ-fst-β
-  : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥}
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
       {x y} {x' : P x} {y' : P y} (f : Hom A x y) (f' : Hom-over f x' y')
     → Hom-Σ-fst (Hom-Σ (f , f')) ＝ f
 Hom-Σ-fst-β (mk-hom f refl refl) (mk-hom f' refl refl) = refl
@@ -297,7 +297,7 @@ Hom-Σ-ap-fst
 Hom-Σ-ap-fst (mk-hom f refl refl) = refl
 
 Hom-Σ-ap-fst-β
-  : ∀ {𝓤 𝓥}{A : Type 𝓤} {P : A → Type 𝓥}
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
       {x y} {x' : P x} {y' : P y} (f : Hom A x y) (f' : Hom-over f x' y')
     → ap-hom fst (Hom-Σ (f , f')) ＝ f
 Hom-Σ-ap-fst-β (mk-hom f refl refl) (mk-hom f' refl refl) = refl
@@ -306,13 +306,13 @@ Hom-Σ-snd-β
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
       {x y} {x' : P x} {y' : P y} (f : Hom A x y) (f' : Hom-over f x' y')
     → Idᵈ (ap (λ f → Hom-over f x' y') (Hom-Σ-fst-β f f'))
-          (Hom-Σ-snd (Hom-Σ (f , f'))) f'
+      (Hom-Σ-snd (Hom-Σ (f , f'))) f'
 Hom-Σ-snd-β (mk-hom f refl refl) (mk-hom f' refl refl) = refl
 
 Hom-Σ-is-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} {x y} {x' : P x} {y' : P y}
     → is-equiv (Hom-Σ {P = P} {x' = x'} {y'})
-Hom-Σ-is-equiv = is-equiv←qiso
+Hom-Σ-is-equiv = is-equiv←qinv
   ( (λ h → Hom-Σ-fst h , Hom-Σ-snd h)
   , (λ where (a , b) → Σ-path→ (Hom-Σ-fst-β a b , Hom-Σ-snd-β a b))
   , λ where (mk-hom h refl refl) → refl)
@@ -322,44 +322,43 @@ Hom-Σ≃
     → Hom (Σ A P) (_ , x') (_ , y') ≃ Σ[ f ∶ Hom A x y ] (Hom-over f x' y')
 Hom-Σ≃ = mk≃ Hom-Σ Hom-Σ-is-equiv e⁻¹
 
-Hom-×≅
+Hom-×≊
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y a b}
-    → (Hom (A × B) (x , a) (y , b)) ≅ ((Hom A x y) × (Hom B a b))
-Hom-×≅ ._≅_.fwd (mk-hom f refl refl) = (λhom (fst ∘ f)) , (λhom (snd ∘ f))
-Hom-×≅ ._≅_.fwd-iso .fst (mk-hom f refl refl , mk-hom g refl refl)
+    → (Hom (A × B) (x , a) (y , b)) ≊ ((Hom A x y) × (Hom B a b))
+Hom-×≊ ._≊_.fwd (mk-hom f refl refl) = (λhom (fst ∘ f)) , (λhom (snd ∘ f))
+Hom-×≊ ._≊_.fwd-qinv .fst (mk-hom f refl refl , mk-hom g refl refl)
   = λhom (λ i → f i , g i)
-Hom-×≅ ._≅_.fwd-iso .snd .fst (mk-hom f refl refl) = refl
-Hom-×≅ ._≅_.fwd-iso .snd .snd (mk-hom f refl refl , mk-hom g refl refl) = refl
+Hom-×≊ ._≊_.fwd-qinv .snd .fst (mk-hom f refl refl) = refl
+Hom-×≊ ._≊_.fwd-qinv .snd .snd (mk-hom f refl refl , mk-hom g refl refl) = refl
 
 Hom-×≃
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y a b}
     → (Hom (A × B) (x , a) (y , b)) ≃ ((Hom A x y) × (Hom B a b))
-Hom-×≃ = equiv←qiso Hom-×≅
+Hom-×≃ = equiv←qequiv Hom-×≊
 
-Homᵈ-×≅
+Homᵈ-×≊
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : A → Type 𝓥} {Q : A → Type 𝓦}
       (f : I → A)
-      {x}{y}{a}{b}
+      {x} {y} {a} {b}
     → (Homᵈ (λ i → P (f i) × Q (f i)) (x , a) (y , b))
-    ≅ ((Homᵈ (P ∘ f) x y) × (Homᵈ (Q ∘ f) a b))
-Homᵈ-×≅ _ ._≅_.fwd (mk-hom f refl refl) = (λhom (fst ∘ f)) , (λhom (snd ∘ f))
-Homᵈ-×≅ _ ._≅_.fwd-iso .fst (mk-hom f refl refl , mk-hom g refl refl)
+    ≊ ((Homᵈ (P ∘ f) x y) × (Homᵈ (Q ∘ f) a b))
+Homᵈ-×≊ _ ._≊_.fwd (mk-hom f refl refl) = (λhom (fst ∘ f)) , (λhom (snd ∘ f))
+Homᵈ-×≊ _ ._≊_.fwd-qinv .fst (mk-hom f refl refl , mk-hom g refl refl)
   = λhom (λ i → f i , g i)
-Homᵈ-×≅ _ ._≅_.fwd-iso .snd .fst (mk-hom f refl refl) = refl
-Homᵈ-×≅ _ ._≅_.fwd-iso .snd .snd (mk-hom f refl refl , mk-hom g refl refl) = refl
+Homᵈ-×≊ _ ._≊_.fwd-qinv .snd .fst (mk-hom f refl refl) = refl
+Homᵈ-×≊ _ ._≊_.fwd-qinv .snd .snd (mk-hom f refl refl , mk-hom g refl refl) = refl
 
 Homᵈ-×≃
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : A → Type 𝓥} {Q : A → Type 𝓦}
       (f : I → A)
-      {x}{y}{a}{b}
+      {x} {y} {a} {b}
     → (Homᵈ (λ i → P (f i) × Q (f i)) (x , a) (y , b))
     ≃ ((Homᵈ (P ∘ f) x y) × (Homᵈ (Q ∘ f) a b))
-Homᵈ-×≃ {P = P}{Q} f = equiv←qiso (Homᵈ-×≅ {P = P} {Q} f)
+Homᵈ-×≃ {P = P} {Q} f = equiv←qequiv (Homᵈ-×≊ {P = P} {Q} f)
 
 Hom𝟙-is-single : is-singleton (Hom 𝟙 tt tt)
 Hom𝟙-is-single = is-single←equiv-to-single
   (total-hom ∙≃ Σ-singl 𝟙-is-singleton tt ∙≃ Σ-singl 𝟙-is-singleton tt)
   (Π-is-single {A = I} {B = λ _ → 𝟙} λ _ → 𝟙-is-singleton)
 }
-%```
 }

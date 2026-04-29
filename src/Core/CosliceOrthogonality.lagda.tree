@@ -4,22 +4,21 @@
 \date{2026-02-02}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Core.CosliceOrthogonality where
 
 open import Foundations.Prelude
-open import ufAxioms
+open import Axioms.UF
 
-open import Core.CoSlice
+open import Core.Coslices
 open import Core.CanonicalPushouts
 open import Core.Orthogonal
-open import Core.Arrow
+open import Core.Arrows
 open import Core.ArrowEquiv
-open import Core.SpanMap
-open import Core.FunctorialPushout
-open import Core.FunctorialPullback
-open import Core.PullbackPower
+open import Core.SpanMaps
+open import Core.FunctorialityPushouts
+open import Core.FunctorialityPullbacks
+open import Core.PullbackPowers
 open import Core.Postwhisker
 open import Core.Cube
 
@@ -27,7 +26,6 @@ open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 }
-%```
 
 
 \subtree[stt-00DM]{
@@ -38,7 +36,6 @@ open Core.Orthogonal.notation
 coslice under #{X}, we say that #{f} is orthogonal to #{x} (or #{f \perp x})
 when coslice precomposition by #{f} at #{x} is an equivalence.}
 
-%```agda
 \agda{
 are-orthogonal-coslice
   : ∀ {𝓧 𝓤 𝓥 𝓦} {X : Type 𝓧} {A : Type 𝓤} {B : Type 𝓥} {p : X → A} {q : X → B}
@@ -51,11 +48,8 @@ instance
     : ∀ {𝓧 𝓤 𝓥 𝓦} {X : Type 𝓧} {A : Type 𝓤} {B : Type 𝓥} {p : X → A} {q : X → B}
         {Y : Type 𝓦}
       → Orthogonality (Coslice-map p q) (X → Y)
-  Orthogonal-coslice-notation {𝓧} {𝓤} {𝓥} {𝓦}.Orthogonality.𝓦
-    = 𝓧 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦
   Orthogonal-coslice-notation .Orthogonality._⊥_ = are-orthogonal-coslice
 }
-%```
 }
 
 
@@ -67,14 +61,13 @@ instance
 to every map #{X \to Y} iff #{f} is left orthogonal to #{Y}.
 }
 
-%```agda
 \agda{
 coslice-orthogonality
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
       {p : X → A} {q : X → B} (f : Coslice-map p q)
     → (f .fst ⊥ Y)
     ⇔ (∀ (x : X → Y) → f ⊥ x)
-coslice-orthogonality {A = A}{B}{X}{Y}{p}{q} (f , H)
+coslice-orthogonality {A = A} {B} {X} {Y} {p} {q} (f , H)
   = tr
       (λ (h : f ∘ p ~ q)
          → orthogonal-type f Y
@@ -83,12 +76,14 @@ coslice-orthogonality {A = A}{B}{X}{Y}{p}{q} (f , H)
       (top⇔bot-is-equiv←Arrow-equiv (amap (funext→ H)) eq
       ∙⇔ fibrewise⇔total-is-equiv) where
 
-  add-singleton : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
-                  → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
+  add-singleton
+    : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q) (g : Q → Y)
+      → Σ[ x ∶ (X → Y) ] Σ[ f' ∶ (Q → Y) ] (f' ∘ p ~ x)
   add-singleton f g = (g ∘ f , g , ~refl)
 
-  add-singleton-eq : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
-                     → quasi-iso (add-singleton p)
+  add-singleton-eq
+    : ∀ {𝓠} {Q : Type 𝓠} (p : X → Q)
+      → quasi-inv (add-singleton p)
   add-singleton-eq p .fst (a , f , H) = f
   add-singleton-eq p .snd .fst x = refl
   add-singleton-eq p .snd .snd (a , f , H)
@@ -97,18 +92,19 @@ coslice-orthogonality {A = A}{B}{X}{Y}{p}{q} (f , H)
         (λ where refl → refl)
         H
 
-  amap : ∀ (H : f ∘ p ＝ q)
-         → Arrow-map (precomp Y f)
-                     (total-map (λ a → Coslice-map-precompose a (f , happly H)))
+  amap
+    : ∀ (H : f ∘ p ＝ q)
+      → Arrow-map
+          (precomp Y f)
+          (total-map (λ a → Coslice-map-precompose a (f , happly H)))
   amap H .Arrow-map.top = add-singleton q
   amap H .Arrow-map.bot =  add-singleton p
   amap refl .Arrow-map.comm x = refl
 
   eq : is-Arrow-equiv (amap (funext→ H))
-  eq .fst = is-equiv←qiso (add-singleton-eq q)
-  eq .snd = is-equiv←qiso (add-singleton-eq p)
+  eq .fst = is-equiv←qinv (add-singleton-eq q)
+  eq .snd = is-equiv←qinv (add-singleton-eq p)
 }
-%```
 }
 
 \subtree[stt-00DN]{
@@ -136,9 +132,7 @@ cospans. As an easy corrolary we get the result that #{F} is orthogonal
 to #{qg} for all maps #{q : C \to Q} iff the pushout map induced by
 #{F} is orthogonal to #{Q}.}
 
-%```agda
 \agda{
-
 Pushout-map-left
   : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
       (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
@@ -149,8 +143,9 @@ precomp-pullback
   : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
       (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
     → (Q : Type 𝓠)
-    → Cospan-map (mk-cospan _ (precomp Q g) (precomp Q f'))
-                 (mk-cospan _ (precomp Q g) (precomp Q f))
+    → Cospan-map
+        (mk-cospan _ (precomp Q g) (precomp Q f'))
+        (mk-cospan _ (precomp Q g) (precomp Q f))
 precomp-pullback f f' g F Q .Cospan-map.h₁ = id
 precomp-pullback f f' g F Q .Cospan-map.h₂ = id
 precomp-pullback f f' g F Q .Cospan-map.h₃ = precomp Q (F .fst)
@@ -159,12 +154,12 @@ precomp-pullback f f' g F Q .Cospan-map.K a
   = funext→ (postwhisker a _ _ (sym ∘ F .snd))
 
 pushout-arrow-UP
-    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
-        (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
-        {Q : Type 𝓠}
-      → Arrow-map
-         (precomp Q (Pushout-map-left f f' g F))
-         (Pullback₁ (precomp-pullback f f' g F Q))
+  : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
+      {Q : Type 𝓠}
+    → Arrow-map
+        (precomp Q (Pushout-map-left f f' g F))
+        (Pullback₁ (precomp-pullback f f' g F Q))
 pushout-arrow-UP f f' g F .Arrow-map.top
   = precomp-cocone≃pb ._≃_.fwd ∘ cocone-map _ pushout
 pushout-arrow-UP f f' g F .Arrow-map.bot
@@ -187,14 +182,14 @@ pushout-arrow-UP f f' g F .Arrow-map.comm a = pullback-path→
                ∙ ap sym (sym (ap-∙ a (ap ι₁ (F .snd b)) (glue b))))))))
 
 pushout-arrow-UP-is-equiv
-    : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
-        (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
-        {Q : Type 𝓠}
-      → is-Arrow-equiv (pushout-arrow-UP f f' g F {Q})
+  : ∀ {𝓤 𝓤' 𝓥 𝓦 𝓠} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {C : Type 𝓦}
+      (f : B → A) (f' : B → A') (g : B → C) → (F : Coslice-map f f')
+      {Q : Type 𝓠}
+    → is-Arrow-equiv (pushout-arrow-UP f f' g F {Q})
 pushout-arrow-UP-is-equiv f f' g F .fst
-  = is-equiv-∘ (precomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω
+  = is-equiv-∘ (precomp-cocone≃pb ._≃_.fwd-is-equiv) Pushout-has-up-pushout
 pushout-arrow-UP-is-equiv f f' g F .snd
-  = is-equiv-∘ (precomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω
+  = is-equiv-∘ (precomp-cocone≃pb ._≃_.fwd-is-equiv) Pushout-has-up-pushout
 
 opaque
   left-orthogonal-type-pushout₁
@@ -202,9 +197,9 @@ opaque
         {f : B → A} {f' : B → A'} {g : B → C} → (F : Coslice-map f f')
         {Q : Type 𝓠}
       → ((Pushout₁ {S = mk-span _ f g}
-          (mk-span-map (F .fst) id id (F .snd) ~refl)) ⊥ Q)
+        (mk-span-map (F .fst) id id (F .snd) ~refl)) ⊥ Q)
       ⇔ (∀ (q : C → Q) → F ⊥ (q ∘ g))
-  left-orthogonal-type-pushout₁ {A = A}{A'}{C = C} {f} {f'} {g} F {Q}
+  left-orthogonal-type-pushout₁ {A = A} {A'} {C = C} {f} {f'} {g} F {Q}
     =  top⇔bot-is-equiv←Arrow-equiv
         (pushout-arrow-UP f f' g F)
         (pushout-arrow-UP-is-equiv f f' g F)
@@ -218,15 +213,16 @@ opaque
                         (λ a → is-equiv-∘ sym-is-equiv (is-equiv⁻¹ global-funext)))
                     ⇔⁻¹)   where
 
-    hom : ∀ (q : C → Q)
-          → Arrow-map {A = Coslice-map f' (q ∘ g)}
-                      {B = Coslice-map f (q ∘ g)}
-                      (Coslice-map-precompose (q ∘ g) F)
-                      {C = Σ[ x ∶ (A' → Q) ] (precomp Q g q ＝ precomp Q f' x)}
-                      {D = Σ[ x ∶ (A → Q) ] (precomp Q g q ＝ precomp Q f x)}
-                      (λ G →
-                          precomp Q (F .fst) (G .fst)
-                        , ap id (G .snd) ∙ funext→ (ap (G .fst) ∘ sym ∘ F .snd))
+    hom
+      : ∀ (q : C → Q)
+        → Arrow-map {A = Coslice-map f' (q ∘ g)}
+                    {B = Coslice-map f (q ∘ g)}
+                    (Coslice-map-precompose (q ∘ g) F)
+                    {C = Σ[ x ∶ (A' → Q) ] (precomp Q g q ＝ precomp Q f' x)}
+                    {D = Σ[ x ∶ (A → Q) ] (precomp Q g q ＝ precomp Q f x)}
+                    (λ G
+                    → precomp Q (F .fst) (G .fst)
+                    , ap id (G .snd) ∙ funext→ (ap (G .fst) ∘ sym ∘ F .snd))
     hom q .Arrow-map.top = total-map (λ a → sym ∘ funext→)
     hom q .Arrow-map.bot = total-map (λ a → sym ∘ funext→)
     hom q .Arrow-map.comm (x , p)
@@ -237,5 +233,4 @@ opaque
                        ∙ sym (∙-symsym _ (funext→ p))
                        ∙ ap sym (sym (funext-∙ _ _))))
 }
-%```
 }

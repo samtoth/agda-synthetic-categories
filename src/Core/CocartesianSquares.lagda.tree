@@ -1,0 +1,351 @@
+\date{2025-07-29}
+\title{Cocartesian squares}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Core.CocartesianSquares where
+
+open import Axioms.UF
+open import Foundations.Prelude
+open import Foundations.Pushouts
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
+open import Core.Postwhisker
+open import Core.Cube
+}
+
+
+\subtree[stt-007V]{
+\title{Co-cartesian squares}
+\taxon{Definition}
+
+\p{Given a square:}
+
+\quiver{
+\begin{tikzcd}
+	A && X \\
+	\\
+	B && Y
+	\arrow["{f'}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["g", from=1-3, to=3-3]
+	\arrow["{g'}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{we say that the square is cocartesian if the square [given by
+precomposition](stt-003P) is a [cartesian square](stt-003V).}
+
+\agda{
+up-cocartesian'
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+    → Arrow-map f g → (𝓠 : Level)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ lsuc 𝓠)
+up-cocartesian' F 𝓠 = ∀ (Q : Type 𝓠)
+                     → is-cartesian (precomp-square F Q)
+
+
+up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+    → Arrow-map f g
+    → Typeω
+up-cocartesian F = ∀ {𝓠} (Q : Type 𝓠)
+                    → is-cartesian (precomp-square F Q)
+}
+}
+
+\subtree[stt-007W]{
+\title{Cocartesian squares are pushouts}
+\taxon{Theorem}
+
+\proof{An easy consequence of \ref{stt-003C} and \ref{stt-007Y}}
+
+\agda{
+up-pushout←up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+    → up-cocartesian F → up-pushout _ (Cocone←Arrow-map F .snd)
+up-pushout←up-cocartesian {f = f} {g} F cc
+  = up-pushout←precomp-pullback _
+       (λ Q → up-pullback←is-cartesian (precomp-square F Q) (cc Q))
+
+up-cocartesian←up-pushout
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {D : Type 𝓜} {C : Cocone S D}
+    → up-pushout S C → up-cocartesian (Arrow-map←Cocone C)
+up-cocartesian←up-pushout po Q
+  = is-cartesian←up-pullback
+      (precomp-square (Arrow-map←Cocone _) Q)
+      (precomp-pullback←up-pushout _ po Q)
+}
+}
+
+
+\subtree[stt-00CQ]{
+\title{The mirror of a cocartesian square is cocartesian}
+\taxon{Lemma}
+
+\agda{
+transpose-square-has-up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+    → up-cocartesian F → up-cocartesian (transpose-square F)
+transpose-square-has-up-cocartesian F cocart
+  = up-cocartesian←up-pushout
+     (up-pushout←is-pushout _
+      (is-equiv-~∘
+        {f = cogap-map←square F}
+        {g = pushout-flip}
+        (sym ∘ pushout-rec-unique _ _ ~refl ~refl
+          (λ a → ∙-reflr _ ∙ ap-∘ (cogap-map←square F) (pushout-flip) (glue a)
+          ∙ ap (ap _) (pushout-rec-apβ a) ∙ ap-sym _ (glue a)
+          ∙ ap sym (pushout-rec-apβ a)))
+        (is-pushout←up-pushout _ (up-pushout←up-cocartesian _ cocart))
+        (pushout-comm ._≃_.fwd-is-equiv)))
+
+transpose-is-idempotent-cube
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+      {𝓠} (Q : Type 𝓠)
+    → Cube
+        (precomp-square (transpose-square (transpose-square F)) Q)
+        (precomp-square F Q)
+transpose-is-idempotent-cube F Q .Cube.left = id-square
+transpose-is-idempotent-cube F Q .Cube.right = id-square
+transpose-is-idempotent-cube F Q .Cube.comm .fst = ~refl
+transpose-is-idempotent-cube F Q .Cube.comm .snd .fst = ~refl
+transpose-is-idempotent-cube F Q .Cube.comm .snd .snd a
+  = ap (_∙ refl)
+       (sym (ap-id _ ∙ ap funext→ (funext→ (λ x → ap (ap a) sym-sym))))
+
+transpose-is-idempotent
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+      {𝓠} (Q : Type 𝓠)
+    → is-Cube-equiv (transpose-is-idempotent-cube F Q)
+transpose-is-idempotent {f = f} {g} F Q .fst
+  = id-square-is-equiv {f = precomp Q g}
+transpose-is-idempotent {f = f} {g} F Q .snd
+  = id-square-is-equiv {f = precomp Q f}
+
+untranspose-square-has-up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+    → up-cocartesian (transpose-square F)
+    → up-cocartesian F
+untranspose-square-has-up-cocartesian F rFcc Q
+  = back-cartesian←equiv-cube
+      {F = (precomp-square (transpose-square (transpose-square F)) Q)}
+      {G = precomp-square F Q}
+      (transpose-is-idempotent-cube F Q)
+      (transpose-is-idempotent F Q)
+      (transpose-square-has-up-cocartesian _ rFcc Q)
+}
+}
+
+\subtree[stt-00BT]{
+\title{Canonical pushouts are cocartesian squares}
+\taxon{Corollary}
+
+\agda{
+Pushout-square
+  : ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) → let open Span S
+    in Arrow-map left {D = Pushout left right} ι₂
+Pushout-square S .Arrow-map.top = S .Span.right
+Pushout-square S .Arrow-map.bot = ι₁
+Pushout-square S .Arrow-map.comm = glue
+
+Pushout-square-has-up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) → up-cocartesian (Pushout-square S)
+Pushout-square-has-up-cocartesian S = up-cocartesian←up-pushout Pushout-has-up-pushout
+
+Pushout-square'
+  : ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) → let open Span S
+    in Arrow-map right {D = Pushout left right} ι₁
+Pushout-square' S = transpose-square (Pushout-square S)
+
+Pushout-square'-has-up-cocartesian
+  : ∀ {𝓤 𝓥 𝓦} (S : Span 𝓤 𝓥 𝓦) → up-cocartesian (Pushout-square' S)
+Pushout-square'-has-up-cocartesian S = transpose-square-has-up-cocartesian _
+                                     (up-cocartesian←up-pushout
+                                       Pushout-has-up-pushout)
+}
+}
+
+\subtree[stt-0080]{
+\title{Pushouts squares of equivalences}
+\taxon{Theorem}
+
+\p{Given an equivalence #{f} and any map #{g}, together with a
+square #{f \to g}, the square is cocartesian iff #{g} is an
+equivalence.}
+
+\proof{
+\p{We have the following square given by precomposition:}
+\quiver{
+\begin{tikzcd}
+	{Q^Y} &&& {Q^B} \\
+	& \bullet \\
+	\\
+	{Q^X} &&& {Q^A}
+	\arrow["{Q^b}", from=1-1, to=1-4]
+	\arrow["{\rm{gap}}", dashed, from=1-1, to=2-2]
+	\arrow["{Q^g}"', from=1-1, to=4-1]
+	\arrow["{Q^f}", from=1-4, to=4-4]
+	\arrow[from=2-2, to=1-4]
+	\arrow["\sim", from=2-2, to=4-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=2-2, to=4-4]
+	\arrow["{Q^t}"', from=4-1, to=4-4]
+\end{tikzcd}
+}
+
+\p{By \ref{stt-007Z}, the projection from the pullback to #{Q^X} is an
+equivalence because #{Q^f} is. Then we have a triangle which, by the
+[3 for 2](stt-003E) property, shows that #{Q^g} is an equivalence iff
+the gap map is.}
+}
+
+\agda{
+cocartesian←equiv-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+      {Y : Type 𝓜} {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+    → is-equiv f
+    → is-equiv g
+    → up-cocartesian F
+cocartesian←equiv-map F feq geq Q
+  = is-cartesian←up-pullback (precomp-square F Q)
+      (up-pullback←is-pullback (Cone←Arrow-map (precomp-square F Q) .snd)
+        (3-for-2
+           (pullback-equiv₁ (precomp-equiv feq))
+           (precomp-equiv geq))) where
+  module F = Arrow-map F
+
+dom-is-equiv←cocartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+      {Y : Type 𝓜} {f : A → B} {g : X → Y}
+      (F : Arrow-map f g)
+    → is-equiv f
+    → up-cocartesian F
+    → is-equiv g
+dom-is-equiv←cocartesian F feq cart = is-equiv←precomp _
+  λ {_} {Q} → is-equiv-∘
+      (pullback-equiv₁ (precomp-equiv feq))
+      (is-pullback←up-pullback
+        (Cone←Arrow-map (precomp-square F Q) .snd)
+        (up-pullback←is-cartesian _ (cart Q)))
+}
+}
+
+\subtree[stt-00EC]{
+\title{Pasting for cocartesian squares}
+\taxon{Lemma}
+
+\p{Given a pair of squares, as follows: }
+
+\quiver{
+\begin{tikzcd}
+	\bullet && \bullet && \bullet \\
+	\\
+	\bullet && \bullet && \bullet
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=1-5]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=1-5, to=3-5]
+	\arrow[from=3-1, to=3-3]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+	\arrow[from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{The right square is a pushout iff the whole square is.}
+
+\proof{
+\p{Call the first square #{F} and the second #{G}. Then we first prove that
+#{Q^{F \circ G} \sim Q^G \circ Q^F}. Then the result follows from the
+[analogous theorem](stt-003W) for [cartesian squares](stt-003V). Note however,
+that the contravariance of taking the postcomposition square means that
+cartesian squares are right cancelative, so cocartesian squares must be left
+cancelative.}
+}
+
+\agda{
+precomp-square-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+      {U : Type 𝓝} {V : Type 𝓛} {f : A → B} {g : X → Y} {h : U → V}
+      (F : Arrow-map g h) (G : Arrow-map f g)
+      {𝓠} (Q : Type 𝓠)
+    → Arrow-map-path
+        (paste-squares (precomp-square G Q) (precomp-square F Q))
+        (precomp-square (paste-squares F G) Q)
+precomp-square-∘ F G Q .fst = ~refl
+precomp-square-∘ F G Q .snd .fst = ~refl
+precomp-square-∘ {f = f} {g} {h} F G Q .snd .snd
+ = comm (paste-squares (precomp-square G Q) (precomp-square F Q)) ~∙ ~refl
+       ~⟨ ~∙-reflr _ ⟩
+   comm (paste-squares (precomp-square G Q) (precomp-square F Q))
+       ~⟨⟩
+    (precomp Q (G .top) ◂ precomp-square F Q .comm
+    ~∙ precomp-square G Q .comm ▸ precomp Q (F .bot))
+       ~⟨⟩
+    (precomp Q (G .top) ◂ funext→ ∘ (_◂ (comm F ~⁻¹))
+    ~∙ funext→ ∘ (_◂ (comm G ~⁻¹)) ▸ precomp Q (F .bot))
+       ~⟨ (λ a → ap (_∙ funext→ _)
+         (sym (commutes-prewhisker-funext (a ◂ (comm F ~⁻¹))))
+         ∙ sym (funext-∙ _ _)) ⟩
+   funext→ ∘ (λ a → a ◂ (sym ∘ comm F ∘ top G) ~∙ (a ∘ F .bot) ◂ (sym ∘ comm G))
+       ~⟨ (λ a → ap funext→ (funext→ λ x
+         → ap (ap a (sym (comm F _)) ∙_)
+             ( ◂∘  a (bot F) (sym ∘ comm G) x)
+             ∙ sym (ap-∙ a (sym (comm F (top G x))) (ap (bot F) _))
+             ∙ ap (ap a) (sym (∙-symsym (ap (bot F) (comm G x)) _
+             ∙ ap (sym (comm F (top G x)) ∙_)
+                  (sym (ap-sym (bot F) (comm G x))))))) ⟩
+   funext→ ∘ (λ a → a ◂ ((F .bot ◂ comm G ~∙ comm F ▸ G .top) ~⁻¹))
+       ~⟨⟩
+   comm (precomp-square (paste-squares F G) Q) ~∎ where open Arrow-map
+
+opaque
+  cocartesian-square-∘
+    : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {U : Type 𝓝} {V : Type 𝓛} {f : A → B} {g : X → Y} {h : U → V}
+        {F : Arrow-map g h} {G : Arrow-map f g}
+      → up-cocartesian F → up-cocartesian G
+      → up-cocartesian (paste-squares F G)
+  cocartesian-square-∘ {F = F} {G} fc gc Q
+    = tr is-cartesian (Arrow-map-path→ (precomp-square-∘ F G Q))
+        (compose-cartesian (gc Q) (fc Q))
+
+  cocartesian-square-cancel
+    : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {U : Type 𝓝} {V : Type 𝓛} {f : A → B} {g : X → Y} {h : U → V}
+        {F : Arrow-map g h} {G : Arrow-map f g}
+      → up-cocartesian G → up-cocartesian (paste-squares F G)
+      → up-cocartesian F
+  cocartesian-square-cancel {F = F} {G = G} Gc FGc Q
+    = 3-for-2-cartesian
+        {a = precomp-square G Q}
+        {b = precomp-square F Q}
+        (Arrow-map-path←id (sym (Arrow-map-path→ (precomp-square-∘ F G Q))))
+        (FGc Q)
+        (Gc Q)
+}
+}

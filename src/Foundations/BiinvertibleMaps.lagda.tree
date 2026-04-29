@@ -1,0 +1,175 @@
+\title{Biinvertible maps}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+module Foundations.BiinvertibleMaps where
+
+open import Foundations.Universes
+open import Foundations.Spans
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.Singletons
+open import Foundations.SingletonClosure
+open import Foundations.FibrewiseEquivalences
+open import Foundations.PropExt
+open import Foundations.IsEquivIsProp
+import Foundations.CanonicalPullbacks as CP
+
+import Foundations.FunExt as FE
+}
+
+\subtree[stt-00GX]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Biinvertible map}
+
+\p{
+A map #{f} is \em{biinvertible} if it has a [section](stt-000H) and a
+[retraction](stt-000I).
+}
+
+\p{
+The data of being biinvertible is different from that of being a
+[quasi-equivalence](stt-001K). The data of being a quasi-equivalence consists of a
+single map #{g} that is both a section and a retraction of #{f}, while the data
+of biinvertibility consists of two maps #{s} and #{r}, the first is assumed to be a
+section of #{f} and the second is assumed to be a retraction of #{r}. This
+distinction matters, even though the inverse of an equivalence is unique up to
+homotopy, because the homotopy of being a section and/or retraction need not be. This
+means that when #{f} is a map between types that need not be [sets](stt-006T), the
+data of being a quasi-equivalence need not be coherent, i.e., unique. But the data of
+being biinvertible on the other hand is always unique, and hence equivalent as types
+to that of being a [coherent equivalence](stt-000K).
+}
+
+\agda{
+is-biinv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-biinv f = section f × retraction f
+
+biinv : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+biinv A B = Σ (A → B) is-biinv
+}
+}
+
+\subtree[stt-00GW]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Biinvertible maps are equivalent to coherent equivalences}
+
+\agda{
+qinv←is-biinv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-biinv f → quasi-inv f
+qinv←is-biinv {f = f} ((g , ε) , (h , η)) = (g , ret , ε) where
+  g~h : g ~ h
+  g~h b = sym (η (g b)) ∙ ap h (ε b)
+
+  ret : retraction-witness f g
+  ret = g~h ▸ f ~∙ η
+
+is-equiv←is-biinv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-biinv f → is-equiv f
+is-equiv←is-biinv = is-equiv←qinv ∘ qinv←is-biinv
+
+is-biinv←is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-equiv f → is-biinv f
+is-biinv←is-equiv e = is-equiv.section-fwd e , is-equiv.retraction-fwd e
+}
+
+
+\p{
+Under function extensionality, the predicate of being biinvertible is equivalent to
+being a [coherent equivalence](stt-001U), which is our preferred notion of
+equivalence.
+}
+
+\agda{
+module WithFunExt (FE : FE.FunExt-global) where
+
+  is-biinv-is-prop
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-prop (is-biinv f)
+  is-biinv-is-prop {f = f} = is-prop←is-single-if-inhabited λ b
+    → Σ-is-single (section-is-single←qinv FE (qinv←is-biinv b))
+                   (λ _ → retractions-is-singleton←qinv FE (qinv←is-biinv b))
+
+  is-biinv≃is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-biinv f ≃ is-equiv f
+  is-biinv≃is-equiv = mk≃ is-equiv←is-biinv
+    (is-equiv←inverse is-biinv-is-prop (is-equiv-is-prop FE) is-biinv←is-equiv)
+
+  ≃-rep-biinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → (A ≃ B) ≃ biinv A B
+  ≃-rep-biinv = ≃-rep ∙≃ Σ-ap-≃ (λ f → is-biinv≃is-equiv {f = f} e⁻¹)
+}
+}
+
+\subtree[stt-00GV]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Biinvertible maps as a pullback}
+
+\p{
+Given types #{A} and #{B}, the type of [biinvertible maps](stt-00GX)
+#{\mathsf{biinv}(A,B)} can be presented as a [pullback](Foundations.Pullbacks) of
+maps #{f : A \to B} equipped with sections, and maps #{f : A \to B} equipped with
+retractions, i.e., retracts #{B \to A \to B} and retracts #{A \to B \to A}
+respectively:
+}
+
+\quiver{
+\begin{tikzcd}
+\mathsf{biinv}(A,B) && \mathsf{retract}(B,A) \\
+\\
+\mathsf{retract}(A,B) && (A \to B)
+\arrow[from=1-1, to=1-3]
+\arrow[from=1-1, to=3-1]
+\arrow[from=1-1, to=3-3, draw=none, "\lrcorner" very near start]
+\arrow["\mathsf{retraction}", from=3-1, to=3-3]
+\arrow["\mathsf{inclusion}", from=1-3, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} where
+
+  biinv-cone
+    : Cone (mk-cospan (A → B) (fst: section) (fst: retraction)) (biinv A B)
+  biinv-cone
+    = mk-cone (λ (f , s , _) → (f , s))
+              (λ (f , _ , r) → (f , r))
+              (~refl)
+
+  biinv-is-pullback
+    : CP.is-pullback biinv-cone
+  biinv-is-pullback = mk-eqv (bwd , ret , sec) coh where
+    bwd : CP.Pullback (fst: section) (fst: retraction) → biinv A B
+    bwd ((f , s) , (.f , r) , refl) = (f , s , r)
+    ret : retraction-witness (CP.gap biinv-cone) bwd
+    ret (f , s , r) = refl
+    sec : section-witness (CP.gap biinv-cone) bwd
+    sec ((f , s) , (.f , r) , refl) = refl
+    coh : qinv-coh (bwd , ret , sec)
+    coh (f , s , r) = refl
+
+  biinv≃pullback
+    : biinv A B
+    ≃ CP.Pullback (fst: section) (fst: retraction)
+  biinv≃pullback
+    = mk≃ (CP.gap biinv-cone) (biinv-is-pullback)
+}
+}

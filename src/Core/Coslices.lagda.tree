@@ -1,0 +1,191 @@
+\date{2025-06-20}
+\title{Coslices of types}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+module Core.Coslices where
+
+open import Foundations.Prelude
+open import Axioms.UF
+
+open import Ergonomics.Extensionality
+}
+
+\subtree[stt-0062]{
+\title{Coslice maps}
+\taxon{Definition}
+
+\p{Fixing a type #{A}, there is a category
+#{\Type_{A/}} called the coslice category under #{A}.
+Maps in this category are commuting triangles:}
+
+\agda{
+Coslice-map
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      (p : A → X)
+      {𝓦} {Y : Type 𝓦}
+      (q : A → Y)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Coslice-map {X = X} p {Y = Y} q
+  = Σ[ f ∶ (X → Y) ] (f ∘ p ~ q)
+
+Coslice-id
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      (p : A → X)
+    → Coslice-map p p
+Coslice-id p = (id , ~refl)
+
+Coslice-map-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      (p : A → X) (q : A → Y) (r : A → Z)
+    → Coslice-map q r → Coslice-map p q → Coslice-map p r
+Coslice-map-∘ p q r (f , H) (g , K) = (f ∘ g , f ◂ K ~∙ H)
+
+
+Coslice-map-postcompose
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      (p : A → X) {q : A → Y} {r : A → Z}
+    → Coslice-map q r → (Coslice-map p q → Coslice-map p r)
+Coslice-map-postcompose p F = Coslice-map-∘ p _ _ F
+
+Coslice-map-precompose
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦} {Z : Type 𝓜}
+      {p : A → X} {q : A → Y} (r : A → Z)
+    → Coslice-map p q → (Coslice-map q r → Coslice-map p r)
+Coslice-map-precompose r F G = Coslice-map-∘ _ _ r G F
+
+Coslice-map-path
+ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+     {Y : Type 𝓦} {q : A → Y} → (f g : Coslice-map p q) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Coslice-map-path {p = p} (f , H) (g , K) = Σ[ P ∶ f ~ g ] (P ▸ p ~∙ K ~ H)
+
+Coslice-map-path-refl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+      {Y : Type 𝓦} {q : A → Y} → (f : Coslice-map p q)
+    → Coslice-map-path f f
+Coslice-map-path-refl f = (~refl , ~refl)
+
+opaque
+  Coslice-map-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+        {Y : Type 𝓦} {q : A → Y} → (f : Coslice-map p q)
+      → is-singleton (Σ _ (Coslice-map-path f))
+  Coslice-map-path-is-torsorial f
+    = is-singleton-structure←parts
+        (SingS-is-single _)
+        (_ , ~refl)
+        (SingS-is-single' _)
+
+instance
+  Coslice-IdS
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {p : A → X}
+        {Y : Type 𝓦} {q : A → Y}
+      → Identity-system (Coslice-map p q) (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Coslice-IdS .Identity-system.IdS = Coslice-map-path
+  Coslice-IdS .Identity-system.IdS←Id refl = Coslice-map-path-refl _
+  Coslice-IdS .Identity-system.IdS←Id-is-equiv f
+    = fundamental-Id _ (Coslice-map-path-is-torsorial f) _
+
+extend-coslice-map
+  : ∀ {𝓤 𝓥 𝓦 𝓧} {P : Type 𝓤} {Q : Type 𝓥} {A : Type 𝓦} {B : Type 𝓧}
+      (p : A → P) (q : A → Q) (f : B → A)
+    → Coslice-map p q → Coslice-map (p ∘ f) (q ∘ f)
+extend-coslice-map p q f = total-map (λ _ → _▸ f)
+}
+}
+
+\subtree[stt-00A1]{
+\title{The initial coslice}
+\taxon{Theorem}
+\date{2025-11-15}
+
+\p{The identity function is initial in the coslice category. That is,
+fixing a type #{X}, for any #{f : A \to X}, there is a unique coslice
+map #{\id} to #{f}.}
+
+\agda{
+initial-coslice
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {X : Type 𝓥}
+      (f : A → X)
+    → is-singleton (Coslice-map id f)
+initial-coslice f = mk-singl (f , ~refl) unique where
+  unique : (x : Coslice-map id f) → (f , ~refl) ＝ x
+  unique (g , H) = funext-J (λ h K → (f , ~refl) ＝ (h , K ~⁻¹)) refl g (H ~⁻¹)
+                 ∙ Σ-path→ (refl , (funext→ λ _ → sym-sym))
+}
+}
+
+\subtree[stt-0060]{
+\taxon{Definition}
+\title{Equivalences of coslices}
+
+\p{A map of coslices is said to be an equivalence
+if it's underlying map of types in an equivalence.}
+
+\agda{
+is-coslice-equiv
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      {p : A → X}
+      {𝓦} {Y : Type 𝓦}
+      {q : A → Y}
+    → Coslice-map p q
+    → Type (𝓥 ⊔ 𝓦)
+is-coslice-equiv f = is-equiv (f .fst)
+}
+}
+
+\subtree[stt-006N]{
+\taxon{Theorem}
+\title{Equivalences, sections and retracts are closed under coslice equivalence}
+
+\agda{
+sec←sec-Coslice-equiv
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      {p : A → X}
+      {𝓦} {Y : Type 𝓦}
+      {q : A → Y}
+      (f : Coslice-map p q)
+    → is-coslice-equiv f
+    → section p
+    → section q
+sec←sec-Coslice-equiv (f , H) feq (ps , sp)
+  = homotopy-section H ((ps ∘ f.bwd) , f ◂ sp ▸ f.bwd ~∙ f.ε) where
+  module f = is-equiv feq
+
+
+
+sec←sec-Coslice-equiv'
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      {p : A → X}
+      {𝓦} {Y : Type 𝓦}
+      {q : A → Y}
+      (f : Coslice-map p q)
+    → is-coslice-equiv f
+    → section q
+    → section p
+sec←sec-Coslice-equiv' (f , H) feq (ps , sp)
+  = homotopy-section (((f.η ▸ _ ~⁻¹) ~∙ f.bwd ◂ H) ~⁻¹)
+                     ((ps ∘ f) , f.bwd ◂ sp ▸ f ~∙ f.η) where
+  module f = is-equiv feq
+
+equiv←Coslice-equiv
+  : ∀ {𝓤} {A : Type 𝓤}
+      {𝓥} {X : Type 𝓥}
+      {p : A → X}
+      {𝓦} {Y : Type 𝓦}
+      {q : A → Y}
+      (f : Coslice-map p q)
+    → is-coslice-equiv f
+    → is-equiv p
+    → is-equiv q
+equiv←Coslice-equiv (f , comm) feq peq
+  = homotopy-is-equiv comm (is-equiv-∘ feq peq)
+}
+}

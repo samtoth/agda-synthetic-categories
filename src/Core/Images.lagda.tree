@@ -1,0 +1,209 @@
+\date{2025-08-01}
+\title{Images of maps}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+module Core.Images where
+
+open import Foundations.Prelude
+open import Axioms.UF
+open import Core.Slices
+open import Modalities.Instances.Truncation
+}
+
+\subtree[stt-008H]{
+\title{Universal property of Images}
+\taxon{Definition}
+
+\p{Given a map #{f : A \to B}, we say that the type of an embedding
+#{i : I \to B}, together with a map #{\rm{Hom}_B(f,i)} in the slice is
+an image of #{f} if any other embedding with a triangle as above
+factors through #{i}.}
+
+\p{In more precise language, for some embedding #{i' : I' \to B}
+we can define a function #{(i \to i') \to f \to i'}. #{i} is the
+image of #{f} when this map is an equivalence.}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+  postcomp-slice
+    : ∀ {𝓦 𝓜} {I : Type 𝓦} {i : I → B}
+        (K : Slice-map f i)
+        {I' : Type 𝓜} {i' : I' → B}
+      → Slice-map i i' → Slice-map f i'
+  postcomp-slice {i = i} K {I'} {i'} sm
+    = ( sm .fst ∘ K .fst
+      , sm .snd ▸ K .fst ~∙ K .snd)
+
+  is-universal-embedding
+    : ∀ {𝓘} {I : Type 𝓘}
+        (i : I → B) → Slice-map f i
+      → Typeω
+  is-universal-embedding i factors
+    = ∀ {𝓦} {I' : Type 𝓦} (i' : I' → B)
+      → is-embedding i'
+      → is-equiv (postcomp-slice {i = i} factors {I'} {i'})
+
+  is-universal-embedding←logical
+    : ∀ {𝓘} {I : Type 𝓘} (i : I → B) (S : Slice-map f i)
+      → (∀ {𝓦} {I' : Type 𝓦} (i' : I' → B)
+          → is-embedding i'
+          → Slice-map f i' → Slice-map i i')
+      → is-universal-embedding i S
+  is-universal-embedding←logical i sl log i' i'emb
+    = is-equiv←inverse
+            (slice-embedding-is-prop i'emb)
+            (slice-embedding-is-prop i'emb)
+            (log i' i'emb)
+
+  record is-image {𝓘} {I : Type 𝓘} (i : I → B) : Typeω where
+    constructor mk-is-image
+    field
+      map-is-emb   : is-embedding i
+      factors      : Slice-map f i
+      factors-is-universal-embedding : is-universal-embedding i factors
+}
+}
+
+\subtree[stt-00I0]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Construction}
+\title{The canonical image}
+
+\p{
+The \em{canonical image} of a map #{f : A \to B} is the type of elements #{b} of #{B}
+such that #{f} merely hits #{b}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+
+  canonical-image
+    : Type (𝓤 ⊔ 𝓥)
+  canonical-image = Σ[ b ∶ B ] ║ fibre f b ║
+
+  canonical-image-incl
+    : canonical-image → B
+  canonical-image-incl = fst
+
+  canonical-image-factors
+    : Slice-map f canonical-image-incl
+  canonical-image-factors .fst a = f a , Trunc.η (a , refl)
+  canonical-image-factors .snd = ~refl
+
+  canonical-image-incl-is-embedding
+    : is-embedding canonical-image-incl
+  canonical-image-incl-is-embedding
+    = is-embedding←is-prop-map λ b →
+        is-prop←equiv-to-prop
+          ((fibre-straighten (λ b' → ║ fibre f b' ║) b) e⁻¹)
+          ║-║-is-prop
+
+  canonical-image-factor
+    : ∀ {𝓦} {I : Type 𝓦}
+        (i : I → B)
+      → is-embedding i
+      → Slice-map f i
+      → Slice-map canonical-image-incl i
+  canonical-image-factor i iemb fi
+    = (λ (b , t) → go b t .fst) , (λ (b , t) → go b t .snd)
+    where
+    go : (b : B) → ║ fibre f b ║ → fibre i b
+    go b = Trunc.○-rec
+      (is-truncated←is-prop (is-prop-map←is-embedding iemb b))
+      λ (a , p) → fi .fst a , fi .snd a ∙ p
+
+  canonical-image-is-image
+    : is-image f canonical-image-incl
+  canonical-image-is-image .is-image.map-is-emb = canonical-image-incl-is-embedding
+  canonical-image-is-image .is-image.factors = canonical-image-factors
+  canonical-image-is-image .is-image.factors-is-universal-embedding
+    = is-universal-embedding←logical
+        (f)
+        (canonical-image-incl)
+        (canonical-image-factors)
+        (canonical-image-factor)
+}
+}
+
+\subtree[stt-00I1]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Images are unique up to equivalence}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B)
+  {I : Type 𝓦} {i : I → B}
+  {J : Type 𝓛} {j : J → B}
+  where
+
+  image-slice-map
+    : is-image f i
+    → is-image f j
+    → Slice-map i j
+  image-slice-map Ii Ij
+    = is-equiv.bwd
+        (is-image.factors-is-universal-embedding Ii j (is-image.map-is-emb Ij))
+        (is-image.factors Ij)
+
+  is-image-equiv
+    : is-image f i
+    → is-image f j
+    → I ≃ J
+  is-image-equiv Ii Ij = mk≃ (to .fst) (is-equiv←qinv (from .fst , ret , sec)) where
+    to   = image-slice-map Ii Ij
+    from = is-equiv.bwd
+             (is-image.factors-is-universal-embedding Ij i (is-image.map-is-emb Ii))
+             (is-image.factors Ii)
+
+    ret : from .fst ∘ to .fst ~ id
+    ret = happly (ap fst
+      (slice-embedding-is-prop (is-image.map-is-emb Ii)
+        (from .fst ∘ to .fst , from .snd ▸ to .fst ~∙ to .snd)
+        (Slice-id i)))
+
+    sec : to .fst ∘ from .fst ~ id
+    sec = happly (ap fst
+      (slice-embedding-is-prop (is-image.map-is-emb Ij)
+        (to .fst ∘ from .fst , to .snd ▸ from .fst ~∙ from .snd)
+        (Slice-id j)))
+}
+}
+
+\subtree[stt-00HX]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Images are preserved by equivalences at the domain}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓘 : Level} {A : Type 𝓤} {A' : Type 𝓥} {B : Type 𝓦} {I : Type 𝓘}
+   where
+
+  is-image←equiv-domain
+    : (e : A ≃ A')
+      {f : A → B}
+      {i : I → B}
+    → is-image (f ∘ _≃_.bwd e) i
+    → is-image f i
+  is-image←equiv-domain e {f = f} {i = i} im = mk-is-image
+    (is-image.map-is-emb im)
+    (is-image.factors im .fst ∘ _≃_.fwd e
+    , is-image.factors im .snd ▸ _≃_.fwd e ~∙ f ◂ _≃_.η e)
+    (is-universal-embedding←logical f i
+      ( is-image.factors im .fst ∘ _≃_.fwd e
+      , is-image.factors im .snd ▸ _≃_.fwd e ~∙ f ◂ _≃_.η e)
+      ( λ i' i'emb fi' →
+        is-equiv.bwd (is-image.factors-is-universal-embedding im i' i'emb)
+          ( fi' .fst ∘ _≃_.bwd e
+          , fi' .snd ▸ _≃_.bwd e)))
+}
+}

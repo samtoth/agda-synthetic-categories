@@ -8,6 +8,11 @@ on:
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
         default: false
+  workflow_run:
+    workflows:
+      - Benchmark
+    types:
+      - completed
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,11 +22,12 @@ name: Build
 
 jobs:
   syntactic-check:
+    if: ${{ github.event_name != 'workflow_run' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
 
@@ -31,7 +37,7 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v14
+        uses: cachix/cachix-action@v17
         with:
           name: agda-synthetic-categories
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -46,19 +52,21 @@ jobs:
         run: nix-shell --run "make check-forest-no-typecheck"
 
   build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v14
+        uses: cachix/cachix-action@v17
         with:
           name: agda-synthetic-categories
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -71,16 +79,49 @@ jobs:
       - name: Build
         run: nix-build
 
+      - name: Stage site artifact
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
+        run: cp -LR result site-artifact
+
+      - name: Prepare benchmark page data
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
+        run: |
+          mkdir -p site-artifact/benchmarks
+          git fetch origin benchmark-data || true
+          if git show-ref --verify --quiet refs/remotes/origin/benchmark-data; then
+            git show origin/benchmark-data:data.json > site-artifact/benchmarks/data.json
+          fi
+          test -f site-artifact/benchmarks/data.json
+          printf 'window.BENCHMARK_DATA = ' > site-artifact/benchmarks/data.js
+          cat site-artifact/benchmarks/data.json >> site-artifact/benchmarks/data.js
+
       - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+          (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
         with:
-          path: result/
+          path: site-artifact/
           retention-days: 1
 
   deploy:
     # Add a dependency to the build job
     needs: build
-    if: ${{ github.ref_name == 'main' }}
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main')
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
@@ -97,4 +138,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

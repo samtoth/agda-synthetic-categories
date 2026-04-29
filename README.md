@@ -4,6 +4,8 @@ An agda development focussed on the development of ∞-category theory using sim
 type theory.
 Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories) to browse
 the resource and find out more about the project.
+Benchmark history is published at
+[the benchmark page](https://samtoth.github.io/agda-synthetic-categories/benchmarks/).
 
 ## Development
 

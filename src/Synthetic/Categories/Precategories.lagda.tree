@@ -170,18 +170,9 @@ A \em{precategory} is a [simplicial](stt-00AC) [Segal type](stt-00AI).
 }
 
 \agda{
-fam-is-precategory-dom : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
-fam-is-precategory-dom (inl _) = Λ[2,1]
-fam-is-precategory-dom (inr ij) = fam-is-simplicial ij
-
-fam-is-precategory-cod : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
-fam-is-precategory-cod (inl _) = Δ²
-fam-is-precategory-cod (inr _) = ULift 𝓘 𝟙
-
 fam-is-precategory
-  : (s : 𝟙 ⊎ (Δ¹ × Δ¹)) → fam-is-precategory-dom s → fam-is-precategory-cod s
-fam-is-precategory (inl _) = Λ[2,1]-incl
-fam-is-precategory (inr ij) = mk-lift ∘ !
+  : ⨄₁ᶠ-carrier (point Λ[2,1]-incl) (!ᴸ: 𝓘 ∘ fam-is-simplicial)
+fam-is-precategory = point Λ[2,1]-incl ⨄₁ᶠ (!ᴸ: 𝓘 ∘ fam-is-simplicial)
 
 is-precategory : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
 is-precategory = is-local fam-is-precategory
@@ -238,28 +229,28 @@ is-precategory-equiv
 is-precategory-equiv f
   = ∀ {𝓠} {Q : Type 𝓠} → is-precategory Q → is-equiv (precomp Q f)
 
-is-precategory←is-segal×is-simplicial
+is-precategory←is-segal←is-simplicial
   : ∀ {𝓤} {A : Type 𝓤}
-    → is-segal A × is-simplicial A
+    → is-segal A
+    → is-simplicial A
     → is-precategory A
-is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inl *) = apc tt
-is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inr ij)
-  = is-local-sing←is-null
-      (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
-      (λ _ → mk-lift ∘ !)
-      simp ij
+is-precategory←is-segal←is-simplicial apc simp
+  = is-local-⨄₁ᶠ←is-local
+      apc
+      (is-local-sing←is-null
+        (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
+        (λ _ → !ᴸ)
+        simp)
 
 is-segal←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-segal A
-is-segal←is-precategory pcat = λ _ → pcat (inl tt)
+is-segal←is-precategory pcat
+  = ×-is-local←is-local-⨄₁ᶠ pcat .fst
 
 is-simplicial←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-simplicial A
 is-simplicial←is-precategory {A = X} pcat
-  = is-null←is-local-sing
-      (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
-      (λ _ → mk-lift ∘ !)
-      (λ ij → pcat (inr ij))
+  = is-null←is-localᴸ (×-is-local←is-local-⨄₁ᶠ pcat .snd)
 
 is-segal×is-simplicial←is-precategory
   : ∀ {𝓤} {A : Type 𝓤}
@@ -268,21 +259,14 @@ is-segal×is-simplicial←is-precategory
 is-segal×is-simplicial←is-precategory pcat
   = (is-segal←is-precategory pcat , is-simplicial←is-precategory pcat)
 
-is-segal×is-simplicial-is-prop
+is-local-fam-is-simplicial≃is-simplicial
   : ∀ {𝓤} {A : Type 𝓤}
-    → is-prop (is-segal A × is-simplicial A)
-is-segal×is-simplicial-is-prop {A = A}
-  = ×-is-prop (is-local-is-prop A) (is-null-is-prop A)
-
-is-precategory≃is-segal×is-simplicial
-  : ∀ {𝓤} {A : Type 𝓤}
-    → is-precategory A ≃ (is-segal A × is-simplicial A)
-is-precategory≃is-segal×is-simplicial {A = A}
-  = mk≃ is-segal×is-simplicial←is-precategory
-      (is-equiv←inverse
-        (is-local-is-prop A)
-        is-segal×is-simplicial-is-prop
-        is-precategory←is-segal×is-simplicial)
+    → is-local (!ᴸ: 𝓘 ∘ fam-is-simplicial) A ≃ is-simplicial A
+is-local-fam-is-simplicial≃is-simplicial {A = A}
+  = equiv←logical
+      (is-local-is-prop A)
+      (is-null-is-prop A)
+      (is-null←is-localᴸ , is-localᴸ←is-null)
 
 is-triangulated←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-triangulated A
@@ -296,7 +280,10 @@ Precategory-U-is-simplicial
   : {𝓤 : Level} → is-simplicial (Precategory-U 𝓤)
 Precategory-U-is-simplicial {𝓤}
   = is-simplicial←equiv
-      ((Σ-ap-≃ λ A → is-precategory≃is-segal×is-simplicial {A = A}) e⁻¹)
+      ((Σ-ap-≃ λ A →
+        is-local-⨄₁ᶠ≃×-is-local
+        ∙≃ (id≃ ×≃ is-local-fam-is-simplicial≃is-simplicial {A = A}))
+        e⁻¹)
       (Null-in-gSubU-is-null←is-prop
         {𝓤 = 𝓘} {𝓥 = 𝓤}
         {P = fam-is-simplicial}
@@ -372,7 +359,7 @@ opaque
         (pushout-rec-unique _ _
           ~refl
           ~refl
-          (λ _ → ∙-reflr _ ∙ ap-∘ F _ (glue tt) ∙ ap (ap F) (pushout-rec-apβ _)
+          (λ _ → ∙-reflr _ ∙ ap-∘ F _ Λ[2,1]-glue ∙ ap (ap F) (pushout-rec-apβ _)
                ∙ ap-∙ F (g .Homᵈ.hom1) _
                ∙ ap (ap F (g .Homᵈ.hom1) ∙_) (ap-sym F _)))
         ~refl

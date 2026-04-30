@@ -7,6 +7,8 @@ the resource and find out more about the project.
 Benchmark history is published at
 [the benchmark page](https://samtoth.github.io/agda-synthetic-categories/benchmarks/).
 
+Have questions or just want to chat? Join our [Discord server](https://discord.gg/Jfxv4jPTva)!
+
 ## Development
 
 The easiest way to build or work on this project is using nix, and we provide a range

@@ -1,0 +1,199 @@
+\title{Split monomorphisms}
+\author{fredrikbakke}
+\date{2026-04-13}
+\date{2026-04-29}
+\date{2026-04-30}
+\taxon{Module}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.SplitMonomorphisms
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+open import Core.CanonicalPushouts
+open import Foundations.Bool
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+}
+
+\subtree[fre-00N2]{
+\title{Split monomorphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+A \em{split monomorphism} is a morphism equipped with a retraction.
+}
+
+\agda{
+is-split-mono
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+    → Hom A a b
+    → Type (𝓘 ⊔ 𝓤)
+is-split-mono {A = A} {a} {b} f
+  = Σ[ r ∶ Hom A b a ] Hom2 r f (idH a)
+
+SplitMono
+  : ∀ {𝓤} {A : Type 𝓤}
+    → A → A → Type (𝓘 ⊔ 𝓤)
+SplitMono a b = Σ[ f ∶ Hom _ a b ] is-split-mono f
+
+SplitMono-fwd
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → SplitMono a b
+  → Hom A a b
+SplitMono-fwd = fst
+
+SplitMono-ret
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ∀ {a b : A}
+  → SplitMono a b
+  → Hom A b a
+SplitMono-ret = fst ∘ snd
+}
+
+\agda{
+ΣΣSplitMono
+  : ∀ {𝓤} (A : Type 𝓤)
+  → Type (𝓘 ⊔ 𝓤)
+ΣΣSplitMono A = Σ[ a ∶ A ] Σ[ b ∶ A ] SplitMono a b
+
+ΣΣSplitMono-sec-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ΣΣSplitMono A
+  → (Δ¹ → A)
+ΣΣSplitMono-sec-arr (_ , _ , f , _ , _) = f .Homᵈ.hom
+
+ΣΣSplitMono-ret-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ΣΣSplitMono A
+  → (Δ¹ → A)
+ΣΣSplitMono-ret-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
+}
+}
+
+\subtree[fre-00OL]{
+\title{Identity split monomorphisms}
+\author{fredrikbakke}
+\taxon{Construction}
+
+\agda{
+horn-const
+    : ∀ {𝓤} {A : Type 𝓤} (a : A) → (λ _ → a) ~ make-horn (idH a) (idH a)
+horn-const a
+  = pushout-rec-unique _ (λ _ → a) ~refl ~refl
+      (λ _ → ∙-reflr _ ∙ ap-const Λ[2,1]-glue)
+
+idH-Hom2
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → Hom2 (idH a) (idH a) (idH a)
+idH-Hom2 a .fst = λ _ → a
+idH-Hom2 a .snd
+  = pushout-rec-unique _ (λ _ → a) (horn-const a)
+      ~refl
+      λ where
+        (mk-lift false) → ∙-reflr _ ∙ ap-const (glue ∂Δ¹-0)
+        (mk-lift true) → ∙-reflr _ ∙ ap-const (glue ∂Δ¹-1)
+
+idH-is-split-mono
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → is-split-mono (idH a)
+idH-is-split-mono a = idH a , idH-Hom2 a
+
+id-SplitMono
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → SplitMono a a
+id-SplitMono a = idH a , idH-is-split-mono a
+
+SplitMono←Id
+  : ∀ {𝓤} {A : Type 𝓤}
+  → {a b : A}
+  → (a ＝ b)
+  → SplitMono a b
+SplitMono←Id refl = id-SplitMono _
+}
+}
+
+\subtree[fre-00OM]{
+\title{Composition of split monomorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+In a Segal type split monomorphisms are closed under composition.
+}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤}
+  (𝐴 : is-segal A)
+  (∘-assoc-𝐴
+    : {a b c d : A}
+    → (h : Hom A c d)
+    → (g : Hom A b c)
+    → (f : Hom A a b)
+    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+  where
+
+  is-split-mono-eq
+    : {a b : A} {f : Hom A a b}
+    → is-split-mono f
+    → Σ[ r ∶ Hom A b a ] (r ∘[ 𝐴 ] f ＝ idH a)
+  is-split-mono-eq {f = f} (r , η)
+    = r , sym (unique-composite 𝐴 r f (idH _) η)
+
+  is-split-mono←eq
+    : {a b : A} {f : Hom A a b}
+    → Σ[ r ∶ Hom A b a ] (r ∘[ 𝐴 ] f ＝ idH a)
+    → is-split-mono f
+  is-split-mono←eq {f = f} (r , η)
+    = r , tr (Hom2 r f) η ∘[ 𝐴 ]-is-composite
+
+  ∘-is-split-mono
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → is-split-mono g
+    → is-split-mono f
+    → is-split-mono (g ∘[ 𝐴 ] f)
+  ∘-is-split-mono {g = g} {f} (g⁻¹ , ηg) (f⁻¹ , ηf)
+    = is-split-mono←eq
+        ( ( f⁻¹ ∘[ 𝐴 ] g⁻¹)
+        , ( sym (∘-assoc-𝐴 (f⁻¹ ∘[ 𝐴 ] g⁻¹) g f)
+          ∙ ap (_∘[ 𝐴 ] f) (∘-assoc-𝐴 f⁻¹ g⁻¹ g)
+          ∙ ap (λ q → (f⁻¹ ∘[ 𝐴 ] q) ∘[ 𝐴 ] f)
+               (snd (is-split-mono-eq (g⁻¹ , ηg)))
+          ∙ ap (_∘[ 𝐴 ] f) (∘-left-unit 𝐴 f⁻¹)
+          ∙ snd (is-split-mono-eq (f⁻¹ , ηf))))
+
+  comp-SplitMono
+    : ∀ {a b c : A}
+    → SplitMono b c
+    → SplitMono a b
+    → SplitMono a c
+  comp-SplitMono (g , g-smono) (f , f-smono)
+    = (g ∘[ 𝐴 ] f , ∘-is-split-mono g-smono f-smono)
+}
+% TODO: add  `_∘ℜ[_]_` operator for composition of split monos
+}

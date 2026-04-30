@@ -21,7 +21,7 @@ optional `PORT=` parameter (default: `1313`). To see all `make` targets run
 
 To get working on the library without nix you will at minimum need a working
 installation of Agda nightly version
-[f3697415ac835c4e0898fb7eb0a5a46e313c2065](https://github.com/agda/agda/commit/f3697415ac835c4e0898fb7eb0a5a46e313c2065)
+[f369741](https://github.com/agda/agda/commit/f3697415ac835c4e0898fb7eb0a5a46e313c2065)
 or newer. You can find the latest release binaries
 [here](https://github.com/agda/agda/releases/). See also the Agda documentation:
 [installing from source](https://agda.readthedocs.io/en/latest/getting-started/installation.html#option-2-install-the-development-version-of-agda-from-source-for-advanced-users).

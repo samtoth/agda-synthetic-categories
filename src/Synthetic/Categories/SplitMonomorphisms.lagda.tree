@@ -66,6 +66,13 @@ SplitMono-ret
   → SplitMono a b
   → Hom A b a
 SplitMono-ret = fst ∘ snd
+
+SplitMono-triangle
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ∀ {a b : A}
+  → (f : SplitMono a b)
+  → Hom2 (SplitMono-ret f) (SplitMono-fwd f) (idH a)
+SplitMono-triangle = snd ∘ snd
 }
 
 \agda{
@@ -85,6 +92,50 @@ SplitMono-ret = fst ∘ snd
   → ΣΣSplitMono A
   → (Δ¹ → A)
 ΣΣSplitMono-ret-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
+}
+}
+
+\subtree[fre-7704]{
+\title{Characterising equality of split monomorphisms}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+SplitMono-Path
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → SplitMono a b → SplitMono a b → Type (𝓘 ⊔ 𝓤)
+SplitMono-Path {a = a} f g
+  = Σ[ fwd＝ ∶ SplitMono-fwd f ＝ SplitMono-fwd g ]
+    Σ[ ret＝ ∶ SplitMono-ret f ＝ SplitMono-ret g ]
+      Idᵈ (ap₂ (λ fwd ret → Hom2 ret fwd (idH a)) fwd＝ ret＝)
+        (SplitMono-triangle f)
+        (SplitMono-triangle g)
+
+SplitMono-path→
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitMono a b}
+  → SplitMono-Path f g → f ＝ g
+SplitMono-path→ {f = (f , (r , η))} {g = (.f , (.r , .η))} (refl , refl , refl)
+  = refl
+
+SplitMono-path←
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitMono a b}
+  → f ＝ g → SplitMono-Path f g
+SplitMono-path← refl = refl , refl , refl
+
+SplitMono-path
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitMono a b}
+  → SplitMono-Path f g ≃ (f ＝ g)
+SplitMono-path {f = f} {g}
+  = mk≃ SplitMono-path→ (is-equiv←qinv qinv)
+  where
+  qinv : quasi-inv (SplitMono-path→ {f = f} {g})
+  qinv .fst = SplitMono-path←
+  qinv .snd .fst (refl , refl , refl) = refl
+  qinv .snd .snd refl = refl
 }
 }
 
@@ -171,12 +222,131 @@ module _
           ∙ ap (_∘[ 𝐴 ] f) (∘-left-unit 𝐴 f⁻¹)
           ∙ snd (is-split-mono-eq (f⁻¹ , ηf))))
 
-  ∘-SplitMono
+  comp-SplitMono
     : ∀ {a b c : A}
     → SplitMono b c
     → SplitMono a b
     → SplitMono a c
-  ∘-SplitMono (g , g-smono) (f , f-smono)
+  comp-SplitMono (g , g-smono) (f , f-smono)
     = (g ∘[ 𝐴 ] f , ∘-is-split-mono g-smono f-smono)
 }
+}
+
+\subtree[fre-7700]{
+\title{The functorial action on split monomorphisms}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (F : A → B)
+  where
+
+  ap-is-split-mono
+    : {a b : A} {f : Hom A a b}
+    → is-split-mono f
+    → is-split-mono (ap-hom F f)
+  ap-is-split-mono {f = f} (r , η)
+    = ap-hom F r , ap-hom2 F r f (idH _) η
+
+  ap-SplitMono
+    : {a b : A}
+    → SplitMono a b
+    → SplitMono (F a) (F b)
+  ap-SplitMono (f , f-smono)
+    = ap-hom F f , ap-is-split-mono f-smono
+}
+
+\p{The action preserves identities.}
+
+\agda{
+  ap-idH-is-split-mono
+    : (a : A)
+    → is-split-mono (ap-hom F (idH a))
+  ap-idH-is-split-mono a
+    = ap-is-split-mono (idH-is-split-mono a)
+
+  ap-id-SplitMono
+    : (a : A)
+    → SplitMono (F a) (F a)
+  ap-id-SplitMono a
+    = ap-SplitMono (id-SplitMono a)
+
+  ap-id-SplitMono-fwd
+    : (a : A)
+    → SplitMono-fwd (ap-id-SplitMono a) ＝ SplitMono-fwd (id-SplitMono (F a))
+  ap-id-SplitMono-fwd a = refl
+
+  ap-id-SplitMono-ret
+    : (a : A)
+    → SplitMono-ret (ap-id-SplitMono a) ＝ SplitMono-ret (id-SplitMono (F a))
+  ap-id-SplitMono-ret a = refl
+}
+
+\p{The action preserves composites.}
+
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A) (𝐵 : is-segal B)
+  (∘-assoc-𝐴
+    : {a b c d : A}
+    → (h : Hom A c d)
+    → (g : Hom A b c)
+    → (f : Hom A a b)
+    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+  (∘-assoc-𝐵
+    : {a b c d : B}
+    → (h : Hom B c d)
+    → (g : Hom B b c)
+    → (f : Hom B a b)
+    → (h ∘[ 𝐵 ] g) ∘[ 𝐵 ] f ＝ h ∘[ 𝐵 ] (g ∘[ 𝐵 ] f))
+  (F : A → B)
+  where
+
+  ap-∘-is-split-mono
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → is-split-mono g
+    → is-split-mono f
+    → is-split-mono (ap-hom F (g ∘[ 𝐴 ] f))
+  ap-∘-is-split-mono g-smono f-smono
+    = ap-is-split-mono F (∘-is-split-mono 𝐴 ∘-assoc-𝐴 g-smono f-smono)
+
+  ap-comp-SplitMono
+    : {a b c : A}
+    → SplitMono b c
+    → SplitMono a b
+    → SplitMono (F a) (F c)
+  ap-comp-SplitMono g f
+    = ap-SplitMono F (comp-SplitMono 𝐴 ∘-assoc-𝐴 g f)
+
+  ap-comp-SplitMono-fwd
+    : {a b c : A} (g : SplitMono b c) (f : SplitMono a b)
+    → SplitMono-fwd
+        (ap-comp-SplitMono g f)
+    ＝ SplitMono-fwd
+        (comp-SplitMono 𝐵 ∘-assoc-𝐵 (ap-SplitMono F g) (ap-SplitMono F f))
+  ap-comp-SplitMono-fwd (g , g-smono) (f , f-smono)
+    = unique-composite 𝐵 (ap-hom F g) (ap-hom F f)
+        (ap-hom F (g ∘[ 𝐴 ] f))
+        (ap-hom2 F g f (g ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
+
+  ap-comp-SplitMono-ret
+    : {a b c : A}
+    → (g : SplitMono b c)
+    → (f : SplitMono a b)
+    → SplitMono-ret (ap-comp-SplitMono g f)
+      ＝ SplitMono-ret
+          (comp-SplitMono 𝐵 ∘-assoc-𝐵 (ap-SplitMono F g) (ap-SplitMono F f))
+  ap-comp-SplitMono-ret (g , (g⁻¹ , ηg)) (f , (f⁻¹ , ηf))
+    = unique-composite 𝐵 (ap-hom F f⁻¹) (ap-hom F g⁻¹)
+        (ap-hom F (f⁻¹ ∘[ 𝐴 ] g⁻¹))
+        (ap-hom2 F f⁻¹ g⁻¹ (f⁻¹ ∘[ 𝐴 ] g⁻¹) ∘[ 𝐴 ]-is-composite)
+}
+% TODO: Refine these results to equalities of SplitMonos
 }

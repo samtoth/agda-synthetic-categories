@@ -67,6 +67,13 @@ SplitEpi-sec
   → SplitEpi a b
   → Hom A b a
 SplitEpi-sec = fst ∘ snd
+
+SplitEpi-triangle
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ∀ {a b : A}
+  → (f : SplitEpi a b)
+  → Hom2 (SplitEpi-fwd f) (SplitEpi-sec f) (idH b)
+SplitEpi-triangle = snd ∘ snd
 }
 
 \agda{
@@ -86,6 +93,50 @@ SplitEpi-sec = fst ∘ snd
   → ΣΣSplitEpi A
   → (Δ¹ → A)
 ΣΣSplitEpi-sec-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
+}
+}
+
+\subtree[fre-7705]{
+\title{Characterising equality of split epimorphisms}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+SplitEpi-Path
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → SplitEpi a b → SplitEpi a b → Type (𝓘 ⊔ 𝓤)
+SplitEpi-Path {b = b} f g
+  = Σ[ fwd＝ ∶ SplitEpi-fwd f ＝ SplitEpi-fwd g ]
+    Σ[ sec＝ ∶ SplitEpi-sec f ＝ SplitEpi-sec g ]
+      Idᵈ (ap₂ (λ fwd sec → Hom2 fwd sec (idH b)) fwd＝ sec＝)
+        (SplitEpi-triangle f)
+        (SplitEpi-triangle g)
+
+SplitEpi-path→
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitEpi a b}
+  → SplitEpi-Path f g → f ＝ g
+SplitEpi-path→ {f = (f , (s , η))} {g = (.f , (.s , .η))} (refl , refl , refl)
+  = refl
+
+SplitEpi-path←
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitEpi a b}
+  → f ＝ g → SplitEpi-Path f g
+SplitEpi-path← refl = refl , refl , refl
+
+SplitEpi-path
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → {f g : SplitEpi a b}
+  → SplitEpi-Path f g ≃ (f ＝ g)
+SplitEpi-path {f = f} {g}
+  = mk≃ SplitEpi-path→ (is-equiv←qinv qinv)
+  where
+  qinv : quasi-inv (SplitEpi-path→ {f = f} {g})
+  qinv .fst = SplitEpi-path←
+  qinv .snd .fst (refl , refl , refl) = refl
+  qinv .snd .snd refl = refl
 }
 }
 
@@ -172,9 +223,131 @@ module _
           ∙ ap (g ∘[ 𝐴 ]_) (∘-right-unit 𝐴 g⁻¹)
           ∙ snd (is-split-epi-eq (g⁻¹ , ηg))))
 
-  ∘-SplitEpi
+  comp-SplitEpi
     : {a b c : A} → SplitEpi b c → SplitEpi a b → SplitEpi a c
-  ∘-SplitEpi (g , g-sepi) (f , f-sepi)
+  comp-SplitEpi (g , g-sepi) (f , f-sepi)
     = (g ∘[ 𝐴 ] f , ∘-is-split-epi g-sepi f-sepi)
 }
+}
+
+
+\subtree[fre-7702]{
+\title{Functorial action on split epimorphisms}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (F : A → B)
+  where
+
+  ap-is-split-epi
+    : {a b : A} {f : Hom A a b}
+    → is-split-epi f
+    → is-split-epi (ap-hom F f)
+  ap-is-split-epi {f = f} (s , η)
+    = ap-hom F s , ap-hom2 F f s (idH _) η
+
+  ap-SplitEpi
+    : {a b : A}
+    → SplitEpi a b
+    → SplitEpi (F a) (F b)
+  ap-SplitEpi (f , f-sepi)
+    = ap-hom F f , ap-is-split-epi f-sepi
+}
+
+\p{The action preserves identities.}
+
+\agda{
+  ap-idH-is-split-epi
+    : (a : A)
+    → is-split-epi (ap-hom F (idH a))
+  ap-idH-is-split-epi a
+    = ap-is-split-epi (idH-is-split-epi a)
+
+  ap-id-SplitEpi
+    : (a : A)
+    → SplitEpi (F a) (F a)
+  ap-id-SplitEpi a
+    = ap-SplitEpi (id-SplitEpi a)
+
+  ap-id-SplitEpi-fwd
+    : (a : A)
+    → SplitEpi-fwd (ap-id-SplitEpi a) ＝ SplitEpi-fwd (id-SplitEpi (F a))
+  ap-id-SplitEpi-fwd a = refl
+
+  ap-id-SplitEpi-sec
+    : (a : A)
+    → SplitEpi-sec (ap-id-SplitEpi a) ＝ SplitEpi-sec (id-SplitEpi (F a))
+  ap-id-SplitEpi-sec a = refl
+
+}
+
+\p{The action preserves composites.}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A)
+  (𝐵 : is-segal B)
+  (∘-assoc-𝐴
+    : {a b c d : A}
+    → (h : Hom A c d)
+    → (g : Hom A b c)
+    → (f : Hom A a b)
+    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+  (∘-assoc-𝐵
+    : {a b c d : B}
+    → (h : Hom B c d)
+    → (g : Hom B b c)
+    → (f : Hom B a b)
+    → (h ∘[ 𝐵 ] g) ∘[ 𝐵 ] f ＝ h ∘[ 𝐵 ] (g ∘[ 𝐵 ] f))
+  (F : A → B)
+  where
+
+  ap-∘-is-split-epi
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → is-split-epi g
+    → is-split-epi f
+    → is-split-epi (ap-hom F (g ∘[ 𝐴 ] f))
+  ap-∘-is-split-epi g-sepi f-sepi
+    = ap-is-split-epi F (∘-is-split-epi 𝐴 ∘-assoc-𝐴 g-sepi f-sepi)
+
+  ap-comp-SplitEpi
+    : {a b c : A}
+    → SplitEpi b c
+    → SplitEpi a b
+    → SplitEpi (F a) (F c)
+  ap-comp-SplitEpi g f
+    = ap-SplitEpi F (comp-SplitEpi 𝐴 ∘-assoc-𝐴 g f)
+
+  ap-comp-SplitEpi-fwd
+    : {a b c : A}
+    → (g : SplitEpi b c)
+    → (f : SplitEpi a b)
+    → SplitEpi-fwd
+        (ap-comp-SplitEpi g f)
+    ＝ SplitEpi-fwd
+        (comp-SplitEpi 𝐵 ∘-assoc-𝐵 (ap-SplitEpi F g) (ap-SplitEpi F f))
+  ap-comp-SplitEpi-fwd (g , g-sepi) (f , f-sepi)
+    = unique-composite 𝐵 (ap-hom F g) (ap-hom F f)
+        (ap-hom F (g ∘[ 𝐴 ] f))
+        (ap-hom2 F g f (g ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
+
+  ap-comp-SplitEpi-sec
+    : {a b c : A}
+    → (g : SplitEpi b c)
+    → (f : SplitEpi a b)
+    → SplitEpi-sec (ap-comp-SplitEpi g f)
+    ＝ SplitEpi-sec (comp-SplitEpi 𝐵 ∘-assoc-𝐵 (ap-SplitEpi F g) (ap-SplitEpi F f))
+  ap-comp-SplitEpi-sec (g , (g⁻¹ , ηg)) (f , (f⁻¹ , ηf))
+    = unique-composite 𝐵 (ap-hom F f⁻¹) (ap-hom F g⁻¹)
+        (ap-hom F (f⁻¹ ∘[ 𝐴 ] g⁻¹))
+        (ap-hom2 F f⁻¹ g⁻¹ (f⁻¹ ∘[ 𝐴 ] g⁻¹) ∘[ 𝐴 ]-is-composite)
+}
+% TODO: Refine these results to equalities of SplitEpis
 }

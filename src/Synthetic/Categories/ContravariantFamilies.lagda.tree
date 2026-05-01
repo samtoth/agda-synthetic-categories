@@ -1,0 +1,305 @@
+\date{2026-05-01}
+\title{Contravariant families}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.ContravariantFamilies
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.PushoutSums
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+}
+
+\subtree[tot-A001]{
+\title{Contravariant families}
+\taxon{Definition}
+
+\p{A family #{P : A \to \UU} is said to be contravariant if for any arrow
+#{f : \Delta^1 \to A}, and lift #{x_1 : P(f(1))} over the right endpoint,
+the type of morphisms over #{f} which extend #{x_1} is a singleton.}
+
+\agda{
+is-contravariant
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-contravariant {A = A} P
+  = ∀ f (x₁ : P (f i1)) → is-singleton (Σ[ x₀ ∶ P (f i0) ] Homᵈ (P ∘ f) x₀ x₁)
+
+{-# INJECTIVE_FOR_INFERENCE is-contravariant #-}
+
+is-contravariant-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) → is-prop (is-contravariant P)
+is-contravariant-is-prop _
+  = Π-is-prop (λ _ → Π-is-prop (λ _ → is-single-is-prop))
+
+is-contravariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-contravariant-hom {A = A} P
+  = ∀ {x y} (f : Hom A x y) (y' : P y)
+    → is-singleton (Σ[ x' ∶ P x ] Hom-over f x' y')
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+  is-contravariant-hom←is-contravariant
+    : is-contravariant B → is-contravariant-hom B
+  is-contravariant-hom←is-contravariant contra (mk-hom f refl refl) x'
+    = contra f x'
+
+  is-contravariant←is-contravariant-hom
+    : is-contravariant-hom B → is-contravariant B
+  is-contravariant←is-contravariant-hom contra f x'
+    = contra (λhom f) x'
+}
+}
+
+
+\subtree[tot-A003]{
+\title{Contravariant families admit directed transport}
+\taxon{Lemma}
+
+\agda{
+tr-contra
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-contravariant P → (h : Δ¹ → A) → P (h i1) → P (h i0)
+tr-contra contra h = fst ∘ centre ∘ contra h
+
+tr-contra-filler
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (Pc : is-contravariant P) → (h : Δ¹ → A)
+    → ∀ p → Homᵈ (P ∘ h) (tr-contra {P = P} Pc h p) p
+tr-contra-filler cov h = snd ∘ centre ∘ cov h
+
+tr-contra-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-contravariant P
+    → ∀ {x y} (h : Hom A x y) → P y → P x
+tr-contra-hom contra h
+  = fst ∘ centre ∘ is-contravariant-hom←is-contravariant contra h
+
+tr-contra-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (cov : is-contravariant P)
+    → ∀ {x y} (h : Hom A x y) → (y' : P y)
+    → Hom-over h (tr-contra-hom cov h y') y'
+tr-contra-over contra h
+  = snd ∘ centre ∘ is-contravariant-hom←is-contravariant contra h
+}
+}
+
+\subtree[tot-A002]{
+\title{Right families}
+\taxon{Definition}
+
+\p{We say that a family is right if, as a family, it is right orthogonal to
+the right endpoint inclusion.}
+
+\agda{
+is-right-family
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-right-family = are-orthogonal-fam (point i1)
+}
+}
+
+\subtree[tot-A004]{
+\title{Right families are contravariant}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+  contra-lift-is-extension
+    : ∀ (σ : Δ¹ → A) (x₁ : P (σ i1))
+      → (Σ[ x₀ ∶ P (σ i0) ] Homᵈ (P ∘ σ) x₀ x₁)
+      ≃ Ext (point i1) {P ∘ σ} (point x₁)
+  contra-lift-is-extension σ x₁
+    =  Σ[ x₀ ∶ P (σ i0) ] Homᵈ (P ∘ σ) x₀ x₁
+    ≃⟨ Σ-ap-≃ (λ x → Homᵈ-repr≃) ⟩
+       Σ[ x₀ ∶ P (σ i0) ] Σ[ f ∶ Π _ (P ∘ σ)] ((f i0 ＝ x₀) × (f i1 ＝ x₁))
+    ≃⟨ Σ-comm ⟩
+       Σ[ f ∶ Π _ (P ∘ σ)] Σ[ x₀ ∶ P (σ i0) ] ((f i0 ＝ x₀) × (f i1 ＝ x₁))
+    ≃⟨ Σ-ap-≃ (λ f → Σ-assoc e⁻¹ ∙≃ ×-swap ∙≃ Σ-singleton (λ _ → Sing-is-singleton)) ⟩
+       Σ (Π Δ¹ (P ∘ σ)) (λ z → z i1 ＝ x₁)
+    ≃⟨ Σ-ap-≃ (λ f → unit-UP≃ e⁻¹) ⟩
+       Ext (point i1) (point x₁)
+    ≃∎
+
+  opaque
+    is-contravariant←has-unique-extensions
+      : has-unique-extensions (point i1) P → is-contravariant P
+    is-contravariant←has-unique-extensions ext σ x₁
+      = is-single←equiv-to-single
+          (contra-lift-is-extension σ x₁ e⁻¹)
+          (ext (mk-afmap σ (point x₁)))
+
+    has-unique-extensions←is-contravariant
+      : is-contravariant P → has-unique-extensions (point i1) P
+    has-unique-extensions←is-contravariant contra (mk-afmap σ f)
+      = is-single←equiv-to-single
+          (contra-lift-is-extension σ (f tt))
+          (contra σ (f tt))
+
+  has-unique-extensions⇔is-contravariant
+    : has-unique-extensions (point i1) P ⇔ is-contravariant P
+  has-unique-extensions⇔is-contravariant
+    = ( is-contravariant←has-unique-extensions
+      , has-unique-extensions←is-contravariant)
+
+  is-right-family⇔is-covariant
+    : is-right-family P ⇔ is-contravariant P
+  is-right-family⇔is-covariant
+    =  are-orthogonal-fam⇔has-unique-extensions
+    ∙⇔ has-unique-extensions⇔is-contravariant
+}
+}
+
+\subtree[tot-A005]{
+\title{Right fibrations}
+\taxon{Definition}
+
+\p{A map is a right fibration if it is [right orthogonal](stt-0048) to the right
+endpoint inclusion of #{\Delta^1}.}
+
+\p{See [[stt-00AV]] for the dual notion.}
+
+\agda{
+is-right-fibration
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+is-right-fibration f = (point i1) ⊥ f
+}
+}
+
+\subtree[tot-A006]{
+\title{Contravariant families straighten to right fibrations}
+\taxon{Corollary}
+
+\p{We show that some family #{P : A \to \UU} is [contravariant](tot-A001) iff
+the map #{\pi : \tilde{P} \to A} is a [right fibration](tot-A005).}
+
+\agda{
+opaque
+  is-contravariant⇔is-right-fibration
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+      → is-contravariant P ⇔ is-right-fibration (fst: P)
+  is-contravariant⇔is-right-fibration {A = A} P
+    = (is-right-family⇔is-covariant P ⇔⁻¹)
+    ∙⇔ are-orthogonal-fam⇔are-orthogonal-fst
+}
+}
+
+\subtree[tot-A007]{
+\title{Right fibrations are inner}
+\taxon{Lemma}
+
+\proof{
+\p{We use the fact that left orthogonal maps [are closed under pushout products
+and embeddings](stt-00BV). In particular we take the pushout product:
+#{\underset{\Delta^1}{\overset{\{0\}}{\downarrow}} \pushprod
+\underset{\Delta^1}{\overset{\{1\}}{\downarrow}}}, which modulo some contracting
+away singletons, is the [inner horn](stt-00AD) inclusion into the square. Now
+the following retract square completes the proof:}
+\transclude{stt-00LC}
+}
+
+\remark{
+We may use a perfectly symmetric proof for [left fibrations](stt-00AV)
+(\ref{stt-00C7})
+}
+
+\agda{
+is-inner←is-right-fibration
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-right-fibration f → is-inner f
+is-inner←is-right-fibration {f = f} rf
+  = left-orthogonal-retraction
+      Λ[2,1]-incl (pushout-product (point i1) (point i0))
+      Λ[2,1]↪□-section Λ[2,1]↪□-ret _
+      (left-orthogonal-pushout-product (point i1) f rf (point i0))
+}
+}
+
+\subtree[tot-A009]{
+\taxon{Corollary}
+
+\p{The total type of a contravariant family over a Segal type is itself Segal.}
+
+\agda{
+is-inner-family←is-contravariant
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-contravariant B → is-inner-family B
+is-inner-family←is-contravariant
+  = is-inner←is-right-fibration ∘ (is-contravariant⇔is-right-fibration _ .fst)
+
+is-inner-family←is-contravariant-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-contravariant-hom B → is-inner-family B
+is-inner-family←is-contravariant-hom
+  = is-inner-family←is-contravariant ∘ is-contravariant←is-contravariant-hom
+
+Σ-contra-is-segal
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-segal A → is-contravariant B → is-segal (Σ A B)
+Σ-contra-is-segal apc contra
+  = Σ-is-segal apc
+      (is-inner←is-right-fibration
+        (is-contravariant⇔is-right-fibration _ .fst  contra))
+}
+}
+
+\subtree[tot-A008]{
+\title{Contravariant transport is functorial}
+\taxon{Theorem}
+
+
+\p{Given a contravariant family #{P}, we show the transport operation is
+functorial, in the sense that #{P(\id) \sim \id} and
+#{P(f \circ g) \sim P(g) \circ P(f)}.}
+
+\agda{
+tr-contra-id
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravariant P) {x}
+    → tr-contra Pc (λ _ → x) ~ id
+tr-contra-id P contra {x} x' = ap fst (contra (λ _ → x) x' .central (x' , idH x'))
+
+tr-contra-idH
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravariant P) {x}
+    → tr-contra-hom {P = P} Pc (idH x) ~ id
+tr-contra-idH P contra {x} x' = ap fst
+  (is-contravariant-hom←is-contravariant contra (idH x) x' .central (x' , idH x'))
+
+tr-contra-∘
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
+      (contra : is-contravariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
+      (z' : P z)
+    → tr-contra-hom contra (g ∘[ Apc ] f) z'
+    ＝ tr-contra-hom contra f (tr-contra-hom contra g z')
+tr-contra-∘ apc P contra g f z'
+  = ap fst
+      (is-contravariant-hom←is-contravariant contra (g ∘[ apc ] f) z' .central
+        ( tr-contra-hom contra f (tr-contra-hom contra g z')
+        , Compᵈ apc P (is-inner-family←is-contravariant contra) g f
+                (tr-contra-over contra g _) (tr-contra-over contra f _)))
+}
+}

@@ -21,7 +21,9 @@ open import Core.FunctorialityPullbacks
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
+open import Ergonomics.Representation
 }
+
 
 
 \subtree[stt-0048]{
@@ -37,11 +39,259 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
        {B : Type 𝓥} {C : Type 𝓦}
        {D : Type 𝓛} where
   are-orthogonal : ∀ (f : A → B) (g : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  are-orthogonal f g = ∀ (F : Arrow-map f g) → unique-lifts F
+  are-orthogonal f g = is-equiv (pullback-power f g)
 }
 }
 
+\subtree[tot-0019]{
+\title{Orthogonal maps admit unique lifting solutions}
 
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
+       {B : Type 𝓥} {C : Type 𝓦}
+       {D : Type 𝓛} where
+  admit-unique-lifts : ∀ (f : A → B) (g : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  admit-unique-lifts f g = ∀ (F : Arrow-map f g) → unique-lifts F
+
+  are-orthogonal←unique-lifts
+     : ∀ {f : A → B} {g : C → D}
+       → admit-unique-lifts f g
+       → are-orthogonal f g
+  are-orthogonal←unique-lifts {f} {g} orth
+    = is-equiv←has-singleton-fibres λ where
+      G@(mk-amap t b H) → is-single←equiv-to-single
+                          (pb-power-fibre≃lifts f g G e⁻¹)
+                          (orth G)
+}
+}
+
+\subtree[tot-0010]{
+\title{Orthogonality of a map with a family}
+\taxon{Definition}
+
+\agda{
+are-orthogonal-fam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} (f : A → B)
+      (P : C → Type 𝓜)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+are-orthogonal-fam f P = is-fibrewise-equiv λ g → precomp-Π (P ∘ g) f
+
+are-orthogonal-fam←equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {f : A → B}
+      {P : C → Type 𝓜} {P' : C → Type 𝓝}
+      (e : ∀ c → P c ≃ P' c)
+    → are-orthogonal-fam f P → are-orthogonal-fam f P'
+are-orthogonal-fam←equiv {f = f} {P} {P'} e o h
+  = is-equiv←Arrow-equiv
+      {F = amap}
+      ( postcomp-Π-equiv (e.fwd-is-equiv _)
+      , postcomp-Π-equiv (e.fwd-is-equiv _))
+      (o h) where
+  module e c = _≃_ (e c)
+  amap : Arrow-map (precomp-Π (P ∘ h) f) (precomp-Π (P' ∘ h) f)
+  amap .Arrow-Π.top = postcomp-Π (e.fwd ∘ h)
+  amap .Arrow-Π.bot = postcomp-Π (e.fwd ∘ h ∘ f)
+  amap .Arrow-Π.comm = ~refl
+}
+}
+
+\subtree[tot-0011]{
+\title{Unique extensions from orthogonality}
+\taxon{Lemma}
+
+
+\agda{
+record ArrFam-map
+         {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} (f : A → B)
+         (P : C → Type 𝓜) : Type (𝓜 ⊔ 𝓥 ⊔ 𝓤 ⊔ 𝓦) where
+  constructor mk-afmap
+  field
+    bot : B → C
+    top : ∀ a → P (bot (f a))
+
+unquoteDecl ArrFam-map-repr≊ ArrFam-map-repr≃
+  = make-record-repr ArrFam-map-repr≊ ArrFam-map-repr≃ (quote ArrFam-map)
+
+unstr-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → ArrFam-map f P → Arrow-map f (fst: P)
+unstr-ArrFam {f = f} F .Arrow-Π.top a = (_ , F .ArrFam-map.top a)
+unstr-ArrFam F .Arrow-Π.bot = F .ArrFam-map.bot
+unstr-ArrFam F .Arrow-Π.comm = ~refl
+
+str-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → Arrow-map f (fst: P) → ArrFam-map f P
+str-ArrFam F .ArrFam-map.bot = F .Arrow-map.bot
+str-ArrFam {P = P} F .ArrFam-map.top a
+  = tr P (sym (F .Arrow-map.comm a)) (F .Arrow-map.top a .snd)
+
+str-ArrFam-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → is-equiv (str-ArrFam {f = f} {P = P})
+str-ArrFam-is-equiv = is-equiv←qinv
+  ( unstr-ArrFam
+  , (λ {(mk-amap top bot comm) → Arrow-map-path→
+            ((λ a → Σ-path→ ( comm a
+                            , tr∘tr-sym' (comm a) (top a .snd)))
+            , ~refl
+            , λ a → Σ-path-ap-fst)})
+  , ~refl)
+
+has-unique-extensions
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} (f : A → B)
+      (P : C → Type 𝓜)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+has-unique-extensions f P
+  = ∀ (F : ArrFam-map f P)
+    → is-singleton (Ext f {P ∘ F .ArrFam-map.bot} (F .ArrFam-map.top))
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {f : A → B}
+  {P : C → Type 𝓜}
+  where
+  unique-extensions←are-orthogonal-fam
+    : are-orthogonal-fam f P
+    → has-unique-extensions f P
+  unique-extensions←are-orthogonal-fam orth F
+    = is-single←equiv-to-single
+        (fibre-precomp-Π≃Ext (P ∘ F .ArrFam-map.bot) f (F .ArrFam-map.top))
+        (has-singleton-fibres←is-equiv
+          (orth (F .ArrFam-map.bot))
+          (F .ArrFam-map.top))
+
+  are-orthogonal-fam←unique-extensions
+    : has-unique-extensions f P
+    → are-orthogonal-fam f P
+  are-orthogonal-fam←unique-extensions ext g
+    = is-equiv←has-singleton-fibres
+        λ h → is-single←equiv-to-single
+                (fibre-precomp-Π≃Ext _ f _ e⁻¹)
+                (ext (mk-afmap g h))
+
+  are-orthogonal-fam⇔has-unique-extensions
+    : are-orthogonal-fam f P ⇔ has-unique-extensions f P
+  are-orthogonal-fam⇔has-unique-extensions
+    = ( unique-extensions←are-orthogonal-fam
+      , are-orthogonal-fam←unique-extensions)
+
+are-orthogonal-fam←is-cartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → is-cartesian (power-hom f g)
+    → are-orthogonal-fam f (fibre g)
+are-orthogonal-fam←is-cartesian {f = f} {g} pb h
+  = is-equiv←Arrow-equiv {F = amap} amap-eq (pb h) where
+  amap : Arrow-map
+           (arrow-fibre (power-hom f g) h)
+           (precomp-Π (fibre g ∘ h) f)
+  amap .Arrow-map.top = _≃_.fwd (fibre-postcomp≃ g h)
+  amap .Arrow-map.bot = _≃_.fwd (fibre-postcomp≃ g (h ∘ f))
+  amap .Arrow-map.comm (_ , refl) = refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq = ( fibre-postcomp≃ g h ._≃_.fwd-is-equiv
+            , fibre-postcomp≃ g (h ∘ f) ._≃_.fwd-is-equiv
+            )
+
+is-cartesian←are-orthogonal-fam
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → are-orthogonal-fam f (fibre g)
+    → is-cartesian (power-hom f g)
+is-cartesian←are-orthogonal-fam {f = f} {g} eq h
+  = is-equiv←Arrow-equiv⁻¹ {F = amap} amap-eq (eq h) where
+  amap : Arrow-map
+           (arrow-fibre (power-hom f g) h)
+           (precomp-Π (fibre g ∘ h) f)
+  amap .Arrow-map.top = _≃_.fwd (fibre-postcomp≃ g h)
+  amap .Arrow-map.bot = _≃_.fwd (fibre-postcomp≃ g (h ∘ f))
+  amap .Arrow-map.comm (_ , refl) = refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq = ( fibre-postcomp≃ g h ._≃_.fwd-is-equiv
+            , fibre-postcomp≃ g (h ∘ f) ._≃_.fwd-is-equiv
+            )
+
+unique-lifts←are-orthogonal-fam
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → are-orthogonal-fam f (fibre g)
+    → admit-unique-lifts f g
+unique-lifts←are-orthogonal-fam {f = f} {g} eqv F
+  = is-single←equiv-to-single (pb-power-fibre≃lifts _ _ F)
+     (has-singleton-fibres←is-equiv
+       (pullback-power←power-hom-cartesian _ _
+         (is-cartesian←are-orthogonal-fam eqv))
+        F)
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {D : Type 𝓛}
+  {f : A → B} {g : C → D}
+  where
+
+  are-orthogonal-fibre←are-orthogonal
+      : are-orthogonal f g
+      → are-orthogonal-fam f (fibre g)
+  are-orthogonal-fibre←are-orthogonal orth h
+    = are-orthogonal-fam←is-cartesian
+        (power-hom-cartesian←pullback-power f g orth)
+        h
+
+  are-orthogonal←are-orthogonal-fibre
+    : are-orthogonal-fam f (fibre g)
+    → are-orthogonal f g
+  are-orthogonal←are-orthogonal-fibre orth
+    = pullback-power←power-hom-cartesian f g
+        (is-cartesian←are-orthogonal-fam orth)
+
+  are-orthogonal⇔are-orthogonal-fibre
+    : are-orthogonal f g ⇔ are-orthogonal-fam f (fibre g)
+  are-orthogonal⇔are-orthogonal-fibre
+    = (are-orthogonal-fibre←are-orthogonal , are-orthogonal←are-orthogonal-fibre)
+
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦}
+  {f : A → B} {P : C → Type 𝓛}
+  where
+  are-orthogonal-fst←are-orthogonal-fam
+    : are-orthogonal-fam f P → are-orthogonal f (fst: P)
+  are-orthogonal-fst←are-orthogonal-fam orth
+    = are-orthogonal←are-orthogonal-fibre
+        (are-orthogonal-fam←equiv
+          {P = P} {fibre (fst: P)}
+          (_e⁻¹ ∘ fibre-straighten P)
+          orth)
+
+  are-orthogonal-fam←are-orthogonal-fst
+    : are-orthogonal f (fst: P) → are-orthogonal-fam f P
+  are-orthogonal-fam←are-orthogonal-fst orth
+    = are-orthogonal-fam←equiv
+          (fibre-straighten P)
+          (are-orthogonal-fibre←are-orthogonal orth)
+
+  are-orthogonal-fam⇔are-orthogonal-fst
+    : are-orthogonal-fam f P ⇔ are-orthogonal f (fst: P)
+  are-orthogonal-fam⇔are-orthogonal-fst
+    = ( are-orthogonal-fst←are-orthogonal-fam
+      , are-orthogonal-fam←are-orthogonal-fst)
+
+}
+}
 
 \subtree[stt-004A]{
 \title{Classification of orthogonal maps}
@@ -54,8 +304,8 @@ are equivalent:}
   \li{#{f \perp g}}
   \li{The square defined in \ref{stt-004C} is a pullback square}
   \li{The [pullback power](stt-004D) of f with g is an equivalence}
-  \li{The [dependent postcomposition](stt-004M) by #{f} at the fibre of
-      #{g} is an equivalence.}
+  \li{#{f \perp \fibre-fam{g}} – i.e the [dependent postcomposition](stt-004M)
+        by #{f} at the fibre of #{g} is an equivalence.}
 }
 
 \proof{
@@ -73,121 +323,48 @@ are equivalent:}
 
 
 \agda{
-pb-power-is-equiv←orthogonal
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → are-orthogonal f g
-    → is-equiv (pullback-power f g)
-pb-power-is-equiv←orthogonal {A = A} {B} {C} {D} {f} {g} orth
-  = is-equiv←has-singleton-fibres λ where
-    G@(mk-amap t b H) → is-single←equiv-to-single
-                        (pb-power-fibre≃lifts f g G e⁻¹)
-                        (orth G)
-
-
-precomp-Π←is-cartesian
+unique-lifts←is-cartesian
   : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
       {C : Type 𝓦} {D : Type 𝓛}
       {f : A → B} {g : C → D}
     → is-cartesian (power-hom f g)
-    → ∀ (h : B → D)
-    → is-equiv (precomp-Π (fibre g ∘ h) f)
-precomp-Π←is-cartesian {f = f} {g} pb h
-  = is-equiv←Arrow-equiv {F = amap} amap-eq (pb h) where
-  amap : Arrow-map
-           (arrow-fibre (power-hom f g) h)
-           (precomp-Π (fibre g ∘ h) f)
-  amap .Arrow-map.top = _≃_.fwd (fibre-postcomp≃ g h)
-  amap .Arrow-map.bot = _≃_.fwd (fibre-postcomp≃ g (h ∘ f))
-  amap .Arrow-map.comm (_ , refl) = refl
+    → admit-unique-lifts f g
+unique-lifts←is-cartesian cart
+  = unique-lifts←are-orthogonal-fam (are-orthogonal-fam←is-cartesian cart)
 
-  amap-eq : is-Arrow-equiv amap
-  amap-eq = ( fibre-postcomp≃ g h ._≃_.fwd-is-equiv
-            , fibre-postcomp≃ g (h ∘ f) ._≃_.fwd-is-equiv
-            )
-
-is-cartesian←precomp-Π
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → (∀ h → is-equiv (precomp-Π (fibre g ∘ h) f))
-    → is-cartesian (power-hom f g)
-is-cartesian←precomp-Π {f = f} {g} eq h
-  = is-equiv←Arrow-equiv⁻¹ {F = amap} amap-eq (eq h) where
-  amap : Arrow-map
-           (arrow-fibre (power-hom f g) h)
-           (precomp-Π (fibre g ∘ h) f)
-  amap .Arrow-map.top = _≃_.fwd (fibre-postcomp≃ g h)
-  amap .Arrow-map.bot = _≃_.fwd (fibre-postcomp≃ g (h ∘ f))
-  amap .Arrow-map.comm (_ , refl) = refl
-
-  amap-eq : is-Arrow-equiv amap
-  amap-eq = ( fibre-postcomp≃ g h ._≃_.fwd-is-equiv
-            , fibre-postcomp≃ g (h ∘ f) ._≃_.fwd-is-equiv
-            )
-
-orthogonal←precomp-Π
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → (∀ (h : B → D) → is-equiv (precomp-Π (fibre g ∘ h) f))
-    → are-orthogonal f g
-orthogonal←precomp-Π {f = f} {g} eqv F
-  = is-single←equiv-to-single (pb-power-fibre≃lifts _ _ F)
-     (has-singleton-fibres←is-equiv
-       (pullback-power←power-hom-cartesian _ _
-         (is-cartesian←precomp-Π eqv))
-        F)
-
-precomp-Π←orthogonal
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → (∀ (h : B → D)
-    → are-orthogonal f g
-    → is-equiv (precomp-Π (fibre g ∘ h) f))
-precomp-Π←orthogonal {f = f} {g} h orth
-  = precomp-Π←is-cartesian
-      (power-hom-cartesian←pullback-power f g
-        (pb-power-is-equiv←orthogonal orth)) h
-
-
-orthogonal←is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → is-cartesian (power-hom f g)
-    → are-orthogonal f g
-orthogonal←is-cartesian cart
-  = orthogonal←precomp-Π (precomp-Π←is-cartesian cart)
-
-is-cartesian←orthogonal
+unique-lifts←are-orthogonal
   : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
       {C : Type 𝓦} {D : Type 𝓛}
       {f : A → B} {g : C → D}
     → are-orthogonal f g
-    → is-cartesian (power-hom f g)
-is-cartesian←orthogonal orth
-  = is-cartesian←precomp-Π λ h → precomp-Π←orthogonal h orth
+    → admit-unique-lifts f g
+unique-lifts←are-orthogonal
+  = unique-lifts←is-cartesian ∘ power-hom-cartesian←pullback-power _ _
 
-orthogonal←pb-power-is-equiv
+unique-lifts⇔are-orthogonal
   : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
       {C : Type 𝓦} {D : Type 𝓛}
       {f : A → B} {g : C → D}
-    → is-equiv (pullback-power f g)
-    → are-orthogonal f g
-orthogonal←pb-power-is-equiv
-  = orthogonal←is-cartesian ∘ power-hom-cartesian←pullback-power _ _
-
-orthogonal⇔pb-power-is-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → is-equiv (pullback-power f g)
+    → admit-unique-lifts f g
     ⇔ are-orthogonal f g
-orthogonal⇔pb-power-is-equiv
-  = (orthogonal←pb-power-is-equiv , pb-power-is-equiv←orthogonal)
+unique-lifts⇔are-orthogonal
+  = (are-orthogonal←unique-lifts , unique-lifts←are-orthogonal)
+
+is-cartesian←are-orthogonal
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → are-orthogonal f g
+    → is-cartesian (power-hom f g)
+is-cartesian←are-orthogonal = power-hom-cartesian←pullback-power _ _
+
+are-orthogonal←is-cartesian
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → is-cartesian (power-hom f g)
+    → are-orthogonal f g
+are-orthogonal←is-cartesian = pullback-power←power-hom-cartesian _ _
 }
 }
 }
@@ -214,9 +391,10 @@ by f is an equivalence.}
    define orthogonality to be the types satisfying the above property.}
 
 \agda{
-orthogonal-type : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
-                    (f : X → Y)
-                    (A : Type 𝓦) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+orthogonal-type
+  : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
+      (f : X → Y) (A : Type 𝓦)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
 orthogonal-type f A = is-equiv (precomp A f)
 }
 }
@@ -280,9 +458,9 @@ is-orthogonal⇔orthogonal-!
     ⇔ (f ⊥ A)
 is-orthogonal⇔orthogonal-! {X = X} {Y} {f} {A}
   = ((λ orth → is-equiv←Arrow-equiv {F = sq} sq-is-equiv
-                                             (precomp-Π←orthogonal ! orth))
-    , λ orth → orthogonal←precomp-Π
-                 λ _ → is-equiv←Arrow-equiv⁻¹ {F = sq} sq-is-equiv orth) where
+                 (are-orthogonal-fibre←are-orthogonal orth !))
+    , λ orth →  are-orthogonal←are-orthogonal-fibre
+                 (λ _ → is-equiv←Arrow-equiv⁻¹ {F = sq} sq-is-equiv orth)) where
   fst⁻¹ : A → fibre {A = A} ! _
   fst⁻¹ a = a , refl
 
@@ -361,6 +539,6 @@ module _ {𝓘 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
         (is-equiv-∘
           (Arrow-map≃pullback ._≃_.fwd-is-equiv)
           (pullback-power←power-hom-cartesian
-            (point p) f (is-cartesian←orthogonal orth)))
+            (point p) f (is-cartesian←are-orthogonal orth)))
 }
 }

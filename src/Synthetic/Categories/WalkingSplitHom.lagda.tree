@@ -1,0 +1,140 @@
+\title{The walking split homomorphism}
+\author{fredrikbakke}
+\date{2026-04-30}
+\taxon{Module}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.WalkingSplitHom
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+private
+  Δ² = Poly.Δ² I
+
+open import Core.CanonicalPushouts
+open import Foundations.Bool
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.SplitEpimorphisms Δ¹ I I-distr
+
+}
+
+\subtree[fre-00OP]{
+\title{The walking split morphism}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+The \emph{walking split morphism} is the 2-simplex with its diagonal contracted.
+}
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^1} && {\Delta^2} \\
+	\\
+	1 && {\mathfrak{M}}
+	\arrow["{\Delta^2\text{-diag}}", from=1-1, to=1-3]
+	\arrow["!"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+𝔐 : Type 𝓘
+𝔐 = Pushout Δ²-diagonal !
+
+d₂ : Δ¹ → Δ²
+d₂ i = i , i0
+
+d₀ : Δ¹ → Δ²
+d₀ i = i1 , i
+
+section-edge-dom-path-𝔐
+  : d₂ i0 ＝ Δ²-diagonal i0
+section-edge-dom-path-𝔐 = Δ²-refl
+
+retraction-edge-cod-path-𝔐
+  : d₀ i0 ＝ d₂ i1
+retraction-edge-cod-path-𝔐 = Δ²-refl
+
+retraction-edge-dom-path-𝔐
+  : d₀ i1 ＝ Δ²-diagonal i1
+retraction-edge-dom-path-𝔐 = Δ²-refl
+
+sec-arr-𝔐 : Δ¹ → 𝔐
+sec-arr-𝔐 = ι₁ ∘ d₂
+
+ret-arr-𝔐 : Δ¹ → 𝔐
+ret-arr-𝔐 = ι₁ ∘ d₀
+
+src-𝔐 : 𝔐
+src-𝔐 = ι₂ tt
+
+tgt-𝔐 : 𝔐
+tgt-𝔐 = ι₁ (i1 , i0)
+
+sec-𝔐 : Hom 𝔐 src-𝔐 tgt-𝔐
+sec-𝔐
+  = mk-hom sec-arr-𝔐 (ap ι₁ section-edge-dom-path-𝔐 ∙ glue i0) refl
+
+ret-𝔐 : Hom 𝔐 tgt-𝔐 src-𝔐
+ret-𝔐
+  = mk-hom
+      (ret-arr-𝔐)
+      (ap ι₁ retraction-edge-cod-path-𝔐)
+      (ap ι₁ retraction-edge-dom-path-𝔐 ∙ glue i1)
+
+hom2-𝔐 : Hom2 ret-𝔐 sec-𝔐 (idH src-𝔐)
+hom2-𝔐 .fst = ι₁
+hom2-𝔐 .snd
+  = pushout-rec-unique _ (ι₁ ∘ ∂Δ²-incl) horn-bd (λ i → glue i) λ where
+      (mk-lift false) →
+        ap (_∙ glue i0)
+           ( ap-∘ ι₁ ∂Δ²-incl (glue ∂Δ¹-0)
+           ∙ ap (ap ι₁) (pushout-rec-apβ ∂Δ¹-0))
+        ∙ sym (∙-reflr _)
+      (mk-lift true) →
+        ap (_∙ glue i1)
+           ( ap-∘ ι₁ ∂Δ²-incl (glue ∂Δ¹-1)
+           ∙ ap (ap ι₁) (pushout-rec-apβ ∂Δ¹-1))
+        ∙ sym (∙-reflr _)
+  where
+  horn-bd
+    : ι₁ ∘ ∂Δ²-incl ∘ ∂Δ²←Λ[2,1] ~ make-horn ret-𝔐 sec-𝔐
+  horn-bd = pushout-rec-unique _ (ι₁ ∘ Λ[2,1]-incl) ~refl ~refl λ _ →
+    ∙-reflr _
+    ∙ ap-∘ ι₁ Λ[2,1]-incl Λ[2,1]-glue
+    ∙ ap (ap ι₁) (pushout-rec-apβ tt)
+    ∙ ap (ap ι₁) (Δ²-is-set _ _ _ (sym Δ²-refl))
+    ∙ ap-sym ι₁ Δ²-refl
+
+split-mono-𝔐
+  : SplitMono src-𝔐 tgt-𝔐
+split-mono-𝔐 = sec-𝔐 , ret-𝔐 , hom2-𝔐
+
+split-epi-𝔐
+  : SplitEpi tgt-𝔐 src-𝔐
+split-epi-𝔐 = ret-𝔐 , sec-𝔐 , hom2-𝔐
+}
+}

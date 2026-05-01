@@ -1,0 +1,180 @@
+\title{Split epimorphisms}
+\author{fredrikbakke}
+\date{2026-04-30}
+\taxon{Module}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.SplitEpimorphisms
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+open import Core.CanonicalPushouts
+open import Foundations.Bool
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+}
+
+\subtree[fre-00N2]{
+\title{Split epimorphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+A \em{split epimorphism} is a morphism equipped with a retraction.
+}
+
+\agda{
+is-split-epi
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+    → Hom A a b
+    → Type (𝓘 ⊔ 𝓤)
+is-split-epi {A = A} {a} {b} f
+  = Σ[ s ∶ Hom A b a ] Hom2 f s (idH b)
+
+SplitEpi
+  : ∀ {𝓤} {A : Type 𝓤}
+    → A → A → Type (𝓘 ⊔ 𝓤)
+SplitEpi a b = Σ[ f ∶ Hom _ a b ] is-split-epi f
+
+SplitEpi-fwd
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
+  → SplitEpi a b
+  → Hom A a b
+SplitEpi-fwd = fst
+
+SplitEpi-sec
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ∀ {a b : A}
+  → SplitEpi a b
+  → Hom A b a
+SplitEpi-sec = fst ∘ snd
+}
+
+\agda{
+ΣΣSplitEpi
+  : ∀ {𝓤} (A : Type 𝓤)
+  → Type (𝓘 ⊔ 𝓤)
+ΣΣSplitEpi A = Σ[ a ∶ A ] Σ[ b ∶ A ] SplitEpi a b
+
+ΣΣSplitEpi-fwd-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ΣΣSplitEpi A
+  → (Δ¹ → A)
+ΣΣSplitEpi-fwd-arr (_ , _ , f , _ , _) = f .Homᵈ.hom
+
+ΣΣSplitEpi-sec-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → ΣΣSplitEpi A
+  → (Δ¹ → A)
+ΣΣSplitEpi-sec-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
+}
+}
+
+\subtree[fre-00OL]{
+\title{Identity split epimorphisms}
+\author{fredrikbakke}
+\taxon{Construction}
+
+\agda{
+idH-is-split-epi
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → is-split-epi (idH a)
+idH-is-split-epi a = idH a , idH-Hom2 a
+
+id-SplitEpi
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → SplitEpi a a
+id-SplitEpi a = idH a , idH-is-split-epi a
+
+SplitEpi←Id
+  : ∀ {𝓤} {A : Type 𝓤}
+  → {a b : A}
+  → (a ＝ b)
+  → SplitEpi a b
+SplitEpi←Id refl = id-SplitEpi _
+}
+}
+
+\subtree[fre-00OM]{
+\title{Composition of split epimorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+In a Segal type split epimorphisms are closed under composition.
+}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤}
+  (𝐴 : is-segal A)
+  (∘-assoc-𝐴
+    : {a b c d : A}
+    → (h : Hom A c d)
+    → (g : Hom A b c)
+    → (f : Hom A a b)
+    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+  where
+
+  is-split-epi≃eq
+    : {a b : A} {f : Hom A a b}
+    → is-split-epi f
+    ≃ Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+  is-split-epi≃eq = Σ-ap-≃ λ s → Hom2≃∘＝ 𝐴
+
+  is-split-epi-eq
+    : {a b : A} {f : Hom A a b}
+    → is-split-epi f
+    → Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+  is-split-epi-eq = _≃_.fwd is-split-epi≃eq
+
+  is-split-epi←eq
+    : {a b : A} {f : Hom A a b}
+    → Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+    → is-split-epi f
+  is-split-epi←eq = _≃_.bwd is-split-epi≃eq
+
+  ∘-is-split-epi
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → is-split-epi g
+    → is-split-epi f
+    → is-split-epi (g ∘[ 𝐴 ] f)
+  ∘-is-split-epi {g = g} {f} (g⁻¹ , ηg) (f⁻¹ , ηf)
+    = is-split-epi←eq
+        ( ( f⁻¹ ∘[ 𝐴 ] g⁻¹)
+        , ( ∘-assoc-𝐴 g f (f⁻¹ ∘[ 𝐴 ] g⁻¹)
+          ∙ ap (g ∘[ 𝐴 ]_) (sym (∘-assoc-𝐴 f f⁻¹ g⁻¹))
+          ∙ ap (λ q → g ∘[ 𝐴 ] (q ∘[ 𝐴 ] g⁻¹))
+               (snd (is-split-epi-eq (f⁻¹ , ηf)))
+          ∙ ap (g ∘[ 𝐴 ]_) (∘-right-unit 𝐴 g⁻¹)
+          ∙ snd (is-split-epi-eq (g⁻¹ , ηg))))
+
+  ∘-SplitEpi
+    : {a b c : A} → SplitEpi b c → SplitEpi a b → SplitEpi a c
+  ∘-SplitEpi (g , g-sepi) (f , f-sepi)
+    = (g ∘[ 𝐴 ] f , ∘-is-split-epi g-sepi f-sepi)
+}
+}

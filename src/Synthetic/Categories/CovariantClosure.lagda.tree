@@ -38,6 +38,7 @@ open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Simplicial Δ¹ I I-distr
 open import Synthetic.Categories.Precategories Δ¹ I I-distr
 open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I I-distr
 }
 
 \subtree[stt-00FU]{
@@ -171,5 +172,67 @@ opaque
 
     lf : is-left-fibration (fst: λ a → x a ＝ y a)
     lf = orthogonal←base-change (point i0) pb pb-is-cart is-left
+}
+}
+
+
+\subtree[tot-B001]{
+\title{Exponentiating covariant families}
+\taxon{Lemma}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (hole : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
+            (p : C → A) → is-left-anodyne p → is-right-fibration f
+          → is-left-anodyne (pullback-arrow f p))
+  where
+  private
+    G^F : B → Type (𝓥 ⊔ 𝓦)
+    G^F b = F b → G b
+
+    newLeftMap : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    newLeftMap σ x = (i0 , x)
+
+  char-ext-exponentials
+    : ∀ (σ : Δ¹ → B) h
+      → Ext (point i0) {G^F ∘ σ} (point h)
+      ≃ Ext (newLeftMap σ) {G ∘ σ ∘ fst} h
+  char-ext-exponentials σ h = Σ≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
+
+  newLeftMap-is-pb
+    : ∀ σ → Arrow-equiv (newLeftMap σ) (pullback-arrow (fst: F ∘ σ) (point i0))
+  newLeftMap-is-pb σ .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
+  newLeftMap-is-pb σ .fst .Arrow-Π.bot = id
+  newLeftMap-is-pb σ .fst .Arrow-Π.comm = ~refl
+  newLeftMap-is-pb σ .snd .fst = is-equiv←qinv
+    ( (λ {((_ , a) , _ , refl) → a})
+    , ~refl
+    , λ {(_ , _ , refl) → refl})
+  newLeftMap-is-pb σ .snd .snd = id-is-equiv
+
+  newLeftMap-is-left-anodyne
+    : ∀ σ → is-contravariant F → is-left-anodyne (newLeftMap σ)
+  newLeftMap-is-left-anodyne σ rfib
+    = is-anodyne-equiv
+        (pullback-arrow (fst: F ∘ σ) (point i0))
+        (newLeftMap σ)
+        (inv-Arrow-equiv (newLeftMap-is-pb σ))
+        (point i0)
+        (hole (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
+              (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
+
+  cov^contra-is-covariant
+    : is-contravariant F → is-covariant G → is-covariant G^F
+  cov^contra-is-covariant Fctr Gcov
+    = is-covariant←has-unique-extensions G^F (λ where
+       (mk-afmap σ h) → is-single←equiv-to-single
+                          (char-ext-exponentials σ (h tt) e⁻¹)
+                          (unique-extensions←are-orthogonal-fam {P = G}
+                            (are-orthogonal-fam←are-orthogonal-fst
+                              (newLeftMap-is-left-anodyne σ Fctr (fst: G)
+                                (is-covariant⇔is-left-fibration G .fst Gcov)))
+                            (mk-afmap (σ ∘ fst) (h tt))))
 }
 }

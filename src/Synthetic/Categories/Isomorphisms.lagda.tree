@@ -58,6 +58,24 @@ module _ {𝓤} {A : Type 𝓤} where
   fwd-Iso : {a b : A} → Iso a b → Hom A a b
   fwd-Iso = fst
 
+  is-split-mono←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → is-split-mono f
+  is-split-mono←is-iso (g , h , η , ε) = g , η
+
+  is-split-epi←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → is-split-epi f
+  is-split-epi←is-iso (g , h , η , ε) = h , ε
+
+  is-iso←is-split-mono×is-split-epi
+    : {a b : A} {f : Hom A a b}
+    → is-split-mono f × is-split-epi f
+    → is-iso f
+  is-iso←is-split-mono×is-split-epi ((g , η) , (h , ε)) = g , h , η , ε
+
   idH-is-iso : (a : A) → is-iso (idH a)
   idH-is-iso a = (idH a , idH a , idH-Hom2 a , idH-Hom2 a)
 
@@ -106,12 +124,9 @@ module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
 \date{2026-04-30}
 
 \agda{
-module _
-  {𝓤 : Level} {A : Type 𝓤}
-  (𝐴 : is-segal A)
-  where
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
 
-  is-iso-eq -- TODO: use Hom2≃∘＝
+  is-iso-eq
     : ∀ {a b : A} {f : Hom A a b}
     → is-iso f
     → Σ[ g ∶ Hom A b a ]
@@ -145,16 +160,7 @@ module _
 \date{2026-04-30}
 
 \agda{
-module _
-  {𝓤 : Level} {A : Type 𝓤}
-  (𝐴 : is-segal A)
-  (∘-assoc
-    : {a b c d : A}
-    → (h : Hom A c d)
-    → (g : Hom A b c)
-    → (f : Hom A a b)
-    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
-  where
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
 
   Hom-inverse-unique
     : {a b : A} {f : Hom A a b} {g h : Hom A b a}
@@ -162,11 +168,11 @@ module _
     → f ∘[ 𝐴 ] h ＝ idH b
     → g ＝ h
   Hom-inverse-unique {f = f} {g} {h} η ε
-    = sym (∘-left-unit 𝐴 g)
-    ∙ ap (λ q → g ∘[ 𝐴 ] q) (sym ε)
-    ∙ sym (∘-assoc g f h)
-    ∙ ap (λ q → q ∘[ 𝐴 ] h) η
-    ∙ ∘-right-unit 𝐴 h
+    = sym ∘[ 𝐴 ]-left-unit
+    ∙ ap (g ∘[ 𝐴 ]_) (sym ε)
+    ∙ sym ∘[ 𝐴 ]-assoc
+    ∙ ap (_∘[ 𝐴 ] h) η
+    ∙ ∘[ 𝐴 ]-right-unit
 
   Hom-left-inverse←right-inverse
     : {a b : A} {f : Hom A a b} {g h : Hom A b a}
@@ -192,6 +198,10 @@ module _
 \taxon{Proposition}
 
 \agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A)
+  where
+
   is-postcomp-hom-equiv←is-iso
     : {a b : A} {f : Hom A a b}
     → is-iso f
@@ -201,11 +211,11 @@ module _
       (_ , h , η , ε) = is-iso-eq 𝐴 fiso
 
       hη : h ∘[ 𝐴 ] f ＝ idH _
-      hη = Hom-left-inverse←right-inverse η ε
+      hη = Hom-left-inverse←right-inverse 𝐴 η ε
 
       bwd k = h ∘[ 𝐴 ] k
-      ret k = sym (∘-assoc h f k) ∙ ap (_∘[ 𝐴 ] k) hη ∙ ∘-right-unit 𝐴 k
-      sec k = sym (∘-assoc f h k) ∙ ap (_∘[ 𝐴 ] k) ε ∙ ∘-right-unit 𝐴 k
+      ret k = sym ∘[ 𝐴 ]-assoc ∙ ap (_∘[ 𝐴 ] k) hη ∙ ∘[ 𝐴 ]-right-unit
+      sec k = sym ∘[ 𝐴 ]-assoc ∙ ap (_∘[ 𝐴 ] k) ε ∙ ∘[ 𝐴 ]-right-unit
 
       in is-equiv←qinv (bwd , ret , sec)
 
@@ -218,11 +228,11 @@ module _
       (g , _ , η , ε) = is-iso-eq 𝐴 fiso
 
       fε : f ∘[ 𝐴 ] g ＝ idH _
-      fε = Hom-right-inverse←left-inverse η ε
+      fε = Hom-right-inverse←left-inverse 𝐴 η ε
 
       bwd k = k ∘[ 𝐴 ] g
-      ret k = ∘-assoc k f g ∙ ap (λ q → k ∘[ 𝐴 ] q) fε ∙ ∘-left-unit 𝐴 k
-      sec k = ∘-assoc k g f ∙ ap (λ q → k ∘[ 𝐴 ] q) η ∙ ∘-left-unit 𝐴 k
+      ret k = ∘[ 𝐴 ]-assoc ∙ ap (k ∘[ 𝐴 ]_) fε ∙ ∘[ 𝐴 ]-left-unit
+      sec k = ∘[ 𝐴 ]-assoc ∙ ap (k ∘[ 𝐴 ]_) η ∙ ∘[ 𝐴 ]-left-unit
 
       in is-equiv←qinv (bwd , ret , sec)
 
@@ -239,11 +249,12 @@ module _
     ε = is-equiv.ε (postcomp-equiv b) (idH b)
 
     η : h ∘[ 𝐴 ] f ＝ idH a
-    η = unap-equiv (postcomp-equiv a)
-      ( sym (∘-assoc f h f)
-      ∙ ap (_∘[ 𝐴 ] f) ε
-      ∙ ∘-right-unit 𝐴 f
-      ∙ sym (∘-left-unit 𝐴 f))
+    η = unap-equiv
+          ( postcomp-equiv a)
+          ( sym ∘[ 𝐴 ]-assoc
+          ∙ ap (_∘[ 𝐴 ] f) ε
+          ∙ ∘[ 𝐴 ]-right-unit
+          ∙ sym (∘[ 𝐴 ]-left-unit))
 
   is-iso←is-precomp-hom-equiv
     : {a b : A} {f : Hom A a b}
@@ -259,20 +270,24 @@ module _
 
     ε : f ∘[ 𝐴 ] g ＝ idH b
     ε = unap-equiv (precomp-equiv b)
-      ( ∘-assoc f g f
+      ( ∘[ 𝐴 ]-assoc
       ∙ ap (f ∘[ 𝐴 ]_) η
-      ∙ ∘-left-unit 𝐴 f
-      ∙ sym (∘-right-unit 𝐴 f))
+      ∙ ∘[ 𝐴 ]-left-unit
+      ∙ sym ∘[ 𝐴 ]-right-unit)
 
   is-iso⇔postcomp-equiv
     : ∀ {a b : A} {f : Hom A a b}
     → is-iso f ⇔ is-postcomp-hom-equiv 𝐴 f
-  is-iso⇔postcomp-equiv = is-postcomp-hom-equiv←is-iso , is-iso←is-postcomp-hom-equiv
+  is-iso⇔postcomp-equiv
+    = is-postcomp-hom-equiv←is-iso
+    , is-iso←is-postcomp-hom-equiv
 
   is-iso⇔precomp-equiv
     : ∀ {a b : A} {f : Hom A a b}
     → is-iso f ⇔ is-precomp-hom-equiv 𝐴 f
-  is-iso⇔precomp-equiv = is-precomp-hom-equiv←is-iso , is-iso←is-precomp-hom-equiv
+  is-iso⇔precomp-equiv
+    = is-precomp-hom-equiv←is-iso
+    , is-iso←is-precomp-hom-equiv
 }
 }
 
@@ -283,6 +298,8 @@ module _
 \date{2026-04-30}
 
 \agda{
+module _ {𝓤 : Level} {A : Type 𝓤}(𝐴 : is-segal A) where
+
   precomp-hom-fibre≃Hom2
     : {a b c : A} {f : Hom A a b} {h : Hom A a c}
     → is-prop-map (precomp-hom 𝐴 c f)
@@ -307,6 +324,8 @@ module _
 \taxon{Proposition}
 
 \agda{
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
   is-iso≃is-split-mono×is-split-epi
     : {a b : A} {f : Hom A a b}
     → is-iso f
@@ -324,31 +343,51 @@ module _
     qinv .snd .fst y = refl
     qinv .snd .snd x = refl
 
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
   is-iso-is-prop
     : {a b : A} {f : Hom A a b}
     → is-prop (is-iso f)
   is-iso-is-prop {a} {b} {f}
     = is-prop←is-single-if-inhabited λ fiso
       → is-single←equiv-to-single
-          (is-iso≃is-split-mono×is-split-epi e⁻¹)
+          (is-iso≃is-split-mono×is-split-epi 𝐴 {f = f} e⁻¹)
           (Σ-is-single
             (is-single←equiv-to-single
-              (precomp-hom-fibre≃Hom2
+              (precomp-hom-fibre≃Hom2 𝐴
                 (is-prop-map←has-singleton-fibres
                   (has-singleton-fibres←is-equiv
-                    (is-precomp-hom-equiv←is-iso fiso a))))
+                    (is-precomp-hom-equiv←is-iso 𝐴 fiso a))))
               (has-singleton-fibres←is-equiv
-                (is-precomp-hom-equiv←is-iso fiso a)
+                (is-precomp-hom-equiv←is-iso 𝐴 fiso a)
                 (idH a)))
             ( λ _
             → is-single←equiv-to-single
-                (postcomp-hom-fibre≃Hom2
+                (postcomp-hom-fibre≃Hom2 𝐴
                   (is-prop-map←has-singleton-fibres
                     (has-singleton-fibres←is-equiv
-                      (is-postcomp-hom-equiv←is-iso fiso b))))
+                      (is-postcomp-hom-equiv←is-iso 𝐴 fiso b))))
                 (has-singleton-fibres←is-equiv
-                  (is-postcomp-hom-equiv←is-iso fiso b)
+                  (is-postcomp-hom-equiv←is-iso 𝐴 fiso b)
                   (idH b))))
+}
+}
+
+\subtree[fre-9F45]{
+\title{Equality of isomorphisms is equality of the underlying morphism}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  Iso-path→
+    : {a b : A} {f g : Iso a b}
+    → fwd-Iso f ＝ fwd-Iso g
+    → f ＝ g
+  Iso-path→ {f = (f , f-iso)} {g = (.f , g-iso)} refl
+    = Σ-path→ (refl , is-iso-is-prop 𝐴 f-iso g-iso)
 }
 }
 
@@ -358,16 +397,18 @@ module _
 \taxon{Theorem}
 
 \agda{
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
   ∘-is-iso
     : {a b c : A} {g : Hom A b c} {f : Hom A a b}
     → is-iso g → is-iso f → is-iso (g ∘[ 𝐴 ] f)
   ∘-is-iso {g = g} {f} g-iso f-iso
-    = is-iso←is-postcomp-hom-equiv λ d →
+    = is-iso←is-postcomp-hom-equiv 𝐴 λ d →
         homotopy-is-equiv
-          (λ k → sym (∘-assoc g f k))
+          (λ k → sym ∘[ 𝐴 ]-assoc)
           (is-equiv-∘
-            (is-postcomp-hom-equiv←is-iso g-iso d)
-            (is-postcomp-hom-equiv←is-iso f-iso d))
+            (is-postcomp-hom-equiv←is-iso 𝐴 g-iso d)
+            (is-postcomp-hom-equiv←is-iso 𝐴 f-iso d))
 
   comp-Iso : {a b c : A} → Iso b c → Iso a b → Iso a c
   comp-Iso (g , g-iso) (f , f-iso)
@@ -376,7 +417,7 @@ module _
   inv-Iso : {a b : A} → Iso a b → Iso b a
   inv-Iso {a} {b} (f , f-iso)
     = let (_ , h , η , ε) = is-iso-eq 𝐴 f-iso
-      in h , is-iso←eq 𝐴 (f , f , ε , Hom-left-inverse←right-inverse η ε)
+      in h , is-iso←eq 𝐴 (f , f , ε , Hom-left-inverse←right-inverse 𝐴 η ε)
 }
 }
 
@@ -392,15 +433,49 @@ module _
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B) {a b : A} where
 
   ap-is-iso : {f : Hom A a b} → is-iso f → is-iso (ap-hom F f)
-  ap-is-iso {f = f} (g , h , η , ε)
-    = ( ap-hom F g
-      , ap-hom F h
-      , ap-hom2 F g f (idH _) η
-      , ap-hom2 F f h (idH _) ε )
+  ap-is-iso f-iso
+    = is-iso←is-split-mono×is-split-epi
+        ( ap-is-split-mono F (is-split-mono←is-iso f-iso)
+        , ap-is-split-epi F (is-split-epi←is-iso f-iso) )
 
   ap-Iso : Iso a b → Iso (F a) (F b)
   ap-Iso (f , f-iso) = ap-hom F f , ap-is-iso f-iso
 }
+
+\p{This action preserves identities.}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐵 : is-segal B)
+  where
+
+  ap-id-Iso
+    : (F : A → B) (a : A)
+    → ap-Iso F (id-Iso a) ＝ id-Iso (F a)
+  ap-id-Iso F a = Iso-path→ 𝐵 (ap-id-SplitMono-fwd F a)
+
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A)
+  (𝐵 : is-segal B)
+  (F : A → B)
+  where
+
+  SplitMono←Iso
+    : {a b : A} → Iso a b → SplitMono a b
+  SplitMono←Iso (f , f-iso) = f , is-split-mono←is-iso f-iso
+
+  ap-comp-Iso
+    : {a b c : A}
+    → (g : Iso b c)
+    → (f : Iso a b)
+    → ap-Iso F (comp-Iso 𝐴 g f)
+    ＝ comp-Iso 𝐵 (ap-Iso F g) (ap-Iso F f)
+  ap-comp-Iso g f
+    = Iso-path→ 𝐵
+        (ap-comp-SplitMono-fwd 𝐴 𝐵 F
+          (SplitMono←Iso g) (SplitMono←Iso f))
 }
 
 \subtree[fre-00MZ]{

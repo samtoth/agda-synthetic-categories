@@ -1,0 +1,555 @@
+\date{2026-04-30}
+\title{Associativity of composition in Segal types}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\p{
+We follow Riehl–Shulman's original proof \citet{Proposition 5.6}{RS17} of
+associativity of composition in Segal types. We note that the simplicial axiom, which
+they cite as the equivalence
+#{\Delta^2 \amalg_{\Delta^1} \Delta^2 \simeq \Delta^1 \times \Delta^1}, is not needed
+for the proof to work. All they actually do is restrict along the inclusion
+#{\Delta^2 \amalg_{\Delta^1} \Delta^2 \to \Delta^1 \times \Delta^1}, which exists
+by the cocone
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^1} && {\Delta^2} \\
+	\\
+	{\Delta^2} && {\Delta^1 \times \Delta^1}
+	\arrow["{i \mapsto (i \geq i)}", from=1-1, to=1-3]
+	\arrow["{i \mapsto (i \geq i)}"', from=1-1, to=3-1]
+	\arrow["{(i \ge j)\mapsto(j,i)}", dashed, from=1-3, to=3-3]
+	\arrow["{(i \ge j)\mapsto(i,j)}"', dashed, from=3-1, to=3-3]
+\end{tikzcd}
+}
+}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Prelude
+open import Algebra.Lattice
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+
+module Synthetic.Categories.AssociativitySegal
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+private
+  Δ² = Poly.Δ² I
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Core.CanonicalPushouts
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+}
+
+\subtree[fre-9D07]{
+\title{The associated naturality square of a composition triangle}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\p{
+A composition triangle determines an arrow from the lower edge to the right edge.
+}
+
+\agda{
+corner-between-edges
+  : ∀ {𝓤} {A : Type 𝓤} {x l r y z : A}
+  → (a : x ＝ l) (b : l ＝ y) (m : l ＝ r) (d : r ＝ z) (q : y ＝ z) (c : x ＝ r)
+  → c ＝ a ∙ m
+  → b ∙ q ＝ m ∙ d
+  → sym (a ∙ b) ∙ (c ∙ d) ＝ q
+corner-between-edges refl refl refl refl refl refl refl refl = refl
+}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤} {a b c : A}
+  (g : Hom A b c) (f : Hom A a b) {gf : Hom A a c}
+  (K : Hom2 g f gf)
+  where
+
+  composite-square
+    : Hom (Δ¹ → A) (f .Homᵈ.hom) (g .Homᵈ.hom)
+  composite-square .Homᵈ.hom u v
+    = K .fst ((u ∨ v , u ∧ v) ⦃ ∨-≤-introl (∧-≤-eliml ≤-refl) ⦄)
+  composite-square .Homᵈ.hom0
+    = funext→ λ v
+        → ap (K .fst) (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+        ∙ K .snd (ι₁ (ι₁ v))
+  composite-square .Homᵈ.hom1
+    = funext→ λ v
+        → ap (K .fst) (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+        ∙ K .snd (ι₁ (ι₂ v))
+
+  composite-square-bottom
+    : (u : Δ¹) → composite-square .Homᵈ.hom u i0 ＝ f .Homᵈ.hom u
+  composite-square-bottom u
+    = ap (K .fst) (Δ²-ext (0-bottom , ∧-comm ∙ 0-init))
+    ∙ K .snd (ι₁ (ι₁ u))
+
+  composite-square-right
+    : (u : Δ¹) → composite-square .Homᵈ.hom u i1 ＝ g .Homᵈ.hom u
+  composite-square-right u
+    = ap (K .fst) (Δ²-ext (1-coinit , 1-top))
+    ∙ K .snd (ι₁ (ι₂ u))
+
+  composite-square-diagonal
+    : (u : Δ¹) → composite-square .Homᵈ.hom u u ＝ gf .Homᵈ.hom u
+  composite-square-diagonal u
+    = ap (K .fst) (Δ²-ext (∨-idem , ∧-idem))
+    ∙ K .snd (ι₂ u)
+
+  composite-square-source
+    : (u : Δ¹) → composite-square .Homᵈ.hom i0 u ＝ f .Homᵈ.hom u
+  composite-square-source u
+    = ap (K .fst) (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+    ∙ K .snd (ι₁ (ι₁ u))
+
+  composite-square-target
+    : (u : Δ¹) → composite-square .Homᵈ.hom i1 u ＝ g .Homᵈ.hom u
+  composite-square-target u
+    = ap (K .fst) (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+    ∙ K .snd (ι₁ (ι₂ u))
+
+  Hom2-boundary-natural
+    : {u v : ∂Δ²}
+    → (γ : u ＝ v)
+    → {q : make-∂Δ² g f gf u ＝ make-∂Δ² g f gf v}
+    → ap (make-∂Δ² g f gf) γ ＝ q
+    → K .snd u ∙ q ＝ ap (K .fst ∘ ∂Δ²-incl) γ ∙ K .snd v
+  Hom2-boundary-natural {u = u} γ filler-path
+    = ap (K .snd u ∙_) (sym filler-path)
+    ∙ homotopy-natural (K .snd) γ
+
+  Hom2-boundary-ap-path
+    : {u v : ∂Δ²}
+    → (γ : u ＝ v)
+    → {σ : Poly.Δ² I}
+    → (p : σ ＝ ∂Δ²-incl v)
+    → (q : σ ＝ ∂Δ²-incl u)
+    → ap (K .fst) p ＝ ap (K .fst) q ∙ ap (K .fst ∘ ∂Δ²-incl) γ
+  Hom2-boundary-ap-path γ p q
+    = ap (ap (K .fst)) (Δ²-is-set _ _ p (q ∙ ap ∂Δ²-incl γ))
+    ∙ ap-∙ (K .fst) q (ap ∂Δ²-incl γ)
+    ∙ ap (ap (K .fst) q ∙_) (sym (ap-∘ (K .fst) ∂Δ²-incl γ))
+
+  composite-square-lower-left
+    : sym (composite-square-source i0)
+    ∙ composite-square-diagonal i0
+    ＝ f .Homᵈ.hom0 ∙ sym (gf .Homᵈ.hom0)
+  composite-square-lower-left
+    = corner-between-edges
+        (ap (K .fst) p-src)
+        (K .snd (ι₁ (ι₁ i0)))
+        (ap (K .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0))
+        (K .snd (ι₂ i0))
+        (f .Homᵈ.hom0 ∙ sym (gf .Homᵈ.hom0))
+        (ap (K .fst) p-diag)
+        (Hom2-boundary-ap-path (glue ∂Δ¹-0) p-diag p-src)
+        (Hom2-boundary-natural (glue ∂Δ¹-0) (pushout-rec-apβ ∂Δ¹-0))
+    where
+      p-src = Δ²-ext (∨-comm ∙ 0-bottom , 0-init)
+      p-diag = Δ²-ext (∨-idem , ∧-idem)
+
+  composite-square-upper-right
+    : composite-square-target i1 ∙ g .Homᵈ.hom1
+    ＝ composite-square-diagonal i1 ∙ gf .Homᵈ.hom1
+  composite-square-upper-right
+    = sym
+      (un-square
+        (coe
+          (Square-squeeze-botr refl)
+          (Square-paste-horizontal
+            (mk-square
+              ( ∙-reflr (ap (K .fst) p-diag)
+              ∙ Hom2-boundary-ap-path (glue ∂Δ¹-1) p-diag p-tgt))
+            (mk-square
+              (sym (Hom2-boundary-natural (glue ∂Δ¹-1) (pushout-rec-apβ ∂Δ¹-1)))))))
+    ∙ sym (∙-assoc (ap (K .fst) p-diag) (K .snd (ι₂ i1)) (gf .Homᵈ.hom1))
+    where
+      p-tgt = Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top)
+      p-diag = Δ²-ext (∨-idem , ∧-idem)
+
+  composite-square-upper-left
+    : sym (composite-square-source i1)
+    ∙ composite-square-right i0
+    ＝ f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)
+  composite-square-upper-left
+    = corner-between-edges
+        ( ap (K .fst) p-src)
+        ( K .snd (ι₁ (ι₁ i1)))
+        ( ap (K .fst ∘ ∂Δ²-incl) (ap ι₁ Λ[2,1]-glue))
+        ( K .snd (ι₁ (ι₂ i0)))
+        ( f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0))
+        ( ap (K .fst) p-right)
+        ( Hom2-boundary-ap-path (ap ι₁ Λ[2,1]-glue) p-right p-src)
+        ( Hom2-boundary-natural
+          ( ap ι₁ Λ[2,1]-glue)
+          ( sym (ap-∘ (make-∂Δ² g f gf) ι₁ Λ[2,1]-glue)
+          ∙ horn-glue g f))
+    where
+      p-src = Δ²-ext (∨-comm ∙ 0-bottom , 0-init)
+      p-right = Δ²-ext (1-coinit , 1-top)
+
+  composite-square-lower-right
+    : composite-square-target i0 ∙ g .Homᵈ.hom0
+    ＝ composite-square-bottom i1 ∙ f .Homᵈ.hom1
+  composite-square-lower-right
+    = composite-square-target i0 ∙ g .Homᵈ.hom0
+        ＝⟨ ap ( λ q → (q ∙ K .snd (ι₁ (ι₂ i0))) ∙ g .Homᵈ.hom0)
+              ( Hom2-boundary-ap-path (ap ι₁ Λ[2,1]-glue) p-tgt p-bot) ⟩
+      ( ( ap (K .fst) p-bot ∙ ap (K .fst ∘ ∂Δ²-incl) (ap ι₁ Λ[2,1]-glue))
+        ∙ K .snd (ι₁ (ι₂ i0))) ∙ g .Homᵈ.hom0
+        ＝⟨ ap (_∙ g .Homᵈ.hom0) (∙-assoc _ _ _) ⟩
+      ( ap (K .fst) p-bot
+      ∙ ap (K .fst ∘ ∂Δ²-incl) (ap ι₁ Λ[2,1]-glue)
+      ∙ K .snd (ι₁ (ι₂ i0)))
+      ∙ g .Homᵈ.hom0
+        ＝⟨ ap ( λ q → (ap (K .fst) p-bot ∙ q) ∙ g .Homᵈ.hom0)
+               ( sym
+                 ( Hom2-boundary-natural (ap ι₁ Λ[2,1]-glue)
+                   ( sym (ap-∘ (make-∂Δ² g f gf) ι₁ Λ[2,1]-glue) ∙ horn-glue g f))) ⟩
+      ( ap (K .fst) p-bot
+      ∙ K .snd (ι₁ (ι₁ i1)) ∙ (f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)))
+      ∙ g .Homᵈ.hom0
+        ＝⟨ ap (_∙ g .Homᵈ.hom0) (sym (∙-assoc _ _ _)) ⟩
+      ( ( ap (K .fst) p-bot ∙ K .snd (ι₁ (ι₁ i1)))
+      ∙ ( f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)))
+      ∙ g .Homᵈ.hom0
+        ＝⟨ ∙-assoc _ _ _ ⟩
+      ( ap (K .fst) p-bot ∙ K .snd (ι₁ (ι₁ i1)))
+      ∙ (f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)) ∙ g .Homᵈ.hom0
+        ＝⟨ ap ((ap (K .fst) p-bot ∙ K .snd (ι₁ (ι₁ i1))) ∙_)
+              (∙.cancell _ (∙-sym' (g .Homᵈ.hom0))) ⟩
+      composite-square-bottom i1 ∙ f .Homᵈ.hom1 ∎
+    where
+      p-bot = Δ²-ext (0-bottom , ∧-comm ∙ 0-init)
+      p-tgt = Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top)
+
+  composite-square-source＝bottom-i0
+    : composite-square-source i0
+    ＝ composite-square-bottom i0
+  composite-square-source＝bottom-i0
+    = ap (_∙ K .snd (ι₁ (ι₁ i0))) (ap (ap (K .fst)) (Δ²-is-set _ _ p-src p-bot))
+    where
+      p-src = Δ²-ext (∨-comm ∙ 0-bottom , 0-init)
+      p-bot = Δ²-ext (0-bottom , ∧-comm ∙ 0-init)
+
+  composite-square-target＝right-i1
+    : composite-square-target i1
+    ＝ composite-square-right i1
+  composite-square-target＝right-i1
+    = ap (_∙ K .snd (ι₁ (ι₂ i1))) (ap (ap (K .fst)) (Δ²-is-set _ _ p-tgt p-right))
+    where
+      p-tgt = Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top)
+      p-right = Δ²-ext (1-coinit , 1-top)
+}
+}
+
+
+\subtree[fre-FB4F]{
+\taxon{Proof}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+∙-reflr←loop-out-of-Δ¹
+  : {𝓤 : Level}
+    {A : Type 𝓤} {i : Δ¹} {p : i ＝ i}
+  → (f : Δ¹ → A)
+  → {x : A}
+  → (q : x ＝ f i)
+  → q ∙ ap f p ＝ q
+∙-reflr←loop-out-of-Δ¹ {p = p} f q
+  = ap (q ∙_) (ap (ap f) (is-prop-separated _ _ p refl)) ∙ ∙-reflr q
+}
+
+\agda{
+module AssocProof
+  {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) {a b c d : A}
+  (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+  (let gf = g ∘[ 𝐴 ] f)
+  (let hg = h ∘[ 𝐴 ] g)
+  (let gf-composite = ∘[ 𝐴 ]-is-composite {g} {f})
+  (let hg-composite = ∘[ 𝐴 ]-is-composite {h} {g})
+  (let f⇒g = composite-square g f gf-composite)
+  (let g⇒h = composite-square h g hg-composite)
+  where
+
+  middle-composite
+    : Σ[ p ∶ Hom (Δ¹ → A) (f .Homᵈ.hom) (h .Homᵈ.hom) ] Hom2 g⇒h f⇒g p
+  middle-composite
+    = composite←horn-extension g⇒h f⇒g
+        (centre (segal-unique-composite (Π-is-segal λ _ → 𝐴) g⇒h f⇒g))
+
+  middle-hom : Hom (Δ¹ → A) (f .Homᵈ.hom) (h .Homᵈ.hom)
+  middle-hom = middle-composite .fst
+
+  middle-Hom2 : Hom2 g⇒h f⇒g middle-hom
+  middle-Hom2 = middle-composite .snd
+
+  middle-simplex : Δ² → Δ¹ → A
+  middle-simplex = middle-Hom2 .fst
+
+  middle-boundary
+    : middle-simplex ∘ ∂Δ²-incl ~ make-∂Δ² g⇒h f⇒g middle-hom
+  middle-boundary = middle-Hom2 .snd
+
+  left-face-middle-simplex : Δ² → A
+  left-face-middle-simplex σ = middle-simplex σ (Poly.Δ².t σ)
+
+  right-face-middle-simplex : Δ² → A
+  right-face-middle-simplex σ = middle-simplex σ (Poly.Δ².s σ)
+
+  triple-composite : Hom A a d
+  triple-composite .Homᵈ.hom t = middle-hom .Homᵈ.hom t t
+  triple-composite .Homᵈ.hom0
+    = happly (middle-hom .Homᵈ.hom0) i0 ∙ f .Homᵈ.hom0
+  triple-composite .Homᵈ.hom1
+    = happly (middle-hom .Homᵈ.hom1) i1 ∙ h .Homᵈ.hom1
+}
+
+\p{The triple composite is the composite #{(h ∘ g) ∘ f}.}
+
+\agda{
+  left-horn-glue
+    : ap (λ x → make-∂Δ² g⇒h f⇒g middle-hom (ι₁ x) (Λ[2,1]-left-eval x)) Λ[2,1]-glue
+    ＝ composite-square-target g f gf-composite i0
+    ∙ sym (composite-square-source h g hg-composite i0)
+  left-horn-glue
+    = ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom ∘ ι₁) Λ[2,1]-left-eval Λ[2,1]-glue
+    ∙ ∙-reflr←loop-out-of-Δ¹
+        (make-∂Δ² g⇒h f⇒g middle-hom (ι₁ (ι₂ i0)))
+        (happly (ap (λ x → make-∂Δ² g⇒h f⇒g middle-hom (ι₁ x)) Λ[2,1]-glue) i0)
+    ∙ ap (λ q → happly q i0) (horn-glue g⇒h f⇒g)
+    ∙ happly-∙ (f⇒g .Homᵈ.hom1) (sym (g⇒h .Homᵈ.hom0)) i0
+    ∙ ap₂ _∙_
+        (happly funext-redex i0)
+        (happly-sym-at (g⇒h .Homᵈ.hom0) i0 ∙ ap sym (happly funext-redex i0))
+
+  left-horn-post
+    : (λ x → make-∂Δ² g⇒h f⇒g middle-hom (ι₁ x) (Λ[2,1]-left-eval x))
+    ~ make-horn hg f
+  left-horn-post
+    = pushout-rec-unique _ _
+        (composite-square-bottom g f gf-composite)
+        (composite-square-diagonal h g hg-composite)
+        ( λ _
+          → ap (_∙ composite-square-diagonal h g hg-composite i0) left-horn-glue
+          ∙ ∙-assoc _ _ _
+          ∙ ap (composite-square-target g f gf-composite i0 ∙_)
+               (composite-square-lower-left h g hg-composite)
+          ∙ sym (∙-assoc _ _ _)
+          ∙ ap (_∙ sym (hg .Homᵈ.hom0))
+               (composite-square-lower-right g f gf-composite)
+          ∙ ∙-assoc _ _ _)
+
+  left-boundary-post
+    : (λ x → make-∂Δ² g⇒h f⇒g middle-hom x (∂Δ²-left-eval x))
+    ~ make-∂Δ² hg f triple-composite
+  left-boundary-post
+    = pushout-rec-unique _ _
+        left-horn-post
+        ~refl
+        λ where
+          (mk-lift false)
+            → ∙-reflr _
+            ∙ ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom) ∂Δ²-left-eval (glue ∂Δ¹-0)
+            ∙ ∙-reflr←loop-out-of-Δ¹
+                (make-∂Δ² g⇒h f⇒g middle-hom (ι₂ i0))
+                (happly (ap (make-∂Δ² g⇒h f⇒g middle-hom) (glue ∂Δ¹-0)) i0)
+            ∙ ap (λ q → happly q i0) (pushout-rec-apβ ∂Δ¹-0)
+            ∙ happly-∙ (f⇒g .Homᵈ.hom0) (sym (middle-hom .Homᵈ.hom0)) i0
+            ∙ ap₂ _∙_
+                (happly funext-redex i0)
+                (happly-sym-at (middle-hom .Homᵈ.hom0) i0)
+            ∙ ap (_∙ sym (happly (middle-hom .Homᵈ.hom0) i0))
+                 (composite-square-source＝bottom-i0 g f gf-composite)
+            ∙ ap (_ ∙_)
+                 (sym (tail-sym-cancel (happly (middle-hom .Homᵈ.hom0) i0)
+                                       (f .Homᵈ.hom0)))
+          (mk-lift true)
+            → ∙-reflr _
+            ∙ ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom) ∂Δ²-left-eval (glue ∂Δ¹-1)
+            ∙ ∙-reflr←loop-out-of-Δ¹
+                (make-∂Δ² g⇒h f⇒g middle-hom (ι₂ i1))
+                (happly (ap (make-∂Δ² g⇒h f⇒g middle-hom) (glue ∂Δ¹-1)) i1)
+            ∙ ap (λ q → happly q i1) (pushout-rec-apβ ∂Δ¹-1)
+            ∙ happly-∙ (g⇒h .Homᵈ.hom1) (sym (middle-hom .Homᵈ.hom1)) i1
+            ∙ ap₂ _∙_
+                (happly funext-redex i1)
+                (happly-sym-at (middle-hom .Homᵈ.hom1) i1)
+            ∙ ap (_ ∙_)
+                 (sym (tail-sym-cancel (happly (middle-hom .Homᵈ.hom1) i1)
+                                       (h .Homᵈ.hom1)))
+            ∙ sym (∙-assoc _ _ _)
+            ∙ ap (_∙ sym (happly (middle-hom .Homᵈ.hom1) i1 ∙ h .Homᵈ.hom1))
+                 (composite-square-upper-right h g hg-composite)
+            ∙ ∙-assoc _ _ _
+
+  left-triangle-triple-composite : Hom2 hg f triple-composite
+  left-triangle-triple-composite .fst = left-face-middle-simplex
+  left-triangle-triple-composite .snd x
+    = happly (middle-boundary x) (∂Δ²-left-eval x) ∙ left-boundary-post x
+}
+
+\p{The triple composite is the composite #{h ∘ (g ∘ f)}.}
+
+\agda{
+  right-horn-glue
+    : ap (λ x → make-∂Δ² g⇒h f⇒g middle-hom (ι₁ x) (Λ[2,1]-right-eval x)) Λ[2,1]-glue
+    ＝ composite-square-target g f gf-composite i1
+    ∙ sym (composite-square-source h g hg-composite i1)
+  right-horn-glue
+    = ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom ∘ ι₁) Λ[2,1]-right-eval Λ[2,1]-glue
+    ∙ ∙-reflr←loop-out-of-Δ¹
+        ((make-∂Δ² g⇒h f⇒g middle-hom ∘ ι₁) (ι₂ i0))
+        (happly (ap (make-∂Δ² g⇒h f⇒g middle-hom ∘ ι₁) Λ[2,1]-glue) i1)
+    ∙ ap (λ q → happly q i1) (horn-glue g⇒h f⇒g)
+    ∙ happly-∙ (f⇒g .Homᵈ.hom1) (sym (g⇒h .Homᵈ.hom0)) i1
+    ∙ ap₂ _∙_
+        (happly funext-redex i1)
+        (happly-sym-at (g⇒h .Homᵈ.hom0) i1 ∙ ap sym (happly funext-redex i1))
+
+  right-horn-post
+    : (λ x → make-∂Δ² g⇒h f⇒g middle-hom (ι₁ x) (Λ[2,1]-right-eval x))
+    ~ make-horn h gf
+  right-horn-post
+    = pushout-rec-unique _ _
+        (composite-square-diagonal g f gf-composite)
+        (composite-square-right h g hg-composite)
+        ( λ _
+          → ap (_∙ composite-square-right h g hg-composite i0) right-horn-glue
+          ∙ ∙-assoc _ _ _
+          ∙ ap (composite-square-target g f gf-composite i1 ∙_)
+               (composite-square-upper-left h g hg-composite)
+          ∙ sym (∙-assoc _ _ _)
+          ∙ ap (_∙ sym (h .Homᵈ.hom0))
+               (composite-square-upper-right g f gf-composite)
+          ∙ ∙-assoc _ _ _)
+
+  right-boundary-post
+    : (λ x → make-∂Δ² g⇒h f⇒g middle-hom x (∂Δ²-right-eval x))
+    ~ make-∂Δ² h gf triple-composite
+  right-boundary-post
+    = pushout-rec-unique _ _
+        right-horn-post
+        ~refl
+        λ where
+          (mk-lift false)
+            → ∙-reflr _
+            ∙ ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom) ∂Δ²-right-eval (glue ∂Δ¹-0)
+            ∙ ∙-reflr←loop-out-of-Δ¹
+                (make-∂Δ² g⇒h f⇒g middle-hom (ι₂ i0))
+                (happly (ap (make-∂Δ² g⇒h f⇒g middle-hom) (glue ∂Δ¹-0)) i0)
+            ∙ ap (λ q → happly q i0) (pushout-rec-apβ ∂Δ¹-0)
+            ∙ happly-∙ (f⇒g .Homᵈ.hom0) (sym (middle-hom .Homᵈ.hom0)) i0
+            ∙ ap₂ _∙_
+                (happly funext-redex i0)
+                (happly-sym-at (middle-hom .Homᵈ.hom0) i0)
+            ∙ ap (_ ∙_)
+                 (sym (tail-sym-cancel (happly (middle-hom .Homᵈ.hom0) i0)
+                                       (f .Homᵈ.hom0)))
+            ∙ sym (∙-assoc _ _ _)
+            ∙ ap (_∙ sym (happly (middle-hom .Homᵈ.hom0) i0 ∙ f .Homᵈ.hom0))
+                 (double-transpose-∙⁻¹ _ _ (f .Homᵈ.hom0) (gf .Homᵈ.hom0)
+                   (composite-square-lower-left g f gf-composite))
+            ∙ ∙-assoc _ _ _
+          (mk-lift true)
+            → ∙-reflr _
+            ∙ ap-diag-ev (make-∂Δ² g⇒h f⇒g middle-hom) ∂Δ²-right-eval (glue ∂Δ¹-1)
+            ∙ ∙-reflr←loop-out-of-Δ¹
+                (make-∂Δ² g⇒h f⇒g middle-hom (ι₂ i1))
+                (happly (ap (make-∂Δ² g⇒h f⇒g middle-hom) (glue ∂Δ¹-1)) i1)
+            ∙ ap (λ q → happly q i1) (pushout-rec-apβ ∂Δ¹-1)
+            ∙ happly-∙ (g⇒h .Homᵈ.hom1) (sym (middle-hom .Homᵈ.hom1)) i1
+            ∙ ap₂ _∙_
+                (happly funext-redex i1)
+                (happly-sym-at (middle-hom .Homᵈ.hom1) i1)
+            ∙ ap (_∙ sym (happly (middle-hom .Homᵈ.hom1) i1))
+                 (composite-square-target＝right-i1 h g hg-composite)
+            ∙ ap (_ ∙_)
+                 (sym (tail-sym-cancel (happly (middle-hom .Homᵈ.hom1) i1)
+                                       (h .Homᵈ.hom1)))
+
+  right-triangle-triple-composite : Hom2 h gf triple-composite
+  right-triangle-triple-composite .fst = right-face-middle-simplex
+  right-triangle-triple-composite .snd x
+    = happly (middle-boundary x) (∂Δ²-right-eval x)
+    ∙ right-boundary-post x
+}
+
+\agda{
+  middle-shuffle-composite
+    :  Σ[ ℓ ∶ Hom A a d ] (Hom2 (h ∘[ 𝐴 ] g) f ℓ × Hom2 h (g ∘[ 𝐴 ] f) ℓ)
+  middle-shuffle-composite
+    = triple-composite
+    , left-triangle-triple-composite
+    , right-triangle-triple-composite
+}
+}
+
+\subtree[fre-B849]{
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  opaque
+    ∘-assoc←is-segal
+      : {a b c d : A}
+      → (h : Hom A c d)
+      → (g : Hom A b c)
+      → (f : Hom A a b)
+      → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f)
+    ∘-assoc←is-segal h g f =
+      let open AssocProof 𝐴 h g f
+      in _≃_.fwd (Hom2≃∘＝ 𝐴) left-triangle-triple-composite
+       ∙ sym (_≃_.fwd (Hom2≃∘＝ 𝐴) right-triangle-triple-composite)
+
+∘[_]-assoc
+  : {𝓤 : Level} {A : Type 𝓤} {a b c d : A} (𝐴 : is-segal A)
+  → {h : Hom A c d}
+  → {g : Hom A b c}
+  → {f : Hom A a b}
+  → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f)
+∘[ 𝐴 ]-assoc {h} {g} {f} = ∘-assoc←is-segal 𝐴 h g f
+}
+}
+
+\subtree[fre-00OQ]{
+\title{Associativity in precategories}
+\date{2026-04-30}
+\author{fredrikbakke}
+\taxon{Corollary}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤} (𝐴ₚ : is-precategory A)
+  (let 𝐴 = is-segal←is-precategory 𝐴ₚ)
+  where
+
+  ∘-assoc←is-precategory
+    : {a b c d : A}
+      (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+    → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f
+    ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f)
+  ∘-assoc←is-precategory = ∘-assoc←is-segal 𝐴
+}
+}

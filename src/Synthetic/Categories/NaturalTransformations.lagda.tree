@@ -48,6 +48,162 @@ f ⇒ g = ∀ a → Hom _ (f a) (g a)
 }
 }
 
+\subtree[fre-C377]{
+\title{Displayed natural transformations over natural transformations}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\agda{
+_⇒[_]_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : Π A B} {C : (a : A) → B a → Type 𝓦}
+    → ((a : A) → C a (f a))
+    → f ⇒ g
+    → ((a : A) → C a (g a))
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+_⇒[_]_ {C = C} f' H g' = ∀ a → Hom-over {B = C a} (H a) (f' a) (g' a)
+}
+}
+
+\subtree[fre-00O8]{
+\title{Natural transformations over constant families}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+For a constant family of target types, dependent natural transformations over a
+base transformation are equivalent to ordinary natural transformations in the
+constant fibre.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : Type 𝓦} {f g : Π A B} {f' g' : A → C}
+  where
+
+  Nat-over-const≃Nat
+    : (H : f ⇒ g) → _⇒[_]_ {C = λ _ _ → C} f' H g' ≃ (f' ⇒ g')
+  Nat-over-const≃Nat H = Π-fam-≃ (λ a → Hom-over-const≃Hom (H a))
+
+  Nat←Nat-over-const
+    : (H : f ⇒ g) → _⇒[_]_ {C = λ _ _ → C} f' H g' → f' ⇒ g'
+  Nat←Nat-over-const H α a = Hom←Hom-over-const (H a) (α a)
+}
+}
+
+\subtree[fre-00O6]{
+\title{Equality of natural transformations}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+Equality between natural transformations is determined by a pointwise equality of
+morphisms.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {f g : Π A B} where
+
+  Nat-path
+    : (α β : f ⇒ g) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Nat-path α β = ∀ a → Hom-path (α a) (β a)
+
+  Nat-path-refl
+    : {α : f ⇒ g} → Nat-path α α
+  Nat-path-refl a = Hom-path-refl
+
+  Nat-path-is-torsorial
+    : (α : f ⇒ g) → is-singleton (Σ[ β ∶ f ⇒ g ] Nat-path α β)
+  Nat-path-is-torsorial α
+    = is-single←equiv-to-single
+        (Σ-Π-swap≃ (λ a → Hom (B a) (f a) (g a)) (λ a → Hom-path (α a)))
+        (Π-is-single λ a → Hom-path-is-torsorial (α a))
+
+  instance
+    IdS-Nat
+      : Identity-system (f ⇒ g) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+    IdS-Nat .Identity-system.IdS = Nat-path
+    IdS-Nat .Identity-system.IdS←Id refl = Nat-path-refl
+    IdS-Nat .Identity-system.IdS←Id-is-equiv α
+      = fundamental-Id (Nat-path α) (Nat-path-is-torsorial α) _
+
+  Nat-ext→
+    : {α β : f ⇒ g} → Nat-path α β → α ＝ β
+  Nat-ext→ = ext!
+}
+}
+
+\subtree[fre-00O5]{
+\title{Horizontal composition}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+Given natural transformations #{H : f \Rightarrow g} and #{H' : f' \Rightarrow g'}
+where #{f,g : A \to B} and #{f',g' : B \to C}, then there is a
+\em{horizontal composite}
+#{H' \mathbin{\square} H : f' \circ f \Rightarrow g' \circ g}.
+}
+
+\agda{
+_◻Nat_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f g : A → B} {f' g' : B → C}
+  → f' ⇒ g' → f ⇒ g → (f' ∘ f) ⇒ (g' ∘ g)
+_◻Nat_ H' H a .Homᵈ.hom i
+  = H' (H a .Homᵈ.hom i) .Homᵈ.hom i
+_◻Nat_ {f' = f'} H' H a .Homᵈ.hom0
+  = H' (H a .Homᵈ.hom i0) .Homᵈ.hom0
+  ∙ ap f' (H a .Homᵈ.hom0)
+_◻Nat_ {g' = g'} H' H a .Homᵈ.hom1
+  = H' (H a .Homᵈ.hom i1) .Homᵈ.hom1
+  ∙ ap g' (H a .Homᵈ.hom1)
+
+_◻Natᵈ_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+      {C : (a : A) → B a → Type 𝓦}
+      {f g : Π A B} {f' g' : (a : A) → Π (B a) (C a)}
+    → ((a : A) → _⇒_ {B = C a} (f' a) (g' a))
+    → (H : f ⇒ g)
+    → _⇒[_]_ {C = C} (λ a → f' a (f a)) H (λ a → g' a (g a))
+_◻Natᵈ_ H' H a .Homᵈ.hom i
+  = H' a (H a .Homᵈ.hom i) .Homᵈ.hom i
+_◻Natᵈ_ {f' = f'} H' H a .Homᵈ.hom0
+  = H' a (H a .Homᵈ.hom i0) .Homᵈ.hom0
+  ∙ apᶠ-sym (f' a) (H a .Homᵈ.hom0)
+_◻Natᵈ_ {g' = g'} H' H a .Homᵈ.hom1
+  = H' a (H a .Homᵈ.hom i1) .Homᵈ.hom1
+  ∙ apᶠ-sym (g' a) (H a .Homᵈ.hom1)
+
+◻Nat＝◻Natᵈ-const
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f g : A → B} {f' g' : B → C}
+    → (H' : f' ⇒ g') (H : f ⇒ g)
+    → H' ◻Nat H
+    ＝ Nat←Nat-over-const H ((λ _ → H') ◻Natᵈ H)
+◻Nat＝◻Natᵈ-const  {B = B} {C = C} {f' = f'} {g' = g'} H' H
+  = Nat-ext→ λ a →
+    ( ~refl
+    , lemma f'
+        (H' (H a .Homᵈ.hom i0) .Homᵈ.hom0)
+        (H a .Homᵈ.hom0)
+    , lemma g'
+        (H' (H a .Homᵈ.hom i1) .Homᵈ.hom1)
+        (H a .Homᵈ.hom1))
+    where
+      lemma
+        : (F : B → C) {x y : B} {z : C}
+        → (q : z ＝ F x) (p : x ＝ y)
+        → (q ∙ apᶠ-sym F p) ∙ tr-constant (sym p) (F y)
+        ＝ q ∙ ap F p
+      lemma F refl refl = refl
+}
+}
+
 \subtree[stt-00C6]{
 \title{Homs in #{Π}-types are natural transformations}
 \taxon{Theorem}

@@ -180,59 +180,99 @@ opaque
 \title{Exponentiating covariant families}
 \taxon{Lemma}
 
+\p{We show that given a [contravariant family]() #{F}, and a [covariant family]
+#{G}, the family given by #{x \mapsto F(x) \to G(x)} is also covariant.}
+
+\proof{
+\p{First notice that solutions to the left lifting problem are in bijection with
+solutions to the right lifting problem.}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	{\{0\}} && {{G_x}^{F_x}} && {F_{f(0)}} && {G_x} \\
+	\\
+	{\Delta^1} && X && {\Sigma_{i} F_{f(i)}} && X
+	\arrow["h", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["h", from=1-5, to=1-7]
+	\arrow["{(0, -)}"', from=1-5, to=3-5]
+	\arrow[from=1-7, to=3-7]
+	\arrow["f"', from=3-1, to=3-3]
+	\arrow["{f\pi_1}"', from=3-5, to=3-7]
+\end{tikzcd}
+}
+
+\p{Now we may see that the left-most map of the second diagram is obtained
+as the pullback of #{\{0\} \to \Delta^1} by the projection
+#{\Sigma_{i} F_{f(i)} \to \Delta^1}. Hence we have a lifting problem where the
+left map is a pullback of a left-anodyne map by a right fibration and hence
+is a left anodyne map. Since the right family is covariant by assumption, this
+means solutions to the lifting problem exist uniquely.}
+}
+
+\remark{
+\p{We have not yet formalised the fact that left-anodyne maps are stable under
+base change by right fibrations.}
+}
+
 \agda{
 module _
   {𝓤 𝓥 𝓦} {B : Type 𝓤}
   (F : B → Type 𝓥) (G : B → Type 𝓦)
-  (hole : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
-            (p : C → A) → is-left-anodyne p → is-right-fibration f
-          → is-left-anodyne (pullback-arrow f p))
+  (pullback-left-anodyne
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
+        (p : C → A) → is-left-anodyne p → is-right-fibration f
+      → is-left-anodyne (pullback-arrow f p))
   where
   private
     G^F : B → Type (𝓥 ⊔ 𝓦)
     G^F b = F b → G b
 
-    newLeftMap : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
-    newLeftMap σ x = (i0 , x)
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x)
 
-  char-ext-exponentials
+  transpose-ext-exponentials
     : ∀ (σ : Δ¹ → B) h
       → Ext (point i0) {G^F ∘ σ} (point h)
-      ≃ Ext (newLeftMap σ) {G ∘ σ ∘ fst} h
-  char-ext-exponentials σ h = Σ≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
+      ≃ Ext (transposed-left-map σ) {G ∘ σ ∘ fst} h
+  transpose-ext-exponentials σ h = Σ≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
 
-  newLeftMap-is-pb
-    : ∀ σ → Arrow-equiv (newLeftMap σ) (pullback-arrow (fst: F ∘ σ) (point i0))
-  newLeftMap-is-pb σ .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
-  newLeftMap-is-pb σ .fst .Arrow-Π.bot = id
-  newLeftMap-is-pb σ .fst .Arrow-Π.comm = ~refl
-  newLeftMap-is-pb σ .snd .fst = is-equiv←qinv
+  transposed-left-map-is-pb
+    : ∀ σ → Arrow-equiv (transposed-left-map σ)
+                        (pullback-arrow (fst: F ∘ σ) (point i0))
+  transposed-left-map-is-pb σ .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
+  transposed-left-map-is-pb σ .fst .Arrow-Π.bot = id
+  transposed-left-map-is-pb σ .fst .Arrow-Π.comm = ~refl
+  transposed-left-map-is-pb σ .snd .fst = is-equiv←qinv
     ( (λ {((_ , a) , _ , refl) → a})
     , ~refl
     , λ {(_ , _ , refl) → refl})
-  newLeftMap-is-pb σ .snd .snd = id-is-equiv
+  transposed-left-map-is-pb σ .snd .snd = id-is-equiv
 
-  newLeftMap-is-left-anodyne
-    : ∀ σ → is-contravariant F → is-left-anodyne (newLeftMap σ)
-  newLeftMap-is-left-anodyne σ rfib
+  transposed-left-map-is-left-anodyne
+    : ∀ σ → is-contravariant F → is-left-anodyne (transposed-left-map σ)
+  transposed-left-map-is-left-anodyne σ rfib
     = is-anodyne-equiv
         (pullback-arrow (fst: F ∘ σ) (point i0))
-        (newLeftMap σ)
-        (inv-Arrow-equiv (newLeftMap-is-pb σ))
+        (transposed-left-map σ)
+        (inv-Arrow-equiv (transposed-left-map-is-pb σ))
         (point i0)
-        (hole (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
+        (pullback-left-anodyne
+              (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
               (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
 
   cov^contra-is-covariant
     : is-contravariant F → is-covariant G → is-covariant G^F
   cov^contra-is-covariant Fctr Gcov
-    = is-covariant←has-unique-extensions G^F (λ where
-       (mk-afmap σ h) → is-single←equiv-to-single
-                          (char-ext-exponentials σ (h tt) e⁻¹)
-                          (unique-extensions←are-orthogonal-fam {P = G}
-                            (are-orthogonal-fam←are-orthogonal-fst
-                              (newLeftMap-is-left-anodyne σ Fctr (fst: G)
-                                (is-covariant⇔is-left-fibration G .fst Gcov)))
-                            (mk-afmap (σ ∘ fst) (h tt))))
+    = is-covariant←has-unique-extensions G^F (λ
+        {(mk-afmap σ h)
+            → is-single←equiv-to-single
+                (transpose-ext-exponentials σ (h tt) e⁻¹)
+                (unique-extensions←are-orthogonal-fam {P = G}
+                  (are-orthogonal-fam←are-orthogonal-fst
+                    (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
+                      (is-covariant⇔is-left-fibration G .fst Gcov)))
+                  (mk-afmap (σ ∘ fst) (h tt)))})
 }
 }

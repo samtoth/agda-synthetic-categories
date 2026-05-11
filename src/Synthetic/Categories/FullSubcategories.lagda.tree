@@ -1,0 +1,138 @@
+\title{Full subcategories}
+\date{2026-04-29}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.FullSubcategories
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Foundations.Embeddings
+
+open import Core.UniversalFibrations
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Cube
+open import Core.PullbackPowers
+open import Core.Orthogonal
+
+open import Modalities.Instances.Truncation
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.Sharp
+open import Modalities.Cohesion.Continuity
+
+open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I I-distr
+
+open import Ergonomics.Notations.Orthogonality
+open notation
+}
+
+\subtree[tot-0002]{
+\title{Full subcategories}
+\taxon{Construction}
+
+\p{Given a}
+
+\agda{
+∂Δ¹-incl♭ : ∂Δ¹ → ⟨♭| Δ¹ ⟩
+∂Δ¹-incl♭ = ∂Δ¹-UP→ (mod♭ i0 , mod♭ i1)
+
+module FullSubcategory
+  {𝓤 𝓥} {A : Type 𝓤} (P : A → ⟨♯| Prop-U 𝓥 ⟩)
+  (let P' = λ a → ⟨♯| P a .counit♯ .fst ⟩)
+  where
+
+  private
+    P'-is-prop : ∀ a → is-prop (P' a)
+    P'-is-prop a = ♯-is-prop (is-prop←is-truncated (P a .counit♯ .snd))
+
+  Σ♯ : Type (𝓤 ⊔ 𝓥)
+  Σ♯ = Σ[ a ∶ A ] ⟨♯| P a .counit♯ .fst ⟩
+
+  incl : Σ♯ → A
+  incl = fst
+
+  module _ {@♭ 𝓦} (@♭ Q : Type 𝓦) where
+    is-ε♭-orthogonal : are-orthogonal-fam (ε♭: Q) P'
+    is-ε♭-orthogonal
+      = are-orthogonal-fam←unique-extensions {P = P'}
+              (λ F → mk-singl
+                       ( (λ x → mod♯ (F .top (mod♭ x) .counit♯))
+                       , λ {(mod♭ x) → refl})
+                       λ {(x , p) → Σ-path→
+                         (funext→ (λ a → P'-is-prop _ _ _)
+                         , funext→ (λ a →
+                           is-prop←is-single
+                             (＝-is-single←is-prop (P'-is-prop _) _ _)
+                             _ _))})
+      where
+      open ArrFam-map
+
+  module _ (∂Δ¹-incl♭-is-equiv : is-equiv ∂Δ¹-incl♭) where
+    incl-is-ff : is-ff incl
+    incl-is-ff
+      = is-ff←is-cartesian-src×tgt-square
+          (back-cartesian←equiv-cube
+            cube
+            ( id-square-is-equiv {f = postcomp _ fst}
+            , (is-equiv-∘ (is-equiv⁻¹ (_≃_.fwd-is-equiv ∂Δ¹-UP))
+                          (precomp-equiv ∂Δ¹-incl♭-is-equiv))
+            , (is-equiv-∘ (is-equiv⁻¹ (_≃_.fwd-is-equiv (∂Δ¹-UP {A = λ _ → A})))
+                          (precomp-equiv ∂Δ¹-incl♭-is-equiv)))
+            (is-cartesian←are-orthogonal
+              (are-orthogonal-fst←are-orthogonal-fam {P = P'}
+                (is-ε♭-orthogonal Δ¹)))) where
+      cube : Cube (power-hom (ε♭: Δ¹) (fst: P')) (src×tgt-square fst)
+      cube .Cube.left = id-square
+      cube .Cube.right .Arrow-Π.top = _≃_.bwd ∂Δ¹-UP
+                                    ∘ precomp Σ♯ ∂Δ¹-incl♭
+      cube .Cube.right .Arrow-Π.bot = _≃_.bwd ∂Δ¹-UP
+                                    ∘ precomp A ∂Δ¹-incl♭
+      cube .Cube.right .Arrow-Π.comm = ~refl
+      cube .Cube.comm = Arrow-map-path-refl
+
+    underlying-hom
+      : ∀ {a b} → is-equiv (ap-hom incl {a}{b})
+    underlying-hom = is-ff'←is-ff incl-is-ff
+
+    Σ♯-hom→ : ∀ {a b} → Hom A (incl a) (incl b) → Hom Σ♯ a b
+    Σ♯-hom→ = is-equiv.bwd underlying-hom
+}
+}
+
+
+\subtree[tot-0001]{
+
+\agda{
+Type♯ : ∀ 𝓤 → Type (lsuc 𝓤)
+Type♯ 𝓤 = ⟨♯| Type 𝓤 ⟩
+
+Type♯-fam : ∀ {𝓤} → Fam (lsuc 𝓤) 𝓤
+Type♯-fam {𝓤} = (Type♯ 𝓤  , (λ x → ⟨♯| x .counit♯ ⟩))
+
+Type♯∙ : ∀ 𝓤 → Type (lsuc 𝓤)
+Type♯∙ 𝓤 = Σ _ (Type♯-fam .snd)
+
+Type♯-π : ∀ {𝓤} → Type♯∙ 𝓤 → Type♯ 𝓤
+Type♯-π = fst
+
+Prop♯ : ∀ 𝓤 → Type (lsuc 𝓤)
+Prop♯ 𝓤 = ⟨♯| Prop-U 𝓤 ⟩
+
+Prop♯-fam : ∀ 𝓤 → Fam (lsuc 𝓤) 𝓤
+Prop♯-fam 𝓤 = (Prop♯ 𝓤 , (λ x → ⟨♯| x .counit♯ .fst ⟩))
+
+Prop♯∙ : ∀ 𝓤 → Type (lsuc 𝓤)
+Prop♯∙ 𝓤 = Σ _ (Prop♯-fam 𝓤 .snd)
+}
+}

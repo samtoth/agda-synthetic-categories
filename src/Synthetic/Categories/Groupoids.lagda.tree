@@ -110,42 +110,93 @@ module Δ¹Disc where
   open gRSubU Δ¹DiscreteType-gRSubU public
   open gRSubUHomClosure Δ¹DiscreteType-gRSubU public
 }
+}
+
+
+\subtree[stt-00L4]{
+\title{A type is #{Δ¹}-discrete if morphisms give equalities}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-03-30}
+
+\p{
+Any type that has a comparison map #{\Hom_A(a,b) \to (a = b)} for all #{a} and #{b}
+is [#{\Delta^1}-discrete](stt-00B6).
+}
+
+\proof{
+There is a converse map to the constant map #{\const : A \to A^{\Delta^1}} given by
+evaluation at #{0}. This map is judgmentally a retraction, so we must only show it is
+a section.
+Unfolding definitions and applying function extensionality, this boils down to
+showing, for every #{h : \Delta^1 \to A}, that #{h(0) = h(t)} for all
+#{t : \Delta^1}. Assuming a family of maps #{H_{a,b} : \Hom_A(a,b) \to (a = b)}, it
+suffices to construct a restricted morphism
+#{h|_t : \Hom_A(h(0), h(t))}, which we can: #{h|_t(j) \coloneqq h(j \land t)}.
+}
 
 \agda{
-Hom←Id
-  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
-Hom←Id refl = idH _
+is-Δ¹-discrete←Id←Hom
+  : {𝓤 : Level} {A : Type 𝓤}
+  → ({a b : A} → Hom A a b → a ＝ b)
+  → is-Δ¹-discrete A
+is-Δ¹-discrete←Id←Hom {A = A} hom→id _
+  = const-is-equiv where
 
-Hom-Δ¹-discrete
-  : ∀ {𝓤} {A : Type 𝓤} → is-Δ¹-discrete A
-    → ∀ {a b} → is-equiv (Hom←Id {_} {A} {a} {b})
-Hom-Δ¹-discrete {A = A} Δ¹-discrete {a} {b}
-  = is-equiv-~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
-      (λ where refl → refl)
-      (bwd-is-equiv Homᵈ-repr≃)
-      (is-equiv-∘ {f = g} {g = f}
-        (total-is-equiv←fst-is-equiv (Δ¹-discrete tt))
-        (bwd-is-equiv Σ-＝singl)) where
-  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
-  f = _≃_.bwd Σ-＝singl
-  g
-    : Σ[ c ∶ A ] ((c ＝ a) × (c ＝ b))
-    → Σ[ g ∶ (Δ¹ → A) ] ((g i0 ＝ a) × (g i1 ＝ b))
-  g (a , p , q) = (const A Δ¹ a , p , q)
+    restrict : (h : Δ¹ → A) (t : Δ¹) → Hom A (h i0) (h t)
+    restrict h t .Homᵈ.hom j = h (j ∧ t)
+    restrict h t .Homᵈ.hom0 = ap h 0-init
+    restrict h t .Homᵈ.hom1 = ap h (∧-comm ∙ 1-top)
+
+    const-is-equiv : is-equiv (const A Δ¹)
+    const-is-equiv
+      = is-equiv←qinv (ev i0 , ~refl , λ h → funext→ λ t → hom→id (restrict h t))
 }
 }
 
 \subtree[fre-1E90]{
-\title{A type is #{Δ¹}-discrete iff \code{Hom←Id} is an equivalence}
+\title{A type is #{Δ¹}-discrete iff homomorphisms characterise equality}
 \taxon{Lemma}
+\author{samueltoth}
+\date{2026-03-18}
 \author{fredrikbakke}
-\date{2026-05-04}
+\date{2026-05-11}
 
 \agda{
+Hom←Id
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} → a ＝ b → Hom A a b
+Hom←Id refl = idH _
+
+Hom←Id:
+  : ∀ {𝓤} {A : Type 𝓤} (a b : A) → a ＝ b → Hom A a b
+Hom←Id: a b = Hom←Id
+
 is-Hom←Id-equiv : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
-is-Hom←Id-equiv A = (a b : A) → is-equiv (Hom←Id {_} {A} {a} {b})
+is-Hom←Id-equiv A = (a b : A) → is-equiv (Hom←Id: a b)
+
+module _  {𝓤} {A : Type 𝓤} where
+
+  is-Hom←Id-equiv←is-Δ¹-discrete
+    : is-Δ¹-discrete A → is-Hom←Id-equiv A
+  is-Hom←Id-equiv←is-Δ¹-discrete Δ¹-discrete a b
+    = is-equiv-~∘
+        (λ where refl → refl)
+        (bwd-is-equiv Homᵈ-repr≃)
+        (is-equiv-∘
+          (total-is-equiv←fst-is-equiv (Δ¹-discrete tt))
+          (bwd-is-equiv Σ-＝singl))
+
+  is-Δ¹-discrete←is-Hom←Id-equiv
+    : is-Hom←Id-equiv A → is-Δ¹-discrete A
+  is-Δ¹-discrete←is-Hom←Id-equiv hom-eq
+    = is-Δ¹-discrete←Id←Hom (λ {a} {b} → is-equiv.bwd (hom-eq a b))
+
+  is-Δ¹-discrete⇔is-Hom←Id-equiv
+    : is-Δ¹-discrete A ⇔ is-Hom←Id-equiv A
+  is-Δ¹-discrete⇔is-Hom←Id-equiv
+    = ( is-Hom←Id-equiv←is-Δ¹-discrete
+      , is-Δ¹-discrete←is-Hom←Id-equiv)
 }
-% TODO: show is-Hom←Id-equiv is equivalent to being Δ¹-discrete
 }
 
 \subtree[stt-00L7]{
@@ -298,46 +349,6 @@ is-left←is-groupoid = is-left←is-Δ¹-discrete ∘ is-Δ¹-discrete←is-gro
 }
 }
 
-\subtree[stt-00L4]{
-\title{A type is #{Δ¹}-discrete if morphisms give equalities}
-\taxon{Lemma}
-\author{fredrikbakke}
-\date{2026-03-30}
-
-\p{
-Any type that has a comparison map #{\Hom_A(a,b) \to (a = b)} for all #{a} and #{b}
-is [#{\Delta^1}-discrete](stt-00B6).
-}
-
-\proof{
-There is a converse map to the constant map #{\const : A \to A^{\Delta^1}} given by
-evaluation at #{0}. This map is judgmentally a retraction, so we must only show it is
-a section.
-Unfolding definitions and applying function extensionality, this boils down to
-showing, for every #{h : \Delta^1 \to A}, that #{h(0) = h(t)} for all
-#{t : \Delta^1}. Assuming a family of maps #{H_{a,b} : \Hom_A(a,b) \to (a = b)}, it
-suffices to construct a restricted morphism
-#{h|_t : \Hom_A(h(0), h(t))}, which we can: #{h|_t(j) \coloneqq h(j \land t)}.
-}
-
-\agda{
-is-Δ¹-discrete←Id←Hom
-  : {𝓤 : Level} {A : Type 𝓤}
-  → ({a b : A} → Hom A a b → a ＝ b)
-  → is-Δ¹-discrete A
-is-Δ¹-discrete←Id←Hom {A = A} hom→id _
-  = const-is-equiv where
-
-    restrict : (h : Δ¹ → A) (t : Δ¹) → Hom A (h i0) (h t)
-    restrict h t .Homᵈ.hom j = h (j ∧ t)
-    restrict h t .Homᵈ.hom0 = ap h 0-init
-    restrict h t .Homᵈ.hom1 = ap h (∧-comm ∙ 1-top)
-
-    const-is-equiv : is-equiv (const A Δ¹)
-    const-is-equiv
-      = is-equiv←qinv (ev i0 , ~refl , λ h → funext→ λ t → hom→id (restrict h t))
-}
-}
 
 \subtree[stt-00L5]{
 \title{The Hom types of a Segal type are #{Δ¹}-discrete}

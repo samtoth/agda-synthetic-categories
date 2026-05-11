@@ -38,6 +38,7 @@ open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Simplicial Δ¹ I I-distr
 open import Synthetic.Categories.Precategories Δ¹ I I-distr
 open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I I-distr
 }
 
 \subtree[stt-00FU]{
@@ -171,5 +172,108 @@ opaque
 
     lf : is-left-fibration (fst: λ a → x a ＝ y a)
     lf = orthogonal←base-change (point i0) pb pb-is-cart is-left
+}
+}
+
+
+\subtree[stt-00OM]{
+\title{Exponentiating covariant families}
+\taxon{Lemma}
+
+\p{We show that given a [contravariant type family](stt-00OD) #{F},
+and a [covariant type family](stt-00AY) #{G}, the type family given by
+#{x \mapsto F(x) \to G(x)} is also covariant.}
+
+\proof{
+\p{First notice that solutions to the left lifting problem are in bijection with
+solutions to the right lifting problem.}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	{\{0\}} && {{G_x}^{F_x}} && {F_{f(0)}} && {G_x} \\
+	\\
+	{\Delta^1} && X && {\Sigma_{i} F_{f(i)}} && X
+	\arrow["h", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["h", from=1-5, to=1-7]
+	\arrow["{(0, -)}"', from=1-5, to=3-5]
+	\arrow[from=1-7, to=3-7]
+	\arrow["f"', from=3-1, to=3-3]
+	\arrow["{f\pi_1}"', from=3-5, to=3-7]
+\end{tikzcd}
+}
+
+\p{Now we may see that the leftmost map of the second diagram is obtained
+as the pullback of #{\{0\} \to \Delta^1} by the projection
+#{\Sigma_{i} F_{f(i)} \to \Delta^1}. Hence we have a lifting problem where the
+left map is a pullback of a left anodyne map by a right fibration and hence
+is a left anodyne map. Since the right family is covariant by assumption, this
+means solutions to the lifting problem exist uniquely.}
+}
+
+\remark{
+\p{We have not yet formalised the fact that left-anodyne maps are stable under
+base change by right fibrations.}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (let G^F b = F b → G b)
+  (let
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x))
+  (base-change-left-anodyne
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
+        (p : C → A) → is-left-anodyne p → is-right-fibration f
+      → is-left-anodyne (base-change-arrow f p))
+  where
+
+  module _ (σ : Δ¹ → B) where
+    transpose-ext-exponentials
+      : ∀ (h : F (σ i0) → G (σ i0))
+        → Extᵈ (point i0) (G^F ∘ σ) (point h)
+        ≃ Extᵈ (transposed-left-map σ) (G ∘ σ ∘ fst) h
+    transpose-ext-exponentials h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
+
+    transposed-left-map-is-pb
+      : Arrow-equiv
+          (transposed-left-map σ)
+          (base-change-arrow (fst: F ∘ σ) (point i0))
+    transposed-left-map-is-pb .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
+    transposed-left-map-is-pb .fst .Arrow-Π.bot = id
+    transposed-left-map-is-pb .fst .Arrow-Π.comm = ~refl
+    transposed-left-map-is-pb .snd .fst = is-equiv←qinv
+      ( (λ {((_ , a) , _ , refl) → a})
+      , ~refl
+      , λ {(_ , _ , refl) → refl})
+    transposed-left-map-is-pb .snd .snd = id-is-equiv
+
+    transposed-left-map-is-left-anodyne
+      : is-contravariant F → is-left-anodyne (transposed-left-map σ)
+    transposed-left-map-is-left-anodyne rfib
+      = is-anodyne←equiv
+          (base-change-arrow (fst: F ∘ σ) (point i0))
+          (transposed-left-map σ)
+          (inv-Arrow-equiv transposed-left-map-is-pb)
+          (point i0)
+          (base-change-left-anodyne
+                (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
+                (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
+
+  cov^contrav-is-covariant
+    : is-contravariant F → is-covariant G → is-covariant G^F
+  cov^contrav-is-covariant Fctr Gcov
+    = is-covariant←has-unique-extensions G^F (λ
+        {(mk-afmap σ h)
+            → is-single←equiv-to-single
+                (transpose-ext-exponentials σ (h tt) e⁻¹)
+                (unique-extensions←are-orthogonal-fam {P = G}
+                  (are-orthogonal-fam←are-orthogonal-fst
+                    (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
+                      (is-covariant⇔is-left-fibration G .fst Gcov)))
+                  (mk-afmap (σ ∘ fst) (h tt)))})
 }
 }

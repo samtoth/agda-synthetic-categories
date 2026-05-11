@@ -192,6 +192,16 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
 
   pullback←arrow : Arrow-map f g → Pullback (g ∘_) (_∘ f)
   pullback←arrow = Arrow-map≃pullback ._≃_.fwd
+
+  arrow←pullback' : Pullback (_∘ f) (g ∘_) → Arrow-map f g
+  arrow←pullback' = _≃_.bwd Arrow-map≃pullback'
+
+  arrow←pullback : Pullback (g ∘_) (_∘ f) → Arrow-map f g
+  arrow←pullback = _≃_.bwd Arrow-map≃pullback
+
+  arrow←pullback-is-equiv : is-equiv (arrow←pullback)
+  arrow←pullback-is-equiv
+    = is-equiv⁻¹ (_≃_.fwd-is-equiv Arrow-map≃pullback)
 }
 }
 
@@ -1098,5 +1108,70 @@ Cart-fam-map≃cart-arrow-map = mk≃ Cart-fam-map←cart-arrow-map
     (map-Σ-is-equiv
       fam-map←arrow-map-is-equiv
       λ _ → id-is-equiv))
+}
+}
+
+\subtree[stt-00OB]{
+\title{Half-straightened arrow maps}
+\taxon{Definition}
+
+\p{Given a map #{f : A \to B}, and a type family #{P : C \to \Type}, we define the
+type of maps from #{f} to #{P}, which consists of the data:}
+
+\ul{
+\li{A map #{b : B \to A}}
+\li{A section #{t : \Pi_{a} P(b(f(a))) }}
+}
+
+\agda{
+record ArrFam-map
+         {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} (f : A → B)
+         (P : C → Type 𝓜) : Type (𝓜 ⊔ 𝓥 ⊔ 𝓤 ⊔ 𝓦) where
+  constructor mk-afmap
+  field
+    bot : B → C
+    top : ∀ a → P (bot (f a))
+
+unquoteDecl ArrFam-map-repr≊ ArrFam-map-repr≃
+  = make-record-repr ArrFam-map-repr≊ ArrFam-map-repr≃ (quote ArrFam-map)
+}
+}
+
+\subtree[stt-00OC]{
+\taxon{Lemma}
+
+\p{A [half-straightened](stt-00OB) map from a map #{f} to a type family #{P} is equivalent
+to an arrow map from #{f} to the unstraightening of #{P}.}
+
+\agda{
+unstr-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → ArrFam-map f P → Arrow-map f (fst: P)
+unstr-ArrFam {f = f} F .Arrow-Π.top a = (_ , F .ArrFam-map.top a)
+unstr-ArrFam F .Arrow-Π.bot = F .ArrFam-map.bot
+unstr-ArrFam F .Arrow-Π.comm = ~refl
+
+str-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → Arrow-map f (fst: P) → ArrFam-map f P
+str-ArrFam F .ArrFam-map.bot = F .Arrow-map.bot
+str-ArrFam {P = P} F .ArrFam-map.top a
+  = tr P (sym (F .Arrow-map.comm a)) (F .Arrow-map.top a .snd)
+
+str-ArrFam-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → is-equiv (str-ArrFam {f = f} {P = P})
+str-ArrFam-is-equiv = is-equiv←qinv
+  ( unstr-ArrFam
+  , (λ {(mk-amap top bot comm) → Arrow-map-path→
+            ((λ a → Σ-path→ ( comm a
+                            , tr∘tr-sym' (comm a) (top a .snd)))
+            , ~refl
+            , λ a → Σ-path-ap-fst)})
+  , ~refl)
 }
 }

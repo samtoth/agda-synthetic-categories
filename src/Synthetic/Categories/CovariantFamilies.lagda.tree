@@ -100,6 +100,14 @@ is-covariant←is-covariant-hom
     → is-covariant-hom B → is-covariant B
 is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
 
+}
+}
+
+\subtree[stt-00O8]{
+\title{Covariant type families admit directed transport}
+\taxon{Lemma}
+
+\agda{
 tr-cov
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
     → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
@@ -125,13 +133,87 @@ tr-cov-over cov h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 }
 }
 
+\subtree[stt-00O5]{
+\title{Left families}
+\taxon{Definition}
+
+\p{We say that a type family is \em{a left family} if, as a family, it is right orthogonal
+to the left endpoint inclusion.}
+
+\agda{
+is-left-family
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-left-family = are-orthogonal-fam (point i0)
+}
+}
+
+\subtree[stt-00O6]{
+\title{Left families are covariant}
+\taxon{Lemma}
+
+\proof{
+\p{
+Left families are equivalently those type families #{B} for which each
+#{B_{\sigma(0)}} admits a unique extension along #{0 \to \Delta^1}.
+We have already characterised orthogonal families as those who admit
+unique extensions.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
+  cov-lift-is-extension
+    : ∀ (σ : Δ¹ → A) (x₀ : B (σ i0))
+      → Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀) ≃ Extᵈ (point i0) (B ∘ σ) (point x₀)
+  cov-lift-is-extension σ x₀
+    =  Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀)
+    ≃⟨ Σ-snd-≃ (λ b → Homᵈ-repr≃) ⟩
+       (Σ[ x₁ ∶ B (σ i1) ] Σ[ f ∶ Π Δ¹ (B ∘ σ) ] ((f i0 ＝ x₀) × (f i1 ＝ x₁)))
+    ≃⟨ Σ-comm ∙≃ Σ-snd-≃ (λ f → Σ-comm) ⟩
+       (Σ[ f ∶ Π Δ¹ (B ∘ σ) ] ((f i0 ＝ x₀) × Σ[ x₁ ∶ B (σ i1) ] (f i1 ＝ x₁)))
+    ≃⟨ Σ-snd-≃ (λ f → Σ-singleton (λ _ → Sing-is-singleton)) ⟩
+       (Σ[ f ∶ Π Δ¹ (B ∘ σ)] (f i0 ＝ x₀))
+    ≃⟨ Σ-snd-≃ (λ f → unit-UP≃ e⁻¹) ⟩
+       Extᵈ (point i0) (B ∘ σ) (point x₀)
+    ≃∎
+
+  opaque
+    is-covariant←has-unique-extensions
+      : has-unique-extensions (point i0) B → is-covariant B
+    is-covariant←has-unique-extensions ext σ x₀
+      = is-single←equiv-to-single
+          (cov-lift-is-extension σ x₀ e⁻¹)
+          (ext (mk-afmap σ (point x₀)))
+
+    has-unique-extensions←is-covariant
+      : is-covariant B → has-unique-extensions (point i0) B
+    has-unique-extensions←is-covariant cov (mk-afmap σ f)
+      = is-single←equiv-to-single
+          (cov-lift-is-extension σ (f tt))
+          (cov σ (f tt))
+
+  has-unique-extensions⇔is-covariant
+    : has-unique-extensions (point i0) B ⇔ is-covariant B
+  has-unique-extensions⇔is-covariant
+    = ( is-covariant←has-unique-extensions
+      , has-unique-extensions←is-covariant)
+
+  is-left-family⇔is-covariant
+    : is-left-family B ⇔ is-covariant B
+  is-left-family⇔is-covariant
+    =  are-orthogonal-fam⇔has-unique-extensions
+    ∙⇔ has-unique-extensions⇔is-covariant
+}
+}
 
 \subtree[stt-00AV]{
 \title{Left fibrations}
 \taxon{Definition}
 
-\p{A map is a left (right) fibration if it is [right orthogonal](stt-0048) to the
-left (right) endpoint of #{\Delta^1}.}
+\p{A map is a left fibration if it is [right orthogonal](stt-0048) to the left
+endpoint of #{\Delta^1}.}
+
+\p{See [[stt-00OH]] for the dual notion.}
 
 \agda{
 is-left-fibration
@@ -142,189 +224,9 @@ is-left-fibration f = (point i0) ⊥ f
 is-left-anodyne
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
 is-left-anodyne f = is-anodyne f (point i0)
-
-is-right-fibration
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
-is-right-fibration f = (point i1) ⊥ f
 }
 }
 
-
-\subtree[stt-00AW]{
-\taxon{Lemma}
-
-\p{Given some family #{B : A \to \UU}, an arrow #{f} in #{A} and a point over the
-base #{x_0 : B(f(0))}, the type of dependent homs over #{f} based an #{x_0} is
-equivalent to the type of lifts of the following square:}
-
-
-\quiver{
-\begin{tikzcd}
-	1 && {\tilde{B}} \\
-	\\
-	{\Delta^1} && A
-	\arrow["{x_0}", from=1-1, to=1-3]
-	\arrow["0"', from=1-1, to=3-1]
-	\arrow["\pi", from=1-3, to=3-3]
-	\arrow["f"', from=3-1, to=3-3]
-\end{tikzcd}
-}
-
-
-\agda{
-lifts-of-based-arrow : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-          (f : Δ¹ → A) (x₀ : B (f i0))
-        → let F = mk-amap {f = point i0}
-                          (λ _ → f i0 , x₀) f ~refl
-        in Σ (B (f i1)) (Homᵈ (B ∘ f) x₀)
-        ≃ Lift F
-lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
-  F : Arrow-map (point i0) (fst {B = B})
-  F = mk-amap (λ _ → f i0 , x₀) f ~refl
-
-  open Arrow-map F
-  open Homᵈ
-}
-
-\closedScope{
-\subtree[stt-00AX]{
-\title{Details}
-\agda{
-  by-contracting-singletons : (Σ[ x₁ ∶  (B (f i1)) ] Σ[ h ∶ Π Δ¹ (B ∘ f)]
-            ((h i0 ＝ x₀) × (h i1 ＝ x₁)))
-          ≊ (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
-  by-contracting-singletons ._≊_.fwd (_ , h , p , refl) = (h , p)
-  by-contracting-singletons ._≊_.fwd-qinv .fst (h , p) = (h i1 , h , p , refl)
-  by-contracting-singletons ._≊_.fwd-qinv .snd .fst (_ , h , p , refl) = refl
-  by-contracting-singletons ._≊_.fwd-qinv .snd .snd = ~refl
-
-  because-pi-types-are-lifts
-    : (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
-       ≃
-      (Σ[ (f , p) ∶ fibre (postcomp Δ¹ (λ r → fst r)) f ]
-       (tr B (happly p i0) (snd (f i0)) ＝ x₀))
-  because-pi-types-are-lifts
-    = Σ-fst-≃
-        {B = λ where (f , p) → tr B (happly p i0) (snd (f i0)) ＝ x₀}
-        (mk≃ (LiftMap←Π {B = B} f) (LiftMap←Π-is-equiv f))
-
-  by-funext
-    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ＝ f) ]
-          (tr B (happly H i0) (snd (f' i0)) ＝ x₀)
-    ≃ Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-          (tr B (H i0) (snd (f' i0)) ＝ x₀)
-  by-funext
-    = Σ-snd-≃
-       (λ f' → Σ-fst-≃
-                {B = λ H → tr B (H i0) (snd (f' i0)) ＝ x₀}
-                funext≃)
-
-  inserting-singleton
-    :   Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-          (tr B (H i0) (snd (f' i0)) ＝ x₀)
-     ≃  Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-        Σ[ K1 ∶ fst (f' i0) ＝ _ ] Σ[ K2 ∶ Idᶠ B K1 (snd (f' i0)) x₀ ]
-          (K1 ＝ H i0)
-  inserting-singleton
-    = Σ-snd-≃
-       (λ f' → Σ-snd-≃
-         (λ H → Σ-singl
-                  {B = λ (K , _) → tr B K (snd (f' i0)) ＝ x₀ }
-                  Sing-is-singleton
-                  (H i0 , refl) e⁻¹
-                ∙≃ Σ-assoc ∙≃ Σ-snd-≃ (λ K → ×-swap ∙≃ Σ-snd-≃ (λ _ → sym≃))))
-
-  by-characterising-Σ-path
-    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-        Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
-      ≃
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-          Σ[ K1 ∶ fst (f' i0) ＝ _ ] Σ[ K2 ∶ Idᶠ B K1 (snd (f' i0)) x₀ ]
-           (K1 ＝ H i0)
-  by-characterising-Σ-path
-    = Σ-snd-≃
-       (λ f' → Σ-snd-≃
-         (λ H → Σ-fst-≃
-                {B = λ (K , _) → K ＝ H i0}
-                (  Σ-path {x = f' i0} {y = _ , x₀} e⁻¹)
-                ∙≃ Σ-assoc))
-
-
-  by-UP-of-unit
-    :  Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-        Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
-      ≃
-       Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
-         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
-  by-UP-of-unit
-    = Σ-snd-≃
-       (λ f' → Σ-snd-≃
-                (λ H → Σ-fst-≃ {B = λ K → ap fst K ＝ H i0} (unit-UP≃) e⁻¹
-                       ∙≃ Σ-snd-≃ (λ K → unit-UP≃ e⁻¹))
-               ∙≃ Σ-comm)
-
-  postcomposing-reflr-is-equiv
-    : Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
-         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
-      ≃
-      Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
-         Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0) ~∙ ~refl)
-  postcomposing-reflr-is-equiv
-    = Σ-snd-≃
-       (λ f' → Σ-snd-≃
-         (λ K → Σ-snd-≃ (λ H → ~reflr≃ {f = const _ _ (f i0)} _ _)))
-}
-}
-}
-
-\proof{
-\agda{
-  opaque
-    eqv : Σ (B (f i1)) (Homᵈ (B ∘ f) x₀) ≃ Lift F
-    eqv
-      = Σ (B (f i1)) (Homᵈ (B ∘ f) x₀) ≃⟨ Σ-snd-≃ (λ _ → Homᵈ-repr≃) ⟩
-
-        Σ[ x₁ ∶  (B (f i1)) ] Σ[ h ∶ Π Δ¹ (B ∘ f)]
-          ((h i0 ＝ x₀) × (h i1 ＝ x₁))
-                                       ≃⟨ equiv←qequiv by-contracting-singletons ⟩
-
-        (Σ[ h ∶ Π Δ¹ (B ∘ f)] (h i0 ＝ x₀))
-                                       ≃⟨ because-pi-types-are-lifts ⟩
-
-        (Σ[ (f , p) ∶ fibre (postcomp Δ¹ (λ r → fst r)) f ]
-         (tr B (happly p i0) (snd (f i0)) ＝ x₀))
-                                       ≃⟨ Σ-assoc ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ＝ f) ]
-            (tr B (happly H i0) (snd (f' i0)) ＝ x₀)
-                                       ≃⟨ by-funext ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-            (tr B (H i0) (snd (f' i0)) ＝ x₀)
-                                       ≃⟨ inserting-singleton ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-          Σ[ K1 ∶ fst (f' i0) ＝ f i0 ] Σ[ K2 ∶ Idᶠ B K1 (snd (f' i0)) x₀ ]
-            (K1 ＝ H i0)
-                                       ≃⟨ by-characterising-Σ-path e⁻¹ ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ H ∶ (fst ∘ f' ~ f) ]
-          Σ[ K ∶ f' i0 ＝ (_ , x₀) ] (ap fst K ＝ H i0)
-                                       ≃⟨ by-UP-of-unit ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
-           Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0))
-                                       ≃⟨ postcomposing-reflr-is-equiv ⟩
-
-        Σ[ f' ∶ (Δ¹ → Σ A B) ] Σ[ K ∶ f' ∘ const _ _ i0 ~ const _ _ (_ , x₀) ]
-           Σ[ H ∶ (fst ∘ f' ~ f) ] (fst ◂ K ~ (H ▸ const _ _ i0) ~∙ ~refl)
-                                       ≃⟨ Lift-repr≃ F e⁻¹ ⟩
-
-        Lift F                         ≃∎
-}
-}
-}
 
 \subtree[stt-00AR]{
 \title{Covariant families straighten to left fibrations}
@@ -337,39 +239,14 @@ lifts-of-based-arrow {A = A} {B} f x₀ = eqv where
 opaque
   is-covariant⇔is-left-fibration
     : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-      → is-covariant B ⇔ is-left-fibration (fst {B = B})
+      → is-covariant B ⇔ is-left-fibration (fst: B)
   is-covariant⇔is-left-fibration {A = A} B
-    = (fwd , bwd) where
-      arrow-map-snd
-        : (F : Arrow-map (point i0) (fst {B = B}))
-        → B (F .Arrow-map.bot i0)
-      arrow-map-snd (mk-amap top bot comm) = tr B (sym (comm tt)) (top tt .snd)
-
-      Σ←arrow-map
-        : Arrow-map (point i0) (fst {B = B})
-        → Σ[ f ∶ (Δ¹ → A)] (B (f i0))
-      Σ←arrow-map F = F .bot , arrow-map-snd F where open Arrow-map
-
-      fwd : is-covariant B → is-left-fibration (fst {B = B})
-      fwd cov a@(mk-amap top bot comm)
-        = is-single←equiv-to-single
-            ( lifts-of-based-arrow bot (tr B (sym (comm tt)) (snd (top tt)))
-            ∙≃ coe≃ (ap Lift
-                (Arrow-map-path→
-                  ((λ a₁ → Σ-path→ ((comm tt)
-                                   , tr∘tr-sym' (comm tt) (snd (top tt))))
-                  , (~refl , (λ _ → Σ-path-ap-fst))))))
-            (cov bot (arrow-map-snd a))
-
-      bwd : is-left-fibration (fst {B = B}) → is-covariant B
-      bwd lfib f x₀ = is-single←equiv-to-single
-           (lifts-of-based-arrow f x₀  e⁻¹)
-           (lfib (mk-amap (λ _ → (f i0 , x₀)) f ~refl))
+    = (is-left-family⇔is-covariant B ⇔⁻¹) ∙⇔ are-orthogonal-fam⇔are-orthogonal-fst
 }
 }
 
 \subtree[stt-00C7]{
-\title{Left and right fibrations are inner}
+\title{Left fibrations are inner}
 \taxon{Lemma}
 
 \proof{
@@ -382,6 +259,12 @@ the following retract square completes the proof:}
 \transclude{stt-00LC}
 }
 
+
+\remark{
+We may use the dual proof for [right fibrations](stt-00OJ)
+(\ref{stt-00C7})
+}
+
 \agda{
 is-inner←is-left-fibration
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
@@ -391,15 +274,6 @@ is-inner←is-left-fibration {f = f} lf
       Λ[2,1]-incl (pushout-product (point i1) (point i0))
       Λ[2,1]↪□-section Λ[2,1]↪□-ret _
       (left-orthogonal-pushout-product' (point i0) f lf (point i1))
-
-is-inner←is-right-fibration
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-    → is-right-fibration f → is-inner f
-is-inner←is-right-fibration {f = f} rf
-  = left-orthogonal-retraction
-      Λ[2,1]-incl (pushout-product (point i1) (point i0))
-      Λ[2,1]↪□-section Λ[2,1]↪□-ret _
-      (left-orthogonal-pushout-product (point i1) f rf (point i0))
 }
 }
 
@@ -525,7 +399,7 @@ tr-cov-∘ apc P cov g f x'
 }
 
 \subtree[stt-00K3]{
-\title{Coercing along inequalities in #{Δ¹}}
+\title{Covariant transport along inequalities in #{Δ¹}}
 \taxon{Lemma}
 
 \p{Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.

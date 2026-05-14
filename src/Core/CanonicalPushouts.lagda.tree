@@ -68,7 +68,6 @@ pushout-rec-unique {f = f} CC F' H K M
                (mk-square
                  (M a
                  ∙ ap (H (f a) ∙_) (sym (pushout-rec-apβ a)))))
-
 }
 }
 
@@ -493,60 +492,16 @@ Pushout-assoc-is-equiv f g h i .snd .snd = pushout-ind _
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦 𝓠 : Level}
-  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓠}
+  {𝓤 𝓥 𝓦 𝓠} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓠}
   (i : A → B) (j : A → C) (r : C → Q)
   where
 
-  pushout-restrict-fibre→
-    : (h : B → Q)
-    → (Σ[ dc ∶ (Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (dc .fst ~ r))
-    → (h ∘ i ~ r ∘ j)
-  pushout-restrict-fibre→ h ((d , c) , e) a
-    = c a ∙ e (j a)
-
-  pushout-restrict-fibre
+  cocone-right-leg-homotopy≃span-boundary
     : (h : B → Q)
     → (Σ[ dc ∶ (Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (dc .fst ~ r))
     ≃ (h ∘ i ~ r ∘ j)
-  pushout-restrict-fibre h
-    = mk≃ (pushout-restrict-fibre→ h) (is-equiv←qinv qinv) where
-    bwd
-      : (h ∘ i ~ r ∘ j)
-      → Σ[ dc ∶ (Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (dc .fst ~ r)
-    bwd K = (r , K) , ~refl
-
-    base
-      : (c : h ∘ i ~ r ∘ j)
-      → bwd (λ a → c a ∙ refl) ＝ ((r , c) , ~refl)
-    base c = Σ-path→ (pdc , reflᵈ Bpath) where
-      pdc : (r , (λ a → c a ∙ refl)) ＝ (r , c)
-      pdc = Σ-path→ (refl , funext→ (λ a → ∙-reflr (c a)))
-
-      Bpath : ap (λ dc → dc .fst ~ r) pdc ＝ refl
-      Bpath = ap-∘ (_~ r) fst pdc ∙ ap (ap (_~ r)) Σ-path-ap-fst ∙ ap-refl (_~ r)
-
-    qinv : quasi-inv (pushout-restrict-fibre→ h)
-    qinv .fst = bwd
-    qinv .snd .fst ((d , c) , e)
-      = funext-rec
-          (λ e' → bwd (λ a → c a ∙ e' (j a)) ＝ ((d , c) , e'))
-          (λ where refl → base c)
-          (e)
-    qinv .snd .snd K = funext→ (λ a → ∙-reflr (K a))
-
-  pushout-restrict-fibre←
-    : (h : B → Q)
-    → (h ∘ i ~ r ∘ j)
-    → Σ[ dc ∶ (Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (dc .fst ~ r)
-  pushout-restrict-fibre← h K = (r , K) , ~refl
-
-  pushout-restrict-fibre-section
-    : (h : B → Q) (K : h ∘ i ~ r ∘ j)
-    → _≃_.fwd (pushout-restrict-fibre h) (pushout-restrict-fibre← h K)
-    ＝ K
-  pushout-restrict-fibre-section h K
-    = funext→ λ a → ∙-reflr (K a)
+  cocone-right-leg-homotopy≃span-boundary h
+    = Σ-assoc ∙≃ Σ-snd-≃ (λ d → ×-swap ∙≃ Σ-fst-≃ funext≃ e⁻¹) ∙≃ Σ-＝singl
 
   Ext-pushout-ι₂ : Ext {B = Pushout i j} ι₂ r ≃ Ext i (r ∘ j)
   Ext-pushout-ι₂
@@ -555,13 +510,12 @@ module _
       Σ[ cc ∶ (Σ[ h ∶ (B → Q) ] Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (cc .snd .fst ~ r)
         ≃⟨ Σ-assoc ⟩
       Σ[ h ∶ (B → Q) ] Σ[ dc ∶ (Σ[ d ∶ (C → Q) ] (h ∘ i ~ d ∘ j)) ] (dc .fst ~ r)
-        ≃⟨ Σ-snd-≃ pushout-restrict-fibre ⟩
-      Ext i (r ∘ j) ≃∎
+        ≃⟨ Σ-snd-≃ cocone-right-leg-homotopy≃span-boundary ⟩
+      Ext i (r ∘ j)
+        ≃∎
 
-  Ext-pushout-ι₂←
-    : Ext i (r ∘ j) → Ext {B = Pushout i j} ι₂ r
-  Ext-pushout-ι₂← e
-    = pushout-rec (mk-cocone (e .fst) r (e .snd)) , ~refl
+  Ext-pushout-ι₂← : Ext i (r ∘ j) → Ext {B = Pushout i j} ι₂ r
+  Ext-pushout-ι₂← e = (pushout-rec (mk-cocone (e .fst) r (e .snd)) , ~refl)
 
   Ext-pushout-ι₂-section
     : (e : Ext i (r ∘ j))
@@ -569,7 +523,9 @@ module _
   Ext-pushout-ι₂-section (h , K)
     = Σ-path→
         ( refl
-        , pushout-restrict-fibre-section h (Ext-pushout-ι₂← (h , K) .fst ◂ glue)
+        , _≃_.ε
+            (cocone-right-leg-homotopy≃span-boundary h)
+            (Ext-pushout-ι₂← (h , K) .fst ◂ glue)
         ∙ funext→ pushout-rec-apβ)
 }
 }

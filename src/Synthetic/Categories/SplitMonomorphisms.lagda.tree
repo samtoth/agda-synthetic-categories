@@ -110,40 +110,76 @@ TotalSplitMono-ret-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
 \date{2026-05-01}
 
 \agda{
-SplitMono-Path
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → SplitMono a b → SplitMono a b → Type (𝓘 ⊔ 𝓤)
-SplitMono-Path {a = a} f g
-  = Σ[ fwd＝ ∶ SplitMono-fwd f ＝ SplitMono-fwd g ]
-    Σ[ ret＝ ∶ SplitMono-ret f ＝ SplitMono-ret g ]
-      Idᵈ (ap₂ (λ fwd ret → Hom2 ret fwd (idH a)) fwd＝ ret＝)
-          (SplitMono-triangle f)
-          (SplitMono-triangle g)
+module _ {𝓤} {A : Type 𝓤} {a b : A} where
 
-SplitMono-path→
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitMono a b}
-  → SplitMono-Path f g → f ＝ g
-SplitMono-path→ {f = (f , (r , η))} {g = (.f , (.r , .η))} (refl , refl , refl)
-  = refl
+  SplitMono-Path
+    : SplitMono a b → SplitMono a b → Type (𝓘 ⊔ 𝓤)
+  SplitMono-Path f g
+    = Σ[ fwd＝ ∶ SplitMono-fwd f ＝ SplitMono-fwd g ]
+      Σ[ ret＝ ∶ SplitMono-ret f ＝ SplitMono-ret g ]
+        Idᵈ (ap₂ (λ fwd ret → Hom2 ret fwd (idH a)) fwd＝ ret＝)
+            (SplitMono-triangle f)
+            (SplitMono-triangle g)
 
-SplitMono-path←
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitMono a b}
-  → f ＝ g → SplitMono-Path f g
-SplitMono-path← refl = refl , refl , refl
+  SplitMono-path→
+    : {f g : SplitMono a b}
+    → SplitMono-Path f g → f ＝ g
+  SplitMono-path→ {f = (f , (r , η))} {g = (.f , (.r , .η))} (refl , refl , refl)
+    = refl
 
-SplitMono-path
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitMono a b}
-  → SplitMono-Path f g ≃ (f ＝ g)
-SplitMono-path {f = f} {g}
-  = mk≃ SplitMono-path→ (is-equiv←qinv qinv)
-  where
-  qinv : quasi-inv (SplitMono-path→ {f = f} {g})
-  qinv .fst = SplitMono-path←
-  qinv .snd .fst (refl , refl , refl) = refl
-  qinv .snd .snd refl = refl
+  SplitMono-path←
+    : {f g : SplitMono a b}
+    → f ＝ g → SplitMono-Path f g
+  SplitMono-path← refl = refl , refl , refl
+
+  SplitMono-path→-is-equiv
+    : {f g : SplitMono a b}
+    → is-equiv (SplitMono-path→ {f} {g})
+  SplitMono-path→-is-equiv {f} {g} = (mk-eqv qinv coh)
+    where
+    qinv : quasi-inv (SplitMono-path→ {f} {g})
+    qinv .fst = SplitMono-path←
+    qinv .snd .fst (refl , refl , refl) = refl
+    qinv .snd .snd refl = refl
+
+    coh : qinv-coh qinv
+    coh (refl , refl , refl) = refl
+
+  SplitMono-path
+    : {f g : SplitMono a b}
+    → SplitMono-Path f g ≃ (f ＝ g)
+  SplitMono-path
+    = mk≃ SplitMono-path→ SplitMono-path→-is-equiv
+}
+}
+
+\subtree[fre-J8V2]{
+\title{Transporting split monomorphisms along endpoint paths}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b a' b' : A} where
+
+  adjust-is-split-mono
+    : (p : a ＝ a') (q : b ＝ b')
+    → {f : Hom A a b}
+    → is-split-mono f
+    → is-split-mono (adjust-hom p q f)
+  adjust-is-split-mono p q {f} (r , η)
+    = (r' , η')
+    where
+    r' : Hom A b' a'
+    r' = adjust-hom q p r
+    η' : Hom2 r' (adjust-hom p q f) (idH _)
+    η' = tr (Hom2 r' (adjust-hom p q f)) (sym (adjust-idH p)) (adjust-Hom2 p q p η)
+
+  adjust-SplitMono
+    : (p : a ＝ a') (q : b ＝ b')
+    → SplitMono a b
+    → SplitMono a' b'
+  adjust-SplitMono p q (f , f-smono)
+    = (adjust-hom p q f , adjust-is-split-mono p q f-smono)
 }
 }
 
@@ -272,12 +308,12 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (F : A → B) where
   ap-id-SplitMono-fwd
     : (a : A)
     → SplitMono-fwd (ap-id-SplitMono a) ＝ SplitMono-fwd (id-SplitMono (F a))
-  ap-id-SplitMono-fwd a = refl
+  ap-id-SplitMono-fwd = ~refl
 
   ap-id-SplitMono-ret
     : (a : A)
     → SplitMono-ret (ap-id-SplitMono a) ＝ SplitMono-ret (id-SplitMono (F a))
-  ap-id-SplitMono-ret a = refl
+  ap-id-SplitMono-ret = ~refl
 }
 
 \p{The action preserves composites.}
@@ -326,5 +362,4 @@ module _
         (ap-hom F (f⁻¹ ∘[ 𝐴 ] g⁻¹))
         (ap-hom2 F f⁻¹ g⁻¹ (f⁻¹ ∘[ 𝐴 ] g⁻¹) ∘[ 𝐴 ]-is-composite)
 }
-% TODO: Refine these results to equalities of SplitMonos
 }

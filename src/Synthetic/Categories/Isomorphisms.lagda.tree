@@ -97,32 +97,39 @@ module _ {𝓤} {A : Type 𝓤} where
     : (a b : A) → a ＝ b → Iso a b
   Iso←Id: a b = Iso←Id
 
-  fwd-Iso←Id
-    : {a b : A} → (p : a ＝ b) → fwd-Iso (Iso←Id p) ＝ Hom←Id p
-  fwd-Iso←Id = ~refl
+TotalIso
+  : ∀ {𝓤} (X : Type 𝓤)
+  → Type (𝓘 ⊔ 𝓤)
+TotalIso X = Σ[ a ∶ X ] Σ[ b ∶ X ] Iso {A = X} a b
 
-  is-fwd-Iso-equiv : Type (𝓘 ⊔ 𝓤)
-  is-fwd-Iso-equiv = (a b : A) → is-equiv (fwd-Iso {a = a} {b = b})
+id-TotalIso : ∀ {𝓤} {A : Type 𝓤} → A → TotalIso A
+id-TotalIso a = (a , a , id-Iso a)
+}
+}
 
-  Hom←Id-is-equiv←Iso←Id-is-equiv←fwd-Iso-is-equiv
-    : ((a b : A) → is-equiv (Iso←Id {a = a} {b = b}))
-    → is-fwd-Iso-equiv
-    → is-Hom←Id-equiv A
-  Hom←Id-is-equiv←Iso←Id-is-equiv←fwd-Iso-is-equiv iso-eq fwd-eq a b
-    = is-equiv-~∘
-        (sym ∘ fwd-Iso←Id {a = a} {b = b})
-        (fwd-eq a b)
-        (iso-eq a b)
+\subtree[fre-Z2R7]{
+\title{Adjusting isomorphisms along identities}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-05-13}
 
-  Iso←Id-is-equiv←Hom←Id-is-equiv←fwd-Iso-is-equiv
-    : is-Hom←Id-equiv A
-    → is-fwd-Iso-equiv
-    → (a b : A) → is-equiv (Iso←Id {a = a} {b = b})
-  Iso←Id-is-equiv←Hom←Id-is-equiv←fwd-Iso-is-equiv hom-eq fwd-eq a b
-    = 3-for-2~
-        (sym ∘ fwd-Iso←Id {a = a} {b = b})
-        (fwd-eq a b)
-        (hom-eq a b)
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b a' b' : A} where
+
+  adjust-is-iso
+    : (p : a ＝ a') (q : b ＝ b')
+    → {f : Hom A a b}
+    → is-iso f
+    → is-iso (adjust-hom p q f)
+  adjust-is-iso p q f-iso
+    = is-iso←is-split-mono×is-split-epi
+        ( adjust-is-split-mono p q (is-split-mono←is-iso f-iso)
+        , adjust-is-split-epi p q (is-split-epi←is-iso f-iso))
+
+  adjust-Iso
+    : (a ＝ a') → (b ＝ b') → Iso a b → Iso a' b'
+  adjust-Iso p q (f , f-iso)
+    = (adjust-hom p q f , adjust-is-iso p q f-iso)
 }
 }
 
@@ -421,6 +428,33 @@ module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
     → f ＝ g
   Iso-path→ {f = (f , f-iso)} {g = (.f , g-iso)} refl
     = Σ-path→ (refl , is-iso-is-prop 𝐴 f-iso g-iso)
+
+  Iso-pathᵈ→
+    : {a b a' b' : A}
+    → (p : a ＝ a') (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a' b'}
+    → adjust-hom p q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap₂ Iso p q) f g
+  Iso-pathᵈ→ refl refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
+
+  Iso-path-targetᵈ→
+    : {a b b' : A}
+    → (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a b'}
+    → adjust-hom refl q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap (Iso a) q) f g
+  Iso-path-targetᵈ→ refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
+
+  Iso-path-nestedᵈ→
+    : {a b a' b' : A}
+    → (p : a ＝ a') (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a' b'}
+    → adjust-hom p q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap (λ y → Iso a' y) q) (coe (ap (λ x → Iso x b) p) f) g
+  Iso-path-nestedᵈ→ refl refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
 }
 }
 
@@ -531,13 +565,9 @@ module _ {𝓤} {A : Type 𝓤} where
     = tr
         (is-iso)
         (is-equiv.ε (is-Hom←Id-equiv←is-Δ¹-discrete A-Δ¹-disc a b) f)
-        (tr
-          (is-iso)
-          (fwd-Iso←Id p)
-          (Iso←Id p .snd)) where
-
-    p : a ＝ b
-    p = is-equiv.bwd (is-Hom←Id-equiv←is-Δ¹-discrete A-Δ¹-disc a b) f
+        ( Iso←Id
+          (is-equiv.bwd (is-Hom←Id-equiv←is-Δ¹-discrete A-Δ¹-disc a b) f)
+          .snd)
 
   is-iso←is-groupoid
     : is-groupoid A → {a b : A} (f : Hom A a b) → is-iso f

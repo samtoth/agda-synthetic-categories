@@ -110,40 +110,76 @@ TotalSplitEpi-sec-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
 \date{2026-05-01}
 
 \agda{
-SplitEpi-Path
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → SplitEpi a b → SplitEpi a b → Type (𝓘 ⊔ 𝓤)
-SplitEpi-Path {b = b} f g
-  = Σ[ fwd＝ ∶ SplitEpi-fwd f ＝ SplitEpi-fwd g ]
-    Σ[ sec＝ ∶ SplitEpi-sec f ＝ SplitEpi-sec g ]
-      Idᵈ (ap₂ (λ fwd sec → Hom2 fwd sec (idH b)) fwd＝ sec＝)
-        (SplitEpi-triangle f)
-        (SplitEpi-triangle g)
+module _ {𝓤} {A : Type 𝓤} {a b : A} where
 
-SplitEpi-path→
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitEpi a b}
-  → SplitEpi-Path f g → f ＝ g
-SplitEpi-path→ {f = (f , (s , η))} {g = (.f , (.s , .η))} (refl , refl , refl)
-  = refl
+  SplitEpi-Path
+    : SplitEpi a b → SplitEpi a b → Type (𝓘 ⊔ 𝓤)
+  SplitEpi-Path f g
+    = Σ[ fwd＝ ∶ SplitEpi-fwd f ＝ SplitEpi-fwd g ]
+      Σ[ sec＝ ∶ SplitEpi-sec f ＝ SplitEpi-sec g ]
+        Idᵈ (ap₂ (λ fwd sec → Hom2 fwd sec (idH b)) fwd＝ sec＝)
+          (SplitEpi-triangle f)
+          (SplitEpi-triangle g)
 
-SplitEpi-path←
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitEpi a b}
-  → f ＝ g → SplitEpi-Path f g
-SplitEpi-path← refl = refl , refl , refl
+  SplitEpi-path→
+    : {f g : SplitEpi a b}
+    → SplitEpi-Path f g → f ＝ g
+  SplitEpi-path→ {f = (f , (s , η))} {g = (.f , (.s , .η))} (refl , refl , refl)
+    = refl
 
-SplitEpi-path
-  : ∀ {𝓤} {A : Type 𝓤} {a b : A}
-  → {f g : SplitEpi a b}
-  → SplitEpi-Path f g ≃ (f ＝ g)
-SplitEpi-path {f = f} {g}
-  = mk≃ SplitEpi-path→ (is-equiv←qinv qinv)
-  where
-  qinv : quasi-inv (SplitEpi-path→ {f = f} {g})
-  qinv .fst = SplitEpi-path←
-  qinv .snd .fst (refl , refl , refl) = refl
-  qinv .snd .snd refl = refl
+  SplitEpi-path←
+    : {f g : SplitEpi a b}
+    → f ＝ g → SplitEpi-Path f g
+  SplitEpi-path← refl = refl , refl , refl
+
+  SplitEpi-path→-is-equiv
+    :  {f g : SplitEpi a b}
+    → is-equiv (SplitEpi-path→ {f} {g})
+  SplitEpi-path→-is-equiv {f} {g} = mk-eqv qinv coh
+    where
+    qinv : quasi-inv (SplitEpi-path→ {f} {g})
+    qinv .fst = SplitEpi-path←
+    qinv .snd .fst (refl , refl , refl) = refl
+    qinv .snd .snd refl = refl
+
+    coh : qinv-coh qinv
+    coh (refl , refl , refl) = refl
+
+  SplitEpi-path
+    : {f g : SplitEpi a b}
+    → SplitEpi-Path f g ≃ (f ＝ g)
+  SplitEpi-path
+    = mk≃ SplitEpi-path→ SplitEpi-path→-is-equiv
+}
+}
+
+\subtree[fre-Q4M9]{
+\title{Transporting split epimorphisms along endpoint paths}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b a' b' : A} where
+
+  adjust-is-split-epi
+    : (p : a ＝ a') (q : b ＝ b')
+    → {f : Hom A a b}
+    → is-split-epi f
+    → is-split-epi (adjust-hom p q f)
+  adjust-is-split-epi p q {f} (s , ε)
+    = (s' , ε')
+    where
+    s' : Hom A b' a'
+    s' = adjust-hom q p s
+    ε' : Hom2 (adjust-hom p q f) s' (idH _)
+    ε' = tr (Hom2 (adjust-hom p q f) s') (sym (adjust-idH q)) (adjust-Hom2 q p q ε)
+
+  adjust-SplitEpi
+    : (p : a ＝ a') (q : b ＝ b')
+    → SplitEpi a b
+    → SplitEpi a' b'
+  adjust-SplitEpi p q (f , f-sepi)
+    = (adjust-hom p q f , adjust-is-split-epi p q f-sepi)
 }
 }
 
@@ -283,7 +319,6 @@ module _
     : (a : A)
     → SplitEpi-sec (ap-id-SplitEpi a) ＝ SplitEpi-sec (id-SplitEpi (F a))
   ap-id-SplitEpi-sec a = refl
-
 }
 
 \p{The action preserves composites.}
@@ -338,5 +373,4 @@ module _
         (ap-hom F (f⁻¹ ∘[ 𝐴 ] g⁻¹))
         (ap-hom2 F f⁻¹ g⁻¹ (f⁻¹ ∘[ 𝐴 ] g⁻¹) ∘[ 𝐴 ]-is-composite)
 }
-% TODO: Refine these results to equalities of SplitEpis
 }

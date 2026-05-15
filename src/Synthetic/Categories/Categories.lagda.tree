@@ -240,9 +240,9 @@ module _ {𝓤} {A : Type 𝓤} where
 
   is-category←is-segal×is-simplicial×is-rezk-complete
     : is-segal A → is-simplicial A → is-rezk-complete A → is-category A
-  is-category←is-segal×is-simplicial×is-rezk-complete Aseg Asimp
+  is-category←is-segal×is-simplicial×is-rezk-complete A-is-segal A-is-simplicial
     = is-category←is-precategory←is-rezk-complete
-        (is-precategory←is-segal←is-simplicial Aseg Asimp)
+        (is-precategory←is-segal←is-simplicial A-is-segal A-is-simplicial)
 
   is-complete-segal×is-simplicial←is-category
     : is-category A → is-complete-segal A × is-simplicial A
@@ -254,10 +254,10 @@ module _ {𝓤} {A : Type 𝓤} where
 
   is-category←is-complete-segal×is-simplicial
     : is-complete-segal A × is-simplicial A → is-category A
-  is-category←is-complete-segal×is-simplicial (Arzk , Asimp)
+  is-category←is-complete-segal×is-simplicial (Arzk , A-is-simplicial)
     = is-category←is-segal×is-simplicial×is-rezk-complete
         (is-segal×is-rezk-complete←is-complete-segal Arzk .fst)
-        Asimp
+        (A-is-simplicial)
         (is-segal×is-rezk-complete←is-complete-segal Arzk .snd)
 
   is-category≃is-complete-segal×is-simplicial
@@ -265,7 +265,7 @@ module _ {𝓤} {A : Type 𝓤} where
   is-category≃is-complete-segal×is-simplicial
     = equiv←logical
         is-category-is-prop
-        (×-is-prop is-complete-segal-is-prop (is-null-is-prop A))
+        ( ×-is-prop is-complete-segal-is-prop (is-null-is-prop A))
         ( is-complete-segal×is-simplicial←is-category
         , is-category←is-complete-segal×is-simplicial)
 }
@@ -333,16 +333,105 @@ Category-U-is-simplicial {𝓤}
 }
 }
 
-\subtree[fre-F900]{
-\title{A type is Rezk-complete iff \code{Iso←Id} is an equivalence}
-\taxon{Theorem}
+
+\subtree[fre-44QA]{
+\title{Comparison map between the total space of identities and isomorphisms}
+\author{fredrikbakke}
+\taxon{Lemma}
+\date{2026-05-15}
 
 \agda{
 is-Iso←Id-equiv : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
 is-Iso←Id-equiv A = (a b : A) → is-equiv (Iso←Id: a b)
+
+TotalId' : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+TotalId' A = Σ[ a ∶ A ] Σ[ b ∶ A ] (a ＝ b)
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  refl-TotalId' : A → TotalId' A
+  refl-TotalId' a = a , a , refl
+
+  TotalIso←TotalId' : TotalId' A → TotalIso A
+  TotalIso←TotalId' = total-map λ a → total-map λ b → Iso←Id: a b
+
+  refl-TotalId'-is-equiv : is-equiv refl-TotalId'
+  refl-TotalId'-is-equiv = mk-eqv qinv ~refl where
+    qinv : quasi-inv refl-TotalId'
+    qinv .fst = fst
+    qinv .snd .fst = ~refl
+    qinv .snd .snd (a , .a , refl) = refl
+
+  id-TotalIso-is-equiv←is-Iso←Id-equiv
+    : is-Iso←Id-equiv A → is-equiv id-TotalIso
+  id-TotalIso-is-equiv←is-Iso←Id-equiv Aiso
+    = is-equiv-∘
+        ( is-total-equiv←is-fibrewise-equiv λ a
+        → is-total-equiv←is-fibrewise-equiv λ b
+        → Aiso a b)
+        refl-TotalId'-is-equiv
+
+  TotalIso←TotalId'-refl-TotalId'
+    : TotalIso←TotalId' ∘ refl-TotalId' ~ id-TotalIso
+  TotalIso←TotalId'-refl-TotalId' = ~refl
+
+  TotalIso←TotalId'-fst
+    : id-TotalIso ∘ fst ~ TotalIso←TotalId'
+  TotalIso←TotalId'-fst (a , .a , refl) = refl
+}
 }
 
+\subtree[fre-F900]{
+\title{A Segal type is Rezk-complete iff \code{Iso←Id} is an equivalence}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
 \p{
-This logical equivalence remains to be formalised.
+In fact, we show the backwards implication is true without assuming Segalness.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-rezk-complete←is-Iso←Id-equiv
+    : is-Iso←Id-equiv A
+    → is-rezk-complete A
+  is-rezk-complete←is-Iso←Id-equiv A-iso
+    = is-localᴸ←is-null λ _ → is-equiv←qinv qinv where
+    module totid = is-equiv (id-TotalIso-is-equiv←is-Iso←Id-equiv A-iso)
+
+    qinv : quasi-inv (const A ℑ)
+    qinv .fst F = totid.bwd (ℑ-rep→ F)
+    qinv .snd .fst a = ap fst (totid.ε (ℑ-rep→ (const A ℑ a)))
+    qinv .snd .snd F
+      = sym (ℑ-rep←id (totid.bwd (ℑ-rep→ F)))
+      ∙ ap ℑ-rep← (totid.ε (ℑ-rep→ F))
+      ∙ ℑ-rep←→ F
+
+  id-TotalIso-is-equiv←is-rezk-complete
+    : is-segal A → is-rezk-complete A → is-equiv (id-TotalIso {A = A})
+  id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete
+    = is-equiv-∘~
+        (ℑ-rep→const A-is-segal)
+        (ℑ-rep→-is-equiv A-is-segal)
+        (is-null←is-localᴸ A-is-rezk-complete tt)
+
+  is-Iso←Id-equiv←is-rezk-complete
+    : is-segal A → is-rezk-complete A → is-Iso←Id-equiv A
+  is-Iso←Id-equiv←is-rezk-complete A-is-segal A-is-rezk-complete a
+    = is-fibrewise-equiv←is-total-equiv
+        (is-fibrewise-equiv←is-total-equiv
+          (is-equiv-∘~
+            (TotalIso←TotalId'-fst)
+              (id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete)
+              (is-equiv⁻¹ refl-TotalId'-is-equiv))
+          (a))
+
+  is-rezk-complete⇔is-Iso←Id-equiv
+    : is-segal A → is-rezk-complete A ⇔ is-Iso←Id-equiv A
+  is-rezk-complete⇔is-Iso←Id-equiv A-is-segal
+    = ( is-Iso←Id-equiv←is-rezk-complete A-is-segal
+      , is-rezk-complete←is-Iso←Id-equiv)
 }
 }

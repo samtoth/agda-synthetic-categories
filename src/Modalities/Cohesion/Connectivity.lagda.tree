@@ -9,6 +9,7 @@
 module Modalities.Cohesion.Connectivity where
 
 open import Foundations.Prelude
+open import Foundations.CoproductFunctoriality
 open import Axioms.UF
 
 open import Modalities.Subuniverses
@@ -21,6 +22,7 @@ open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.FlatLex
 
 open import Core.Arrows
+open import Core.ArrowEquiv
 open import Core.PullbackPowers
 }
 
@@ -40,18 +42,60 @@ is-♭-discrete A = is-equiv (ε♭: A)
 }
 }
 
+\subtree[fre-9D21]{
+\title{Flat discreteness is invariant under crisp equivalence}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+module _ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} where
+
+  ε♭-Arrow-map←equiv
+    : (@♭ e : A ≃ B) → Arrow-map (ε♭: A) (ε♭: B)
+  ε♭-Arrow-map←equiv e
+    = mk-amap (♭-map (e ._≃_.fwd)) (e ._≃_.fwd) (ε♭-natural ~⁻¹)
+
+  ε♭-Arrow-map←equiv-is-equiv
+    : (@♭ e : A ≃ B) → is-Arrow-equiv (ε♭-Arrow-map←equiv e)
+  ε♭-Arrow-map←equiv-is-equiv e .fst
+    = ♭-map-is-equiv (e ._≃_.fwd-is-equiv)
+  ε♭-Arrow-map←equiv-is-equiv e .snd
+    = e ._≃_.fwd-is-equiv
+
+  is-♭-discrete←equiv
+    : (@♭ e : A ≃ B) → is-♭-discrete A → is-♭-discrete B
+  is-♭-discrete←equiv e
+    = is-equiv←Arrow-equiv
+        {F = ε♭-Arrow-map←equiv e}
+        (ε♭-Arrow-map←equiv-is-equiv e)
+}
+}
+
 \subtree[fre-1492]{
-\title{The unit type, booleans and the natural numbers are flat discrete}
+\title{Empty types, singletons, booleans and the natural numbers are flat discrete}
 \taxon{Proposition}
 \author{fredrikbakke}
 \date{2026-05-15}
 
 \agda{
+∅-is-♭-discrete : is-♭-discrete ∅
+∅-is-♭-discrete .is-equiv.qinv .fst = ¡
+∅-is-♭-discrete .is-equiv.qinv .snd .fst (mod♭ ())
+∅-is-♭-discrete .is-equiv.qinv .snd .snd ()
+∅-is-♭-discrete .is-equiv.coherent (mod♭ ())
+
 𝟙-is-♭-discrete : is-♭-discrete 𝟙
 𝟙-is-♭-discrete .is-equiv.qinv .fst = point (mod♭ tt)
 𝟙-is-♭-discrete .is-equiv.qinv .snd .fst (mod♭ _) = refl
 𝟙-is-♭-discrete .is-equiv.qinv .snd .snd _ = refl
 𝟙-is-♭-discrete .is-equiv.coherent (mod♭ _) = refl
+
+is-♭-discrete←is-singleton
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+    → @♭ is-singleton A → is-♭-discrete A
+is-♭-discrete←is-singleton as
+  = is-♭-discrete←equiv (singleton≃𝟙 as e⁻¹) 𝟙-is-♭-discrete
 
 Bool-is-♭-discrete : is-♭-discrete Bool
 Bool-is-♭-discrete .is-equiv.qinv .fst true = mod♭ true
@@ -91,6 +135,119 @@ Bool-is-♭-discrete .is-equiv.coherent (mod♭ false) = refl
       ∙ sym (homotopy-natural ε♭-natural (bwd-η n))
       ∙ ap (ε♭-natural (bwd n) ∙_)
            (ap-∘ suc ε♭ (bwd-η n) ∙ ap (ap suc) (coh (mod♭ n)))
+}
+}
+
+\subtree[fre-7E90]{
+\title{Coproducts of flat discrete types are flat discrete}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+⊎-ε♭-is-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → is-♭-discrete A
+    → is-♭-discrete B
+    → is-equiv ((ε♭: A) ⨄₁ (ε♭: B))
+⊎-ε♭-is-equiv ad bd = is-equiv←qinv
+  ( is-equiv.bwd ad ⨄₁ is-equiv.bwd bd
+  , ⨄₁-∘ (is-equiv.bwd ad) (is-equiv.bwd bd) ε♭ ε♭
+    ~∙ ⊎₁~ (is-equiv.η ad) (is-equiv.η bd)
+    ~∙ ⨄₁-id
+  , ⨄₁-∘ ε♭ ε♭ (is-equiv.bwd ad) (is-equiv.bwd bd)
+    ~∙ ⊎₁~ (is-equiv.ε ad) (is-equiv.ε bd)
+    ~∙ ⨄₁-id)
+
+⊎-is-♭-discrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → is-♭-discrete A
+    → is-♭-discrete B
+    → is-♭-discrete (A ⊎ B)
+⊎-is-♭-discrete {A = A} {B} ad bd
+  = is-equiv-~∘ H (⊎-ε♭-is-equiv ad bd) ♭-⊎-is-equiv
+  where
+  H : ε♭: (A ⊎ B) ~ ((ε♭: A) ⨄₁ (ε♭: B)) ∘ ♭-⊎
+  H (mod♭ (inl a)) = refl
+  H (mod♭ (inr b)) = refl
+}
+}
+
+\subtree[fre-176A]{
+\title{Identity types of flat discrete types are flat discrete}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+＝-is-♭-discrete
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
+    → is-♭-discrete A
+    → is-♭-discrete (a ＝ b)
+＝-is-♭-discrete ad
+  = is-equiv-~∘ (ε♭-mapply♭ ~⁻¹) (is-embedding←is-equiv ad) mapply♭-is-equiv
+}
+}
+
+\subtree[fre-5A0B]{
+\title{Dependent sums of flat discrete types are flat discrete}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+Σ♭-ε-is-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → is-♭-discrete A
+    → ((@♭ a : A) → is-♭-discrete (B a))
+    → is-equiv (Σ♭-ε B)
+Σ♭-ε-is-equiv {A = A} B ad bd
+  = homotopy-is-equiv
+      (Map-Σ-ε♭-ε♭~Σ♭-ε B)
+      (map-Σ-is-equiv ad (ε♭ᶠ-is-fibrewise-equiv bd))
+
+Σ-is-♭-discrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+    → is-♭-discrete A
+    → ((@♭ a : A) → is-♭-discrete (B a))
+    → is-♭-discrete (Σ A B)
+Σ-is-♭-discrete {B = B} ad bd
+  = is-equiv-~∘ H
+        (Σ♭-ε-is-equiv B ad bd)
+        (is-equiv⁻¹ (♭-commΣ B ._≃_.fwd-is-equiv))
+  where
+  H : ε♭ ~ Σ♭-ε B ∘ ♭-Σ' B
+  H (mod♭ ab) = refl
+}
+}
+
+\subtree[fre-4C56]{
+\title{Cartesian products of flat discrete types are flat discrete}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+×-is-♭-discrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → is-♭-discrete A
+    → is-♭-discrete B
+    → is-♭-discrete (A × B)
+×-is-♭-discrete ad bd = Σ-is-♭-discrete ad (λ _ → bd)
+}
+}
+
+\subtree[fre-6B48]{
+\title{Universe lifts of flat discrete types are flat discrete}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+ULift-is-♭-discrete
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}
+    → is-♭-discrete A → is-♭-discrete (ULift 𝓥 A)
+ULift-is-♭-discrete = is-♭-discrete←equiv lift≃
 }
 }
 

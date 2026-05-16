@@ -26,11 +26,24 @@ type.}
 data ⟨♭|_⟩ {@♭ 𝓤} (@♭ A : Type 𝓤) : Type 𝓤 where
   mod♭ : (@♭ _ : A) → ⟨♭| A ⟩
 
+♭-ind: : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : ⟨♭| A ⟩ → Type 𝓥)
+       → ((@♭ x : A) → B (mod♭ x))
+      → (x : ⟨♭| A ⟩) → B x
+♭-ind: B f (mod♭ x) = f x
+
 ♭-ind
-  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : ⟨♭| A ⟩ → Type 𝓥)
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
     → ((@♭ x : A) → B (mod♭ x))
     → (x : ⟨♭| A ⟩) → B x
-♭-ind B f (mod♭ x) = f x
+♭-ind = ♭-ind: _
+
+♭-rec
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : Type 𝓥}
+    → ((@♭ _ : A) → B) → ⟨♭| A ⟩ → B
+♭-rec = ♭-ind
+
+♭ᶠ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥) → ⟨♭| A ⟩ → Type 𝓥
+♭ᶠ B = ♭-rec (λ a → ⟨♭| B a ⟩)
 }
 }
 
@@ -58,6 +71,11 @@ crisp #{a :^\flat A} and give a crisp term of type #{B}, but now both #{f} and
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
     → (@♭ f : A → B) → ⟨♭| A ⟩ → ⟨♭| B ⟩
 ♭-map f (mod♭ x) = mod♭ (f x)
+
+♭ᶠ-map
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥} {@♭ C : A → Type 𝓦}
+    → (@♭ _ : (a : A) → B a → C a) → (a : ⟨♭| A ⟩) → ♭ᶠ B a → ♭ᶠ C a
+♭ᶠ-map f = ♭-ind (λ a → ♭-map (f a))
 
 ♭-id
   : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
@@ -207,10 +225,16 @@ mapply♭
     → mod♭ a ＝ mod♭ b
 mapply♭ (mod♭ refl) = refl
 
+mapply♭:
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ a b : A)
+    → ⟨♭| a ＝ b ⟩
+    → mod♭ a ＝ mod♭ b
+mapply♭: a b = mapply♭
+
 _ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
     → ⟨♭| a ＝ b ⟩
     → mod♭ a ＝ mod♭ b
-_ = ♭-ind _ (ap♭ mod♭)
+_ = ♭-rec (ap♭ mod♭)
 }
 }
 
@@ -346,14 +370,40 @@ as #{\Sigma_{x : \modflat{A}}\flat\textrm{-rec}(\_,B,x)}.}
 Σ♭
   : ∀ {@♭ 𝓤 𝓥} (@♭ A : Type 𝓤) (B : @♭ A → Type 𝓥)
     → Type (𝓤 ⊔ 𝓥)
-Σ♭ A B = Σ ⟨♭| A ⟩ (♭-ind _ B)
+Σ♭ A B = Σ ⟨♭| A ⟩ (♭-rec B)
 
 syntax Σ♭ A (λ x → B) = Σ[♭ x ∶ A ] B
 
 snd♭
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {B : @♭ A → Type 𝓥}
-    → (x : Σ♭ A B) → ♭-ind _ B (x .fst)
+    → (x : Σ♭ A B) → ♭-rec B (x .fst)
 snd♭ = snd
+
+Σ♭-ε
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → Σ[♭ x ∶ A ] ⟨♭| B x ⟩ → Σ A B
+Σ♭-ε B (mod♭ a , mod♭ b) = (a , b)
+
+ε♭ᶠ
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+    → (x : ⟨♭| A ⟩) → ♭ᶠ B x → B (ε♭ x)
+ε♭ᶠ {B = B} (mod♭ a) = ε♭ {A = B a}
+
+ε♭ᶠ:
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → (x : ⟨♭| A ⟩) → ♭ᶠ B x → B (ε♭ x)
+ε♭ᶠ: B = ε♭ᶠ
+
+Map-Σ-ε♭-ε♭~Σ♭-ε
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → map-Σ ε♭ (ε♭ᶠ {B = B}) ~ Σ♭-ε B
+Map-Σ-ε♭-ε♭~Σ♭-ε B (mod♭ a , mod♭ b) = refl
+
+ε♭ᶠ-is-fibrewise-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+    → ((@♭ a : A) → is-equiv (ε♭: B a))
+    → is-fibrewise-equiv (ε♭ᶠ: B)
+ε♭ᶠ-is-fibrewise-equiv bd (mod♭ a) = bd a
 }
 
 \p{We now show #{\flat} commutes with #{\Sigma} in the sense that
@@ -392,19 +442,14 @@ snd♭ = snd
 opaque
   ♭-map-total-is-equiv
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥} {@♭ C : A → Type 𝓦}
-      → (@♭ f : ∀ a → B a → C a)
-      → is-equiv (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
-                          {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
-                          (♭-ind _ (λ a → ♭-map (f a))))
+      → (@♭ f : (a : A) → B a → C a)
+      → is-equiv (total-map (♭ᶠ-map f))
       → is-equiv (♭-map (total-map f))
   ♭-map-total-is-equiv {B = B} {C = C} f fe
     = is-equiv←Arrow-equiv {F = amap}
         (♭-commΣ _ ._≃_.fwd-is-equiv , ♭-commΣ _ ._≃_.fwd-is-equiv)
         fe where
-    amap : Arrow-map (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
-                                {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
-                                (♭-ind _ (λ a → ♭-map (f a))))
-                     (♭-map (total-map f))
+    amap : Arrow-map (total-map (♭ᶠ-map f)) (♭-map (total-map f))
     amap .Arrow-Π.top = ♭-Σ _
     amap .Arrow-Π.bot = ♭-Σ _
     amap .Arrow-Π.comm (mod♭ a , mod♭ b) = refl

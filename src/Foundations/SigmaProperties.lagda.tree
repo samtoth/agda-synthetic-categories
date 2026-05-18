@@ -16,6 +16,7 @@ open import Foundations.Functions
 open import Foundations.Unit
 open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
+open import Foundations.FibrewiseEquivalences
 open import Foundations.Singletons
 open import Foundations.SingletonFibres
 open import Foundations.EquivSingleton
@@ -54,37 +55,42 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qinv qusi where
 Σ-fst-≃ (mk≃ f feq)
   = mk≃ (total-map-fst f) (total-is-equiv←fst-is-equiv feq)
 
+Σ-fst-≃-bwd⁻¹
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+    → (e : A ≃ A') → Σ A B ≃ Σ A' (B ∘ _≃_.bwd e)
+Σ-fst-≃-bwd⁻¹ {B = B} (mk≃ f e)
+  = Σ-snd-≃ (λ a → tr≃ B (sym (is-equiv.η e a)))
+  ∙≃ Σ-fst-≃ {B = B ∘ is-equiv.bwd e} (mk≃ f e)
+
 Σ-fst-≃-bwd
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
     → (e : A ≃ A') → Σ A' (B ∘ _≃_.bwd e) ≃ Σ A B
-Σ-fst-≃-bwd (mk≃ _ e)
-  = mk≃ (total-map-fst (is-equiv.bwd e))
-        (total-is-equiv←fst-is-equiv (is-equiv⁻¹ e))
+Σ-fst-≃-bwd e = Σ-fst-≃-bwd⁻¹ e e⁻¹
 
 Σ-assoc
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
     → Σ (Σ A B) (λ x → C (fst x) (snd x)) ≃ Σ A λ a → Σ (B a) λ b → C a b
 Σ-assoc {A = A} {B} {C} = mk≃ fwd (mk-eqv qinv coh) where
   fwd : Σ (Σ A B) (λ x → C (fst x) (snd x)) → Σ A (λ a → Σ (B a) (C a))
-  fwd ((a , b) , c) = a , (b , c)
+  fwd ((a , b) , c) = (a , (b , c))
 
   qinv : quasi-inv fwd
   qinv .fst (a , b , c) = (a , b) , c
-  qinv .snd .fst ((a , b) , c) = refl
-  qinv .snd .snd (a , b , c) = refl
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
   coh : qinv-coh qinv
-  coh ((a , b) , c) = refl
+  coh = ~refl
 
 Σ-𝟙 : ∀ {𝓤} {B : 𝟙 → Type 𝓤} → Σ 𝟙 B ≃ B tt
 Σ-𝟙 = mk≃ snd (mk-eqv qinv coh) where
   qinv : quasi-inv snd
-  qinv .fst b = tt , b
-  qinv .snd .fst (tt , b) = refl
-  qinv .snd .snd _ = refl
+  qinv .fst = (_ ,_)
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
   coh : qinv-coh qinv
-  coh (tt , b) = refl
+  coh = ~refl
 
 
 Σ-singl
@@ -93,10 +99,19 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qinv qusi where
     → (x : A) -- todo use @default to make it use singleton if not given
     → Σ[ a ∶ A ] B a
     ≃ B x
-Σ-singl {A = A} {B} sa x
-  = (Σ-fst-≃-bwd (Foundations.EquivSingleton.singleton≃𝟙 sa)) e⁻¹
-  ∙≃ Σ-𝟙
-  ∙≃ coe≃ (ap B (sa .central x))
+Σ-singl {A = A} {B} sa x = mk≃ fwd (is-equiv←qinv qinv) where
+  path-to-x : (a : A) → a ＝ x
+  path-to-x a = sym (sa .central a) ∙ sa .central x
+
+  fwd : Σ A B → B x
+  fwd (a , b) = tr B (path-to-x a) b
+
+  qinv : quasi-inv fwd
+  qinv .fst b = (x , b)
+  qinv .snd .fst (a , b)
+    = Σ-path→ (sym (path-to-x a) , tr∘tr-sym (path-to-x a) b)
+  qinv .snd .snd b
+    = sym (tr-refl (path-to-x x) b (∙-sym' (sa .central x)))
 
 
 Σ-＝singl
@@ -107,9 +122,9 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qinv qusi where
   fwd (.a' , refl , ba) = ba
 
   qinv : quasi-inv fwd
-  qinv .fst ba = a' , refl , ba
+  qinv .fst ba = (a' , refl , ba)
   qinv .snd .fst (.a' , refl , ba) = refl
-  qinv .snd .snd _ = refl
+  qinv .snd .snd = ~refl
 
   coh : qinv-coh qinv
   coh (.a' , refl , ba) = refl
@@ -228,13 +243,13 @@ _×≃_
       quasi-inv
         (fwd {A = A} {B} {C} {D})
   qinv .fst ((a , c) , (b , d)) = ((a , b) , (c , d))
-  qinv .snd .fst ((_ , _) , (_ , _)) = refl
-  qinv .snd .snd ((_ , _) , (_ , _)) = refl
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
   coh : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
         {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
       qinv-coh (qinv {A = A} {B} {C} {D})
-  coh ((_ , _) , (_ , _)) = refl
+  coh = ~refl
 }
 
 \subtree[stt-002T]{
@@ -271,7 +286,6 @@ singleton-fst-is-equiv {P = P} sngl
   = is-equiv←has-singleton-fibres λ
       b → is-single←equiv-to-single (fibre-straighten P b e⁻¹) (sngl b)
 
-
 Σ-singleton
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
     → (∀ x → is-singleton (P x))
@@ -292,7 +306,7 @@ singleton-fst-is-equiv {P = P} sngl
 \agda{
 Σ-⊎≃
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P  : A ⊎ B → Type 𝓦)
-    → (Σ _ (P ∘ inl)) ⊎ (Σ _ (P ∘ inr)) ≃ Σ (A ⊎ B) P
+    → (Σ A (P ∘ inl) ⊎ Σ B (P ∘ inr)) ≃ Σ (A ⊎ B) P
 Σ-⊎≃ P = mk≃ ⊎[ total-map-fst inl , total-map-fst inr ]
             (mk-eqv qinv coh) where
   qinv : quasi-inv ⊎[ total-map-fst inl , total-map-fst inr ]

@@ -11,6 +11,8 @@ small codomain.}
 
 
 \agda{
+{-# OPTIONS --lossy-unification #-}
+
 module Core.FibredJoin where
 
 open import Foundations.Prelude
@@ -83,7 +85,7 @@ with the fibre of #{f'} at #{x}.}
   fibre-fibre-join≃ : ∀ x → fibre fibre-join x ≃ fibre f x * fibre g x
   fibre-fibre-join≃ x = cogap-fibre (mk-cocone f g filler) x
                      ∙≃ Pushout-adjust-equiv (mk≃ map
-                        (homotopy-is-equiv (map~map' ~⁻¹) (is-equiv←qinv map-is-equiv)))
+                        (is-equiv←~ map~map' (is-equiv←qinv qinv)))
     where
     map
       : (Σ[ pb ∶ Pullbackₑ f g ] (g (π₂ pb) ＝ x))
@@ -144,15 +146,15 @@ with the fibre of #{f'} at #{x}.}
         q ∙ ap (λ _ → x) _    ∎)
 
     opaque
-      map-is-equiv : quasi-inv map'
-      map-is-equiv .fst ((a , p) , (c , q))
+      qinv : quasi-inv map'
+      qinv .fst ((a , p) , (c , q))
         = ((a , (c , IdS←Id (p ∙ sym q))) , q)
-      map-is-equiv .snd .fst (pb , q)
+      qinv .snd .fst (pb , q)
         = Σ-path→ ((Σ-path→ (refl , Σ-path→ (refl , II pb q)))
                   , Idᵈ-func←Square {f = g ∘ π₂} {g = λ _ → x}
                                      (Σ-path→ (refl , Σ-path→ (refl , II pb q)))
                                      q q (III pb q))
-      map-is-equiv .snd .snd ((a , p) , (c , q))
+      qinv .snd .snd ((a , p) , (c , q))
         = ×-path→ ((Σ-path→ (refl , H' a p c q)) , refl)
 }
 }
@@ -211,43 +213,45 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
          ⦃ s : Identity-system B 𝓜 ⦄
          (f : A → B) (f' : A' → B) (tri : Slice-map f f')
           where
+
   Fibre-join-slice-map : Slice-map f (fibre-join f f')
   Fibre-join-slice-map .fst = ι₁
   Fibre-join-slice-map .snd = ~refl
 
-  Fibre-join-is-universal-embedding
-    : is-universal-embedding f f' tri
-    → is-universal-embedding
-        f
-        (fibre-join f f')
-        Fibre-join-slice-map
-  Fibre-join-is-universal-embedding emb i iemb
-    = is-equiv←inverse
-             (slice-embedding-is-prop iemb)
-             (slice-embedding-is-prop iemb)
-             map where
-    open pbₑ {f = f} {f'}
-    module φ = is-equiv (emb i iemb)
+  opaque
+    Fibre-join-is-universal-embedding
+      : is-universal-embedding f f' tri
+      → is-universal-embedding
+          f
+          (fibre-join f f')
+          Fibre-join-slice-map
+    Fibre-join-is-universal-embedding emb i iemb
+      = is-equiv←inverse
+              (slice-embedding-is-prop iemb)
+              (slice-embedding-is-prop iemb)
+              map where
+      open pbₑ {f = f} {f'}
+      module φ = is-equiv (emb i iemb)
 
-    map : Slice-map f i → Slice-map (fibre-join f f') i
-    map k .fst = pushout-rec (mk-cocone
-      (k .fst)
-      (φ.bwd  k .fst)
-      (iemb ◂emb (k .snd ▸ π₁ ~∙ pbₑ.filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
-    map k .snd = pushout-ind _ (mk-coconeᵈ
-      (k .snd)
-      (φ.bwd k .snd)
-      λ a → Idᵈ-func←Square (glue a) _ _ (mk-square
-              (ap (_∙ φ.bwd k .snd (π₂ a))
-                  ( ap-∘ i _ (glue a)
-                  ∙ ap (ap i) (pushout-rec-apβ a)
-                  ∙ is-equiv.ε iemb _)
-              ∙ (ap (_∙ φ.bwd k .snd (π₂ a))
-                    (sym (∙-assoc (k .snd _) (filler a) _))
-              ∙ ∙-assoc (k .snd _ ∙ filler a) (sym _) _
-              ∙ ap ((k .snd _ ∙ filler a) ∙_) (∙-sym' (φ.bwd k .snd _)))
-              ∙ ∙-reflr _
-              ∙ ap (k .snd (π₁ a) ∙_) (sym (pushout-rec-apβ a)))))
+      map : Slice-map f i → Slice-map (fibre-join f f') i
+      map k .fst = pushout-rec (mk-cocone
+        (k .fst)
+        (φ.bwd  k .fst)
+        (iemb ◂emb (k .snd ▸ π₁ ~∙ pbₑ.filler ~∙ (φ.bwd k .snd ▸ π₂ ~⁻¹))))
+      map k .snd = pushout-ind _ (mk-coconeᵈ
+        (k .snd)
+        (φ.bwd k .snd)
+        λ a → Idᵈ-func←Square (glue a) _ _ (mk-square
+                (ap (_∙ φ.bwd k .snd (π₂ a))
+                    ( ap-∘ i _ (glue a)
+                    ∙ ap (ap i) (pushout-rec-apβ a)
+                    ∙ is-equiv.ε iemb _)
+                ∙ (ap (_∙ φ.bwd k .snd (π₂ a))
+                      (sym (∙-assoc (k .snd _) (filler a) _))
+                ∙ ∙-assoc (k .snd _ ∙ filler a) (sym _) _
+                ∙ ap ((k .snd _ ∙ filler a) ∙_) (∙-sym' (φ.bwd k .snd _)))
+                ∙ ∙-reflr _
+                ∙ ap (k .snd (π₁ a) ∙_) (sym (pushout-rec-apβ a)))))
 }
 }
 
@@ -449,35 +453,37 @@ universal embedding property for each approximation.  }
   all-univ (suc n)
     = Fibre-join-is-universal-embedding f _ (im-slice-map n) (all-univ n)
 
-  universal : is-universal-embedding f incl factors
-  universal
-    = is-universal-embedding←logical f incl factors map where
-      map
-        : ∀ {𝓦} {I' : Type 𝓦}
-            (i' : I' → B) → is-embedding i'
-          → Slice-map f i' → Slice-map incl i'
-      map i' iemb fi' .fst = seq-colim-rec (mk-seq-cocone
-        (λ {n} → is-equiv.bwd (all-univ n i' iemb) fi' .fst)
-        ~refl)
-      map i' iemb fi' .snd = pushout-ind _
-        (mk-coconeᵈ
-          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
-          (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
-          (⊎-ind
-            ( (uncurry λ n a → Idᵈ-func←Square (glue (inl (n , a))) _ _ (mk-square
-                      ( ap (_∙ (is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
-                           ( ap-∘ i' _ (glue (inl (n , a)))
-                           ∙ ap (ap i') (pushout-rec-apβ (inl (n , a))))
-                      ∙ sym (ap ((is-equiv.bwd (all-univ n i' iemb) fi' .snd a) ∙_)
-                                (pushout-rec-apβ (inl (n , a)))
-                      ∙ ∙-reflr _))))
-            , uncurry λ n a → Idᵈ-func←Square (glue (inr (n , a))) _ _
-                 let e = is-equiv.bwd (all-univ n i' iemb) fi' .snd a
-                 in mk-square (
-                      ap (_∙ e) ( ap-∘ i' _ (glue (inr _))
-                                ∙ ap (ap i') (pushout-rec-apβ _))
-                    ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
-                          ∙ ∙-reflr _)))))
+  opaque
+    unfolding Fibre-join-is-universal-embedding
+    universal : is-universal-embedding f incl factors
+    universal
+      = is-universal-embedding←logical f incl factors map where
+        map
+          : ∀ {𝓦} {I' : Type 𝓦}
+              (i' : I' → B) → is-embedding i'
+            → Slice-map f i' → Slice-map incl i'
+        map i' iemb fi' .fst = seq-colim-rec (mk-seq-cocone
+          (λ {n} → is-equiv.bwd (all-univ n i' iemb) fi' .fst)
+          ~refl)
+        map i' iemb fi' .snd = pushout-ind _
+          (mk-coconeᵈ
+            (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+            (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
+            (⊎-ind
+              ( (uncurry λ n a → Idᵈ-func←Square (glue (inl (n , a))) _ _ (mk-square
+                        ( ap (_∙ (is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
+                            ( ap-∘ i' _ (glue (inl (n , a)))
+                            ∙ ap (ap i') (pushout-rec-apβ (inl (n , a))))
+                        ∙ sym (ap ((is-equiv.bwd (all-univ n i' iemb) fi' .snd a) ∙_)
+                                  (pushout-rec-apβ (inl (n , a)))
+                        ∙ ∙-reflr _))))
+              , uncurry λ n a → Idᵈ-func←Square (glue (inr (n , a))) _ _
+                  let e = is-equiv.bwd (all-univ n i' iemb) fi' .snd a
+                  in mk-square (
+                        ap (_∙ e) ( ap-∘ i' _ (glue (inr _))
+                                  ∙ ap (ap i') (pushout-rec-apβ _))
+                      ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
+                            ∙ ∙-reflr _)))))
 }
 
 \p{Now we show that that the inclusion #{i : \rm{Im}' \to B} is an
@@ -501,67 +507,68 @@ we show that the sequence of iterated joins of fibres all factor through
 #{1} so are constant and thus [the colimit is a singleton](stt-0096).}
 
 \agda{
-  incl-is-embedding : is-embedding incl
-  incl-is-embedding
-    = is-embedding←is-prop-map λ
-       b → is-prop←is-single-if-inhabited λ f → lem b f where
-    fib-cotower' : (a : A) → Cotower (𝓤 ⊔ 𝓥)
-    fib-cotower' a = it-join-cotower (fibre f (f a))
+  opaque
+    incl-is-embedding : is-embedding incl
+    incl-is-embedding
+      = is-embedding←is-prop-map λ
+        b → is-prop←is-single-if-inhabited λ f → lem b f where
+      fib-cotower' : (a : A) → Cotower (𝓤 ⊔ 𝓥)
+      fib-cotower' a = it-join-cotower (fibre f (f a))
 
-    fib-cotower←fibre-cotower : ∀ b → Cotower-map (fibre-cotower incl b) (fib-cotower f b)
-    fib-cotower←fibre-cotower b .Cotower-map.map = id
-    fib-cotower←fibre-cotower b .Cotower-map.comm (i , refl)
-      = Σ-path→ (refl
-        , sym ( ∙-reflr _
-              ∙ ap-sym incl _ ∙ ap sym (seq-colim-apβ _ (_ , i))))
+      fib-cotower←fibre-cotower : ∀ b → Cotower-map (fibre-cotower incl b) (fib-cotower f b)
+      fib-cotower←fibre-cotower b .Cotower-map.map = id
+      fib-cotower←fibre-cotower b .Cotower-map.comm (i , refl)
+        = Σ-path→ (refl
+          , sym ( ∙-reflr _
+                ∙ ap-sym incl _ ∙ ap sym (seq-colim-apβ _ (_ , i))))
 
-    all-constant
-      : ∀ a n
-        → (fib-cotower' a .Cotower.incr {n}
-           ~ λ _ → ι₁ (a , refl))
-    all-constant a n f = sym (glue ((a , refl) , f))
+      all-constant
+        : ∀ a n
+          → (fib-cotower' a .Cotower.incr {n}
+            ~ λ _ → ι₁ (a , refl))
+      all-constant a n f = sym (glue ((a , refl) , f))
 
-    a' : ∀ a n → Cotower.Point (fib-cotower' a) n
-    a' a zero = (a , refl)
-    a' a (suc n) = ι₁ (a , refl)
+      a' : ∀ a n → Cotower.Point (fib-cotower' a) n
+      a' a zero = (a , refl)
+      a' a (suc n) = ι₁ (a , refl)
 
-    lem4 : ∀ a → is-singleton (Seq-colimit (fib-cotower' a))
-    lem4 a = colim-const-seq-is-single (a' a) (all-constant a)
+      lem4 : ∀ a → is-singleton (Seq-colimit (fib-cotower' a))
+      lem4 a = colim-const-seq-is-single (a' a) (all-constant a)
 
-    lem3,5 : ∀ a → Seq-colimit (fibre-cotower incl (f a))
-                 ≃ Seq-colimit (fib-cotower' a)
-    lem3,5 a
-      = Seq-colimit (fibre-cotower incl (f a))
-          ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
-                     (fib-cotower←fibre-cotower (f a)) (λ n → id-is-equiv)) ⟩
-        Seq-colimit (fib-cotower f (f a))
-          ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
-                     (cotower-map-join-fibres f (f a))
-                     (is-cotower-equiv-join-fibres f (f a))) ⟩
-        Seq-colimit (fib-cotower' a)           ≃∎
+      lem3,5 : ∀ a → Seq-colimit (fibre-cotower incl (f a))
+                  ≃ Seq-colimit (fib-cotower' a)
+      lem3,5 a
+        = Seq-colimit (fibre-cotower incl (f a))
+            ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
+                      (fib-cotower←fibre-cotower (f a)) (λ n → id-is-equiv)) ⟩
+          Seq-colimit (fib-cotower f (f a))
+            ≃⟨ mk≃ _ (seq-colimit-map-is-equiv
+                      (cotower-map-join-fibres f (f a))
+                      (is-cotower-equiv-join-fibres f (f a))) ⟩
+          Seq-colimit (fib-cotower' a)           ≃∎
 
-    lem3 : ∀ a → is-singleton (Seq-colimit (fibre-cotower incl (f a)))
-    lem3 a = is-single←equiv-to-single (lem3,5 a e⁻¹) (lem4 a)
+      lem3 : ∀ a → is-singleton (Seq-colimit (fibre-cotower incl (f a)))
+      lem3 a = is-single←equiv-to-single (lem3,5 a e⁻¹) (lem4 a)
 
-    lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
-    lem2 .(f a) (a , refl)
-      = is-single←equiv-to-single (fibre-cotower-cogap≃ incl (f a) e⁻¹)
-                                  (lem3 a)
+      lem2 : (a : B) → fibre f a → is-singleton (fibre incl a)
+      lem2 .(f a) (a , refl)
+        = is-single←equiv-to-single (fibre-cotower-cogap≃ incl (f a) e⁻¹)
+                                    (lem3 a)
 
-    sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
-    sm = is-equiv.bwd (universal
-                        fst (Subtype.Σ̃-π-is-embedding
-                              (mk-subtype (λ _ → is-single-is-prop))))
-                      (total-map lem2 ∘ refl-fibre f , ~refl)
+      sm : Slice-map incl (fst {B = is-singleton ∘ fibre incl})
+      sm = is-equiv.bwd (universal
+                          fst (Subtype.Σ̃-π-is-embedding
+                                (mk-subtype (λ _ → is-single-is-prop))))
+                        (total-map lem2 ∘ refl-fibre f , ~refl)
 
-    sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
-    sm' .fst = sm .fst ∘ total←total-fibre _
-    sm' .snd = sm .snd ▸ total←total-fibre incl ~∙ (snd ∘ snd)
+      sm' : Slice-map (fst {B = fibre incl}) (fst {B = is-singleton ∘ fibre incl})
+      sm' .fst = sm .fst ∘ total←total-fibre _
+      sm' .snd = sm .snd ▸ total←total-fibre incl ~∙ (snd ∘ snd)
 
-    lem
-      : ∀ (b : B) (f : fibre incl b)
-        → is-singleton (fibre (λ v → incl v) b)
-    lem = Slice-family sm'
+      lem
+        : ∀ (b : B) (f : fibre incl b)
+          → is-singleton (fibre (λ v → incl v) b)
+      lem = Slice-family sm'
 
   Im-is-image : is-image f incl
   Im-is-image .is-image.map-is-emb = incl-is-embedding

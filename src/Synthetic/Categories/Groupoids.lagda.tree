@@ -77,7 +77,6 @@ is-Δ¹-discrete = is-null (point Δ¹)
 
 open gSubU Δ¹DiscreteType-gSubU public using () renaming
   ( ∈S←equiv to is-Δ¹-discrete←equiv)
-
 open gReflectiveClosure Δ¹DiscreteType-gRSubU public using () renaming
   ( Π∈S to Π-is-Δ¹-discrete
   ; ULift∈S to ULift-is-Δ¹-discrete
@@ -111,28 +110,92 @@ module Δ¹Disc where
   open gRSubU Δ¹DiscreteType-gRSubU public
   open gRSubUHomClosure Δ¹DiscreteType-gRSubU public
 }
+}
+
+
+\subtree[stt-00L4]{
+\title{A type is #{Δ¹}-discrete if morphisms give equalities}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-03-30}
+
+\p{
+Any type that has a comparison map #{\Hom_A(a,b) \to (a = b)} for all #{a} and #{b}
+is [#{\Delta^1}-discrete](stt-00B6).
+}
+
+\proof{
+There is a converse map to the constant map #{\const : A \to A^{\Delta^1}} given by
+evaluation at #{0}. This map is judgmentally a retraction, so we must only show it is
+a section.
+Unfolding definitions and applying function extensionality, this boils down to
+showing, for every #{h : \Delta^1 \to A}, that #{h(0) = h(t)} for all
+#{t : \Delta^1}. Assuming a family of maps #{H_{a,b} : \Hom_A(a,b) \to (a = b)}, it
+suffices to construct a restricted morphism
+#{h|_t : \Hom_A(h(0), h(t))}, which we can: #{h|_t(j) \coloneqq h(j \land t)}.
+}
+
+\agda{
+is-Δ¹-discrete←Id←Hom
+  : {𝓤 : Level} {A : Type 𝓤}
+  → ({a b : A} → Hom A a b → a ＝ b)
+  → is-Δ¹-discrete A
+is-Δ¹-discrete←Id←Hom {A = A} hom→id _
+  = const-is-equiv where
+
+    restrict : (h : Δ¹ → A) (t : Δ¹) → Hom A (h i0) (h t)
+    restrict h t .Homᵈ.hom j = h (j ∧ t)
+    restrict h t .Homᵈ.hom0 = ap h 0-init
+    restrict h t .Homᵈ.hom1 = ap h (∧-comm ∙ 1-top)
+
+    const-is-equiv : is-equiv (const A Δ¹)
+    const-is-equiv
+      = is-equiv←qinv (ev i0 , ~refl , λ h → funext→ λ t → hom→id (restrict h t))
+}
+}
+
+\subtree[fre-1E90]{
+\title{A type is #{Δ¹}-discrete iff homomorphisms characterise equality}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-03-18}
+\author{fredrikbakke}
+\date{2026-05-11}
 
 \agda{
 Hom←Id
-  : ∀ {𝓤} {A : Type 𝓤} → ∀ {a b} → a ＝ b → Hom A a b
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} → a ＝ b → Hom A a b
 Hom←Id refl = idH _
 
-Hom-Δ¹-discrete
-  : ∀ {𝓤} {A : Type 𝓤} → is-Δ¹-discrete A
-    → ∀ {a b} → is-equiv (Hom←Id {_} {A} {a} {b})
-Hom-Δ¹-discrete Δ¹-discrete {a} {b}
-  = is-equiv-~∘ {f = _≃_.bwd Homᵈ-repr≃} {g = g ∘ f}
-      (λ where refl → refl)
-      (is-equiv⁻¹ (_≃_.fwd-is-equiv Homᵈ-repr≃))
-      (is-equiv-∘ {f = g} {g = f}
-        (total-is-equiv←fst-is-equiv (Δ¹-discrete tt))
-        (is-equiv⁻¹ (Σ-＝singl ._≃_.fwd-is-equiv))) where
-  f : a ＝ b → Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
-  f = _≃_.bwd Σ-＝singl
-  g
-    : Σ[ c ∶ _ ] ((c ＝ a) × (c ＝ b))
-    → Σ[ g ∶ (Δ¹ → _) ] Σ (g i0 ＝ a) (λ hom2 → g i1 ＝ b)
-  g (a , p , q) = (const _ _ a , p , q)
+Hom←Id:
+  : ∀ {𝓤} {A : Type 𝓤} (a b : A) → a ＝ b → Hom A a b
+Hom←Id: a b = Hom←Id
+
+is-Hom←Id-equiv : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-Hom←Id-equiv A = (a b : A) → is-equiv (Hom←Id: a b)
+
+module _  {𝓤} {A : Type 𝓤} where
+
+  is-Hom←Id-equiv←is-Δ¹-discrete
+    : is-Δ¹-discrete A → is-Hom←Id-equiv A
+  is-Hom←Id-equiv←is-Δ¹-discrete Δ¹-discrete a b
+    = is-equiv-~∘
+        (λ where refl → refl)
+        (bwd-is-equiv Homᵈ-repr≃)
+        (is-equiv-∘
+          (total-is-equiv←fst-is-equiv (Δ¹-discrete tt))
+          (bwd-is-equiv Σ-＝singl))
+
+  is-Δ¹-discrete←is-Hom←Id-equiv
+    : is-Hom←Id-equiv A → is-Δ¹-discrete A
+  is-Δ¹-discrete←is-Hom←Id-equiv hom-eq
+    = is-Δ¹-discrete←Id←Hom (λ {a} {b} → is-equiv.bwd (hom-eq a b))
+
+  is-Δ¹-discrete⇔is-Hom←Id-equiv
+    : is-Δ¹-discrete A ⇔ is-Hom←Id-equiv A
+  is-Δ¹-discrete⇔is-Hom←Id-equiv
+    = ( is-Hom←Id-equiv←is-Δ¹-discrete
+      , is-Δ¹-discrete←is-Hom←Id-equiv)
 }
 }
 
@@ -148,8 +211,7 @@ A type is a \em{groupoid} if it is both [#{\Delta^1}-discrete](stt-00B6) and
 
 \agda{
 fam-is-groupoid : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
-fam-is-groupoid (inl _) = Δ¹
-fam-is-groupoid (inr ij) = fam-is-simplicial ij
+fam-is-groupoid = point Δ¹ ⨄ᶠ fam-is-simplicial
 
 is-groupoid : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
 is-groupoid = is-null fam-is-groupoid
@@ -206,7 +268,6 @@ Grpd-gRSubU .gRSubU.GS-is-globally-reflective = Grpd-is-globally-reflective
 
 open gSubU Grpd-gSubU public using () renaming
   ( ∈S←equiv to is-groupoid←equiv)
-
 open gReflectiveClosure Grpd-gRSubU public using () renaming
   ( Π∈S to Π-is-groupoid
   ; ULift∈S to ULift-is-groupoid
@@ -252,7 +313,7 @@ Grpd-U-is-simplicial {𝓤}
         {𝓤 = 𝓘} {𝓥 = 𝓤}
         {P = fam-is-simplicial}
         {S = Δ¹DiscreteType-gSubU}
-        (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+        (fam-is-simplicial-is-prop)
         (λ _ → Π-is-Δ¹-discrete))
 }
 }
@@ -275,12 +336,12 @@ is-left-local = is-local (λ (_ _ : 𝟙) → i0)
 
 is-Δ¹-discrete←is-left : ∀ {𝓤} {A : Type 𝓤} → is-left-local A → is-Δ¹-discrete A
 is-Δ¹-discrete←is-left {_} {A} il x
-  = is-equiv-~∘ (il x ◂eqv ((ε ▸ point) ~⁻¹)) (is-equiv⁻¹ (il x)) point-is-equiv where
+  = is-equiv-∘~ (il x ◂eqv (ε ▸ point)) (is-equiv⁻¹ (il x)) point-is-equiv where
   open is-equiv (il x)
 
 is-left←is-Δ¹-discrete : ∀ {𝓤} {A : Type 𝓤} → is-Δ¹-discrete A → is-left-local A
 is-left←is-Δ¹-discrete {_} {A} gp x
-  = is-equiv-~∘ (((point ◂ η) ~⁻¹) ▸eqv (gp x)) point-is-equiv (is-equiv⁻¹ (gp x)) where
+  = is-equiv-∘~ ((point ◂ η) ▸eqv (gp x)) point-is-equiv (is-equiv⁻¹ (gp x)) where
   open is-equiv (gp x)
 
 is-left←is-groupoid : ∀ {𝓤} {A : Type 𝓤} → is-groupoid A → is-left-local A
@@ -288,46 +349,6 @@ is-left←is-groupoid = is-left←is-Δ¹-discrete ∘ is-Δ¹-discrete←is-gro
 }
 }
 
-\subtree[stt-00L4]{
-\title{A type is #{Δ¹}-discrete if morphisms give equalities}
-\taxon{Lemma}
-\author{fredrikbakke}
-\date{2026-03-30}
-
-\p{
-Any type that has a comparison map #{\Hom_A(a,b) \to (a = b)} for all #{a} and #{b}
-is [#{\Delta^1}-discrete](stt-00B6).
-}
-
-\proof{
-There is a converse map to the constant map #{\const : A \to A^{\Delta^1}} given by
-evaluation at #{0}. This map is judgmentally a retraction, so we must only show it is
-a section.
-Unfolding definitions and applying function extensionality, this boils down to
-showing, for every #{h : \Delta^1 \to A}, that #{h(0) = h(t)} for all
-#{t : \Delta^1}. Assuming a family of maps #{H_{a,b} : \Hom_A(a,b) \to (a = b)}, it
-suffices to construct a restricted morphism
-#{h|_t : \Hom_A(h(0), h(t))}, which we can: #{h|_t(j) \coloneqq h(j \land t)}.
-}
-
-\agda{
-is-Δ¹-discrete←Id←Hom
-  : {𝓤 : Level} {A : Type 𝓤}
-  → ({a b : A} → Hom A a b → a ＝ b)
-  → is-Δ¹-discrete A
-is-Δ¹-discrete←Id←Hom {A = A} hom→id _
-  = const-is-equiv where
-
-    restrict : (h : Δ¹ → A) (t : Δ¹) → Hom A (h i0) (h t)
-    restrict h t .Homᵈ.hom j = h (j ∧ t)
-    restrict h t .Homᵈ.hom0 = ap h 0-init
-    restrict h t .Homᵈ.hom1 = ap h (∧-comm ∙ 1-top)
-
-    const-is-equiv : is-equiv (const A Δ¹)
-    const-is-equiv
-      = is-equiv←qinv (ev i0 , ~refl , λ h → funext→ λ t → hom→id (restrict h t))
-}
-}
 
 \subtree[stt-00L5]{
 \title{The Hom types of a Segal type are #{Δ¹}-discrete}
@@ -474,7 +495,8 @@ is-segal←is-groupoid grp
 is-precategory←is-groupoid
   : {𝓤 : Level} {A : Type 𝓤} → is-groupoid A → is-precategory A
 is-precategory←is-groupoid grp
-  = is-precategory←is-segal×is-simplicial
-      (is-segal←is-groupoid grp , is-simplicial←is-groupoid grp)
+  = is-precategory←is-segal←is-simplicial
+      (is-segal←is-groupoid grp)
+      (is-simplicial←is-groupoid grp)
 }
 }

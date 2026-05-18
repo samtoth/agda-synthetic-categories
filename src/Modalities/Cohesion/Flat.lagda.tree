@@ -24,13 +24,26 @@ type.}
 
 \agda{
 data ⟨♭|_⟩ {@♭ 𝓤} (@♭ A : Type 𝓤) : Type 𝓤 where
-  mod♭ : (@♭ _ : A) → ⟨♭| A ⟩
+  mod♭ : @♭ A → ⟨♭| A ⟩
+
+♭-ind: : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : ⟨♭| A ⟩ → Type 𝓥)
+       → ((@♭ x : A) → B (mod♭ x))
+      → (x : ⟨♭| A ⟩) → B x
+♭-ind: B f (mod♭ x) = f x
 
 ♭-ind
-  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} (B : ⟨♭| A ⟩ → Type 𝓥)
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
     → ((@♭ x : A) → B (mod♭ x))
     → (x : ⟨♭| A ⟩) → B x
-♭-ind B f (mod♭ x) = f x
+♭-ind = ♭-ind: _
+
+♭-rec
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : Type 𝓥}
+    → (@♭ A → B) → ⟨♭| A ⟩ → B
+♭-rec = ♭-ind
+
+♭ᶠ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥) → ⟨♭| A ⟩ → Type 𝓥
+♭ᶠ B = ♭-rec (λ a → ⟨♭| B a ⟩)
 }
 }
 
@@ -59,6 +72,11 @@ crisp #{a :^\flat A} and give a crisp term of type #{B}, but now both #{f} and
     → (@♭ f : A → B) → ⟨♭| A ⟩ → ⟨♭| B ⟩
 ♭-map f (mod♭ x) = mod♭ (f x)
 
+♭ᶠ-map
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥} {@♭ C : A → Type 𝓦}
+    → @♭ ((a : A) → B a → C a) → (a : ⟨♭| A ⟩) → ♭ᶠ B a → ♭ᶠ C a
+♭ᶠ-map f = ♭-ind (λ a → ♭-map (f a))
+
 ♭-id
   : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
     → ♭-map {A = A} id ~ id
@@ -84,18 +102,24 @@ make #{\modflat{-}} into a comonad.}
 ε♭ (mod♭ x) = x
 
 ε♭:_ : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → ⟨♭| A ⟩ → A
-ε♭:_ _ = ε♭
+ε♭: A = ε♭
 
 ε♭-natural
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
-    → ε♭  ∘ ♭-map f ~ f ∘ ε♭
+    → ε♭ ∘ ♭-map f ~ f ∘ ε♭
 ε♭-natural (mod♭ x) = refl
 
-⟨♭♭|_⟩ : ∀ {@♭ 𝓤} → (@♭ _ : Type 𝓤) → Type 𝓤
+⟨♭♭|_⟩ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤
 ⟨♭♭| A ⟩ = ⟨♭| ⟨♭| A ⟩ ⟩
 
 comult : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭♭| A ⟩
 comult (mod♭ x) = mod♭ (mod♭ x)
+
+module _ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} where
+
+  ε♭-Arrow-map
+    : (@♭ f : A → B) → Arrow-map (ε♭: A) (ε♭: B)
+  ε♭-Arrow-map f = mk-amap (♭-map f) f (ε♭-natural ~⁻¹)
 }
 }
 
@@ -207,20 +231,25 @@ mapply♭
     → mod♭ a ＝ mod♭ b
 mapply♭ (mod♭ refl) = refl
 
+mapply♭:
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ a b : A)
+    → ⟨♭| a ＝ b ⟩
+    → mod♭ a ＝ mod♭ b
+mapply♭: a b = mapply♭
+
 _ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ a b : A}
     → ⟨♭| a ＝ b ⟩
     → mod♭ a ＝ mod♭ b
-_ = ♭-ind _ (ap♭ mod♭)
+_ = ♭-rec (ap♭ mod♭)
 }
 }
-
 
 \subtree[stt-00JR]{
 \taxon{Lemma}
-\title{Equivalences are flat equivalences}
+\title{Flat preserves equivalences}
 
 \p{Equivalences #{f : A \toeq B} induce equivalences
-#{\flat f : \modflat{A} \toeq \modflat{B}}}
+#{\flat f : \modflat{A} \toeq \modflat{B}}.}
 
 \agda{
 ♭-map-is-equiv
@@ -232,15 +261,33 @@ _ = ♭-ind _ (ap♭ mod♭)
   , (λ where (mod♭ x) → ap♭ mod♭ (ε fe x)))
   where open is-equiv
 
-♭≃
-  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ e : A ≃ B)
-    → ⟨♭| A ⟩ ≃ ⟨♭| B ⟩
+♭≃ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ e : A ≃ B)
+     → ⟨♭| A ⟩ ≃ ⟨♭| B ⟩
 ♭≃ e = mk≃ (♭-map (e ._≃_.fwd)) (♭-map-is-equiv (e ._≃_.fwd-is-equiv))
 }
 }
 
+\subtree[fre-BE3D]{
+\title{Flat preserves retracts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-29}
+
+\agda{
+♭-retract
+  : ∀ {@♭ 𝓤 𝓥}
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → (@♭ R : retract A B)
+    → retract ⟨♭| A ⟩ ⟨♭| B ⟩
+♭-retract (i , r , H)
+  = ♭-map i
+  , ♭-map r
+  , λ where (mod♭ a) → ap♭ mod♭ (H a)
+}
+}
+
 \subtree[stt-0053]{
-\title{Flat commutes with #{Σ} and #{1}}
+\title{Flat commutes with  #{1}, #{Σ}, and #{×}}
 \taxon{Theorem}
 
 \p{First we show that #{\flat} commutes with #{1}, or in other words
@@ -264,7 +311,6 @@ _ = ♭-ind _ (ap♭ mod♭)
     → ⟨♭| A × B ⟩ → ⟨♭| A ⟩ × ⟨♭| B ⟩
 ♭-× (mod♭ (a , b)) = (mod♭ a , mod♭ b)
 
-
 ♭-×⁻¹
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
     → ⟨♭| A ⟩ × ⟨♭| B ⟩ → ⟨♭| A × B ⟩
@@ -273,10 +319,11 @@ _ = ♭-ind _ (ap♭ mod♭)
 ♭-×-is-equiv
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
     → is-equiv (♭-× {A = A} {B})
-♭-×-is-equiv = is-equiv←qinv
+♭-×-is-equiv = mk-eqv
   ( ♭-×⁻¹
-  , (λ {(mod♭ (a , b)) → refl})
-  , λ {(mod♭ a , mod♭ b) → refl})
+  , ( λ where (mod♭ (a , b)) → refl)
+  , ( λ where(mod♭ a , mod♭ b) → refl))
+  ( λ where (mod♭ x) → refl)
 
 ♭-pres-×
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -293,14 +340,40 @@ as #{\Sigma_{x : \modflat{A}}\flat\textrm{-rec}(\_,B,x)}.}
 Σ♭
   : ∀ {@♭ 𝓤 𝓥} (@♭ A : Type 𝓤) (B : @♭ A → Type 𝓥)
     → Type (𝓤 ⊔ 𝓥)
-Σ♭ A B = Σ ⟨♭| A ⟩ (♭-ind _ B)
+Σ♭ A B = Σ ⟨♭| A ⟩ (♭-rec B)
 
 syntax Σ♭ A (λ x → B) = Σ[♭ x ∶ A ] B
 
 snd♭
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {B : @♭ A → Type 𝓥}
-    → (x : Σ♭ A B) → ♭-ind _ B (x .fst)
+    → (x : Σ♭ A B) → ♭-rec B (x .fst)
 snd♭ = snd
+
+Σ♭-ε
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → Σ[♭ x ∶ A ] ⟨♭| B x ⟩ → Σ A B
+Σ♭-ε B (mod♭ a , mod♭ b) = (a , b)
+
+ε♭ᶠ
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+    → (x : ⟨♭| A ⟩) → ♭ᶠ B x → B (ε♭ x)
+ε♭ᶠ {B = B} (mod♭ a) = ε♭ {A = B a}
+
+ε♭ᶠ:
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → (x : ⟨♭| A ⟩) → ♭ᶠ B x → B (ε♭ x)
+ε♭ᶠ: B = ε♭ᶠ
+
+Map-Σ-ε♭-ε♭~Σ♭-ε
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (@♭ B : A → Type 𝓥)
+    → map-Σ ε♭ (ε♭ᶠ {B = B}) ~ Σ♭-ε B
+Map-Σ-ε♭-ε♭~Σ♭-ε B (mod♭ a , mod♭ b) = refl
+
+ε♭ᶠ-is-fibrewise-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥}
+    → ((@♭ a : A) → is-equiv (ε♭: B a))
+    → is-fibrewise-equiv (ε♭ᶠ: B)
+ε♭ᶠ-is-fibrewise-equiv bd (mod♭ a) = bd a
 }
 
 \p{We now show #{\flat} commutes with #{\Sigma} in the sense that
@@ -331,29 +404,68 @@ snd♭ = snd
 }
 }
 
+\subtree[fre-AEEB]{
+\title{Flat preserves coproducts}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\agda{
+♭-⊎
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → ⟨♭| A ⊎ B ⟩ → ⟨♭| A ⟩ ⊎ ⟨♭| B ⟩
+♭-⊎ (mod♭ (inl a)) = inl (mod♭ a)
+♭-⊎ (mod♭ (inr b)) = inr (mod♭ b)
+
+♭-⊎⁻¹
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → ⟨♭| A ⟩ ⊎ ⟨♭| B ⟩ → ⟨♭| A ⊎ B ⟩
+♭-⊎⁻¹ (inl (mod♭ a)) = mod♭ (inl a)
+♭-⊎⁻¹ (inr (mod♭ b)) = mod♭ (inr b)
+
+♭-⊎-is-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → is-equiv (♭-⊎ {A = A} {B})
+♭-⊎-is-equiv = mk-eqv
+  ( ♭-⊎⁻¹
+  , ( λ where
+      (mod♭ (inl a)) → refl
+      (mod♭ (inr b)) → refl)
+  , ( λ where
+      (inl (mod♭ a)) → refl
+      (inr (mod♭ b)) → refl))
+  ( λ where
+      (mod♭ (inl a)) → refl
+      (mod♭ (inr b)) → refl)
+
+♭-pres-⊎
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → ⟨♭| A ⊎ B ⟩ ≃ ⟨♭| A ⟩ ⊎ ⟨♭| B ⟩
+♭-pres-⊎ = mk≃ ♭-⊎ ♭-⊎-is-equiv
+}
+}
+
 
 \subtree[stt-00K9]{
 \taxon{Lemma}
 
 \agda{
-opaque
-  ♭-map-total-is-equiv
-    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥} {@♭ C : A → Type 𝓦}
-      → (@♭ f : ∀ a → B a → C a)
-      → is-equiv (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
-                          {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
-                          (♭-ind _ (λ a → ♭-map (f a))))
+module _
+  {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : A → Type 𝓥} {@♭ C : A → Type 𝓦}
+  (@♭ f : (a : A) → B a → C a)
+  where
+
+  ♭-map-total-Arrow-equiv : Arrow-equiv (total-map (♭ᶠ-map f)) (♭-map (total-map f))
+  ♭-map-total-Arrow-equiv .fst .Arrow-Π.top = ♭-Σ _
+  ♭-map-total-Arrow-equiv .fst .Arrow-Π.bot = ♭-Σ _
+  ♭-map-total-Arrow-equiv .fst .Arrow-Π.comm (mod♭ a , mod♭ b) = refl
+  ♭-map-total-Arrow-equiv .snd .fst = ♭-commΣ _ ._≃_.fwd-is-equiv
+  ♭-map-total-Arrow-equiv .snd .snd = ♭-commΣ _ ._≃_.fwd-is-equiv
+
+  opaque
+    ♭-map-total-is-equiv
+      : is-equiv (total-map (♭ᶠ-map f))
       → is-equiv (♭-map (total-map f))
-  ♭-map-total-is-equiv {B = B} {C = C} f fe
-    = is-equiv←Arrow-equiv {F = amap}
-        (♭-commΣ _ ._≃_.fwd-is-equiv , ♭-commΣ _ ._≃_.fwd-is-equiv)
-        fe where
-    amap : Arrow-map (total-map {B = ♭-ind _ (λ a → ⟨♭| B a ⟩)}
-                                {B' = ♭-ind _ (λ a → ⟨♭| C a ⟩)}
-                                (♭-ind _ (λ a → ♭-map (f a))))
-                     (♭-map (total-map f))
-    amap .Arrow-Π.top = ♭-Σ _
-    amap .Arrow-Π.bot = ♭-Σ _
-    amap .Arrow-Π.comm (mod♭ a , mod♭ b) = refl
+    ♭-map-total-is-equiv = tgt-is-equiv←Arrow-equiv (♭-map-total-Arrow-equiv)
 }
 }

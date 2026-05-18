@@ -7,7 +7,7 @@ on:
         type: boolean
         description: 'Should this be a dry-run?'
         required: false
-        default: false
+        default: true
 
       prefix:
         type: string
@@ -20,6 +20,11 @@ on:
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
         default: false
+
+      pr_number:
+        type: string
+        descriptioin: The associated pr to comment on
+        required: true
 
 jobs:
   Rename:
@@ -56,7 +61,18 @@ jobs:
 
       - name: Dry run the renamer
         if: ${{ inputs.dry_run == true }}
-        run: python ./scripts/rename_trees.py --dry-run '${{ inputs.prefix }}' src/ trees/
+        run: |
+          echo "Output from renameTrees dry run:\n\n" > renameResult
+          python ./scripts/rename_trees.py --dry-run '${{ inputs.prefix }}' src/ trees/ >> renameResult
+
+      - name: Comment dry-run result
+        uses: peter-evans/create-or-update-comment@v5
+        if: ${{ inputs.dry_run == true }}
+        with:
+          issue-number: ${{ inputs.pr_number }}
+          comment-author: 'github-actions[bot]'
+          body-path: renameResult
+        
 
       - name: Run the renamer
         if: ${{ inputs.dry_run == false }}

@@ -1,0 +1,171 @@
+\title{Cocartesian fibrations}
+\taxon{Module}
+\import{stt-macros}
+\date{2026-05-12}
+
+
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.CocartesianFibrations
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Core.Coslices
+open import Core.CanonicalPushouts
+open import Core.Slices
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.PushoutJoins Δ¹ I I-distr
+
+open import Ergonomics.Auto
+}
+
+
+\subtree[tot-0001]{
+\title{Cartesian morphisms}
+\taxon{Definition}
+
+\p{Given a map #{p : E \to B}, and a morphism #{f : \Delta^1 \to E},
+we say that }
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+  is-cocartesian-morphism
+    : (Δ¹ → E) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-cocartesian-morphism f
+    = is-cartesian (coslice-square p {q = f} (point i0 , ~refl))
+}
+}
+
+\subtree[tot-0002]{
+\taxon{Lemma}
+
+\p{If #{p} is a left fibration, then every morphism is
+#{p}-cocartesian.}
+
+\agda{
+
+module _
+  {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥}
+  (p : E → B)
+  (p-lf : is-left-fibration p)
+  where
+
+  is-cocartesian-morphism←left-fibration
+    : (f : Δ¹ → E) → is-cocartesian-morphism p f
+  is-cocartesian-morphism←left-fibration f
+    = is-cartesian←dom+cod-is-equiv
+        (coslice-square p {q = f} (point i0 , ~refl))
+        {!coslice-map-is-equiv←is-left-fibration!}
+        (coslice-map-is-equiv←is-left-fibration p p-lf (f i0))
+}
+}
+
+\subtree[tot-0003]{
+\title{Cocartesian lifts}
+\taxon{Definition}
+
+\agda{
+module _
+  {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥}
+  (p : E → B)
+  where
+
+  lift-is-cocartesian
+    : (F : Arrow-map (point i0) p) → Lift F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  lift-is-cocartesian F L = is-cocartesian-morphism p (Lift.lift L)
+
+  cocartesian-lift
+    : (F : Arrow-map (point i0) p) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  cocartesian-lift F = Σ (Lift F) (lift-is-cocartesian F)
+}
+}
+
+\subtree[tot-0004]{
+\title{Cocartesian fibrations}
+\taxon{Definition}
+
+\agda{
+module _
+  {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥}
+  (p : E → B)
+  where
+
+  power-hom-cocartesian
+    : Arrow-map (postcomp Δ¹ p ∘ (fst: is-cocartesian-morphism p)) p
+  power-hom-cocartesian .Arrow-Π.top = ev i0 ∘ fst
+  power-hom-cocartesian .Arrow-Π.bot = ev i0
+  power-hom-cocartesian .Arrow-Π.comm = ~refl
+
+  is-cocartesian-fibration
+    : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-cocartesian-fibration
+    = is-equiv (⟨ point i0 , p ⟩ ∘ (fst: is-cocartesian-morphism p))
+}
+}
+
+\subtree[tot-0005]{
+\taxon{Lemma}
+
+\p{A cocartesian fibration is left fibration iff every morphism is
+cocartesian.}
+
+\agda{
+module _
+  {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥}
+  (p : E → B)
+  (p-cc : is-cocartesian-fibration p)
+  where
+
+  is-left-fibration←all-morphisms-cocartesian
+    : (∀ f → is-cocartesian-morphism p f) → is-left-fibration p
+  is-left-fibration←all-morphisms-cocartesian ccp
+    = 3-for-2'
+        (singleton-fst-is-equiv
+          (λ f → mk-singl (ccp f) (is-cartesian-is-prop (ccp f))))
+        p-cc
+
+  all-morphisms-cocartesian←is-left-fibration
+    : is-left-fibration p → (∀ f → is-cocartesian-morphism p f)
+  all-morphisms-cocartesian←is-left-fibration plf f
+    = centre {A = is-cocartesian-morphism p f}
+        (is-single←equiv-to-single
+          (fibre-straighten (is-cocartesian-morphism p) f)
+          (has-singleton-fibres←is-equiv
+            (3-for-2 plf p-cc)
+            f))
+
+  is-left-fibration⇔all-morphisms-cocartesian
+    : (∀ f → is-cocartesian-morphism p f) ⇔ is-left-fibration p
+  is-left-fibration⇔all-morphisms-cocartesian
+    = ( is-left-fibration←all-morphisms-cocartesian
+      , all-morphisms-cocartesian←is-left-fibration)
+}
+}

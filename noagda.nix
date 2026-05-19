@@ -42,9 +42,4 @@ in pkgs.mkShell {
       (pkgs.codespell)
       (pkgs.ripgrep)
     ];
-
-    shellHook = ''
-    echo "Welcome to the lightweight dev shell!"
-    echo "Forester version: $(forester --version || echo not found)"
-    '';
 }

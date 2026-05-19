@@ -87,3 +87,181 @@ pattern mk-eqfibspanD P-left P-right P-centre e-left e-right =
   mk-eqfibspanD' P-left P-right (mk-eqfibspan P-centre e-left e-right)
 }
 }
+
+\subtree[fre-0001]{
+\title{Equifibred span diagrams classify cocones into the universe}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} where
+
+  span←Type-cocone
+    : Cocone S (Type 𝓛) → EquifibredSpanDiagram S 𝓛 𝓛 𝓛
+  span←Type-cocone (mk-cocone P-left P-right H)
+    = mk-eqfibspanD
+        P-left
+        P-right
+        (P-left ∘ Span.left S)
+        (λ _ → id≃)
+        (λ s → coe≃ (H s))
+
+  Π-swap-EquifibredSpan
+    : (P-left : Span.Left S → Type 𝓛)
+      (P-right : Span.Right S → Type 𝓛)
+    → EquifibredSpan S 𝓛 P-left P-right
+    ≃ ( (s : Span.Centre S)
+      → Σ[ P-centre ∶ Type 𝓛 ]
+          ( (P-centre ≃ P-left (Span.left S s))
+          × (P-centre ≃ P-right (Span.right S s))))
+  Π-swap-EquifibredSpan P-left P-right
+    = mk≃
+      ( λ R s
+        → ( R .EquifibredSpan.Centre s
+          , R .EquifibredSpan.Left≃ s
+          , R .EquifibredSpan.Right≃ s))
+      ( mk-eqv
+        ( ( λ R → mk-eqfibspan (fst ∘ R) (fst ∘ snd ∘ R) (snd ∘ snd ∘ R))
+          , ~refl
+          , ~refl)
+        (~refl))
+
+  Type-cocone←span
+    : EquifibredSpanDiagram S 𝓛 𝓛 𝓛 → Cocone S (Type 𝓛)
+  Type-cocone←span P
+    = mk-cocone
+        (P .EquifibredSpanDiagram.Left)
+        (P .EquifibredSpanDiagram.Right)
+        (ua ∘ EquifibredSpanDiagram.Left≃Right P)
+
+  opaque
+    Type-cocone←span-is-retraction
+      : Type-cocone←span
+      ∘ span←Type-cocone
+      ~ id
+    Type-cocone←span-is-retraction
+      (mk-cocone P-left P-right filler)
+      = ap (mk-cocone P-left P-right)
+           (funext→ λ _ → ap ua (≃-path→ refl) ∙ ua-coe≃)
+
+  opaque
+    span←Type-cocone-is-section
+      : span←Type-cocone ∘ Type-cocone←span ~ id
+    span←Type-cocone-is-section
+      (mk-eqfibspanD P-left P-right P-centre e-left e-right)
+      = ap
+        ( λ R
+          → mk-eqfibspanD
+              P-left
+              P-right
+              (R .EquifibredSpan.Centre)
+              (R .EquifibredSpan.Left≃)
+              (R .EquifibredSpan.Right≃))
+        ( unap-equiv
+          ( Π-swap-EquifibredSpan P-left P-right ._≃_.fwd-is-equiv)
+          ( funext→ λ s
+            → equiv-J
+                ( λ P-left' e-left'
+                  → (e-right' : P-centre s ≃ P-right (Span.right S s))
+                  → Id
+                    ( Σ[ P-centre' ∶ Type 𝓛 ]
+                      ( (P-centre' ≃ P-left')
+                      × (P-centre' ≃ P-right (Span.right S s))))
+                    ( P-left' , id≃ , coe≃ (ua (e-left' e⁻¹ ∙≃ e-right')))
+                    ( P-centre s , e-left' , e-right'))
+                ( λ _ → Σ-path→ (refl , ×-path→ (refl , coe≃-ua ∙ ≃-path→ refl)))
+                (P-left (Span.left S s))
+                (e-left s)
+                (e-right s)))
+
+  span←Type-cocone-is-equiv
+    : is-equiv span←Type-cocone
+  span←Type-cocone-is-equiv
+    = is-equiv←qinv
+        ( Type-cocone←span
+        , Type-cocone←span-is-retraction
+        , span←Type-cocone-is-section)
+
+  Type-cocone≃span : Cocone S (Type 𝓛) ≃ EquifibredSpanDiagram S 𝓛 𝓛 𝓛
+  Type-cocone≃span = mk≃ span←Type-cocone span←Type-cocone-is-equiv
+}
+}
+
+\subtree[fre-0002]{
+\title{Descent for pushouts}
+\taxon{Theorem}
+\author{fredrikbakke}
+
+\p{
+Families over pushouts are equivalent to equifibred span diagrams over their pushout
+spans.
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛} (c : Cocone S X) where
+
+  span←family-up-pushout
+    : ∀ {𝓜} → (X → Type 𝓜) → EquifibredSpanDiagram S 𝓜 𝓜 𝓜
+  span←family-up-pushout = span←Type-cocone ∘ cocone-map S c
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛}
+  {c : Cocone S X} (up-c : up-pushout S c)
+  where
+
+  descent-up-pushout
+    : ∀ {𝓜} → is-equiv (span←family-up-pushout c {𝓜})
+  descent-up-pushout
+    = is-equiv-∘ span←Type-cocone-is-equiv up-c
+
+  descent-up-pushout≃
+    : ∀ {𝓜} → (X → Type 𝓜) ≃ EquifibredSpanDiagram S 𝓜 𝓜 𝓜
+  descent-up-pushout≃
+    = mk≃ (span←family-up-pushout c) (descent-up-pushout)
+
+module _
+  {𝓤 𝓥 𝓦 𝓛 𝓜} {S : Span 𝓤 𝓥 𝓦}
+  {X : Type 𝓛} {c : Cocone S X} (up-c : up-pushout S c)
+  (P : EquifibredSpanDiagram S 𝓜 𝓜 𝓜)
+  (open EquifibredSpanDiagram)
+  where
+
+  uniqueness-descent-up-pushout
+    : is-singleton (fibre (span←family-up-pushout c) P)
+  uniqueness-descent-up-pushout
+    = has-singleton-fibres←is-equiv (descent-up-pushout up-c) P
+
+  family-descent-up-pushout : X → Type 𝓜
+  family-descent-up-pushout
+    = uniqueness-descent-up-pushout .centre .fst
+
+  compute-family-descent-up-pushout
+    : span←family-up-pushout c family-descent-up-pushout ＝ P
+  compute-family-descent-up-pushout
+    = uniqueness-descent-up-pushout .centre .snd
+
+  compute-left-descent-up-pushout
+    : (a : Span.Left S)
+    → family-descent-up-pushout (Cocone.p c a)
+    ≃ P .Left a
+  compute-left-descent-up-pushout
+    = coe≃
+    ∘ happly (ap EquifibredSpanDiagram.Left compute-family-descent-up-pushout)
+
+  compute-right-descent-up-pushout
+    : (b : Span.Right S)
+    → family-descent-up-pushout (Cocone.q c b)
+    ≃ P .Right b
+  compute-right-descent-up-pushout
+    = coe≃
+    ∘ happly (ap EquifibredSpanDiagram.Right compute-family-descent-up-pushout)
+
+  compute-centre-descent-up-pushout
+    : (s : Span.Centre S)
+    → family-descent-up-pushout (Cocone.p c (Span.left S s))
+    ≃ P .Centre s
+  compute-centre-descent-up-pushout
+    = coe≃
+    ∘ happly (ap EquifibredSpanDiagram.Centre compute-family-descent-up-pushout)
+}
+}

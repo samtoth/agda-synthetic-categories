@@ -1,0 +1,210 @@
+\title{Retracts of maps}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-01-06}
+\import{stt-macros}
+
+\agda{
+module Core.ArrowRetracts where
+
+open import Foundations.Prelude
+
+open import Axioms.UF
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Postwhisker
+
+open import Ergonomics.Marker
+}
+
+\subtree[stt-00BJ]{
+\title{Retracts of maps}
+\taxon{Definition}
+
+\p{We define both coherent and incoherent notions of retracts of maps:}
+
+
+\p{Given commuting squares as follows:}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	A && C && A \\
+	\\
+	B && D && B
+	\arrow[hook, from=1-1, to=1-3]
+	\arrow["\id", shift left, curve={height=-12pt}, from=1-1, to=1-5]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow[two heads, from=1-3, to=1-5]
+	\arrow["g", from=1-3, to=3-3]
+	\arrow["f", from=1-5, to=3-5]
+	\arrow[hook, from=3-1, to=3-3]
+	\arrow["\id"', curve={height=18pt}, from=3-1, to=3-5]
+	\arrow[two heads, from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{
+We say #{f} is an \em{incoherent retraction} of #{g}. If furthermore, the two squares
+paste to make the identity square, then we say #{f} is a \em{coherent retraction} (or
+just retraction) of #{g}. Note that despite this terminology, a map being a retract
+of another is not a proposition.
+}
+
+\agda{
+incoherent-retraction-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Arrow-map f g
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+incoherent-retraction-arrow-map {f = f} {g = g} F
+  = Σ[ G ∶ Arrow-map g f ]
+     ( retraction-witness (F .Arrow-map.top) (G .Arrow-map.top)
+     × retraction-witness (F .Arrow-map.bot) (G .Arrow-map.bot))
+
+retraction-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → Arrow-map f g
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+retraction-arrow-map {f = f} {g = g} F
+  = Σ[ G ∶ Arrow-map g f ]
+     Σ[ lr ∶ retraction-witness (F .Arrow-map.top) (G .Arrow-map.top) ]
+      Σ[ rr ∶ retraction-witness (F .Arrow-map.bot) (G .Arrow-map.bot) ]
+        ((bot G) ◂ (comm F) ~∙ (comm G) ▸ (top F) ~∙ f ◂ lr
+        ~ (rr ▸ f))
+  where open Arrow-map
+
+
+retraction-arrow-map-is-retraction
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      (F : Arrow-map f g)
+      ((G , _) : retraction-arrow-map F)
+    → Arrow-map-path (paste-squares G F) id-square
+retraction-arrow-map-is-retraction {f = f} F (G , lr , rr , fill)
+  = (lr , rr , λ a → ∙-assoc (ap (bot G) (comm F a)) _ (ap f (lr a))
+                     ∙ fill a
+                     ∙ sym (∙-reflr _))
+  where open Arrow-map
+}
+}
+
+
+\subtree[stt-00BL]{
+\title{Precomposition exponentials preserve retracts of arrows}
+\taxon{Lemma}
+
+\p{Given a square #{F : f \to g}, and a square #{G : g \to f} witnessing #{f}
+as a retract of #{g}, then precomposing by any type witnesses #{f^*}
+as a retract of #{g^*}.}
+
+\agda{
+precomp-retraction-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      (F : Arrow-map f g)
+      ((G , _) : retraction-arrow-map F)
+      {𝓓} {D : Type 𝓓}
+    → retraction-arrow-map (precomp-square G D)
+precomp-retraction-square F (G , _) .fst = precomp-square F _
+precomp-retraction-square F (G , tr , br , _) .snd .fst a = ap (a ∘_) (funext→ br)
+precomp-retraction-square F (G , tr , _) .snd .snd .fst a = ap (a ∘_) (funext→ tr)
+precomp-retraction-square {f = f} F (G , lr , rr , coh) .snd .snd .snd j
+  = ap (_∘ _) (funext→ (j ◂ (Arrow-map.comm G ~⁻¹)))
+  ∙ funext→ (Arrow-map.top (precomp-square G _) j  ◂ (Arrow-map.comm F ~⁻¹))
+  ∙ ap (_∘ f) (ap (j ∘_) (funext→ rr))
+      ＝⟨ ap₃ (λ p q r → p ∙ q ∙ r) (sym (commutes-prewhisker-funext _)) refl
+                      (ap (ap (_∘ f)) (sym (commutes-postwhisker-funext _))
+                        ∙ sym (commutes-prewhisker-funext _)) ⟩
+   funext→ (postwhisker j _ _ ((Arrow-map.comm G ~⁻¹) ▸ Arrow-map.top F))
+ ∙ funext→ ((Arrow-map.top (precomp-square G _) j  ◂ (Arrow-map.comm F ~⁻¹)))
+ ∙ funext→ (prewhisker f (j ∘ Arrow-map.bot G ∘ Arrow-map.bot F) j
+             (postwhisker j (Arrow-map.bot G ∘ Arrow-map.bot F) id
+               rr))
+     ＝⟨ sym (funext-∙∙ _ _ _) ⟩
+   funext→ (λ a →
+              ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+              ap (j ∘ (Arrow-map.bot G)) (sym (Arrow-map.comm F a)) ∙
+              ap j (rr (f a)))
+      ＝⟨ ap funext→ (funext→ p) ⟩
+   funext→ (postwhisker (j ∘ f) (Arrow-map.top G ∘ Arrow-map.top F)
+              id lr) ＝⟨ commutes-postwhisker-funext lr ⟩
+   ap ((j ∘ f) ∘_) (funext→ lr) ∎ where
+
+  q : ∀ a →
+      sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+      ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+      ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+      Arrow-map.comm G (Arrow-map.top F a) ∙ ap f (lr a) ⌝
+      ＝
+      sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+      ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+       ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+       Arrow-map.comm G (Arrow-map.top F a) ⌝
+      ∙ ap f (lr a)
+  q a = let
+         X = ap f (lr a)
+         Y = Arrow-map.comm G (Arrow-map.top F a)
+         Z = ap (Arrow-map.bot G) (Arrow-map.comm F a)
+         W = sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+       in ap!
+         (sym (∙.assoc-4 _ X Y Z W)
+         ∙ ap (_∙ ap f (lr a)) (∙-assoc W Z Y))
+
+
+  p : ∀ a →
+          ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+          ap (j ∘ Arrow-map.bot G) (sym (Arrow-map.comm F a)) ∙
+          ap j (rr (f a))
+       ＝
+        ap (j ∘ f) (lr a)
+  p a
+    = ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+       ⌜ ap (j ∘ Arrow-map.bot G) (sym (Arrow-map.comm F a)) ⌝ ∙
+       ap j (rr (f a)) ＝⟨ ap! (ap-∘ j (Arrow-map.bot G) _ ∙ ap (ap j) (ap-sym _ _)) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a))) ∙
+      ap j (sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))) ∙
+      ap j (rr (f a)) ＝⟨ sym (ap-∙∙ j (sym (Arrow-map.comm G (Arrow-map.top F a)))
+                                      _ (rr (f a))) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            sym (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+            ∙ ⌜ rr (f a) ⌝) ＝⟨ ap! (sym (coh a)) ∙ ap (ap j) (q a) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            ⌜ sym (ap (Arrow-map.bot G) (Arrow-map.comm F a)) ∙
+            ap (Arrow-map.bot G) (Arrow-map.comm F a) ∙
+            Arrow-map.comm G (Arrow-map.top F a) ⌝ ∙ ap f (lr a))
+          ＝⟨ ap! (sym'∙ (ap (Arrow-map.bot G) (Arrow-map.comm F a))
+                         (Arrow-map.comm G (Arrow-map.top F a))) ⟩
+      ap j (sym (Arrow-map.comm G (Arrow-map.top F a)) ∙
+            Arrow-map.comm G (Arrow-map.top F a) ∙ ap f (lr a))
+          ＝⟨ ap (ap j) (sym'∙ (Arrow-map.comm G (Arrow-map.top F a)) (ap f (lr a))) ⟩
+      ap j (ap f (lr a)) ＝⟨ sym (ap-∘ j f (lr a)) ⟩
+      ap (j ∘ f) (lr a) ∎
+}
+}
+
+\subtree[stt-00BK]{
+\title{Incoherent retracts of equivalences are equivalences}
+\taxon{Lemma}
+
+
+\agda{
+is-equiv←incoherent-retraction-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+    → (F : Arrow-map f g)
+    → incoherent-retraction-arrow-map F
+    → is-equiv g
+    → is-equiv f
+is-equiv←incoherent-retraction-equiv {f = f} {g = g} F (G , tr , br) feq
+  = is-equiv←qinv qinv where
+  open Arrow-map
+  module e = is-equiv feq
+
+  qinv : quasi-inv f
+  qinv .fst = top G ∘ e.bwd ∘ bot F
+  qinv .snd .fst = (top G ∘ e.bwd) ◂ comm F ~∙ top G ◂ e.η ▸ top F ~∙ tr
+  qinv .snd .snd = (comm G ▸ e.bwd ▸ bot F ~⁻¹) ~∙ bot G ◂ e.ε ▸ bot F ~∙ br
+}
+}

@@ -4,7 +4,6 @@
 
 \import{stt-macros}
 
-% ```agda
 \agda{
 module Foundations.Straightening where
 
@@ -12,20 +11,19 @@ open import Foundations.Universes
 open import Foundations.Functions
 open import Foundations.Homotopy
 open import Foundations.Sigma
-open import Foundations.SigmaPath
+open import Foundations.SigmaIdentity
 open import Foundations.SigmaProperties
-open import Foundations.Singleton
+open import Foundations.Singletons
 open import Foundations.Identity
 open import Foundations.DependentIdentity
-open import Foundations.IdentitySystem
-open import Foundations.QuasiIsomorphism
-open import Foundations.CoherentIsomorphism
+open import Foundations.IdentitySystems
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
 open import Foundations.Univalence
 open import Foundations.FunExt
-open import Foundations.FunextUnivalence
-open import Foundations.EquivProp
+open import Foundations.FunExtFromUnivalence
+open import Foundations.IsEquivIsProp
 }
-% ```
 
 \subtree[stt-003S]{
 \taxon{Theorem}
@@ -34,25 +32,30 @@ open import Foundations.EquivProp
 \p{Given a map #{p : E \to B}, the type #{\Sigma_{(b:B)} \fibre{p}{b}}
 is equivalent to the type #{E}. }
 
-% ```agda
 \agda{
 total←total-fibre
-  : ∀ {𝓤} {B : Type 𝓤} {𝓥} {A : Type 𝓥} (p : A → B) → total-fibre p → A
+  : ∀ {𝓤} {B : Type 𝓤}
+      {𝓥} {A : Type 𝓥} (p : A → B)
+    → total-fibre p → A
 total←total-fibre p (_ , a , _) = a
 
-refl-fibre : ∀ {𝓤} {B : Type 𝓤}
-               {𝓥} {A : Type 𝓥} (p : A → B)
-               → A → total-fibre  p
+refl-fibre
+  : ∀ {𝓤} {B : Type 𝓤}
+      {𝓥} {A : Type 𝓥} (p : A → B)
+    → A → total-fibre  p
 refl-fibre p a = (p a , a , refl)
 
 total←total-fibre-is-equiv
   : ∀ {𝓤} {B : Type 𝓤} {𝓥} {A : Type 𝓥} (p : A → B)
     → is-equiv (total←total-fibre p)
-total←total-fibre-is-equiv p = is-equiv←qiso f-qiso where
-  f-qiso : quasi-iso (total←total-fibre p)
-  f-qiso .fst = refl-fibre p
-  f-qiso .snd .fst (_ , a , refl) = refl
-  f-qiso .snd .snd a = refl
+total←total-fibre-is-equiv p = mk-eqv f-qinv coh where
+   f-qinv : quasi-inv (total←total-fibre p)
+   f-qinv .fst = refl-fibre p
+   f-qinv .snd .fst (_ , a , refl) = refl
+   f-qinv .snd .snd a = refl
+
+   coh : qinv-coh f-qinv
+   coh (_ , a , refl) = refl
 
 total≃total-fibre : ∀ {𝓤} {B : Type 𝓤}
                      {𝓥} {A : Type 𝓥} (p : A → B)
@@ -60,7 +63,6 @@ total≃total-fibre : ∀ {𝓤} {B : Type 𝓤}
 total≃total-fibre {A = A} p
  = mk≃ (total←total-fibre p) (total←total-fibre-is-equiv p)
 }
-% ```
 }
 
 \subtree[stt-003Q]{
@@ -75,7 +77,6 @@ the \em{unstraightened} version of the later - and
 visa-versa. Sometimes, we also call the unstraightened perspective to
 be called \em{fibred} and the staightened version \em{indexed}.}
 
-%```agda
 \agda{
 Bundle : ∀ {𝓤} → Type 𝓤 → (𝓥 : Level) → Type (𝓤 ⊔ lsuc 𝓥)
 Bundle {𝓤} B 𝓥 = Σ[ E ∶ Type 𝓥 ] (E → B)
@@ -94,7 +95,7 @@ Bundle-equiv (E , π) (E' , π') = Σ[ e ∶ E ≃ E' ] (π' ∘ e ._≃_.fwd ~ 
 Bundle-idequiv
   : ∀ {𝓤 𝓥} {B : Type 𝓤} → {E : Bundle B 𝓥}
     → Bundle-equiv E E
-Bundle-idequiv = (idequiv , ~refl)
+Bundle-idequiv = (id≃ , ~refl)
 
 Bundle-equiv←Id
   : ∀ {𝓤 𝓥} {B : Type 𝓤} → {E E' : Bundle B 𝓥}
@@ -117,7 +118,7 @@ module WithUA {𝓤} (UU : is-univalent 𝓤)(FE : FunExt-global) where
   Bundle-equiv-is-torsorial (E , π)
     = is-singleton-structure←parts
         (equiv-is-torsorial E)
-        (_ , idequiv)
+        (_ , id≃)
         (homotopy-is-torsorial' π)
 
   Bundle-equiv←Id-is-equiv
@@ -131,18 +132,17 @@ module WithUA {𝓤} (UU : is-univalent 𝓤)(FE : FunExt-global) where
       → Bundle-equiv E E' → E ＝ E'
   Bundle-ua = is-equiv.bwd Bundle-equiv←Id-is-equiv
 
-  straighten-qiso : ∀ {B} → quasi-iso (straighten {𝓤}{𝓤}{B})
-  straighten-qiso .fst = unstraighten {𝓤}{𝓤}
-  straighten-qiso .snd .snd P
+  straighten-qinv : ∀ {B} → quasi-inv (straighten {𝓤}{𝓤}{B})
+  straighten-qinv .fst = unstraighten {𝓤}{𝓤}
+  straighten-qinv .snd .snd P
     = funext→ (λ b → ua (fibre-straighten P b))
-  straighten-qiso .snd .fst E
+  straighten-qinv .snd .fst E
     = Bundle-ua (unstraighten-straighten-bundle-equiv E)
 
   straighten-is-equiv : ∀ {B} → is-equiv (straighten {𝓤}{𝓤}{B})
-  straighten-is-equiv = is-equiv←qiso straighten-qiso
+  straighten-is-equiv = is-equiv←qinv straighten-qinv
 
   straighten≃ : ∀ {B} → Bundle B 𝓤 ≃ (B → Type 𝓤)
   straighten≃ = mk≃ _ straighten-is-equiv
 }
-%```
 }

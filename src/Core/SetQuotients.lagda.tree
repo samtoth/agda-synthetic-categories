@@ -4,18 +4,16 @@
 \date{2025-12-09}
 \import{stt-macros}
 
-%```agda
 \agda{
 {-# OPTIONS --lossy-unification #-}
 
 module Core.SetQuotients where
 
 open import Foundations.Prelude
-open import ufAxioms
+open import Axioms.UF
 open import Core.Coequalisers
 open import Modalities.Instances.Truncation
 }
-%```
 
 
 \subtree[stt-00D2]{
@@ -31,7 +29,6 @@ open import Modalities.Instances.Truncation
 \p{We define this as the set truncation of the coequaliser of
    the two projections #{(a, b : A) \times R(a,b) \rightrightarrows A}.}
 
-%```agda
 \agda{
 private
   tot : ∀ {𝓤 𝓥} {A : Type 𝓤} (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
@@ -45,49 +42,50 @@ private
 
 
 _/_ : ∀ {𝓤 𝓥} (A : Type 𝓤) (R : A → A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-X / R = Trunc 2 (Coeq {A = tot R} left right)
+X / R = Trunc 0 (Coeq {A = tot R} left right)
 
 module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
   ι-quot : A → A / R
   ι-quot a = Trunc.η (ι-coeq a)
 
-  quot : (x : tot R ) → ι-quot (left x) ＝ ι-quot (right x)
+  quot : (x : tot R) → ι-quot (left x) ＝ ι-quot (right x)
   quot = ap Trunc.η ∘ glue-coeq
 
   glue-quot : {x y : A} (r : R x y) → ι-quot x ＝ ι-quot y
   glue-quot {x} {y} r = quot (x , y , r)
 }
-%```
 
 \p{We prove a number of elimination principles for set quotients.}
 
-%```agda
 \agda{
   opaque
-    Coforkᵈ←Quot-elim-data : ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (∀ a → Idᵈ (ap B (quot a)) (f (left a)) (f (right a)))
-              → Coforkᵈ left right (B ∘ Trunc.η)
+    Coforkᵈ←Quot-elim-data
+      : ∀ {𝓦} {B : A / R  → Type 𝓦}
+        → ⦃ ∀ { x } → Is-truncated 0 (B x) ⦄
+        → (f : ∀ x → B (ι-quot x))
+        → (∀ a → Idᶠ B (quot a) (f (left a)) (f (right a)))
+        → Coforkᵈ left right (B ∘ Trunc.η)
     Coforkᵈ←Quot-elim-data {B = B} f f-R .fst = f
     Coforkᵈ←Quot-elim-data {B = B} f f-R .snd =
       λ a → ap (λ h → coe  h (f (left a)))
-               ((ap-∘ B Trunc.η ) (glue-coeq a)) ∙  f-R a
+               ((ap-∘ B Trunc.η) (glue-coeq a)) ∙  f-R a
 
 
-    Quot-elim : ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (∀ a → Idᵈ (ap B (quot a)) (f (left a)) (f (right a)))
-              → ∀ x → B x
+    Quot-elim
+      : ∀ {𝓦} {B : A / R  → Type 𝓦}
+        → ⦃ ∀ { x } → Is-truncated 0 (B x) ⦄
+        → (f : ∀ x → B (ι-quot x))
+        → (∀ a → Idᶠ B (quot a) (f (left a)) (f (right a)))
+        → ∀ x → B x
     Quot-elim f f-R =
       Trunc.ind (λ _ → trunc!) (coeq-ind (Coforkᵈ←Quot-elim-data f f-R))
 
-    Quot-elimβ :  ∀ {𝓦} {B : A / R  → Type 𝓦}
-              → ⦃ H : ∀ { x } → Is-truncated 2 (B x) ⦄
-              → (f : ∀ x → B (ι-quot x))
-              → (f-R : ∀ a → Idᵈ (ap B (quot a)) (f (left a)) (f (right a)))
-              → Quot-elim f f-R ∘ ι-quot ~ f
+    Quot-elimβ
+      : ∀ {𝓦} {B : A / R  → Type 𝓦}
+        → ⦃ H : ∀ { x } → Is-truncated 0 (B x) ⦄
+        → (f : ∀ x → B (ι-quot x))
+        → (f-R : ∀ a → Idᶠ B (quot a) (f (left a)) (f (right a)))
+        → Quot-elim f f-R ∘ ι-quot ~ f
     Quot-elimβ {B = B} f f-R x =
       Quot-elim f f-R (ι-quot x)
         ＝⟨ Trunc.ind-β (λ _ → trunc!)
@@ -98,36 +96,40 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
       f x ∎
 
 
-    Quot-elim-prop : ∀ {𝓦} {B : A / R  → Type 𝓦}
-                   → ⦃ ∀ { x } → Is-truncated 1 (B x) ⦄
-                   → (f : ∀ x → B (ι-quot x))
-                   → ∀ x → B x
+    Quot-elim-prop
+      : ∀ {𝓦} {B : A / R  → Type 𝓦}
+        → ⦃ ∀ { x } → Is-truncated -1 (B x) ⦄
+        → (f : ∀ x → B (ι-quot x))
+        → ∀ x → B x
     Quot-elim-prop f =
-      Quot-elim {{ mk-trunc (suc-is-truncated 1 trunc!) }}
+      Quot-elim {{ mk-trunc (suc-is-truncated -1 trunc!) }}
                 f
                 λ a → is-prop←is-truncated trunc! _ _
 
-    Quot-elim-propβ : ∀ {𝓦} {B : A / R  → Type 𝓦}
-                   → ⦃ H : ∀ { x } → Is-truncated 1 (B x) ⦄
-                   → (f : ∀ x → B (ι-quot x))
-                   →  Quot-elim-prop {B = B} f ∘ ι-quot ~ f
+    Quot-elim-propβ
+      : ∀ {𝓦} {B : A / R  → Type 𝓦}
+        → ⦃ H : ∀ { x } → Is-truncated -1 (B x) ⦄
+        → (f : ∀ x → B (ι-quot x))
+        → Quot-elim-prop {B = B} f ∘ ι-quot ~ f
     Quot-elim-propβ f =
-      Quot-elimβ {{ mk-trunc (suc-is-truncated 1 trunc!) }} f _
+      Quot-elimβ {{ mk-trunc (suc-is-truncated -1 trunc!) }} f _
 
 
-    Quot-rec : ∀ {𝓦} {B : Type 𝓦}
-             → ⦃ Is-truncated 2 B ⦄
-             → (f : A → B)
-             → (∀ (x : tot R) → f (left x) ＝ f (right x))
-             → A / R → B
+    Quot-rec
+      : ∀ {𝓦} {B : Type 𝓦}
+        → ⦃ Is-truncated 0 B ⦄
+        → (f : A → B)
+        → (∀ (x : tot R) → f (left x) ＝ f (right x))
+        → A / R → B
     Quot-rec f p = Trunc.ind (λ _ → trunc!) (coeq-rec (f , p))
 
-    Quot-rec₂ : ∀ {𝓦} {B : Type 𝓦}
-              → ⦃ Is-truncated 2 B ⦄
-              → (f : A → A → B)
-              → (∀ (x : tot R) y → f (left x) y ＝ f (right x) y)
-              → (∀ x (y : tot R)  → f x (left y) ＝ f x (right y))
-              → A / R → A / R → B
+    Quot-rec₂
+      : ∀ {𝓦} {B : Type 𝓦}
+        → ⦃ Is-truncated 0 B ⦄
+        → (f : A → A → B)
+        → (∀ (x : tot R) y → f (left x) y ＝ f (right x) y)
+        → (∀ x (y : tot R)  → f x (left y) ＝ f x (right y))
+        → A / R → A / R → B
     Quot-rec₂ f p q  =
       Trunc.ind (λ _ → trunc!)
                 λ x → Trunc.ind (λ _ → trunc!)
@@ -135,12 +137,13 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
                       (f , p , q
                       , λ _ _ → mk-square ((is-set←is-truncated trunc! _ _) _ _)) x y
 
-    Quot-rec₂β : ∀ {𝓦} {B : Type 𝓦}
-              → ⦃ H : Is-truncated 2 B ⦄
-              → (f : A → A → B)
-              → (p : ∀ (x : tot R) y → f (left x) y ＝ f (right x) y)
-              → (q : ∀ x (y : tot R)  → f x (left y) ＝ f x (right y))
-              → ∀ x y → Quot-rec₂ f p q (ι-quot x) (ι-quot y) ＝ f x y
+    Quot-rec₂β
+      : ∀ {𝓦} {B : Type 𝓦}
+        → ⦃ H : Is-truncated 0 B ⦄
+        → (f : A → A → B)
+        → (p : ∀ (x : tot R) y → f (left x) y ＝ f (right x) y)
+        → (q : ∀ x (y : tot R)  → f x (left y) ＝ f x (right y))
+        → ∀ x y → Quot-rec₂ f p q (ι-quot x) (ι-quot y) ＝ f x y
     Quot-rec₂β {B = B} f p q x y =
       Quot-rec₂ f p q (ι-quot x) (ι-quot y)
         ＝⟨ happly  (Trunc.ind-β _ _ (ι-coeq x)) (ι-quot y) ⟩
@@ -153,5 +156,4 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {R : A → A → Type 𝓥} where
           BC : BiCofork {A₁ = tot R} {A₂ = tot R} left right left right B
           BC = f , p , q , λ _ _ → mk-square ((is-set←is-truncated trunc! _ _) _ _)
 }
-%```
 }

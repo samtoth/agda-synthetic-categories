@@ -1,0 +1,144 @@
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{Surjections}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+module Core.Surjections where
+
+open import Axioms.UF
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.Singletons
+open import Foundations.Equivalences
+open import Foundations.SingletonFibres
+open import Foundations.Embeddings
+open import Foundations.PropMapEmbedding
+open import Modalities.Instances.Truncation
+}
+
+\subtree[stt-00GI]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Surjections}
+
+\p{
+A map is \em{surjective} if each of its [fibres](stt-000M) is inhabited, i.e., if the
+[propositional truncation](stt-006Q) of every fibre has an element.
+}
+
+\agda{
+is-surjective
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  → (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-surjective {B = B} f = (b : B) → ║ fibre f b ║
+}
+}
+
+\subtree[stt-00GJ]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Surjections are closed under homotopies}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level}
+  {A : Type 𝓤} {B : Type 𝓥}
+  {f g : A → B} where
+
+  is-surjective~ : f ~ g → is-surjective f → is-surjective g
+  is-surjective~ H sf b
+    = Trunc.○-rec Trunc.○∈S (Trunc.η ∘ fib-map) (sf b) where
+    fib-map : fibre f b → fibre g b
+    fib-map (a , p) = (a , sym (H a) ∙ p)
+}
+}
+
+\subtree[stt-00GO]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Proposition}
+\title{Surjections are closed under composition}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : B → C} {g : A → B} where
+
+  is-surjective-∘
+    : is-surjective f → is-surjective g → is-surjective (f ∘ g)
+  is-surjective-∘ sf sg c
+    = Trunc.○-rec Trunc.○∈S
+        (λ (b , p)
+        → Trunc.○-rec Trunc.○∈S (λ (a , q) → Trunc.η (a , ap f q ∙ p)) (sg b))
+        (sf c)
+}
+}
+
+\subtree[stt-00GK]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Proposition}
+\title{3-for-2 property of surjections}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : B → C} {g : A → B} where
+
+  is-surjective-right-cancel
+    : is-surjective (f ∘ g) → is-surjective f
+  is-surjective-right-cancel s c
+    = Trunc.○-rec Trunc.○∈S (λ (a , p) → Trunc.η (g a , p)) (s c)
+
+  is-surjective~∘
+    : {h : A → C}
+    → h ~ f ∘ g
+    → is-surjective f
+    → is-surjective g
+    → is-surjective h
+  is-surjective~∘ H sf sg
+    = is-surjective~ (H ~⁻¹) (is-surjective-∘ sf sg)
+
+  is-surjective-3-for-2~'
+    : {h : A → C}
+    → h ~ f ∘ g
+    → is-surjective h
+    → is-surjective f
+  is-surjective-3-for-2~' H sh
+    = is-surjective-right-cancel (is-surjective~ H sh)
+}
+}
+
+\subtree[stt-00GL]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{A surjective embedding is an equivalence}
+
+\agda{
+module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+
+  has-singleton-fibres←is-surjective-embedding
+    : is-surjective f → is-embedding f → has-singleton-fibres f
+  has-singleton-fibres←is-surjective-embedding surj emb b
+    = Trunc.○-rec
+        (is-truncated←is-prop is-single-is-prop)
+        (λ fib → mk-singl fib (is-prop-map←is-embedding emb b fib))
+        (surj b)
+
+  is-equiv←is-surjective-embedding
+    : is-surjective f → is-embedding f → is-equiv f
+  is-equiv←is-surjective-embedding surj emb
+    = is-equiv←has-singleton-fibres (has-singleton-fibres←is-surjective-embedding surj emb)
+}
+}

@@ -38,7 +38,7 @@ in
       mkdir -p ./output
       mkdir -p ./output/html
       echo "made /output/html dir"
-      LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html src/Everything.agda
+      LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" src/Everything.agda
       echo "Generated trees"
       forester build
       if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
@@ -55,5 +55,11 @@ in
       mkdir -p $out
       cp -Lrvf output/agda-synthetic-categories/* "$out"/
       cp -Lrvf output/html "$out"/
+      mkdir -p "$out/benchmarks"
+      cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
+      if [ -f "$out/benchmarks/data.json" ]; then
+        printf 'window.BENCHMARK_DATA = ' > "$out/benchmarks/data.js"
+        cat "$out/benchmarks/data.json" >> "$out/benchmarks/data.js"
+      fi
     '';
   }

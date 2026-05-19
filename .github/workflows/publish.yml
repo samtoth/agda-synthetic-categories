@@ -1,0 +1,82 @@
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+  workflow_run:
+    workflows:
+      - Benchmark
+    types:
+      - completed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
+
+name: Publish
+
+jobs:
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main') ||
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: agda-synthetic-categories
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+
+      - name: Prepare benchmark page data
+        run: |
+          git fetch origin benchmark-data || true
+          if git show-ref --verify --quiet refs/remotes/origin/benchmark-data; then
+            git show origin/benchmark-data:data.json > assets/benchmarks/data.json
+          fi
+
+      - name: Build
+        run: nix-build
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: result/
+          retention-days: 1
+
+  deploy:
+    needs: publish
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

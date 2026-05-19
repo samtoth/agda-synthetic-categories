@@ -1,62 +1,51 @@
-\title{Initial and terminal objects}
+\title{Initial objects}
 \taxon{Module}
 \date{2026-02-28}
 \author{samueltoth}
 \import{stt-macros}
 
 
-%```agda
 \agda{
-{-# OPTIONS --lossy-unification #-}
 open import Foundations.Prelude
 open import Algebra.Lattice
 
 module Synthetic.Categories.Initial
-        {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
 open is-distributive I-distr
 
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I I-distr
-
-open import ufAxioms
+open import Axioms.UF
 
 open import Ergonomics.Extensionality
 
-open import Core.CoSlice
-open import Core.Arrow
-open import Core.ArrowEquiv
-open import Core.PullbackPower
-open import Core.Orthogonal
-
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Categories.Simplicial Δ¹ I I-distr
+open import Synthetic.Simplicial Δ¹ I I-distr
 open import Synthetic.Categories.Precategories Δ¹ I I-distr
-open import Synthetic.Categories.Covariant Δ¹ I I-distr
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
 open import Synthetic.Categories.Comma Δ¹ I I-distr
-open import Synthetic.Categories.HomFamilies Δ¹ I I-distr
+open import Synthetic.Categories.LeftSegal Δ¹ I I-distr
+open import Synthetic.Categories.CovariantHomFamily Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
 open import Synthetic.Categories.Adjoints Δ¹ I I-distr
+
+open import Foundations.UnitUP
 }
-%```
 
 
 \subtree[stt-00FO]{
 \title{Initial objects}
 \taxon{Definition}
 
-\p{We call an object #{a : A} initial if for every #{b : A}, the type
-#{\Hom(a,b)} is a singleton.}
+\p{
+We call an object #{a : A} \em{initial} if for every #{b : A}, the type #{\Hom(a,b)}
+is a singleton.
+}
 
-%```agda
 \agda{
 is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
 is-initial a = ∀ b → is-singleton (Hom _ a b)
 }
-%```
 }
 
 \subtree[stt-00FP]{
@@ -66,10 +55,9 @@ is-initial a = ∀ b → is-singleton (Hom _ a b)
 an equivalence.}
 
 \proof{
-\p{By considering fibres.}
+\p{Follows by considering fibres.}
 }
 
-%```agda
 \agda{
 is-initial←slice-proj-is-equiv
   : ∀ {𝓤} {A : Type 𝓤} a
@@ -78,34 +66,35 @@ is-initial←slice-proj-is-equiv
 is-initial←slice-proj-is-equiv a eq b
   = is-single←equiv-to-single
       (Σ-assoc ∙≃ Homᵈ-repr≃ e⁻¹)
-      (is-contr-map←is-equiv eq b)
+      (has-singleton-fibres←is-equiv eq b)
 }
-%```
 }
 
 \subtree[stt-00G0]{
 \taxon{Lemma}
 \title{Initial objects are preserved by left adjoints}
 
-\p{For a map #{l : A \to B}, if there is a map #{r} with #{l \dashv r},
+\p{
+For a map #{l : A \to B}, if there is a map #{r} with #{l \dashv r},
 #{l(a)} is an initial object of #{B} if #{a} is initial in #{A}.
 }
 
-%```agda
 \agda{
 is-initial←ladj
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
-    → (l : A → B) → (r : B → A) → l ⊣ r
-    → is-initial a → is-initial (l a)
+    → (l : A → B) (r : B → A)
+    → (l ⊣ r)
+    → is-initial a
+    → is-initial (l a)
 is-initial←ladj f g fg ai b
   = is-single←equiv-to-single (fg _ b e⁻¹) (ai (g b))
 }
-%```
 
-\p{In particular, since [equivalences are left adjoints](stt-00G2),
-they also preserve initial objects.}
+\p{
+In particular, since [equivalences are left adjoints](stt-00G2), they also preserve
+initial objects.
+}
 
-%```agda
 \agda{
 opaque
   is-initial←is-equiv
@@ -115,300 +104,70 @@ opaque
   is-initial←is-equiv {F = F}
     = is-initial←ladj F _  ∘ is-left-adjoint←is-equiv
 }
-%```
 }
 
-\subtree[stt-00FQ]{
-\taxon{Example}
-\title{Initial objects in the coslice category}
+\subtree[stt-00LJ]{
+\title{Initiality in the coslice}
+\taxon{Theorem}
+\author{samueltoth}
+\author{fredrikbakke}
 
-\p{If #{A} is a precategory, then #{(a , \id)} is an initial object in #{A_{a/}}.}
-
-
-\p{We hope to prove the projection #{{A_{a/}}_{\id /} \to A_{a/}} is an
-equivalence. And to this end, we start with a lemma describing this iterated
-coslice category:}
-
-\subtree[stt-00FZ]{
-\taxon{Lemma}
-\title{Describing iterated coslices}
-
-\p{We show that the type #{{A_{a/}}_{\id /}} is equivalent to squares in #{A}
-where the top left span are both the identity map. }
-
-\p{Note the extra coherence in the type of this square:
-##{\Sigma_{K : A^{\square}} \Sigma_{p : \Pi_{i} K(i,0) = a} \Sigma_{q : \Pi_{j} K(0,j) = a} p(0) = q(0)}
+\p{
+If #{A} is a precategory, then #{(a , \id)} is an initial object in the representable
+coslice #{\Sigma_{x : A}\Hom_A(a,x)}.
 }
 
-%```agda
 \agda{
-coslice-coslice-repr≃
-  : ∀ {𝓤} {A : Type 𝓤} a
-    → (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-             Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-    ≃ Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))
-}
-%```
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A) where
 
-\closedScope{
-\proof{
-%```agda
-\agda{
-coslice-coslice-repr≃ {A = A} a
-  = ((Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-       Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0)))
+  tr-cov-hom-idH
+    : {a b : A} (f : Hom A a b)
+    → tr-cov-hom (hom-fam-cov 𝐴ₗ a) f (idH a) ＝ f
+  tr-cov-hom-idH f
+    = CovariantActionPostcomp.tr-cov-hom-is-comp 𝐴ₗ f (idH _)
+    ∙ ∘-left-unit (is-segal←is-left-segal 𝐴ₗ) f
 
-         ≃⟨ Σ-assoc e⁻¹
-        ∙≃ Σ-ap-≃-fst {B = λ sq →  Σ[ q ∶ (∀ j → sq i0 .snd tt .Homᵈ.hom j ＝ a)]
-                                     (sq i0 .snd tt .Homᵈ.hom0 ＝ q i0) }
-            ((Σ-Π-swap≃ _ λ _ sq → sq i0 ＝ a) e⁻¹
-             ∙≃ postcomp-Π-≃ (λ i → Coslice-object-repr≃ a e⁻¹)) ⟩
+  Sing'-Hom≃Hom-repr-coslice
+    : {a b : A} (f : Hom A a b)
+    → Sing' (Hom A a b) f ≃ Hom (Σ A (Hom _ a)) (a , idH a) (b , f)
+  Sing'-Hom≃Hom-repr-coslice {a} f
+    = Σ-snd-≃
+        (λ g → ＝-postcomp-≃ (tr-cov-hom-idH g)
+             ∙≃ Hom-cov'≃ (Hom _ a) (hom-fam-cov 𝐴ₗ a) g (idH a) f)
+    ∙≃ Hom-Σ≃ e⁻¹
 
-    ((Σ[ sl ∶ ((i : Δ¹) → (Coslice A (const _ 𝟙 a)))]
-       Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
-         (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)))
-
-          ≃⟨ Σ-ap-≃ II ⟩
-
-    (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))]
-      Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-        (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a)))
-
-          ≃⟨ Σ-ap-≃ (λ sl →  mk≃ _ (Coslice-path-is-equiv {x = sl i0}) ) ⟩
-
-    (Σ[ sl ∶ (Δ¹ → Coslice A (const _ 𝟙 a))] (sl i0 ＝ (a , λ _ → idH a))) ≃∎ where
-
-    II-map : (w : A) (sl : Hom A a w)
-       → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
-           (sl .Homᵈ.hom0 ＝ q i0)
-       → Σ[ sl01 ∶ (w ＝ a)]
-           (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
-    II-map w x (p , coh) .fst = sym (x .Homᵈ.hom1) ∙ p i1
-    II-map w x (p , coh) .snd tt .fst = p
-    II-map w x (p , coh) .snd tt .snd .fst = mk-square (ap (_∙ refl) (sym coh))
-    II-map w x@(mk-hom _ _ refl) (p , coh) .snd tt .snd .snd
-      = Square-degen-hor _ _ refl
-
-    II-inv : (w : A) (sl : Hom A a w)
-       → Σ[ sl01 ∶ (w ＝ a)]
-           (∀ _ → Hom-pathᵈ refl sl01 sl (idH a))
-       → Σ[ q ∶ (∀ j → sl .Homᵈ.hom j ＝ a)]
-           (sl .Homᵈ.hom0 ＝ q i0)
-    II-inv w x (a , b) .fst = b tt .fst
-    II-inv w x (a , b) .snd
-        = unap-equiv {f = _∙ refl} (∙-is-equiv' _)
-                     (sym (un-square (b tt .snd .fst)))
-
-
-    qiso : ∀ a x → quasi-iso (II-map a x)
-    qiso w x .fst = II-inv w x
-    qiso w x .snd .fst (a , b) = Σ-path→ (refl
-      , (unap-equiv (∙-is-equiv' _) (sym _)
-             ＝⟨ ap (unap-equiv (∙-is-equiv' _))
-                    (ap sym (un-mk-square (ap (_∙ refl) (sym b)))
-                    ∙ sym (ap-sym (_∙ refl) (sym b))
-                    ∙ ap (ap (_∙ refl)) sym-sym) ⟩
-         unap-equiv (∙-is-equiv' _) (ap (_∙ refl) b)
-           ＝⟨ unap-ap-equiv _ b ⟩
-         b ∎))
-    qiso w x .snd .snd (refl , t)
-       = let path = Id←IdS {a = x} {b = idH _} (Hom-path←pathᵈ (t tt))
-         in tr (λ p → II-map w x (qiso w x .fst (refl , λ _ → p)) ＝ (refl , λ _ → p))
-               (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄ path) ＝⟨⟩
-               (Hom-pathᵈ←path (IdS←Id ⦃ IdS-Hom ⦄
-                               (Id←IdS {a = x} (Hom-path←pathᵈ (t tt)))))
-                                             ＝⟨ ap Hom-pathᵈ←path
-                                                    (IdS←Id←IdS ⦃ IdS-Hom ⦄
-                                                      (Hom-path←pathᵈ (t tt))) ⟩
-               (Hom-pathᵈ←path (Hom-path←pathᵈ (t tt)))
-                                             ＝⟨ _≃_.ε Hom-pathᵈ≃path (t tt)  ⟩
-               t tt ∎)
-               (help x path) where
-         opaque
-           unfolding Square
-           III : Square-degen-hor {a = a} refl refl refl ＝ mk-square refl
-           III = refl
-           IV : II-map w (idH w)
-                 (qiso w (idH w) .fst
-                  (refl ,
-                   (λ _ → Hom-pathᵈ←path (Identity-system.IdS←Id IdS-Hom refl))))
-                 .snd tt .snd .fst
-                 ＝
-                 mk-square
-                 (Identity-system.IdS←Id IdS-Hom {a = idH w} refl .snd .fst ∙
-                  sym (∙-reflr (Homᵈ.hom0 (idH w))))
-           IV = ap (ap (_∙ refl)) (ap sym (unap-refl (∙-is-equiv' refl)))
-                ∙ refl
-
-
-         help : ∀ (x' : Hom A w w) → (p : x' ＝ idH w)
-              → II-map w x' (qiso w x' .fst (refl , λ _ → Hom-pathᵈ←path (IdS←Id p)))
-              ＝ (refl , λ _ → Hom-pathᵈ←path (IdS←Id p))
-         help x' refl = Σ-path→ (refl , (funext→
-           (λ a₁ → Σ-path→ (refl , (×-path→ (IV , III))))))
-
-    II : (sl : Δ¹ → Coslice A (const A 𝟙 a))
-       → Σ[ q ∶ (∀ j → sl i0 .snd tt .Homᵈ.hom j ＝ a)]
-           (sl i0 .snd tt .Homᵈ.hom0 ＝ q i0)
-       ≃ Σ[ sl01 ∶ (sl i0 .fst ＝ a)]
-           (∀ _ → Hom-pathᵈ refl sl01 (sl i0 .snd tt) (idH a))
-    II x ._≃_.fwd = II-map (x i0 .fst) (x i0 .snd tt)
-    II x ._≃_.has-is-eqv = is-equiv←qiso (qiso (x i0 .fst) (x i0 .snd tt))
-}
-%```
-}
-}
-}
-
-\proof{
-\p{Now we give a diagram where all maps apart from our desired projection
-are equivalences, and hence by the 3 for 2 property, the projection is an
-equivalence and #{(a,\id)} is an initial object.}
-
-\quiver{
-\begin{tikzcd}
-	{{A_{a/}}_{\id /}} && S \\
-	&&& S \\
-	&&& {{A_{a/}}_{\id /}} & {\Sigma_{f : {C_{x/}}^{\Delta^1}} f(0)=(a,\id )} \\
-	\\
-	{A_{a/}} && {\Sigma_{k: A^{\Delta^1}\times_A A_{/a}} \pi_2k = (a,\id )}
-	\arrow["{(4)}"', from=1-1, to=5-1]
-	\arrow["{(3)}"', from=1-3, to=1-1]
-	\arrow["{(5)}", from=1-3, to=2-4]
-	\arrow["{(3)}", from=2-4, to=3-4]
-	\arrow[equals, from=3-4, to=3-5]
-	\arrow["{(1)}", from=3-4, to=5-3]
-	\arrow["{(2)}", from=5-3, to=5-1]
-\end{tikzcd}
-}
-
-\p{We write #{S} for the representation of the iterated coslice as in
-\ref{stt-00FZ}.}
-
-\ol{
-\li{Is an equivalence since #{A_{a/} \to A} is a left fibration}
-\li{just contracts away the singleton #{\pi_2 k}. What remains is
-#{\Sigma_{f : A^{\Delta^1}} f(0) = a}, which is exactly #{A_{a/}}.}
-\li{Is the equivalence of \ref{stt-00FZ}}
-\li{Is the projection map we want to be an equivalence}
-\li{Is the automorphisms on the square that swaps #{i} and #{j}.}
-}
-
-\p{Notice that the type #{{A_{a/}}_{\id /}} (which is just a square with top
-left half constant at #{a}) occurs twice in this diagram.
-The composite #{(2) \circ (1)} takes the right map, and the map #{(4)} takes
-the bottom map, thus we insert the mirroring automorphism in this diagram so
-that it trivially commutes.}
-}
-
-
-%```agda
-\agda{
-coslice-init
-  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) a
-    → is-initial {A = Coslice A (const _ 𝟙 a)} (a , λ _ → idH a)
-coslice-init {A = A} As Asi a
-  = is-initial←slice-proj-is-equiv _ proj-is-equiv where
-  mirror-aut
-    : (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-    → (Σ[ sq ∶ ((i j : Δ¹) → A)] Σ[ p ∶ (∀ i → sq i i0 ＝ a)]
-          Σ[ q ∶ (∀ j → sq i0 j ＝ a)] (p i0 ＝ q i0))
-  mirror-aut (sq , p , q , coh) .fst i j = sq j i
-  mirror-aut (sq , p , q , coh) .snd .fst = q
-  mirror-aut (sq , p , q , coh) .snd .snd .fst = p
-  mirror-aut (sq , p , q , coh) .snd .snd .snd = sym coh
-
-  mirror-aut-invol : mirror-aut ∘ mirror-aut ~ id
-  mirror-aut-invol (sq , p , q , coh)
-    = Σ-path→ (refl , Σ-path→ (refl , Σ-path→ (refl , sym-sym)))
-
-  mirror-aut-is-equiv : is-equiv mirror-aut
-  mirror-aut-is-equiv = is-equiv←qiso
-    ( mirror-aut
-    , mirror-aut-invol
-    , mirror-aut-invol)
-
-  proj : Σ[ f ∶ (Δ¹ → Coslice A (const _ 𝟙 a)) ] (f i0 ＝ (a , λ _ → idH a))
-       → Coslice A (const _ 𝟙 a)
-  proj (f , _) = f i1
-
-  factor1 : Σ[ f ∶ (Δ¹ → Coslice A (const _ 𝟙 a)) ] (f i0 ＝ (a , λ _ → idH a))
-        → Σ[ x ∶ Arrow-map (const _ 𝟙 i0) {C = Coslice A (const _ _ a)} fst ]
-            (Arrow-map.top x tt ＝ (a , (λ _ → idH a)))
-  factor1 = total-map-fst (pullback-power (const _ 𝟙 i0) fst)
-                        {B = λ x → Arrow-map.top x tt ＝ (a , λ _ → idH a)}
-
-  factor2
-    : Σ[ x ∶ Arrow-map (const _ 𝟙 i0) {C = Coslice A (const _ 𝟙 a)} fst ]
-            (Arrow-map.top x tt ＝ (a , (λ _ → idH a)))
-    → Σ[ f ∶ (Δ¹ → A)]
-        Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-         (f i0 ＝ g .fst .fst)
-  factor2 (mk-amap f g h , p) = (g , (f tt , p) , h tt)
-
-  factor2-qiso : quasi-iso factor2
-  factor2-qiso .fst (g , (f , p) , h)
-    = (mk-amap (λ _ → f) g λ _ → h) , p
-  factor2-qiso .snd .fst (mk-amap f g h , p) = refl
-  factor2-qiso .snd .snd (g , (f , p) , h) = refl
-
-  factor3 : Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-        → Σ[ f ∶ (Δ¹ → A)]
-            Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-             (f i0 ＝ g .fst .fst)
-  factor3 (f , p) = (f , ((a , λ _ → idH a) , refl) , p)
-
-  factor3-inv
-    : Σ[ f ∶ (Δ¹ → A)]
-        Σ[ g ∶ (Σ (Coslice A (const _ 𝟙 a)) (_＝ (_ , λ _ → idH a)))]
-         (f i0 ＝ g .fst .fst)
-    → Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-  factor3-inv (f , p , q) = (f , q ∙ ap fst (p .snd))
-
-  factor3-qiso : quasi-iso factor3-inv
-  factor3-qiso .fst = factor3
-  factor3-qiso .snd .fst (f , ((g , k) , refl) , h)
-    = Σ-path→ (refl , (Σ-path→ (refl , (∙-reflr _))))
-  factor3-qiso .snd .snd (f , p) = Σ-path→ (refl , ∙-reflr _)
-
-  factor4 : Coslice A (const _ 𝟙 a) → Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)
-  factor4 = Coslice-object-repr≃ a ._≃_.fwd
-
-  coslice-id-map = _≃_.fwd (coslice-coslice-repr≃ a)
-
-  factorisation : factor4 ∘ proj ∘ coslice-id-map
-                ~ factor3-inv ∘ factor2 ∘ factor1 ∘ (coslice-id-map) ∘ mirror-aut
-  factorisation (sq , p , q , coh) = fibre-path→ (refl , Coslice-path-ap-fst _)
-
-  opaque
-    proj-is-equiv : is-equiv proj
-    proj-is-equiv = 3-for-2 {f = factor4}
-      (Coslice-object-repr≃ a ._≃_.has-is-eqv)
-      (3-for-2~' {f = factor4 ∘ proj} {g = coslice-id-map}
-        (factorisation ~⁻¹)
-        (coslice-coslice-repr≃ a ._≃_.has-is-eqv)
-        (is-equiv-∘ {f = factor3-inv}
-          (is-equiv←qiso factor3-qiso)
-          (is-equiv-∘ {f = factor2}
-            (is-equiv←qiso factor2-qiso)
-            (is-equiv-∘ {f = factor1}
-              (total-is-equiv←fst-is-equiv
-                (pb-power-is-equiv←orthogonal
-                  (coslice-is-left⇔is-segal←triangulated
-                    (simp-is-triangulated Asi) .fst As a)))
-              (is-equiv-∘ {f = coslice-id-map}
-                (coslice-coslice-repr≃ a ._≃_.has-is-eqv)
-                mirror-aut-is-equiv)))))
+  coslice-init'-left-segal
+    : (a : A) → is-initial {A = Σ A (Hom _ a)} (a , idH a)
+  coslice-init'-left-segal a (b , f)
+    = is-single←equiv-to-single (Sing'-Hom≃Hom-repr-coslice f) Sing'-is-singleton
 
 coslice-init'
-  : ∀ {𝓤} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) a
-    → is-initial {A = Σ A (Hom _ a)} (a , idH a)
-coslice-init' Seg Simp a
-  = is-initial←is-equiv
-      {F = total-map (λ _ → ev tt)}
-      (is-total-equiv←is-fibrewise-equiv (λ _ → unit-ev-is-equiv))
-      (coslice-init Seg Simp a)
+  : {𝓤 : Level} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) (a : A)
+  → is-initial (a , idH a)
+coslice-init' As Asimp
+  = coslice-init'-left-segal
+      (is-left-segal←is-segal←is-triangulated (simp-is-triangulated Asimp) As)
 }
-%```
+
+\p{
+As a corollary, if #{A} is a precategory (or more generally left Segal), then
+#{(a , \id)} is an initial object in #{A_{a/}}.
+}
+
+\agda{
+coslice-init-left-segal
+  : {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A) (a : A)
+  → is-initial {A = Coslice A (point a)} (a , λ _ → idH a)
+coslice-init-left-segal 𝐴ₗ a
+  = is-initial←is-equiv
+      (Σ-snd-≃ (λ _ → unit-UP≃ e⁻¹) ._≃_.fwd-is-equiv)
+      (coslice-init'-left-segal 𝐴ₗ a)
+
+coslice-init
+  : {𝓤 : Level} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) (a : A)
+  → is-initial {A = Coslice A (point a)} (a , λ _ → idH a)
+coslice-init As Asimp
+  = coslice-init-left-segal
+      (is-left-segal←is-segal←is-triangulated (simp-is-triangulated Asimp) As)
+}
 }

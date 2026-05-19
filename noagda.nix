@@ -44,8 +44,7 @@ in pkgs.mkShell {
     ];
 
     shellHook = ''
-    echo "Welcome to the dev shell!"
-    echo "Agda version: $(agda --version)"
+    echo "Welcome to the lightweight dev shell!"
     echo "Forester version: $(forester --version || echo not found)"
     '';
 }

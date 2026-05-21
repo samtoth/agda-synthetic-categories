@@ -1,0 +1,261 @@
+\date{2026-05-19}
+\title{Descent for cocomma types}
+\taxon{Module}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Prelude
+open import Algebra.Lattice
+open import Synthetic.Tiny
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
+import Synthetic.Cubes
+import Synthetic.Categories.Spaces
+
+module Synthetic.Categories.DescentCocomma
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  (open Lattice I renaming (0l to i0; 1l to i1))
+  (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+  (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
+  (@♭ √-is-tiny-str
+    : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure Δ¹ A (√ A) √ε)
+  (open Synthetic.Cubes Δ¹ i0 i1)
+  (@♭ cubes-detect-cont : detects-continuity □^_)
+  (@♭ simplicial-conn : detects-connectivity (point Δ¹))
+  (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
+  (open Synthetic.Categories.Spaces
+    Δ¹ I I-distr √ √ε √-is-tiny-str cubes-detect-cont simplicial-conn ♭Δ¹-ind)
+  (@♭ √ᵈ-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+        (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+      → ((γ : Δ¹ → Γ) → is-prop (A γ))
+      → (γ : Γ) → is-prop (Dependent√.√ᵈ Δ¹ √ √ε √-is-tiny-str A γ))
+  ( acov-path-to-i0
+    : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄
+      → (∀ {i} → is-acov (i ＝ i0 → A)) )
+  (non-triv : i1 ≠ i0)
+  where
+
+open import Foundations.Prelude
+open import Axioms.UF
+open import Core.Arrows
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Cocomma Δ¹ I I-distr
+open import Core.ArrowEquiv
+open import Ergonomics.Extensionality
+open import Synthetic.Categories.CovariantSpanDiagrams Δ¹ I I-distr √ √ε √-is-tiny-str cubes-detect-cont simplicial-conn ♭Δ¹-ind
+open covariant-span-diagramᵈ
+
+open UIdS √ᵈ-is-prop
+open DUA ⦃ acov-path-to-i0 ⦄ non-triv √ᵈ-is-prop
+}
+
+\subtree[fre-S001]{
+\title{Displayed covariant span diagrams classify directed cocones into the universe of spaces}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+module _ {𝓤 𝓥 𝓦} {@♭ 𝓛} {S : Span 𝓤 𝓥 𝓦} where
+
+  span←directed-cocone
+    : directed-cocone S (Space (𝓘 ⊔ 𝓛))
+    → covariant-span-diagramᵈ S (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛)
+  span←directed-cocone C
+    = mk-cov-span-diagramᵈ
+        (C .directed-cocone.i)
+        (C .directed-cocone.j)
+        (λ s → C .directed-cocone.filler s .Homᵈ.hom i0)
+        (λ s → C .directed-cocone.filler s .Homᵈ.hom i1)
+        (λ s → tr-𝓢 (C .directed-cocone.filler s .Homᵈ.hom))
+        (λ s → coe≃ (ap Space.Carrier (C .directed-cocone.filler s .Homᵈ.hom0)))
+        (λ s → coe≃ (ap Space.Carrier (C .directed-cocone.filler s .Homᵈ.hom1)))
+
+  directed-cocone←span
+    : covariant-span-diagramᵈ S (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛)
+    → directed-cocone S (Space (𝓘 ⊔ 𝓛))
+  directed-cocone←span P
+    = mk-directed-cocone
+        (P .Left)
+        (P .Right)
+        (λ s → mk-hom
+          (is-equiv.bwd (dua {𝓛}) (P .Centre0 s , P .Centre1 s , P .Centre→ s))
+          (ap fst
+              (is-equiv.ε (dua {𝓛}) (P .Centre0 s , P .Centre1 s , P .Centre→ s))
+            ∙ UFib-path← (P .Centre0 s) (P .Left (Span.left S s)) (P .Left≃ s))
+          ( ap (fst ∘ snd)
+               (is-equiv.ε (dua {𝓛}) (P .Centre0 s , P .Centre1 s , P .Centre→ s))
+            ∙ UFib-path← (P .Centre1 s) (P .Right (Span.right S s)) (P .Right≃ s)))
+
+  opaque
+    directed-cocone←span-is-retraction
+      : directed-cocone←span ∘ span←directed-cocone ~ id
+    directed-cocone←span-is-retraction C
+      = ext!
+          ( ~refl
+          , ~refl
+          , λ s → let f = C .directed-cocone.filler s in Hom-pathᵈ←path
+            ( happly (is-equiv.η (dua {𝓛}) (f .Homᵈ.hom))
+            , dua-hom0-β (f .Homᵈ.hom) (f .Homᵈ.hom0)
+            , dua-hom1-β (f .Homᵈ.hom) (f .Homᵈ.hom1)))
+
+    span←directed-cocone-is-section
+      : span←directed-cocone ∘ directed-cocone←span ~ id
+    span←directed-cocone-is-section
+      (mk-cov-span-diagramᵈ P-left P-right P-centre0 P-centre1 P-centre→ e-left e-right)
+      = ap (mk-cov-span-diagramᵈ' P-left P-right)
+           (unap-equiv
+            (covariant-spanᵈ≃Π-family P-left P-right ._≃_.fwd-is-equiv)
+            (funext→ λ s
+              → let x = (P-centre0 s , P-centre1 s , P-centre→ s)
+                    h = is-equiv.bwd (dua {𝓛}) x
+                in J
+                  (λ y p
+                    → (el : Space.Carrier (fst y)
+                          ≃ Space.Carrier (P-left (Span.left S s)))
+                    → (er : Space.Carrier (fst (snd y))
+                          ≃ Space.Carrier (P-right (Span.right S s)))
+                    → Id (covariant-span-diagramᵈ-family S (𝓘 ⊔ 𝓛) P-left P-right s)
+                      ( h i0
+                      , h i1
+                      , tr-𝓢 h
+                      , coe≃ (ap Space.Carrier
+                          ( ap fst p
+                          ∙ UFib-path← (fst y) (P-left (Span.left S s)) el))
+                      , coe≃ (ap Space.Carrier
+                          ( ap (fst ∘ snd) p
+                          ∙ UFib-path← (fst (snd y)) (P-right (Span.right S s)) er)))
+                      (fst y , fst (snd y) , snd (snd y) , el , er))
+                  (λ el er → Σ-path→
+                    ( refl
+                    , Σ-path→
+                      ( refl
+                      , ×-path→
+                        ( refl
+                        , ×-path→
+                          ( UFib-path←-β (h i0) (P-left (Span.left S s)) el
+                          , UFib-path←-β (h i1) (P-right (Span.right S s)) er)))))
+                  (is-equiv.ε (dua {𝓛}) x)
+                  (e-left s)
+                  (e-right s)))
+
+  span←directed-cocone-is-equiv
+    : is-equiv span←directed-cocone
+  span←directed-cocone-is-equiv
+    = is-equiv←qinv
+        ( directed-cocone←span
+        , directed-cocone←span-is-retraction
+        , span←directed-cocone-is-section)
+
+  directed-cocone≃span
+    : directed-cocone S (Space (𝓘 ⊔ 𝓛))
+    ≃ covariant-span-diagramᵈ S (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛) (𝓘 ⊔ 𝓛)
+  directed-cocone≃span
+    = mk≃ span←directed-cocone span←directed-cocone-is-equiv
+}
+}
+
+\subtree[fre-S002]{
+\title{Descent for cocomma types}
+\taxon{Theorem}
+\author{fredrikbakke}
+
+\p{
+Space-valued families over cocomma types are equivalent to displayed covariant span
+diagrams over their defining spans.
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛} (c : directed-cocone S X) where
+
+  span←family-up-cocomma
+    : ∀ {@♭ 𝓜}
+    → (X → Space (𝓘 ⊔ 𝓜))
+    → covariant-span-diagramᵈ S (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜)
+  span←family-up-cocomma = span←directed-cocone ∘ directed-cocone-map c
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛}
+  {c : directed-cocone S X} (up-c : up-cocomma c)
+  where
+
+  descent-up-cocomma
+    : ∀ {@♭ 𝓜} → is-equiv (span←family-up-cocomma c {𝓜})
+  descent-up-cocomma
+    = is-equiv-∘ span←directed-cocone-is-equiv up-c
+
+  descent-up-cocomma≃
+    : ∀ {@♭ 𝓜}
+    → (X → Space (𝓘 ⊔ 𝓜))
+    ≃ covariant-span-diagramᵈ S (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜)
+  descent-up-cocomma≃
+    = mk≃ (span←family-up-cocomma c) (descent-up-cocomma)
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {@♭ 𝓜} {S : Span 𝓤 𝓥 𝓦}
+  {X : Type 𝓛} {c : directed-cocone S X} (up-c : up-cocomma c)
+  (P : covariant-span-diagramᵈ S (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜) (𝓘 ⊔ 𝓜))
+  (open covariant-span-diagramᵈ)
+  where
+
+  uniqueness-descent-up-cocomma
+    : is-singleton (fibre (span←family-up-cocomma c) P)
+  uniqueness-descent-up-cocomma
+    = has-singleton-fibres←is-equiv (descent-up-cocomma up-c) P
+
+  family-descent-up-cocomma : X → Space (𝓘 ⊔ 𝓜)
+  family-descent-up-cocomma
+    = uniqueness-descent-up-cocomma .centre .fst
+
+  compute-family-descent-up-cocomma
+    : span←family-up-cocomma c family-descent-up-cocomma ＝ P
+  compute-family-descent-up-cocomma
+    = uniqueness-descent-up-cocomma .centre .snd
+
+  compute-left-descent-up-cocomma
+    : (a : Span.Left S)
+    → Space.Carrier (family-descent-up-cocomma (directed-cocone.i c a))
+    ≃ Space.Carrier (P .Left a)
+  compute-left-descent-up-cocomma
+    = coe≃
+    ∘ ap Space.Carrier
+    ∘ happly (ap covariant-span-diagramᵈ.Left compute-family-descent-up-cocomma)
+
+  compute-right-descent-up-cocomma
+    : (b : Span.Right S)
+    → Space.Carrier (family-descent-up-cocomma (directed-cocone.j c b))
+    ≃ Space.Carrier (P .Right b)
+  compute-right-descent-up-cocomma
+    = coe≃
+    ∘ ap Space.Carrier
+    ∘ happly (ap covariant-span-diagramᵈ.Right compute-family-descent-up-cocomma)
+
+  compute-centre0-descent-up-cocomma
+    : (s : Span.Centre S)
+    → Space.Carrier
+        (family-descent-up-cocomma (directed-cocone.filler c s .Homᵈ.hom i0))
+    ≃ Space.Carrier (P .Centre0 s)
+  compute-centre0-descent-up-cocomma
+    = coe≃
+    ∘ ap Space.Carrier
+    ∘ happly
+        (ap covariant-span-diagramᵈ.Centre0 compute-family-descent-up-cocomma)
+
+  compute-centre1-descent-up-cocomma
+    : (s : Span.Centre S)
+    → Space.Carrier
+        (family-descent-up-cocomma (directed-cocone.filler c s .Homᵈ.hom i1))
+    ≃ Space.Carrier (P .Centre1 s)
+  compute-centre1-descent-up-cocomma
+    = coe≃
+    ∘ ap Space.Carrier
+    ∘ happly
+        (ap covariant-span-diagramᵈ.Centre1 compute-family-descent-up-cocomma)
+}
+}

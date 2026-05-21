@@ -17,6 +17,8 @@ the project and set up a server you can run `make server` from the nix shell, wi
 optional `PORT=` parameter (default: `1313`). To see all `make` targets run
 `make help`.
 
+<!-- TODO: installation instructions for pre-commit -->
+
 ### Installing without nix
 
 To get working on the library without nix you will at minimum need a working

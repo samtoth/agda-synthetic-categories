@@ -18,13 +18,13 @@ import Synthetic.Cubes as C
 
 module Synthetic.Categories.Spaces
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
-  (let open Lattice I renaming (0l to i0; 1l to i1))
-  (let open C Δ¹ i0 i1)
+  (open Lattice I renaming (0l to i0; 1l to i1))
+  (open C Δ¹ i0 i1)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
-  (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
-                    → is-tiny-structure Δ¹ A (√ A) √ε)
-  (@♭ cubes-detect-cont : detects-continuity {I = ℕ} □^_)
+  (@♭ √-is-tiny-str
+    : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure Δ¹ A (√ A) √ε)
+  (@♭ cubes-detect-cont : detects-continuity □^_)
   (@♭ simplicial-conn : detects-connectivity (point Δ¹))
   (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
   where
@@ -121,9 +121,9 @@ is-covariant-is-relative {B = A} P = (fwd , bwd) where
   bwd : ((x : Δ¹ → A) → is-covariant (P ∘ x)) → is-covariant P
   bwd cov h x₀ = cov h id x₀
 
-open Dependent√ Δ¹ √ √ε is-tiny-str
+open Dependent√ Δ¹ √ √ε √-is-tiny-str
                public
-open AmazinglyFibrant Δ¹ √ √ε is-tiny-str
+open AmazinglyFibrant Δ¹ √ √ε √-is-tiny-str
                is-covariant is-covariant-is-prop is-covariant-is-relative
                public
   renaming (is-afib to is-acov;
@@ -562,14 +562,15 @@ dua→ h = (h i0 , h i1 , tr-𝓢 h)
 \agda{
 module DUA
   ⦃ _ : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄ → (∀ {i} → is-acov (i ＝ i0 → A)) ⦄
-  (non-triv : i1 ＝ i0 → ∅)
-  (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
-                   → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
-  (let open Space)
+  (non-triv : i1 ≠ i0)
+  (@♭ √ᵈ-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+      → ((γ : Δ¹ → Γ) → is-prop (A γ)) → (γ : Γ) → is-prop (√ᵈ A γ))
+  (open Space)
   where
   open UIdS √ᵈ-is-prop
 
-  Gl : ∀ {@♭ 𝓤} → (A B : Space (𝓘 ⊔ 𝓤)) (f : Carrier A → Carrier B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
+  Gl : ∀ {@♭ 𝓤} (A B : Space (𝓘 ⊔ 𝓤)) (f : Carrier A → Carrier B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
   Gl A B f i
     = mk-ufib (Σ[ b ∶ Carrier B ] ((i ＝ i0) → fibre f b)) auto! where
     instance
@@ -777,6 +778,34 @@ to verify that this map is an equivalence at each endpoint.}
     ( GlΣ {𝓤}
     , (λ a → ext! (λ i → dua-retract {𝓤} a i e⁻¹))
     , (λ a → ext! (dua-section a)))
+}
+
+\agda{
+  module _ {@♭ 𝓤} (h : Δ¹ → Space (𝓘 ⊔ 𝓤)) {A : Space (𝓘 ⊔ 𝓤)} where
+
+    dua-hom0-β
+      : (p : h i0 ＝ A)
+      → happly (is-equiv.η (dua {𝓤}) h) i0 ∙ p
+      ＝ ap fst (is-equiv.ε (dua {𝓤}) (dua→ h))
+      ∙ UFib-path← (h i0) A (coe≃ (ap Carrier p))
+    dua-hom0-β p
+      = ap (happly (is-equiv.η (dua) h) i0 ∙_)
+           (sym (UFib-path←-coe≃-ap p))
+      ∙ ap (_∙ UFib-path← (h i0) _ (coe≃ (ap Carrier p)))
+           ( ap-∘ fst dua→ (is-equiv.η (dua) h)
+           ∙ ap (ap fst) (is-equiv.coherent (dua) h))
+
+    dua-hom1-β
+      : (p : h i1 ＝ A)
+      → happly (is-equiv.η (dua {𝓤}) h) i1 ∙ p
+      ＝ ap (fst ∘ snd) (is-equiv.ε (dua {𝓤}) (dua→ h))
+      ∙ UFib-path← (h i1) A (coe≃ (ap Carrier p))
+    dua-hom1-β p
+      = ap (happly (is-equiv.η (dua) h) i1 ∙_)
+           (sym (UFib-path←-coe≃-ap p))
+      ∙ ap (_∙ UFib-path← (h i1) _ (coe≃ (ap Carrier p)))
+           ( ap-∘ (fst ∘ snd) dua→ (is-equiv.η (dua) h)
+           ∙ ap (ap (fst ∘ snd)) (is-equiv.coherent (dua) h))
 }
 }
 }

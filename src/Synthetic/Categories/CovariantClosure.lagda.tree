@@ -1,0 +1,279 @@
+\title{Closure properties for covariant families}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-02-03}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.CovariantClosure
+         {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I I-distr
+
+open import Axioms.UF
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+open import Ergonomics.Notations.Orthogonality
+
+open import Modalities.Instances.Truncation
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I I-distr
+}
+
+\subtree[stt-00FU]{
+\title{Base change of covariant families}
+\taxon{Lemma}
+
+\agda{
+covariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-covariant P → is-covariant (P ∘ f)
+covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
+
+is-covariant-is-Δ¹-relative
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-covariant P ⇔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
+is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
+  = covariant-base-change {P = P} f Pc
+is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
+}
+}
+
+\subtree[stt-00FV]{
+\title{Products of Covariant families}
+\taxon{Lemma}
+
+\agda{
+×-is-covariant
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : A → Type 𝓥} {Q : A → Type 𝓦}
+      (Pc : is-covariant P) (Qc : is-covariant Q)
+    → is-covariant (λ a → P a × Q a)
+×-is-covariant {P = P} {Q} Pc Qc f (Px₀ , Qx₀)
+  = is-single←equiv-to-single
+      (Σ-snd-≃ (λ _ → Homᵈ-×≃ {P = P} {Q} f e⁻¹))
+      (is-singleton-structure←parts
+        (Pc f Px₀)
+        (Pc f Px₀ .centre)
+        (Qc f Qx₀))
+}
+}
+
+\subtree[stt-00KH]{
+\title{Sums of covariant families are covariant}
+\taxon{Lemma}
+
+\agda{
+opaque
+  Σ-is-covariant
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} → {C : (a : A) → B a → Type 𝓦}
+      → is-covariant B → is-covariant (uncurry C)
+      → is-covariant (λ a → Σ (B a) (C a))
+  Σ-is-covariant {A = A} {B} {C} Bc Cc
+    = is-covariant⇔is-left-fibration _ .snd is-left where
+
+    is-left : is-left-fibration (fst {B = λ a → Σ (B a) (C a)})
+    is-left
+      = right-orthogonal-∘ (const _ 𝟙 i0)
+          {g = fst} {fst ∘ _≃_.bwd Σ-assoc}
+          (is-covariant⇔is-left-fibration B .fst Bc)
+          (right-orthogonal-∘ (const _ 𝟙 i0)
+            (is-covariant⇔is-left-fibration (uncurry C) .fst Cc)
+            (⊥equiv (const _ 𝟙 i0) _ (is-equiv⁻¹ (Σ-assoc ._≃_.fwd-is-equiv))))
+}
+}
+
+\subtree[stt-00KG]{
+\title{Families of paths in covariant families are covariant}
+\taxon{Lemma}
+
+\p{If #{B : A \to \Type} is a covariant family, and #{a\ b : \Pi_A B} are a
+pair of sections, then the family #{i \mapsto a(i) = b(i)} is also covariant.}
+
+
+\proof{
+\p{We prove the analogous result for left fibrations. Consider the following
+diagram:}
+
+\quiver{
+\begin{tikzcd}
+	{a = b} && A \\
+	\\
+	A && B \\
+	\\
+	&& A
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=1-1, to=3-3]
+	\arrow["a", from=1-3, to=3-3]
+	\arrow["b", from=3-1, to=3-3]
+	\arrow[equals, from=3-1, to=5-3]
+	\arrow["p", from=3-3, to=5-3]
+\end{tikzcd}
+}
+
+\p{Now #{p} is a left fibration by assumption, and so too is #{pa} since #{a} is
+a section, so by the left cancelative property of left fibrations, we have that
+#{a} is a left fibration. Finally, #{a({-}) = b({-})} is obtained as a pullback
+of #{a} and hence is also a left fibration.}
+}
+
+\agda{
+opaque
+  ＝-is-covariant
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (x y : Π A B)
+      → is-covariant B
+      → is-covariant (λ a → x a ＝ y a)
+  ＝-is-covariant {A = A} {B} x y Bc
+    = is-covariant⇔is-left-fibration _ .snd lf where
+    is-left : is-left-fibration {A = A} {B = Σ A B} (λ a → a , y a)
+    is-left = right-orthogonal-left-cancel (point i0)
+                (is-covariant⇔is-left-fibration _ .fst Bc)
+                (point i0 ⊥id)
+
+    pb : Arrow-map (fst: λ a → x a ＝ y a) {D = Σ A B} (λ a → a , y a)
+    pb .Arrow-Π.top = fst
+    pb .Arrow-Π.bot a = (a , x a)
+    pb .Arrow-Π.comm (a , p) = Σ-path→ (refl , p)
+
+    pb-is-cart : is-cartesian pb
+    pb-is-cart = is-cartesian←is-pullback pb
+      (is-equiv-∘
+        {f = total-map λ a → total-map λ b → Σ-path→}
+        {λ (a , b) → a , a , refl , b }
+        (is-total-equiv←is-fibrewise-equiv
+          (λ a → is-total-equiv←is-fibrewise-equiv
+            (λ b → Σ-path ._≃_.fwd-is-equiv)))
+        (is-equiv←qinv
+          ( (λ where (a , b , refl , p) → a , p)
+          , ~refl
+          , λ where (a , b , refl , p) → refl)))
+
+    lf : is-left-fibration (fst: λ a → x a ＝ y a)
+    lf = orthogonal←base-change (point i0) pb pb-is-cart is-left
+}
+}
+
+
+\subtree[stt-00OM]{
+\title{Exponentiating covariant families}
+\taxon{Lemma}
+
+\p{We show that given a [contravariant type family](stt-00OD) #{F},
+and a [covariant type family](stt-00AY) #{G}, the type family given by
+#{x \mapsto F(x) \to G(x)} is also covariant.}
+
+\proof{
+\p{First notice that solutions to the left lifting problem are in bijection with
+solutions to the right lifting problem.}
+
+\quiver{
+\begin{tikzcd}[cramped]
+	{\{0\}} && {{G_x}^{F_x}} && {F_{f(0)}} && {G_x} \\
+	\\
+	{\Delta^1} && X && {\Sigma_{i} F_{f(i)}} && X
+	\arrow["h", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["h", from=1-5, to=1-7]
+	\arrow["{(0, -)}"', from=1-5, to=3-5]
+	\arrow[from=1-7, to=3-7]
+	\arrow["f"', from=3-1, to=3-3]
+	\arrow["{f\pi_1}"', from=3-5, to=3-7]
+\end{tikzcd}
+}
+
+\p{Now we may see that the leftmost map of the second diagram is obtained
+as the pullback of #{\{0\} \to \Delta^1} by the projection
+#{\Sigma_{i} F_{f(i)} \to \Delta^1}. Hence we have a lifting problem where the
+left map is a pullback of a left anodyne map by a right fibration and hence
+is a left anodyne map. Since the right family is covariant by assumption, this
+means solutions to the lifting problem exist uniquely.}
+}
+
+\remark{
+\p{We have not yet formalised the fact that left-anodyne maps are stable under
+base change by right fibrations.}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (let G^F b = F b → G b)
+  (let
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x))
+  (base-change-left-anodyne
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
+        (p : C → A) → is-left-anodyne p → is-right-fibration f
+      → is-left-anodyne (base-change-arrow f p))
+  where
+
+  module _ (σ : Δ¹ → B) where
+    transpose-ext-exponentials
+      : ∀ (h : F (σ i0) → G (σ i0))
+        → Extᵈ (point i0) (G^F ∘ σ) (point h)
+        ≃ Extᵈ (transposed-left-map σ) (G ∘ σ ∘ fst) h
+    transpose-ext-exponentials h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
+
+    transposed-left-map-is-pb
+      : Arrow-equiv
+          (transposed-left-map σ)
+          (base-change-arrow (fst: F ∘ σ) (point i0))
+    transposed-left-map-is-pb .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
+    transposed-left-map-is-pb .fst .Arrow-Π.bot = id
+    transposed-left-map-is-pb .fst .Arrow-Π.comm = ~refl
+    transposed-left-map-is-pb .snd .fst = is-equiv←qinv
+      ( (λ {((_ , a) , _ , refl) → a})
+      , ~refl
+      , λ {(_ , _ , refl) → refl})
+    transposed-left-map-is-pb .snd .snd = id-is-equiv
+
+    transposed-left-map-is-left-anodyne
+      : is-contravariant F → is-left-anodyne (transposed-left-map σ)
+    transposed-left-map-is-left-anodyne rfib
+      = is-anodyne←equiv
+          (base-change-arrow (fst: F ∘ σ) (point i0))
+          (transposed-left-map σ)
+          (inv-Arrow-equiv transposed-left-map-is-pb)
+          (point i0)
+          (base-change-left-anodyne
+                (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
+                (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
+
+  cov^contrav-is-covariant
+    : is-contravariant F → is-covariant G → is-covariant G^F
+  cov^contrav-is-covariant Fctr Gcov
+    = is-covariant←has-unique-extensions G^F (λ
+        {(mk-afmap σ h)
+            → is-single←equiv-to-single
+                (transpose-ext-exponentials σ (h tt) e⁻¹)
+                (unique-extensions←are-orthogonal-fam {P = G}
+                  (are-orthogonal-fam←are-orthogonal-fst
+                    (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
+                      (is-covariant⇔is-left-fibration G .fst Gcov)))
+                  (mk-afmap (σ ∘ fst) (h tt)))})
+}
+}

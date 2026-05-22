@@ -1,6 +1,7 @@
 \taxon{Module}
 \date{2025-04-18}
 \title{The Markers macro}
+\meta{license}{AGPL-3.0}
 
 \import{stt-macros}
 
@@ -9,7 +10,6 @@
 \p{This code is taken almost verbatim from the 1Lab.}
 }
 
-% ```agda
 \agda{
 module Ergonomics.Marker where
 
@@ -21,7 +21,6 @@ open import Ergonomics.TCM
 ⌜ x ⌝ = x
 {-# NOINLINE ⌜_⌝ #-}
 }
-% ```
 
 \p{\code{abstract-marker} takes a term containing some markers
 and if they all contain the same term returns a term with
@@ -30,21 +29,21 @@ that variable. The idea is we just recurse through
 the term, noting how many binders we go under, and replace any ⌜_⌝ with
 the variable at the top level.}
 
-% ```agda
 \agda{
 abstract-marker : Term → Maybe Term
 abstract-marker = go 0 where
   open DoMaybe
 
   go : ℕ → Term → Maybe Term
-  go* : ℕ → List (Arg Term)
-       → Maybe (List (Arg Term))
+  go*
+    : ℕ → List (Arg Term)
+    → Maybe (List (Arg Term))
 
   go k (var x args) = Maybe-map (var j) (go* k args) where
     -- Is the variable bound or free? If free, then we need
     -- to increase level by one
     j : ℕ
-    j with x <ℕ k
+    j with x <ᴮℕ k
     ... | true = x
     ... | false = suc x
   go k (con c args) = Maybe-map (con c) (go* k args)
@@ -74,29 +73,25 @@ abstract-marker = go 0 where
       xs' <- go* k xs
       just (arg ai x' ∷ xs')
 }
-% ```
 
 \subtree[stt-0034]{
-% ```agda
 \agda{
 private
-  -- We need this weird record (instead of a Σ-type) for two reasons.
-  -- One is universe levels. The second is that, if we're elaborating a
-  -- pre-existing
+  -- We need this weird record (instead of a Σ-type) because, if we're
+  -- elaborating a pre-existing
   --
   --   ap! p
   --
   -- (and supposing ap! had type {it : Σ Type _} → it .fst → x ≡ y), we
   -- will elaborate p against it .fst *before* running the ap-worker
   -- tactic, which very helpfully solves it := ? , [type of p] and
-  -- prevents the tactic from firing. So we also need it to be
-  -- no-eta-equality.
-  record ap-data {𝓤} {A : Type 𝓤} (x y : A) : Typeω where
+  -- prevents the tactic from firing. So we need the marker type to be
+  -- a parameter, while the data itself still uses a no-eta record.
+  record ap-data {𝓤 𝓥} {A : Type 𝓤} (x y : A) (mark : Type 𝓥)
+      : Type (𝓤 ⊔ 𝓥) where
     no-eta-equality ; pattern ; constructor mk-apdata
     field
-      𝓤-mark : Level
-      mark   : Type 𝓤-mark
-      from   : mark → x ＝ y
+      from : mark → x ＝ y
 
 
   ap-worker : ∀ {𝓤} {A : Type 𝓤} (x : A) → Term → TC 𝟙
@@ -111,26 +106,26 @@ private
           ∷  termErr t
           ∷ [])
       go _ (just m) = do
-        unify goal (con (quote mk-apdata)
-          (unknown v∷ unknown v∷
-            def (quote ap) (lam visible (abs "x" m) v∷ []) v∷
-            []))
+        unify goal
+          (con
+            (quote mk-apdata)
+            (def (quote ap) (lam visible (abs "x" m) v∷ []) v∷ []))
 
-  ap!-wrapper : ∀ {𝓤} {A : Type 𝓤}
-               → {x y : A}
-               → {@(tactic ap-worker x) p : ap-data x y}
-               → p .ap-data.mark
-               → x ＝ y
-  ap!-wrapper {p = mk-apdata _ _ from} = from
+  ap!-wrapper
+    : ∀ {𝓤 𝓥} {A : Type 𝓤}
+      → {x y : A}
+      → {mark : Type 𝓥}
+      → {@(tactic ap-worker x) p : ap-data x y mark}
+      → mark
+      → x ＝ y
+  ap!-wrapper {p = mk-apdata from} = from
 }
-% ```
 }
 
 \subtree[stt-0032]{
 \taxon{Macro}
 \title{Generalised ap}
 
-% ```agda
 \agda{
 macro
   -- Generalised ap. Automatically generates the function to apply to by
@@ -138,12 +133,10 @@ macro
   ap! : Term → TC 𝟙
   ap! g = unify g (def (quote ap!-wrapper) [])
 }
-% ```
 }
 
 \subtree[stt-0033]{
 \taxon{Test}
-% ```agda
 \agda{
 module _ {ℓ} {A : Type ℓ} {x y : A} {p : x ＝ y} {f : A → (A → A) → A} where
   private
@@ -152,5 +145,4 @@ module _ {ℓ} {A : Type ℓ} {x y : A} {p : x ＝ y} {f : A → (A → A) → A
       f ⌜ x ⌝ (λ _ → ⌜ x ⌝) ＝⟨ ap! p ⟩
       f y (λ _ → y)         ∎
 }
-% ```
 }

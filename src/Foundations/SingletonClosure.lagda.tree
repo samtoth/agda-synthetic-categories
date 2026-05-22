@@ -1,83 +1,112 @@
 \date{2025-02-28}
 \author{samueltoth}
+\contributor{fredrikbakke}
 \title{Closure properties of being a singleton}
 
 \import{stt-macros}
 
-\p{Ultimately we can establish that the property of being a singleton is a specialisation of being a localisation and thus a sigma
-closed reflexive subuniverse - giving us many closure properties for free. But for clarity, and for the technical purpose of
-bootstrapping the formalisation, we give the explicit proofs of closure here.}
+\p{
+Ultimately we can establish that the property of being a singleton is a
+specialisation of being a localisation and thus a sigma closed reflexive subuniverse
+- giving us many closure properties for free. But for clarity, and for the technical
+purpose of bootstrapping the formalisation, we give the explicit proofs of closure
+here.
+}
 
-% ```agda
 \agda{
 module Foundations.SingletonClosure where
 
 open import Foundations.Universes
 open import Foundations.Functions
 open import Foundations.FunctionInverses
-open import Foundations.Singleton
+open import Foundations.Homotopy
+open import Foundations.Singletons
+open import Foundations.EquivSingleton
+open import Foundations.FibrewiseEquivalences
 open import Foundations.Sigma
-open import Foundations.SigmaPath
+open import Foundations.SigmaIdentity
 open import Foundations.Identity
 open import Foundations.DependentIdentity
 open import Foundations.FunExt
 }
-% ```
 
 
-% ```agda
 \agda{
-Singleton-Σ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-            → is-singleton A
-            → (∀ a → is-singleton (B a))
-            → is-singleton (Σ A B)
-Singleton-Σ {B = B} sa sb = mk-singl (sa .centre , sb (sa .centre) .centre) λ where
-  (a , b) → Σ-path→ ((sa .central a) , Idᵈ-inr (sb (sa .centre) .central _))
-
-
-Singleton-Σ' : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-               → is-singleton A
-               → (a : A)
-               → is-singleton (B a)
-               → is-singleton (Σ A B)
-Singleton-Σ' {B = B} sa a sb = mk-singl (a , sb .centre) λ where
-                                (a' , b) → Σ-path→
-                                          ( is-prop←is-single sa a a'
-                                          , Idᵈ-inr {A = B a} {B a'}
-                                             {ap B (is-prop←is-single sa a a')}
-                                                    (is-prop←is-single sb _ _)
-                                          )
-}
-% ```
-
-
-% ```agda
-\agda{
-Singleton-Π
+Σ-is-single
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-    → FunExtω 𝓥 → (∀ a → is-singleton (B a)) → is-singleton ((a : A) → B a)
-Singleton-Π {B = B} fe sb
+    → is-singleton A
+    → (∀ a → is-singleton (B a))
+    → is-singleton (Σ A B)
+Σ-is-single {B = B} sa sb
+  = mk-singl (sa .centre , sb (sa .centre) .centre) λ where
+     (a , b) → Σ-path→ ((sa .central a) , Idᵈ-inr (sb (sa .centre) .central _))
+
+
+Σ-is-single'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-singleton A
+    → (a : A)
+    → is-singleton (B a)
+    → is-singleton (Σ A B)
+Σ-is-single' {B = B} sa a sb
+  = mk-singl (a , sb .centre) λ where
+     (a' , b) → Σ-path→
+               ( is-prop←is-single sa a a'
+               , Idᵈ-inr {A = B a} {B a'}
+                   {ap B (is-prop←is-single sa a a')}
+                         (is-prop←is-single sb _ _))
+}
+
+
+\agda{
+Π-is-single
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → FunExtω 𝓥
+    → (∀ a → is-singleton (B a))
+    → is-singleton ((a : A) → B a)
+Π-is-single {B = B} fe sb
   = mk-singl
       (λ a → sb a .centre)
       (λ f → WithFunExtω.funext→ fe (λ a → sb a .central (f a)))
 }
-% ```
 
-
-% ```agda
 \agda{
-Singleton-Id : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → ∀ x y → is-singleton (Id A x y)
-Singleton-Id sngl x y .centre = is-prop←is-single sngl x y
-Singleton-Id sngl x y .central refl = ∙-sym' (sngl .central x)
+＝-is-single
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-singleton A
+    → ∀ x y → is-singleton (x ＝ y)
+＝-is-single sngl x y .centre = is-prop←is-single sngl x y
+＝-is-single sngl x y .central refl = ∙-sym' (sngl .central x)
 }
-% ```
 
-% ```agda
 \agda{
-is-single←section-single : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → (section f) → is-singleton A → is-singleton B
-is-single←section-single f s sa .centre =  f (sa .centre)
-is-single←section-single f s sa .central x = f (sa .centre) ＝⟨ ap f (sa .central _) ⟩
-                                        f (s .fst x)   ＝⟨ s .snd x  ⟩
-                                        x              ∎
+htpy-is-torsorial
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → FunExtω 𝓥
+    → (f : (a : A) → B a)
+    → is-singleton (Σ ((a : A) → B a) (λ g → f ~ g))
+htpy-is-torsorial {A = A} {B = B} fe f
+  = is-single←equiv-to-single
+      (Σ-snd-≃ λ g → WithFunExtω.funext≃ fe {A = A} {B = B} {f = f} {g = g})
+      Sing-is-singleton
 }
-% ```
+
+\agda{
+is-single←section-single
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → section f → is-singleton A → is-singleton B
+is-single←section-single f s sa .centre
+  = f (sa .centre)
+is-single←section-single f s sa .central x
+  = f (sa .centre) ＝⟨ ap f (sa .central _) ⟩
+    f (s .fst x)   ＝⟨ s .snd x ⟩
+    x              ∎
+
+is-single←retraction-single
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → retraction f → is-singleton B → is-singleton A
+is-single←retraction-single f (r , ret) sb .centre
+  = r (sb .centre)
+is-single←retraction-single f (r , ret) sb .central a
+  = ap r (sb .central (f a)) ∙ ret a
+}

@@ -1,0 +1,173 @@
+\title{Initial objects}
+\taxon{Module}
+\date{2026-02-28}
+\author{samueltoth}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Initial
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open is-distributive I-distr
+
+open import Axioms.UF
+
+open import Ergonomics.Extensionality
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Comma Δ¹ I I-distr
+open import Synthetic.Categories.LeftSegal Δ¹ I I-distr
+open import Synthetic.Categories.CovariantHomFamily Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+open import Synthetic.Categories.Adjoints Δ¹ I I-distr
+
+open import Foundations.UnitUP
+}
+
+
+\subtree[stt-00FO]{
+\title{Initial objects}
+\taxon{Definition}
+
+\p{
+We call an object #{a : A} \em{initial} if for every #{b : A}, the type #{\Hom(a,b)}
+is a singleton.
+}
+
+\agda{
+is-initial : ∀ {𝓤} {A : Type 𝓤} → A → Type (𝓘 ⊔ 𝓤)
+is-initial a = ∀ b → is-singleton (Hom _ a b)
+}
+}
+
+\subtree[stt-00FP]{
+\taxon{Lemma}
+
+\p{An object #{a} is initial iff the codomain projection #{A_{a/} \to A} is
+an equivalence.}
+
+\proof{
+\p{Follows by considering fibres.}
+}
+
+\agda{
+is-initial←slice-proj-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤} a
+    → is-equiv (λ ((f , _) : Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a)) → f i1)
+    → is-initial a
+is-initial←slice-proj-is-equiv a eq b
+  = is-single←equiv-to-single
+      (Σ-assoc ∙≃ Homᵈ-repr≃ e⁻¹)
+      (has-singleton-fibres←is-equiv eq b)
+}
+}
+
+\subtree[stt-00G0]{
+\taxon{Lemma}
+\title{Initial objects are preserved by left adjoints}
+
+\p{
+For a map #{l : A \to B}, if there is a map #{r} with #{l \dashv r},
+#{l(a)} is an initial object of #{B} if #{a} is initial in #{A}.
+}
+
+\agda{
+is-initial←ladj
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
+    → (l : A → B) (r : B → A)
+    → (l ⊣ r)
+    → is-initial a
+    → is-initial (l a)
+is-initial←ladj f g fg ai b
+  = is-single←equiv-to-single (fg _ b e⁻¹) (ai (g b))
+}
+
+\p{
+In particular, since [equivalences are left adjoints](stt-00G2), they also preserve
+initial objects.
+}
+
+\agda{
+opaque
+  is-initial←is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A}
+      → {F : A → B} → is-equiv F
+      → is-initial a → is-initial (F a)
+  is-initial←is-equiv {F = F}
+    = is-initial←ladj F _  ∘ is-left-adjoint←is-equiv
+}
+}
+
+\subtree[stt-00LJ]{
+\title{Initiality in the coslice}
+\taxon{Theorem}
+\author{samueltoth}
+\author{fredrikbakke}
+
+\p{
+If #{A} is a precategory, then #{(a , \id)} is an initial object in the representable
+coslice #{\Sigma_{x : A}\Hom_A(a,x)}.
+}
+
+\agda{
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A) where
+
+  tr-cov-hom-idH
+    : {a b : A} (f : Hom A a b)
+    → tr-cov-hom (hom-fam-cov 𝐴ₗ a) f (idH a) ＝ f
+  tr-cov-hom-idH f
+    = CovariantActionPostcomp.tr-cov-hom-is-comp 𝐴ₗ f (idH _)
+    ∙ ∘-left-unit (is-segal←is-left-segal 𝐴ₗ) f
+
+  Sing'-Hom≃Hom-repr-coslice
+    : {a b : A} (f : Hom A a b)
+    → Sing' (Hom A a b) f ≃ Hom (Σ A (Hom _ a)) (a , idH a) (b , f)
+  Sing'-Hom≃Hom-repr-coslice {a} f
+    = Σ-snd-≃
+        (λ g → ＝-postcomp-≃ (tr-cov-hom-idH g)
+             ∙≃ Hom-cov'≃ (Hom _ a) (hom-fam-cov 𝐴ₗ a) g (idH a) f)
+    ∙≃ Hom-Σ≃ e⁻¹
+
+  coslice-init'-left-segal
+    : (a : A) → is-initial {A = Σ A (Hom _ a)} (a , idH a)
+  coslice-init'-left-segal a (b , f)
+    = is-single←equiv-to-single (Sing'-Hom≃Hom-repr-coslice f) Sing'-is-singleton
+
+coslice-init'
+  : {𝓤 : Level} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) (a : A)
+  → is-initial (a , idH a)
+coslice-init' As Asimp
+  = coslice-init'-left-segal
+      (is-left-segal←is-segal←is-triangulated (simp-is-triangulated Asimp) As)
+}
+
+\p{
+As a corollary, if #{A} is a precategory (or more generally left Segal), then
+#{(a , \id)} is an initial object in #{A_{a/}}.
+}
+
+\agda{
+coslice-init-left-segal
+  : {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A) (a : A)
+  → is-initial {A = Coslice A (point a)} (a , λ _ → idH a)
+coslice-init-left-segal 𝐴ₗ a
+  = is-initial←is-equiv
+      (Σ-snd-≃ (λ _ → unit-UP≃ e⁻¹) ._≃_.fwd-is-equiv)
+      (coslice-init'-left-segal 𝐴ₗ a)
+
+coslice-init
+  : {𝓤 : Level} {A : Type 𝓤} (As : is-segal A) (Asimp : is-simplicial A) (a : A)
+  → is-initial {A = Coslice A (point a)} (a , λ _ → idH a)
+coslice-init As Asimp
+  = coslice-init-left-segal
+      (is-left-segal←is-segal←is-triangulated (simp-is-triangulated Asimp) As)
+}
+}

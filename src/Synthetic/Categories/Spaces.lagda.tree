@@ -63,7 +63,7 @@ open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
@@ -80,8 +80,11 @@ opaque
     : ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
       → @♭ ((∀ {@♭ n} → is-equiv (♭-map (postcomp (□^ n) f))))
       → is-equiv f
-  cubes-separate' fa eq = cubes-separate fa
-                     ((is-equiv←Arrow-equiv {F = amap} amap-is-equiv (eq {0}))) eq where
+  cubes-separate' fa eq
+    = cubes-separate
+        fa
+        (tgt-is-equiv←Arrow-equiv (amap , amap-is-equiv) (eq {0}))
+        eq where
     open Arrow fa
     amap : Arrow-map (♭-map (postcomp (□^ 0) f)) (♭-map f)
     amap .Arrow-Π.top = ♭-map (ev (mk-lift tt))
@@ -430,7 +433,7 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
 
        @♭ final-map : (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| F (k □-0) .Carrier ⟩)
                     → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| G (k □-0) .Carrier ⟩)
-       final-map = total-map (♭-ind _ λ a → ♭-map (α (a □-0)))
+       final-map = total-map (♭ᶠ-map (λ a → α (a □-0)))
 
        @♭ refactor-map
          : ∀ (@♭ K : Γ n → Space 𝓤)
@@ -476,17 +479,17 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
 
        @♭ part4 : is-equiv final-map
        part4 = is-total-equiv←is-fibrewise-equiv
-         (♭-ind _ λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
+         (♭-ind λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
                                 (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-0)))
                                 (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-1)))
                                 (snd (x □-0)))
 
        @♭ part3 : is-equiv (♭-map (postcomp (□^ m) α̂))
-       part3 = is-equiv←Arrow-equiv⁻¹
-                 {F = paste-squares refactor (♭Square make-orthogonality)}
-                 (paste-squares-is-equiv
-                   _ refactor-is-equiv
-                   _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
+       part3 = src-is-equiv←Arrow-equiv
+                 ( paste-squares refactor (♭Square make-orthogonality)
+                 , paste-squares-is-equiv
+                     _ refactor-is-equiv
+                     _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
                  part4
 
      @♭ part2 : is-equiv (♭-map (precomp-Π (λ k → is-equiv (α k))
@@ -494,23 +497,23 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
      part2 = is-equiv←inverse
                (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
                (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
-               (♭-ind _ lemma)
+               (♭-ind lemma)
 
 
   part1 : is-equiv forget
   part1 = cubes-separate'
     (mk-arrow forget)
-    (λ {n} → is-equiv←Arrow-equiv⁻¹
-       {F = ♭Square (arr n)}
-       ( ♭-map-is-equiv (arr-is-equiv n .fst)
+    (λ {n} → src-is-equiv←Arrow-equiv
+       ( ♭Square (arr n)
+       , ♭-map-is-equiv (arr-is-equiv n .fst)
        , ♭-map-is-equiv (arr-is-equiv n .snd))
        (♭-map-total-is-equiv _
          (is-total-equiv←is-fibrewise-equiv
-           (♭-ind _ λ F → ♭-map-total-is-equiv _
+           (♭-ind λ F → ♭-map-total-is-equiv _
              (is-total-equiv←is-fibrewise-equiv
-               (♭-ind _ λ G → ♭-map-total-is-equiv _
+               (♭-ind λ G → ♭-map-total-is-equiv _
                  (is-total-equiv←is-fibrewise-equiv
-                   (♭-ind _ (λ α → part2 n F G α)))))))))
+                   (♭-ind (λ α → part2 n F G α)))))))))
 
   opaque
     part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
@@ -735,10 +738,9 @@ to verify that this map is an equivalence at each endpoint.}
 \agda{
   opaque
     dua-retract→ : ∀ {@♭ 𝓤} f i → f i .Carrier → GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract→ f i x .fst =  coe-cov (UFib-is-fib f) 1-top x
+    dua-retract→ f i x .fst =  coe-cov (Carrier ∘ f) (UFib-is-fib f) 1-top x
     dua-retract→ f i x .snd refl
-      = (x , sym (happly (coe-cov-0≤1 (UFib-is-fib f) 1-top) x))
-
+      = (x , sym (happly (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) x))
 
     dua-retract : ∀ {@♭ 𝓤} f i → f i .Carrier ≃ GlΣ {𝓤} (dua→ f) i .Carrier
     dua-retract f i ._≃_.fwd = dua-retract→ f i
@@ -753,21 +755,21 @@ to verify that this map is an equivalence at each endpoint.}
       fr0 .fst x = x .snd refl .fst
       fr0 .snd .fst = ~refl
       fr0 .snd .snd a = Gl-path→ {A = f i0} {f i1} i0
-        ( happly ( coe-cov-0≤1 (UFib-is-fib f) 1-top) (fr0 .fst a)
+        ( happly ( coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (fr0 .fst a)
                  ∙ a .snd refl .snd
         , J-set! _
             ( refl
             , mk-square
                 (sym'∙ (happly
-                         (coe-cov-0≤1 (UFib-is-fib f) 1-top) (a .snd refl .fst))
+                         (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (a .snd refl .fst))
                          (a .snd refl .snd))))
 
       fr1 : quasi-inv (dua-retract→ f i1)
       fr1 .fst x = x .fst
-      fr1 .snd .fst x = coe-cov-id (UFib-is-fib f) _ x
+      fr1 .snd .fst x = coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ x
       fr1 .snd .snd (a , b)
         = Σ-path→
-            ( (coe-cov-id (UFib-is-fib f) _ a)
+            ( (coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ a)
             , funext→ (λ x → ¡ (non-triv x)))
 
   dua : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})

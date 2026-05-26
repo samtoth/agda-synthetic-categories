@@ -17,8 +17,6 @@ the project and set up a server you can run `make server` from the nix shell, wi
 optional `PORT=` parameter (default: `1313`). To see all `make` targets run
 `make help`.
 
-<!-- TODO: installation instructions for pre-commit -->
-
 ### Installing without nix
 
 To get working on the library without nix you will at minimum need a working
@@ -27,6 +25,10 @@ installation of Agda nightly version
 or newer. You can find the latest release binaries
 [here](https://github.com/agda/agda/releases/). See also the Agda documentation:
 [installing from source](https://agda.readthedocs.io/en/latest/getting-started/installation.html#option-2-install-the-development-version-of-agda-from-source-for-advanced-users).
+
+We use [pre-commit](https://pre-commit.com/) to run a series of quality checks on contributions.
+It can be installed as a stand alone program or via Python using `python -m pip install pre-commit`.
+After it is installed you can enable the automatic git hooks with `pre-commit install`, or alternatively run them manually with `pre-commit run --all-files`.
 
 In order to build the forest, you will need:
 

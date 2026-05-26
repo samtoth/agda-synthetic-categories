@@ -34,7 +34,7 @@ are algebraic subsets of #{\mathbb{I}^n} are actually given by polynomials.}
 \p{Formally an algebraic subset is specified by an algebra #{\mathbb{I} \to A}.
   The algebraic subset is then defined as
   #{\mathrm{Spec}(A) := \mathrm{hom}_{\mathbb{I}-\mathrm{Alg}}(A, \mathbb{I})}.
-  We will call an algebra \textf{quasicoherent} if the natural map
+  We will call an algebra \strong{quasicoherent} if the natural map
   #{A \to (\mathrm{Spec}(A) \to \mathbb{I}) } is an equivalence of algebras.}
 
 \agda{
@@ -69,21 +69,21 @@ are algebraic subsets of #{\mathbb{I}^n} are actually given by polynomials.}
   eval : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → X → Spec A → Δ¹
   eval A f x = x .fst .fst f
 
-  eval' : {𝓤 : Level} {X : Type 𝓤}  → X → Spec (ObsAlg X)
-  eval' x .fst .fst f =  f x
-  eval' x .fst .snd = λ a → refl
-  eval' x .snd = mk-is-lattice-alg-hom (record
+  obs-spec-ε : {𝓤 : Level} {X : Type 𝓤}  → X → Spec (ObsAlg X)
+  obs-spec-ε x .fst .fst f =  f x
+  obs-spec-ε x .fst .snd = λ a → refl
+  obs-spec-ε x .snd = mk-is-lattice-alg-hom (record
       { pres-∨ = refl
       ; pres-∧ = refl
       ; pres-0 = refl
       ; pres-1 = refl })
 
-  eval-AlgebraHom : {𝓤 : Level}
+  obs-spec-η : {𝓤 : Level}
                     {X : Type 𝓤} (A : Algebra I X)
                   →  LatticeAlgHom A (ObsAlg (Spec A))
-  eval-AlgebraHom A .fst .fst = eval A
-  eval-AlgebraHom A .fst .snd a = funext→ λ a₁ → a₁ .fst .snd a
-  eval-AlgebraHom A .snd = mk-is-lattice-alg-hom (record
+  obs-spec-η A .fst .fst = eval A
+  obs-spec-η A .fst .snd a = funext→ λ a₁ → a₁ .fst .snd a
+  obs-spec-η A .snd = mk-is-lattice-alg-hom (record
     { pres-∨ = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∨
     ; pres-∧ = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∧ 
     ; pres-0 = funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-0
@@ -91,19 +91,19 @@ are algebraic subsets of #{\mathbb{I}^n} are actually given by polynomials.}
     where
       open is-lattice-hom
 
-  obs-eval-adjunction : {𝓤 𝓥 : Level}
+  obs-spec-adjunction : {𝓤 𝓥 : Level}
                         {U : Type 𝓤}
                         (A : Algebra I U)
                         (X : Type 𝓥)
                       → (X → Spec A) ≃ LatticeAlgHom A (ObsAlg X)
-  obs-eval-adjunction A X =
+  obs-spec-adjunction A X =
     mk≃ fwd (is-equiv←qinv qinv)
       where
         fwd : (X → Spec A) → LatticeAlgHom A (ObsAlg X)
-        fwd f = LatticeAlgHom-∘ (Obs-map f) (eval-AlgebraHom A)
+        fwd f = LatticeAlgHom-∘ (Obs-map f) (obs-spec-η A)
 
         bwd : LatticeAlgHom A (ObsAlg X) → (X → Spec A)
-        bwd f =  Spec-map f ∘ eval'
+        bwd f =  Spec-map f ∘ obs-spec-ε
 
         qinv : quasi-inv fwd
         qinv .fst = bwd
@@ -111,13 +111,29 @@ are algebraic subsets of #{\mathbb{I}^n} are actually given by polynomials.}
         qinv .snd .snd f = ext! λ a → refl
 
   is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓤 ⊔ 𝓘)
-  is-quasicoherent A = is-LatticeAlgHom-equiv (eval-AlgebraHom A)
+  is-quasicoherent A = is-LatticeAlgHom-equiv (obs-spec-η A)
 
   equiv←is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} {A : Algebra I X}
                          → is-quasicoherent A
                          → X ≃ Obs (Spec A)
-  equiv←is-quasicoherent {A = A} qc  = mk≃ (eval-AlgebraHom A .fst .fst) qc
+  equiv←is-quasicoherent {A = A} qc  = mk≃ (obs-spec-η A .fst .fst) qc
 
+
+  Spec-map-is-equiv←quasicoherent : {𝓤 𝓥 : Level} {X : Type 𝓤}
+                                  → (A : Algebra I X) → (is-quasicoherent A)
+                                  → (B : Algebra I X)
+                                  → is-equiv (Spec-map {A = B} {A})
+  Spec-map-is-equiv←quasicoherent A qc B = is-equiv←qinv qinv
+    where
+      qinv : quasi-inv (Spec-map {A = B} {A})
+      qinv .fst f =
+        LatticeAlgHom-∘
+          (LatticeAlgHom-∘
+            (is-LatticeAlgHom-equiv-bwd {A1 = A} {A2 = (ObsAlg (Spec A))} {obs-spec-η A} qc)
+              (Obs-map f))
+                (obs-spec-η B)
+      qinv .snd .fst ((f , _) , _) = ext! λ a → is-equiv.η qc (f a)
+      qinv .snd .snd ϕ = funext→ λ f → ext!  λ x → happly (is-equiv.ε qc (λ a → ϕ a .fst .fst x)) f
 
   I-is-quasicoherent : is-quasicoherent (initial-Algebra I)
   I-is-quasicoherent =

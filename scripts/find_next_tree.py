@@ -10,11 +10,13 @@ import argparse
 
 BASE36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+
 def base36_to_int(s: str) -> int:
     n = 0
     for c in s:
         n = n * 36 + BASE36.index(c.upper())
     return n
+
 
 def int_to_base36(n: int, width=4) -> str:
     if n == 0:
@@ -25,14 +27,12 @@ def int_to_base36(n: int, width=4) -> str:
         out = BASE36[r] + out
     return out.zfill(width)
 
+
 def get_forester_json() -> list:
     """Run `forester query all` and parse JSON output."""
     try:
         result = subprocess.run(
-            ["forester", "query", "all"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["forester", "query", "all"], capture_output=True, text=True, check=True
         )
     except subprocess.CalledProcessError as e:
         print("Error running `forester query all`:", e)
@@ -52,6 +52,7 @@ def get_forester_json() -> list:
         print("Failed to parse JSON from forester output:", e)
         exit(1)
 
+
 def find_next_tree(prefix, all_trees: list, gap: int) -> int:
     """Return the next available STT number as int."""
     stt_re = re.compile(rf"{prefix}-(\w{{4}})$")
@@ -69,13 +70,11 @@ def find_next_tree(prefix, all_trees: list, gap: int) -> int:
     stt_numbers.sort()
     # Find the first gap that is at least `gap` long
     i = 0
-    while i + 1 < len(stt_numbers) and (stt_numbers[i+1] - stt_numbers[i] < gap):
+    while i + 1 < len(stt_numbers) and (stt_numbers[i + 1] - stt_numbers[i] < gap):
         i += 1
 
-    next_val = stt_numbers[i-1] + 2
+    next_val = stt_numbers[i - 1] + 2
     return next_val
-
-
 
 
 def main():
@@ -83,15 +82,17 @@ def main():
         description="Find the next usable tree ID with optional gap."
     )
     parser.add_argument(
-        "-g", "--gap",
+        "-g",
+        "--gap",
         type=int,
         default=50,
-        help="Number of empty slots to leave before next treeID (default: 50)"
+        help="Number of empty slots to leave before next treeID (default: 50)",
     )
     parser.add_argument(
-        "-p", "--prefix",
-	default="stt",
-        help="The tree prefix to search for (absent = stt)"
+        "-p",
+        "--prefix",
+        default="stt",
+        help="The tree prefix to search for (absent = stt)",
     )
     args = parser.parse_args()
 
@@ -99,6 +100,7 @@ def main():
     next_val = find_next_tree(args.prefix, all_trees, args.gap)
 
     print(f"{args.prefix}-{int_to_base36(next_val)}")
+
 
 if __name__ == "__main__":
     main()

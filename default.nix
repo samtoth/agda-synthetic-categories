@@ -1,11 +1,12 @@
-{ system ? builtins.currentSystem }:
+{
+  system ? builtins.currentSystem,
+}:
 let
-  thunkSource = (import ./nix/nix-thunk {}).thunkSource;
+  thunkSource = (import ./nix/nix-thunk { }).thunkSource;
   # pkgs = import <nixpkgs> { inherit system; };
-  pkgs = import "${thunkSource ./nix/agda-forester}/nix/nixpkgs.nix"
-                 { inherit system; };
+  pkgs = import "${thunkSource ./nix/agda-forester}/nix/nixpkgs.nix" { inherit system; };
 
-  af = import ./nix/agda-forester {};
+  af = import ./nix/agda-forester { };
 
   tex = pkgs.texlive.combine {
     inherit (pkgs.texlive)
@@ -18,48 +19,49 @@ let
       mathtools
       dvisvgm
       mathpartir
-      standalone;
+      standalone
+      ;
   };
 in
-  pkgs.stdenv.mkDerivation rec {
-    name = "agda-synthetic-categories";
+pkgs.stdenv.mkDerivation rec {
+  name = "agda-synthetic-categories";
 
-    src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+  src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 
-    buildInputs = [
-      af
-      tex
-    ];
+  buildInputs = [
+    af
+    tex
+  ];
 
-    buildPhase = ''
-      mkdir -p trees/stt/autogen
-      bash ./scripts/generateEverything.sh
-      echo "Generated everything file"
-      mkdir -p ./output
-      mkdir -p ./output/html
-      echo "made /output/html dir"
-      LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks -j src/Everything.agda
-      echo "Generated trees"
-      forester build
-      if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
-        if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
-          echo "Warning: failed to copy Agda.css into output/html; continuing." >&2
-        fi
-      else
-        echo "Warning: ./output/agda-synthetic-categories/Agda.css not found; skipping copy." >&2
+  buildPhase = ''
+    mkdir -p trees/stt/autogen
+    bash ./scripts/generateEverything.sh
+    echo "Generated everything file"
+    mkdir -p ./output
+    mkdir -p ./output/html
+    echo "made /output/html dir"
+    LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks -j src/Everything.agda
+    echo "Generated trees"
+    forester build
+    if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
+      if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
+        echo "Warning: failed to copy Agda.css into output/html; continuing." >&2
       fi
-    '';
+    else
+      echo "Warning: ./output/agda-synthetic-categories/Agda.css not found; skipping copy." >&2
+    fi
+  '';
 
-    installPhase = ''
-      echo $out
-      mkdir -p $out
-      cp -Lrvf output/agda-synthetic-categories/* "$out"/
-      cp -Lrvf output/html "$out"/
-      mkdir -p "$out/benchmarks"
-      cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
-      if [ -f "$out/benchmarks/data.json" ]; then
-        printf 'window.BENCHMARK_DATA = ' > "$out/benchmarks/data.js"
-        cat "$out/benchmarks/data.json" >> "$out/benchmarks/data.js"
-      fi
-    '';
-  }
+  installPhase = ''
+    echo $out
+    mkdir -p $out
+    cp -Lrvf output/agda-synthetic-categories/* "$out"/
+    cp -Lrvf output/html "$out"/
+    mkdir -p "$out/benchmarks"
+    cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
+    if [ -f "$out/benchmarks/data.json" ]; then
+      printf 'window.BENCHMARK_DATA = ' > "$out/benchmarks/data.js"
+      cat "$out/benchmarks/data.json" >> "$out/benchmarks/data.js"
+    fi
+  '';
+}

@@ -31,6 +31,9 @@ open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.Postwhisker
 open import Core.PullbackPowers
+open import Core.SurjectiveMaps
+
+open import Modalities.Instances.Truncation
 }
 
 \subtree[stt-00G3]{
@@ -415,6 +418,77 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 \author{fredrikbakke}
 \date{2026-05-14}
 
+\p{
+Given a fully faithful map #{F : A \to B} and a morphism #{f : \Hom_A(a,b)} then if
+#{F(f)} is a split mono/split epi/iso then so is #{f}.
+}
+
+\proof{
+\p{
+The isomorphism case follows from the split mono + split epi case, and these two
+cases are dual to one another, so let's just demonstrate that split monos are
+reflected.
+}
+
+\p{
+Let #{r'} be such that #{r' \circ F(f) = \id}. Since the action on morphisms of #{F}
+has a section there is a morphism #{r : \Hom_A(b,a)} such that #{F(r) = r'}.
+Now, by injectivity of the functorial action it suffices to show
+#{F(r \circ f) = F(\id)}, which is easy to see by functoriality:
+##{F(r \circ f) = F(r) \circ F(f) = r' \circ F(f) = \id = F(\id).}
+}
+}
+
+\p{
+We observe that the proof above only requires that the action on morphisms of
+#{F} has a section and is injective on endomorphisms (which in particular means the
+action on endomorphisms is an equivalence [[fre-Q1PW]]). We formalise the proof at
+this level of generality.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A) (𝐵 : is-segal B)
+  {F : A → B}
+  where
+
+  is-split-mono←ap-hom-fibre
+    : {a b : A} {f : Hom A a b}
+      (Ia : {g : Hom A a a} → ap-hom F g ＝ ap-hom F (idH a) → g ＝ idH a)
+      {r' : Hom B (F b) (F a)}
+    → Hom2 r' (ap-hom F f) (idH (F a))
+    → fibre (ap-hom F {b} {a}) r'
+    → is-split-mono f
+  is-split-mono←ap-hom-fibre {a} {b} {f} Ia η' (r , rp)
+    = is-split-mono←eq 𝐴
+      ( r
+      , Ia
+        ( unique-composite 𝐵 (ap-hom F r) (ap-hom F f)
+          (ap-hom F (r ∘[ 𝐴 ] f))
+          (ap-hom2 F r f (r ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
+        ∙ ap (_∘[ 𝐵 ] ap-hom F f) rp
+        ∙ ∘=←Hom2 𝐵 η'))
+
+  is-split-epi←ap-hom-fibre
+    : {a b : A} {f : Hom A a b}
+      (Ib : {g : Hom A b b} → ap-hom F g ＝ ap-hom F (idH b) → g ＝ idH b)
+      {s' : Hom B (F b) (F a)}
+    → Hom2 (ap-hom F f) s' (idH (F b))
+    → fibre (ap-hom F {b} {a}) s'
+    → is-split-epi f
+  is-split-epi←ap-hom-fibre {a} {b} {f} Ib ε' (s , sp)
+    = s
+    , is-split-mono←ap-hom-fibre Ib
+        (tr (λ h → Hom2 (ap-hom F f) h (idH (F b))) (sym sp) ε')
+        (f , refl)
+        .snd
+}
+
+\p{
+Finally we register the theorems for fully faithful maps.
+}
+
 \agda{
 module _
   {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
@@ -426,42 +500,24 @@ module _
   reflects-split-monos←is-ff'
     : is-split-mono (ap-hom F f) → is-split-mono f
   reflects-split-monos←is-ff' (r' , η')
-    = is-split-mono←eq 𝐴 (r , rη)
-    where
-    r : Hom A b a
-    r = is-equiv.bwd F-is-ff r'
-
-    rη : r ∘[ 𝐴 ] f ＝ idH a
-    rη = unap-equiv F-is-ff
-          (unique-composite 𝐵 (ap-hom F r) (ap-hom F f)
-            (ap-hom F (r ∘[ 𝐴 ] f))
-            (ap-hom2 F r f (r ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
-          ∙ ap (_∘[ 𝐵 ] ap-hom F f) (is-equiv.ε F-is-ff r')
-          ∙ ∘=←Hom2 𝐵 η')
+    = is-split-mono←ap-hom-fibre 𝐴 𝐵
+        (unap-equiv F-is-ff)
+        η'
+        (is-equiv.bwd F-is-ff r' , is-equiv.ε F-is-ff r')
 
   reflects-split-epis←is-ff'
     : is-split-epi (ap-hom F f) → is-split-epi f
   reflects-split-epis←is-ff' (s' , ε')
-    = is-split-epi←eq 𝐴 (s , fε)
-    where
-    s : Hom A b a
-    s = is-equiv.bwd F-is-ff s'
-
-    fε : f ∘[ 𝐴 ] s ＝ idH b
-    fε = unap-equiv F-is-ff
-          (unique-composite 𝐵 (ap-hom F f) (ap-hom F s)
-            (ap-hom F (f ∘[ 𝐴 ] s))
-            (ap-hom2 F f s (f ∘[ 𝐴 ] s) ∘[ 𝐴 ]-is-composite)
-          ∙ ap (ap-hom F f ∘[ 𝐵 ]_) (is-equiv.ε F-is-ff s')
-          ∙ ∘=←Hom2 𝐵 ε')
+    = is-split-epi←ap-hom-fibre 𝐴 𝐵
+        (unap-equiv F-is-ff)
+        ε'
+        (is-equiv.bwd F-is-ff s' , is-equiv.ε F-is-ff s')
 
   reflects-isos←is-ff'
     : is-iso (ap-hom F f) → is-iso f
-  reflects-isos←is-ff' (g' , h' , ε' , η')
-    = let
-        (g , ε) = reflects-split-monos←is-ff' (g' , ε')
-        (h , η) = reflects-split-epis←is-ff' (h' , η')
-      in
-      (g , h , ε , η)
+  reflects-isos←is-ff' (r , s , η , ε)
+    = is-iso←is-split-mono×is-split-epi
+        ( reflects-split-monos←is-ff' (r , η)
+        , reflects-split-epis←is-ff' (s , ε))
 }
 }

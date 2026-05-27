@@ -27,10 +27,11 @@ or newer. You can find the latest release binaries
 [installing from source](https://agda.readthedocs.io/en/latest/getting-started/installation.html#option-2-install-the-development-version-of-agda-from-source-for-advanced-users).
 
 We use [pre-commit](https://pre-commit.com/) to run a series of quality checks on
-contributions. It can be installed as a stand alone program or via Python using
-`python -m pip install pre-commit`. After it is installed you can run them manually
-with `pre-commit run --all-files`, or alternatively enable the automatic git hooks
-with `pre-commit install` (to disable them later run `pre-commit uninstall`).
+contributions. It can be installed as a stand alone program or via
+[Python](https://www.python.org/) using `python -m pip install pre-commit`. After it
+is installed you can run them manually with `pre-commit run --all-files`, or
+alternatively enable the automatic git hooks with `pre-commit install` (to disable
+them later run `pre-commit uninstall`).
 
 In order to build the forest, you will need:
 

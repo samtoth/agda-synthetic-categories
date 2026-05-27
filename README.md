@@ -30,7 +30,7 @@ We use [pre-commit](https://pre-commit.com/) to run a series of quality checks o
 contributions. It can be installed as a stand alone program or via Python using
 `python -m pip install pre-commit`. After it is installed you can run them manually
 with `pre-commit run --all-files`, or alternatively enable the automatic git hooks
-with `pre-commit install` (to disable later run `pre-commit uninstall`).
+with `pre-commit install` (to disable them later run `pre-commit uninstall`).
 
 In order to build the forest, you will need:
 

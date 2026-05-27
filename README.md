@@ -28,9 +28,9 @@ or newer. You can find the latest release binaries
 
 We use [pre-commit](https://pre-commit.com/) to run a series of quality checks on
 contributions. It can be installed as a stand alone program or via Python using
-`python -m pip install pre-commit`. After it is installed you can enable the
-automatic git hooks with `pre-commit install`, or alternatively run them manually
-with `pre-commit run --all-files`.
+`python -m pip install pre-commit`. After it is installed you can run them manually
+with `pre-commit run --all-files`, or alternatively enable the automatic git hooks
+with `pre-commit install` (to disable later run `pre-commit uninstall`).
 
 In order to build the forest, you will need:
 

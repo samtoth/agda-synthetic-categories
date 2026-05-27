@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from find_next_tree import get_forester_json, find_next_tree, int_to_base36, BASE36
 
-EXT   = ".tree"
+EXT = ".tree"
 
 
 # ----------------------------
@@ -18,32 +18,24 @@ EXT   = ".tree"
 parser = argparse.ArgumentParser(
     description="Rename author-prefixed tree files to stt-XXXX using forester JSON."
 )
+parser.add_argument("author", help="Author prefix to replace (e.g. smi)")
 parser.add_argument(
-    "author",
-    help="Author prefix to replace (e.g. smi)"
-)
-parser.add_argument(
-    "-c", "--canonical",
+    "-c",
+    "--canonical",
     default="stt",
-    help="The canonical URL to insert onto, default=stt"
+    help="The canonical URL to insert onto, default=stt",
 )
 
 parser.add_argument(
-    "dirs",
-    nargs="+",
-    help="Directories to scan recursively for .tree files"
+    "dirs", nargs="+", help="Directories to scan recursively for .tree files"
 )
 parser.add_argument(
-    "-n", "--dry-run",
+    "-n",
+    "--dry-run",
     action="store_true",
-    help="Show what would change, but do not modify anything"
+    help="Show what would change, but do not modify anything",
 )
-parser.add_argument(
-    "--gap",
-    type=int,
-    default=50,
-    help="Number of new tree IDs needed"
-)
+parser.add_argument("--gap", type=int, default=50, help="Number of new tree IDs needed")
 
 args = parser.parse_args()
 
@@ -67,9 +59,11 @@ rename_map = {}
 
 auth_re = re.compile(rf"{AUTHOR}-(\w{{4}})$", re.IGNORECASE)
 
-author_trees = [auth_re.search(tree["uri"]).group(1)
-                for tree in all_trees
-                if auth_re.search(tree.get("uri", ""))]
+author_trees = [
+    auth_re.search(tree["uri"]).group(1)
+    for tree in all_trees
+    if auth_re.search(tree.get("uri", ""))
+]
 
 author_trees.sort(key=lambda x: int(x, 36))
 
@@ -91,8 +85,7 @@ for d in DIRS:
     tree_files.extend(d.rglob("*.tree"))
 
 auth_re = re.compile(rf"{AUTHOR}-(\w{{4}})\.tree$")
-author_files = [(p, m.group(1))
-                for p in tree_files if (m := auth_re.search(p.name))]
+author_files = [(p, m.group(1)) for p in tree_files if (m := auth_re.search(p.name))]
 
 author_files.sort(key=lambda x: int(x[1], 36))
 
@@ -113,7 +106,6 @@ for tree in tree_files:
         print(f"Updating references in {tree}")
         if not DRY_RUN:
             tree.write_text(updated, encoding="utf-8")
-
 
 
 # ----------------------------

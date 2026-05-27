@@ -225,6 +225,22 @@ unquoteDecl lattice-hom-repr≊ lattice-hom-repr≃
   = make-record-repr lattice-hom-repr≊ lattice-hom-repr≃
                      (quote is-lattice-hom)
 
+is-lattice-hom-∘ : {𝓤 𝓥 𝓦 : Level}
+                {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+                {L : Lattice A} {M : Lattice B} {N : Lattice C}
+                {g : B → C} → is-lattice-hom M N g
+              → {f : A → B} → is-lattice-hom L M f
+              → is-lattice-hom L N (g ∘ f)
+is-lattice-hom-∘ {g = g} g-hom {f} f-hom =
+  record { pres-∨ = ap g f.pres-∨ ∙ g.pres-∨
+         ; pres-∧ = ap g f.pres-∧ ∙ g.pres-∧
+         ; pres-0 = ap g f.pres-0 ∙ g.pres-0
+         ; pres-1 = ap g f.pres-1 ∙ g.pres-1 }
+  where
+    module f = is-lattice-hom f-hom
+    module g = is-lattice-hom g-hom
+
+
 is-lattice-hom-is-prop
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       (L : Lattice A) (M : Lattice B) (f : A → B)
@@ -264,6 +280,21 @@ record Algebra {𝓤 𝓥} {A : Type 𝓤} (L : Lattice A) (B : Type 𝓥) : Typ
     ι : A → B
     ι-alg : is-lattice-algebra L str-Lattice ι
   open Lattice str-Lattice public
+
+
+Algebra-res : {𝓤 𝓥 𝓦 : Level}
+               {X : Type 𝓤} {L : Lattice X}
+               {Y : Type 𝓥} (A : Algebra L Y)
+               {Z : Type 𝓦} (B : Algebra (A .Algebra.str-Lattice) Z)
+               → Algebra L Z
+Algebra-res A B =
+  record
+    { str-Lattice = B.str-Lattice
+    ; ι = B.ι ∘ A.ι
+    ; ι-alg = is-lattice-hom-∘ B.ι-alg A.ι-alg }
+  where
+    module A = Algebra A
+    module B = Algebra B
 
 opaque
   is-lattice-alg-hom : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {L : Lattice A}
@@ -336,16 +367,7 @@ LatticeAlgHom-∘ : {𝓤 𝓥 𝓦 𝓧 : Level}
 LatticeAlgHom-∘ (g , b) (f , a) .fst = Coslice-map-∘ _ _ _ g f
 LatticeAlgHom-∘ (g , b) (f , a) .snd =
   mk-is-lattice-alg-hom
-    (record { pres-∨ = ap (fst g) a.pres-∨ ∙ b.pres-∨
-            ; pres-∧ = ap (fst g) a.pres-∧ ∙ b.pres-∧
-            ; pres-0 = ap (fst g) a.pres-0 ∙ b.pres-0
-            ; pres-1 = ap (fst g) a.pres-1 ∙ b.pres-1 })
-  where
-    module a = is-lattice-hom (un-is-lattice-alg-hom a)
-    module b = is-lattice-hom (un-is-lattice-alg-hom b)
-
-
-
+    (is-lattice-hom-∘ (un-is-lattice-alg-hom b) (un-is-lattice-alg-hom a))
 }
 }
 
@@ -357,7 +379,6 @@ LatticeAlgHom-∘ (g , b) (f , a) .snd =
   there is an identity system identifying identities of algebra homomorphisms
   with the identities of the underlying maps.}
 
-%```agda
 \agda{
 is-LatticeAlgHom-equiv : {𝓤 𝓥 𝓦 : Level}
                    {A : Type 𝓤} {L : Lattice A}
@@ -421,7 +442,8 @@ LatticeAlgHom-quasi-inv : {𝓤 𝓥 𝓦 : Level}
                         → LatticeAlgHom A1 A2 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
 LatticeAlgHom-quasi-inv {A1 = A1} {A2} f =
   Σ[ g ∶ LatticeAlgHom A2 A1 ]
-    ((LatticeAlgHom-∘ g f ＝ LatticeAlgHom-id A1) × (LatticeAlgHom-∘ f g ＝ LatticeAlgHom-id A2 ))
+    ((LatticeAlgHom-∘ g f ＝ LatticeAlgHom-id A1)
+      × (LatticeAlgHom-∘ f g ＝ LatticeAlgHom-id A2 ))
 
 module _ {𝓤 𝓥 𝓦}
          {A : Type 𝓤} {L : Lattice A}
@@ -464,10 +486,7 @@ module _ {𝓤 𝓥 𝓦}
   quasi-inv←is-LatticeAlgHom-equiv .fst = is-LatticeAlgHom-equiv-bwd
   quasi-inv←is-LatticeAlgHom-equiv .snd .fst = ext! η
   quasi-inv←is-LatticeAlgHom-equiv .snd .snd = ext! ε
-
 }
-%```
-
 }
 
 \subtree[stt-00A0]{
@@ -502,7 +521,6 @@ initial-Algebra-is-initial  L AX
                         (λ a → is-lattice-alg-hom-is-prop) _)
   where
     module AX = Algebra AX
-
 }
 }
 
@@ -669,7 +687,5 @@ Dist-Algebra : {𝓤 𝓥 : Level}
                (A : Type 𝓥)
              → Type (𝓤 ⊔ 𝓥)
 Dist-Algebra Lat A = Σ (Algebra Lat A) (is-distributive-algebra) 
-
-
 }
 }

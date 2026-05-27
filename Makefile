@@ -69,7 +69,7 @@ sync-forest-src:
 
 build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
-	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" "$(EVERYTHING_FILE)" -j
+	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks "$(EVERYTHING_FILE)" -j
 
 watch-agda:
 	@$(MAKE) --no-print-directory build-forest

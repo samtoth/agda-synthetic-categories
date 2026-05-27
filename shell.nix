@@ -13,7 +13,7 @@ pkgs.mkShell {
   buildInputs = [
     (forester-server.packages.${system}.default)
     (pkgs.python3.withPackages (py-pkgs: [ ]))
-    (pkgs.codespell)
+    (pkgs.pre-commit)
     (pkgs.ripgrep)
   ]
   ++ drv.buildInputs;

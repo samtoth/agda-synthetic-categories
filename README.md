@@ -1,13 +1,13 @@
 # Agda Synthetic Categories
 
 An agda development focussed on the development of ∞-category theory using simplicial
-type theory.
-Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories) to browse
-the resource and find out more about the project.
-Benchmark history is published at
+type theory. Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories)
+to browse the resource and find out more about the project. Benchmark history is
+published at
 [the benchmark page](https://samtoth.github.io/agda-synthetic-categories/benchmarks/).
 
-Have questions or just want to chat? Join our [Discord server](https://discord.gg/Jfxv4jPTva)!
+Have questions or just want to chat? Join our
+[Discord server](https://discord.gg/Jfxv4jPTva)!
 
 ## Development
 
@@ -28,6 +28,13 @@ or newer. You can find the latest release binaries
 [here](https://github.com/agda/agda/releases/). See also the Agda documentation:
 [installing from source](https://agda.readthedocs.io/en/latest/getting-started/installation.html#option-2-install-the-development-version-of-agda-from-source-for-advanced-users).
 
+We use [pre-commit](https://pre-commit.com/) to run a series of quality checks on
+contributions. It can be installed as a stand alone program or via
+[Python](https://www.python.org/) using `python -m pip install pre-commit`. After it
+is installed you can run them manually with `pre-commit run --all-files`, or
+alternatively enable the automatic git hooks with `pre-commit install` (to disable
+them later run `pre-commit uninstall`).
+
 In order to build the forest, you will need:
 
 - [agda-forester](https://github.com/samtoth/agda-forester)
@@ -40,6 +47,6 @@ In order to build the forest, you will need:
 ### Emacs mode
 
 I have been using the emacs mode by the Topos Institute at
-[github:ToposInstitute/forester.el](https://github.com/ToposInstitute/forester.el), which works well when
-editing trees, but there is currently no solution for working
+[github:ToposInstitute/forester.el](https://github.com/ToposInstitute/forester.el),
+which works well when editing trees, but there is currently no solution for working
 with literate agda in forests.

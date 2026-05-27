@@ -40,7 +40,7 @@ pkgs.stdenv.mkDerivation rec {
     mkdir -p ./output
     mkdir -p ./output/html
     echo "made /output/html dir"
-    LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" src/Everything.agda
+    LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks -j src/Everything.agda
     echo "Generated trees"
     forester build
     if [ -f ./output/agda-synthetic-categories/Agda.css ]; then

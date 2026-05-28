@@ -53,6 +53,9 @@ open Cospan-map
 unquoteDecl Cospan-map-repr≊ Cospan-map-repr≃
   = make-record-repr Cospan-map-repr≊ Cospan-map-repr≃ (quote Cospan-map)
 
+unquoteDecl Cospan-repr≅ Cospan-repr≃
+  = make-record-repr Cospan-repr≅ Cospan-repr≃ (quote Cospan)
+
 cospan-map-compose
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
       {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'} {U : Cospan 𝓤'' 𝓥'' 𝓦''}
@@ -132,6 +135,26 @@ instance
   Cospan-map-IdS .Identity-system.IdS←Id-is-equiv a
     = fundamental-Id _ Cospan-map-homotopy-is-torsorial _
 }
+}
+
+\subtree[tot-0231]{
+\title{Cospans form a category}
+\taxon{Lemma}
+
+
+%```agda
+\agda{
+cospan-map-compose-idr
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦}{C : Cospan 𝓤' 𝓥' 𝓦'}
+    → (F : Cospan-map S C)
+    → Cospan-map-homotopy (cospan-map-compose F id-cospan-map) F
+cospan-map-compose-idr F .fst = ~refl
+cospan-map-compose-idr F .snd .fst = ~refl
+cospan-map-compose-idr F .snd .snd .fst = ~refl
+cospan-map-compose-idr F .snd .snd .snd .fst = ~∙-reflr _
+cospan-map-compose-idr F .snd .snd .snd .snd = ~∙-reflr _
+}
+%```
 }
 
 \subtree[stt-00BN]{
@@ -278,6 +301,97 @@ is-cospan-equiv m = is-equiv (m .h₁)
                   × is-equiv (m .h₂)
                   × is-equiv (m .h₃)
 
+id-is-cospan-equiv
+  : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦)
+    → is-cospan-equiv (id-cospan-map {S = S})
+id-is-cospan-equiv _ = (id-is-equiv , id-is-equiv , id-is-equiv)
+
+Cospan-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'}
+      (S : Cospan 𝓤 𝓥 𝓦) (T : Cospan 𝓤' 𝓥' 𝓦')
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+Cospan-equiv S T = Σ (Cospan-map S T) is-cospan-equiv
+
+Cospan-idequiv
+  : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦) → Cospan-equiv S S
+Cospan-idequiv S = (id-cospan-map , id-is-cospan-equiv S)
+
+Cospan-equiv←Id
+  : ∀ {𝓤 𝓥 𝓦} {S T : Cospan 𝓤 𝓥 𝓦} → S ＝ T → Cospan-equiv S T
+Cospan-equiv←Id refl = Cospan-idequiv _
+
+Cospan-equiv-components
+  : {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' : Level}
+  → Cospan 𝓤 𝓥 𝓦
+  → Cospan 𝓤' 𝓥' 𝓦'
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓤' ⊔ 𝓥' ⊔ 𝓦')
+Cospan-equiv-components S S'
+  = Σ[ F ∶ (S .Centre ≃ S' .Centre) ]
+    Σ[ L ∶ (S .Left ≃ S' .Left) ]
+    Σ[ _ ∶ (F ._≃_.fwd ∘ S .left ~ S' .left ∘ L ._≃_.fwd) ]
+    Σ[ R ∶ (S .Right ≃ S' .Right) ]
+      (F ._≃_.fwd ∘ S .right ~ S' .right ∘ R ._≃_.fwd)
+  where
+  open Cospan
+
+Cospan-equiv≃components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Cospan-equiv S T ≃ Cospan-equiv-components S T
+Cospan-equiv≃components ._≃_.fwd (F , e1 , e2 , e3)
+  =
+  ( mk≃ (F .h₂) e2
+  , mk≃ (h₁ F) e1
+  , F .H
+  , mk≃ (h₃ F) e3
+  , F .K)
+Cospan-equiv≃components ._≃_.fwd-is-equiv .is-equiv.qinv .fst
+  (mk≃ F Feq , mk≃ L Leq , H , mk≃ R Req , K)
+   = (mk-cospan-map L F R H K , (Leq , Feq , Req))
+Cospan-equiv≃components ._≃_.fwd-is-equiv .is-equiv.qinv .snd = (~refl , ~refl)
+Cospan-equiv≃components ._≃_.fwd-is-equiv .is-equiv.coherent = ~refl
+
+Cospan-equiv←components
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Cospan-equiv-components S T → Cospan-equiv S T
+Cospan-equiv←components = _≃_.bwd Cospan-equiv≃components
+
+components←Cospan-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Cospan-equiv S T → Cospan-equiv-components S T
+components←Cospan-equiv = _≃_.fwd Cospan-equiv≃components
+
+opaque
+  Cospan-equiv-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} (S : Cospan 𝓤 𝓥 𝓦)
+      → is-singleton (Σ (Cospan 𝓤 𝓥 𝓦) (Cospan-equiv S))
+  Cospan-equiv-is-torsorial S
+    = is-single←equiv-to-single
+        (Σ-≃ (Cospan-repr≃ e⁻¹) λ x → Cospan-equiv≃components e⁻¹)
+        (is-singleton-structure←parts
+          (SingS-is-single (Cospan.Centre S))
+          (_ , id≃)
+          (is-singleton-structure←parts
+            (SingS-is-single _)
+            (_ , id≃)
+            (is-singleton-structure←parts
+              (SingS-is-single _)
+              (_ , ~refl)
+              (is-singleton-structure←parts
+                (SingS-is-single _)
+                (_ , id≃)
+                (SingS-is-single _)))))
+
+Cospan-equiv←Id-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {S T : Cospan 𝓤 𝓥 𝓦} → is-equiv (Cospan-equiv←Id {S = S}{T})
+Cospan-equiv←Id-is-equiv
+  = fundamental-Id _ (Cospan-equiv-is-torsorial _) (λ _ → Cospan-equiv←Id) _
+
+instance
+  Cospan-IdS : ∀ {𝓤 𝓥 𝓦} → Identity-system (Cospan 𝓤 𝓥 𝓦) (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Cospan-IdS .Identity-system.IdS = Cospan-equiv
+  Cospan-IdS .Identity-system.IdS←Id = Cospan-equiv←Id
+  Cospan-IdS .Identity-system.IdS←Id-is-equiv _ _ = Cospan-equiv←Id-is-equiv
+
 Pullback₁-is-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
       (F : Cospan-map S T) → is-cospan-equiv F
@@ -289,5 +403,11 @@ Pullback₁-is-equiv F (e1 , e2 , e3)
                (is-equiv-∘
                  (∙-is-equiv' (K F b))
                  (is-embedding←is-equiv e2))))
+
+Pullback₁≃
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Cospan 𝓤 𝓥 𝓦} {T : Cospan 𝓤' 𝓥' 𝓦'}
+    → Σ (Cospan-map S T) is-cospan-equiv
+    → Pullback-of-cospan S ≃ Pullback-of-cospan T
+Pullback₁≃ (F , Fe) = mk≃ (Pullback₁ F) (Pullback₁-is-equiv F Fe)
 }
 }

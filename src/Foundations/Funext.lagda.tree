@@ -16,7 +16,7 @@ Or equivalently, that #{\textrm{happly} : (f = g) \to (f \sim g)} is an equivale
 }
 
 \agda{
-module Foundations.FunExt where
+module Foundations.Funext where
 
 open import Foundations.Universes
 open import Foundations.Functions
@@ -44,74 +44,59 @@ which says that all (canonical) universes satisfy function extensionality in the
 living in #{\UU^\omega}.}
 
 \agda{
-FunExt : (𝓤 : Level) → Type (lsuc 𝓤)
-FunExt 𝓤 = ∀ {A : Type 𝓤} {B : A → Type 𝓤} {f g : (a : A) → B a}
-           → is-equiv (happly {f = f} {g})
+Funext : (𝓤 𝓥 : Level) → Type (lsuc (𝓤 ⊔ 𝓥))
+Funext 𝓤 𝓥
+  = ∀ {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : (a : A) → B a}
+    → is-equiv (happly {f = f} {g})
 
-FunExtω : Level → Typeω
-FunExtω 𝓥 = ∀ {𝓤} → ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
-                   → is-equiv (happly {f = f} {g})
+Funextω : Level → Typeω
+Funextω 𝓥
+  = ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : (a : A) → B a}
+    → is-equiv (happly {f = f} {g})
 
-FunExt-global : Typeω
-FunExt-global = ∀ {𝓥} → FunExtω 𝓥
+Funext-global : Typeω
+Funext-global = ∀ {𝓥} → Funextω 𝓥
 }
 }
 
 \agda{
-module WithFunExt {𝓥} (fe : FunExt 𝓥) where
-  funext≃ : ∀ {A : Type 𝓥} {B : A → Type 𝓥} {f g : (a : A) → B a} → (f ＝ g) ≃ (f ~ g)
-  funext≃ {𝓤} = mk≃ happly fe
+module WithFunext {𝓤 𝓥} (fe : Funext 𝓤 𝓥) where
+  funext≃ : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → (f ＝ g) ≃ (f ~ g)
+  funext≃ = mk≃ happly fe
 
-  funext→ : ∀ {A : Type 𝓥} {B : A → Type 𝓥} {f g : (a : A) → B a} → f ~ g → f ＝ g
+  module funext {A : Type 𝓤} {B : A → Type 𝓥}
+                {f g : Π A B} = _≃_ (funext≃ {A} {B} {f} {g})
+
+  funext→ : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → f ~ g → f ＝ g
   funext→ p = is-equiv.bwd fe p
 
   funext-J
-    : ∀ {𝓦} {A : Type 𝓥} {B : A → Type 𝓥} {f : (a : A) → B a}
+    : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
       → (M : (g : (a : A) → B a) → f ~ g → Type 𝓦) → M f ~refl
       → ∀ (g : (a : A) → B a) (h : f ~ g) → M g h
   funext-J M mrfl g h = tr (M g) (is-equiv.ε fe h) (J (λ g p → M g (happly p)) mrfl (funext→ h))
 
   funext-rec
-    : ∀ {𝓦} {A : Type 𝓥} {B : A → Type 𝓥} {f g : (a : A) → B a}
+    : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
         (M : f ~ g → Type 𝓦)
       → (∀ p → M (happly p))
       → ∀ h → M h
   funext-rec M p h = tr M (is-equiv.ε fe h) (p (funext→ h))
 
-  funext-refl : ∀ {A : Type 𝓥} {B : A → Type 𝓥} {f : Π A B} → funext→ (~refl) ＝ refl {a = f}
-  funext-refl = is-equiv.η fe refl
-
-module WithFunExtω {𝓥} (fe : FunExtω 𝓥) where
-  funext≃ : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → (f ＝ g) ≃ (f ~ g)
-  funext≃ {𝓤} = mk≃ happly fe
-
-  module funext {𝓤} {A : Type 𝓤} {B : A → Type 𝓥}
-                {f g : Π A B} = _≃_ (funext≃ {_} {A} {B} {f} {g})
-
-  funext→ : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → f ~ g → f ＝ g
-  funext→ p = is-equiv.bwd fe p
-
-  funext-J
-    : ∀ {𝓤 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
-      → (M : (g : (a : A) → B a) → f ~ g → Type 𝓦) → M f ~refl
-      → ∀ (g : (a : A) → B a) (h : f ~ g) → M g h
-  funext-J M mrfl g h = tr (M g) (is-equiv.ε fe h) (J (λ g p → M g (happly p)) mrfl (funext→ h))
-
-
-  funext-refl
-    : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥} {f : Π A B}
-      → funext→ (~refl) ＝ refl {a = f}
+  funext-refl : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f : Π A B} → funext→ (~refl) ＝ refl {a = f}
   funext-refl = is-equiv.η fe refl
 
   funext-∙
-    : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥}
+    : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
         {f g h : Π A B} (p : f ~ g) (q : g ~ h)
       → funext→ (p ~∙ q) ＝ funext→ p ∙ funext→ q
   funext-∙ p = funext-J (λ f' H → ∀ q → funext→ (H ~∙ q) ＝ funext→ H ∙ funext→ q)
                  (λ q → sym (ap (_∙ funext→ q) funext-refl)) _ p
 
   funext-∙∙
-    : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥}
+    : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
         {f g : Π A B} (p : f ~ g) {h} (q : g ~ h) {k} (r : h ~ k)
       → funext→ (p ~∙ q ~∙ r) ＝ funext→ p ∙ funext→ q ∙ funext→ r
   funext-∙∙
@@ -123,7 +108,7 @@ module WithFunExtω {𝓥} (fe : FunExtω 𝓥) where
                       ∙ ap (_∙ funext→ r) funext-refl)) _) _
 
   funext-sym
-    : ∀ {𝓤} {A : Type 𝓤} {B : A → Type 𝓥}
+    : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
         {f g : Π A B} (p : f ~ g)
       → funext→ (p ~⁻¹) ＝ sym (funext→ p)
   funext-sym = funext-J (λ g H → funext→ (H ~⁻¹) ＝ sym (funext→ H))
@@ -131,15 +116,8 @@ module WithFunExtω {𝓥} (fe : FunExtω 𝓥) where
 
 
   opaque
-    funext-rec
-      : ∀ {𝓤 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
-          (M : f ~ g → Type 𝓦)
-        → (∀ p → M (happly p))
-        → ∀ h → M h
-    funext-rec M p h =  tr M (funext.ε h) (p (funext→ h))
-
     funext-rec-~refl
-      : ∀ {𝓤 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
+      : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
           (M : f ~ f → Type 𝓦)
         → (f : ∀ p → M (happly p))
         → funext-rec M f ~refl ＝ f refl
@@ -153,16 +131,19 @@ module WithFunExtω {𝓥} (fe : FunExtω 𝓥) where
                   (ap-∘ M happly _ ∙ ap (ap M) (funext.coherent refl))
                   (apᶠ f funext-refl)
 
-
-module WithFunExt-global (fe : FunExt-global) where
-  module FE {𝓥} = WithFunExtω {𝓥} fe
-  open FE public
-
-
   Π-path
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}
+    : ∀ {A : Type 𝓤} {B C : A → Type 𝓥}
       → B ＝ C → ((a : A) → B a) ＝ ((a : A) → C a)
   Π-path p = ap (λ f → (a : _) → f a) p
+
+
+module WithFunextω {𝓥} (fe : Funextω 𝓥) where
+  private module FE {𝓤} = WithFunext (fe {𝓤})
+  open FE public
+
+module WithFunext-global (fe : Funext-global) where
+  module FE {𝓥} = WithFunextω {𝓥} fe
+  open FE public
 
   funextᵈ→
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B C : A → Type 𝓥}
@@ -176,4 +157,5 @@ module WithFunExt-global (fe : FunExt-global) where
         (funext-J
           (λ g h → f ＝[ Π-path (funext→ ~refl) ] g)
           (reflᵈ (ap Π-path funext-refl)) _) _ P
+
 }

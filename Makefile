@@ -140,6 +140,31 @@ check-duplicate-trees:
 		exit err ; \
 	}'
 
+list-trees:
+	@DIR="$(DUP_DIR)"; \
+	{ \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR" src/; \
+		find "$$DIR" -name '*.tree'; \
+	} | awk '\
+	/subtree\[[a-zA-Z]{3}-/ { \
+		split($$0, a, ":"); \
+		id = a[3]; \
+		sub(/^subtree\[/, "", id); \
+		sub(/\]$$/, "", id); \
+		printf "%s\n", id ;\
+	} \
+	/\.tree$$/ { \
+		loc = $$0; \
+		id = $$0; \
+		sub(/^.*\//, "", id); \
+		sub(/\.tree$$/, "", id); \
+        	if (id ~ /^[a-zA-Z]{3}-[0-9A-Z]{4}/) { \
+		   printf "%s\n", id ;\
+		}\
+	}' | sort -r \
+	
+	
+
 check-forest-no-typecheck: sync-forest-src prepare-forest-assets
 	@mkdir -p "$(HTML_DIR)"
 	@$(MAKE) --no-print-directory check-duplicate-trees

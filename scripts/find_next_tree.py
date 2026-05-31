@@ -28,29 +28,17 @@ def int_to_base36(n: int, width=4) -> str:
     return out.zfill(width)
 
 
-def get_forester_json() -> list:
-    """Run `forester query all` and parse JSON output."""
+def list_all_trees() -> list:
+    """List all trees in the project using the makefile target"""
     try:
         result = subprocess.run(
-            ["forester", "query", "all"], capture_output=True, text=True, check=True
+            ["make", "list-trees"], capture_output=True, text=True, check=True
         )
     except subprocess.CalledProcessError as e:
-        print("Error running `forester query all`:", e)
+        print("Error running `make list-trees`:", e)
         exit(1)
 
-    # Skip any leading info lines
-    stdout = result.stdout
-    json_start = stdout.find("[{")
-    if json_start == -1:
-        print("No JSON array found in forester output", file=sys.stderr)
-        exit(1)
-    json_text = stdout[json_start:]
-
-    try:
-        return json.loads(json_text)
-    except json.JSONDecodeError as e:
-        print("Failed to parse JSON from forester output:", e)
-        exit(1)
+    return result.stdout.splitlines()
 
 
 def find_next_tree(prefix, all_trees: list, gap: int) -> int:
@@ -59,8 +47,7 @@ def find_next_tree(prefix, all_trees: list, gap: int) -> int:
     stt_numbers = []
 
     for tree in all_trees:
-        uri = tree.get("uri", "")
-        m = stt_re.match(uri)
+        m = stt_re.match(tree)
         if m:
             stt_numbers.append(base36_to_int(m.group(1)))
 
@@ -96,7 +83,7 @@ def main():
     )
     args = parser.parse_args()
 
-    all_trees = get_forester_json()
+    all_trees = list_all_trees()
     next_val = find_next_tree(args.prefix, all_trees, args.gap)
 
     print(f"{args.prefix}-{int_to_base36(next_val)}")

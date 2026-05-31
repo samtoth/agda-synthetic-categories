@@ -23,6 +23,7 @@ help:
 	@echo "  make server [PORT=<port>]        # Run watch-agda + watch-forest together (default: 1313)"
 	@echo "  make python-server [PORT=<port>] # Serve ./result with python http.server (default: 1313)"
 	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
+	@echo "  make list-trees"                # List all of the trees in the project
 	@echo "  make clean-agda                  # Remove generated agda artifacts"
 	@echo "  make clean-forester              # Remove generated forester artifacts"
 	@echo "  make clean                       # Remove all generated build artifacts"

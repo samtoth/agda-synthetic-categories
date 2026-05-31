@@ -175,7 +175,7 @@ rename-trees-dry:
 	fi
 
 check-rename-trees:
-	@echo -n "Confirm changes? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
 rename-trees: rename-trees-dry check-rename-trees
 	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/  ; \

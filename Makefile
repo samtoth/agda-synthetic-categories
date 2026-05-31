@@ -10,7 +10,7 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server python-server check-duplicate-trees clean-agda clean-forester clean
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server python-server check-duplicate-trees rename-trees clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
@@ -23,7 +23,8 @@ help:
 	@echo "  make server [PORT=<port>]        # Run watch-agda + watch-forest together (default: 1313)"
 	@echo "  make python-server [PORT=<port>] # Serve ./result with python http.server (default: 1313)"
 	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
-	@echo "  make list-trees"                # List all of the trees in the project
+	@echo "  make list-trees                  # List all of the trees in the forest"
+	@echo "  make rename-trees                # Rename trees in the forest (AUTHOR=... required)"
 	@echo "  make clean-agda                  # Remove generated agda artifacts"
 	@echo "  make clean-forester              # Remove generated forester artifacts"
 	@echo "  make clean                       # Remove all generated build artifacts"
@@ -164,7 +165,20 @@ list-trees:
 		}\
 	}' | sort -r \
 
+rename-trees-dry:
+	@if [ -z "$(AUTHOR)" ]; then \
+	   echo "Requires AUTHOR=..."; \
+	   exit 1; \
+	else \
+	   echo "Dry running the renamer:"; \
+	   python3 scripts/rename_trees.py -n $(AUTHOR) src/ trees/  ; \
+	fi
 
+check-rename-trees:
+	@echo -n "Confirm changes? [y/N] " && read ans && [ $${ans:-N} = y ]
+
+rename-trees: rename-trees-dry check-rename-trees
+	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/  ; \
 
 check-forest-no-typecheck: sync-forest-src prepare-forest-assets
 	@mkdir -p "$(HTML_DIR)"

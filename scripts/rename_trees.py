@@ -60,9 +60,7 @@ rename_map = {}
 auth_re = re.compile(rf"{AUTHOR}-(\w{{4}})$", re.IGNORECASE)
 
 author_trees = [
-    auth_re.search(tree).group(1)
-    for tree in all_trees
-    if auth_re.search(tree)
+    auth_re.search(tree).group(1) for tree in all_trees if auth_re.search(tree)
 ]
 
 author_trees.sort(key=lambda x: int(x, 36))

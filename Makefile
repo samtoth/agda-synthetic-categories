@@ -163,8 +163,8 @@ list-trees:
 		   printf "%s\n", id ;\
 		}\
 	}' | sort -r \
-	
-	
+
+
 
 check-forest-no-typecheck: sync-forest-src prepare-forest-assets
 	@mkdir -p "$(HTML_DIR)"

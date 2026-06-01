@@ -1,0 +1,246 @@
+\title{The walking split morphism}
+\author{fredrikbakke}
+\date{2026-04-30}
+\taxon{Module}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.WalkingSplitHom
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+private
+  Δ² = Poly.Δ² I
+
+open import Core.CanonicalPushouts
+open import Core.Cofibres
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+open import Synthetic.Categories.AssociativitySegal Δ¹ I
+
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.SplitEpimorphisms Δ¹ I I-distr
+}
+
+\subtree[stt-00PL]{
+\title{The walking split morphism}
+\author{fredrikbakke}
+\taxon{Definition}
+\date{2026-04-30}
+
+\p{
+The \emph{walking split morphism} is the 2-simplex with its diagonal contracted.
+}
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^1} && {\Delta^2} \\
+	\\
+	1 && {\mathfrak{M}}
+	\arrow["{\Delta^2\text{-diag}}", from=1-1, to=1-3]
+	\arrow["!"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+𝔐 : Type 𝓘
+𝔐 = Cofibre δ₁²
+
+𝔐←Δ² : Δ² → 𝔐
+𝔐←Δ² = ι₁
+
+𝔐←∂Δ² : ∂Δ² → 𝔐
+𝔐←∂Δ² = 𝔐←Δ² ∘ ∂Δ²-incl
+
+𝔐←Λ[2,1] : Λ[2,1] → 𝔐
+𝔐←Λ[2,1] = 𝔐←Δ² ∘ Λ[2,1]-incl
+
+sec-arr-𝔐 : Δ¹ → 𝔐
+sec-arr-𝔐 = ι₁ ∘ δ₂²
+{-# NOINLINE sec-arr-𝔐 #-}
+
+ret-arr-𝔐 : Δ¹ → 𝔐
+ret-arr-𝔐 = ι₁ ∘ δ₀²
+{-# NOINLINE ret-arr-𝔐 #-}
+
+src-𝔐 : 𝔐
+src-𝔐 = ι₂ tt
+{-# NOINLINE src-𝔐 #-}
+
+tgt-𝔐 : 𝔐
+tgt-𝔐 = ι₁ (i1 , i0)
+{-# NOINLINE tgt-𝔐 #-}
+
+sec-𝔐 : Hom 𝔐 src-𝔐 tgt-𝔐
+sec-𝔐 = mk-hom sec-arr-𝔐 (ap ι₁ Δ²-refl ∙ glue i0) refl
+{-# NOINLINE sec-𝔐 #-}
+
+ret-𝔐 : Hom 𝔐 tgt-𝔐 src-𝔐
+ret-𝔐
+  = mk-hom (ret-arr-𝔐) (ap ι₁ Δ²-refl) (ap ι₁ Δ²-refl ∙ glue i1)
+{-# NOINLINE ret-𝔐 #-}
+
+opaque
+  hom2-𝔐-boundary
+    : ι₁ ∘ ∂Δ²-incl ~ make-∂Δ² ret-𝔐 sec-𝔐 (idH src-𝔐)
+  hom2-𝔐-boundary
+    = pushout-rec-unique _ (ι₁ ∘ ∂Δ²-incl) horn-bd (λ i → glue i) λ where
+        ∂Δ¹-0
+          → ap (_∙ glue i0) (ap-∘ ι₁ ∂Δ²-incl (glue ∂Δ¹-0)
+          ∙ ap (ap ι₁) (pushout-rec-apβ ∂Δ¹-0))
+          ∙ sym (∙-reflr _)
+        ∂Δ¹-1
+          → ap (_∙ glue i1) (ap-∘ ι₁ ∂Δ²-incl (glue ∂Δ¹-1)
+          ∙ ap (ap ι₁) (pushout-rec-apβ ∂Δ¹-1))
+          ∙ sym (∙-reflr _)
+    where
+    horn-bd
+      : ι₁ ∘ Λ[2,1]-incl ~ make-horn ret-𝔐 sec-𝔐
+    horn-bd = pushout-rec-unique _ (ι₁ ∘ Λ[2,1]-incl) ~refl ~refl λ _
+      → ∙-reflr _
+      ∙ ap-∘ ι₁ Λ[2,1]-incl Λ[2,1]-glue
+      ∙ ap (ap ι₁) (pushout-rec-apβ tt)
+      ∙ ap (ap ι₁) (Δ²-is-set _ _ _ (sym Δ²-refl))
+      ∙ ap-sym ι₁ Δ²-refl
+
+  hom2-𝔐-diagonal
+    : (i : Δ¹) → hom2-𝔐-boundary (ι₂ i) ＝ glue i
+  hom2-𝔐-diagonal = ~refl
+
+hom2-𝔐 : Hom2 ret-𝔐 sec-𝔐 (idH src-𝔐)
+hom2-𝔐 = ι₁ , hom2-𝔐-boundary
+
+split-mono-𝔐 : SplitMono src-𝔐 tgt-𝔐
+split-mono-𝔐 = sec-𝔐 , ret-𝔐 , hom2-𝔐
+
+split-epi-𝔐 : SplitEpi tgt-𝔐 src-𝔐
+split-epi-𝔐 = ret-𝔐 , sec-𝔐 , hom2-𝔐
+}
+}
+
+\subtree[stt-00QS]{
+\title{The total spaces of split monos and split epis are equivalent}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-14}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  TotalSplitEpi←TotalSplitMono
+    : TotalSplitMono A → TotalSplitEpi A
+  TotalSplitEpi←TotalSplitMono (a , b , f , r , K) = (b , a , r , f , K)
+
+  TotalSplitMono←TotalSplitEpi : TotalSplitEpi A → TotalSplitMono A
+  TotalSplitMono←TotalSplitEpi (a , b , f , s , K) = b , a , s , f , K
+
+  TotalSplitMono≃TotalSplitEpi
+    : TotalSplitMono A ≃ TotalSplitEpi A
+  TotalSplitMono≃TotalSplitEpi
+    = mk≃
+      ( TotalSplitEpi←TotalSplitMono)
+      ( mk-eqv (TotalSplitMono←TotalSplitEpi , ~refl , ~refl) ~refl)
+}
+}
+
+\subtree[stt-00PU]{
+\title{The walking split morphism classifies split monomorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+\date{2026-05-14}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  𝔐-split-mono-repr→
+    : (𝔐 → A) → Σ[ a ∶ A ] Σ[ b ∶ A ] SplitMono a b
+  𝔐-split-mono-repr→ F
+    = F src-𝔐
+    , F tgt-𝔐
+    , ap-hom F sec-𝔐
+    , ap-hom F ret-𝔐
+    , ap-hom2 F ret-𝔐 sec-𝔐 (idH src-𝔐) hom2-𝔐
+
+  𝔐-split-mono-repr←
+    : Σ[ a ∶ A ] Σ[ b ∶ A ] SplitMono a b → (𝔐 → A)
+  𝔐-split-mono-repr← (a , b , f , r , K)
+    = pushout-rec (mk-cocone (K .fst) (λ _ → a) (λ i → K .snd (ι₂ i)))
+
+  𝔐-split-mono-repr←→
+    : (F : 𝔐 → A) → 𝔐-split-mono-repr← (𝔐-split-mono-repr→ F) ＝ F
+  𝔐-split-mono-repr←→ F
+    = sym (funext→ (pushout-rec-unique _ F ~refl ~refl λ i
+      → ∙-reflr (ap F (glue i))
+      ∙ ap (ap F) (sym (hom2-𝔐-diagonal i))
+      ∙ sym (∙-reflr (ap F (hom2-𝔐 .snd (ι₂ i))))
+      ∙ ap (ap F (hom2-𝔐 .snd (ι₂ i)) ∙_) (sym (ap-∂Δ²-diagonal F i))))
+
+  opaque
+    𝔐-split-mono-repr←id
+      : (a : A)
+      → const A 𝔐 a
+      ~ 𝔐-split-mono-repr← (a , a , id-SplitMono a)
+    𝔐-split-mono-repr←id a
+      = pushout-rec-unique _ (const A 𝔐 a) ~refl ~refl λ i
+        → ∙-reflr _
+        ∙ ap-const (glue i)
+}
+
+\p{
+It remains to show that \code{𝔐-split-mono-repr←} is a section to
+\code{𝔐-split-mono-repr→}.
+}
+}
+
+\subtree[stt-00PS]{
+\title{The walking split morphism classifies split epimorphisms}
+\author{fredrikbakke}
+\taxon{Corollary}
+\date{2026-05-14}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  𝔐-split-epi-repr→
+    : (𝔐 → A) → Σ[ a ∶ A ] Σ[ b ∶ A ] SplitEpi a b
+  𝔐-split-epi-repr→ F
+    = TotalSplitEpi←TotalSplitMono (𝔐-split-mono-repr→ F)
+
+  𝔐-split-epi-repr←
+    : Σ[ a ∶ A ] Σ[ b ∶ A ] SplitEpi a b → (𝔐 → A)
+  𝔐-split-epi-repr← x
+    = 𝔐-split-mono-repr← (TotalSplitMono←TotalSplitEpi x)
+
+  𝔐-split-epi-repr←→
+    : (F : 𝔐 → A) → 𝔐-split-epi-repr← (𝔐-split-epi-repr→ F) ＝ F
+  𝔐-split-epi-repr←→ F = 𝔐-split-mono-repr←→ F
+}
+
+\p{
+It remains to show that \code{𝔐-split-epi-repr←} is a section to
+\code{𝔐-split-epi-repr→}, which would follow from \code{𝔐-split-mono-repr←} being a
+section to \code{𝔐-split-mono-repr→}.
+}
+}

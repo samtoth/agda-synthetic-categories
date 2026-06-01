@@ -1,0 +1,562 @@
+\title{Isomorphisms}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Isomorphisms
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+
+open import Core.CanonicalPushouts
+open import Core.FunctorialityPullbacks
+open import Core.Orthogonal
+open notation
+
+open import Ergonomics.Notations.Orthogonality
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.Groupoids Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.SplitEpimorphisms Δ¹ I I-distr
+}
+
+\subtree[stt-00P4]{
+\title{Isomorphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+An \em{isomorphism} is a morphism equipped with both a left and a right inverse.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-iso : {a b : A} → Hom A a b → Type (𝓘 ⊔ 𝓤)
+  is-iso {a} {b} f
+    = Σ[ g ∶ Hom A b a ] Σ[ h ∶ Hom A b a ] (Hom2 g f (idH a) × Hom2 f h (idH b))
+
+  Iso : A → A → Type (𝓘 ⊔ 𝓤)
+  Iso a b = Σ[ f ∶ Hom A a b ] is-iso f
+
+  fwd-Iso : {a b : A} → Iso a b → Hom A a b
+  fwd-Iso = fst
+
+  split-mono-witness←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → split-mono-witness f
+  split-mono-witness←is-iso (g , h , η , ε) = (g , η)
+
+  split-epi-witness←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → split-epi-witness f
+  split-epi-witness←is-iso (g , h , η , ε) = (h , ε)
+
+  is-iso←split-mono-witness×split-epi-witness
+    : {a b : A} {f : Hom A a b}
+    → split-mono-witness f × split-epi-witness f
+    → is-iso f
+  is-iso←split-mono-witness×split-epi-witness ((g , η) , (h , ε)) = (g , h , η , ε)
+
+  idH-is-iso : (a : A) → is-iso (idH a)
+  idH-is-iso a = (idH a , idH a , idH-Hom2 a , idH-Hom2 a)
+
+  id-Iso
+    : (a : A) → Iso a a
+  id-Iso a = (idH a , idH-is-iso a)
+
+  Hom←Id-is-iso
+    : {a b : A} (p : a ＝ b) → is-iso (Hom←Id p)
+  Hom←Id-is-iso {a} refl = idH-is-iso a
+
+  Iso←Id
+    : {a b : A} → a ＝ b → Iso a b
+  Iso←Id p = Hom←Id p , Hom←Id-is-iso p
+
+  {-# NOINLINE Iso←Id #-}
+
+  Iso←Id:
+    : (a b : A) → a ＝ b → Iso a b
+  Iso←Id: a b = Iso←Id
+
+TotalIso
+  : ∀ {𝓤} (X : Type 𝓤)
+  → Type (𝓘 ⊔ 𝓤)
+TotalIso X = Σ[ a ∶ X ] Σ[ b ∶ X ] Iso {A = X} a b
+
+id-TotalIso : ∀ {𝓤} {A : Type 𝓤} → A → TotalIso A
+id-TotalIso a = (a , a , id-Iso a)
+}
+}
+
+\subtree[stt-00RA]{
+\title{Adjusting isomorphisms along identities}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-05-13}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b a' b' : A} where
+
+  adjust-is-iso
+    : (p : a ＝ a') (q : b ＝ b')
+    → {f : Hom A a b}
+    → is-iso f
+    → is-iso (adjust-hom p q f)
+  adjust-is-iso p q f-iso
+    = is-iso←split-mono-witness×split-epi-witness
+        ( adjust-split-mono-witness p q (split-mono-witness←is-iso f-iso)
+        , adjust-split-epi-witness p q (split-epi-witness←is-iso f-iso))
+
+  adjust-Iso
+    : (a ＝ a') → (b ＝ b') → Iso a b → Iso a' b'
+  adjust-Iso p q (f , f-iso)
+    = (adjust-hom p q f , adjust-is-iso p q f-iso)
+}
+}
+
+\subtree[stt-00P5]{
+\title{Universal properties of isomorphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+In a Segal type, an isomorphism is a morphism whose precomposition and
+postcomposition maps are equivalences.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  is-postcomp-hom-equiv
+    : {a b : A} → Hom A a b → Type (𝓘 ⊔ 𝓤)
+  is-postcomp-hom-equiv f
+    = (c : A) → is-equiv (postcomp-hom 𝐴 c f)
+
+  is-precomp-hom-equiv
+    : {a b : A} → Hom A a b → Type (𝓘 ⊔ 𝓤)
+  is-precomp-hom-equiv f
+    = (c : A) → is-equiv (precomp-hom 𝐴 c f)
+}
+}
+\subtree[stt-00QE]{
+\title{Isomorphisms in terms of composition triangles}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  is-iso-eq
+    : ∀ {a b : A} {f : Hom A a b}
+    → is-iso f
+    → Σ[ g ∶ Hom A b a ]
+      Σ[ h ∶ Hom A b a ]
+       ((g ∘[ 𝐴 ] f ＝ idH a) × (f ∘[ 𝐴 ] h ＝ idH b))
+  is-iso-eq {f = f} (g , h , η , ε)
+    = (g , h , ∘=←Hom2 𝐴 η , ∘=←Hom2 𝐴 ε)
+
+  is-iso←eq
+    : {a b : A} {f : Hom A a b}
+    → Σ[ g ∶ Hom A b a ]
+      Σ[ h ∶ Hom A b a ]
+       ( (g ∘[ 𝐴 ] f ＝ idH a) × (f ∘[ 𝐴 ] h ＝ idH b))
+    → is-iso f
+  is-iso←eq {f = f} (g , h , η , ε)
+    = (g , h , Hom2←∘= 𝐴 η , Hom2←∘= 𝐴 ε)
+
+}
+}
+
+\subtree[stt-00QD]{
+\title{Uniqueness of inverses}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  Hom-inverse-unique
+    : {a b : A} {f : Hom A a b} {g h : Hom A b a}
+    → g ∘[ 𝐴 ] f ＝ idH a
+    → f ∘[ 𝐴 ] h ＝ idH b
+    → g ＝ h
+  Hom-inverse-unique {f = f} {g} {h} η ε
+    = sym ∘[ 𝐴 ]-left-unit
+    ∙ ap (g ∘[ 𝐴 ]_) (sym ε)
+    ∙ sym ∘[ 𝐴 ]-assoc
+    ∙ ap (_∘[ 𝐴 ] h) η
+    ∙ ∘[ 𝐴 ]-right-unit
+
+  Hom-left-inverse←right-inverse
+    : {a b : A} {f : Hom A a b} {g h : Hom A b a}
+    → g ∘[ 𝐴 ] f ＝ idH a
+    → f ∘[ 𝐴 ] h ＝ idH b
+    → h ∘[ 𝐴 ] f ＝ idH a
+  Hom-left-inverse←right-inverse {f = f} {g} {h} η ε
+    = sym (ap (λ q → q ∘[ 𝐴 ] f) (Hom-inverse-unique η ε)) ∙ η
+
+  Hom-right-inverse←left-inverse
+    : {a b : A} {f : Hom A a b} {g h : Hom A b a}
+    → g ∘[ 𝐴 ] f ＝ idH a
+    → f ∘[ 𝐴 ] h ＝ idH b
+    → f ∘[ 𝐴 ] g ＝ idH b
+  Hom-right-inverse←left-inverse {f = f} {g} {h} η ε
+    = ap (λ q → f ∘[ 𝐴 ] q) (Hom-inverse-unique η ε) ∙ ε
+}
+}
+
+\subtree[stt-00PN]{
+\title{A morphism is an isomorphism if and only if the precomposition or postcomposition map is an equivalence}
+\author{fredrikbakke}
+\taxon{Proposition}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A)
+  where
+
+  is-postcomp-hom-equiv←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → is-postcomp-hom-equiv 𝐴 f
+  is-postcomp-hom-equiv←is-iso {f = f} fiso c
+    = let
+      (_ , h , η , ε) = is-iso-eq 𝐴 fiso
+
+      hη : h ∘[ 𝐴 ] f ＝ idH _
+      hη = Hom-left-inverse←right-inverse 𝐴 η ε
+
+      bwd k = h ∘[ 𝐴 ] k
+      ret k = sym ∘[ 𝐴 ]-assoc ∙ ap (_∘[ 𝐴 ] k) hη ∙ ∘[ 𝐴 ]-right-unit
+      sec k = sym ∘[ 𝐴 ]-assoc ∙ ap (_∘[ 𝐴 ] k) ε ∙ ∘[ 𝐴 ]-right-unit
+
+      in is-equiv←qinv (bwd , ret , sec)
+
+  is-precomp-hom-equiv←is-iso
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    → is-precomp-hom-equiv 𝐴 f
+  is-precomp-hom-equiv←is-iso {f = f} fiso c
+    = let
+      (g , _ , η , ε) = is-iso-eq 𝐴 fiso
+
+      fε : f ∘[ 𝐴 ] g ＝ idH _
+      fε = Hom-right-inverse←left-inverse 𝐴 η ε
+
+      bwd k = k ∘[ 𝐴 ] g
+      ret k = ∘[ 𝐴 ]-assoc ∙ ap (k ∘[ 𝐴 ]_) fε ∙ ∘[ 𝐴 ]-left-unit
+      sec k = ∘[ 𝐴 ]-assoc ∙ ap (k ∘[ 𝐴 ]_) η ∙ ∘[ 𝐴 ]-left-unit
+
+      in is-equiv←qinv (bwd , ret , sec)
+
+  is-iso←is-postcomp-hom-equiv
+    : {a b : A} {f : Hom A a b}
+    → is-postcomp-hom-equiv 𝐴 f
+    → is-iso f
+  is-iso←is-postcomp-hom-equiv {a} {b} {f} postcomp-equiv
+    = is-iso←eq 𝐴 (h , h , η , ε) where
+    h : Hom A b a
+    h = is-equiv.bwd (postcomp-equiv b) (idH b)
+
+    ε : f ∘[ 𝐴 ] h ＝ idH b
+    ε = is-equiv.ε (postcomp-equiv b) (idH b)
+
+    η : h ∘[ 𝐴 ] f ＝ idH a
+    η = unap-equiv
+          (postcomp-equiv a)
+          ( sym ∘[ 𝐴 ]-assoc
+          ∙ ap (_∘[ 𝐴 ] f) ε
+          ∙ ∘[ 𝐴 ]-right-unit
+          ∙ sym (∘[ 𝐴 ]-left-unit))
+
+  is-iso←is-precomp-hom-equiv
+    : {a b : A} {f : Hom A a b}
+    → is-precomp-hom-equiv 𝐴 f
+    → is-iso f
+  is-iso←is-precomp-hom-equiv {a} {b} {f} precomp-equiv
+    = is-iso←eq 𝐴 (g , g , η , ε) where
+    g : Hom A b a
+    g = is-equiv.bwd (precomp-equiv a) (idH a)
+
+    η : g ∘[ 𝐴 ] f ＝ idH a
+    η = is-equiv.ε (precomp-equiv a) (idH a)
+
+    ε : f ∘[ 𝐴 ] g ＝ idH b
+    ε = unap-equiv (precomp-equiv b)
+      ( ∘[ 𝐴 ]-assoc
+      ∙ ap (f ∘[ 𝐴 ]_) η
+      ∙ ∘[ 𝐴 ]-left-unit
+      ∙ sym ∘[ 𝐴 ]-right-unit)
+
+  is-iso⇔postcomp-equiv
+    : ∀ {a b : A} {f : Hom A a b}
+    → is-iso f ⇔ is-postcomp-hom-equiv 𝐴 f
+  is-iso⇔postcomp-equiv
+    = is-postcomp-hom-equiv←is-iso
+    , is-iso←is-postcomp-hom-equiv
+
+  is-iso⇔precomp-equiv
+    : ∀ {a b : A} {f : Hom A a b}
+    → is-iso f ⇔ is-precomp-hom-equiv 𝐴 f
+  is-iso⇔precomp-equiv
+    = is-precomp-hom-equiv←is-iso
+    , is-iso←is-precomp-hom-equiv
+}
+}
+
+\subtree[stt-00Q2]{
+\title{Computing the fibres of pre- and postcomposition embeddings}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤}(𝐴 : is-segal A) where
+
+  precomp-hom-fibre≃Hom2
+    : {a b c : A} {f : Hom A a b} {h : Hom A a c}
+    → is-prop-map (precomp-hom 𝐴 c f)
+    → fibre (precomp-hom 𝐴 c f) h
+    ≃ (Σ[ g ∶ Hom A b c ] Hom2 g f h)
+  precomp-hom-fibre≃Hom2 {f = f} {h} _
+    = Σ-snd-≃ λ g → Hom2≃∘= 𝐴 {f = g} {g = f} {h = h} e⁻¹
+
+  postcomp-hom-fibre≃Hom2
+    : {a b c : A} {f : Hom A a b} {h : Hom A c b}
+    → is-prop-map (postcomp-hom 𝐴 c f)
+    → fibre (postcomp-hom 𝐴 c f) h
+    ≃ (Σ[ g ∶ Hom A c a ] Hom2 f g h)
+  postcomp-hom-fibre≃Hom2 {f = f} {h} _
+    = Σ-snd-≃ λ g → Hom2≃∘= 𝐴 {f = f} {g = g} {h = h} e⁻¹
+}
+}
+
+\subtree[stt-00PO]{
+\title{Being an isomorphism is a proposition}
+\author{fredrikbakke}
+\taxon{Proposition}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  is-iso≃split-mono-witness×split-epi-witness
+    : {a b : A} {f : Hom A a b}
+    → is-iso f
+    ≃ split-mono-witness f × split-epi-witness f
+  is-iso≃split-mono-witness×split-epi-witness {a} {b} {f}
+    = mk≃ fwd (is-equiv←qinv qinv) where
+    fwd
+      : is-iso f
+      → (Σ[ g ∶ Hom A b a ] Hom2 g f (idH a))
+      × (Σ[ h ∶ Hom A b a ] Hom2 f h (idH b))
+    fwd (g , h , η , ε) = (g , η) , (h , ε)
+
+    qinv : quasi-inv fwd
+    qinv .fst y = fst (fst y) , fst (snd y) , snd (fst y) , snd (snd y)
+    qinv .snd .fst y = refl
+    qinv .snd .snd x = refl
+
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  is-iso-is-prop
+    : {a b : A} {f : Hom A a b}
+    → is-prop (is-iso f)
+  is-iso-is-prop {a} {b} {f}
+    = is-prop←is-single-if-inhabited λ fiso
+    → is-single←equiv-to-single
+        (( precomp-hom-fibre≃Hom2 𝐴
+              (is-prop-map←is-equiv (is-precomp-hom-equiv←is-iso 𝐴 fiso a))
+          ×≃ postcomp-hom-fibre≃Hom2 𝐴
+              (is-prop-map←is-equiv (is-postcomp-hom-equiv←is-iso 𝐴 fiso b)))
+        ∙e is-iso≃split-mono-witness×split-epi-witness 𝐴 {f = f} e⁻¹)
+        (×-is-single
+          (has-singleton-fibres←is-equiv
+            (is-precomp-hom-equiv←is-iso 𝐴 fiso a)
+            (idH a))
+          (has-singleton-fibres←is-equiv
+            (is-postcomp-hom-equiv←is-iso 𝐴 fiso b)
+            (idH b)))
+}
+}
+
+\subtree[stt-00QI]{
+\title{Equality of isomorphisms is equality of the underlying morphism}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  Iso-path→
+    : {a b : A} {f g : Iso a b}
+    → fwd-Iso f ＝ fwd-Iso g
+    → f ＝ g
+  Iso-path→ {f = (f , f-iso)} {g = (.f , g-iso)} refl
+    = Σ-path→ (refl , is-iso-is-prop 𝐴 f-iso g-iso)
+
+  Iso-pathᵈ→
+    : {a b a' b' : A}
+    → (p : a ＝ a') (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a' b'}
+    → adjust-hom p q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap₂ Iso p q) f g
+  Iso-pathᵈ→ refl refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
+
+  Iso-path-targetᵈ→
+    : {a b b' : A}
+    → (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a b'}
+    → adjust-hom refl q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap (Iso a) q) f g
+  Iso-path-targetᵈ→ refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
+
+  Iso-path-nestedᵈ→
+    : {a b a' b' : A}
+    → (p : a ＝ a') (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a' b'}
+    → adjust-hom p q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap (λ y → Iso a' y) q) (coe (ap (λ x → Iso x b) p) f) g
+  Iso-path-nestedᵈ→ refl refl {f = f} h
+    = Iso-path→ (adjust-hom-refl (fwd-Iso f) ∙ h)
+}
+}
+
+\subtree[stt-00PP]{
+\title{Composing and inverting isomorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  ∘-is-iso
+    : {a b c : A} {g : Hom A b c} {f : Hom A a b}
+    → is-iso g → is-iso f → is-iso (g ∘[ 𝐴 ] f)
+  ∘-is-iso {g = g} {f} g-iso f-iso
+    = is-iso←is-postcomp-hom-equiv 𝐴 λ d →
+        is-equiv-~∘
+          (λ _ → ∘[ 𝐴 ]-assoc)
+          (is-postcomp-hom-equiv←is-iso 𝐴 g-iso d)
+          (is-postcomp-hom-equiv←is-iso 𝐴 f-iso d)
+
+  comp-Iso : {a b c : A} → Iso b c → Iso a b → Iso a c
+  comp-Iso (g , g-iso) (f , f-iso)
+    = (g ∘[ 𝐴 ] f , ∘-is-iso g-iso f-iso)
+
+  inv-Iso : {a b : A} → Iso a b → Iso b a
+  inv-Iso {a} {b} (f , f-iso)
+    = let (_ , h , η , ε) = is-iso-eq 𝐴 f-iso
+      in h , is-iso←eq 𝐴 (f , f , ε , Hom-left-inverse←right-inverse 𝐴 η ε)
+}
+}
+
+\subtree[stt-00QC]{
+\title{The functorial action on isomorphisms}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\p{Every map preserves isomorphisms.}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B) {a b : A} where
+
+  ap-is-iso : {f : Hom A a b} → is-iso f → is-iso (ap-hom F f)
+  ap-is-iso f-iso
+    = is-iso←split-mono-witness×split-epi-witness
+        ( ap-split-mono-witness F (split-mono-witness←is-iso f-iso)
+        , ap-split-epi-witness F (split-epi-witness←is-iso f-iso) )
+
+  ap-Iso : Iso a b → Iso (F a) (F b)
+  ap-Iso (f , f-iso) = ap-hom F f , ap-is-iso f-iso
+}
+
+\p{This action preserves identities.}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐵 : is-segal B)
+  where
+
+  ap-id-Iso
+    : (F : A → B) (a : A)
+    → ap-Iso F (id-Iso a) ＝ id-Iso (F a)
+  ap-id-Iso F a = Iso-path→ 𝐵 (ap-id-SplitMono-fwd F a)
+
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A)
+  (𝐵 : is-segal B)
+  (F : A → B)
+  where
+
+  SplitMono←Iso
+    : {a b : A} → Iso a b → SplitMono a b
+  SplitMono←Iso (f , f-iso) = f , split-mono-witness←is-iso f-iso
+
+  ap-comp-Iso
+    : {a b c : A}
+    → (g : Iso b c)
+    → (f : Iso a b)
+    → ap-Iso F (comp-Iso 𝐴 g f)
+    ＝ comp-Iso 𝐵 (ap-Iso F g) (ap-Iso F f)
+  ap-comp-Iso g f
+    = Iso-path→ 𝐵 (ap-comp-SplitMono-fwd 𝐴 𝐵 F (SplitMono←Iso g) (SplitMono←Iso f))
+}
+}
+
+\subtree[stt-00P6]{
+\title{Isomorphisms in groupoids}
+\author{fredrikbakke}
+\taxon{Proposition}
+
+\p{
+In a groupoid, or more generally any #{Δ¹}-discrete type, every morphism is an
+isomorphism.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-iso←is-Δ¹-discrete
+    : is-Δ¹-discrete A → {a b : A} (f : Hom A a b) → is-iso f
+  is-iso←is-Δ¹-discrete A-Δ¹-disc {a} {b} f
+    = tr
+        is-iso
+        (is-equiv.ε (is-Hom←Id-equiv←is-Δ¹-discrete A-Δ¹-disc a b) f)
+        (Iso←Id
+          (is-equiv.bwd (is-Hom←Id-equiv←is-Δ¹-discrete A-Δ¹-disc a b) f)
+          .snd)
+
+  is-iso←is-groupoid
+    : is-groupoid A → {a b : A} (f : Hom A a b) → is-iso f
+  is-iso←is-groupoid
+    = is-iso←is-Δ¹-discrete ∘ is-Δ¹-discrete←is-groupoid
+}
+}

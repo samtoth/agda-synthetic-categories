@@ -181,32 +181,27 @@ inv-Arrow-equiv (p , peq)
 equivalences.}
 
 \agda{
-is-equiv←Arrow-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
-      {Y : Type 𝓜} {f : A → B} {g : X → Y}
-      {F : Arrow-map f g}
-    → is-Arrow-equiv F
-    → is-equiv f → is-equiv g
-is-equiv←Arrow-equiv {F = mk-amap top bot comm} (teq , beq) feq
-  = 3-for-2~' comm teq (is-equiv-∘ beq feq)
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+  {f : A → B} {g : X → Y}
+  where
 
-is-equiv←Arrow-equiv⁻¹
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
-      {Y : Type 𝓜} {f : A → B} {g : X → Y}
-      {F : Arrow-map f g}
-    → is-Arrow-equiv F
-    → is-equiv g → is-equiv f
-is-equiv←Arrow-equiv⁻¹ {F = mk-amap top bot comm} (teq , beq) geq
-  = 3-for-2~ (comm h⁻¹) beq (is-equiv-∘ geq teq)
+  tgt-is-equiv←Arrow-equiv
+    : Arrow-equiv f g → is-equiv f → is-equiv g
+  tgt-is-equiv←Arrow-equiv (mk-amap top bot comm , (teq , beq)) feq
+    = 3-for-2~' comm teq (is-equiv-∘ beq feq)
 
-top⇔bot-is-equiv←Arrow-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
-      {Y : Type 𝓜} {f : A → B} {g : X → Y}
-      (F : Arrow-map f g)
-    → is-Arrow-equiv F
-    → is-equiv f ⇔ is-equiv g
-top⇔bot-is-equiv←Arrow-equiv F eq = ( is-equiv←Arrow-equiv {F = F} eq
-                                    , is-equiv←Arrow-equiv⁻¹ {F = F} eq)
+  src-is-equiv←Arrow-equiv
+    : Arrow-equiv f g → is-equiv g → is-equiv f
+  src-is-equiv←Arrow-equiv (mk-amap top bot comm , (teq , beq)) geq
+    = 3-for-2~ (comm h⁻¹) beq (is-equiv-∘ geq teq)
+
+  src⇔tgt-is-equiv←Arrow-equiv
+    :  Arrow-equiv f g → is-equiv f ⇔ is-equiv g
+  src⇔tgt-is-equiv←Arrow-equiv E
+    = ( tgt-is-equiv←Arrow-equiv E
+      , src-is-equiv←Arrow-equiv E)
 }
 }
 
@@ -354,7 +349,7 @@ right-cancel-cartesian
     → is-Arrow-equiv b
     → is-cartesian a
 right-cancel-cartesian {a = a} {b} {H} path Hc bc b'
-  = is-equiv←Arrow-equiv⁻¹ {F = hom} hom-eq lem where
+  = src-is-equiv←Arrow-equiv (hom , hom-eq) lem where
   open Arrow-map
   open is-equiv
   lem : is-equiv (arrow-fibre a (b .bot (bwd (bc .snd) b')))
@@ -384,41 +379,43 @@ right-cancel-cartesian {a = a} {b} {H} path Hc bc b'
 cartesian maps of arrows from #{f^*(p)} to #{p}, the canonical pullback squares.}
 
 \agda{
-pullback-arrow
+base-change-arrow
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
     → (f : A → B) → (p : E → B) → (Pullback f p → A)
-pullback-arrow f p = pb.π₁
+base-change-arrow f p = pb.π₁
 
-pullback-arrow-map
+base-change-arrow-map
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
     → (f : A → B) → (p : E → B)
-    → Arrow-map (pullback-arrow f p) p
-pullback-arrow-map f p .Arrow-Π.top = pb.π₂
-pullback-arrow-map f p .Arrow-Π.bot = f
-pullback-arrow-map f p .Arrow-Π.comm = pb.filler
+    → Arrow-map (base-change-arrow f p) p
+base-change-arrow-map f p .Arrow-Π.top = pb.π₂
+base-change-arrow-map f p .Arrow-Π.bot = f
+base-change-arrow-map f p .Arrow-Π.comm = pb.filler
 
-pullback-arrow-map-is-cartesian
+base-change-arrow-map-is-cartesian
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
     → (f : A → B) → (p : E → B)
-    → is-cartesian (pullback-arrow-map f p)
-pullback-arrow-map-is-cartesian f p
+    → is-cartesian (base-change-arrow-map f p)
+base-change-arrow-map-is-cartesian f p
   = is-cartesian←up-pullback _ pullback-has-up-pullback
 
-pullback-arrow-∘
+base-change-arrow-∘
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {E : Type 𝓜}
       (g : B → C) (f : A → B) (p : E → C)
-    → Arrow-equiv (pullback-arrow f (pullback-arrow g p)) (pullback-arrow (g ∘ f) p)
-pullback-arrow-∘ g f p = ( mk-amap (gap-map←square lem) id ~refl
+    → Arrow-equiv
+        (base-change-arrow f (base-change-arrow g p))
+        (base-change-arrow (g ∘ f) p)
+base-change-arrow-∘ g f p = ( mk-amap (gap-map←square lem) id ~refl
                          , is-pullback←is-cartesian lem lem-is-cart
                          , id-is-equiv) where
-  lem : Arrow-map (pullback-arrow f (pullback-arrow g p)) p
-  lem = paste-squares (pullback-arrow-map g p)
-                      (pullback-arrow-map f (pullback-arrow g p))
+  lem : Arrow-map (base-change-arrow f (base-change-arrow g p)) p
+  lem = paste-squares (base-change-arrow-map g p)
+                      (base-change-arrow-map f (base-change-arrow g p))
 
   lem-is-cart : is-cartesian lem
   lem-is-cart = compose-cartesian
-                  (pullback-arrow-map-is-cartesian g p)
-                  (pullback-arrow-map-is-cartesian f (pullback-arrow g p))
+                  (base-change-arrow-map-is-cartesian g p)
+                  (base-change-arrow-map-is-cartesian f (base-change-arrow g p))
 }
 }
 

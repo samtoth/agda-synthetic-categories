@@ -1,0 +1,174 @@
+\date{2025-05-21}
+\title{Necklaces}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Foundations.List
+open import Algebra.Lattice
+
+module Synthetic.Necklaces {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+
+
+open import Modalities.Instances.Truncation
+
+open import Core.CanonicalPushouts
+open import Core.BipointedWedgeSums
+open import Core.WedgeSums
+open import Core.BipointedWedgeSumsFunctoriality
+}
+
+\subtree[stt-00RB]{
+\title{Necklaces}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2025-05-21}
+
+\p{
+A \em{necklace} is a finite [wedge](Core.BipointedWedgeSums) of
+[standard simplices](stt-00E1) glued end to end
+
+##{
+\Delta^{n_1} \vee \cdots \vee \Delta^{n_k}.
+}
+}
+
+\agda{
+Necklace-length : List ℕ → ℕ
+Necklace-length = foldr _+ℕ_ 0
+{-# NOINLINE Necklace-length #-}
+
+Necklace∗∗ : List ℕ → Type∗∗ 𝓘
+Necklace∗∗ [] = Δ∗∗ 0
+Necklace∗∗ (m ∷ N) = Wedge∗∗ (Δ∗∗ m) (Necklace∗∗ N)
+
+Necklace : List ℕ → Type 𝓘
+Necklace N = Type∗∗.Carrier (Necklace∗∗ N)
+
+Necklace-is-0-truncated
+  : (N : List ℕ) → is-truncated 0 (Necklace N)
+Necklace-is-0-truncated []
+  = Δ-is-0-truncated
+Necklace-is-0-truncated (m ∷ N)
+  = Wedge-is-0-truncated Δ-is-0-truncated (Necklace-is-0-truncated N)
+
+Necklace-is-set
+  : (N : List ℕ) → is-set (Necklace N)
+Necklace-is-set N
+  = is-set←is-truncated (Necklace-is-0-truncated N)
+}
+}
+
+\subtree[stt-00RC]{
+\title{Concatenating simplices}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2025-05-21}
+
+\agda{
+Δ-pad-0 : (n : ℕ) {m : ℕ} → Δ^ m → Δ^ (m +ℕ n)
+Δ-pad-0 0 x = x
+Δ-pad-0 (suc n) x = Δ-pad-0 n x :≥: i0
+
+Δ-1-last : {m : ℕ} → last-Δ (Δ-1 {m}) ＝ i1
+Δ-1-last {0} = refl
+Δ-1-last {suc m} = refl
+
+Δ-prepend-1-with-last
+  : (m : ℕ) {n : ℕ} (x : Δ^ n)
+  → Σ[ y ∶ Δ^ (m +ℕ n) ] (last-Δ y ＝ last-Δ x)
+Δ-prepend-1-with-last m {0} ·
+  = (Δ-1 , Δ-1-last {m})
+Δ-prepend-1-with-last m {suc n} ((x :≥: i) ⦃ p ⦄)
+  = let y = Δ-prepend-1-with-last m x
+    in ((fst y :≥: i) ⦃ ≤-trans p (≤←＝ (sym (y .snd))) ⦄ , refl)
+
+Δ-prepend-1 : (m : ℕ) {n : ℕ} → Δ^ n → Δ^ (m +ℕ n)
+Δ-prepend-1 m x = Δ-prepend-1-with-last m x .fst
+
+compute-Δ-pad-0-Δ-1
+  : (n : ℕ) {m : ℕ}
+  → Δ-path (Δ-pad-0 n (Δ-1 {m})) (Δ-prepend-1 m (Δ-0 {n}))
+compute-Δ-pad-0-Δ-1 0 = Δ-refl
+compute-Δ-pad-0-Δ-1 (suc n) = compute-Δ-pad-0-Δ-1 n :≥: refl
+
+compute-Δ-pad-0-Δ-0
+  : (n : ℕ) {m : ℕ}
+  → Δ-path (Δ-pad-0 n (Δ-0 {m})) Δ-0
+compute-Δ-pad-0-Δ-0 0 = Δ-refl
+compute-Δ-pad-0-Δ-0 (suc n) = compute-Δ-pad-0-Δ-0 n :≥: refl
+
+compute-Δ-prepend-1-Δ-1
+  : (m : ℕ) {n : ℕ}
+  → Δ-path (Δ-prepend-1 m (Δ-1 {n})) Δ-1
+compute-Δ-prepend-1-Δ-1 m {0} = Δ-refl
+compute-Δ-prepend-1-Δ-1 m {suc n}
+  = compute-Δ-prepend-1-Δ-1 m :≥: refl
+
+compute-Δ-prepend-1-Δ-prepend-1
+  : (m n : ℕ) (x : Δ^ 1)
+  → Δ-path (Δ-prepend-1 m (Δ-prepend-1 n x)) (Δ-prepend-1 (m +ℕ n) x)
+compute-Δ-prepend-1-Δ-prepend-1 m n (· :≥: i)
+  = compute-Δ-prepend-1-Δ-1 m :≥: refl
+}
+}
+
+\subtree[stt-00RS]{
+\title{The simplex inclusion of a binary wedge of simplices}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2025-05-21}
+
+
+\agda{
+Wedge-Δ-incl
+  : (m n : ℕ)
+  → Type∗∗.Carrier (Wedge∗∗ (Δ∗∗ m) (Δ∗∗ n))
+  → Δ^ (m +ℕ n)
+Wedge-Δ-incl m n = cogap
+  (mk-cocone (Δ-pad-0 n) (Δ-prepend-1 m) (λ _ → Δ-ext (compute-Δ-pad-0-Δ-1 n)))
+
+Wedge-Δ-incl∗∗
+  : (m n : ℕ)
+  → map∗∗ (Wedge∗∗ (Δ∗∗ m) (Δ∗∗ n)) (Δ∗∗ (m +ℕ n))
+Wedge-Δ-incl∗∗ m n .map∗∗.hom = Wedge-Δ-incl m n
+Wedge-Δ-incl∗∗ m n .map∗∗.pres-src = Δ-ext (compute-Δ-pad-0-Δ-0 n)
+Wedge-Δ-incl∗∗ m n .map∗∗.pres-tgt = Δ-ext (compute-Δ-prepend-1-Δ-1 m)
+}
+}
+
+
+\subtree[stt-00RD]{
+\title{The simplex inclusion of a necklace}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-21}
+
+\p{
+Every #{n}-necklace has a canonical bipointed inclusion into the #{n}-simplex.
+}
+
+\agda{
+Necklace-incl∗∗
+  : (N : List ℕ)
+  → map∗∗ (Necklace∗∗ N) (Δ∗∗ (Necklace-length N))
+Necklace-incl∗∗ [] = id∗∗ (Δ∗∗ 0)
+Necklace-incl∗∗ (m ∷ N) = map∗∗-∘
+  (Wedge-Δ-incl∗∗ m (Necklace-length N))
+  (Wedge-map∗∗ (id∗∗ (Δ∗∗ m)) (Necklace-incl∗∗ N))
+
+Necklace-incl : (N : List ℕ) → Necklace N → Δ^ (Necklace-length N)
+Necklace-incl N = map∗∗.hom (Necklace-incl∗∗ N)
+}
+}

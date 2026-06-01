@@ -16,8 +16,13 @@ open Lattice I renaming (0l to i0; 1l to i1)
 
 open import Foundations.Embeddings
 
-open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Isomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.SplitEpimorphisms Δ¹ I I-distr
 
 open import Core.Arrows
 open import Core.ArrowEquiv
@@ -26,6 +31,9 @@ open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.Postwhisker
 open import Core.PullbackPowers
+open import Core.SurjectiveMaps
+
+open import Modalities.Instances.Truncation
 }
 
 \subtree[stt-00G3]{
@@ -92,26 +100,25 @@ open FF public using () renaming
 #{\Sigma_{a,b}\Hom_A(a,b) \to \Sigma_{a',b'}\Hom_B(a',b')}. Since this map
 is given by #{\Sigma_F \Sigma_F \textsf{ap-hom}(F)}, by the relevant 3 for 2
 theorem, we have that the total is an equivalence, each #{F} is an equivalence so
-#{\textsf{ap-hom}(F)} is also an euivalence.}
-
+#{\textsf{ap-hom}(F)} is also an equivalence.}
 
 \agda{
-is-ff'←is-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → {f : A → B}
-    → is-equiv f → is-ff' f
-is-ff'←is-equiv {f = F} Fe {x} {y}
-  = is-fibrewise-equiv←is-total-equiv (eq2 x) y where
-  eq1 : is-equiv (total-map λ a → map-Σ F λ _ → ap-hom F)
-  eq1 = 3-for-2
-          {f = total-map-fst F}
-          (total-is-equiv←fst-is-equiv Fe)
-          (ap-total-hom-is-equiv Fe)
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
-  eq2 : ∀ a → is-equiv (total-map λ b → ap-hom F {a} {b})
-  eq2 a = 3-for-2 {f = total-map-fst F}
+  is-ff'←is-equiv
+    : {f : A → B} → is-equiv f → is-ff' f
+  is-ff'←is-equiv {f = f} Fe {x} {y}
+    = is-fibrewise-equiv←is-total-equiv (eq2 x) y where
+    eq1 : is-equiv (total-map λ a → map-Σ f λ _ → ap-hom f)
+    eq1 = 3-for-2
+            {f = total-map-fst f}
             (total-is-equiv←fst-is-equiv Fe)
-            (is-fibrewise-equiv←is-total-equiv eq1 a)
+            (ap-total-hom-is-equiv Fe)
+
+    eq2 : ∀ a → is-equiv (total-map λ b → ap-hom f {a} {b})
+    eq2 a = 3-for-2 {f = total-map-fst f}
+              (total-is-equiv←fst-is-equiv Fe)
+              (is-fibrewise-equiv←is-total-equiv eq1 a)
 }
 }
 
@@ -132,9 +139,9 @@ Given a map #{f : A \to B}, then we have an equivalence of arrows
 
 \quiver{
 \begin{tikzcd}
-(\Delta^1 \to A) && \Sigma_{(x\ y : A)\Hom_A(x,y)} \\
+(\Delta^1 \to A) && \Sigma_{(x, y : A)}\Hom_A(x,y) \\
 \\
-\Hom_{\Arr}(\iota , f) && \Sigma_{(x\ y : A)\Hom_B(f(x),f(y))}
+\Hom_{\Arr}(\iota , f) && \Sigma_{(x, y : A)}\Hom_B(f(x),f(y))
 \arrow["\sim", from=1-1, to=1-3]
 \arrow["\pullpow{\iota}{f}", from=1-1, to=3-1]
 \arrow["\sim", from=3-1, to=3-3]
@@ -152,10 +159,10 @@ an equivalence.
 \agda{
 module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
 
-  ΣΣHom←arr-map-∂Δ¹-incl
+  TotalHom←arr-map-∂Δ¹-incl
     : Arrow-map ∂Δ¹-incl f
-    → Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
-  ΣΣHom←arr-map-∂Δ¹-incl F
+    → Σ[ x y ∶ A ] Hom B (f x) (f y)
+  TotalHom←arr-map-∂Δ¹-incl F
     = ( F .Arrow-map.top ∂Δ¹-0
       , F .Arrow-map.top ∂Δ¹-1
       , mk-hom
@@ -163,10 +170,10 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
           (F .Arrow-map.comm ∂Δ¹-0)
           (F .Arrow-map.comm ∂Δ¹-1))
 
-  arr-map-∂Δ¹-incl←ΣΣHom
-    : Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+  arr-map-∂Δ¹-incl←TotalHom
+    : Σ[ x y ∶ A ] Hom B (f x) (f y)
     → Arrow-map ∂Δ¹-incl f
-  arr-map-∂Δ¹-incl←ΣΣHom (x , y , h)
+  arr-map-∂Δ¹-incl←TotalHom (x , y , h)
     = mk-amap (∂Δ¹-UP→ (x , y)) (ext .fst) ext-comm
     where
     ext : Ext ∂Δ¹-incl (make-∂Δ¹ (f y) (f x))
@@ -177,10 +184,10 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
       ~ postcomp-Π (λ a → f) (∂Δ¹-UP→ (x , y))
     ext-comm a = ext .snd a ∙ sym (happly (f∘∂Δ¹-UP→＝make-∂Δ¹ f x y) a)
 
-  arr-map-∂Δ¹-incl←ΣΣHom-sec
+  arr-map-∂Δ¹-incl←TotalHom-sec
     : ∀ (x y : A) (h : Hom B (f x) (f y))
-      → (x , y , h) ＝ ΣΣHom←arr-map-∂Δ¹-incl (arr-map-∂Δ¹-incl←ΣΣHom (x , y , h))
-  arr-map-∂Δ¹-incl←ΣΣHom-sec x y h@(mk-hom hh p0 p1)
+      → (x , y , h) ＝ TotalHom←arr-map-∂Δ¹-incl (arr-map-∂Δ¹-incl←TotalHom (x , y , h))
+  arr-map-∂Δ¹-incl←TotalHom-sec x y h@(mk-hom hh p0 p1)
     = Σ-path→
         ( refl
         , Σ-path→
@@ -190,19 +197,19 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
                 , ap (λ q → p0 ∙ sym q) (happly funext-redex ∂Δ¹-0) ∙ ∙-reflr _
                 , ap (λ q → p1 ∙ sym q) (happly funext-redex ∂Δ¹-1) ∙ ∙-reflr _)))
 
-  arr-map-∂Δ¹-incl≃ΣΣHom
+  arr-map-∂Δ¹-incl≃TotalHom
     : Arrow-map ∂Δ¹-incl f
-    ≃ Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
-  arr-map-∂Δ¹-incl≃ΣΣHom = equiv←qequiv qeqv where
+    ≃ Σ[ x y ∶ A ] Hom B (f x) (f y)
+  arr-map-∂Δ¹-incl≃TotalHom = equiv←qequiv qeqv where
     qeqv : Arrow-map ∂Δ¹-incl f ≊ (Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y))
-    qeqv ._≊_.fwd = ΣΣHom←arr-map-∂Δ¹-incl
-    qeqv ._≊_.fwd-qinv .fst = arr-map-∂Δ¹-incl←ΣΣHom
+    qeqv ._≊_.fwd = TotalHom←arr-map-∂Δ¹-incl
+    qeqv ._≊_.fwd-qinv .fst = arr-map-∂Δ¹-incl←TotalHom
     qeqv ._≊_.fwd-qinv .snd .fst F
       = Arrow-map-path→
           ( happly (∂Δ¹-UP-η (F .Arrow-map.top))
           , ~refl
           , λ where
-              (mk-lift false)
+              ∂Δ¹-0
                 → ap (λ p → (Arrow-Π.comm F ∂Δ¹-0 ∙ sym p)
                           ∙ ap f (happly (∂Δ¹-UP-η (Arrow-Π.top F)) ∂Δ¹-0))
                      (happly funext-redex ∂Δ¹-0)
@@ -210,7 +217,7 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
                      (happly funext-redex ∂Δ¹-0)
                 ∙ ∙-reflr _
                 ∙ ∙-reflr _
-              (mk-lift true)
+              ∂Δ¹-1
                 → ap (λ p → (Arrow-Π.comm F ∂Δ¹-1 ∙ sym p)
                           ∙ ap f (happly (∂Δ¹-UP-η (Arrow-Π.top F)) ∂Δ¹-1))
                      (happly funext-redex ∂Δ¹-1)
@@ -218,45 +225,44 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
                      (happly funext-redex ∂Δ¹-1)
                 ∙ ∙-reflr _
                 ∙ ∙-reflr _)
-    qeqv ._≊_.fwd-qinv .snd .snd (x , y , h) = sym (arr-map-∂Δ¹-incl←ΣΣHom-sec x y h)
+    qeqv ._≊_.fwd-qinv .snd .snd (x , y , h) = sym (arr-map-∂Δ¹-incl←TotalHom-sec x y h)
 
   total-ap-hom
-    : Σ[ x ∶ A ] Σ[ y ∶ A ] Hom A x y
-    → Σ[ x ∶ A ] Σ[ y ∶ A ] Hom B (f x) (f y)
+    : Σ[ x y ∶ A ] Hom A x y
+    → Σ[ x y ∶ A ] Hom B (f x) (f y)
   total-ap-hom = total-map λ x → total-map λ y → ap-hom f {x} {y}
 
   total-ap-hom-square
     : Arrow-map (pullback-power ∂Δ¹-incl f) total-ap-hom
   total-ap-hom-square .Arrow-map.top = total-hom ._≃_.fwd
-  total-ap-hom-square .Arrow-map.bot = ΣΣHom←arr-map-∂Δ¹-incl
+  total-ap-hom-square .Arrow-map.bot = TotalHom←arr-map-∂Δ¹-incl
   total-ap-hom-square .Arrow-map.comm l = refl
 
   total-ap-hom-square-is-equiv : is-Arrow-equiv total-ap-hom-square
   total-ap-hom-square-is-equiv
     = total-hom ._≃_.fwd-is-equiv
-    , arr-map-∂Δ¹-incl≃ΣΣHom ._≃_.fwd-is-equiv
+    , arr-map-∂Δ¹-incl≃TotalHom ._≃_.fwd-is-equiv
 
-module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 
   is-ff'←is-ff : is-ff f → is-ff' f
   is-ff'←is-ff ι⊥f {x} {y}
     = is-fibrewise-equiv←is-total-equiv
         (is-fibrewise-equiv←is-total-equiv
-            (is-equiv←Arrow-equiv
-              {F = CompareFF.total-ap-hom-square f}
-              (CompareFF.total-ap-hom-square-is-equiv f)
-              (pb-power-is-equiv←orthogonal (ι⊥f tt)))
+            (tgt-is-equiv←Arrow-equiv
+              ( CompareFF.total-ap-hom-square f
+              , CompareFF.total-ap-hom-square-is-equiv f)
+              (ι⊥f tt))
           (x))
         (y)
 
   is-ff←is-ff' : is-ff' f → is-ff f
   is-ff←is-ff' ap-hom-is-eqv _
-    = orthogonal←pb-power-is-equiv
-        (is-equiv←Arrow-equiv⁻¹
-          {F = CompareFF.total-ap-hom-square f}
-          (CompareFF.total-ap-hom-square-is-equiv f)
+    = src-is-equiv←Arrow-equiv
+          ( CompareFF.total-ap-hom-square f
+          , CompareFF.total-ap-hom-square-is-equiv f)
           (is-total-equiv←is-fibrewise-equiv λ x →
-             is-total-equiv←is-fibrewise-equiv λ y → ap-hom-is-eqv {x} {y}))
+             is-total-equiv←is-fibrewise-equiv λ y → ap-hom-is-eqv {x} {y})
 
   is-ff⇔is-ff' : is-ff f ⇔ is-ff' f
   is-ff⇔is-ff' = (is-ff'←is-ff , is-ff←is-ff')
@@ -286,8 +292,8 @@ src×tgt: A = src×tgt
 src×tgt-homotopy
   : ∀ {𝓤} {A : Type 𝓤} (u : Δ¹ → A)
     → ∂Δ¹-UP→ (src×tgt u) ~ precomp A ∂Δ¹-incl u
-src×tgt-homotopy u (mk-lift false) = refl
-src×tgt-homotopy u (mk-lift true) = refl
+src×tgt-homotopy u ∂Δ¹-0 = refl
+src×tgt-homotopy u ∂Δ¹-1 = refl
 
 src×tgt≃boundary-square
   : ∀ {𝓤} {A : Type 𝓤}
@@ -297,7 +303,7 @@ src×tgt≃boundary-square
   , id-is-equiv
   , ∂Δ¹-UP ._≃_.fwd-is-equiv
 
-module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
 
   src×tgt-square
     : Arrow-map (postcomp Δ¹ f) (f ⊗ f)
@@ -309,8 +315,8 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
     : (xy : A × A)
     → postcomp ∂Δ¹ f (∂Δ¹-UP→ xy)
     ~ ∂Δ¹-UP→ ((f ⊗ f) xy)
-  src×tgt-natural-pair (x , y) (mk-lift false) = refl
-  src×tgt-natural-pair (x , y) (mk-lift true) = refl
+  src×tgt-natural-pair (x , y) ∂Δ¹-0 = refl
+  src×tgt-natural-pair (x , y) ∂Δ¹-1 = refl
 
   src×tgt-square≃power-hom
     : Cube (transpose-square src×tgt-square) (transpose-square (power-hom ∂Δ¹-incl f))
@@ -326,8 +332,8 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
           ∙ sym (commutes-postwhisker-funext {h = f} (src×tgt-homotopy u))
           ∙ ap funext→
               (funext→ λ where
-                (mk-lift false) → sym (∙-reflr _)
-                (mk-lift true) → sym (∙-reflr _))
+                ∂Δ¹-0 → sym (∙-reflr _)
+                ∂Δ¹-1 → sym (∙-reflr _))
           ∙ funext-∙
               (src×tgt-natural-pair (src×tgt u))
               (src×tgt-homotopy (postcomp Δ¹ f u)))
@@ -378,7 +384,7 @@ condition for fully faithful maps.
 }
 
 \agda{
-module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 
   is-cartesian-src×tgt-square←is-ff
     : is-ff f → is-cartesian (src×tgt-square f)
@@ -386,20 +392,17 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
     = front-cartesian←equiv-transpose-cube
         (src×tgt-square≃power-hom f)
         (src×tgt-square≃power-hom-is-equiv f)
-        (power-hom-cartesian←pullback-power
-          ∂Δ¹-incl f
-          (pb-power-is-equiv←orthogonal (ff tt)))
+        (power-hom-cartesian←pullback-power ∂Δ¹-incl f (ff tt))
 
   is-ff←is-cartesian-src×tgt-square
     : is-cartesian (src×tgt-square f) → is-ff f
   is-ff←is-cartesian-src×tgt-square cart _
-    = orthogonal←pb-power-is-equiv
-        (pullback-power←power-hom-cartesian
+    = pullback-power←power-hom-cartesian
           ∂Δ¹-incl f
           (back-cartesian←equiv-transpose-cube
             (src×tgt-square≃power-hom f)
             (src×tgt-square≃power-hom-is-equiv f)
-            (cart)))
+            (cart))
 
   is-ff⇔is-cartesian-src×tgt-square
     : is-ff f ⇔ is-cartesian (src×tgt-square f)
@@ -409,43 +412,112 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 }
 }
 
-\subtree[stt-00LQ]{
-\title{Fully faithful maps between precategories are conservative}
-\taxon{Theorem}
+\subtree[stt-00R9]{
+\title{Fully faithful maps reflect split monos, epis, and isos}
+\taxon{Proposition}
 \author{fredrikbakke}
-\date{2026-04-13}
+\date{2026-05-14}
 
 \p{
-Any fully faithful map between precategories is conservative.
+Given a fully faithful map #{F : A \to B} and a morphism #{f : \Hom_A(a,b)} then if
+#{F(f)} is a split mono/split epi/iso then so is #{f}.
 }
 
 \proof{
 \p{
-Let #{F : \mathcal{C} \to \mathcal{D}} be a map between precategories. It is
-conservative if and only if every morphism #{f : \Hom_\mathcal{C}(x,y)} that is sent
-to an isomorphism via #{F} is itself an isomorphism. Recall that a morphism is an
-isomorphism if and only if it satisfies the covariant universal property of
-isomorphisms: for all #{u : \mathcal{C}} the postcomposition map
-#{f \circ {-} : \Hom_\mathcal{C}(u,x) \to \Hom_\mathcal{C}(u,y)} is an equivalence.
-By definition we have a commuting square
-
-\quiver{
-\begin{tikzcd}
- \Hom_\mathcal{C}(u,x) && \Hom_\mathcal{D}(F(u),F(x)) \\
- \\
- \Hom_\mathcal{C}(u,y) && \Hom_\mathcal{D}(F(u),F(y))
-\arrow[from=1-1, to=1-3, "\sim"]
-\arrow[from=3-1, to=3-3, "\sim"]
-\arrow[from=1-1, to=3-1, "f\circ {-}"']
-\arrow[from=1-3, to=3-3, "F(f)\circ {-}"]
-\end{tikzcd}
+The isomorphism case follows from the split mono + split epi case, and these two
+cases are dual to one another, so let's just demonstrate that split monos are
+reflected.
 }
-and so if #{F(f)} is an isomorphism then #{f} is as well.
+
+\p{
+Let #{r'} be such that #{r' \circ F(f) = \id}. Since the action on morphisms of #{F}
+has a section there is a morphism #{r : \Hom_A(b,a)} such that #{F(r) = r'}.
+Now, by injectivity of the functorial action it suffices to show
+#{F(r \circ f) = F(\id)}, which is easy to see by functoriality:
+##{F(r \circ f) = F(r) \circ F(f) = r' \circ F(f) = \id = F(\id).}
 }
 }
 
 \p{
-This remains to be formalised.
-[Issue#88](https://github.com/samtoth/agda-synthetic-categories/issues/88)
+We observe that the proof above only requires that the action on morphisms of
+#{F} has a section and is injective on endomorphisms (which in particular means the
+action on endomorphisms is an equivalence [[stt-00R6]]). We formalise the proof at
+this level of generality.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A) (𝐵 : is-segal B)
+  {F : A → B}
+  where
+
+  split-mono-witness←ap-hom-fibre
+    : {a b : A} {f : Hom A a b}
+      (Ia : {g : Hom A a a} → ap-hom F g ＝ ap-hom F (idH a) → g ＝ idH a)
+      {r' : Hom B (F b) (F a)}
+    → Hom2 r' (ap-hom F f) (idH (F a))
+    → fibre (ap-hom F {b} {a}) r'
+    → split-mono-witness f
+  split-mono-witness←ap-hom-fibre {a} {b} {f} Ia η' (r , rp)
+    = split-mono-witness←eq 𝐴
+      ( r
+      , Ia
+        ( unique-composite 𝐵 (ap-hom F r) (ap-hom F f)
+          (ap-hom F (r ∘[ 𝐴 ] f))
+          (ap-hom2 F r f (r ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
+        ∙ ap (_∘[ 𝐵 ] ap-hom F f) rp
+        ∙ ∘=←Hom2 𝐵 η'))
+
+  split-epi-witness←ap-hom-fibre
+    : {a b : A} {f : Hom A a b}
+      (Ib : {g : Hom A b b} → ap-hom F g ＝ ap-hom F (idH b) → g ＝ idH b)
+      {s' : Hom B (F b) (F a)}
+    → Hom2 (ap-hom F f) s' (idH (F b))
+    → fibre (ap-hom F {b} {a}) s'
+    → split-epi-witness f
+  split-epi-witness←ap-hom-fibre {a} {b} {f} Ib ε' (s , sp)
+    = s
+    , split-mono-witness←ap-hom-fibre Ib
+        (tr (λ h → Hom2 (ap-hom F f) h (idH (F b))) (sym sp) ε')
+        (f , refl)
+        .snd
+}
+
+\p{
+Finally we register the theorems for fully faithful maps.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A) (𝐵 : is-segal B)
+  {F : A → B} (F-is-ff : is-ff' F)
+  {a b : A} {f : Hom A a b}
+  where
+
+  reflects-split-monos←is-ff'
+    : split-mono-witness (ap-hom F f) → split-mono-witness f
+  reflects-split-monos←is-ff' (r' , η')
+    = split-mono-witness←ap-hom-fibre 𝐴 𝐵
+        (unap-equiv F-is-ff)
+        η'
+        (is-equiv.bwd F-is-ff r' , is-equiv.ε F-is-ff r')
+
+  reflects-split-epis←is-ff'
+    : split-epi-witness (ap-hom F f) → split-epi-witness f
+  reflects-split-epis←is-ff' (s' , ε')
+    = split-epi-witness←ap-hom-fibre 𝐴 𝐵
+        (unap-equiv F-is-ff)
+        ε'
+        (is-equiv.bwd F-is-ff s' , is-equiv.ε F-is-ff s')
+
+  reflects-isos←is-ff'
+    : is-iso (ap-hom F f) → is-iso f
+  reflects-isos←is-ff' (r , s , η , ε)
+    = is-iso←split-mono-witness×split-epi-witness
+        ( reflects-split-monos←is-ff' (r , η)
+        , reflects-split-epis←is-ff' (s , ε))
 }
 }

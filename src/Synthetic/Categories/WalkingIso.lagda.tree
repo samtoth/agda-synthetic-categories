@@ -1,0 +1,441 @@
+\date{2026-04-30}
+\title{The walking isomorphism}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.WalkingIso
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+private
+  Δ² = Poly.Δ² I
+
+open import Core.CanonicalPushouts
+open import Core.FunctorialityPullbacks
+open import Core.Orthogonal
+open notation
+
+open import Ergonomics.Notations.Orthogonality
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.Groupoids Δ¹ I I-distr
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I I-distr
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I I-distr
+open import Synthetic.Categories.WalkingSplitHom Δ¹ I I-distr
+open import Synthetic.Categories.Isomorphisms Δ¹ I I-distr
+}
+
+\subtree[stt-00P7]{
+\title{The walking isomorphism}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+The \em{walking isomorphism} #{\mathfrak{I}} is the gluing of a walking split
+monomorphism with a walking split epimorphism. Since the
+[walking split morphism](Synthetic.Categories.SplitMonomorphisms) classifies both, we
+formalise #{\mathfrak{I}} as [the pushout](Core.CanonicalPushouts)
+}
+
+\quiver{
+\begin{tikzcd}
+{\Delta^1} && {\mathfrak{M}} \\
+\\
+{\mathfrak{M}} && {\mathfrak{I}}
+\arrow["{\mathrm{sec}_{\mathfrak{M}}}", from=1-1, to=1-3]
+\arrow["{\mathrm{ret}_{\mathfrak{M}}}"', from=1-1, to=3-1]
+\arrow[from=1-3, to=3-3]
+\arrow[from=3-1, to=3-3]
+\arrow[phantom, from=1-1, to=3-3, "\ulcorner" very near end]
+\end{tikzcd}
+}
+
+\agda{
+ℑ : Type 𝓘
+ℑ = Pushout sec-arr-𝔐 ret-arr-𝔐
+
+left-ℑ : 𝔐 → ℑ
+left-ℑ = ι₁
+
+right-ℑ : 𝔐 → ℑ
+right-ℑ = ι₂
+
+src-ℑ : ℑ
+src-ℑ = ι₁ src-𝔐
+
+tgt-ℑ : ℑ
+tgt-ℑ = ι₁ tgt-𝔐
+
+arrow-ℑ : Δ¹ → ℑ
+arrow-ℑ = ι₁ ∘ sec-arr-𝔐
+
+left-inv-ℑ : Δ¹ → ℑ
+left-inv-ℑ = ι₁ ∘ ret-arr-𝔐
+
+right-inv-ℑ : Δ¹ → ℑ
+right-inv-ℑ = ι₂ ∘ sec-arr-𝔐
+
+hom-ℑ : Hom ℑ src-ℑ tgt-ℑ
+hom-ℑ = ap-hom ι₁ sec-𝔐
+
+left-inv-hom-ℑ : Hom ℑ tgt-ℑ src-ℑ
+left-inv-hom-ℑ = ap-hom ι₁ ret-𝔐
+
+right-diagonal-bd-ℑ
+  : (i : Δ¹) → right-ℑ (𝔐←∂Δ² (ι₂ i)) ＝ tgt-ℑ
+right-diagonal-bd-ℑ i
+  = ap right-ℑ (glue i ∙ sym (glue i1))
+  ∙ ap right-ℑ (ap 𝔐←Δ² (sym Δ²-refl))
+  ∙ sym (glue i1)
+
+right-edge-bd-ℑ
+  : right-ℑ ∘ 𝔐←Λ[2,1] ∘ ι₂ ~ hom-ℑ .Homᵈ.hom
+right-edge-bd-ℑ i = sym (glue i)
+
+right-inv-hom-ℑ : Hom ℑ tgt-ℑ src-ℑ
+right-inv-hom-ℑ
+  = mk-hom right-inv-ℑ
+      ( ap (right-ℑ ∘ 𝔐←∂Δ²) (glue ∂Δ¹-0) ∙ right-diagonal-bd-ℑ i0)
+      ( (ap (right-ℑ ∘ 𝔐←Λ[2,1]) Λ[2,1]-glue ∙ right-edge-bd-ℑ i0)
+      ∙ hom-ℑ .Homᵈ.hom0)
+
+left-inv-Hom2-ℑ
+  : Hom2 left-inv-hom-ℑ hom-ℑ (idH src-ℑ)
+left-inv-Hom2-ℑ
+  = ap-hom2 ι₁ ret-𝔐 sec-𝔐 (idH src-𝔐) hom2-𝔐
+
+right-inv-Hom2-ℑ
+  : Hom2 hom-ℑ right-inv-hom-ℑ (idH tgt-ℑ)
+right-inv-Hom2-ℑ .fst = right-ℑ ∘ 𝔐←Δ²
+right-inv-Hom2-ℑ .snd
+  = pushout-rec-unique _ (right-ℑ ∘ 𝔐←∂Δ²)
+      horn-bd
+      right-diagonal-bd-ℑ
+      λ where
+        ∂Δ¹-0 → sym (∙-reflr _)
+        ∂Δ¹-1 → top-coh
+  where
+  horn-bd
+    : right-ℑ ∘ 𝔐←Λ[2,1]
+    ~ make-horn hom-ℑ right-inv-hom-ℑ
+  horn-bd
+    = pushout-rec-unique _ (right-ℑ ∘ 𝔐←Λ[2,1])
+        ~refl
+        right-edge-bd-ℑ
+        λ _ → ∙.insertl _ (∙-sym (hom-ℑ .Homᵈ.hom0))
+
+  right-diagonal-top-bd-ℑ
+    : ap right-ℑ (ap 𝔐←Δ² Δ²-refl)
+    ∙ right-diagonal-bd-ℑ i1
+    ＝ sym (glue i1)
+  right-diagonal-top-bd-ℑ =
+    top-cancel
+      (ap 𝔐←Δ² Δ²-refl)
+      (ap 𝔐←Δ² (sym Δ²-refl))
+      (ap-sym 𝔐←Δ² Δ²-refl)
+      (glue i1)
+      (sym (glue i1))
+    where
+    top-cancel
+      : {x y z : 𝔐}
+      → (r : x ＝ y)
+      → (r' : y ＝ x)
+      → r' ＝ sym r
+      → (p : y ＝ z)
+      → (q : right-ℑ x ＝ tgt-ℑ)
+      → ap right-ℑ r ∙ (ap right-ℑ (p ∙ sym p) ∙ ap right-ℑ r' ∙ q) ＝ q
+    top-cancel refl .refl refl refl q = refl
+
+  top-coh
+    : ap (right-ℑ ∘ 𝔐←∂Δ²) (glue ∂Δ¹-1)
+    ∙ right-diagonal-bd-ℑ i1
+    ＝ horn-bd (∂Λ[2,1]-incl ∂Δ¹-1)
+    ∙ (hom-ℑ .Homᵈ.hom1 ∙ sym ((idH tgt-ℑ) .Homᵈ.hom1))
+  top-coh =
+    ap (_∙ right-diagonal-bd-ℑ i1)
+      ( ap-∘ right-ℑ 𝔐←∂Δ² (glue ∂Δ¹-1)
+      ∙ ap (ap right-ℑ) (ap-∘ 𝔐←Δ² ∂Δ²-incl (glue ∂Δ¹-1))
+      ∙ ap (ap right-ℑ ∘ ap 𝔐←Δ²) (pushout-rec-apβ ∂Δ¹-1))
+    ∙ right-diagonal-top-bd-ℑ
+    ∙ sym (∙-reflr (sym (glue i1)))
+
+iso-ℑ : Iso src-ℑ tgt-ℑ
+iso-ℑ
+  = hom-ℑ
+  , left-inv-hom-ℑ
+  , right-inv-hom-ℑ
+  , left-inv-Hom2-ℑ
+  , right-inv-Hom2-ℑ
+}
+}
+
+\subtree[stt-00PQ]{
+\title{The walking isomorphism classifies isomorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\agda{
+module _  {𝓤} {A : Type 𝓤} where
+
+  ℑ-map-cospan : Cospan (𝓘 ⊔ 𝓤) (𝓘 ⊔ 𝓤) (𝓘 ⊔ 𝓤)
+  ℑ-map-cospan
+    = mk-cospan (Δ¹ → A) (precomp A ret-arr-𝔐) (precomp A sec-arr-𝔐)
+
+  ℑ-map-pullback-repr
+    : (ℑ → A) ≃ Pullback (precomp A ret-arr-𝔐) (precomp A sec-arr-𝔐)
+  ℑ-map-pullback-repr = Pushout-UP≃ ∙e precomp-cocone≃pb'
+
+  ℑ-rep→ : (ℑ → A) → TotalIso A
+  ℑ-rep→ ϕ
+    = ϕ src-ℑ
+    , ϕ tgt-ℑ
+    , ap-hom ϕ hom-ℑ
+    , ap-hom ϕ left-inv-hom-ℑ
+    , ap-hom ϕ right-inv-hom-ℑ
+    , ap-hom2 ϕ left-inv-hom-ℑ hom-ℑ (idH src-ℑ) left-inv-Hom2-ℑ
+    , ap-hom2 ϕ hom-ℑ right-inv-hom-ℑ (idH tgt-ℑ) right-inv-Hom2-ℑ
+
+  ℑ-rep← : TotalIso A → (ℑ → A)
+  ℑ-rep← (a , b , f , g , h , η , ε)
+    = pushout-rec (mk-cocone
+        (𝔐-split-mono-repr← (a , b , f , g , η))
+        (𝔐-split-mono-repr← (b , a , h , f , ε))
+        (λ i → η .snd (ι₁ (ι₁ i)) ∙ sym (ε .snd (ι₁ (ι₂ i)))))
+
+  ℑ-rep→const-fwd
+    : (a : A) → fwd-Iso (ℑ-rep→ (const A ℑ a) .snd .snd) ＝ Hom←Id refl
+  ℑ-rep→const-fwd a = ap-hom-const a hom-ℑ
+
+  ℑ-rep→const-left-inv
+    : (a : A) → ℑ-rep→ (const A ℑ a) .snd .snd .snd .fst ＝ idH a
+  ℑ-rep→const-left-inv a = ap-hom-const a left-inv-hom-ℑ
+
+  ℑ-rep→const-right-inv
+    : (a : A) → ℑ-rep→ (const A ℑ a) .snd .snd .snd .snd .fst ＝ idH a
+  ℑ-rep→const-right-inv a = ap-hom-const a right-inv-hom-ℑ
+
+  left-inv-Hom2-diagonal-ℑ
+    : ap left-ℑ ∘ glue ~ left-inv-Hom2-ℑ .snd ∘ ι₂
+  left-inv-Hom2-diagonal-ℑ i
+    = ap (ap left-ℑ) (sym (hom2-𝔐-diagonal i))
+    ∙ sym (∙-reflr _)
+    ∙ ap (ap left-ℑ (hom2-𝔐 .snd (ι₂ i)) ∙_)
+        (sym (ap-∂Δ²-diagonal left-ℑ i))
+
+  ℑ-rep←→-left-htpy
+    : (ϕ : ℑ → A) → ϕ ∘ left-ℑ ~ ℑ-rep← (ℑ-rep→ ϕ) ∘ left-ℑ
+  ℑ-rep←→-left-htpy ϕ
+    = pushout-rec-unique _ (ϕ ∘ left-ℑ) ~refl ~refl λ i →
+      ∙-reflr _
+      ∙ ap-∘ ϕ left-ℑ (glue i)
+      ∙ ap (ap ϕ) (left-inv-Hom2-diagonal-ℑ i)
+      ∙ sym (ap-hom2-diagonal ϕ left-inv-hom-ℑ hom-ℑ (idH src-ℑ) left-inv-Hom2-ℑ i)
+
+  ℑ-rep←→-right-htpy
+    : (ϕ : ℑ → A) → ϕ ∘ right-ℑ ~ ℑ-rep← (ℑ-rep→ ϕ) ∘ right-ℑ
+  ℑ-rep←→-right-htpy ϕ
+    = pushout-rec-unique _ (ϕ ∘ right-ℑ) ~refl pt λ i
+      → ap (_∙ pt tt) (ap-∘ ϕ right-ℑ (glue i))
+      ∙ sym (ap-∙ ϕ (ap right-ℑ (glue i)) (pt₀))
+      ∙ ap (ap ϕ) (right-inv-Hom2-diagonal i)
+      ∙ sym (ap-hom2-diagonal ϕ hom-ℑ right-inv-hom-ℑ (idH tgt-ℑ) right-inv-Hom2-ℑ i)
+    where
+    pt₀ : right-ℑ (ι₂ tt) ＝ tgt-ℑ
+    pt₀
+      = sym (ap right-ℑ (glue i1))
+      ∙ ap right-ℑ (ap 𝔐←Δ² (sym Δ²-refl))
+      ∙ sym (glue i1)
+
+    pt : ϕ ∘ right-ℑ ∘ ι₂ ~ const A 𝟙 (ϕ tgt-ℑ)
+    pt tt = ap ϕ pt₀
+
+    right-inv-Hom2-diagonal
+      : (i : Δ¹)
+      → ap right-ℑ (glue i) ∙ pt₀ ＝ right-inv-Hom2-ℑ .snd (ι₂ i)
+    right-inv-Hom2-diagonal i
+      = sym (∙-assoc (ap right-ℑ (glue i)) (sym (ap right-ℑ (glue i1))) _)
+      ∙ ap (_∙ (ap right-ℑ (ap 𝔐←Δ² (sym Δ²-refl)) ∙ sym (glue i1)))
+           ( ap (ap right-ℑ (glue i) ∙_) (sym (ap-sym right-ℑ (glue i1)))
+           ∙ sym (ap-∙ right-ℑ (glue i) (sym (glue i1))))
+
+  opaque
+    unfolding hom2-𝔐-boundary
+
+    left-inv-Hom2-left-ℑ
+      : (i : Δ¹) → left-inv-Hom2-ℑ .snd (ι₁ (ι₁ i)) ＝ refl
+    left-inv-Hom2-left-ℑ i
+      = ap₂ (_∙_) refl (ap-∂Δ²-left left-ℑ i)
+      ∙ ∙-reflr _
+
+  right-inv-Hom2-right-ℑ
+    : (i : Δ¹)
+    → right-inv-Hom2-ℑ .snd (ι₁ (ι₂ i)) ＝ sym (glue i)
+  right-inv-Hom2-right-ℑ i = refl
+
+  left-inv-Hom2-left-refl-ℑ
+    : (ϕ : ℑ → A) (i : Δ¹)
+    → ap-hom2 ϕ left-inv-hom-ℑ hom-ℑ (idH src-ℑ) left-inv-Hom2-ℑ .snd (ι₁ (ι₁ i))
+    ＝ refl
+  left-inv-Hom2-left-refl-ℑ ϕ i
+    = ap₂ (_∙_) (ap (ap ϕ) (left-inv-Hom2-left-ℑ i)) (ap-∂Δ²-left ϕ i)
+    ∙ ∙-reflr _
+
+  right-inv-Hom2-right-sym-ℑ
+    : (ϕ : ℑ → A) (i : Δ¹)
+    → ap-hom2 ϕ hom-ℑ right-inv-hom-ℑ (idH tgt-ℑ) right-inv-Hom2-ℑ .snd (ι₁ (ι₂ i))
+    ＝ sym (ap ϕ (glue i))
+  right-inv-Hom2-right-sym-ℑ ϕ i
+    = ap₂ (_∙_) (ap (ap ϕ) (right-inv-Hom2-right-ℑ i)) (ap-∂Δ²-right ϕ i)
+    ∙ ∙-reflr _
+    ∙ ap-sym ϕ (glue i)
+
+  ℑ-rep←→-glue
+    : (ϕ : ℑ → A) (i : Δ¹)
+    → ap-hom2 ϕ left-inv-hom-ℑ hom-ℑ (idH src-ℑ) left-inv-Hom2-ℑ .snd (ι₁ (ι₁ i))
+    ∙ sym (ap-hom2 ϕ hom-ℑ right-inv-hom-ℑ (idH tgt-ℑ) right-inv-Hom2-ℑ .snd (ι₁ (ι₂ i)))
+    ＝ ap ϕ (glue i)
+  ℑ-rep←→-glue ϕ i
+    = ap₂ (_∙_)
+        (left-inv-Hom2-left-refl-ℑ ϕ i)
+        (ap sym (right-inv-Hom2-right-sym-ℑ ϕ i) ∙ sym-sym)
+
+  opaque
+    ℑ-rep←→ : ℑ-rep← ∘ ℑ-rep→ ~ id
+    ℑ-rep←→ ϕ
+      = sym (funext→ (pushout-rec-unique _ ϕ
+          (ℑ-rep←→-left-htpy ϕ)
+          (ℑ-rep←→-right-htpy ϕ)
+          (λ i → ∙-reflr (ap ϕ (glue i)) ∙ sym (ℑ-rep←→-glue ϕ i))))
+
+  opaque
+    unfolding 𝔐-split-mono-repr←id
+
+    ℑ-rep←id : const A ℑ ~ ℑ-rep← ∘ id-TotalIso
+    ℑ-rep←id a
+      = funext→
+          (pushout-rec-unique _ (const A ℑ a)
+            (𝔐-split-mono-repr←id a)
+            (𝔐-split-mono-repr←id a)
+            λ i → ∙-reflr _ ∙ ap-const (glue i))
+}
+
+\p{
+We have yet to formalise that \code{ℑ-rep←} is a section of \code{ℑ-rep→} for
+arbitrary types.
+}
+}
+
+\subtree[stt-00PR]{
+\title{The walking isomorphism classifies isomorphisms in Segal types}
+\author{fredrikbakke}
+\taxon{Proposition}
+
+\p{
+To make our lives easier we show that \code{ℑ-rep←} is a section of \code{ℑ-rep→} in
+[Segal types](stt-00AI), using that \code{is-iso} is a proposition.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (x@(a , b , f , g , h , η , ε) : TotalIso A) where
+
+  ℑ-rep→←-src : ℑ-rep→ (ℑ-rep← x) .fst ＝ x .fst
+  ℑ-rep→←-src
+    = sym (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom0)
+    ∙ η .snd (ι₁ (ι₁ i0))
+    ∙ f .Homᵈ.hom0
+
+  ℑ-rep→←-tgt
+    : ℑ-rep→ (ℑ-rep← x) .snd .fst ＝ x .snd .fst
+  ℑ-rep→←-tgt
+    = sym (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom1)
+    ∙ η .snd (ι₁ (ι₁ i1))
+    ∙ f .Homᵈ.hom1
+
+  ℑ-rep→←-fwd
+    : adjust-hom ℑ-rep→←-src ℑ-rep→←-tgt (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd))
+    ＝ fwd-Iso (x .snd .snd)
+  ℑ-rep→←-fwd
+    = Hom-ext→
+        ( η .snd ∘ ι₁ ∘ ι₁
+        , ∙.insertr _
+            {h = sym (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom0)}
+            {i = fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom0}
+            (∙-sym
+              (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom0))
+            {f = η .snd (ι₁ (ι₁ i0)) ∙ f .Homᵈ.hom0}
+        , ∙.insertr _
+            {h = sym (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom1)}
+            {i = fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom1}
+            (∙-sym
+              (fwd-Iso (ℑ-rep→ (ℑ-rep← x) .snd .snd) .Homᵈ.hom1))
+            {f = η .snd (ι₁ (ι₁ i1)) ∙ f .Homᵈ.hom1})
+
+module _ {𝓤} {A : Type 𝓤} where opaque
+
+  BasedIso-pathᵈ→
+    : (𝐴 : is-segal A)
+      {a a' b b' : A}
+    → (p : a ＝ a') (q : b ＝ b')
+    → {f : Iso a b} {g : Iso a' b'}
+    → adjust-hom p q (fwd-Iso f) ＝ fwd-Iso g
+    → Idᵈ (ap (λ x → Σ[ y ∶ A ] Iso x y) p) (b , f) (b' , g)
+  BasedIso-pathᵈ→ 𝐴 refl refl {f} h
+    = Idᵈ-inl
+        {P = ap (λ x → Σ[ y ∶ A ] Iso x y) refl}
+        (Σ-path→ (refl , Iso-path→ 𝐴 (adjust-hom-refl (fwd-Iso f) ∙ h)))
+
+  ℑ-rep→←
+    : (𝐴 : is-segal A)
+      (x : TotalIso A)
+    → ℑ-rep→ (ℑ-rep← x) ＝ x
+  ℑ-rep→← 𝐴 x
+    = Σ-path→
+        ( ℑ-rep→←-src x
+        , BasedIso-pathᵈ→ 𝐴
+            (ℑ-rep→←-src x)
+            (ℑ-rep→←-tgt x)
+            (ℑ-rep→←-fwd x))
+}
+
+\p{
+Hence \code{ℑ-rep→} and \code{ℑ-rep←} form a mutual inverse pair, at least for Segal
+types.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 :  is-segal A) where
+
+  ℑ-rep→-is-equiv : is-equiv ℑ-rep→
+  ℑ-rep→-is-equiv = is-equiv←qinv (ℑ-rep← , ℑ-rep←→ , ℑ-rep→← 𝐴)
+
+  ℑ-rep≃ : (ℑ → A) ≃ TotalIso A
+  ℑ-rep≃ = mk≃ ℑ-rep→ ℑ-rep→-is-equiv
+
+  ℑ-rep←-is-equiv : is-equiv ℑ-rep←
+  ℑ-rep←-is-equiv = bwd-is-equiv ℑ-rep≃
+
+  ℑ-rep→const
+    : (a : A) → ℑ-rep→ (const A ℑ a) ＝ id-TotalIso a
+  ℑ-rep→const a
+    = Σ-path→ (refl , Σ-path→ (refl , Iso-path→ 𝐴 (ℑ-rep→const-fwd a)))
+
+}
+}

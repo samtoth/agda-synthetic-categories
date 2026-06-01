@@ -1,0 +1,139 @@
+\title{Right Segal types}
+\taxon{Module}
+\date{2026-05-06}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.RightSegal
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+  I[x] = Poly.L[x] I
+
+open import Core.Coslices
+open import Core.CanonicalPushouts
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.CoComma Δ¹ I I-distr
+
+open import Ergonomics.Auto
+}
+
+\subtree[stt-00O3]{
+\taxon{Definition}
+\title{Right Segal types}
+
+\p{We call a type \em{right Segal} if it is local with respect to the map
+#{\Lambda^2_1 \to (\Delta^1){}^{\rhd}}.}
+
+\remark{See [[stt-00DA]] for the dual concept.}
+
+\agda{
+Λ[2,1]-incl▻ : Λ[2,1] → Δ¹ ▻
+Λ[2,1]-incl▻ = cogap (mk-cocone ↑-ι₁ (↑-hom (i1 , tt) .Homᵈ.hom)
+                                (sym ∘ point (glue (∂Δ¹-0 , i1 , tt))))
+
+Λ[2,1]-incl▻∙ : Coslice-map (point (ι₂ i1)) λ _ → ↑-ι₂ tt
+Λ[2,1]-incl▻∙ = (Λ[2,1]-incl▻ , λ _ → glue (∂Δ¹-1 , i1 , tt))
+
+is-right-segal : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-right-segal = is-local (point Λ[2,1]-incl▻)
+}
+}
+
+\subtree[stt-00O4]{
+\title{Right Segal types are Segal}
+\taxon{Lemma}
+
+\p{Any [right Segal](stt-00O3) type is [Segal](stt-00AI).}
+
+\proof{
+\p{
+We give a splitting of #{\Delta^2 \hookrightarrow \Delta^1 \bjoin 1},
+which furthermore preserves the inner horn inclusion.
+(Note the split embedding #{\Delta^2 \hookrightarrow \square^2} in
+\ref{stt-00C7} factors through this map.)}
+}
+
+\agda{
+Δ²←Δ¹▻-cocone : Cocone (▻-span Δ¹) Δ²
+Δ²←Δ¹▻-cocone .Cocone.p (i , j , tt) = (j ∨ i , i) ⦃ ∨-≤-intror auto! ⦄
+Δ²←Δ¹▻-cocone .Cocone.q (inl x) = (x , i0)
+Δ²←Δ¹▻-cocone .Cocone.q (inr x) = (i1 , i1)
+Δ²←Δ¹▻-cocone .Cocone.filler (∂Δ¹-1 , i , tt) = Δ²-ext (1-coinit , refl)
+Δ²←Δ¹▻-cocone .Cocone.filler (∂Δ¹-0 , i , tt) = Δ²-ext (0-bottom , refl)
+
+Δ²←Δ¹▻ : Δ¹ ▻ → Δ²
+Δ²←Δ¹▻ = cogap Δ²←Δ¹▻-cocone
+
+Δ²←Δ¹▻-resp-horn : Δ²←Δ¹▻ ∘ Λ[2,1]-incl▻ ~ Λ[2,1]-incl
+Δ²←Δ¹▻-resp-horn = pushout-ind _
+  (mk-coconeᵈ
+    (λ l → refl)
+    (λ r → Δ²-ext (∨-comm ∙ 1-coinit , refl))
+    (λ _ → Δ²-is-set _ _ _ _))
+
+Δ¹▻←Δ² : Δ² → Δ¹ ▻
+Δ¹▻←Δ² a = ι₁ (Poly.Δ².t a , Poly.Δ².s a , tt)
+
+Δ¹▻←Δ²-resp-horn
+  : Δ¹▻←Δ² ∘ Λ[2,1]-incl ~ Λ[2,1]-incl▻
+Δ¹▻←Δ²-resp-horn = pushout-rec-unique _ _
+  (λ a → glue (∂Δ¹-0 , a , tt))
+  ~refl
+  λ a → ∙-reflr _
+      ∙ ap-∘ Δ¹▻←Δ² Λ[2,1]-incl (glue a)
+      ∙ ap (ap Δ¹▻←Δ²) (pushout-rec-apβ a)
+      ∙ lem
+      ∙ sym (∙-sym (glue (∂Δ¹-0 , i1 , tt))) where
+  lem : ap (Δ¹▻←Δ²) Δ²-refl ＝ refl
+  lem = ap-∘ ι₁ (λ where (i , j) → (j , i , tt)) Δ²-refl
+      ∙ ap (ap ι₁) prop!
+
+Λ[2,1]↪Λ[2,1]▻ : Arrow-map Λ[2,1]-incl Λ[2,1]-incl▻
+Λ[2,1]↪Λ[2,1]▻ = mk-amap id Δ¹▻←Δ² Δ¹▻←Δ²-resp-horn
+
+Λ[2,1]↪Λ[2,1]▻-retraction : retraction-arrow-map Λ[2,1]↪Λ[2,1]▻
+Λ[2,1]↪Λ[2,1]▻-retraction .fst = mk-amap id Δ²←Δ¹▻ Δ²←Δ¹▻-resp-horn
+Λ[2,1]↪Λ[2,1]▻-retraction .snd .fst = ~refl
+Λ[2,1]↪Λ[2,1]▻-retraction .snd .snd .fst ((a , b) ⦃ p ⦄)
+  = Δ²-ext (∨-comm ∙ ≤-max p , refl)
+Λ[2,1]↪Λ[2,1]▻-retraction .snd .snd .snd _ = Δ²-is-set _ _ _ _
+
+is-segal←is-right-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-right-segal A
+    → is-segal A
+is-segal←is-right-segal orth tt
+  = is-orthogonal⇔orthogonal-! .fst
+      (left-orthogonal-retraction Λ[2,1]-incl Λ[2,1]-incl▻
+        Λ[2,1]↪Λ[2,1]▻
+        Λ[2,1]↪Λ[2,1]▻-retraction
+        !
+        (is-orthogonal⇔orthogonal-! .snd (orth tt)))
+}
+}

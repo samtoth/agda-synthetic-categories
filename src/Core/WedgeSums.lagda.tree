@@ -32,13 +32,81 @@ open import Ergonomics.Extensionality
 (although we just as well could have chosen #{\iota_2(B_{\bullet})}).}
 
 \agda{
-Wedge : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A → B → Type (𝓤 ⊔ 𝓥)
-Wedge a b = Pushout (point a) (point b)
-{-# NOINLINE Wedge #-}
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (a : A) (b : B) where
 
-Wedge∙ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (a : A) (b : B) → Wedge a b
-Wedge∙ a b = ι₁ a
+  wedge-span : Span lzero 𝓤 𝓥
+  wedge-span = mk-span 𝟙 (point a) (point b)
 
+  Wedge :  Type (𝓤 ⊔ 𝓥)
+  Wedge = Pushout (point a) (point b)
+  {-# NOINLINE Wedge #-}
+
+  Wedge∙ : Wedge
+  Wedge∙ = ι₁ a
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B} where
+
+  Wedge-glue : Id (Wedge a b) (ι₁ a) (ι₂ b)
+  Wedge-glue = glue tt
+
+  wedge-cocone
+    : {𝓦 : Level} {X : Type 𝓦}
+    → (f : A → X) (g : B → X)
+    → f a ＝ g b
+    → Cocone (wedge-span a b) X
+  wedge-cocone f g p = mk-cocone f g (λ _ → p)
+
+Wedge∗ : ∀ {𝓤 𝓥} → Type∗ 𝓤 → Type∗ 𝓥 → Type∗ (𝓤 ⊔ 𝓥)
+Wedge∗ A B .Type∗.carrier = Wedge (Type∗.pt A) (Type∗.pt B)
+Wedge∗ A B .Type∗.pt = Wedge∙ (Type∗.pt A) (Type∗.pt B)
+}
+}
+
+\subtree[stt-00Q1]{
+\title{Maps out of wedge sums}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-14}
+
+\agda{
+Wedge-UP≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+    {a : A} {b : B}
+  → (Wedge a b → X) ≃ Σ[ f ∶ (A → X) ] Σ[ g ∶ (B → X) ] (f a ＝ g b)
+Wedge-UP≃
+  = Pushout-UP≃ ∙e cocone-repr≃ ∙e Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → unit-UP≃))
+}
+}
+
+\subtree[stt-00RG]{
+\title{Associativity}
+\taxon{Lemma}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  (a : A) (b₀ b₁ : B) (c : C)
+  where
+
+  Wedge-assoc→
+    : Wedge a (ι₁ {f = point b₁} {g = point c} b₀)
+    → Wedge (ι₂ {f = point a} {g = point b₀} b₁) c
+  Wedge-assoc→
+    = Pushout-assoc→ (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc←
+    : Wedge (ι₂ {f = point a} {g = point b₀} b₁) c
+    → Wedge a (ι₁ {f = point b₁} {g = point c} b₀)
+  Wedge-assoc←
+    = Pushout-assoc← (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc→-is-equiv : is-equiv Wedge-assoc→
+  Wedge-assoc→-is-equiv
+    = Pushout-assoc→-is-equiv (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc←-is-equiv : is-equiv Wedge-assoc←
+  Wedge-assoc←-is-equiv
+    = Pushout-assoc←-is-equiv (point a) (point b₀) (point b₁) (point c)
 }
 }
 
@@ -65,8 +133,7 @@ opaque
       → ∀ x y → fibre (Wedge-embed {a = a} {b}) (x , y) ≃ ((b ＝ y) * (a ＝ x))
   Wedge-fibre {𝓤} {𝓥} {a = a} {b} x y
     = fibre Wedge-embed (x , y) ≃⟨ cogap-fibre _ (x , y) ⟩
-      Pushout₀ total-fibre-span ≃⟨ coe≃ (ap Pushout₀
-                                        (sym (ext! (span-map , span-map-eqv)))) ⟩
+      Pushout₀ total-fibre-span ≃⟨ tr≃ Pushout₀ (sym (ext! (span-map , span-map-eqv))) ⟩
       Pushout₀ intended-span    ≃⟨⟩
       (ULift 𝓤 (b ＝ y) * ULift 𝓥 (a ＝ x))
                                 ≃⟨ mk≃ _
@@ -106,11 +173,11 @@ opaque
     span-map .Span-map.h₂ p = (tt , ×-path→ (×-swap→ ((unlift ⊗ unlift) p)))
     span-map .Span-map.h₃ p = (y , ×-path→ (unlift p , refl))
     span-map .Span-map.H (mk-lift refl , mk-lift refl)
-      = Σ-path→ (refl , sym (Idᵈ-func←Square (sym (glue tt)) refl refl
+      = Σ-path→ (refl , sym (Idᵈ-func←Square (sym Wedge-glue) refl refl
           (Square-degen-hor _ _
-            ( ap-sym Wedge-embed (glue tt)
+            ( ap-sym Wedge-embed Wedge-glue
             ∙ ap sym (pushout-rec-apβ _)
-            ∙ sym (ap-const (sym (glue tt)))))))
+            ∙ sym (ap-const (sym Wedge-glue))))))
     span-map .Span-map.K (mk-lift refl , mk-lift refl) = refl
 
     span-map-eqv : is-Span-equiv span-map
@@ -124,13 +191,13 @@ opaque
     span-map-eqv .snd .snd
       = is-equiv-∘
           (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.fwd-is-equiv))
-          ((unlift≃ ∙e Σ-＝singl e⁻¹ ∙e Σ-ap-≃ (λ a₁ → ×-swap)) ._≃_.fwd-is-equiv)
+          ((unlift≃ ∙e Σ-＝singl e⁻¹ ∙e Σ-snd-≃ (λ a₁ → ×-swap)) ._≃_.fwd-is-equiv)
 
 }
 }
 
 \subtree[stt-00EA]{
-\title{The Wedge of sets is a set}
+\title{Wedges of sets are sets}
 \taxon{Corollary}
 
 \proof{
@@ -146,7 +213,7 @@ opaque
       → is-truncated 0 A → is-truncated 0 B → is-truncated 0 (Wedge a b)
   Wedge-is-0-truncated {A = A} {B} {a} {b} as bs = is-truncated←equiv
     ((Σ[ (x , y) ∶ A × B ] ((b ＝ y) * (a ＝ x)))
-        ≃⟨ Σ-ap-≃ (_e⁻¹ ∘ uncurry Wedge-fibre) ⟩
+        ≃⟨ Σ-snd-≃ (_e⁻¹ ∘ uncurry Wedge-fibre) ⟩
      (Σ[ x ∶ A × B ] fibre Wedge-embed x) ≃⟨⟩
      total-fibre Wedge-embed ≃⟨ total≃total-fibre Wedge-embed ⟩
      Wedge a b ≃∎)
@@ -168,6 +235,7 @@ instance
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
         ⦃ _ : Is-truncated 0 A ⦄ ⦃ _ : Is-truncated 0 B ⦄
       → Is-truncated 0 (Wedge a b)
-  Wedge-Is-2-truncated .Is-truncated.carrier-is-truncated = Wedge-is-0-truncated trunc! trunc!
+  Wedge-Is-2-truncated .Is-truncated.carrier-is-truncated
+    = Wedge-is-0-truncated trunc! trunc!
 }
 }

@@ -11,45 +11,81 @@ open import Foundations.Universes
 open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
 open import Foundations.FunctionInverses
+open import Foundations.Functions
+open import Foundations.Identity
 open import Foundations.Sigma
 open import Foundations.Homotopy
 }
 
-
-\p{Since being a quasi-equivalence is stated via two homotopies, it is stable under homotopy. Hence being an equivalence is also stable under homotopy.}
+\p{
+We give direct constructions that invertibility is stable under homotopy, for many
+notions of invertibilty including sections, retractions, quasi-equivalences, and
+equivalences.
+}
 
 \agda{
-homotopy-section
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      {f g : A → B}
-    → (f ~ g)
-    → section f
-    → section g
-homotopy-section H (h , sec) = (h , (H ~⁻¹) ▸ h ~∙ sec)
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} where
 
-homotopy-retraction
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      {f g : A → B}
-    → (f ~ g)
-    → retraction f
-    → retraction g
-homotopy-retraction H (h , ret) = (h , h ◂ (H ~⁻¹) ~∙ ret)
+  section←~ : (g ~ f) → section f → section g
+  section←~ H (h , sec) = (h , H ▸ h ~∙ sec)
 
-homotopy-qinv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → {f g : A → B}
-    → (f ~ g)
-    → quasi-inv f
-    → quasi-inv g
-homotopy-qinv H (f⁻¹ , R , S) .fst = f⁻¹
-homotopy-qinv {g = g} H (f⁻¹ , R , S) .snd .fst =  f⁻¹ ◂ (H ~⁻¹) ~∙ R
-homotopy-qinv {g = g} H (f⁻¹ , R , S) .snd .snd =  (H ~⁻¹) ▸ f⁻¹ ~∙ S
+  section←~⁻¹ : (f ~ g) → section f → section g
+  section←~⁻¹ H = section←~ (H ~⁻¹)
 
-homotopy-is-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → {f g : A → B}
-    → (f ~ g)
-    → is-equiv f
-    → is-equiv g
-homotopy-is-equiv H e = is-equiv←qinv (homotopy-qinv H (qinv←is-equiv e))
+  retraction←~ : (g ~ f) → retraction f → retraction g
+  retraction←~ H (h , ret) = (h , h ◂ H ~∙ ret)
+
+  retraction←~⁻¹ : (f ~ g) → retraction f → retraction g
+  retraction←~⁻¹ H = retraction←~ (H ~⁻¹)
+
+  qinv←~
+    : (g ~ f) → quasi-inv f → quasi-inv g
+  qinv←~ H (f⁻¹ , R , S) .fst = f⁻¹
+  qinv←~ H (f⁻¹ , R , S) .snd .fst =  f⁻¹ ◂ H ~∙ R
+  qinv←~ H (f⁻¹ , R , S) .snd .snd =  H ▸ f⁻¹ ~∙ S
+
+  is-equiv←~
+    : (g ~ f) → is-equiv f → is-equiv g
+  is-equiv←~ H e .is-equiv.qinv = qinv←~ H (is-equiv.qinv e)
+  is-equiv←~ H e .is-equiv.coherent = coh where opaque
+    open is-equiv e
+
+    Hη : g ◂ η ~ (H ▸ bwd ▸ f ~∙ ε ▸ f) ~∙ (H ~⁻¹)
+    Hη = right-transpose-~∙
+          ((( (~refl: (H ▸ bwd ▸ f)) ⟩~∙⟨ coherent ~⁻¹) ~∙ switch-~∘ H η) ~⁻¹)
+
+    εH : f ◂ bwd ◂ H ~∙ ε ▸ f ~ ε ▸ g ~∙ H
+    εH = ((◂∘ f bwd H ~⁻¹) ⟩~∙⟨ (~refl: (ε ▸ f)))
+      ~∙ (switch-~∘ ε H ~⁻¹)
+      ~∙ ((~refl: (ε ▸ g)) ⟩~∙⟨ id◂ H)
+
+    coh : qinv-coh (qinv←~ H (is-equiv.qinv e))
+    coh =
+      g ◂ (bwd ◂ H ~∙ η)
+        ~⟨ ◂∙ g (bwd ◂ H) η ⟩
+      g ◂ bwd ◂ H ~∙ g ◂ η
+        ~⟨ (~refl: (g ◂ bwd ◂ H)) ⟩~∙⟨ Hη ⟩
+      g ◂ bwd ◂ H ~∙ ((H ▸ bwd ▸ f ~∙ ε ▸ f) ~∙ (H ~⁻¹))
+        ~⟨ ~∙-assoc (g ◂ bwd ◂ H) (H ▸ bwd ▸ f ~∙ ε ▸ f) (H ~⁻¹) ~⁻¹ ⟩
+      (g ◂ bwd ◂ H ~∙ (H ▸ bwd ▸ f ~∙ ε ▸ f)) ~∙ (H ~⁻¹)
+        ~⟨ (~∙-assoc (g ◂ bwd ◂ H) (H ▸ bwd ▸ f) (ε ▸ f) ~⁻¹) ⟩~∙⟨ ~refl: (H ~⁻¹) ⟩
+      ((g ◂ bwd ◂ H ~∙ H ▸ bwd ▸ f) ~∙ ε ▸ f) ~∙ (H ~⁻¹)
+        ~⟨ _⟩~∙⟨_ ((switch-~∘ H (bwd ◂ H)) ~⁻¹) (~refl: (ε ▸ f)) ⟩~∙⟨ ~refl: (H ~⁻¹) ⟩
+      ((H ▸ bwd ▸ g ~∙ f ◂ bwd ◂ H) ~∙ ε ▸ f) ~∙ (H ~⁻¹)
+        ~⟨ ~∙-assoc (H ▸ bwd ▸ g) (f ◂ bwd ◂ H) (ε ▸ f) ⟩~∙⟨ ~refl: (H ~⁻¹) ⟩
+      (H ▸ bwd ▸ g ~∙ (f ◂ bwd ◂ H ~∙ ε ▸ f)) ~∙ (H ~⁻¹)
+        ~⟨ ~∙-assoc (H ▸ bwd ▸ g) (f ◂ bwd ◂ H ~∙ ε ▸ f) (H ~⁻¹) ⟩
+      H ▸ bwd ▸ g ~∙ ((f ◂ bwd ◂ H ~∙ ε ▸ f) ~∙ (H ~⁻¹))
+        ~⟨ (~refl: (H ▸ bwd ▸ g)) ⟩~∙⟨ εH ⟩~∙⟨ ~refl: (H ~⁻¹) ⟩
+      H ▸ bwd ▸ g ~∙ ((ε ▸ g ~∙ H) ~∙ (H ~⁻¹))
+        ~⟨ (~refl: (H ▸ bwd ▸ g)) ⟩~∙⟨ ~∙-assoc (ε ▸ g) H (H ~⁻¹) ⟩
+      H ▸ bwd ▸ g ~∙ (ε ▸ g ~∙ H ~∙ (H ~⁻¹))
+        ~⟨ (~refl: (H ▸ bwd ▸ g)) ⟩~∙⟨ (~refl: (ε ▸ g)) ⟩~∙⟨ ~∙-sym H ⟩
+      H ▸ bwd ▸ g ~∙ (ε ▸ g ~∙ ~refl)
+        ~⟨ (~refl: (H ▸ bwd ▸ g)) ⟩~∙⟨ ~∙-reflr (ε ▸ g) ⟩
+      H ▸ bwd ▸ g ~∙ ε ▸ g
+        ~∎
+
+  is-equiv←~⁻¹ : (f ~ g) → is-equiv f → is-equiv g
+  is-equiv←~⁻¹ H = is-equiv←~ (H ~⁻¹)
 }

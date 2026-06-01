@@ -1,0 +1,263 @@
+\title{Pregroupoids}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.Pregroupoids
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+open is-distributive I-distr
+
+private
+  Δ² = Poly.Δ² I
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.CanonicalPushouts
+open import Core.Joins
+
+open import Ergonomics.Extensionality
+
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I I-distr
+open import Synthetic.Categories.WalkingIso Δ¹ I I-distr
+}
+
+\subtree[stt-00Q5]{
+\title{Invertible Segal types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-04}
+
+\p{
+A type is \em{invertible Segal} if it is [Segal](stt-00AI) and local at the inclusion
+#{\Delta^1 \to \mathfrak{I}}. Intuitively, it is a
+#{\Delta^1}-[discrete type](stt-00B6) that might not be [Rezk-complete](stt-00P8).
+}
+
+\agda{
+fam-is-invertible-segal : fibrewise-map _ _
+fam-is-invertible-segal = point Λ[2,1]-incl ⨄₁ᶠ point arrow-ℑ
+
+is-invertible-segal : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-invertible-segal = is-local fam-is-invertible-segal
+
+is-arrow-ℑ-local : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-arrow-ℑ-local = is-local (point arrow-ℑ)
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-invertible-segal-is-prop : is-prop (is-invertible-segal A)
+  is-invertible-segal-is-prop = is-local-is-prop A
+
+  is-arrow-ℑ-local-is-prop : is-prop (is-arrow-ℑ-local A)
+  is-arrow-ℑ-local-is-prop = is-local-is-prop A
+
+  is-invertible-segal←is-segal←is-arrow-ℑ-local
+    : is-segal A
+    → is-arrow-ℑ-local A
+    → is-invertible-segal A
+  is-invertible-segal←is-segal←is-arrow-ℑ-local = is-local-⨄₁ᶠ←is-local
+
+  is-segal×is-arrow-ℑ-local←is-invertible-segal
+    : is-invertible-segal A → is-segal A × is-arrow-ℑ-local A
+  is-segal×is-arrow-ℑ-local←is-invertible-segal = ×-is-local←is-local-⨄₁ᶠ
+
+  is-segal←is-invertible-segal
+    : is-invertible-segal A → is-segal A
+  is-segal←is-invertible-segal inv = is-segal×is-arrow-ℑ-local←is-invertible-segal inv .fst
+
+  is-arrow-ℑ-local←is-invertible-segal
+    : is-invertible-segal A → is-arrow-ℑ-local A
+  is-arrow-ℑ-local←is-invertible-segal inv = is-segal×is-arrow-ℑ-local←is-invertible-segal inv .snd
+
+  is-invertible-segal≃is-segal×is-arrow-ℑ-local
+    : is-invertible-segal A ≃ (is-segal A × is-arrow-ℑ-local A)
+  is-invertible-segal≃is-segal×is-arrow-ℑ-local
+    = is-local-⨄₁ᶠ≃×-is-local
+
+InvSegal-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+InvSegal-SubU = Local-SubU fam-is-invertible-segal _
+
+InvSegal-gSubU : gSubU (_⊔ 𝓘)
+InvSegal-gSubU = Local-gSubU fam-is-invertible-segal
+
+InvSegal-is-globally-reflective
+  : is-globally-reflective InvSegal-gSubU
+InvSegal-is-globally-reflective = Local-global-reflectors fam-is-invertible-segal
+
+InvSegal-gRSubU : gRSubU (_⊔ 𝓘)
+InvSegal-gRSubU .gRSubU.GS = InvSegal-gSubU
+InvSegal-gRSubU .gRSubU.GS-is-globally-reflective = InvSegal-is-globally-reflective
+
+open gSubU InvSegal-gSubU public using () renaming
+  ( ∈S←equiv to is-precategory←equiv)
+open gReflectiveClosure InvSegal-gRSubU public using () renaming
+  ( Π∈S to Π-is-invertible-segal
+  ; ULift∈S to ULift-is-invertible-segal
+  ; 𝟙∈S to 𝟙-is-invertible-segal
+  ; ∈S←is-singleton to is-precategory←is-singleton
+  ; ∈S←retract to is-precategory←retract
+  ; Pullback∈S to Pullback-is-invertible-segal
+  ; fibre∈S to fibre-is-invertible-segal
+  ; Ext∈S to Ext-is-invertible-segal
+  ; ×∈S to ×-is-invertible-segal
+  ; ＝∈S to ＝-is-invertible-segal
+  ; ~∈S to ~-is-invertible-segal
+  ; retract∈S to retract-is-invertible-segal
+  ; biinv∈S to biinv-is-invertible-segal
+  ; ≃∈S to ≃-is-invertible-segal
+  ; Equaliser∈S to Equaliser-is-invertible-segal
+  ; Seq-lim∈S to Seq-lim-is-invertible-segal
+  ; preidempotent-map∈S to preidempotent-map-is-invertible-segal
+  ; qidempotent-map∈S to qidempotent-map-is-invertible-segal
+  ; idempotent-map∈S to idempotent-map-is-invertible-segal
+  ; Retracts∈S to Retracts-is-invertible-segal)
+open gRSubUHomClosure InvSegal-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-invertible-segal)
+
+module InvSegal where
+  open gRSubU InvSegal-gRSubU public
+  open gReflectiveClosure InvSegal-gRSubU public
+  open gRSubUHomClosure InvSegal-gRSubU public
+}
+}
+
+\subtree[stt-00Q6]{
+\title{Pregroupoids}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-04}
+
+\p{
+A type is a \em{pregroupoid} if it is [Segal](stt-00AI), local at the inclusion
+#{\Delta^1 \to \mathfrak{I}}, and [simplicial](stt-00AC). Intuitively, it is a
+[groupoid](stt-00L7) that might not be [Rezk-complete](stt-00P8).
+}
+
+\agda{
+fam-is-pregroupoid : fibrewise-map _ _
+fam-is-pregroupoid = fam-is-invertible-segal ⨄₁ᶠ (!ᴸ: 𝓘 ∘ fam-is-simplicial)
+
+is-pregroupoid : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-pregroupoid = is-local fam-is-pregroupoid
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-pregroupoid-is-prop : is-prop (is-pregroupoid A)
+  is-pregroupoid-is-prop = is-local-is-prop A
+
+  is-pregroupoid←is-invertible-segal←is-simplicial
+    : is-invertible-segal A
+    → is-simplicial A
+    → is-pregroupoid A
+  is-pregroupoid←is-invertible-segal←is-simplicial inv simp
+    = is-local-⨄₁ᶠ←is-local
+        inv
+        (_≃_.bwd is-local-fam-is-simplicial≃is-simplicial simp)
+
+  is-invertible-segal×is-simplicial←is-pregroupoid
+    : is-pregroupoid A → is-invertible-segal A × is-simplicial A
+  is-invertible-segal×is-simplicial←is-pregroupoid pregrpd
+    = ×-is-local←is-local-⨄₁ᶠ pregrpd .fst
+    , _≃_.fwd is-local-fam-is-simplicial≃is-simplicial
+        (×-is-local←is-local-⨄₁ᶠ pregrpd .snd)
+
+  is-invertible-segal←is-pregroupoid
+    : is-pregroupoid A → is-invertible-segal A
+  is-invertible-segal←is-pregroupoid pregrpd
+    = is-invertible-segal×is-simplicial←is-pregroupoid pregrpd .fst
+
+  is-simplicial←is-pregroupoid
+    : is-pregroupoid A → is-simplicial A
+  is-simplicial←is-pregroupoid pregrpd
+    = is-invertible-segal×is-simplicial←is-pregroupoid pregrpd .snd
+
+  is-pregroupoid≃is-invertible-segal×is-simplicial
+    : is-pregroupoid A ≃ (is-invertible-segal A × is-simplicial A)
+  is-pregroupoid≃is-invertible-segal×is-simplicial
+    = is-local-⨄₁ᶠ≃×-is-local
+    ∙≃ (id≃ ×≃ is-local-fam-is-simplicial≃is-simplicial)
+
+Pregrpd-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Pregrpd-SubU = Local-SubU fam-is-pregroupoid _
+
+Pregrpd-gSubU : gSubU (_⊔ 𝓘)
+Pregrpd-gSubU = Local-gSubU fam-is-pregroupoid
+
+Pregrpd-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
+Pregrpd-U 𝓤 = Σ[ A ∶ Type (𝓘 ⊔ 𝓤) ] is-pregroupoid A
+
+Pregrpd-is-globally-reflective
+  : is-globally-reflective Pregrpd-gSubU
+Pregrpd-is-globally-reflective = Local-global-reflectors fam-is-pregroupoid
+
+Pregrpd-gRSubU : gRSubU (_⊔ 𝓘)
+Pregrpd-gRSubU .gRSubU.GS = Pregrpd-gSubU
+Pregrpd-gRSubU .gRSubU.GS-is-globally-reflective = Pregrpd-is-globally-reflective
+
+open gSubU Pregrpd-gSubU public using () renaming
+  ( ∈S←equiv to is-pregroupoid←equiv)
+open gReflectiveClosure Pregrpd-gRSubU public using () renaming
+  ( Π∈S to Π-is-pregroupoid
+  ; ULift∈S to ULift-is-pregroupoid
+  ; 𝟙∈S to 𝟙-is-pregroupoid
+  ; ∈S←is-singleton to is-pregroupoid←is-singleton
+  ; ∈S←retract to is-pregroupoid←retract
+  ; Pullback∈S to Pullback-is-pregroupoid
+  ; fibre∈S to fibre-is-pregroupoid
+  ; Ext∈S to Ext-is-pregroupoid
+  ; ×∈S to ×-is-pregroupoid
+  ; ＝∈S to ＝-is-pregroupoid
+  ; ~∈S to ~-is-pregroupoid
+  ; retract∈S to retract-is-pregroupoid
+  ; biinv∈S to biinv-is-pregroupoid
+  ; ≃∈S to ≃-is-pregroupoid
+  ; Equaliser∈S to Equaliser-is-pregroupoid
+  ; Seq-lim∈S to Seq-lim-is-pregroupoid
+  ; preidempotent-map∈S to preidempotent-map-is-pregroupoid
+  ; qidempotent-map∈S to qidempotent-map-is-pregroupoid
+  ; idempotent-map∈S to idempotent-map-is-pregroupoid
+  ; Retracts∈S to Retracts-is-pregroupoid)
+open gRSubUHomClosure Pregrpd-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-pregroupoid)
+
+module Pregrpd where
+  open gRSubU Pregrpd-gRSubU public
+  open gReflectiveClosure Pregrpd-gRSubU public
+  open gRSubUHomClosure Pregrpd-gRSubU public
+
+Pregrpd-U-is-simplicial
+  : {𝓤 : Level} → is-simplicial (Pregrpd-U 𝓤)
+Pregrpd-U-is-simplicial {𝓤}
+  = is-simplicial←equiv
+      ((Σ-snd-≃ λ A → is-pregroupoid≃is-invertible-segal×is-simplicial {A = A}) e⁻¹)
+      (Null-in-gSubU-is-null←is-prop
+        {𝓤 = 𝓘} {𝓥 = 𝓤}
+        {P = fam-is-simplicial}
+        {S = InvSegal-gSubU}
+        (fam-is-simplicial-is-prop)
+        (λ _ → Π-is-invertible-segal))
+}
+}

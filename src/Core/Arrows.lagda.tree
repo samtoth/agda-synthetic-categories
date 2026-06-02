@@ -186,7 +186,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map≃pullback' = Arrow-Π≃pullback {f = f} {g = λ _ → g}
 
   Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
-  Arrow-map≃pullback = Arrow-map≃pullback' ∙≃ pullback-swap
+  Arrow-map≃pullback = Arrow-map≃pullback' ∙e pullback-swap
 
   pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
   pullback←arrow' = Arrow-map≃pullback' ._≃_.fwd
@@ -217,10 +217,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map-path : ∀ (G H : Arrow-map f f') → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
     = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
-      (H ~∙ (f' ◂ p) ~ q ▸ f ~∙ H')
+      (H ∙h (f' ◂ p) ~ q ▸ f ∙h H')
 
   Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
-  Arrow-map-path-refl = ~refl , ~refl , ~∙-reflr _
+  Arrow-map-path-refl = ~refl , ~refl , ∙h-reflr _
 
   Arrow-map-path-is-Rppred
     : ∀ (G : Arrow-map f f')
@@ -269,7 +269,7 @@ id-square
     → Arrow-map f f
 id-square = mk-amap id id ~refl
 
-infix 30 id-square:_
+infix 25 id-square:_
 id-square:_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Arrow-map f f
 id-square: f = id-square
 
@@ -282,7 +282,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → Arrow-map f f'
     → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
-    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ~∙ comm' ▸ g)
+    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ∙h comm' ▸ g)
 }
 }
 
@@ -411,37 +411,12 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       → (ae : is-cartesian a) (be : is-cartesian b)
       → is-cartesian (paste-squares a b)
   compose-cartesian {a} {b} ae be x
-    = tr is-equiv (funext→ (arrow-fibre-∘ a b x ~⁻¹))
+    = tr is-equiv (funext→ (arrow-fibre-∘ a b x h⁻¹))
        (is-equiv-∘ {f = arrow-fibre a (b .Arrow-map.bot x)} {g = arrow-fibre b x}
          (ae (b .Arrow-map.bot x))
          (be x)) where
     module b = is-equiv (be x)
     module a = is-equiv (ae (b .Arrow-map.bot x))
-
-    open Arrow-map
-
-    II : (x : B) (fib : fibre f x) →
-       sym (paste-squares a b .Arrow-map.comm (fib .fst)) ∙
-         ap (paste-squares a b .Arrow-map.bot) (fib .snd)
-        ＝
-       (arrow-fibre a (b .Arrow-map.bot x) ∘ arrow-fibre b x)
-         fib .snd
-    II x (aa , p)
-     = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p
-         ＝⟨⟩
-       ⌜ sym (ap (a .bot) (b .comm aa) ∙ a .comm (b .top aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ap! (∙-symsym (ap (a .bot) (b .comm aa)) _) ⟩
-       (sym (a .comm (b .top aa)) ∙ sym (ap (a .bot) (b .comm aa))) ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ∙-assoc (sym (a .comm (b .top aa))) _ (ap (a .bot ∘ b .bot) p) ⟩
-       sym (a .comm (b .top aa)) ∙ ⌜ sym (ap (a .bot) (b .comm aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ap! (sym (ap-sym (a .bot) _)) ⟩
-       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa)) ∙ ⌜ ap (a .bot ∘ b .bot) p ⌝
-         ＝⟨ ap! (ap-∘ _ _ _) ⟩
-       sym (a .comm (b .top aa)) ∙ ⌜ ap (a .bot) (sym (b .comm aa)) ∙ ap (a .bot) (ap (b .bot) p) ⌝
-         ＝⟨ ap! (sym (ap-∙ (a .bot) (sym (b .comm aa)) _)) ⟩
-       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa) ∙ ap (b .bot) p)
-         ＝⟨⟩
-       (arrow-fibre a (b .bot x) ∘ arrow-fibre b x) (aa , p) .snd ∎
 
   3-for-2-cartesian
     : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
@@ -697,7 +672,7 @@ precomp-square
       (g : Arrow-map f f')
     → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (precomp C f') (precomp C f)
 precomp-square (mk-amap top bot p) C
- = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p ~⁻¹))
+ = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p h⁻¹))
 
 postcomp-square
   : ∀ {𝓤 𝓥 𝓦 𝓜}
@@ -827,7 +802,7 @@ transpose-square
     → (F : Arrow-map f g)
     → Arrow-map (F .Arrow-map.top) (F .Arrow-map.bot)
 transpose-square {f = f} {g = g} F
-  = mk-amap f g (F .Arrow-map.comm ~⁻¹)
+  = mk-amap f g (F .Arrow-map.comm h⁻¹)
 
 transpose-square-involution
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
@@ -1078,9 +1053,9 @@ fam-map←arrow-map-is-equiv
   = is-equiv←qinv
       ( arrow-map←fam-map
       , (λ x → Arrow-map-path→ (~refl , ~refl ,
-                               (   ~∙-reflr _
-                                ~∙ ap sym ∘ ~∙-reflr _
-                                ~∙ λ _ → sym-sym)))
+                               (   ∙h-reflr _
+                                ∙h (ap sym ∘ ∙h-reflr _)
+                                ∙h λ _ → sym-sym)))
       , section-fam-arr) where
   section-fam-arr
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}

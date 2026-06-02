@@ -16,7 +16,7 @@ with some extensions.
 | 45               | Arithmetic exponential operators                                                                                                                                  |
 | 43               | Arithmetic modulo operators                                                                                                                                       |
 | 42               | Arithmetic division operators                                                                                                                                     |
-| 40               | Arithmetic mutliplication operators                                                                                                                               |
+| 40               | Arithmetic multiplication operators                                                                                                                               |
 | 36               | Arithmetic subtraction operators                                                                                                                                  |
 | 35               | Arithmetic addition operators                                                                                                                                     |
 | 30               | Arithmetic relational operators                                                                                                                                   |
@@ -27,7 +27,7 @@ with some extensions.
 | 16               | Right whiskering: `_◂_`, `_◂e⁻¹_`                                                                                                                                 |
 | 15               | Parametric multiplicative operators: `_×_`,`_*_`, `_□_`. Composition operators: `_∘_`, `_∘[_]_`. Concatenation operators: `_∙_`, `_∙e_`, `_∙h_`, `_∙q_`, `_∙iff_` |
 | 10               | Parametric additive operators: `_⊎_`. Monadic bind operators.                                                                                                     |
-| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                 |
+| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                |
 | 5                | Directed function-like formation operators: `_→∗_`, `_⇒_`                                                                                                         |
 | 3                | Parametric pairing operators: `_,_`, `_∷_`                                                                                                                        |
 | 0-1              | Reasoning syntaxes                                                                                                                                                |

@@ -28,7 +28,74 @@ open import Synthetic.Categories.LeftSegal Δ¹ I
 open import Synthetic.Categories.CovariantHomFamily Δ¹ I
 open import Synthetic.Categories.AlgebraicLaws Δ¹ I
 open import Synthetic.Categories.Yoneda Δ¹ I
+
+open import Wild.Categories.Structure
+open CatStr₀ hiding (idᶜ ; _∘ᶜ_)
 }
+}
+
+\subtree[fre-F8D1]{
+\title{The covariant Yoneda homomorphism system}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+Given an arbitrary type #{A}, we define the covariant Yoneda homomorphism system on
+#{A}.
+}
+
+\agda{
+module _ {𝓤 : Level} {A : Type 𝓤} where
+
+  Homʸ : A → A → Type (𝓘 ⊔ 𝓤)
+  Homʸ a b = (z : A) → Hom A b z → Hom A a z
+
+  idʸ : {a : A} → Homʸ a a
+  idʸ _ = id
+
+  _∘ʸ_ : {a b c : A} → Homʸ b c → Homʸ a b → Homʸ a c
+  (g ∘ʸ f) z h = f z (g z h)
+
+  precompʸ
+    : {a b : A} (c : A) (f : Homʸ a b)
+    → Homʸ b c → Homʸ a c
+  precompʸ c f = _∘ʸ f
+
+  postcompʸ
+    : {b c : A} (a : A) (h : Homʸ b c)
+    → Homʸ a b → Homʸ a c
+  postcompʸ a h = h ∘ʸ_
+
+  ∘ʸ-left-unit
+    : {a b : A} (f : Homʸ a b) → idʸ ∘ʸ f ＝ f
+  ∘ʸ-left-unit _ = refl
+
+  ∘ʸ-right-unit
+    : {a b : A} (f : Homʸ a b) → f ∘ʸ idʸ ＝ f
+  ∘ʸ-right-unit _ = refl
+
+  ∘ʸ-assoc
+    : {a b c d : A} (h : Homʸ c d) (g : Homʸ b c) (f : Homʸ a b)
+    → (h ∘ʸ g) ∘ʸ f ＝ h ∘ʸ (g ∘ʸ f)
+  ∘ʸ-assoc _ _ _ = refl
+
+  ∘ʸ-pentagon
+    : {a b c d e : A}
+      (k : Homʸ d e) (h : Homʸ c d) (g : Homʸ b c) (f : Homʸ a b)
+    → ap (_∘ʸ f) (∘ʸ-assoc k h g)
+    ∙ ∘ʸ-assoc k (h ∘ʸ g) f
+    ∙ ap (k ∘ʸ_) (∘ʸ-assoc h g f)
+    ＝ ∘ʸ-assoc (k ∘ʸ h) g f
+    ∙ ∘ʸ-assoc k h (g ∘ʸ f)
+  ∘ʸ-pentagon _ _ _ _ = refl
+
+  Hom←Homʸ : {a b : A} → Homʸ a b → Hom A a b
+  Hom←Homʸ {b = b} α = α b (idH b)
+
+  idH←Homʸ : {a : A} → Hom←Homʸ idʸ ＝ idH a
+  idH←Homʸ = refl
+}
+
 }
 
 \subtree[stt-00LL]{
@@ -53,14 +120,8 @@ module StrictifyLeftSegal
   (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
   where
 
-  Homʸ : A → A → Type (𝓘 ⊔ 𝓤)
-  Homʸ a b = (z : A) → Hom A b z → Hom A a z
-
   Homʸ←Hom : {a b : A} → Hom A a b → Homʸ a b
   Homʸ←Hom f z h = h ∘[ 𝐴 ] f
-
-  Hom←Homʸ : {a b : A} → Homʸ a b → Hom A a b
-  Hom←Homʸ {b = b} α = α b (idH b)
 
   Hom←Homʸ-ret
     : {a b : A} (f : Hom A a b) → Hom←Homʸ (Homʸ←Hom f) ＝ f
@@ -88,20 +149,9 @@ module StrictifyLeftSegal
         (Homʸ←Hom)
         (Hom←Homʸ-ret)
 
-  idʸ : {a : A} → Homʸ a a
-  idʸ _ = id
-
-  _∘ʸ_ : {a b c : A} → Homʸ b c → Homʸ a b → Homʸ a c
-  (gʸ ∘ʸ fʸ) z h = fʸ z (gʸ z h)
-
   Homʸ←idH
     : {a : A} → Homʸ←Hom (idH a) ＝ idʸ
-  Homʸ←idH {a}
-    = funext→ λ z → funext→ λ h → ∘[ 𝐴 ]-left-unit {h}
-
-  idH←Homʸ
-    : {a : A} → Hom←Homʸ {a} {a} idʸ ＝ idH a
-  idH←Homʸ = refl
+  Homʸ←idH {a} = funext→ λ z → funext→ λ h → ∘[ 𝐴 ]-left-unit {h}
 
   Homʸ←∘
     : {a b c : A} (g : Hom A b c) (f : Hom A a b)
@@ -109,40 +159,15 @@ module StrictifyLeftSegal
   Homʸ←∘ g f = funext→ λ z → funext→ λ h → sym (∘-assoc←is-left-segal 𝐴ₗ h g f)
 
   ∘←Homʸ
-    : {a b c : A} (gʸ : Homʸ b c) (fʸ : Homʸ a b)
-    → Hom←Homʸ (gʸ ∘ʸ fʸ) ＝ Hom←Homʸ gʸ ∘[ 𝐴 ] Hom←Homʸ fʸ
-  ∘←Homʸ {a} {b} {c} gʸ fʸ
-    = ap (λ F → F c (Hom←Homʸ gʸ)) (sym (Hom←Homʸ-sec fʸ))
-
-  ∘ʸ-left-unit
-    : {a b : A} (fʸ : Homʸ a b) → idʸ ∘ʸ fʸ ＝ fʸ
-  ∘ʸ-left-unit _ = refl
-
-  ∘ʸ-right-unit
-    : {a b : A} (fʸ : Homʸ a b) → fʸ ∘ʸ idʸ ＝ fʸ
-  ∘ʸ-right-unit _ = refl
-
-  ∘ʸ-assoc
-    : {a b c d : A} (hʸ : Homʸ c d) (gʸ : Homʸ b c) (fʸ : Homʸ a b)
-    → (hʸ ∘ʸ gʸ) ∘ʸ fʸ ＝ hʸ ∘ʸ (gʸ ∘ʸ fʸ)
-  ∘ʸ-assoc _ _ _ = refl
-
-  ∘ʸ-pentagon
-    : {a b c d e : A}
-      (kʸ : Homʸ d e) (hʸ : Homʸ c d) (gʸ : Homʸ b c) (fʸ : Homʸ a b)
-    → ap (λ j → j ∘ʸ fʸ) (∘ʸ-assoc kʸ hʸ gʸ)
-    ∙ ∘ʸ-assoc kʸ (hʸ ∘ʸ gʸ) fʸ
-    ∙ ap (kʸ ∘ʸ_) (∘ʸ-assoc hʸ gʸ fʸ)
-    ＝ ∘ʸ-assoc (kʸ ∘ʸ hʸ) gʸ fʸ
-    ∙ ∘ʸ-assoc kʸ hʸ (gʸ ∘ʸ fʸ)
-  ∘ʸ-pentagon _ _ _ _ = refl
+    : {a b c : A} (g : Homʸ b c) (f : Homʸ a b)
+    → Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f ＝ Hom←Homʸ (g ∘ʸ f)
+  ∘←Homʸ {a} {b} {c} g f
+    = ap (λ F → F c (Hom←Homʸ g)) (Hom←Homʸ-sec f)
 
   Homʸ←∘-nat-right
     : {a b c : A} {g g' : Hom A b c} (p : g ＝ g') (f : Hom A a b)
-    → Homʸ←∘ g f
-    ∙ ap (λ j → j ∘ʸ Homʸ←Hom f) (ap Homʸ←Hom p)
-    ＝ ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p)
-    ∙ Homʸ←∘ g' f
+    → Homʸ←∘ g f ∙ ap (λ j → j ∘ʸ Homʸ←Hom f) (ap Homʸ←Hom p)
+    ＝ ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p) ∙ Homʸ←∘ g' f
   Homʸ←∘-nat-right {g = g} {g'} p f
     = Homʸ←∘ g f ∙ ap (λ j → j ∘ʸ Homʸ←Hom f) (ap Homʸ←Hom p)
           ＝⟨ ap (Homʸ←∘ g f ∙_) (sym (ap-∘ (λ j → j ∘ʸ Homʸ←Hom f) Homʸ←Hom p)) ⟩
@@ -150,14 +175,13 @@ module StrictifyLeftSegal
           ＝⟨ homotopy-natural (λ j → Homʸ←∘ j f) p ⟩
       ap (Homʸ←Hom ∘ (_∘[ 𝐴 ] f)) p ∙ Homʸ←∘ g' f
           ＝⟨ ap (_∙ Homʸ←∘ g' f) (ap-∘ Homʸ←Hom (_∘[ 𝐴 ] f) p) ⟩
-      ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p) ∙ Homʸ←∘ g' f ∎
+      ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p) ∙ Homʸ←∘ g' f
+          ∎
 
   Homʸ←∘-nat-left
     : {a b c : A} (h : Hom A b c) {f f' : Hom A a b} (p : f ＝ f')
-    → Homʸ←∘ h f
-    ∙ ap (Homʸ←Hom h ∘ʸ_) (ap Homʸ←Hom p)
-    ＝ ap Homʸ←Hom (ap (h ∘[ 𝐴 ]_) p)
-    ∙ Homʸ←∘ h f'
+    → Homʸ←∘ h f ∙ ap (Homʸ←Hom h ∘ʸ_) (ap Homʸ←Hom p)
+    ＝ ap Homʸ←Hom (ap (h ∘[ 𝐴 ]_) p) ∙ Homʸ←∘ h f'
   Homʸ←∘-nat-left h {f} {f'} p
     = Homʸ←∘ h f ∙ ap (Homʸ←Hom h ∘ʸ_) (ap Homʸ←Hom p)
           ＝⟨ ap (Homʸ←∘ h f ∙_) (sym (ap-∘ (Homʸ←Hom h ∘ʸ_) Homʸ←Hom p)) ⟩
@@ -169,33 +193,21 @@ module StrictifyLeftSegal
 
   ∘ʸ-unique
     : {a b c : A}
-      (_∙_ : Homʸ b c → Homʸ a b → Homʸ a c)
-    → ((gʸ : Homʸ b c) (fʸ : Homʸ a b)
-    → Hom←Homʸ (gʸ ∙ fʸ) ＝ Hom←Homʸ gʸ ∘[ 𝐴 ] Hom←Homʸ fʸ)
-    → (gʸ : Homʸ b c) (fʸ : Homʸ a b)
-    → gʸ ∙ fʸ ＝ gʸ ∘ʸ fʸ
-  ∘ʸ-unique _∙_ comp gʸ fʸ
-    = gʸ ∙ fʸ
-        ＝⟨ sym (Hom←Homʸ-sec (gʸ ∙ fʸ)) ⟩
-      Homʸ←Hom (Hom←Homʸ (gʸ ∙ fʸ))
-        ＝⟨ ap Homʸ←Hom (comp gʸ fʸ) ⟩
-      Homʸ←Hom (Hom←Homʸ gʸ ∘[ 𝐴 ] Hom←Homʸ fʸ)
-        ＝⟨ Homʸ←∘ (Hom←Homʸ gʸ) (Hom←Homʸ fʸ) ⟩
-      Homʸ←Hom (Hom←Homʸ gʸ) ∘ʸ Homʸ←Hom (Hom←Homʸ fʸ)
-        ＝⟨ ap₂ (_∘ʸ_) (Hom←Homʸ-sec gʸ) (Hom←Homʸ-sec fʸ) ⟩
-      gʸ ∘ʸ fʸ ∎
-}
-
-\agda{
-open StrictifyLeftSegal public hiding (_∘ʸ_)
-
-compʸ
-  : {𝓤 : Level} {A : Type 𝓤} {a b c : A}
-  → (𝐴ₗ : is-left-segal A)
-  → Homʸ 𝐴ₗ b c → Homʸ 𝐴ₗ a b → Homʸ 𝐴ₗ a c
-compʸ 𝐴ₗ = StrictifyLeftSegal._∘ʸ_ 𝐴ₗ
-
-syntax compʸ 𝐴ₗ gʸ fʸ = gʸ ∘ʸ[ 𝐴ₗ ] fʸ
+      (_∘'_ : Homʸ b c → Homʸ a b → Homʸ a c)
+    → ((g : Homʸ b c) (f : Homʸ a b)
+    → Hom←Homʸ (g ∘' f) ＝ Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f)
+    → (g : Homʸ b c) (f : Homʸ a b)
+    → g ∘' f ＝ g ∘ʸ f
+  ∘ʸ-unique _∘'_ comp g f
+    = g ∘' f
+        ＝⟨ sym (Hom←Homʸ-sec (g ∘' f)) ⟩
+      Homʸ←Hom (Hom←Homʸ (g ∘' f))
+        ＝⟨ ap Homʸ←Hom (comp g f) ⟩
+      Homʸ←Hom (Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f)
+        ＝⟨ Homʸ←∘ (Hom←Homʸ g) (Hom←Homʸ f) ⟩
+      Homʸ←Hom (Hom←Homʸ g) ∘ʸ Homʸ←Hom (Hom←Homʸ f)
+        ＝⟨ ap₂ (_∘ʸ_) (Hom←Homʸ-sec g) (Hom←Homʸ-sec f) ⟩
+      g ∘ʸ f ∎
 }
 
 \p{
@@ -207,45 +219,36 @@ strict associativity of composition in the [Yoneda strictification](stt-00LL).
 module AssocStrictifyLeftSegal
   {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A)
   (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
+  (open StrictifyLeftSegal 𝐴ₗ)
   where
-
-  postcompʸ
-    : {a b : A} (c : A) (fʸ : Homʸ 𝐴ₗ a b)
-    → Homʸ 𝐴ₗ b c → Homʸ 𝐴ₗ a c
-  postcompʸ c fʸ x = compʸ 𝐴ₗ x fʸ
-
-  precompʸ
-    : {b c : A} (a : A) (hʸ : Homʸ 𝐴ₗ b c)
-    → Homʸ 𝐴ₗ a b → Homʸ 𝐴ₗ a c
-  precompʸ a hʸ x = compʸ 𝐴ₗ hʸ x
 
   ∘-assoc-leftʸ
     : {a b c d : A}
       (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
-    → Homʸ←Hom 𝐴ₗ ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
-    ＝ (Homʸ←Hom 𝐴ₗ h ∘ʸ[ 𝐴ₗ ] Homʸ←Hom 𝐴ₗ g) ∘ʸ[ 𝐴ₗ ] Homʸ←Hom 𝐴ₗ f
+    → Homʸ←Hom ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
+    ＝ (Homʸ←Hom h ∘ʸ Homʸ←Hom g) ∘ʸ Homʸ←Hom f
   ∘-assoc-leftʸ {a} {b} {c} {d} h g f
-    = Homʸ←∘ 𝐴ₗ (h ∘[ 𝐴 ] g) f
-    ∙ ap (postcompʸ d (Homʸ←Hom 𝐴ₗ f)) (Homʸ←∘ 𝐴ₗ h g)
+    = Homʸ←∘ (h ∘[ 𝐴 ] g) f
+    ∙ ap (precompʸ d (Homʸ←Hom f)) (Homʸ←∘ h g)
 
   ∘-assoc-rightʸ
     : {a b c d : A}
       (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
-    → Homʸ←Hom 𝐴ₗ (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
-    ＝ Homʸ←Hom 𝐴ₗ h ∘ʸ[ 𝐴ₗ ] (Homʸ←Hom 𝐴ₗ g ∘ʸ[ 𝐴ₗ ] Homʸ←Hom 𝐴ₗ f)
+    → Homʸ←Hom (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+    ＝ Homʸ←Hom h ∘ʸ (Homʸ←Hom g ∘ʸ Homʸ←Hom f)
   ∘-assoc-rightʸ {a} {b} {c} {d} h g f
-    = Homʸ←∘ 𝐴ₗ h (g ∘[ 𝐴 ] f)
-    ∙ ap (precompʸ a (Homʸ←Hom 𝐴ₗ h)) (Homʸ←∘ 𝐴ₗ g f)
+    = Homʸ←∘ h (g ∘[ 𝐴 ] f)
+    ∙ ap (postcompʸ a (Homʸ←Hom h)) (Homʸ←∘ g f)
 
   opaque
     ∘-assocʸ
       : {a b c d : A}
         (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
-      → Homʸ←Hom 𝐴ₗ ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
-      ＝ Homʸ←Hom 𝐴ₗ (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+      → Homʸ←Hom ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
+      ＝ Homʸ←Hom (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
     ∘-assocʸ h g f
       = ∘-assoc-leftʸ h g f
-      ∙ ∘ʸ-assoc 𝐴ₗ (Homʸ←Hom 𝐴ₗ h) (Homʸ←Hom 𝐴ₗ g) (Homʸ←Hom 𝐴ₗ f)
+      ∙ ∘ʸ-assoc (Homʸ←Hom h) (Homʸ←Hom g) (Homʸ←Hom f)
       ∙ sym (∘-assoc-rightʸ h g f)
 
   opaque
@@ -255,7 +258,7 @@ module AssocStrictifyLeftSegal
       → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f
       ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f)
     ∘-assoc-from-yoneda h g f
-      = unap-equiv (Homʸ←Hom-is-equiv 𝐴ₗ) (∘-assocʸ h g f)
+      = unap-equiv Homʸ←Hom-is-equiv (∘-assocʸ h g f)
 
   opaque
     unfolding ∘-assoc-from-yoneda
@@ -263,9 +266,9 @@ module AssocStrictifyLeftSegal
     ∘-assoc-from-yoneda-coh
       : {a b c d : A}
         (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
-      → ap (Homʸ←Hom 𝐴ₗ) (∘-assoc-from-yoneda h g f)
+      → ap Homʸ←Hom (∘-assoc-from-yoneda h g f)
       ＝ ∘-assocʸ h g f
     ∘-assoc-from-yoneda-coh h g f
-      = ap-unap-equiv (Homʸ←Hom-is-equiv 𝐴ₗ) (∘-assocʸ h g f)
+      = ap-unap-equiv Homʸ←Hom-is-equiv (∘-assocʸ h g f)
 }
 }

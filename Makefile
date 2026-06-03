@@ -10,22 +10,23 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server check-dup clean-agda clean-forester clean serve
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
-	@echo "  make build-forest               # Generate Everything.agda + Agda/Forester trees/html"
-	@echo "  make sync-forest-src            # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
-	@echo "  make typecheck                  # Generate Everything.agda and typecheck with agda"
-	@echo "  make benchmark-typecheck        # Clean typecheck with Agda profiling enabled"
-	@echo "  make watch-agda                 # Rebuild Agda output when src/ changes"
-	@echo "  make watch-forest [PORT=<port>] # Run forester watch server (default: 1313)"
-	@echo "  make server [PORT=<port>]       # Run watch-agda + watch-forest together (default: 1313)"
-	@echo "  make serve [PORT=<port>]        # Serve ./result with python http.server (default: 1313)"
-	@echo "  make check-dup                  # Find duplicate subtree references (DIR=... optional)"
-	@echo "  make clean-agda                 # Remove generated agda artifacts"
-	@echo "  make clean-forester             # Remove generated forester artifacts"
-	@echo "  make clean                      # Remove all generated build artifacts"
+	@echo "  make build-forest                # Generate Everything.agda + Agda/Forester trees/html"
+	@echo "  make sync-forest-src             # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
+	@echo "  make typecheck                   # Generate Everything.agda and typecheck with Agda"
+	@echo "  make benchmark-typecheck         # Clean typecheck with profiling enabled"
+	@echo "  make watch-agda                  # Rebuild Agda output when src/ changes"
+	@echo "  make watch-forest [PORT=<port>]  # Run forester watch server (default: 1313)"
+	@echo "  make server [PORT=<port>]        # Run watch-agda + watch-forest together (default: 1313)"
+	@echo "  make serve [PORT=<port>]         # Build and serve ./output with python http.server (default: 1313)"
+	@echo "  make python-server [PORT=<port>] # Alias for make serve"
+	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
+	@echo "  make clean-agda                  # Remove generated agda artifacts"
+	@echo "  make clean-forester              # Remove generated forester artifacts"
+	@echo "  make clean                       # Remove all generated build artifacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
 	@bash ./scripts/generateEverything.sh
@@ -42,6 +43,10 @@ prepare-agda-datadir:
 	fi
 	@chmod -R u+w "$(AGDA_DATADIR)/lib/prim" || true
 	@mkdir -p "$(AGDA_DATADIR)/lib/prim/_build"
+
+prepare-forest-assets:
+	@mkdir -p output/agda-synthetic-categories/assets
+	@cp assets/logo-wide-transparent.svg output/agda-synthetic-categories/assets/
 
 typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
@@ -67,7 +72,7 @@ sync-forest-src:
 		cp "$$file" "$$dest"; \
 	done
 
-build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
+build-forest: $(EVERYTHING_FILE) prepare-agda-datadir prepare-forest-assets
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
 	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks "$(EVERYTHING_FILE)" -j
 
@@ -103,7 +108,7 @@ server:
 	$(MAKE) --no-print-directory watch-forest; \
 	wait
 
-check-dup:
+check-duplicate-trees:
 	@DIR="$(DUP_DIR)"; \
 	{ \
 		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
@@ -138,8 +143,9 @@ check-dup:
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"
-	@$(MAKE) --no-print-directory check-dup
+	@$(MAKE) --no-print-directory check-duplicate-trees
 	@forester build
+	@$(MAKE) --no-print-directory prepare-forest-assets
 
 clean-agda:
 	@chmod -R u+w _build 2>/dev/null || true
@@ -156,5 +162,8 @@ clean-forester:
 
 clean: clean-agda clean-forester
 
-serve:
-	@python3 -m http.server "$(PORT)" -d result
+serve: check-port check-forest-no-typecheck
+	@echo "Serving forest on http://localhost:$(PORT)/agda-synthetic-categories/"
+	@python3 -m http.server "$(PORT)" -d output
+
+python-server: serve

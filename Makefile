@@ -165,6 +165,11 @@ list-trees:
 		}\
 	}' | sort -r \
 
+check-sync-main:
+	@git fetch
+	@git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$"
+	
+
 rename-trees-dry:
 	@if [ -z "$(AUTHOR)" ]; then \
 	   echo "Requires AUTHOR=..."; \
@@ -177,7 +182,7 @@ rename-trees-dry:
 check-rename-trees:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
-rename-trees: rename-trees-dry check-rename-trees
+rename-trees: check-sync-main rename-trees-dry check-rename-trees
 	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/  ; \
 
 check-forest-no-typecheck: sync-forest-src prepare-forest-assets

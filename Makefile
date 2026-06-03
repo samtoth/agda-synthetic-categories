@@ -167,7 +167,10 @@ list-trees:
 
 check-sync-main:
 	@git fetch
-	@git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$"
+	@if (git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$") then \
+	    exit 1; \
+	fi
+
 
 
 rename-trees-dry:

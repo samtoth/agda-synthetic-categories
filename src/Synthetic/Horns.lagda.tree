@@ -7,21 +7,22 @@
 \transclude{stt-00AB}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
-module Synthetic.Horns
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
-  where
-
-open import Axioms.UF
+module Synthetic.Horns {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
 
 open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly hiding (Δ²)
+open Poly  hiding (Δ²)
+private Δ² = Poly.Δ² I
 
-private
-  Δ² = Poly.Δ² I
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
@@ -36,9 +37,10 @@ open import Core.FunctorialityPushouts
 open import Core.CanonicalPushouts
 open import Core.FlatteningPushouts
 open import Core.SpanMaps
+open import Core.WedgeSums
 
 open import Ergonomics.Extensionality
-
+}
 }
 
 
@@ -70,31 +72,65 @@ open import Ergonomics.Extensionality
 \agda{
 open Subtype
 
-Λ[2,1] : Type 𝓘
-Λ[2,1] = Pushout (point i1) (point i0)
+Λ[2,1]-span : Span lzero 𝓘 𝓘
+Λ[2,1]-span = wedge-span i1 i0
 
-Λ[2,1]-Δ²-cocone : Cocone (mk-span 𝟙 (point i1) (point i0)) Δ²
-Λ[2,1]-Δ²-cocone = mk-cocone (λ i → (i , i0)) (λ i → i1 , i)
-                          λ _ → Δ²-ext (refl , refl)
+Λ[2,1] : Type 𝓘
+Λ[2,1] = Wedge i1 i0
+
+Λ[2,1]-glue : ι₁ {f = point i1} {g = point i0} i1 ＝ ι₂ i0
+Λ[2,1]-glue = glue tt
+
+Λ[2,1]-Δ²-cocone : Cocone (wedge-span i1 i0) Δ²
+Λ[2,1]-Δ²-cocone = mk-cocone (_, i0) (i1 ,_) λ _ → Δ²-ext (refl , refl)
 
 Λ[2,1]-incl : Λ[2,1] → Δ²
 Λ[2,1]-incl = cogap Λ[2,1]-Δ²-cocone
 
+Λ[2,1]-left-eval : Λ[2,1] → Δ¹
+Λ[2,1]-left-eval x = Poly.Δ².t (Λ[2,1]-incl x)
+
+Λ[2,1]-right-eval : Λ[2,1] → Δ¹
+Λ[2,1]-right-eval x = Poly.Δ².s (Λ[2,1]-incl x)
+
 [2,1]-hom : ∀ {𝓤} (C : Type 𝓤) → Type (𝓤 ⊔ 𝓘)
 [2,1]-hom C = Σ[ f g ∶ (Δ¹ → C)] (f i1 ＝ g i0)
 
-make-horn : ∀ {𝓤} {C : Type 𝓤} {x y z} → Hom C y z → Hom C x y → Λ[2,1] → C
-make-horn f g = pushout-rec (mk-cocone (g .Homᵈ.hom) (f .Homᵈ.hom)
-                              λ _ → g .Homᵈ.hom1 ∙ sym (f .Homᵈ.hom0))
+module _
+  {𝓤} {C : Type 𝓤} {x y z : C} (f : Hom C y z) (g : Hom C x y)
+  where
+
+  horn-cocone : Cocone Λ[2,1]-span C
+  horn-cocone
+    = wedge-cocone (g .Homᵈ.hom) (f .Homᵈ.hom) (g .Homᵈ.hom1 ∙ sym (f .Homᵈ.hom0))
+
+  make-horn : Λ[2,1] → C
+  make-horn = pushout-rec horn-cocone
+
+  horn-glue : ap make-horn Λ[2,1]-glue ＝ g .Homᵈ.hom1 ∙ sym (f .Homᵈ.hom0)
+  horn-glue = pushout-rec-apβ {c = horn-cocone} tt
+
+horn-const
+    : ∀ {𝓤} {A : Type 𝓤} (a : A) → (λ _ → a) ~ make-horn (idH a) (idH a)
+horn-const a
+  = pushout-rec-unique _ (λ _ → a) ~refl ~refl
+      (λ _ → ∙-reflr _ ∙ ap-const Λ[2,1]-glue)
+
+δ₀² : Δ¹ → Δ²
+δ₀² i = (i1 , i)
+
+δ₁² : Δ¹ → Δ²
+δ₁² i = (i , i)
+
+δ₂² : Δ¹ → Δ²
+δ₂² i = (i , i0)
 
 Δ²-diagonal : Δ¹ → Δ²
-Δ²-diagonal i = i , i
+Δ²-diagonal = δ₁²
 
 Δ²-diagonal-is-embedding : is-embedding Δ²-diagonal
 Δ²-diagonal-is-embedding
-  = is-equiv←inverse (is-prop-separated _ _)
-                     (Δ²-is-set _ _)
-                     λ where p → ap Poly.Δ².s p
+  = is-equiv←inverse (carrier-is-set _ _) (Δ²-is-set _ _) (ap Poly.Δ².s)
 }
 }
 
@@ -113,9 +149,9 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
 Λ[2,1]Sub : Subtype Δ² 𝓘
 Λ[2,1]Sub .family (i , j) = (i0 ＝ j) * (i1 ＝ i)
 Λ[2,1]Sub .family-is-subtype (i , j)
-  = *-is-prop (is-prop-separated _ _) (is-prop-separated _ _)
+  = *-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
 
-Λ[2,1]-as-subtype : ∀ a → fibre Λ[2,1]-incl a ≃ a ∈ Λ[2,1]Sub
+Λ[2,1]-as-subtype : ∀ a → fibre Λ[2,1]-incl a ≃ (a ∈ Λ[2,1]Sub)
 Λ[2,1]-as-subtype s =
   fibre Λ[2,1]-incl s ≃⟨ cogap-fibre _ s ⟩
   Pushout (total-fibre-span .left) (total-fibre-span .right)
@@ -145,19 +181,18 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
   opaque
     h1-eq : quasi-inv (Span-map.h₁ span-map)
     h1-eq .fst (x , p) = ap Poly.Δ².t p
-    h1-eq .snd .fst p = is-prop-separated i0 _ _ _
+    h1-eq .snd .fst p = carrier-is-set i0 _ _ _
     h1-eq .snd .snd (p , q) = Σ-path→ (ap Poly.Δ².s (sym q)
                                       , Δ²-is-set _ _ _ _)
     h2-eq : quasi-inv (Span-map.h₂ span-map)
     h2-eq .fst (_ , p) = (ap Poly.Δ².t p , ap Poly.Δ².s p)
-    h2-eq .snd .fst (p , q) = ×-is-prop (is-prop-separated _ _)
-                                        (is-prop-separated _ _)
+    h2-eq .snd .fst (p , q) = ×-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
                                         _ _
     h2-eq .snd .snd (_ , p) = Σ-path→ (refl , Δ²-is-set _ _ _ _)
 
     h3-eq : quasi-inv (Span-map.h₃ span-map)
     h3-eq .fst x = ap Poly.Δ².s (snd x)
-    h3-eq .snd .fst p = is-prop-separated _ _ _ _
+    h3-eq .snd .fst p = carrier-is-set _ _ _ _
     h3-eq .snd .snd (x , p) = Σ-path→ (sym (ap Poly.Δ².t p)
                                       , Δ²-is-set _ _ _ _)
 
@@ -202,7 +237,7 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
     → Π Λ[2,1] B
     ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
         Σ[ z ∶ B (ι₂ i1)]
-         Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+         Homᵈ (B ∘ ι₂) (tr B Λ[2,1]-glue (f i1)) z
 Λ[2,1]-UP B = mk≃ (map2 ._≃_.fwd ∘ coconeᵈ-map span pushout {Q = B})
               (is-equiv-∘ (_≃_.fwd-is-equiv map2) Pushout-has-upᵈ-pushout) where
   span : Span lzero 𝓘 𝓘
@@ -211,10 +246,10 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
   by-inserting-singleton
     : (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
           Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
-              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+              (g i0 ＝ tr B Λ[2,1]-glue (f i1)))
     ≃ (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
            Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
-              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+              Σ[ h0 ∶ h i0 ＝ tr B Λ[2,1]-glue (f i1) ]
                (h i1 ＝ z))
   by-inserting-singleton = equiv←qequiv qeqv where
     qeqv : _ ≊ _
@@ -226,7 +261,7 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
   map2 : Coconeᵈ span pushout B
        ≃ Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
            Σ[ z ∶ B (ι₂ i1)]
-            Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z
+            Homᵈ (B ∘ ι₂) (tr B Λ[2,1]-glue (f i1)) z
 
   map2
     = Coconeᵈ span pushout B ≃⟨ coconeD-repr≃ ⟩
@@ -235,24 +270,24 @@ two propositions. This goes via the [flattening lemma for pushouts](stt-008D).
         Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
           ((a : 𝟙) → f i1 ＝[ ap B (glue a) ] g i0))
 
-                          ≃⟨ Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → unit-UP≃ ∙≃ sym≃)) ⟩
+                          ≃⟨ Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → unit-UP≃ ∙e sym≃)) ⟩
 
       (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
           Σ[ g ∶ ((r : Δ¹) → B (ι₂ r)) ]
-              (g i0 ＝ coe (ap B (glue tt)) (f i1)))
+              (g i0 ＝ tr B Λ[2,1]-glue (f i1)))
 
                          ≃⟨ by-inserting-singleton ⟩
 
       (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
            Σ[ z ∶ B (ι₂ i1)] Σ[ h ∶ ((r : Δ¹) → B (ι₂ r)) ]
-              Σ[ h0 ∶ h i0 ＝ coe (ap B (glue tt)) (f i1) ]
+              Σ[ h0 ∶ h i0 ＝ tr B Λ[2,1]-glue (f i1) ]
                (h i1 ＝ z))
 
                           ≃⟨ Σ-snd-≃ (λ a → Σ-snd-≃ (λ b → Homᵈ-repr≃ e⁻¹)) ⟩
 
       (Σ[ f ∶ ((i : Δ¹) → B (ι₁ i))]
            Σ[ z ∶ B (ι₂ i1)]
-            Homᵈ (B ∘ ι₂) (tr B (glue tt) (f i1)) z)    ≃∎
+            Homᵈ (B ∘ ι₂) (tr B Λ[2,1]-glue (f i1)) z)    ≃∎
 }
 }
 
@@ -321,8 +356,9 @@ retract of arrows of the pushout product #{\point(0) \pushprod \point(1)}.
 Λ[2,1]↪□-section .Arrow-map.top = Pushout₁ (mk-span-map (_, _) _ (_ ,_) ~refl ~refl)
 Λ[2,1]↪□-section .Arrow-map.bot (x , y) = (x , y)
 Λ[2,1]↪□-section .Arrow-map.comm
-  = pushout-ind _ (mk-coconeᵈ ~refl ~refl
-                    λ _ → is-set←is-truncated (□-is-truncated carrier-is-0-truncated) _ _ _ _)
+  = pushout-ind _
+      (mk-coconeᵈ ~refl ~refl λ _
+      → □-is-set carrier-is-set _ _ _ _)
 
 Λ[2,1]↪□-ret : retraction-arrow-map Λ[2,1]↪□-section
 Λ[2,1]↪□-ret .fst .Arrow-map.top
@@ -339,4 +375,12 @@ retract of arrows of the pushout product #{\point(0) \pushprod \point(1)}.
 Λ[2,1]↪□-ret .snd .snd .fst   = Δ²-retract-Δ¹×Δ¹' .snd .snd
 Λ[2,1]↪□-ret .snd .snd .snd x = Δ²-is-set _ _ _ _
 }
+}
+
+\agda{
+Λ[2,1]-map-repr
+  : {𝓤 : Level} {A : Type 𝓤}
+  → (Λ[2,1] → A)
+  ≃ Σ[ f ∶ (Δ¹ → A) ] Σ[ g ∶ (Δ¹ → A) ] (f i1 ＝ g i0)
+Λ[2,1]-map-repr = Wedge-UP≃
 }

@@ -8,22 +8,23 @@
 \transclude{stt-00AB}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Categories.Comma
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Axioms.UF
-
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly hiding (Δ²)
-open is-distributive I-distr
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
-private
-  Δ² = Poly.Δ² I
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -46,7 +47,8 @@ open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Categories.NaturalTransformations Δ¹ I I-distr
+open import Synthetic.Categories.NaturalTransformations Δ¹ I
+}
 }
 
 \subtree[stt-00C1]{
@@ -80,6 +82,7 @@ We call #{C} a (right) comma cone when this map is an equivalence.}
 
 \agda{
 module _ {𝓤 𝓥 𝓦} {S : Cospan 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type 𝓛} where
+
   right-cone-map
     : Right-cone S Carrier
     → ∀ {𝓠} {Q : Type 𝓠} → (Q → Carrier) → Right-cone S Q
@@ -103,23 +106,22 @@ module _ {𝓤 𝓥 𝓦} {S : Cospan 𝓤 𝓥 𝓦} {𝓛} {Carrier : Type �
 
 
 \agda{
-_↓_ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-        (f : A → B) (g : C → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
-f ↓ g = Σ[ a ∶ _ ] Σ[ c ∶ _ ] Hom _ (f a) (g c)
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 
-↓-cone : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-        (f : A → B) (g : C → B) → Right-cone (mk-cospan _ f g) (f ↓ g)
-↓-cone f g = mk-right-cone fst (fst ∘ snd) (snd ∘ snd)
+  _↓_ : (f : A → B) (g : C → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  f ↓ g = Σ[ a ∶ A ] Σ[ c ∶ C ] Hom B (f a) (g c)
 
-↓-is-comma-cone
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : A → B} {g : C → B}
-    → is-comma-cone (↓-cone f g)
-↓-is-comma-cone = is-equiv←qinv qinv where
-  open Right-cone
-  qinv : quasi-inv (right-cone-map (↓-cone _ _))
-  qinv .fst cone x = (cone .p x , cone .q x , cone .filler x)
-  qinv .snd .fst = ~refl
-  qinv .snd .snd = ~refl
+  ↓-cone : (f : A → B) (g : C → B) → Right-cone (mk-cospan _ f g) (f ↓ g)
+  ↓-cone f g = mk-right-cone fst (fst ∘ snd) (snd ∘ snd)
+
+  ↓-is-comma-cone
+    : {f : A → B} {g : C → B} → is-comma-cone (↓-cone f g)
+  ↓-is-comma-cone = mk-eqv qinv ~refl where
+    open Right-cone
+    qinv : quasi-inv (right-cone-map (↓-cone _ _))
+    qinv .fst cone x = (cone .p x , cone .q x , cone .filler x)
+    qinv .snd .fst = ~refl
+    qinv .snd .snd = ~refl
 }
 }
 
@@ -155,27 +157,27 @@ object #{c} considered as a function #{1 \to C}.}
 
 \agda{
 Slice : ∀ {𝓤 𝓥} (C : Type 𝓤) {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Slice C f = Σ[ c ∶ C ] ∀ i → Hom _ c (f i)
+Slice C f = Σ[ c ∶ C ] ∀ i → Hom C c (f i)
 
 Slice-cone : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
            (F : I → C) → Right-cone (mk-cospan _ (const C I) (point F)) (Slice _ F)
 Slice-cone F .Right-cone.p (c , _) = c
 Slice-cone F .Right-cone.q (c , g) = tt
-Slice-cone F .Right-cone.filler (_ , f) = Hom←NT f
+Slice-cone F .Right-cone.filler (_ , f) = Hom←Nat f
 
 Slice-is-comma
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
     → is-comma-cone (Slice-cone F)
 Slice-is-comma F = is-equiv←qinv qinv where
   qinv : quasi-inv (right-cone-map (Slice-cone F))
-  qinv .fst cone x = (cone .Right-cone.p x , NT←Hom (cone .Right-cone.filler x))
-  qinv .snd .fst f = funext→ (λ q → Σ-path→ (refl , _≃_.ε NT≃Hom (f q .snd)))
+  qinv .fst cone x = (cone .Right-cone.p x , Nat←Hom (cone .Right-cone.filler x))
+  qinv .snd .fst f = funext→ (λ q → Σ-path→ (refl , _≃_.ε Nat≃Hom (f q .snd)))
   qinv .snd .snd c = ap (mk-right-cone (Right-cone.p c) (λ _ → tt))
-                        (funext→ (_≃_.η NT≃Hom ∘ Right-cone.filler c))
+                        (funext→ (_≃_.η Nat≃Hom ∘ Right-cone.filler c))
 
 
 Coslice : ∀ {𝓤 𝓥} (C : Type 𝓤) {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Coslice C f = Σ[ c ∶ C ] ∀ i → Hom _ (f i) c
+Coslice C f = Σ[ c ∶ C ] ∀ i → Hom C (f i) c
 
 Coslice-cone
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
@@ -183,17 +185,17 @@ Coslice-cone
     → Right-cone (mk-cospan _ (point F) (const C I)) (Coslice C F)
 Coslice-cone F .Right-cone.p = !
 Coslice-cone F .Right-cone.q (c , _) = c
-Coslice-cone F .Right-cone.filler (_ , α) = Hom←NT α
+Coslice-cone F .Right-cone.filler (_ , α) = Hom←Nat α
 
 Coslice-is-comma
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
     → is-comma-cone (Coslice-cone F)
 Coslice-is-comma F = is-equiv←qinv qinv where
   qinv : quasi-inv (right-cone-map (Coslice-cone F))
-  qinv .fst cone x = (cone .Right-cone.q x , NT←Hom (cone .Right-cone.filler x))
-  qinv .snd .fst f =  funext→ (λ q → Σ-path→ (refl , _≃_.ε NT≃Hom (f q .snd)))
+  qinv .fst cone x = (cone .Right-cone.q x , Nat←Hom (cone .Right-cone.filler x))
+  qinv .snd .fst f =  funext→ (λ q → Σ-path→ (refl , _≃_.ε Nat≃Hom (f q .snd)))
   qinv .snd .snd c =  ap (mk-right-cone _ (Right-cone.q c))
-                        (funext→ (_≃_.η NT≃Hom ∘ Right-cone.filler c))
+                        (funext→ (_≃_.η Nat≃Hom ∘ Right-cone.filler c))
 
 
 Slice-path

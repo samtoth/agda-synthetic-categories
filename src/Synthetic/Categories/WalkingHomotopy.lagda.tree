@@ -1,0 +1,298 @@
+\date{2026-05-14}
+\title{The walking left homotopy}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.WalkingHomotopy
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.LiftingSquares
+open import Core.FlatteningPushouts
+open import Core.PiSection
+open import Core.CocartesianSquares
+open import Core.Postwhisker
+open import Core.Cofibres
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
+}
+}
+
+\subtree[stt-00DK]{
+\title{The walking left homotopy}
+\taxon{Definition}
+\date{2026-01-29}
+\author{samueltoth}
+
+\p{
+We define the walking homotopy #{\Delta_\sim} as the [cofibre](Core.Cofibres) of
+#{d_2 : Δ¹ \to Δ²}, which contracts the edge #{0 \leq 1}.
+}
+
+\agda{
+Δ~▵-contracted-edge : Δ¹ → Δ²
+Δ~▵-contracted-edge i = i , i0
+
+Δ~▵ : Type 𝓘
+Δ~▵ = Cofibre Δ~▵-contracted-edge
+
+src-Δ~▵ : Δ¹ → Δ~▵
+src-Δ~▵ = ι₁ ∘ Δ²-diagonal
+
+tgt-Δ~▵ : Δ¹ → Δ~▵
+tgt-Δ~▵ = ι₁ ∘ (i1 ,_)
+}
+}
+
+\subtree[stt-00PX]{
+\title{The walking left homotopy classifies left homotopies}
+\taxon{Theorem}
+\author{samueltoth}
+\date{2026-01-29}
+
+\p{
+We show that a map
+#{\Delta_\sim \to A} is equivalent to the type consisting of a pair of morphisms and
+a homotopy between them.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  Δ~▵-rep1 : (Δ~▵ → A) ≃ Σ[ x ∶ A ] Ext (Λ[2,1]-incl ∘ ι₁) (const _ _ x)
+  Δ~▵-rep1 = Cofibre-map-repr Δ~▵-contracted-edge
+
+  _ : (f : Δ~▵ → A)
+    → f ∘ src-Δ~▵ ~ Δ~▵-rep1 ._≃_.fwd f .snd .fst ∘ Δ²-diagonal
+  _ = λ _ → ~refl
+
+  Δ~▵-rep2
+    : (Δ~▵ → A)
+    ≃ Σ[ x ∶ A ]
+      Σ[ f ∶ Ext {B = Λ[2,1]} ι₁ (const _ _ x) ]
+        Ext Λ[2,1]-incl (f .fst)
+  Δ~▵-rep2
+    =  Δ~▵-rep1
+    ∙e Σ-snd-≃ (λ a → Ext-compose global-funext Λ[2,1]-incl ι₁ (const _ _ a))
+
+  _ : (f : Δ~▵ → A)
+    → f ∘ src-Δ~▵ ~ Δ~▵-rep2 ._≃_.fwd f .snd .snd .fst ∘ Δ²-diagonal
+  _ = λ _ → ~refl
+
+  Λ[2,1]-ext-l
+    : (f : Δ¹ → A)
+    → Ext {B = Λ[2,1]} ι₁ f ≃ Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1)
+  Λ[2,1]-ext-l f
+    = Ext {B = Λ[2,1]} ι₁ f
+        ≃⟨ Σ-snd-≃ (λ _ → funext≃ e⁻¹) ⟩
+      Σ[ x ∶ (Λ[2,1] → A) ] (x ∘ ι₁ ＝ f)
+        ≃⟨ Σ-fst-≃ {B = λ x → x .fst ＝ f} (Pushout-UP≃ ∙e cocone-repr≃) ⟩
+      _
+        ≃⟨ remove-singleton-structure Sing'-is-singleton (_ , refl) ⟩
+      _
+        ≃⟨ Σ-snd-≃ (λ a → unit-UP≃ ∙e sym≃) ⟩
+      Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1) ≃∎
+
+  Λ[2,1]-ext-l→
+    : (f : Δ¹ → A)
+    → Ext {B = Λ[2,1]} ι₁ f → Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1)
+  Λ[2,1]-ext-l→ f (e , p) = (e ∘ ι₂ , sym (ap e Λ[2,1]-glue) ∙ p i1)
+
+  Λ[2,1]-ext-l←
+    : (f : Δ¹ → A)
+    → Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1) → Ext {B = Λ[2,1]} ι₁ f
+  Λ[2,1]-ext-l← f (g , k) = (cogap (mk-cocone f g (λ _ → sym k))) , ~refl
+
+  Λ[2,1]-ext-l-is-equiv
+    : (f : Δ¹ → A) → is-equiv (Λ[2,1]-ext-l→ f)
+  Λ[2,1]-ext-l-is-equiv f
+    = is-equiv-∘~ H
+        (Λ[2,1]-ext-l→=-is-equiv f)
+        (bwd-is-equiv (Σ-snd-≃ (λ _ → funext≃))) where
+
+      Λ[2,1]-ext-l→=
+        : {𝓤 : Level} {A : Type 𝓤} (f : Δ¹ → A)
+        → fibre (precomp-Π (λ _ → A) ι₁) f
+        → Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1)
+      Λ[2,1]-ext-l→= {A = A} .(precomp-Π (λ _ → A) ι₁ e) (e , refl)
+        = (e ∘ ι₂ , sym (ap e Λ[2,1]-glue))
+
+      HJ
+        : {e : Λ[2,1] → A} {f : Δ¹ → A}
+          (q : e ∘ ι₁ ＝ f)
+        → Λ[2,1]-ext-l→= f (e , q)
+        ＝ (e ∘ ι₂ , sym (ap e Λ[2,1]-glue) ∙ happly q i1)
+      HJ refl = Σ-path→ (refl , sym (∙-reflr _))
+
+      H : Λ[2,1]-ext-l→= f ∘ _≃_.bwd (Σ-snd-≃ (λ _ → funext≃))
+        ~ Λ[2,1]-ext-l→ f
+      H (e , p)
+        = HJ (funext→ p)
+        ∙ ap
+            (λ r → (e ∘ ι₂ , sym (ap e Λ[2,1]-glue) ∙ r))
+            (happly (_≃_.ε funext≃ p) i1)
+
+      Λ[2,1]-ext-l←=
+        : (f : Δ¹ → A)
+        → Σ[ g ∶ (Δ¹ → A)] (g i0 ＝ f i1)
+        → fibre (precomp-Π (λ _ → A) ι₁) f
+      Λ[2,1]-ext-l←= f (g , k) = (cogap (mk-cocone f g (λ _ → sym k)) , refl)
+
+      Λ[2,1]-ext-l→=-is-equiv
+        : (f : Δ¹ → A) → is-equiv (Λ[2,1]-ext-l→= f)
+      Λ[2,1]-ext-l→=-is-equiv f = is-equiv←qinv
+        ( Λ[2,1]-ext-l←= f
+        , uncurry
+            (λ where
+              f refl → fibre-path→
+                ( funext→
+                    (sym ∘ pushout-rec-unique _ _ ~refl ~refl
+                      (λ _ → ∙-reflr _ ∙ sym sym-sym))
+                , ∙-reflr _ ∙ sym (commutes-prewhisker-funext _)
+                  ∙ funext-refl))
+        , uncurry (λ x y → Σ-path→ (refl , (ap sym (pushout-rec-apβ tt) ∙ sym-sym))))
+
+  Δ~▵-rep3
+    : (Δ~▵ → A) ≃ Σ[ f ∶ (Δ¹ → A) ] Ext Λ[2,1]-incl (make-horn (λhom f) (idH _))
+  Δ~▵-rep3
+    = (Δ~▵ → A)
+        ≃⟨ Δ~▵-rep2 ⟩
+      Σ[ x ∶ A ]
+      (Σ (Ext ι₁ (const A Δ¹ x)) (Ext Λ[2,1]-incl ∘ fst))
+        ≃⟨ Σ-assoc e⁻¹ ⟩
+      Σ[ xe ∶ (Σ[ x ∶ A ] Ext ι₁ (const _ _ x)) ] (Ext Λ[2,1]-incl ∘ fst) (xe .snd)
+        ≃⟨ mk≃ lem lem-is-eqv ⟩
+      Σ[ f ∶ (Δ¹ → A) ] (Ext Λ[2,1]-incl (make-horn (λhom f) (idH (f _))))
+        ≃∎ where
+
+      H : (a : Σ[ x ∶ A ] Ext ι₁ (const _ _ x))
+        → a .snd .fst
+        ~ make-horn (λhom (a .snd .fst ∘ ι₂)) (idH _)
+      H (x , a , p) = pushout-rec-unique _ _
+        (λ i → p i ∙ sym (p i1) ∙ ap a Λ[2,1]-glue) ~refl
+        λ _ → ap (_∙ refl) (sym (sym∙ (p i1) (ap a Λ[2,1]-glue)))
+
+      lem
+        : Σ[ xe ∶ (Σ[ x ∶ A ] Ext ι₁ (const _ _ x)) ]
+          (Ext Λ[2,1]-incl ∘ fst) (xe .snd)
+        → Σ[ f ∶ (Δ¹ → A)] Ext Λ[2,1]-incl (make-horn (λhom f) (idH _))
+      lem (a , b , p) = (a .snd .fst ∘ ι₂ , b , p ∙h H a)
+
+      lem-is-eqv : is-equiv lem
+      lem-is-eqv
+        = is-equiv-∘
+            (total-is-equiv←fst-is-equiv
+              (is-equiv-∘
+                  (singleton-fst-is-equiv (λ _ → Sing-is-singleton))
+                  (is-equiv-∘
+                    (Σ-comm ._≃_.fwd-is-equiv)
+                    (is-total-equiv←is-fibrewise-equiv
+                      (λ a → Λ[2,1]-ext-l-is-equiv (const A Δ¹ a))))))
+            (is-total-equiv←is-fibrewise-equiv
+              λ a → is-total-equiv←is-fibrewise-equiv
+                λ b → ∙h-is-equiv' (H a))
+
+  _ : (f : Δ~▵ → A) → f ∘ src-Δ~▵ ~ Δ~▵-rep3 ._≃_.fwd f .snd .fst ∘ Δ²-diagonal
+  _ = λ _ → ~refl
+
+  Δ~▵-rep4
+    : (Δ~▵ → A)
+    ≃ Σ[ f ∶ (Δ¹ → A) ] Σ[ g ∶ Hom A (f i0) (f i1) ] Hom2 (λhom f) (idH _) g
+  Δ~▵-rep4 = Δ~▵-rep3
+          ∙e Σ-snd-≃
+              (λ f → Σ-snd-≃ (λ _ → funext≃ e⁻¹)
+                  ∙e mk≃ _ (composite←horn-extension-is-equiv (λhom f) (idH _)))
+
+  rep4-Δ~▵tgt
+    : fst ∘ Δ~▵-rep4 ._≃_.fwd ~ precomp A (tgt-Δ~▵)
+  rep4-Δ~▵tgt = ~refl
+
+  rep4-Δ~▵src
+    : Homᵈ.hom ∘ fst ∘ snd ∘ Δ~▵-rep4 ._≃_.fwd ~ precomp A (src-Δ~▵)
+  rep4-Δ~▵src f
+    = composite←horn-extension-diagonal _ _
+        (total-map (λ _ → funext→) (Δ~▵-rep3 ._≃_.fwd f .snd))
+}
+}
+
+\subtree[stt-00DL]{
+\taxon{Corollary}
+\author{samueltoth}
+\date{2026-01-29}
+
+\p{
+As a corollary of \ref{stt-00CH}, we have that the map that picks out the source (or
+the target) of the walking homotopy is a Segal equivalence.
+}
+
+\agda{
+opaque
+  tgt-is-segal-equiv
+    : is-segal-equiv tgt-Δ~▵
+  tgt-is-segal-equiv {Q = Q} qpc
+    = is-equiv-∘
+        {f = fst}
+        {g = Δ~▵-rep4 ._≃_.fwd}
+        (singleton-fst-is-equiv
+          (λ f → SingS-is-single ⦃ Hom-lhomotopy-IdS qpc ⦄ _))
+        (Δ~▵-rep4 ._≃_.fwd-is-equiv)
+
+  src-is-segal-equiv
+    : is-segal-equiv src-Δ~▵
+  src-is-segal-equiv {Q = Q} qpc
+    = is-equiv-∘~
+        {f = (Homᵈ.hom ∘ fst ∘ snd)}
+        {g = Δ~▵-rep4 ._≃_.fwd}
+        (rep4-Δ~▵src)
+        (is-equiv←qinv lemma)
+        (Δ~▵-rep4 ._≃_.fwd-is-equiv) where
+    lemma : quasi-inv {A = Σ[ f ∶ (Δ¹ → Q) ]
+                             Σ[ g ∶ Hom Q (f i0) (f i1) ]
+                               Hom2 (λhom f) (idH _) g}
+                     {B = Δ¹ → Q} (Homᵈ.hom ∘ fst ∘ snd)
+    lemma .fst a = (a , λhom a , refl~▵ (λhom a))
+    lemma .snd .fst (a , b , p)
+      = Σ-path→ ( sym (ap Homᵈ.hom (Id←IdS ⦃ Hom-lhomotopy-IdS qpc ⦄ p))
+                , (composite-is-prop qpc _ _ _ _))
+    lemma .snd .snd a = refl
+}
+}

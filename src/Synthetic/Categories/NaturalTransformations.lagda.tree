@@ -5,32 +5,28 @@
 
 \import{stt-macros}
 
-
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Categories.NaturalTransformations
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Axioms.UF
-
-
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly hiding (Δ²)
-open is-distributive I-distr
 
-private
-  Δ² = Poly.Δ² I
-
-open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
-
-open import Ergonomics.Extensionality
+open import Axioms.UF
 }
 
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Ergonomics.Extensionality
+
+open import Synthetic.Hom Δ¹ i0 i1
+}
+}
 
 \subtree[stt-00D0]{
 \title{Natural transformations}
@@ -41,10 +37,168 @@ type of natural transformations is nothing but the fibrewise morphisms
 #{\Pi_{a : A} \Hom_{B(a)}(f(a), g(a))}.}
 
 \agda{
-_⇒_
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (f g : Π A B)
-    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-f ⇒ g = ∀ a → Hom _ (f a) (g a)
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  infixr 5 _⇒_
+  _⇒_ : (f g : Π A B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  f ⇒ g = (a : A) → Hom (B a) (f a) (g a)
+}
+}
+
+\subtree[stt-00QQ]{
+\title{Displayed natural transformations over natural transformations}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\agda{
+Nat-over
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+      {f g : Π A B}
+    → (C : (a : A) → B a → Type 𝓦)
+    → f ⇒ g
+    → ((a : A) → C a (f a))
+    → ((a : A) → C a (g a))
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓦)
+Nat-over C H f' g' = ∀ a → Hom-over {B = C a} (H a) (f' a) (g' a)
+}
+}
+
+\subtree[stt-00PE]{
+\title{Natural transformations over constant families}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+For a constant family of target types, dependent natural transformations over a
+base transformation are equivalent to ordinary natural transformations in the
+constant fibre.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : Type 𝓦} {f g : Π A B} {f' g' : A → C}
+  where
+
+  Nat-over-const≃Nat
+    : (H : f ⇒ g) → Nat-over (λ _ _ → C) H f' g' ≃ (f' ⇒ g')
+  Nat-over-const≃Nat H = Π-fam-≃ (λ a → Hom-over-const≃Hom (H a))
+
+  Nat←Nat-over-const
+    : (H : f ⇒ g) → Nat-over (λ _ _ → C) H f' g' → f' ⇒ g'
+  Nat←Nat-over-const H α a = Hom←Hom-over-const (H a) (α a)
+}
+}
+
+\subtree[stt-00PC]{
+\title{Equality of natural transformations}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+Equality between natural transformations is determined by a pointwise equality of
+morphisms.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {f g : Π A B} where
+
+  Nat-path
+    : (α β : f ⇒ g) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Nat-path α β = ∀ a → Hom-path (α a) (β a)
+
+  Nat-path-refl
+    : {α : f ⇒ g} → Nat-path α α
+  Nat-path-refl a = Hom-path-refl
+
+  Nat-path-is-torsorial
+    : (α : f ⇒ g) → is-singleton (Σ[ β ∶ f ⇒ g ] Nat-path α β)
+  Nat-path-is-torsorial α
+    = is-single←equiv-to-single
+        (Σ-Π-swap≃ (λ a → Hom (B a) (f a) (g a)) (λ a → Hom-path (α a)))
+        (Π-is-single λ a → Hom-path-is-torsorial (α a))
+
+  instance
+    IdS-Nat
+      : Identity-system (f ⇒ g) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+    IdS-Nat .Identity-system.IdS = Nat-path
+    IdS-Nat .Identity-system.IdS←Id refl = Nat-path-refl
+    IdS-Nat .Identity-system.IdS←Id-is-equiv α
+      = fundamental-Id (Nat-path α) (Nat-path-is-torsorial α) _
+
+  Nat-ext→
+    : {α β : f ⇒ g} → Nat-path α β → α ＝ β
+  Nat-ext→ = ext!
+}
+}
+
+\subtree[stt-00PB]{
+\title{Horizontal composition}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-05-07}
+
+\p{
+Given natural transformations #{H : f \Rightarrow g} and #{H' : f' \Rightarrow g'}
+where #{f,g : A \to B} and #{f',g' : B \to C}, then there is a
+\em{horizontal composite}
+#{H' \mathbin{\square} H : f' \circ f \Rightarrow g' \circ g}.
+}
+
+\agda{
+_◻Nat_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f g : A → B} {f' g' : B → C}
+  → f' ⇒ g' → f ⇒ g → (f' ∘ f) ⇒ (g' ∘ g)
+_◻Nat_ H' H a .Homᵈ.hom i
+  = H' (H a .Homᵈ.hom i) .Homᵈ.hom i
+_◻Nat_ {f' = f'} H' H a .Homᵈ.hom0
+  = H' (H a .Homᵈ.hom i0) .Homᵈ.hom0
+  ∙ ap f' (H a .Homᵈ.hom0)
+_◻Nat_ {g' = g'} H' H a .Homᵈ.hom1
+  = H' (H a .Homᵈ.hom i1) .Homᵈ.hom1
+  ∙ ap g' (H a .Homᵈ.hom1)
+
+_◻Natᵈ_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+      {C : (a : A) → B a → Type 𝓦}
+      {f g : Π A B} {f' g' : (a : A) → Π (B a) (C a)}
+    → ((a : A) → _⇒_ {B = C a} (f' a) (g' a))
+    → (H : f ⇒ g)
+    → Nat-over C H (λ a → f' a (f a)) (λ a → g' a (g a))
+_◻Natᵈ_ H' H a .Homᵈ.hom i
+  = H' a (H a .Homᵈ.hom i) .Homᵈ.hom i
+_◻Natᵈ_ {f' = f'} H' H a .Homᵈ.hom0
+  = H' a (H a .Homᵈ.hom i0) .Homᵈ.hom0
+  ∙ apᶠ-sym (f' a) (H a .Homᵈ.hom0)
+_◻Natᵈ_ {g' = g'} H' H a .Homᵈ.hom1
+  = H' a (H a .Homᵈ.hom i1) .Homᵈ.hom1
+  ∙ apᶠ-sym (g' a) (H a .Homᵈ.hom1)
+
+◻Nat＝◻Natᵈ-const
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f g : A → B} {f' g' : B → C}
+    → (H' : f' ⇒ g') (H : f ⇒ g)
+    → H' ◻Nat H
+    ＝ Nat←Nat-over-const H ((λ _ → H') ◻Natᵈ H)
+◻Nat＝◻Natᵈ-const  {B = B} {C = C} {f' = f'} {g' = g'} H' H
+  = Nat-ext→ λ a →
+    ( ~refl
+    , lemma f'
+        (H' (H a .Homᵈ.hom i0) .Homᵈ.hom0)
+        (H a .Homᵈ.hom0)
+    , lemma g'
+        (H' (H a .Homᵈ.hom i1) .Homᵈ.hom1)
+        (H a .Homᵈ.hom1))
+    where
+      lemma
+        : (F : B → C) {x y : B} {z : C}
+        → (q : z ＝ F x) (p : x ＝ y)
+        → (q ∙ apᶠ-sym F p) ∙ tr-constant (sym p) (F y)
+        ＝ q ∙ ap F p
+      lemma F refl refl = refl
 }
 }
 
@@ -57,62 +211,33 @@ types, since Hom types are corepresented by an interval, this is a trivial theor
 and not an axiom.}
 
 \agda{
-Hom←NT
+Hom←Nat
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {f g : Π A B}
     → f ⇒ g → Hom (Π A B) f g
-Hom←NT α .Homᵈ.hom i a = α a .Homᵈ.hom i
-Hom←NT α .Homᵈ.hom0 = funext→ (λ a → α a .Homᵈ.hom0)
-Hom←NT α .Homᵈ.hom1 = funext→ (λ a → α a .Homᵈ.hom1)
+Hom←Nat α .Homᵈ.hom i a = α a .Homᵈ.hom i
+Hom←Nat α .Homᵈ.hom0 = funext→ (λ a → α a .Homᵈ.hom0)
+Hom←Nat α .Homᵈ.hom1 = funext→ (λ a → α a .Homᵈ.hom1)
 
-NT←Hom
+Nat←Hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {f g : Π A B}
     → Hom (Π A B) f g
     → f ⇒ g
-NT←Hom α a .Homᵈ.hom i = α .Homᵈ.hom i a
-NT←Hom α a .Homᵈ.hom0 = happly (α .Homᵈ.hom0) a
-NT←Hom α a .Homᵈ.hom1 = happly (α .Homᵈ.hom1) a
+Nat←Hom α a .Homᵈ.hom i = α .Homᵈ.hom i a
+Nat←Hom α a .Homᵈ.hom0 = happly (α .Homᵈ.hom0) a
+Nat←Hom α a .Homᵈ.hom1 = happly (α .Homᵈ.hom1) a
 
-NT≃Hom
+Nat≃Hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       {f g : Π A B}
     → Hom (Π A B) f g ≃ (f ⇒ g)
-NT≃Hom = mk≃ NT←Hom (is-equiv←qinv qinv) where
-  qinv : quasi-inv NT←Hom
-  qinv .fst = Hom←NT
+Nat≃Hom = mk≃ Nat←Hom (is-equiv←qinv qinv) where
+  qinv : quasi-inv Nat←Hom
+  qinv .fst = Hom←Nat
   qinv .snd .fst (mk-hom hom hom0 hom1)
     = Hom-ext→ (~refl , sym (funext.η hom0) , sym (funext.η hom1))
   qinv .snd .snd α = funext→ λ a → Hom-ext→
     ( ~refl
     , sym (happly funext-redex a)
     , sym (happly funext-redex a))
-}
-}
-
-\subtree[stt-00FR]{
-\title{Natural transformations are natural w.r.t covariant transport}
-\taxon{Lemma}
-
-\citet{Prop 8.17.}{RS17}
-
-\agda{
-tr-naturality
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
-      (Fc : is-covariant F)
-      (Gc : is-covariant G)
-      (α : ∀ a → F a → G a)
-      {x y} (f : Hom A x y)
-    → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
-tr-naturality Fc Gc α f x'
-  = ap fst
-      (is-covariant-hom←is-covariant _ Gc f (α _ x') .central
-        ( α _ (tr-cov-hom Fc f x')
-        , help f x')) where
-  help
-    : ∀ {x y} (f : Hom _ x y) x'
-      → Hom-over f (α x x') (α y (tr-cov-hom Fc f x'))
-  help (mk-hom f refl refl) x'
-    = mk-hom (λ i → α (f i) ((Fc f x') .centre .snd .Homᵈ.hom i))
-             (ap (α (f i0)) ((Fc f x') .centre .snd .Homᵈ.hom0))
-             (ap (α (f i1)) ((Fc f x') .centre .snd .Homᵈ.hom1))
 }
 }

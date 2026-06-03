@@ -43,6 +43,10 @@ prepare-agda-datadir:
 	@chmod -R u+w "$(AGDA_DATADIR)/lib/prim" || true
 	@mkdir -p "$(AGDA_DATADIR)/lib/prim/_build"
 
+prepare-forest-assets:
+	@mkdir -p output/agda-synthetic-categories/assets
+	@cp assets/logo-wide-transparent.svg output/agda-synthetic-categories/assets/
+
 typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"
 	@TIMEFORMAT='Typecheck elapsed: %3lR'; \
@@ -67,7 +71,7 @@ sync-forest-src:
 		cp "$$file" "$$dest"; \
 	done
 
-build-forest: $(EVERYTHING_FILE) prepare-agda-datadir
+build-forest: $(EVERYTHING_FILE) prepare-agda-datadir prepare-forest-assets
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
 	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks "$(EVERYTHING_FILE)" -j
 
@@ -136,7 +140,7 @@ check-duplicate-trees:
 		exit err ; \
 	}'
 
-check-forest-no-typecheck: sync-forest-src
+check-forest-no-typecheck: sync-forest-src prepare-forest-assets
 	@mkdir -p "$(HTML_DIR)"
 	@$(MAKE) --no-print-directory check-duplicate-trees
 	@forester build

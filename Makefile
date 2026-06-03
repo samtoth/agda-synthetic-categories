@@ -168,7 +168,7 @@ list-trees:
 check-sync-main:
 	@git fetch
 	@git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$"
-	
+
 
 rename-trees-dry:
 	@if [ -z "$(AUTHOR)" ]; then \

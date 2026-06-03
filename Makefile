@@ -10,7 +10,11 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
+<<<<<<< HEAD
 .PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server python-server check-duplicate-trees rename-trees clean-agda clean-forester clean
+=======
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees clean-agda clean-forester clean
+>>>>>>> origin/main
 
 help:
 	@echo "Available targets:"
@@ -21,7 +25,8 @@ help:
 	@echo "  make watch-agda                  # Rebuild Agda output when src/ changes"
 	@echo "  make watch-forest [PORT=<port>]  # Run forester watch server (default: 1313)"
 	@echo "  make server [PORT=<port>]        # Run watch-agda + watch-forest together (default: 1313)"
-	@echo "  make python-server [PORT=<port>] # Serve ./result with python http.server (default: 1313)"
+	@echo "  make serve [PORT=<port>]         # Build and serve ./output with python http.server (default: 1313)"
+	@echo "  make python-server [PORT=<port>] # Alias for make serve"
 	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
 	@echo "  make list-trees                  # List all of the trees in the forest"
 	@echo "  make rename-trees                # Rename trees in the forest (AUTHOR=... required)"
@@ -188,10 +193,11 @@ check-rename-trees:
 rename-trees: check-sync-main rename-trees-dry check-rename-trees
 	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/  ; \
 
-check-forest-no-typecheck: sync-forest-src prepare-forest-assets
+check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"
 	@$(MAKE) --no-print-directory check-duplicate-trees
 	@forester build
+	@$(MAKE) --no-print-directory prepare-forest-assets
 
 clean-agda:
 	@chmod -R u+w _build 2>/dev/null || true
@@ -208,5 +214,8 @@ clean-forester:
 
 clean: clean-agda clean-forester
 
-python-server:
-	@python3 -m http.server "$(PORT)" -d result
+serve: check-port check-forest-no-typecheck
+	@echo "Serving forest on http://localhost:$(PORT)/agda-synthetic-categories/"
+	@python3 -m http.server "$(PORT)" -d output
+
+python-server: serve

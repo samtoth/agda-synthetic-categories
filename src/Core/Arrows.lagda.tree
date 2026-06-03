@@ -158,8 +158,9 @@ module _
 
   Arrow-Π-is-pullback : is-pullback Arrow-Π-cone
   Arrow-Π-is-pullback
-    = homotopy-is-equiv (Arrow-Π≃pullback-repr~gap)
-                        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
+    = is-equiv←~⁻¹
+        (Arrow-Π≃pullback-repr~gap)
+        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
 
   Arrow-Π≃pullback
     : Arrow-Π f g
@@ -184,7 +185,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map≃pullback' = Arrow-Π≃pullback {f = f} {g = λ _ → g}
 
   Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
-  Arrow-map≃pullback = Arrow-map≃pullback' ∙≃ pullback-swap
+  Arrow-map≃pullback = Arrow-map≃pullback' ∙e pullback-swap
 
   pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
   pullback←arrow' = Arrow-map≃pullback' ._≃_.fwd
@@ -215,10 +216,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map-path : ∀ (G H : Arrow-map f f') → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
     = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
-      (H ~∙ (f' ◂ p) ~ q ▸ f ~∙ H')
+      (H ∙h (f' ◂ p) ~ q ▸ f ∙h H')
 
   Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
-  Arrow-map-path-refl = ~refl , ~refl , ~∙-reflr _
+  Arrow-map-path-refl = ~refl , ~refl , ∙h-reflr _
 
   Arrow-map-path-is-Rppred
     : ∀ (G : Arrow-map f f')
@@ -267,7 +268,7 @@ id-square
     → Arrow-map f f
 id-square = mk-amap id id ~refl
 
-infix 30 id-square:_
+infix 25 id-square:_
 id-square:_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Arrow-map f f
 id-square: f = id-square
 
@@ -280,7 +281,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → Arrow-map f f'
     → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
-    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ~∙ comm' ▸ g)
+    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ∙h comm' ▸ g)
 }
 }
 
@@ -456,7 +457,7 @@ precomp-square
       (g : Arrow-map f f')
     → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (precomp C f') (precomp C f)
 precomp-square (mk-amap top bot p) C
- = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p ~⁻¹))
+ = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p h⁻¹))
 
 postcomp-square
   : ∀ {𝓤 𝓥 𝓦 𝓜}
@@ -490,7 +491,7 @@ transpose-square
     → (F : Arrow-map f g)
     → Arrow-map (F .Arrow-map.top) (F .Arrow-map.bot)
 transpose-square {f = f} {g = g} F
-  = mk-amap f g (F .Arrow-map.comm ~⁻¹)
+  = mk-amap f g (F .Arrow-map.comm h⁻¹)
 
 transpose-square-involution
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
@@ -611,9 +612,9 @@ module _
     = is-equiv←qinv
         ( arrow-map←fam-map
         , (λ x → Arrow-map-path→ (~refl , ~refl ,
-                                 (   ~∙-reflr _
-                                  ~∙ ap sym ∘ ~∙-reflr _
-                                  ~∙ λ _ → sym-sym)))
+                                 (  ∙h-reflr _
+                                 ∙h (ap sym ∘ ∙h-reflr _)
+                                 ∙h (λ _ → sym-sym))))
         , section-fam-arr) where
     section-fam-arr
       : fam-map←arrow-map ∘ arrow-map←fam-map ~ id
@@ -686,5 +687,27 @@ str-ArrFam-is-equiv = is-equiv←qinv
             , ~refl
             , λ a → Σ-path-ap-fst)})
   , ~refl)
+}
+}
+
+\subtree[stt-00RQ]{
+\title{The type of morphisms into a terminal projection is equivalent to the type of maps of domains}
+\taxon{Lemma}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\agda{
+arrow-map-to-top-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {f : A → B}
+    → is-equiv (λ (F : Arrow-map f (!: X)) → Arrow-map.top F)
+arrow-map-to-top-is-equiv =
+  is-equiv←qinv
+    ( (λ t → mk-amap t (λ _ → tt) ~refl)
+    , (λ (mk-amap t b H)
+       → Arrow-map-path→
+           ( ~refl
+           , (λ y → is-prop←is-single 𝟙-is-singleton _ _)
+           , (λ x → is-prop←is-single (＝-singleton←is-single 𝟙-is-singleton _ _) _ _)))
+    , ~refl)
 }
 }

@@ -42,7 +42,7 @@ open import Core.PiSection
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Simplicial Δ¹ I
 open import Synthetic.Horns Δ¹ I
-open import Synthetic.Categories.Precategories Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Homotopy Δ¹ I I-distr
 open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
@@ -81,7 +81,7 @@ Hom-∫
     ≃ Σ[ f ∶ Hom A x y ]
        (tr-cov-hom Bc f x' ＝ y')
 Hom-∫ {B = B} Bc x' y'
-  = Hom-Σ≃ ∙≃ Σ-snd-≃ (λ a → Hom-cov'≃ B Bc a x' y' e⁻¹)
+  = Hom-Σ≃ ∙e Σ-snd-≃ (λ a → Hom-cov'≃ B Bc a x' y' e⁻¹)
 }
 
 \p{Now fixing a family #{F}, we say that an element #{(a , x)} of #{F} is
@@ -89,27 +89,23 @@ universal if the map #{\Pi_b \Hom(a,b) \to F(b)} induced by covariant
 transport at #{x : F(a)} is a fibrewise equivalence.}
 
 \agda{
-yo
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
-    → is-covariant F
-    → ∀ b (x : F b) → ∀ a → Hom _ b a → F a
-yo Fc b x a f = tr-cov-hom Fc f x
+module _ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥} where
 
-is-universal
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
-    → is-covariant F
-    → Σ A F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-universal {F = F} Fcov (a , x)
-  = is-fibrewise-equiv (yo Fcov a x)
+  yo : is-covariant F → (b : A) (x : F b) (a : A) → Hom A b a → F a
+  yo Fc b x a f = tr-cov-hom Fc f x
 
-universal-rec
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥}
-    → (Fc : is-covariant F)
+  is-universal
+    : is-covariant F → Σ A F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-universal Fcov (a , x) = is-fibrewise-equiv (yo Fcov a x)
+
+  universal-rec
+    : (Fc : is-covariant F)
     → {x : Σ A F}
     → is-universal Fc x
-    → ∀ {b} → F b
-    → Hom _ (x .fst) b
-universal-rec Fc un = is-equiv.bwd (un _)
+    → {b : A}
+    → F b
+    → Hom A (x .fst) b
+  universal-rec Fc un = is-equiv.bwd (un _)
 }
 }
 
@@ -171,7 +167,7 @@ initial←universal {A = A} {F} Ase Fc {x , x'} univ
        (is-initial←ladj (total-map (yo Fc x x')) _
          (is-left-adjoint←is-equiv (is-total-equiv←is-fibrewise-equiv univ))
          (coslice-init'-left-segal Ase x)) where
-  lem : Σ[ z ∶ A ] (Hom _ x z) ≃ Σ A F
+  lem : Σ[ z ∶ A ] (Hom A x z) ≃ Σ A F
   lem = mk≃ _ (is-total-equiv←is-fibrewise-equiv univ)
 
   lem-id : total-map (yo Fc x x') (x , idH _) ＝ (x , x')
@@ -189,17 +185,18 @@ are defined as universal objects of the covariant family
 
 \agda{
 Coproduct-cocone : ∀ {𝓤} {A : Type 𝓤} → A → A → A → Type (𝓘 ⊔ 𝓤)
-Coproduct-cocone X Y X+Y = (Hom _ X X+Y) × (Hom _ Y X+Y)
+Coproduct-cocone {A = A} X Y X+Y
+  = (Hom A X X+Y) × (Hom A Y X+Y)
 
 module Coproduct {𝓤} {A : Type 𝓤} (Asi : is-simplicial A) (Ase : is-segal A)
          (X Y : A)
-         (let cov : ∀ a → is-covariant (Hom _ a)
-              cov = hom-fam-is-cov⇔is-segal←triangulated
+         (let cov : ∀ a → is-covariant (Hom A a)
+              cov = hom-fam-is-cov↔is-segal←triangulated
                       (simp-is-triangulated Asi) .fst Ase) where
 
   Coproduct-cocone-is-covariant : is-covariant (Coproduct-cocone X Y)
   Coproduct-cocone-is-covariant
-    = ×-is-covariant {P = Hom _ X} {Hom _ Y} (cov X) (cov Y)
+    = ×-is-covariant {P = Hom A X} {Hom A Y} (cov X) (cov Y)
 
   is-coproduct : ∀ X+Y (cc : Coproduct-cocone X Y X+Y) → Type (𝓘 ⊔ 𝓤)
   is-coproduct X+Y cc
@@ -207,7 +204,7 @@ module Coproduct {𝓤} {A : Type 𝓤} (Asi : is-simplicial A) (Ase : is-segal 
 
   module _ X+Y (cc : Coproduct-cocone X Y X+Y) (X+Y-is-cp : is-coproduct X+Y cc)
     where
-    [_] : ∀ {Z} → Hom _ X Z × Hom _ Y Z → Hom _ X+Y Z
+    [_] : ∀ {Z} → Hom A X Z × Hom A Y Z → Hom A X+Y Z
     [_] = is-equiv.bwd (X+Y-is-cp _)
 }
 
@@ -218,21 +215,21 @@ defined to be universal objects of the covariant family
 \agda{
 Colimit-cocone : ∀ {𝓤 𝓥} {A : Type 𝓤} {𝒦 : Type 𝓥}
   (D : 𝒦 → A) → A → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
-Colimit-cocone D apex = Hom _ D (const _ _ apex)
+Colimit-cocone {A = A} {𝒦} D apex
+  = Hom (𝒦 → A) D (const _ _ apex)
 
 module Colimit {𝓤 𝓥} {A : Type 𝓤} (Asi : is-simplicial A) (Ase : is-segal A)
          {𝒦 : Type 𝓥} (D : 𝒦 → A)
          (let cov : ∀ a → is-covariant (Hom (𝒦 → A) a)
-              cov = hom-fam-is-cov⇔is-segal←triangulated
+              cov = hom-fam-is-cov↔is-segal←triangulated
                       (Π-is-triangulated (λ _ → simp-is-triangulated Asi)) .fst
                       (Π-is-segal (λ _ → Ase))) where
   Colimit-cocone-is-covariant : is-covariant (Colimit-cocone D)
   Colimit-cocone-is-covariant
-    = covariant-base-change {P = Hom _ D} (const _ 𝒦) (cov D)
+    = covariant-base-change {P = Hom (𝒦 → A) D} (const _ 𝒦) (cov D)
 
   is-colimit : ∀ colimD (cc : Colimit-cocone D colimD) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
   is-colimit colimD cc
     = is-universal Colimit-cocone-is-covariant (colimD , cc)
-
 }
 }

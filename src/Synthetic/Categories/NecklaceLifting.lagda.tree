@@ -1,0 +1,257 @@
+\title{Necklace lifting}
+\taxon{Module}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Prelude
+open import Foundations.List
+open import Algebra.Lattice
+open import Modalities.Instances.Truncation
+
+module Synthetic.Categories.NecklaceLifting
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Core.OrthogonalClosure
+open import Core.WedgeSums
+open import Core.BipointedWedgeSums
+open import Core.WedgeSumsFunctoriality
+open import Core.BipointedWedgeSumsFunctoriality
+
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Spines Δ¹ I
+open import Synthetic.Necklaces Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.SpineLifting Δ¹ I
+}
+
+\subtree[stt-00RF]{
+\title{Some computations for wedges of simplices}
+\taxon{Lemma}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\agda{
+Wedge-Δ-incl-right-0-is-equiv
+  : (m : ℕ) → is-equiv (Wedge-Δ-incl m 0)
+Wedge-Δ-incl-right-0-is-equiv m = mk-eqv
+  ( ι₁
+  , pushout-ind _ (mk-coconeᵈ ~refl (λ where · → glue tt) (λ _ → prop!))
+  , ~refl)
+  (λ _ → Δ-is-set _ _ _ _)
+
+Wedge-Δ-incl-0-1-is-equiv
+  : is-equiv (Wedge-Δ-incl 0 1)
+Wedge-Δ-incl-0-1-is-equiv = mk-eqv
+  ( ι₂
+  , pushout-ind _
+      (mk-coconeᵈ
+        (λ where · → sym (glue tt))
+        (λ where (· :≥: i) → ap ι₂ (Δ-ext (· :≥: refl)))
+        (λ _ → prop!))
+  , (λ where (· :≥: i) → Δ-ext (· :≥: refl)))
+  (λ _ → Δ-is-set _ _ _ _)
+}
+
+\agda{
+Wedge-Δ←Δ¹
+  : (m : ℕ)
+  → Type∗∗.Carrier (Wedge∗∗ (Δ∗∗ m) (Spine∗∗ 1))
+  → Type∗∗.Carrier (Wedge∗∗ (Δ∗∗ m) (Δ∗∗ 1))
+Wedge-Δ←Δ¹ m = map∗∗.hom (Wedge-map∗∗ (id∗∗ (Δ∗∗ m)) (Spine-incl∗∗ 1))
+
+Wedge-Δ←Δ¹-is-equiv
+  : (m : ℕ) → is-equiv (Wedge-Δ←Δ¹ m)
+Wedge-Δ←Δ¹-is-equiv m = Wedge-map-is-equiv
+  (target-map∗ (id∗∗ (Δ∗∗ m)))
+  (source-map∗ (Spine-incl∗∗ 1))
+  id-is-equiv
+  1-Spine-incl-is-equiv
+}
+}
+
+\subtree[stt-00RT]{
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-06-01}
+
+\p{
+The inclusion #{\Delta^m \vee \Delta^1 \hookrightarrow \Delta^{m+1}} is inner anodyne.
+}
+
+\agda{
+Wedge-Δ-incl-1~factors
+  : (m : ℕ)
+  → Wedge-Δ-incl m 1 ∘ Wedge-Δ←Δ¹ m
+  ~ spine-incl-factor-1 m
+Wedge-Δ-incl-1~factors m = pushout-ind _
+  (mk-coconeᵈ
+    (~refl)
+    (λ i → Δ-ext (compute-Δ-prepend-1-Δ-1 m :≥: refl))
+    (λ _ → Δ-is-set _ _ _ _))
+
+opaque
+  Wedge-Δ-incl-1-is-inner-anodyne
+    : (m : ℕ) → is-inner-anodyne (Wedge-Δ-incl m 1)
+  Wedge-Δ-incl-1-is-inner-anodyne 0 k _
+    = equiv⊥ Wedge-Δ-incl-0-1-is-equiv k
+  Wedge-Δ-incl-1-is-inner-anodyne (suc m)
+    = is-anodyne-right-cancel Λ[2,1]-incl
+        (is-anodyne-homotopy Λ[2,1]-incl
+          (sym ∘ Wedge-Δ-incl-1~factors (suc m))
+          (fat-spine-lifts))
+        (λ k _ → equiv⊥ (Wedge-Δ←Δ¹-is-equiv (suc m)) k)
+}
+}
+
+\subtree[stt-00RV]{
+\taxon{Lemma}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\p{
+The inclusion
+#{\Delta^m \vee \Delta^n \vee \Delta^1 \hookrightarrow \Delta^m \vee \Delta^{n+1}} is
+inner anodyne.
+}
+
+\proof{
+Follows from [associativity of wedge sums](stt-00RG) using the fact that the
+inclusion #{\Delta^m \vee \Delta^1 \hookrightarrow \Delta^{m+1}} is inner anodyne,
+as shown in [[stt-00RT]].
+}
+
+\agda{
+Wedge-Δ-incl-step-map
+  : (m n : ℕ)
+  → Type∗∗.Carrier (Wedge∗∗ (Wedge∗∗ (Δ∗∗ m) (Δ∗∗ n)) (Δ∗∗ 1))
+  → Type∗∗.Carrier (Wedge∗∗ (Δ∗∗ m) (Δ∗∗ (suc n)))
+Wedge-Δ-incl-step-map m n
+  = map∗∗.hom (Wedge-map∗∗ (id∗∗ (Δ∗∗ m)) (Wedge-Δ-incl∗∗ n 1))
+  ∘ Wedge-assoc←
+      (Type∗∗.tgt (Δ∗∗ m))
+      (Type∗∗.src (Δ∗∗ n))
+      (Type∗∗.tgt (Δ∗∗ n))
+      (Type∗∗.src (Δ∗∗ 1))
+
+opaque
+  Wedge-Δ-incl-step-map-is-inner-anodyne
+    : (m n : ℕ) → is-inner-anodyne (Wedge-Δ-incl-step-map m n)
+  Wedge-Δ-incl-step-map-is-inner-anodyne m n
+    = is-anodyne-∘ Λ[2,1]-incl
+        (Wedge-map-right-is-anodyne Λ[2,1]-incl
+          (target∗ (Δ∗∗ m))
+          (source-map∗ (Wedge-Δ-incl∗∗ n 1))
+          (Wedge-Δ-incl-1-is-inner-anodyne n))
+        ( λ k _
+          → equiv⊥
+          (Wedge-assoc←-is-equiv
+            (Type∗∗.tgt (Δ∗∗ m))
+            (Type∗∗.src (Δ∗∗ n))
+            (Type∗∗.tgt (Δ∗∗ n))
+            (Type∗∗.src (Δ∗∗ 1)))
+          k)
+}
+}
+
+\subtree[stt-00RR]{
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-21}
+
+\p{
+The inclusion #{\Delta^m \vee \Delta^n \hookrightarrow \Delta^{m+n}} is inner
+anodyne.
+}
+
+\proof{
+If #{n = 0} the result is obvious, and if #{n = n' + 1} we can apply the previous
+lemma.
+}
+
+\agda{
+Wedge-Δ-incl-step~factors
+  : (m n : ℕ)
+  → Wedge-Δ-incl m (suc n)
+  ∘ Wedge-Δ-incl-step-map m n
+  ~ Wedge-Δ-incl (m +ℕ n) 1
+  ∘ map∗∗.hom (Wedge-map∗∗ (Wedge-Δ-incl∗∗ m n) (id∗∗ (Δ∗∗ 1)))
+Wedge-Δ-incl-step~factors m n
+  = pushout-ind _
+      (mk-coconeᵈ
+        (pushout-ind _
+          (mk-coconeᵈ
+            (~refl)
+            (λ y → Δ-ext (Δ-refl :≥: refl))
+            (λ _ → Δ-is-set _ _ _ _)))
+        (λ i → Δ-ext (compute-Δ-prepend-1-Δ-prepend-1 m n i))
+        (λ _ → Δ-is-set _ _ _ _))
+
+opaque
+  Wedge-Δ-incl-is-inner-anodyne
+    : (m n : ℕ) → is-inner-anodyne (Wedge-Δ-incl m n)
+  Wedge-Δ-incl-is-inner-anodyne m 0 k _
+    = equiv⊥ (Wedge-Δ-incl-right-0-is-equiv m) k
+  Wedge-Δ-incl-is-inner-anodyne m (suc n)
+    = is-anodyne-right-cancel Λ[2,1]-incl
+        (is-anodyne-homotopy Λ[2,1]-incl
+          (sym ∘ Wedge-Δ-incl-step~factors m n)
+          (is-anodyne-∘ Λ[2,1]-incl
+            (Wedge-Δ-incl-1-is-inner-anodyne (m +ℕ n))
+            (Wedge-map-is-anodyne Λ[2,1]-incl
+              (target-map∗ (Wedge-Δ-incl∗∗ m n))
+              (source-map∗ (id∗∗ (Δ∗∗ 1)))
+              (Wedge-Δ-incl-is-inner-anodyne m n)
+              (λ k _ → id⊥ k))))
+        (Wedge-Δ-incl-step-map-is-inner-anodyne m n)
+}
+}
+
+\subtree[stt-00RE]{
+\title{Necklace lifting}
+\taxon{Theorem}
+\date{2026-05-21}
+\author{fredrikbakke}
+\contributor{samueltoth}
+
+\p{
+Every #{n}-necklace inclusion into #{\Delta^n} is inner anodyne.
+}
+\p{
+\citet{Lemma 1.12}{BS25}
+}
+
+\proof{
+We proceed by induction on the shape of the necklace, so let #{N = \Delta^m \vee L}
+where #{n = m + l} is the decomposition of lengths. The necklace inclusion of #{N}
+decomposes as #{N = \Delta^m \vee L \to \Delta^m \vee \Delta^l \to \Delta^n}.
+The map #{\Delta^m \vee L \to \Delta^m \vee \Delta^l} is inner
+anodyne since [wedge sums preserve anodyne maps](stt-00RU), and we know
+#{\Delta^m \vee \Delta^l \to \Delta^n} is inner anodyne by the
+[previous lemma](stt-00RR), so by composition closure we are done.
+}
+
+\agda{
+Necklace-incl-is-inner-anodyne
+  : (N : List ℕ) → is-inner-anodyne (Necklace-incl N)
+Necklace-incl-is-inner-anodyne [] k _ = id⊥ k
+Necklace-incl-is-inner-anodyne (m ∷ N)
+  = is-anodyne-∘ Λ[2,1]-incl
+      (Wedge-Δ-incl-is-inner-anodyne m (Necklace-length N))
+      (Wedge-map-right-is-anodyne Λ[2,1]-incl
+        (target∗ (Δ∗∗ m))
+        (source-map∗ (Necklace-incl∗∗ N))
+        (Necklace-incl-is-inner-anodyne N))
+}
+}

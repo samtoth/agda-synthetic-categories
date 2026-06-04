@@ -33,6 +33,6 @@ with some extensions.
 | 0-1              | Reasoning syntaxes                                                                                                                                                |
 | -∞               | Function type formation: `_→_`                                                                                                                                    |
 
-## Naming trees
+## Determining tree IDs
 
 [Guidelines](http://agda-synthetic-categories.toth.co.uk/tot-0324)

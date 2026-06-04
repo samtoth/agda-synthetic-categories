@@ -10,7 +10,7 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees rename-trees clean-agda clean-forester clean
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
@@ -25,7 +25,7 @@ help:
 	@echo "  make python-server [PORT=<port>] # Alias for make serve"
 	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
 	@echo "  make list-trees                  # List all of the trees in the forest"
-	@echo "  make rename-trees                # Rename trees in the forest (AUTHOR=... required)"
+	@echo "  make assign-tree-ids             # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required)"
 	@echo "  make clean-agda                  # Remove generated agda artifacts"
 	@echo "  make clean-forester              # Remove generated forester artifacts"
 	@echo "  make clean                       # Remove all generated build artifacts"
@@ -153,7 +153,7 @@ check-sync-main:
 	    exit 1; \
 	fi
 
-rename-trees-dry:
+assign-tree-ids-dry:
 	@if [ -z "$(AUTHOR)" ]; then \
 	   echo "Requires AUTHOR=..."; \
 	   exit 1; \
@@ -162,11 +162,11 @@ rename-trees-dry:
 	   python3 scripts/rename_trees.py -n $(AUTHOR) src/ trees/  ; \
 	fi
 
-check-rename-trees:
+confirm-assign-tree-ids:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
-rename-trees: check-sync-main rename-trees-dry check-rename-trees
-	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/
+assign-tree-ids: check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
+	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"

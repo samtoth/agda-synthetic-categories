@@ -165,7 +165,7 @@ assign-tree-ids-dry:
 	   exit 1; \
 	else \
 	   echo "Dry running the renamer:"; \
-	   python3 scripts/rename_trees.py -n $(AUTHOR) src/ trees/  ; \
+	   python3 scripts/assign_tree_ids.py -n $(AUTHOR) src/ trees/  ; \
 	fi
 
 confirm-assign-tree-ids:

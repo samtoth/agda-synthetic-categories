@@ -35,4 +35,4 @@ with some extensions.
 
 ## Assigning tree IDs
 
-[Guidelines](http://agda-synthetic-categories.toth.co.uk/tot-0324)
+[Guidelines](http://agda-synthetic-categories.toth.co.uk/stt-00S2)

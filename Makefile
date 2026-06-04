@@ -115,7 +115,7 @@ server:
 check-duplicate-trees:
 	@DIR="$(DUP_DIR)"; \
 	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
 		find "$$DIR" -name '*.tree'; \
 	} | awk '\
 	/subtree\[/ { \
@@ -171,7 +171,7 @@ assign-tree-ids-dry:
 confirm-assign-tree-ids:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
-assign-tree-ids-no-commit: check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
+assign-tree-ids-no-commit: check-duplicate-trees check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
 	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
 
 

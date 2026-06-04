@@ -144,27 +144,7 @@ check-duplicate-trees:
 	}'
 
 list-trees:
-	@DIR="$(DUP_DIR)"; \
-	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR" src/; \
-		find "$$DIR" -name '*.tree'; \
-	} | awk '\
-	/subtree\[[a-zA-Z]{3}-/ { \
-		split($$0, a, ":"); \
-		id = a[3]; \
-		sub(/^subtree\[/, "", id); \
-		sub(/\]$$/, "", id); \
-		printf "%s\n", id ;\
-	} \
-	/\.tree$$/ { \
-		loc = $$0; \
-		id = $$0; \
-		sub(/^.*\//, "", id); \
-		sub(/\.tree$$/, "", id); \
-        	if (id ~ /^[a-zA-Z]{3}-[0-9A-Z]{4}/) { \
-		   printf "%s\n", id ;\
-		}\
-	}' | sort -r \
+	 ./scripts/list-trees $(DUP_DIR)
 
 check-sync-main:
 	@git fetch
@@ -172,8 +152,6 @@ check-sync-main:
 	    echo "You are out of sync with main"; \
 	    exit 1; \
 	fi
-
-
 
 rename-trees-dry:
 	@if [ -z "$(AUTHOR)" ]; then \
@@ -188,7 +166,7 @@ check-rename-trees:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
 rename-trees: check-sync-main rename-trees-dry check-rename-trees
-	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/  ; \
+	python3 scripts/rename_trees.py $(AUTHOR) src/ trees/
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"

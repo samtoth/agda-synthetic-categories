@@ -149,8 +149,12 @@ list-trees:
 check-sync-main:
 	@git fetch
 	@if !(git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$") then \
-	    echo "You are out of sync with main"; \
+	    echo "You are out of sync with main, please merge upstream/main into your branch "; \
 	    exit 1; \
+	fi
+	@if [ -n "$(git status --porcelain)" ]; then \
+	  echo "Repository is currently in a dirty state"; \
+	  exit 1; \
 	fi
 
 assign-tree-ids-dry:
@@ -167,6 +171,8 @@ confirm-assign-tree-ids:
 
 assign-tree-ids: check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
 	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
+	git add .
+	git commit -m "Re-IDs trees"
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"

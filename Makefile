@@ -5,6 +5,7 @@ AUTOGEN_DIR ?= trees/stt/autogen
 HTML_DIR ?= output/agda-synthetic-categories/html
 EVERYTHING_FILE ?= src/Everything.agda
 WATCH_DIR ?= src
+UPSTREAM ?= upstream
 PORT ?= 1313
 DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
@@ -148,7 +149,7 @@ list-trees:
 
 check-sync-main:
 	@git fetch
-	@if !(git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$") then \
+	@if !(git rev-list --left-right --count $(UPSTREAM)/main...HEAD | head -c 1 | grep -q "^0$$") then \
 	    echo "You are out of sync with main, please merge upstream/main into your branch "; \
 	    exit 1; \
 	fi

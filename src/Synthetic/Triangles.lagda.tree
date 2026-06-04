@@ -1,0 +1,409 @@
+\date{2025-05-15}
+\title{Triangles}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Triangles {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.CanonicalPushouts
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+}
+}
+
+\subtree[stt-00AK]{
+\title{Composite morphisms}
+\taxon{Definition}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\date{2025-11-17}
+
+\p{Given the data of the boundary of a 2-simplex:}
+
+\quiver{
+\begin{tikzcd}
+  x && y \\
+	& z
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["h"', from=1-1, to=2-2]
+	\arrow["f", from=1-3, to=2-2]
+\end{tikzcd}
+}
+
+\p{We define the type of fillers, written #{\Hom 2(f,g;h)}, which we say witnesses
+that #{fg \sim h}.}
+
+\agda{
+Hom2
+  : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
+      (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
+    → Type (𝓘 ⊔ 𝓤)
+Hom2 {A = A} f g h = Ext ∂Δ²-incl (make-∂Δ² f g h)
+}
+}
+
+% TODO (Fredrik): these are intentionally left orhpaned until someone bothers to organise the file better
+
+\agda{
+adjust-Hom2
+  : ∀ {𝓤} {A : Type 𝓤} {x y z x' y' z' : A}
+    → (px : x ＝ x') (py : y ＝ y') (pz : z ＝ z')
+    → {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
+    → Hom2 f g h
+    → Hom2
+        (adjust-hom py pz f)
+        (adjust-hom px py g)
+        (adjust-hom px pz h)
+adjust-Hom2 refl refl refl {f = f} {g} {h}
+  = tr₃ Hom2
+      (adjust-hom-refl f)
+      (adjust-hom-refl g)
+      (adjust-hom-refl h)
+}
+
+\agda{
+Hom2-filler-tr
+  : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
+    → {f f' : Hom A y z} {g g' : Hom A x y} {h h' : Hom A x z}
+    → (pf : f ＝ f') (pg : g ＝ g') (ph : h ＝ h')
+    → (K : Hom2 f g h)
+    → tr₃ Hom2 pf pg ph K .fst ＝ K .fst
+Hom2-filler-tr refl refl refl K = refl
+
+adjust-Hom2-filler
+  : ∀ {𝓤} {A : Type 𝓤} {x y z x' y' z' : A}
+    → (px : x ＝ x') (py : y ＝ y') (pz : z ＝ z')
+    → {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
+    → (K : Hom2 f g h)
+    → (adjust-Hom2 px py pz K) .fst ＝ K .fst
+adjust-Hom2-filler refl refl refl {f = f} {g} {h}
+  = Hom2-filler-tr
+      (adjust-hom-refl f)
+      (adjust-hom-refl g)
+      (adjust-hom-refl h)
+
+idH-Hom2
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → Hom2 (idH a) (idH a) (idH a)
+idH-Hom2 a .fst = λ _ → a
+idH-Hom2 a .snd
+  = pushout-rec-unique _ (λ _ → a) (horn-const a)
+      ~refl
+      λ where
+        ∂Δ¹-0 → ∙-reflr _ ∙ ap-const (glue ∂Δ¹-0)
+        ∂Δ¹-1 → ∙-reflr _ ∙ ap-const (glue ∂Δ¹-1)
+}
+
+\p{We show functions have actions on 2-simplices.}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B) {x y z : A}
+  {f : Hom A y z} {g : Hom A x y} {h : Hom A x z} where
+
+  opaque
+    ap-∂Δ²
+      : F ∘ make-∂Δ² f g h ~ make-∂Δ² (ap-hom F f) (ap-hom F g) (ap-hom F h)
+    ap-∂Δ²
+      = pushout-rec-unique _ _
+          (pushout-rec-unique _ _
+            ~refl
+            ~refl
+            ( λ _
+              → ∙-reflr _ ∙ ap-∘ F _ Λ[2,1]-glue ∙ ap (ap F) (pushout-rec-apβ _)
+              ∙ ap-∙ F (g .Homᵈ.hom1) _
+              ∙ ap (ap F (g .Homᵈ.hom1) ∙_) (ap-sym F _)))
+          ~refl
+          λ where
+          ∂Δ¹-1
+            → ∙-reflr _
+            ∙ ap-∘ F (make-∂Δ² f g h) (glue ∂Δ¹-1)
+            ∙ ap (ap F) (pushout-rec-apβ _)
+            ∙ ap-∙ F  (f .Homᵈ.hom1) _
+            ∙ ap (ap F (f .Homᵈ.hom1) ∙_) (ap-sym F _)
+          ∂Δ¹-0
+            → ∙-reflr _
+            ∙ ap-∘ F (make-∂Δ² f g h) (glue ∂Δ¹-0)
+            ∙ ap (ap F) (pushout-rec-apβ _)
+            ∙ ap-∙ F  (g .Homᵈ.hom0) _
+            ∙ ap (ap F (g .Homᵈ.hom0) ∙_) (ap-sym F _)
+
+    ap-∂Δ²-diagonal
+      : (i : Δ¹) → ap-∂Δ² (ι₂ i) ＝ refl
+    ap-∂Δ²-diagonal = ~refl
+
+    ap-∂Δ²-left
+      : (i : Δ¹) → ap-∂Δ² (ι₁ (ι₁ i)) ＝ refl
+    ap-∂Δ²-left = ~refl
+
+    ap-∂Δ²-right
+      : (i : Δ¹) → ap-∂Δ² (ι₁ (ι₂ i)) ＝ refl
+    ap-∂Δ²-right = ~refl
+
+ap-hom2
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+      {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
+    → Hom2 f g h → Hom2 (ap-hom F f) (ap-hom F g) (ap-hom F h)
+ap-hom2 F f g h K .fst = F ∘ K .fst
+ap-hom2 F f g h K .snd a = ap F (K .snd a) ∙ ap-∂Δ² F a
+
+ap-hom2-diagonal
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
+      {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
+      (K : Hom2 f g h)
+    → ap-hom2 F f g h K .snd ∘ ι₂ ~ ap F ∘ K .snd ∘ ι₂
+ap-hom2-diagonal F f g h K i
+  = ap (ap F (K .snd (ι₂ i)) ∙_) (ap-∂Δ²-diagonal F i) ∙ ∙-reflr _
+
+Hom2-Σ-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      {x y z} (g : Hom (Σ A P) y z) (f : Hom (Σ A P) x y) (h : Hom (Σ A P) x z)
+    → Hom2 g f h
+    → Hom2 (Hom-Σ-fst g) (Hom-Σ-fst f) (Hom-Σ-fst h)
+Hom2-Σ-fst f g h K
+  = tr₃ Hom2 (Hom-Σ-ap-fst f) (Hom-Σ-ap-fst g) (Hom-Σ-ap-fst h) (ap-hom2 fst f g h K)
+}
+
+\subtree[stt-00QG]{
+\title{The naturality square associated to a composition triangle}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\p{
+A composition triangle
+
+\quiver{
+\begin{tikzcd}
+  a && b \\
+	& c
+	\arrow["f", from=1-1, to=1-3]
+	\arrow["h"', from=1-1, to=2-2]
+	\arrow["g", from=1-3, to=2-2]
+\end{tikzcd}
+}
+
+in a type #{A} determines a morphism from #{f} to #{g}. We call this the
+\em{unfolding square} of the composition triangle. Given #{K : \Hom2_A(g,f;h)}, the
+unfolding square #{\alpha : \Hom_{(\Delta^1 \to A)}(f,g)} is constructed via the
+formula
+##{\alpha(u,v) \coloneqq K(u \lor v, u \land v).}
+}
+
+\agda{
+module _
+  {𝓤 : Level} {A : Type 𝓤} {a b c : A}
+  (g : Hom A b c) (f : Hom A a b) {h : Hom A a c}
+  (K : Hom2 g f h)
+  where
+
+  unfolding-square
+    : Hom (Δ¹ → A) (f .Homᵈ.hom) (g .Homᵈ.hom)
+  unfolding-square .Homᵈ.hom u v
+    = K .fst ((u ∨ v , u ∧ v) ⦃ ∨-≤-introl (∧-≤-eliml ≤-refl) ⦄)
+  unfolding-square .Homᵈ.hom0
+    = funext→ λ v
+        → ap (K .fst) (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+        ∙ K .snd (ι₁ (ι₁ v))
+  unfolding-square .Homᵈ.hom1
+    = funext→ λ v
+        → ap (K .fst) (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+        ∙ K .snd (ι₁ (ι₂ v))
+}
+
+\p{
+Unlike in the original Riehl–Shulman type theory \citek{RS17}, proving that
+this square has the correct boundary,
+
+\quiver{
+\begin{tikzcd}
+a && b \\
+\\
+b && c
+\arrow["f", from=1-1, to=1-3]
+\arrow["f"', from=1-1, to=3-1]
+\arrow["g"', from=3-1, to=3-3]
+\arrow["g", from=1-3, to=3-3]
+\arrow["h" description, from=1-1, to=3-3]
+\end{tikzcd}
+}
+
+requires a nontrivial amount of work. We first show that it agrees along the edges.
+}
+
+\agda{
+  unfolding-square-top
+    : (u : Δ¹) → unfolding-square .Homᵈ.hom u i0 ＝ f .Homᵈ.hom u
+  unfolding-square-top u
+    = ap (K .fst) (Δ²-ext (0-bottom , ∧-comm ∙ 0-init))
+    ∙ K .snd (ι₁ (ι₁ u))
+
+  unfolding-square-bottom
+    : (u : Δ¹) → unfolding-square .Homᵈ.hom u i1 ＝ g .Homᵈ.hom u
+  unfolding-square-bottom u
+    = ap (K .fst) (Δ²-ext (1-coinit , 1-top))
+    ∙ K .snd (ι₁ (ι₂ u))
+
+  unfolding-square-source
+    : (u : Δ¹) → unfolding-square .Homᵈ.hom i0 u ＝ f .Homᵈ.hom u
+  unfolding-square-source u
+    = ap (K .fst) (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+    ∙ K .snd (ι₁ (ι₁ u))
+
+  unfolding-square-target
+    : (u : Δ¹) → unfolding-square .Homᵈ.hom i1 u ＝ g .Homᵈ.hom u
+  unfolding-square-target u
+    = ap (K .fst) (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+    ∙ K .snd (ι₁ (ι₂ u))
+
+  unfolding-square-diagonal
+    : (u : Δ¹) → unfolding-square .Homᵈ.hom u u ＝ h .Homᵈ.hom u
+  unfolding-square-diagonal u
+    = ap (K .fst) (Δ²-ext (∨-idem , ∧-idem))
+    ∙ K .snd (ι₂ u)
+}
+
+\p{
+These coherences themselves also satisfy appropriate coherences at the corners, which
+we formalise next.
+}
+
+\closedScope{
+\subtree{
+\title{Some equalities}
+\taxon{Lemma}
+\agda{
+  Hom2-boundary-natural
+    : {u v : ∂Δ²}
+    → (γ : u ＝ v)
+    → {q : make-∂Δ² g f h u ＝ make-∂Δ² g f h v}
+    → ap (make-∂Δ² g f h) γ ＝ q
+    → K .snd u ∙ q ＝ ap (K .fst ∘ ∂Δ²-incl) γ ∙ K .snd v
+  Hom2-boundary-natural {u} γ filler-path
+    = ap (K .snd u ∙_) (sym filler-path)
+    ∙ homotopy-natural (K .snd) γ
+
+  Hom2-boundary-ap-path
+    : {u v : ∂Δ²}
+    → (γ : u ＝ v)
+    → {σ : Δ²}
+    → (p : σ ＝ ∂Δ²-incl v)
+    → (q : σ ＝ ∂Δ²-incl u)
+    → ap (K .fst) p ＝ ap (K .fst) q ∙ ap (K .fst ∘ ∂Δ²-incl) γ
+  Hom2-boundary-ap-path γ p q
+    = ap (ap (K .fst)) (Δ²-is-set _ _ p (q ∙ ap ∂Δ²-incl γ))
+    ∙ ap-∙ (K .fst) q (ap ∂Δ²-incl γ)
+    ∙ ap (ap (K .fst) q ∙_) (sym (ap-∘ (K .fst) ∂Δ²-incl γ))
+
+  Hom2-boundary-corner
+    : {u v : ∂Δ²}
+    → (γ : u ＝ v)
+    → {σ : Δ²}
+    → (p : σ ＝ ∂Δ²-incl v)
+    → (q : σ ＝ ∂Δ²-incl u)
+    → {r : make-∂Δ² g f h u ＝ make-∂Δ² g f h v}
+    → ap (make-∂Δ² g f h) γ ＝ r
+    → sym (ap (K .fst) q ∙ K .snd u) ∙ (ap (K .fst) p ∙ K .snd v) ＝ r
+  Hom2-boundary-corner {u} {v} γ p q {r} fill
+    = double-transpose-∙
+        (ap (K .fst) q ∙ (K .snd u))
+        (ap (K .fst) p ∙ K .snd v)
+        r
+        refl
+        ( ∙-assoc (ap (K .fst) q) (K .snd u) r
+        ∙ ap (ap (K .fst) q ∙_) (Hom2-boundary-natural γ fill)
+        ∙ sym (∙-assoc (ap (K .fst) q) (ap (K .fst ∘ ∂Δ²-incl) γ) (K .snd v))
+        ∙ ap (_∙ K .snd v) (sym (Hom2-boundary-ap-path γ p q))
+        ∙ sym (∙-reflr (ap (K .fst) p ∙ K .snd v)))
+      ∙ ∙-reflr r
+
+  Hom2-horn-glue
+    : ap (make-∂Δ² g f h) (ap ι₁ Λ[2,1]-glue)
+    ＝ f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)
+  Hom2-horn-glue
+    = sym (ap-∘ (make-∂Δ² g f h) ι₁ Λ[2,1]-glue) ∙ horn-glue g f
+}
+}
+}
+
+\agda{
+  unfolding-square-source-i0'
+    : sym (unfolding-square-source i0) ∙ unfolding-square-diagonal i0
+    ＝ f .Homᵈ.hom0 ∙ sym (h .Homᵈ.hom0)
+  unfolding-square-source-i0'
+    = Hom2-boundary-corner
+        (glue ∂Δ¹-0)
+        (Δ²-ext (∨-idem , ∧-idem))
+        (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+        (pushout-rec-apβ ∂Δ¹-0)
+
+  unfolding-square-source-i0
+    : unfolding-square-source i0 ∙ f .Homᵈ.hom0
+    ＝ unfolding-square-diagonal i0 ∙ h .Homᵈ.hom0
+  unfolding-square-source-i0
+    = double-transpose-∙⁻¹ _ _ (f .Homᵈ.hom0) (h .Homᵈ.hom0)
+        unfolding-square-source-i0'
+
+  unfolding-square-target-i1
+    : unfolding-square-target i1 ∙ g .Homᵈ.hom1
+    ＝ unfolding-square-diagonal i1 ∙ h .Homᵈ.hom1
+  unfolding-square-target-i1
+    = double-transpose-∙⁻¹
+        (unfolding-square-target i1)
+        (unfolding-square-diagonal i1)
+        (g .Homᵈ.hom1)
+        (h .Homᵈ.hom1)
+        (Hom2-boundary-corner
+          (glue ∂Δ¹-1)
+          (Δ²-ext (∨-idem , ∧-idem))
+          (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+          (pushout-rec-apβ ∂Δ¹-1))
+
+  unfolding-square-target-i0'
+    : sym (unfolding-square-source i1) ∙ unfolding-square-bottom i0
+    ＝ f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)
+  unfolding-square-target-i0'
+    = Hom2-boundary-corner
+        (ap ι₁ Λ[2,1]-glue)
+        (Δ²-ext (1-coinit , 1-top))
+        (Δ²-ext (∨-comm ∙ 0-bottom , 0-init))
+        Hom2-horn-glue
+
+  unfolding-square-lower-right
+    : unfolding-square-top i1 ∙ f .Homᵈ.hom1
+    ＝ unfolding-square-target i0 ∙ g .Homᵈ.hom0
+  unfolding-square-lower-right
+    = double-transpose-∙⁻¹
+        (unfolding-square-top i1)
+        (unfolding-square-target i0)
+        (f .Homᵈ.hom1)
+        (g .Homᵈ.hom0)
+        (Hom2-boundary-corner
+          (ap ι₁ Λ[2,1]-glue)
+          (Δ²-ext (∨-comm ∙ 1-coinit , ∧-comm ∙ 1-top))
+          (Δ²-ext (0-bottom , ∧-comm ∙ 0-init))
+          Hom2-horn-glue)
+}
+}

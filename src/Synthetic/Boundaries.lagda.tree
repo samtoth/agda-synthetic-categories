@@ -5,21 +5,24 @@
 \import{stt-macros}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Boundaries
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Axioms.UF
-
 open Lattice I renaming (0l to i0; 1l to i1)
 import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
+open Poly hiding (L[x]; Δ²)
+private Δ² = Poly.Δ² I
 
-private
-  Δ² = Poly.Δ² I
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
@@ -34,6 +37,7 @@ open import Core.FlatteningPushouts
 open import Core.FunctorialityPushouts
 open import Core.SpanMaps
 }
+}
 
 \subtree[stt-00CK]{
 \title{Boundary of the interval}
@@ -47,6 +51,7 @@ it is an embedding exactly when the lattice of the interval #{I} is non-trivial.
 \agda{
 ∂Δ¹ : Type 𝓘
 ∂Δ¹ = ULift _ Bool
+{-# NOINLINE ∂Δ¹ #-}
 
 pattern ∂Δ¹-0 = mk-lift false
 pattern ∂Δ¹-1 = mk-lift true
@@ -55,9 +60,9 @@ make-∂Δ¹ : ∀ {𝓤} {A : Type 𝓤} → A → A → ∂Δ¹ → A
 make-∂Δ¹ a b ∂Δ¹-1 = a
 make-∂Δ¹ a b ∂Δ¹-0 = b
 
-∂Δ¹-UP→ : ∀ {𝓤} {A : ∂Δ¹ → Type 𝓤} → (A ∂Δ¹-0 × A ∂Δ¹-1) → Π _ A
+∂Δ¹-UP→ : ∀ {𝓤} {A : ∂Δ¹ → Type 𝓤} → (A ∂Δ¹-0 × A ∂Δ¹-1) → Π ∂Δ¹ A
 ∂Δ¹-UP→ x ∂Δ¹-0 = x .fst
-∂Δ¹-UP→ x ∂Δ¹-1  = x .snd
+∂Δ¹-UP→ x ∂Δ¹-1 = x .snd
 
 f∘∂Δ¹-UP→＝make-∂Δ¹
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -74,7 +79,7 @@ f∘∂Δ¹-UP→＝make-∂Δ¹ f x y = funext→ λ where
   ∂Δ¹-0 → refl
   ∂Δ¹-1 → refl
 
-∂Δ¹-UP : ∀ {𝓤} {A : ∂Δ¹ → Type 𝓤} → (A ∂Δ¹-0 × A ∂Δ¹-1) ≃ Π _ A
+∂Δ¹-UP : ∀ {𝓤} {A : ∂Δ¹ → Type 𝓤} → (A ∂Δ¹-0 × A ∂Δ¹-1) ≃ Π ∂Δ¹ A
 ∂Δ¹-UP = mk≃ ∂Δ¹-UP→ (is-equiv←qinv ((λ x → (x ∂Δ¹-0 , x ∂Δ¹-1))
                                     , ~refl
                                     , (λ f → funext→ (∂Δ¹-UP→ (refl , refl)))))
@@ -127,8 +132,17 @@ identifies this boundary with the subtype of #{(i,j) : \Delta^2} where
 ∂Δ²-incl : ∂Δ² → Δ²
 ∂Δ²-incl = pushout-rec ∂Δ²-Δ²-cocone
 
+∂Δ²-left-eval : ∂Δ² → Δ¹
+∂Δ²-left-eval x = Poly.Δ².t (∂Δ²-incl x)
+
+∂Δ²-right-eval : ∂Δ² → Δ¹
+∂Δ²-right-eval x = Poly.Δ².s (∂Δ²-incl x)
+
 ∂Δ²←Λ[2,1] : Λ[2,1] → ∂Δ²
 ∂Δ²←Λ[2,1] = ι₁
+
+∂Δ²-incl∘∂Δ²←Λ[2,1] : ∂Δ²-incl ∘ ∂Δ²←Λ[2,1] ~ Λ[2,1]-incl
+∂Δ²-incl∘∂Δ²←Λ[2,1] = ~refl
 
 ∂∂Λ[2,1]-incl : Δ²-diagonal ∘ ∂Δ¹-incl ~ Λ[2,1]-incl ∘ ∂Λ[2,1]-incl
 ∂∂Λ[2,1]-incl ∂Δ¹-1 = Δ²-refl
@@ -137,9 +151,9 @@ identifies this boundary with the subtype of #{(i,j) : \Delta^2} where
 ∂Δ²-sub : Subtype Δ² 𝓘
 ∂Δ²-sub .Subtype.family t@(i , j) = (t ∈ Λ[2,1]Sub) * (j ＝ i)
 ∂Δ²-sub .Subtype.family-is-subtype a@(i , j)
-  = *-is-prop (∈-is-prop Λ[2,1]Sub a) (is-prop-separated _ _)
+  = *-is-prop (∈-is-prop Λ[2,1]Sub a) (carrier-is-set _ _)
 
-∂Δ²-as-subtype : (i0 ＝ i1 → ∅) → ∀ a → fibre ∂Δ²-incl a ≃ a ∈ ∂Δ²-sub
+∂Δ²-as-subtype : (i0 ＝ i1 → ∅) → ∀ a → fibre ∂Δ²-incl a ≃ (a ∈ ∂Δ²-sub)
 ∂Δ²-as-subtype non-triv a@(i , j)
   = fibre ∂Δ²-incl a ≃⟨ cogap-fibre _ a ⟩
     Pushout (total-fibre-span .left) (total-fibre-span .right)
@@ -159,8 +173,8 @@ identifies this boundary with the subtype of #{(i,j) : \Delta^2} where
   intended-span-is-prop : is-prop-span intended-span
   intended-span-is-prop .fst = ∈-is-prop Λ[2,1]Sub (i , j)
   intended-span-is-prop .snd .fst
-    = ×-is-prop (∈-is-prop Λ[2,1]Sub (i , j)) (is-prop-separated _ _)
-  intended-span-is-prop .snd .snd = is-prop-separated _ _
+    = ×-is-prop (∈-is-prop Λ[2,1]Sub (i , j)) (carrier-is-set _ _)
+  intended-span-is-prop .snd .snd = carrier-is-set _ _
 
   total-fibre-span' : Span 𝓘 𝓘 𝓘
   total-fibre-span' = mk-span (fibre (Δ²-diagonal ∘ ∂Δ¹-incl) (i , j))
@@ -212,7 +226,6 @@ make-∂Δ² f@(mk-hom fh f0 f1) g@(mk-hom gh g0 g1) h@(mk-hom hh h0 h1)
 }
 }
 
-
 \subtree[stt-00CP]{
 \title{Boundaries of squares}
 \taxon{Definition}
@@ -227,19 +240,15 @@ make-∂Δ² f@(mk-hom fh f0 f1) g@(mk-hom gh g0 g1) h@(mk-hom hh h0 h1)
 ∂□²-incl
   = cogap (mk-cocone ((λ (x , y) → x , y) ∘ Λ[2,1]-incl)
                      ((λ (x , y) → y , x) ∘ Λ[2,1]-incl)
-                     λ { ∂Δ¹-1  → refl
+                     λ { ∂Δ¹-1 → refl
                        ; ∂Δ¹-0 → refl})
 
 ∂□²-Sub : Subtype (□^ 2) 𝓘
 ∂□²-Sub .Subtype.family (i , j) = ((i0 ＝ j) * (i1 ＝ i)) × ((i0 ＝ i) * (i1 ＝ j))
 ∂□²-Sub .Subtype.family-is-subtype _
   = ×-is-prop
-      (*-is-prop
-        (is-prop-separated _ _)
-        (is-prop-separated _ _))
-      (*-is-prop
-        (is-prop-separated _ _)
-        (is-prop-separated _ _))
+      (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
 
 mk-∂□²
   : ∀ {𝓤} {A : Type 𝓤} {x y z w}

@@ -1,0 +1,457 @@
+\date{2026-04-13}
+\title{Categories}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Categories
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Algebra.Poset
+
+open import Core.Arrows
+open import Core.Joins
+open import Core.ArrowEquiv
+
+open import Ergonomics.Extensionality
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
+open import Synthetic.Categories.Isomorphisms Δ¹ I
+open import Synthetic.Categories.WalkingSplitHom Δ¹ I
+open import Synthetic.Categories.WalkingIso Δ¹ I
+}
+}
+
+\subtree[stt-00P8]{
+\title{Rezk-completeness}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+A type is \em{Rezk-complete} if it is null at the [walking isomorphism](stt-00P7).
+}
+
+\agda{
+fam-is-rezk-complete : 𝟙 → ℑ → 𝟙ᴸ: 𝓘
+fam-is-rezk-complete _ = !ᴸ
+
+is-rezk-complete
+  : ∀ {𝓤}
+  → (A : Type 𝓤)
+  → Type (𝓘 ⊔ 𝓤)
+is-rezk-complete A
+  = is-local fam-is-rezk-complete A
+
+is-rezk-complete-is-prop
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-prop (is-rezk-complete A)
+is-rezk-complete-is-prop {A = A}
+  = is-local-is-prop A
+}
+
+\agda{
+RezkCompl-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+RezkCompl-SubU = Local-SubU fam-is-rezk-complete _
+
+RezkCompl-gSubU : gSubU (_⊔ 𝓘)
+RezkCompl-gSubU = Local-gSubU fam-is-rezk-complete
+
+RezkCompl-is-globally-reflective
+  : is-globally-reflective RezkCompl-gSubU
+RezkCompl-is-globally-reflective = Local-global-reflectors fam-is-rezk-complete
+
+RezkCompl-gRSubU : gRSubU (_⊔ 𝓘)
+RezkCompl-gRSubU .gRSubU.GS = RezkCompl-gSubU
+RezkCompl-gRSubU .gRSubU.GS-is-globally-reflective = RezkCompl-is-globally-reflective
+
+open gSubU RezkCompl-gSubU public using () renaming
+  ( ∈S←equiv to is-rezk-complete←equiv)
+open gReflectiveClosure RezkCompl-gRSubU public using () renaming
+  ( Π∈S to Π-is-rezk-complete
+  ; ULift∈S to ULift-is-rezk-complete
+  ; 𝟙∈S to 𝟙-is-rezk-complete
+  ; ∈S←is-singleton to is-rezk-complete←is-singleton
+  ; ∈S←retract to is-rezk-complete←retract
+  ; Pullback∈S to Pullback-is-rezk-complete
+  ; fibre∈S to fibre-is-rezk-complete
+  ; Ext∈S to Ext-is-rezk-complete
+  ; ×∈S to ×-is-rezk-complete
+  ; ＝∈S to ＝-is-rezk-complete
+  ; ~∈S to ~-is-rezk-complete
+  ; retract∈S to retract-is-rezk-complete
+  ; biinv∈S to biinv-is-rezk-complete
+  ; ≃∈S to ≃-is-rezk-complete
+  ; Equaliser∈S to Equaliser-is-rezk-complete
+  ; Seq-lim∈S to Seq-lim-is-rezk-complete
+  ; preidempotent-map∈S to preidempotent-map-is-rezk-complete
+  ; qidempotent-map∈S to qidempotent-map-is-rezk-complete
+  ; idempotent-map∈S to idempotent-map-is-rezk-complete
+  ; Retracts∈S to Retracts-is-rezk-complete)
+open gRSubUHomClosure RezkCompl-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-rezk-complete)
+
+module RezkCompl where
+  open gRSubU RezkCompl-gRSubU public
+  open gReflectiveClosure RezkCompl-gRSubU public
+  open gRSubUHomClosure RezkCompl-gRSubU public
+}
+}
+
+
+\subtree[stt-00Q0]{
+\title{Comparison map between the total space of identities and isomorphisms}
+\author{fredrikbakke}
+\taxon{Lemma}
+\date{2026-05-15}
+
+\agda{
+Iso←Id-is-equiv : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+Iso←Id-is-equiv A = (a b : A) → is-equiv (Iso←Id: a b)
+
+TotalId' : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+TotalId' A = Σ[ a ∶ A ] Σ[ b ∶ A ] (a ＝ b)
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  refl-TotalId' : A → TotalId' A
+  refl-TotalId' a = a , a , refl
+
+  TotalIso←TotalId' : TotalId' A → TotalIso A
+  TotalIso←TotalId' = total-map λ a → total-map λ b → Iso←Id: a b
+
+  refl-TotalId'-is-equiv : is-equiv refl-TotalId'
+  refl-TotalId'-is-equiv = mk-eqv qinv ~refl where
+    qinv : quasi-inv refl-TotalId'
+    qinv .fst = fst
+    qinv .snd .fst = ~refl
+    qinv .snd .snd (a , .a , refl) = refl
+
+  id-TotalIso-is-equiv←Iso←Id-is-equiv
+    : Iso←Id-is-equiv A → is-equiv id-TotalIso
+  id-TotalIso-is-equiv←Iso←Id-is-equiv Aiso
+    = is-equiv-∘
+        ( is-total-equiv←is-fibrewise-equiv λ a
+        → is-total-equiv←is-fibrewise-equiv λ b
+        → Aiso a b)
+        refl-TotalId'-is-equiv
+
+  TotalIso←TotalId'-refl-TotalId'
+    : TotalIso←TotalId' ∘ refl-TotalId' ~ id-TotalIso
+  TotalIso←TotalId'-refl-TotalId' = ~refl
+
+  TotalIso←TotalId'-fst
+    : id-TotalIso ∘ fst ~ TotalIso←TotalId'
+  TotalIso←TotalId'-fst (a , .a , refl) = refl
+}
+}
+
+\subtree[stt-00R0]{
+\title{A Segal type is Rezk-complete iff \code{Iso←Id} is an equivalence}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-15}
+
+\p{
+In fact, we show the backwards implication is true without assuming Segalness.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-rezk-complete←Iso←Id-is-equiv
+    : Iso←Id-is-equiv A
+    → is-rezk-complete A
+  is-rezk-complete←Iso←Id-is-equiv A-iso
+    = is-localᴸ←is-null λ _ → is-equiv←qinv qinv where
+    module totid = is-equiv (id-TotalIso-is-equiv←Iso←Id-is-equiv A-iso)
+
+    qinv : quasi-inv (const A ℑ)
+    qinv .fst F = totid.bwd (ℑ-rep→ F)
+    qinv .snd .fst a = ap fst (totid.ε (ℑ-rep→ (const A ℑ a)))
+    qinv .snd .snd F
+      = ℑ-rep←id (totid.bwd (ℑ-rep→ F))
+      ∙ ap ℑ-rep← (totid.ε (ℑ-rep→ F))
+      ∙ ℑ-rep←→ F
+
+  id-TotalIso-is-equiv←is-rezk-complete
+    : is-segal A → is-rezk-complete A → is-equiv (id-TotalIso {A = A})
+  id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete
+    = is-equiv-∘~
+        (ℑ-rep→const A-is-segal)
+        (ℑ-rep→-is-equiv A-is-segal)
+        (is-null←is-localᴸ A-is-rezk-complete tt)
+
+  Iso←Id-is-equiv←is-rezk-complete
+    : is-segal A → is-rezk-complete A → Iso←Id-is-equiv A
+  Iso←Id-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete a
+    = is-fibrewise-equiv←is-total-equiv
+        (is-fibrewise-equiv←is-total-equiv
+          (is-equiv-∘~
+            (TotalIso←TotalId'-fst)
+              (id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete)
+              (is-equiv⁻¹ refl-TotalId'-is-equiv))
+          (a))
+
+  is-rezk-complete↔Iso←Id-is-equiv
+    : is-segal A → is-rezk-complete A ↔ Iso←Id-is-equiv A
+  is-rezk-complete↔Iso←Id-is-equiv A-is-segal
+    = ( Iso←Id-is-equiv←is-rezk-complete A-is-segal
+      , is-rezk-complete←Iso←Id-is-equiv)
+}
+}
+
+
+\subtree[stt-00PG]{
+\title{Complete Segal types}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+A type is \em{complete Segal} if it is Rezk-complete and Segal.
+}
+
+\agda{
+fam-is-complete-segal : fibrewise-map _ _
+fam-is-complete-segal = point Λ[2,1]-incl ⨄₁ᶠ point (!ᴸ: 𝓘 ℑ)
+
+is-complete-segal : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-complete-segal A = is-local fam-is-complete-segal A
+
+module _  {𝓤 : Level} {A : Type 𝓤}  where
+
+  is-complete-segal-is-prop : is-prop (is-complete-segal A)
+  is-complete-segal-is-prop = is-local-is-prop A
+
+  is-segal×is-rezk-complete←is-complete-segal
+    : is-complete-segal A → is-segal A × is-rezk-complete A
+  is-segal×is-rezk-complete←is-complete-segal = ×-is-local←is-local-⨄₁ᶠ
+
+  is-complete-segal←is-segal←is-rezk-complete
+    : is-segal A → is-rezk-complete A → is-complete-segal A
+  is-complete-segal←is-segal←is-rezk-complete = is-local-⨄₁ᶠ←is-local
+}
+
+\agda{
+CompleteSegal-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+CompleteSegal-SubU = Local-SubU fam-is-complete-segal _
+
+CompleteSegal-gSubU : gSubU (_⊔ 𝓘)
+CompleteSegal-gSubU = Local-gSubU fam-is-complete-segal
+
+CompleteSegal-is-globally-reflective
+  : is-globally-reflective CompleteSegal-gSubU
+CompleteSegal-is-globally-reflective = Local-global-reflectors fam-is-complete-segal
+
+CompleteSegal-gRSubU : gRSubU (_⊔ 𝓘)
+CompleteSegal-gRSubU .gRSubU.GS = CompleteSegal-gSubU
+CompleteSegal-gRSubU .gRSubU.GS-is-globally-reflective = CompleteSegal-is-globally-reflective
+
+open gSubU CompleteSegal-gSubU public using () renaming
+  ( ∈S←equiv to is-complete-segal←equiv)
+open gReflectiveClosure CompleteSegal-gRSubU public using () renaming
+  ( Π∈S to Π-is-complete-segal
+  ; ULift∈S to ULift-is-complete-segal
+  ; 𝟙∈S to 𝟙-is-complete-segal
+  ; ∈S←is-singleton to is-complete-segal←is-singleton
+  ; ∈S←retract to is-complete-segal←retract
+  ; Pullback∈S to Pullback-is-complete-segal
+  ; fibre∈S to fibre-is-complete-segal
+  ; Ext∈S to Ext-is-complete-segal
+  ; ×∈S to ×-is-complete-segal
+  ; ＝∈S to ＝-is-complete-segal
+  ; ~∈S to ~-is-complete-segal
+  ; retract∈S to retract-is-complete-segal
+  ; biinv∈S to biinv-is-complete-segal
+  ; ≃∈S to ≃-is-complete-segal
+  ; Equaliser∈S to Equaliser-is-complete-segal
+  ; Seq-lim∈S to Seq-lim-is-complete-segal
+  ; preidempotent-map∈S to preidempotent-map-is-complete-segal
+  ; qidempotent-map∈S to qidempotent-map-is-complete-segal
+  ; idempotent-map∈S to idempotent-map-is-complete-segal
+  ; Retracts∈S to Retracts-is-complete-segal)
+open gRSubUHomClosure CompleteSegal-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-complete-segal)
+
+module CompleteSegal where
+  open gRSubU CompleteSegal-gRSubU public
+  open gReflectiveClosure CompleteSegal-gRSubU public
+  open gRSubUHomClosure CompleteSegal-gRSubU public
+}
+}
+
+\subtree[stt-00PH]{
+\title{Categories}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+A type is a \em{category} if it is simplicial and a complete Segal type.
+}
+
+\agda{
+fam-is-category : fibrewise-map _ _
+fam-is-category = fam-is-precategory ⨄₁ᶠ (point (!ᴸ: 𝓘 ℑ))
+
+is-category
+  : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-category A = is-local fam-is-category A
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  is-category-is-prop  : is-prop (is-category A)
+  is-category-is-prop = is-local-is-prop A
+
+  is-precategory×is-rezk-complete←is-category
+    : is-category A → is-precategory A × is-rezk-complete A
+  is-precategory×is-rezk-complete←is-category
+    = ×-is-local←is-local-⨄₁ᶠ
+
+  is-precategory←is-category
+    : is-category A → is-precategory A
+  is-precategory←is-category Acat
+    = is-precategory×is-rezk-complete←is-category Acat .fst
+
+  is-simplicial←is-category
+    : is-category A → is-simplicial A
+  is-simplicial←is-category
+    = is-simplicial←is-precategory ∘ is-precategory←is-category
+
+  is-triangulated←is-category
+    : is-category A → is-triangulated A
+  is-triangulated←is-category
+    = simp-is-triangulated ∘ is-simplicial←is-category
+
+  is-rezk-complete←is-category
+    : is-category A → is-rezk-complete A
+  is-rezk-complete←is-category Acat
+    = is-precategory×is-rezk-complete←is-category Acat .snd
+
+  is-category←is-precategory←is-rezk-complete
+    : is-precategory A → is-rezk-complete A → is-category A
+  is-category←is-precategory←is-rezk-complete
+    = is-local-⨄₁ᶠ←is-local
+
+  is-category←is-segal×is-simplicial×is-rezk-complete
+    : is-segal A → is-simplicial A → is-rezk-complete A → is-category A
+  is-category←is-segal×is-simplicial×is-rezk-complete A-is-segal A-is-simplicial
+    = is-category←is-precategory←is-rezk-complete
+        (is-precategory←is-segal←is-simplicial A-is-segal A-is-simplicial)
+
+  is-complete-segal×is-simplicial←is-category
+    : is-category A → is-complete-segal A × is-simplicial A
+  is-complete-segal×is-simplicial←is-category Acat
+    = is-complete-segal←is-segal←is-rezk-complete
+        (is-segal←is-precategory (is-precategory←is-category Acat))
+        (is-rezk-complete←is-category Acat)
+    , is-simplicial←is-category Acat
+
+  is-category←is-complete-segal×is-simplicial
+    : is-complete-segal A × is-simplicial A → is-category A
+  is-category←is-complete-segal×is-simplicial (Arzk , A-is-simplicial)
+    = is-category←is-segal×is-simplicial×is-rezk-complete
+        (is-segal×is-rezk-complete←is-complete-segal Arzk .fst)
+        (A-is-simplicial)
+        (is-segal×is-rezk-complete←is-complete-segal Arzk .snd)
+
+  is-category≃is-complete-segal×is-simplicial
+    : is-category A ≃ (is-complete-segal A × is-simplicial A)
+  is-category≃is-complete-segal×is-simplicial
+    = equiv←logical
+        is-category-is-prop
+        ( ×-is-prop is-complete-segal-is-prop (is-null-is-prop A))
+        ( is-complete-segal×is-simplicial←is-category
+        , is-category←is-complete-segal×is-simplicial)
+}
+
+\agda{
+Category-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
+Category-SubU = Local-SubU fam-is-category _
+
+Category-gSubU : gSubU (_⊔ 𝓘)
+Category-gSubU = Local-gSubU fam-is-category
+
+Category-is-globally-reflective
+  : is-globally-reflective Category-gSubU
+Category-is-globally-reflective = Local-global-reflectors fam-is-category
+
+Category-gRSubU : gRSubU (_⊔ 𝓘)
+Category-gRSubU .gRSubU.GS = Category-gSubU
+Category-gRSubU .gRSubU.GS-is-globally-reflective = Category-is-globally-reflective
+
+open gSubU Category-gSubU public using () renaming
+  ( ∈S←equiv to is-category←equiv)
+open gReflectiveClosure Category-gRSubU public using () renaming
+  ( Π∈S to Π-is-category
+  ; ULift∈S to ULift-is-category
+  ; 𝟙∈S to 𝟙-is-category
+  ; ∈S←is-singleton to is-category←is-singleton
+  ; ∈S←retract to is-category←retract
+  ; Pullback∈S to Pullback-is-category
+  ; fibre∈S to fibre-is-category
+  ; Ext∈S to Ext-is-category
+  ; ×∈S to ×-is-category
+  ; ＝∈S to ＝-is-category
+  ; ~∈S to ~-is-category
+  ; retract∈S to retract-is-category
+  ; biinv∈S to biinv-is-category
+  ; ≃∈S to ≃-is-category
+  ; Equaliser∈S to Equaliser-is-category
+  ; Seq-lim∈S to Seq-lim-is-category
+  ; preidempotent-map∈S to preidempotent-map-is-category
+  ; qidempotent-map∈S to qidempotent-map-is-category
+  ; idempotent-map∈S to idempotent-map-is-category
+  ; Retracts∈S to Retracts-is-category)
+open gRSubUHomClosure Category-gRSubU public using () renaming
+  ( Hom∈S to Hom-is-category)
+
+module Cat where
+  open gRSubU Category-gRSubU public
+  open gReflectiveClosure Category-gRSubU public
+  open gRSubUHomClosure Category-gRSubU public
+
+Category-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
+Category-U 𝓤 = Σ[ A ∶ Type (𝓘 ⊔ 𝓤) ] is-category A
+
+Category-U-is-simplicial
+  : {𝓤 : Level} → is-simplicial (Category-U 𝓤)
+Category-U-is-simplicial {𝓤}
+  = is-simplicial←equiv
+      ((Σ-snd-≃ λ A → is-category≃is-complete-segal×is-simplicial {A = A}) e⁻¹)
+      (Null-in-gSubU-is-null←is-prop
+        {𝓤 = 𝓘} {𝓥 = 𝓤}
+        {P = fam-is-simplicial}
+        {S = CompleteSegal-gSubU}
+        (fam-is-simplicial-is-prop)
+        (λ _ → Π-is-complete-segal))
+}
+}

@@ -11,7 +11,7 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids clean-agda clean-forester clean
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
@@ -26,7 +26,8 @@ help:
 	@echo "  make python-server [PORT=<port>]        # Alias for make serve"
 	@echo "  make check-duplicate-trees [DIR=<dir>]  # Find duplicate subtree references (default: trees)"
 	@echo "  make list-trees                         # List all of the trees in the forest"
-	@echo "  make assign-tree-ids [AUTHOR=<author>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required) (UPSTREAM, default: upstream)"
+	@echo "  make assign-tree-ids-no-commit [AUTHOR=<author>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required) (UPSTREAM, default: upstream)"
+	@echo "  make assign-tree-ids                    # Run assign-tree-ids-no-commit and then commit the results"
 	@echo "  make clean-agda                         # Remove generated agda artifacts"
 	@echo "  make clean-forester                     # Remove generated forester artifacts"
 	@echo "  make clean                              # Remove all generated build artifacts"
@@ -170,8 +171,11 @@ assign-tree-ids-dry:
 confirm-assign-tree-ids:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
-assign-tree-ids: check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
+assign-tree-ids-no-commit: check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
 	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
+
+
+assign-tree-ids: assign-tree-ids-no-commit
 	git add .
 	git commit -m "Re-IDs trees"
 

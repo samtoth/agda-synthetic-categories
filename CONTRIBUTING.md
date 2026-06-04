@@ -32,3 +32,7 @@ with some extensions.
 | 3                | Parametric pairing operators: `_,_`, `_∷_`                                                                                                                        |
 | 0-1              | Reasoning syntaxes                                                                                                                                                |
 | -∞               | Function type formation: `_→_`                                                                                                                                    |
+
+## Assigning tree IDs
+
+[Guidelines](http://agda-synthetic-categories.toth.co.uk/stt-00S2)

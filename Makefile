@@ -5,28 +5,32 @@ AUTOGEN_DIR ?= trees/stt/autogen
 HTML_DIR ?= output/agda-synthetic-categories/html
 EVERYTHING_FILE ?= src/Everything.agda
 WATCH_DIR ?= src
+UPSTREAM ?= upstream
 PORT ?= 1313
 DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees clean-agda clean-forester clean
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-trees list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
-	@echo "  make build-forest                # Generate Everything.agda + Agda/Forester trees/html"
-	@echo "  make sync-forest-src             # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
-	@echo "  make typecheck                   # Generate Everything.agda and typecheck with Agda"
-	@echo "  make benchmark-typecheck         # Clean typecheck with profiling enabled"
-	@echo "  make watch-agda                  # Rebuild Agda output when src/ changes"
-	@echo "  make watch-forest [PORT=<port>]  # Run forester watch server (default: 1313)"
-	@echo "  make server [PORT=<port>]        # Run watch-agda + watch-forest together (default: 1313)"
-	@echo "  make serve [PORT=<port>]         # Build and serve ./output with python http.server (default: 1313)"
-	@echo "  make python-server [PORT=<port>] # Alias for make serve"
-	@echo "  make check-duplicate-trees       # Find duplicate subtree references (DIR=... optional)"
-	@echo "  make clean-agda                  # Remove generated agda artifacts"
-	@echo "  make clean-forester              # Remove generated forester artifacts"
-	@echo "  make clean                       # Remove all generated build artifacts"
+	@echo "  make build-forest                       # Generate Everything.agda + Agda/Forester trees/html"
+	@echo "  make sync-forest-src                    # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
+	@echo "  make typecheck                          # Generate Everything.agda and typecheck with Agda"
+	@echo "  make benchmark-typecheck                # Clean typecheck with profiling enabled"
+	@echo "  make watch-agda                         # Rebuild Agda output when src/ changes"
+	@echo "  make watch-forest [PORT=<port>]         # Run forester watch server (default: 1313)"
+	@echo "  make server [PORT=<port>]               # Run watch-agda + watch-forest together (default: 1313)"
+	@echo "  make serve [PORT=<port>]                # Build and serve ./output with python http.server (default: 1313)"
+	@echo "  make python-server [PORT=<port>]        # Alias for make serve"
+	@echo "  make check-duplicate-trees [DIR=<dir>]  # Find duplicate subtree references (default: trees)"
+	@echo "  make list-trees                         # List all of the trees in the forest"
+	@echo "  make assign-tree-ids-no-commit [AUTHOR=<author>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required) (UPSTREAM, default: upstream)"
+	@echo "  make assign-tree-ids                    # Run assign-tree-ids-no-commit and then commit the results"
+	@echo "  make clean-agda                         # Remove generated agda artifacts"
+	@echo "  make clean-forester                     # Remove generated forester artifacts"
+	@echo "  make clean                              # Remove all generated build artifacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
 	@bash ./scripts/generateEverything.sh
@@ -111,7 +115,7 @@ server:
 check-duplicate-trees:
 	@DIR="$(DUP_DIR)"; \
 	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
 		find "$$DIR" -name '*.tree'; \
 	} | awk '\
 	/subtree\[/ { \
@@ -140,6 +144,40 @@ check-duplicate-trees:
 		        } \
 		exit err ; \
 	}'
+
+list-trees:
+	 ./scripts/list-trees $(DUP_DIR)
+
+check-sync-main:
+	@git fetch
+	@if !(git rev-list --left-right --count $(UPSTREAM)/main...HEAD | head -c 1 | grep -q "^0$$") then \
+	    echo "You are out of sync with main, please merge upstream/main into your branch "; \
+	    exit 1; \
+	fi
+	@if [ -n "$(git status --porcelain)" ]; then \
+	  echo "Repository is currently in a dirty state"; \
+	  exit 1; \
+	fi
+
+assign-tree-ids-dry:
+	@if [ -z "$(AUTHOR)" ]; then \
+	   echo "Requires AUTHOR=..."; \
+	   exit 1; \
+	else \
+	   echo "Dry running the renamer:"; \
+	   python3 scripts/assign_tree_ids.py -n $(AUTHOR) src/ trees/  ; \
+	fi
+
+confirm-assign-tree-ids:
+	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
+
+assign-tree-ids-no-commit: check-duplicate-trees check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
+	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
+
+
+assign-tree-ids: assign-tree-ids-no-commit
+	git add .
+	git commit -m "Re-IDs trees"
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"

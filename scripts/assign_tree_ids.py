@@ -6,7 +6,7 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
-from find_next_tree import get_forester_json, find_next_tree, int_to_base36, BASE36
+from find_next_tree import list_all_trees, find_next_tree, int_to_base36, BASE36
 
 EXT = ".tree"
 
@@ -48,7 +48,7 @@ CANON = args.canonical
 # ----------------------------
 # Find first tree
 # ----------------------------
-all_trees = get_forester_json()
+all_trees = list_all_trees()
 next_val = find_next_tree(CANON, all_trees, GAP)
 print(f"Starting STT value: {int_to_base36(next_val)}")
 
@@ -60,9 +60,7 @@ rename_map = {}
 auth_re = re.compile(rf"{AUTHOR}-(\w{{4}})$", re.IGNORECASE)
 
 author_trees = [
-    auth_re.search(tree["uri"]).group(1)
-    for tree in all_trees
-    if auth_re.search(tree.get("uri", ""))
+    auth_re.search(tree).group(1) for tree in all_trees if auth_re.search(tree)
 ]
 
 author_trees.sort(key=lambda x: int(x, 36))

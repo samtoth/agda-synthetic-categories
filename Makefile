@@ -169,6 +169,7 @@ list-trees:
 check-sync-main:
 	@git fetch
 	@if (git rev-list --left-right --count main...HEAD | head -c 1 | grep -q "^0$$") then \
+	    echo "You are out of sync with main"; \
 	    exit 1; \
 	fi
 

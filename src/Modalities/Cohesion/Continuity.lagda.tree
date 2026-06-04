@@ -295,6 +295,45 @@ family-separates←detects-continuity {𝓘} {I = I} G Gc fa eq eq'
 }
 }
 
+\subtree[tot-0009]{
+\title{Separating families which contain a singleton}
+\taxon{Lemma}
+
+\p{If #{X} is a family of types such that #{X_i} is a singleton for
+some #{i}, then we have a simpler condition to test equivalences on:}
+
+
+\agda{
+module _
+  {@♭ 𝓘 𝓧} {@♭ I : Type 𝓘} (@♭ X : I → Type 𝓧)
+  (@♭ X-separates : family-separates X)
+  {@♭ is : I}
+  (@♭ Xi-singleton : is-singleton (X is))
+  where
+
+  family-separates-with-𝟙
+    : ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
+      → @♭ ((∀ {@♭ i} → is-equiv (♭-map (postcomp (X i) f))))
+      → is-equiv f
+  family-separates-with-𝟙 fa eq
+    = X-separates
+        fa
+        (tgt-is-equiv←Arrow-equiv (amap , amap-is-equiv) eq)
+        eq where
+    open Arrow fa
+    amap : Arrow-map (♭-map (postcomp (X is) f)) (♭-map f)
+    amap .Arrow-Π.top = ♭-map (ev (Xi-singleton .centre))
+    amap .Arrow-Π.bot = ♭-map (ev (Xi-singleton .centre))
+    amap .Arrow-Π.comm (mod♭ f) = refl
+
+    amap-is-equiv : is-Arrow-equiv amap
+    amap-is-equiv .fst
+      = ♭-map-is-equiv (sing-ev-is-equiv global-funext Xi-singleton)
+    amap-is-equiv .snd
+      = ♭-map-is-equiv (sing-ev-is-equiv global-funext Xi-singleton)
+}
+}
+
 \subtree[tot-2KKP]{
 \taxon{Lemma}
 \title{The separation principle for fibrewise equivalences}
@@ -310,37 +349,37 @@ equivalence.}
 module _
   {@♭ 𝓘 𝓤} {@♭ I : Type 𝓘}
   (@♭ G : I → Type 𝓤)
-  (G-sep : family-separates G)
+  (@♭ G-sep : family-separates G)
+  {@♭ 𝓥 𝓦 𝓜} {@♭ X : Type 𝓥} {@♭ P : X → Type 𝓦} {@♭ Q : X → Type 𝓜}
+  (@♭ α : (x : X) → P x → Q x)
   where
 
+  -- TODO extract this useful theorem :)
+  @♭ amap
+    : ∀ (@♭ i)
+      → Arrow-equiv
+          (postcomp (G i) (total-map α))
+          (total-map {A = G i → X} (postcomp-Π ∘ (α ∘_)))
+  amap i .fst .Arrow-Π.top = Σ-Π-swap (λ _ → X) (λ _ → P)
+  amap i .fst .Arrow-Π.bot = Σ-Π-swap (λ _ → X) (λ _ → Q)
+  amap i .fst .Arrow-Π.comm = ~refl
+  amap i .snd .fst = Σ-Π-swap-is-equiv
+  amap i .snd .snd = Σ-Π-swap-is-equiv
+
   is-fibrewise-equiv←family-separates
-    : ∀ {@♭ 𝓥 𝓦 𝓜} {@♭ X : Type 𝓥} {@♭ P : X → Type 𝓦} {@♭ Q : X → Type 𝓜}
-        (@♭ α : (x : X) → P x → Q x)
-      → @♭ (∀ (@♭ x) → is-equiv (♭-map (α x)))
+      : @♭ (∀ (@♭ x) → is-equiv (♭-map (α x)))
       → @♭ (∀ (@♭ i : I) (@♭ x : G i → X)
           → is-equiv {A = ⟨♭| Π (G i) (P ∘ x) ⟩}
                      {B = ⟨♭| Π (G i) (Q ∘ x) ⟩}
                      (♭-map (postcomp-Π (α ∘ x))))
       → is-fibrewise-equiv α
-  is-fibrewise-equiv←family-separates {X = X} {P} {Q} α ♭eq eq2
+  is-fibrewise-equiv←family-separates ♭eq eq2
     = is-fibrewise-equiv←is-total-equiv
         (G-sep
           (mk-arrow (total-map α))
           (♭-map-total-is-equiv α
             (is-total-equiv←is-fibrewise-equiv (♭-ind ♭eq)))
           (λ {i} → lem i)) where
-
-    -- TODO extract this useful theorem :)
-    @♭ amap
-      : ∀ (@♭ i)
-        → Arrow-equiv
-            (postcomp (G i) (total-map α))
-            (total-map {A = G i → X} (postcomp-Π ∘ (α ∘_)))
-    amap i .fst .Arrow-Π.top = Σ-Π-swap (λ _ → X) (λ _ → P)
-    amap i .fst .Arrow-Π.bot = Σ-Π-swap (λ _ → X) (λ _ → Q)
-    amap i .fst .Arrow-Π.comm = ~refl
-    amap i .snd .fst = Σ-Π-swap-is-equiv
-    amap i .snd .snd = Σ-Π-swap-is-equiv
 
     lem : ∀ (@♭ i) → is-equiv (♭-map (postcomp (G i) (total-map α)))
     lem i = src-is-equiv←Arrow-equiv
@@ -349,5 +388,20 @@ module _
                 (postcomp-Π ∘ (α ∘_))
                 (is-total-equiv←is-fibrewise-equiv (♭-ind (eq2 i))))
 
+  is-fibrewise-equiv←family-separates-with-𝟙
+    : ∀ {@♭ is} (@♭ Gi-singleton : is-singleton (G is))
+      → @♭ (∀ (@♭ i : I) (@♭ x : G i → X)
+          → is-equiv {A = ⟨♭| Π (G i) (P ∘ x) ⟩}
+                     {B = ⟨♭| Π (G i) (Q ∘ x) ⟩}
+                     (♭-map (postcomp-Π (α ∘ x))))
+      → is-fibrewise-equiv α
+  is-fibrewise-equiv←family-separates-with-𝟙 {is} Gs ♭eq
+    = is-fibrewise-equiv←is-total-equiv
+        (family-separates-with-𝟙 G G-sep Gs
+          (mk-arrow (total-map α))
+          λ {i} → src-is-equiv←Arrow-equiv
+                    (♭-arrow-equiv (amap i))
+                    (♭-map-total-is-equiv (postcomp-Π ∘ (α ∘_))
+                    (is-total-equiv←is-fibrewise-equiv (♭-ind (♭eq i)))))
 }
 }

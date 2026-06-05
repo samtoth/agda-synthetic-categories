@@ -1,0 +1,506 @@
+\title{Strictification of categories}
+\date{2026-03-24}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Strictification
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.LeftSegal Δ¹ I
+open import Synthetic.Categories.CovariantHomFamily Δ¹ I
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I
+open import Synthetic.Categories.Yoneda Δ¹ I
+
+open import Wild.Categories.Structure
+open CompPrestructure using (Homʷ ; idʷ: ; compʷ:)
+}
+}
+
+\subtree[stt-00SQ]{
+\title{The covariant Yoneda [homomorphism system](stt-00SK)}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+Given an arbitrary type #{A}, we define the covariant Yoneda homomorphism system on
+#{A}.
+}
+
+\agda{
+module _ {𝓤 : Level} {A : Type 𝓤} where
+
+  Homʸ : A → A → Type (𝓘 ⊔ 𝓤)
+  Homʸ a b = (z : A) → Hom A b z → Hom A a z
+
+  idHʸ : {a : A} → Homʸ a a
+  idHʸ _ = id
+
+  _∘ʸ_ : {a b c : A} → Homʸ b c → Homʸ a b → Homʸ a c
+  (g ∘ʸ f) z h = f z (g z h)
+
+  precompʸ
+    : {a b : A} (c : A) (f : Homʸ a b)
+    → Homʸ b c → Homʸ a c
+  precompʸ c f = _∘ʸ f
+
+  postcompʸ
+    : {b c : A} (a : A) (h : Homʸ b c)
+    → Homʸ a b → Homʸ a c
+  postcompʸ a h = h ∘ʸ_
+
+  ∘ʸ-left-unit
+    : {a b : A} (f : Homʸ a b) → idHʸ ∘ʸ f ＝ f
+  ∘ʸ-left-unit _ = refl
+
+  ∘ʸ-right-unit
+    : {a b : A} (f : Homʸ a b) → f ∘ʸ idHʸ ＝ f
+  ∘ʸ-right-unit _ = refl
+
+  ∘ʸ-assoc
+    : {a b c d : A} (h : Homʸ c d) (g : Homʸ b c) (f : Homʸ a b)
+    → (h ∘ʸ g) ∘ʸ f ＝ h ∘ʸ (g ∘ʸ f)
+  ∘ʸ-assoc _ _ _ = refl
+
+  ∘ʸ-pentagon
+    : {a b c d e : A}
+      (k : Homʸ d e) (h : Homʸ c d) (g : Homʸ b c) (f : Homʸ a b)
+    → ap (_∘ʸ f) (∘ʸ-assoc k h g)
+    ∙ ∘ʸ-assoc k (h ∘ʸ g) f
+    ∙ ap (k ∘ʸ_) (∘ʸ-assoc h g f)
+    ＝ ∘ʸ-assoc (k ∘ʸ h) g f
+    ∙ ∘ʸ-assoc k h (g ∘ʸ f)
+  ∘ʸ-pentagon _ _ _ _ = refl
+
+  Hom←Homʸ : {a b : A} → Homʸ a b → Hom A a b
+  Hom←Homʸ {b = b} α = α b (idH b)
+
+  idH←Homʸ : {a : A} → Hom←Homʸ idHʸ ＝ idH a
+  idH←Homʸ = refl
+
+  Homʸ-comp-prestruct : CompPrestructure (𝓘 ⊔ 𝓤) A
+  Homʸ-comp-prestruct .Homʷ = Homʸ
+  Homʸ-comp-prestruct .idʷ: a = idHʸ
+  Homʸ-comp-prestruct .compʷ: _ _ _ = _∘ʸ_
+}
+
+\p{
+Note that for not-necessarily-Segal types the Yoneda homomorphism system need not be
+a homomorphism system in a formal sense, but we show in [[stt-00LL]] that it is in
+fact formally a homomorphism system for left Segal types.
+}
+}
+
+\subtree[stt-00LL]{
+\title{Characterising the action of the covariant Yoneda embedding on homomorphisms in left Segal types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-03-24}
+
+\p{
+Given a [left Segal](stt-00DA) type #{A}, then using the [Yoneda lemma](stt-00LK) we
+show that composition of morphisms in #{A} is [equivalent](stt-001U), in a coherent
+way, to composition of families of functions
+#{\prod_{(z : A)}\left(\Hom_A(b, z) \to \Hom_A(a, z)\right)}, and composition of
+families of functions is strictly associative and two-sided unital.
+}
+
+\agda{
+module YonedaStrictifyLeftSegal
+  {𝓤 : Level} {A : Type 𝓤}
+  (𝐴ₗ : is-left-segal A)
+  (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
+  where
+
+  Homʸ←Hom : {a b : A} → Hom A a b → Homʸ a b
+  Homʸ←Hom f z h = h ∘[ 𝐴 ] f
+
+  Hom←Homʸ-ret
+    : {a b : A} (f : Hom A a b) → Hom←Homʸ (Homʸ←Hom f) ＝ f
+  Hom←Homʸ-ret f = ∘[ 𝐴 ]-right-unit {f}
+
+  Homʸ←Hom-is-equiv
+    : {a b : A} → is-equiv (Homʸ←Hom {a} {b})
+  Homʸ←Hom-is-equiv {a}
+    = Yoneda-coe-left-segal-is-equiv 𝐴ₗ
+        (Hom A a)
+        (hom-fam-cov 𝐴ₗ a)
+        (Homʸ←Hom)
+        (Hom←Homʸ-ret)
+
+  Hom≃Homʸ : (a b : A) → Hom A a b ≃ Homʸ a b
+  Hom≃Homʸ a b = mk≃ Homʸ←Hom Homʸ←Hom-is-equiv
+
+  Hom←Homʸ-sec
+    : {a b : A} (α : Homʸ a b) → Homʸ←Hom (Hom←Homʸ α) ＝ α
+  Hom←Homʸ-sec {a}
+    = Yoneda-coe-left-segal-η
+        𝐴ₗ
+        (Hom A a)
+        (hom-fam-cov 𝐴ₗ a)
+        (Homʸ←Hom)
+        (Hom←Homʸ-ret)
+
+  Homʸ←idH
+    : {a : A} → Homʸ←Hom (idH a) ＝ idHʸ
+  Homʸ←idH {a} = funext→ λ z → funext→ λ h → ∘[ 𝐴 ]-left-unit {h}
+
+  Homʸ←∘
+    : {a b c : A} (g : Hom A b c) (f : Hom A a b)
+    → Homʸ←Hom (g ∘[ 𝐴 ] f) ＝ Homʸ←Hom g ∘ʸ Homʸ←Hom f
+  Homʸ←∘ g f = funext→ λ z → funext→ λ h → sym (∘-assoc←is-left-segal 𝐴ₗ h g f)
+
+  ∘←Homʸ
+    : {a b c : A} (g : Homʸ b c) (f : Homʸ a b)
+    → Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f ＝ Hom←Homʸ (g ∘ʸ f)
+  ∘←Homʸ {a} {b} {c} g f
+    = ap (λ F → F c (Hom←Homʸ g)) (Hom←Homʸ-sec f)
+
+  Homʸ←∘-nat-right
+    : {a b c : A} {g g' : Hom A b c} (p : g ＝ g') (f : Hom A a b)
+    → Homʸ←∘ g f ∙ ap (λ j → j ∘ʸ Homʸ←Hom f) (ap Homʸ←Hom p)
+    ＝ ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p) ∙ Homʸ←∘ g' f
+  Homʸ←∘-nat-right {g = g} {g'} p f
+    = Homʸ←∘ g f ∙ ap (λ j → j ∘ʸ Homʸ←Hom f) (ap Homʸ←Hom p)
+          ＝⟨ ap (Homʸ←∘ g f ∙_) (sym (ap-∘ (λ j → j ∘ʸ Homʸ←Hom f) Homʸ←Hom p)) ⟩
+      Homʸ←∘ g f ∙ ap ((λ j → j ∘ʸ Homʸ←Hom f) ∘ Homʸ←Hom) p
+          ＝⟨ homotopy-natural (λ j → Homʸ←∘ j f) p ⟩
+      ap (Homʸ←Hom ∘ (_∘[ 𝐴 ] f)) p ∙ Homʸ←∘ g' f
+          ＝⟨ ap (_∙ Homʸ←∘ g' f) (ap-∘ Homʸ←Hom (_∘[ 𝐴 ] f) p) ⟩
+      ap Homʸ←Hom (ap (_∘[ 𝐴 ] f) p) ∙ Homʸ←∘ g' f
+          ∎
+
+  Homʸ←∘-nat-left
+    : {a b c : A} (h : Hom A b c) {f f' : Hom A a b} (p : f ＝ f')
+    → Homʸ←∘ h f ∙ ap (Homʸ←Hom h ∘ʸ_) (ap Homʸ←Hom p)
+    ＝ ap Homʸ←Hom (ap (h ∘[ 𝐴 ]_) p) ∙ Homʸ←∘ h f'
+  Homʸ←∘-nat-left h {f} {f'} p
+    = Homʸ←∘ h f ∙ ap (Homʸ←Hom h ∘ʸ_) (ap Homʸ←Hom p)
+          ＝⟨ ap (Homʸ←∘ h f ∙_) (sym (ap-∘ (Homʸ←Hom h ∘ʸ_) Homʸ←Hom p)) ⟩
+      Homʸ←∘ h f ∙ ap ((Homʸ←Hom h ∘ʸ_) ∘ Homʸ←Hom) p
+          ＝⟨ homotopy-natural (Homʸ←∘ h) p ⟩
+      ap (Homʸ←Hom ∘ (h ∘[ 𝐴 ]_)) p ∙ Homʸ←∘ h f'
+          ＝⟨ ap (_∙ Homʸ←∘ h f') (ap-∘ Homʸ←Hom (h ∘[ 𝐴 ]_) p) ⟩
+      ap Homʸ←Hom (ap (h ∘[ 𝐴 ]_) p) ∙ Homʸ←∘ h f' ∎
+
+  ∘ʸ-unique
+    : {a b c : A}
+      (_∘'_ : Homʸ b c → Homʸ a b → Homʸ a c)
+    → ((g : Homʸ b c) (f : Homʸ a b)
+    → Hom←Homʸ (g ∘' f) ＝ Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f)
+    → (g : Homʸ b c) (f : Homʸ a b)
+    → g ∘' f ＝ g ∘ʸ f
+  ∘ʸ-unique _∘'_ comp g f
+    = g ∘' f
+        ＝⟨ sym (Hom←Homʸ-sec (g ∘' f)) ⟩
+      Homʸ←Hom (Hom←Homʸ (g ∘' f))
+        ＝⟨ ap Homʸ←Hom (comp g f) ⟩
+      Homʸ←Hom (Hom←Homʸ g ∘[ 𝐴 ] Hom←Homʸ f)
+        ＝⟨ Homʸ←∘ (Hom←Homʸ g) (Hom←Homʸ f) ⟩
+      Homʸ←Hom (Hom←Homʸ g) ∘ʸ Homʸ←Hom (Hom←Homʸ f)
+        ＝⟨ ap₂ (_∘ʸ_) (Hom←Homʸ-sec g) (Hom←Homʸ-sec f) ⟩
+      g ∘ʸ f ∎
+}
+
+\closedScope{
+\subtree[stt-00SE]{
+\title{Associativity using the action of the covariant Yoneda embedding on homomorphisms}
+\taxon{Demonstration}
+\author{fredrikbakke}
+\date{2026-06-04}
+
+\p{
+We rederive associativity of composition in a [left Segal](stt-00DA) type from the
+strict associativity of composition in the [Yoneda strictification](stt-00LL).
+Note that this proof is redundant since it depends on already having determined that
+composition is associative. In [[stt-00SH]] we make meaningful progress on coherence
+laws by constructing and applying the strictification operator proper.
+}
+
+\agda{
+module AssocYonedaStrictifyLeftSegal
+  {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A)
+  (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
+  (open YonedaStrictifyLeftSegal 𝐴ₗ)
+  where
+
+  assocʸ-left
+    : {a b c d : A}
+      (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+    → Homʸ←Hom ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
+    ＝ (Homʸ←Hom h ∘ʸ Homʸ←Hom g) ∘ʸ Homʸ←Hom f
+  assocʸ-left {a} {b} {c} {d} h g f
+    = Homʸ←∘ (h ∘[ 𝐴 ] g) f
+    ∙ ap (precompʸ d (Homʸ←Hom f)) (Homʸ←∘ h g)
+
+  assocʸ-right
+    : {a b c d : A}
+      (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+    → Homʸ←Hom (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+    ＝ Homʸ←Hom h ∘ʸ (Homʸ←Hom g ∘ʸ Homʸ←Hom f)
+  assocʸ-right {a} {b} {c} {d} h g f
+    = Homʸ←∘ h (g ∘[ 𝐴 ] f)
+    ∙ ap (postcompʸ a (Homʸ←Hom h)) (Homʸ←∘ g f)
+
+  opaque
+    assocʸ
+      : {a b c d : A}
+        (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+      → Homʸ←Hom ((h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f)
+      ＝ Homʸ←Hom (h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f))
+    assocʸ h g f
+      = assocʸ-left h g f
+      ∙ ∘ʸ-assoc (Homʸ←Hom h) (Homʸ←Hom g) (Homʸ←Hom f)
+      ∙ sym (assocʸ-right h g f)
+
+    assoc
+      : {a b c d : A}
+        (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+      → (h ∘[ 𝐴 ] g) ∘[ 𝐴 ] f
+      ＝ h ∘[ 𝐴 ] (g ∘[ 𝐴 ] f)
+    assoc h g f
+      = unap-equiv Homʸ←Hom-is-equiv (assocʸ h g f)
+
+    assocʸ-coh
+      : {a b c d : A}
+        (h : Hom A c d) (g : Hom A b c) (f : Hom A a b)
+      → ap Homʸ←Hom (assoc h g f)
+      ＝ assocʸ h g f
+    assocʸ-coh h g f
+      = ap-unap-equiv Homʸ←Hom-is-equiv (assocʸ h g f)
+}
+}
+}
+}
+
+\subtree[stt-00SN]{
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-06-03}
+
+\p{
+The canonical homomorphism system and the covariant Yoneda homomorphism system
+on a left Segal type are equal.
+}
+
+\proof{
+
+\agda{
+module StrictifyLeftSegal
+  {𝓤 : Level} {A : Type 𝓤}
+  (𝐴ₗ : is-left-segal A)
+  (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
+  (open YonedaStrictifyLeftSegal 𝐴ₗ using
+    (Hom≃Homʸ ; Homʸ←Hom ; Homʸ←idH ; Homʸ←∘ ; Hom←Homʸ-sec))
+  where
+}
+
+\p{Equality of Hom families.}
+
+\agda{
+  Hom=Homʸ : Hom A ＝ Homʸ
+  Hom=Homʸ = funext→ λ a → funext→ λ b → ua (Hom≃Homʸ a b)
+
+  ua-Hom≃Homʸ
+    : (a b : A)
+    → happly (happly Hom=Homʸ a) b ＝ ua (Hom≃Homʸ a b)
+  ua-Hom≃Homʸ a b
+    = ap (λ p → happly p b) (happly funext-redex a)
+    ∙ happly funext-redex b
+
+  coe-Hom=Homʸ
+    : (a b : A)
+    → coe (happly (happly Hom=Homʸ a) b) ＝ Homʸ←Hom {a} {b}
+  coe-Hom=Homʸ a b =
+    tr
+      (λ p → coe p ＝ Homʸ←Hom {a} {b})
+      (sym (ua-Hom≃Homʸ a b))
+      coe-ua
+
+  coe-sym-Hom=Homʸ
+    : (a b : A)
+    → coe (sym (happly (happly Hom=Homʸ a) b)) ＝ Hom←Homʸ
+  coe-sym-Hom=Homʸ a b =
+    tr
+      (λ p → coe (sym p) ＝ Hom←Homʸ)
+      (sym (ua-Hom≃Homʸ a b))
+      (coe-sym-ua)
+}
+
+\p{Equality of identity families.}
+
+\agda{
+  ap-HasId
+    : ∀ {𝓥} {H K : A → A → Type 𝓥}
+        (p : H ＝ K)
+      → ap (λ HΔ → (a : A) → HΔ a) (funext→ λ a → happly (happly p a) a)
+      ＝ ap HasId p
+  ap-HasId refl = ap (ap (λ HΔ → (a : A) → HΔ a)) funext-refl
+
+  idH=idHʸ
+    : Hom-comp-prestruct 𝐴 .idʷ:
+    ＝[ ap HasId Hom=Homʸ ]
+      Homʸ-comp-prestruct .idʷ:
+  idH=idHʸ =
+    tr
+      (λ p → Hom-comp-prestruct 𝐴 .idʷ: ＝[ p ] Homʸ-comp-prestruct .idʷ:)
+      (ap-HasId Hom=Homʸ)
+      (funextᵈ→ λ a → happly (coe-Hom=Homʸ a a) (idH a) ∙ Homʸ←idH)
+}
+
+\p{Equality of composition binary operators.}
+
+\agda{
+  coe-ap-HasComp
+    : ∀ {𝓥} {H K : A → A → Type 𝓥}
+        (p : H ＝ K) (m : HasComp H)
+      → coe (ap HasComp p) m
+      ＝ ( λ a b c g f →
+          coe (happly (happly p a) c)
+            (m a b c
+              (coe (sym (happly (happly p b) c)) g)
+              (coe (sym (happly (happly p a) b)) f)))
+  coe-ap-HasComp refl m = refl
+
+  ∘=∘ʸ
+    : Hom-comp-prestruct 𝐴 .compʷ:
+    ＝[ ap HasComp Hom=Homʸ ]
+      Homʸ-comp-prestruct .compʷ:
+  ∘=∘ʸ =
+    coe-ap-HasComp Hom=Homʸ (Hom-comp-prestruct 𝐴 .compʷ:)
+    ∙ funext→ λ a → funext→ λ b → funext→ λ c → funext→ λ g → funext→ λ f →
+      happly (coe-Hom=Homʸ a c)
+        (      (coe (sym (happly (happly Hom=Homʸ b) c)) g)
+        ∘[ 𝐴 ] (coe (sym (happly (happly Hom=Homʸ a) b)) f))
+      ∙ ap₂
+          (λ g f → Homʸ←Hom (g ∘[ 𝐴 ] f))
+          (happly (coe-sym-Hom=Homʸ b c) g)
+          (happly (coe-sym-Hom=Homʸ a b) f)
+      ∙ Homʸ←∘ (Hom←Homʸ g) (Hom←Homʸ f)
+      ∙ ap₂ (_∘ʸ_) (Hom←Homʸ-sec g) (Hom←Homʸ-sec f)
+}
+
+\p{Equality of composition prestructures.}
+
+\agda{
+  Hom=Homʸ-comp-prestruct : Hom-comp-prestruct 𝐴 ＝ Homʸ-comp-prestruct
+  Hom=Homʸ-comp-prestruct = CompPrestructure-path→ Hom=Homʸ idH=idHʸ ∘=∘ʸ
+}
+}
+}
+
+\subtree[stt-00SO]{
+\title{The strictification operator on left Segal types}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-06-03}
+
+\p{
+Finally, we obtain the strictification operator \code{strictify}.
+This is an adaptation of Rice's trick for groups \citek{rice-groups-uf}. Please
+see their explanation for now:
+[alexarice.github.io/GroupsUF/](https://alexarice.github.io/GroupsUF/).
+}
+
+% TODO: add instructions on how to use and think about it
+
+\agda{
+  opaque
+    strictify
+      : {𝓥 : Level}
+      → (P : CompPrestructure (𝓘 ⊔ 𝓤) A → Type 𝓥)
+      → P Homʸ-comp-prestruct
+      → P (Hom-comp-prestruct 𝐴)
+    strictify P = tr P (sym Hom=Homʸ-comp-prestruct)
+}
+}
+
+\subtree[stt-00SH]{
+\title{2-Coherence of composition in left Segal types}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-06-03}
+
+\p{
+As an application of the [strictification operator](stt-00SO) we show that
+composition of synthetic morphisms in a left Segal type is 2-coherent. I.e.,
+composition is unital and associative in a way that is coherent with the unit laws,
+and the associator satisfies the pentagon law.
+}
+
+\agda{
+  Σ2CoherenceLaws : CompPrestructure (𝓘 ⊔ 𝓤) A → Type (𝓘 ⊔ 𝓤)
+  Σ2CoherenceLaws 𝒞 =
+    Σ[ λʷ ∶ LeftUnitLaw 𝒞 ]
+    Σ[ ρʷ ∶ RightUnitLaw 𝒞 ]
+    Σ[ α ∶ AssociativeLaw 𝒞 ]
+     ( InnerTriangleLaw 𝒞 λʷ ρʷ α
+     × LeftTriangleLaw 𝒞 λʷ α
+     × RightTriangleLaw 𝒞 ρʷ α
+     × PentagonLaw 𝒞 α)
+
+  opaque
+    2-coherence : Σ2CoherenceLaws (Hom-comp-prestruct 𝐴)
+    2-coherence =
+      strictify Σ2CoherenceLaws
+        ( ~refl
+        , ~refl
+        , (λ _ _ _ → refl)
+        , (λ _ _ → refl)
+        , (λ _ _ → refl)
+        , (λ _ _ → refl)
+        , (λ _ _ _ _ → refl))
+
+    left-unit : LeftUnitLaw (Hom-comp-prestruct 𝐴)
+    left-unit = 2-coherence .fst
+
+    right-unit : RightUnitLaw (Hom-comp-prestruct 𝐴)
+    right-unit = 2-coherence .snd .fst
+
+    assoc : AssociativeLaw (Hom-comp-prestruct 𝐴)
+    assoc = 2-coherence .snd .snd .fst
+
+    inner-triangle
+      : InnerTriangleLaw (Hom-comp-prestruct 𝐴) left-unit right-unit assoc
+    inner-triangle = 2-coherence .snd .snd .snd .fst
+
+    left-triangle
+      : LeftTriangleLaw (Hom-comp-prestruct 𝐴) left-unit assoc
+    left-triangle = 2-coherence .snd .snd .snd .snd .fst
+
+    right-triangle
+      : RightTriangleLaw (Hom-comp-prestruct 𝐴) right-unit assoc
+    right-triangle = 2-coherence .snd .snd .snd .snd .snd .fst
+
+    pentagon : PentagonLaw (Hom-comp-prestruct 𝐴) assoc
+    pentagon = 2-coherence .snd .snd .snd .snd .snd .snd
+}
+
+\p{
+Note that the left and right triangle laws are redundant as they follow from the
+inner triangle law.
+}
+
+\p{
+We could of course go further and define and prove 3-coherence should we please.
+The proof will still be trivial, all it requires is the effort of actually defining
+the coherence laws.
+}
+}

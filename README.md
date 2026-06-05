@@ -1,4 +1,8 @@
-# Agda Synthetic Categories
+<h1>
+  Agda Synthetic Categories
+  <img align="right" src="assets/logo-wide-transparent.svg" alt="The Agda-simplex logo" width="240">
+  <br clear="right">
+</h1>
 
 An agda development focussed on the development of ∞-category theory using simplicial
 type theory. Visit [the forest](https://samtoth.github.io/agda-synthetic-categories)

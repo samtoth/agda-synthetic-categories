@@ -43,6 +43,8 @@ pkgs.stdenv.mkDerivation rec {
     LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks -j src/Everything.agda
     echo "Generated trees"
     forester build
+    mkdir -p ./output/agda-synthetic-categories/assets
+    cp -Lrvf assets/logo-wide-transparent.svg ./output/agda-synthetic-categories/assets/
     if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
       if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
         echo "Warning: failed to copy Agda.css into output/html; continuing." >&2
@@ -57,6 +59,8 @@ pkgs.stdenv.mkDerivation rec {
     mkdir -p $out
     cp -Lrvf output/agda-synthetic-categories/* "$out"/
     cp -Lrvf output/html "$out"/
+    mkdir -p "$out/assets"
+    cp -Lrvf assets/logo-wide-transparent.svg "$out/assets"/
     mkdir -p "$out/benchmarks"
     cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
     if [ -f "$out/benchmarks/data.json" ]; then

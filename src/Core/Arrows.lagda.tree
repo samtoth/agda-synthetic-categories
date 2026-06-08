@@ -1,4 +1,3 @@
-
 \title{The category of maps of types}
 \taxon{Module}
 \import{stt-macros}
@@ -8,15 +7,19 @@
 
 module Core.Arrows where
 
-open import Foundations.Prelude
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Ergonomics.Representation
 open import Ergonomics.Marker
 open import Ergonomics.Extensionality
 
-open import Core.Slices
 open import Core.CanonicalPushouts
+}
 }
 
 \subtree[stt-0038]{
@@ -159,8 +162,9 @@ module _
 
   Arrow-Π-is-pullback : is-pullback Arrow-Π-cone
   Arrow-Π-is-pullback
-    = homotopy-is-equiv (Arrow-Π≃pullback-repr~gap)
-                        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
+    = is-equiv←~⁻¹
+        (Arrow-Π≃pullback-repr~gap)
+        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
 
   Arrow-Π≃pullback
     : Arrow-Π f g
@@ -185,7 +189,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map≃pullback' = Arrow-Π≃pullback {f = f} {g = λ _ → g}
 
   Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
-  Arrow-map≃pullback = Arrow-map≃pullback' ∙≃ pullback-swap
+  Arrow-map≃pullback = Arrow-map≃pullback' ∙e pullback-swap
 
   pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
   pullback←arrow' = Arrow-map≃pullback' ._≃_.fwd
@@ -216,10 +220,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   Arrow-map-path : ∀ (G H : Arrow-map f f') → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
   Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
     = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
-      (H ~∙ (f' ◂ p) ~ q ▸ f ~∙ H')
+      (H ∙h (f' ◂ p) ~ q ▸ f ∙h H')
 
   Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
-  Arrow-map-path-refl = ~refl , ~refl , ~∙-reflr _
+  Arrow-map-path-refl = ~refl , ~refl , ∙h-reflr _
 
   Arrow-map-path-is-Rppred
     : ∀ (G : Arrow-map f f')
@@ -268,7 +272,7 @@ id-square
     → Arrow-map f f
 id-square = mk-amap id id ~refl
 
-infix 30 id-square:_
+infix 25 id-square:_
 id-square:_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Arrow-map f f
 id-square: f = id-square
 
@@ -281,7 +285,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → Arrow-map f f'
     → Arrow-map f f''
   paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
-    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ~∙ comm' ▸ g)
+    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◂ comm ∙h comm' ▸ g)
 }
 }
 
@@ -346,116 +350,7 @@ paste-squares-right-id F .snd .snd a = ∙-reflr _
 }
 }
 
-\subtree[stt-003V]{
-\taxon{Definition}
-\title{Cartesian squares}
 
-\p{Given a map of arrows #{f \to f'}, we can define a family of functions
-from the fibre over #{f} to the fibre over #{f'}. If this map is a
-fibrewise equivalence, then we say that the square is cartesian (or a pullback
-square).
-}
-
-\agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
-  arrow-fibre
-    : (gs : Arrow-map f f')
-    → (b : B)
-    → fibre f b → fibre f' (gs .Arrow-map.bot b)
-  arrow-fibre (mk-amap g g' hom) b (a , p) = (g a , sym (hom a) ∙ ap g' p)
-
-  is-cartesian : Arrow-map f f' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  is-cartesian a = is-fibrewise-equiv (arrow-fibre a)
-
-  is-cartesian-is-prop
-    : ∀ {F : Arrow-map f f'} → is-prop (is-cartesian F)
-  is-cartesian-is-prop
-    = Π-is-prop (λ a → is-equiv-is-prop)
-}
-}
-
-\subtree[stt-003W]{
-\taxon{Theorem}
-\title{Horizontal composition of cartesian squares}
-
-\agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-         {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
-        {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
-
-  arrow-fibre-∘
-    : ∀ (F : Arrow-map f' f'') (G : Arrow-map f f')
-      → ∀ b
-      → arrow-fibre (paste-squares F G) b
-      ~ arrow-fibre F (Arrow-map.bot G b) ∘ arrow-fibre G b
-  arrow-fibre-∘ F@(mk-amap f f' fcomm) G@(mk-amap g g' gcomm) b (a , p)
-    = Σ-path→ (refl , lem) where
-       lem : sym (ap f' (gcomm a) ∙ fcomm (g a)) ∙ ap (f' ∘ g') p ＝
-              sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p)
-       lem = ⌜ sym (ap f' (gcomm a) ∙ fcomm (g a)) ⌝ ∙ ap (f' ∘ g') p
-               ＝⟨ ap! (∙-symsym (ap f' (gcomm a)) _) ⟩
-             (sym (fcomm (g a)) ∙ ⌜ sym (ap f' (gcomm a)) ⌝) ∙ ap (f' ∘ g') p
-               ＝⟨ ap! (sym (ap-sym f' _)) ⟩
-             (sym (fcomm (g a)) ∙ ap f' (sym (gcomm a))) ∙ ap (f' ∘ g') p
-               ＝⟨ ∙-assoc (sym (fcomm (g a))) _ _ ⟩
-             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a)) ∙ ⌜ ap (f' ∘ g') p ⌝
-               ＝⟨ ap! (ap-∘ f' g' p) ⟩
-             sym (fcomm (g a)) ∙ ⌜ ap f' (sym (gcomm a)) ∙ (ap f' (ap g' p)) ⌝
-               ＝⟨ ap! (sym (ap-∙ f' (sym _) (ap g' p))) ⟩
-             sym (fcomm (g a)) ∙ ap f' (sym (gcomm a) ∙ ap g' p) ∎
-
-  compose-cartesian
-    : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
-      → (ae : is-cartesian a) (be : is-cartesian b)
-      → is-cartesian (paste-squares a b)
-  compose-cartesian {a} {b} ae be x
-    = tr is-equiv (funext→ (arrow-fibre-∘ a b x ~⁻¹))
-       (is-equiv-∘ {f = arrow-fibre a (b .Arrow-map.bot x)} {g = arrow-fibre b x}
-         (ae (b .Arrow-map.bot x))
-         (be x)) where
-    module b = is-equiv (be x)
-    module a = is-equiv (ae (b .Arrow-map.bot x))
-
-    open Arrow-map
-
-    II : (x : B) (fib : fibre f x) →
-       sym (paste-squares a b .Arrow-map.comm (fib .fst)) ∙
-         ap (paste-squares a b .Arrow-map.bot) (fib .snd)
-        ＝
-       (arrow-fibre a (b .Arrow-map.bot x) ∘ arrow-fibre b x)
-         fib .snd
-    II x (aa , p)
-     = sym (paste-squares a b .comm aa) ∙ ap (paste-squares a b .bot) p
-         ＝⟨⟩
-       ⌜ sym (ap (a .bot) (b .comm aa) ∙ a .comm (b .top aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ap! (∙-symsym (ap (a .bot) (b .comm aa)) _) ⟩
-       (sym (a .comm (b .top aa)) ∙ sym (ap (a .bot) (b .comm aa))) ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ∙-assoc (sym (a .comm (b .top aa))) _ (ap (a .bot ∘ b .bot) p) ⟩
-       sym (a .comm (b .top aa)) ∙ ⌜ sym (ap (a .bot) (b .comm aa)) ⌝ ∙ ap (a .bot ∘ b .bot) p
-         ＝⟨ ap! (sym (ap-sym (a .bot) _)) ⟩
-       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa)) ∙ ⌜ ap (a .bot ∘ b .bot) p ⌝
-         ＝⟨ ap! (ap-∘ _ _ _) ⟩
-       sym (a .comm (b .top aa)) ∙ ⌜ ap (a .bot) (sym (b .comm aa)) ∙ ap (a .bot) (ap (b .bot) p) ⌝
-         ＝⟨ ap! (sym (ap-∙ (a .bot) (sym (b .comm aa)) _)) ⟩
-       sym (a .comm (b .top aa)) ∙ ap (a .bot) (sym (b .comm aa) ∙ ap (b .bot) p)
-         ＝⟨⟩
-       (arrow-fibre a (b .bot x) ∘ arrow-fibre b x) (aa , p) .snd ∎
-
-  3-for-2-cartesian
-    : ∀ {a : Arrow-map f' f''} {b : Arrow-map f f'}
-        {H : Arrow-map f f''}
-      → Arrow-map-path H (paste-squares a b)
-      → is-cartesian H
-      → is-cartesian a
-      → is-cartesian b
-  3-for-2-cartesian {a = F@(mk-amap f f' fcomm)} {b = G@(mk-amap g g' gcomm)}
-                    K abcart bcart b
-    = 3-for-2~ (arrow-fibre-∘ F G b)
-               (bcart (g' b))
-               (tr is-cartesian (Arrow-map-path→ K) abcart b)
-}
-}
 
 \subtree[stt-002Z]{
 \taxon{Theorem}
@@ -511,136 +406,6 @@ cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
 }
 }
 
-\subtree[stt-003C]{
-\title{Pullback squares from cartesian arrow maps}
-\taxon{Theorem}
-\p{We show that a [cartesian](stt-003V) arrow map gives a pullback square.
- That is, a square is cartesian iff the corresponding cone is a pullback cone.}
-
-\proof{
-\p{Suppose we have a square:}
-
-\quiver{
-\begin{tikzcd}
-	A && C \\
-	\\
-	B && D
-	\arrow["g", from=1-1, to=1-3]
-	\arrow["f"', from=1-1, to=3-1]
-	\arrow["{f'}", from=1-3, to=3-3]
-	\arrow["{g'}"', from=3-1, to=3-3]
-\end{tikzcd}
-}
-
-\p{such that the map #{\fibre{g'}{a} \toeq \fibre{g}{f'(a)}} is
-an equivalence. Then to verify it is a pullback, then we need
-to show that the induced map #{A \to C \times_D B} is also an equivalence.}
-
-\p{We can view both of these maps as living in a slice over #{C}, and a
-by [[stt-003D]], a map in the slice is in equivalence iff if is an equivalence
-on fibres.}
-
-\quiver{
-\begin{tikzcd}
-	A && {B \times_D C} \\
-	& B
-	\arrow["{\textit{gap}}", from=1-1, to=1-3]
-	\arrow["f"', from=1-1, to=2-2]
-	\arrow["{\pi_1}", from=1-3, to=2-2]
-\end{tikzcd}
-}
-
-\p{So we need to show #{\fibre{f}{c} \to \fibre{\pi_1}{c}} is an equivalence. The
-fibre of the projection is equivalent to the fibre of #{g} at #{f(c)}, and so by the
-[3-for-2](Foundations.3for2) property of equivalences we have that the square is a
-pullback.}
-
-\agda{
-up-pullback←is-cartesian : ∀ {𝓤 𝓥 𝓦 𝓜}
-  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
-  → (g : Arrow-map f f')
-  → is-cartesian g
-  → let (s , c) = Cone←Arrow-map g
-  in up-pullback s c
-up-pullback←is-cartesian {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
-  = up-pullback←is-pullback cone (is-equiv←on-fibres slice-map slice-equiv) where
-  cospan = Cone←Arrow-map G .fst
-  cone = Cone←Arrow-map G .snd
-
-  g : A → C
-  g = G .Arrow-map.top
-
-  g' : B → D
-  g' = G .Arrow-map.bot
-
-  open pb
-
-  slice-map : Slice-map f π₁
-  slice-map .fst = gap cone
-  slice-map .snd = ~refl
-
-  lem : {a = b : B} →
-      arrow-fibre G b ~
-      fib-π₁ g' f' b ._≃_.fwd ∘ Slice-fibre (gap cone , ~refl) b
-  lem (a , refl) = Σ-path→ (refl , (∙-reflr _))
-
-  slice-equiv : is-fibrewise-equiv (Slice-fibre {q = π₁} (gap cone , ~refl))
-  slice-equiv b = 3-for-2~ {f = fib-π₁ g' f' b ._≃_.fwd}
-                           lem
-                           (fib-π₁ g' f' b ._≃_.fwd-is-equiv)
-                           (pbsq b)
-
-
-is-cartesian←up-pullback : ∀ {𝓤 𝓥 𝓦 𝓜}
-  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
-  → (g : Arrow-map f f')
-  → let (s , c) = Cone←Arrow-map g
-  in up-pullback s c
-  → is-cartesian g
-is-cartesian←up-pullback {f = f} {f' = f'} g pb b
-  = homotopy-is-equiv lem
-                      (is-equiv-∘ (fib-π₁ bot f' b ._≃_.fwd-is-equiv)
-                                  (fibre-equiv←is-equiv slice-map gap-is-equiv b)) where
-  open Arrow-map g
-  open pb
-
-  cospan = Cone←Arrow-map g .fst
-  cone = Cone←Arrow-map g .snd
-
-  gap-is-equiv : is-equiv (gap (mk-cone f top comm))
-  gap-is-equiv = is-pullback←up-pullback _ pb
-
-  slice-map : Slice-map f π₁
-  slice-map .fst = gap cone
-  slice-map .snd = ~refl
-
-  lem : fib-π₁ bot f' b ._≃_.fwd ∘
-      Slice-fibre slice-map b
-      ~ arrow-fibre g b
-  lem (a , refl) = Σ-path→ (refl , sym (∙-reflr _))
-
-is-cartesian←is-pullback
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
-    → (F : Arrow-map f g)
-    → is-pullback (Cone←Arrow-map F .snd)
-    → is-cartesian F
-is-cartesian←is-pullback F gap
-  = is-cartesian←up-pullback F (up-pullback←is-pullback _ gap)
-
-is-pullback←is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
-    → (F : Arrow-map f g)
-    → is-cartesian F
-    → is-pullback (Cone←Arrow-map F .snd)
-is-pullback←is-cartesian F c
-  = is-pullback←up-pullback _ (up-pullback←is-cartesian F c)
-}
-}
-}
 
 \subtree[stt-003P]{
 \taxon{Definition}
@@ -696,7 +461,7 @@ precomp-square
       (g : Arrow-map f f')
     → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (precomp C f') (precomp C f)
 precomp-square (mk-amap top bot p) C
- = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p ~⁻¹))
+ = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◂ (p h⁻¹))
 
 postcomp-square
   : ∀ {𝓤 𝓥 𝓦 𝓜}
@@ -717,106 +482,10 @@ pushouts in to pullbacks.
 }
 }
 
-\subtree[stt-003R]{
-\title{Precomposition of cartesian squares}
-\taxon{Theorem}
 
-\p{Given a square of the following form:}
-
-\quiver{
-\begin{tikzcd}
-	A && C \\
-	\\
-	B && D
-	\arrow["g", from=1-1, to=1-3]
-	\arrow["f"', from=1-1, to=3-1]
-	\arrow["{f'}", from=1-3, to=3-3]
-	\arrow["{g'}"', from=3-1, to=3-3]
-\end{tikzcd}
-}
-
-\p{We show that the square obtained via precomposition
-   is cartesian iff the original square is.
-}
-
-\proof{
-
-\p{
-First note that the type of cones on #{(Q \to B) \to (Q \to D) \leftarrow (Q \to C)}
-is equivalent to the canonical pullback of #{B \to D \leftarrow C}. We can construct
-the following triangle, and apply the three for two property for equivalences:
-}
-
-\quiver{
-\begin{tikzcd}
-	{(A \to Q)} &&& {(B \to Q)\times_{(C \to Q)} (D \to Q)} \\
-	\\
-	&& {\textrm{Cone}(f,g)}
-	\arrow["{\textit{gap}}", from=1-1, to=1-4]
-	\arrow["{\textrm{cone-map}}"', from=1-1, to=3-3]
-	\arrow["\sim", from=1-4, to=3-3]
-\end{tikzcd}
-}
-
-\agda{
-postcomp-cone≃pb
-  : ∀ {𝓤 𝓥 𝓦 𝓜}
-      {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {f : A → B}
-      {g : C → B} {D : Type 𝓜}
-    → Cone (mk-cospan B f g) D ≃ Pullback (postcomp D f) (postcomp D g)
-postcomp-cone≃pb {f = f} {g = g} {D = D}
-  =  Cone (mk-cospan _ f g) D
-  ≃⟨ cone-repr≃ (mk-cospan _ f g) ⟩
-      Σ[ f' ∶ (D → _) ] Σ[ g' ∶ (D → _) ]
-          (postcomp D f f' ~ postcomp D g g')
-  ≃⟨ Σ-snd-≃ (λ f' → Σ-snd-≃ (λ g' → funext≃ e⁻¹)) ⟩
-      Pullback (postcomp D f) (postcomp D g)
-  ≃∎
-
-
-postcomp-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓜}
-      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
-      (g : Arrow-map f f')
-    → is-cartesian g
-    → ∀ {𝓛} {C : Type 𝓛}
-    → is-cartesian
-      (postcomp-square g C)
-postcomp-cartesian {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
-  = is-cartesian←up-pullback _
-      (up-pullback←is-pullback
-        (cn∘ C)
-        (3-for-2
-          {f = _≃_.bwd (postcomp-cone≃pb)}
-          {g = gap (cn∘ C)}
-          (is-equiv⁻¹ (_≃_.fwd-is-equiv postcomp-cone≃pb))
-          (homotopy-is-equiv map-hom
-            (cn-is-pb .up-pullback.cone-map-is-equiv C)))) where
-  cs : Cospan _ _ _
-  cs = Cone←Arrow-map G .fst
-
-  cn : Cone cs _
-  cn = Cone←Arrow-map G .snd
-
-  cs∘ : ∀ {𝓠} (Q : Type 𝓠) → Cospan _ _ _
-  cs∘ {𝓠} Q = Cone←Arrow-map (postcomp-square G Q) .fst
-
-  cn∘ : ∀ {𝓠} (Q : Type 𝓠) → Cone (cs∘ Q) _
-  cn∘ {𝓠} Q = Cone←Arrow-map (postcomp-square G Q) .snd
-
-  cn-is-pb : up-pullback cs cn
-  cn-is-pb = up-pullback←is-cartesian G eq
-
-  map-hom : cone-map cs cn ~ (_≃_.bwd postcomp-cone≃pb ∘ gap (cn∘ C))
-  map-hom x = ap (mk-cone (f ∘ x) (g ∘ x)) (sym funext-redex)
-
-  map : ∀ {𝓠} {Q : Type 𝓠} → (Q → A) → Cone cs Q
-  map {_} {Q} = _≃_.bwd postcomp-cone≃pb ∘ gap (cn∘ Q)
-}
-}
-}
+\subtree[stt-00SC]{
+\taxon{Construction}
+\title{Transposition of squares}
 
 \agda{
 transpose-square
@@ -826,7 +495,7 @@ transpose-square
     → (F : Arrow-map f g)
     → Arrow-map (F .Arrow-map.top) (F .Arrow-map.bot)
 transpose-square {f = f} {g = g} F
-  = mk-amap f g (F .Arrow-map.comm ~⁻¹)
+  = mk-amap f g (F .Arrow-map.comm h⁻¹)
 
 transpose-square-involution
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
@@ -836,57 +505,9 @@ transpose-square-involution
     → transpose-square (transpose-square F) ＝ F
 transpose-square-involution F@(mk-amap top bot comm)
   = Arrow-map-path→ (~refl , ~refl , λ a → ∙-reflr _ ∙ sym-sym)
-
-transpose-is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓜}
-      {f : A → B} {g : C → D}
-      (F : Arrow-map f g)
-    → is-cartesian F
-    → is-cartesian (transpose-square F)
-transpose-is-cartesian {f = f} {g} F@(mk-amap top bot comm) fcart
-  = is-cartesian←is-pullback _
-        (is-equiv-∘ (pullback-swap ._≃_.fwd-is-equiv)
-                    (is-pullback←up-pullback _
-                      (up-pullback←is-cartesian _ fcart)))
-
-untranspose-is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓜}
-      {f : A → B} {g : C → D}
-      (F : Arrow-map f g)
-    → is-cartesian (transpose-square F)
-    → is-cartesian F
-untranspose-is-cartesian F
-  = tr is-cartesian (transpose-square-involution F)
-  ∘ transpose-is-cartesian (transpose-square F)
-}
-
-\subtree[stt-00BX]{
-\title{The fibre of maps as a cartesian square}
-\taxon{Example}
-
-\agda{
-fibre-square
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
-    → Arrow-map (!: fibre f b) f
-fibre-square f b .Arrow-map.top = fst
-fibre-square f b .Arrow-map.bot = point b
-fibre-square f b .Arrow-map.comm (x , p) = sym p
-
-fibre-square-is-cartesian
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) b
-    → is-cartesian (fibre-square f b)
-fibre-square-is-cartesian f b = is-cartesian←is-pullback _ eq where
-  map : fibre f b → Pullback (point b) f
-  map (x , p) = (tt , x , sym p)
-
-  eq : is-equiv map
-  eq = is-equiv←qinv ((λ (_ , x , p) → (x , sym p))
-                     , (λ where (_ , refl) → refl)
-                     , λ where (_ , _ , refl) → refl)
 }
 }
+
 
 \subtree[stt-00BR]{
 \title{Total squares}
@@ -927,93 +548,8 @@ total-square F .Arrow-map.comm (i , a)
 Π-square F .Arrow-map.bot h i = Arrow-map.bot (F i) (h i)
 Π-square F .Arrow-map.comm h  = funext→ (λ a → Arrow-map.comm (F a) (h a))
 }
-
-\p{#{\Pi_i F_i} is cartesian iff each square #{F_i} is.}
-
-\proof{
-
-\p{We use 3-for-2 in the red triangle of the following diagram:}
-
-\quiver{
-\begin{tikzcd}[cramped]
-	& {\Pi_i(B_i\times_{D_i}C_i)} \\
-	{\Pi_i A_i} &&& {\Pi_iC_i} \\
-	& {\Pi_iB_i\times_{\Pi_i D_i}\Pi_i c_i} \\
-	\\
-	{\Pi_iB_i} &&& {\Pi_iD_i}
-	\arrow["\sim"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=1-2, to=3-2]
-	\arrow["{\Pi_i(\textrm{gap})}"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=1-2]
-	\arrow[from=2-1, to=2-4]
-	\arrow[color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=3-2]
-	\arrow[from=2-1, to=5-1]
-	\arrow[from=2-4, to=5-4]
-	\arrow[from=3-2, to=2-4]
-	\arrow[from=3-2, to=5-1]
-	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=3-2, to=5-4]
-	\arrow[from=5-1, to=5-4]
-\end{tikzcd}
-}
 }
 
-\agda{
-opaque
-  Π-square-is-cartesian
-    : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
-        {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
-        {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
-      → (F : (i : I) → Arrow-map (f i) (g i))
-      → (∀ i → is-cartesian (F i))
-      → is-cartesian (Π-square F)
-  Π-square-is-cartesian {I = I} {g = g} F cart
-    = is-cartesian←is-pullback _ eq where
-    curry-pb
-      : Pullback (Arrow-map.bot (Π-square F)) (postcomp-Π g)
-      → Π I (λ z → Pullback (Arrow-map.bot (F z)) (g z))
-    curry-pb (f , g , H) i = (f i , g i , happly H i)
-
-    curry-pb-qinv : quasi-inv curry-pb
-    curry-pb-qinv .fst f = (pb.π₁ ∘ f , pb.π₂ ∘ f , funext→ (pb.filler ∘ f))
-    curry-pb-qinv .snd .fst (f , g , p)
-      = pullback-path→ (refl , refl , sym (funext.η p) ∙ sym (∙-reflr _))
-    curry-pb-qinv .snd .snd f
-      = funext→ λ i → pullback-path→
-          (refl , refl , ∙-refll _ ∙ sym (happly funext-redex i) ∙ sym (∙-reflr _))
-
-    htpy : postcomp-Π (λ i → gap-map←square (F i)) ~ curry-pb ∘ gap-map←square (Π-square F)
-    htpy a = funext→ λ i → pullback-path→
-      (refl , refl , ∙-refll _ ∙ happly funext-redex i ∙ sym (∙-reflr _))
-
-    eq : is-equiv (gap (Cone←Arrow-map (Π-square F) .snd))
-    eq = (3-for-2~
-            {f = curry-pb}
-            {g = gap-map←square (Π-square F)}
-            {k = postcomp-Π (λ i → gap-map←square (F i))}
-            (htpy)
-            (is-equiv←qinv curry-pb-qinv)
-            (postcomp-Π-equiv
-              (λ {i} → is-pullback←up-pullback _
-                (up-pullback←is-cartesian _ (cart i)))))
-}
-}
-
-\subtree[stt-00JM]{
-\title{Maps between equivalences are cartesian}
-\taxon{Lemma}
-
-\agda{
-is-cartesian←dom+cod-is-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦} {B : Type 𝓜}
-      {f : X → Y} {g : A → B}
-    → (F : Arrow-map f g)
-    → is-equiv f → is-equiv g
-    → is-cartesian F
-is-cartesian←dom+cod-is-equiv F feq geq a
-  = is-equiv←single-to-prop
-      (has-singleton-fibres←is-equiv feq a)
-      (is-prop←is-single (has-singleton-fibres←is-equiv geq _))
-      _
-}
-}
 
 \subtree[stt-00K7]{
 \title{Paths in maps of families}
@@ -1045,69 +581,51 @@ instance
 }
 
 \subtree[stt-00KQ]{
-\title{Straightening (cartesian) arrow maps}
+\title{Straightening arrow maps}
 \taxon{Lemma}
 
 \p{We show that there is an equivalence between maps of arrows
-and maps of families. We also show that an arrow map is cartesian
-iff the corresponding map of families is cartesian.}
+and maps of families.}
 
 \agda{
-fam-map←arrow-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-    → Arrow-map f g → Fam-map (fibre-fam f) (fibre-fam g)
-fam-map←arrow-map F = (F .Arrow-map.bot , arrow-fibre F)
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+  where
 
-arrow-map←fam-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-    → Fam-map (fibre-fam f) (fibre-fam g)
+  arrow-fibre
+    : (gs : Arrow-map f g)
+    → (b : B)
+    → fibre f b → fibre g (gs .Arrow-map.bot b)
+  arrow-fibre (mk-amap f' g' hom) b (a , p) = (f' a , sym (hom a) ∙ ap g' p)
+
+  fam-map←arrow-map
+    : Arrow-map f g → Fam-map (fibre-fam f) (fibre-fam g)
+  fam-map←arrow-map F = (F .Arrow-map.bot , arrow-fibre F)
+
+  arrow-map←fam-map
+    : Fam-map (fibre-fam f) (fibre-fam g)
     → Arrow-map f g
-arrow-map←fam-map {f = f} {g = g} (b , t)
-  = mk-amap (λ a → t (f a) (a , refl) .fst) b
-            (λ a → sym (t (f a) (a , refl) .snd))
+  arrow-map←fam-map (b , t)
+    = mk-amap (λ a → t (f a) (a , refl) .fst) b
+              (λ a → sym (t (f a) (a , refl) .snd))
 
-fam-map←arrow-map-is-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-    → is-equiv (fam-map←arrow-map {f = f} {g = g})
-fam-map←arrow-map-is-equiv
-  = is-equiv←qinv
-      ( arrow-map←fam-map
-      , (λ x → Arrow-map-path→ (~refl , ~refl ,
-                               (   ~∙-reflr _
-                                ~∙ ap sym ∘ ~∙-reflr _
-                                ~∙ λ _ → sym-sym)))
-      , section-fam-arr) where
-  section-fam-arr
-    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-        {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-      → fam-map←arrow-map ∘ arrow-map←fam-map {f = f} {g = g} ~ id
-  section-fam-arr {f = f} {g = g} (b , t)
-    = Σ-path→ (refl ,
-        (funext→ (λ a → funext→
-          (λ where (x , refl) → Σ-path→ (refl , (∙-reflr _ ∙ sym-sym))))))
-
-Cart-fam-map←cart-arrow-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-    → Σ (Arrow-map f g) is-cartesian
-    → Cart-fam-map (fibre-fam f) (fibre-fam g)
-Cart-fam-map←cart-arrow-map
-  = Cart-fam-map←is-cartesian ∘ map-Σ fam-map←arrow-map λ _ → id
-
-Cart-fam-map≃cart-arrow-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {f : A → B} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-    → Σ (Arrow-map f g) is-cartesian
-    ≃ Cart-fam-map (fibre-fam f) (fibre-fam g)
-Cart-fam-map≃cart-arrow-map = mk≃ Cart-fam-map←cart-arrow-map
-  (is-equiv-∘
-    Cart-fam-map←is-cartesian-is-equiv
-    (map-Σ-is-equiv
-      fam-map←arrow-map-is-equiv
-      λ _ → id-is-equiv))
+  fam-map←arrow-map-is-equiv : is-equiv fam-map←arrow-map
+  fam-map←arrow-map-is-equiv
+    = is-equiv←qinv
+        ( arrow-map←fam-map
+        , (λ x → Arrow-map-path→ (~refl , ~refl ,
+                                 (  ∙h-reflr _
+                                 ∙h (ap sym ∘ ∙h-reflr _)
+                                 ∙h (λ _ → sym-sym))))
+        , section-fam-arr) where
+    section-fam-arr
+      : fam-map←arrow-map ∘ arrow-map←fam-map ~ id
+    section-fam-arr (b , t)
+      = Σ-path→ (refl ,
+          (funext→ (λ a → funext→
+            (λ where (x , refl) → Σ-path→ (refl , (∙-reflr _ ∙ sym-sym))))))
 }
 }
 
@@ -1173,5 +691,27 @@ str-ArrFam-is-equiv = is-equiv←qinv
             , ~refl
             , λ a → Σ-path-ap-fst)})
   , ~refl)
+}
+}
+
+\subtree[stt-00RQ]{
+\title{The type of morphisms into a terminal projection is equivalent to the type of maps of domains}
+\taxon{Lemma}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\agda{
+arrow-map-to-top-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {f : A → B}
+    → is-equiv (λ (F : Arrow-map f (!: X)) → Arrow-map.top F)
+arrow-map-to-top-is-equiv =
+  is-equiv←qinv
+    ( (λ t → mk-amap t (λ _ → tt) ~refl)
+    , (λ (mk-amap t b H)
+       → Arrow-map-path→
+           ( ~refl
+           , (λ y → is-prop←is-single 𝟙-is-singleton _ _)
+           , (λ x → is-prop←is-single (＝-singleton←is-single 𝟙-is-singleton _ _) _ _)))
+    , ~refl)
 }
 }

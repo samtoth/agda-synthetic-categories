@@ -5,22 +5,23 @@
 \import{stt-macros}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Categories.CovariantClosure
-         {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
-open is-distributive I-distr
-
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I I-distr
+open import Algebra.Lattice.Instances.Polynomial hiding (L[x]; Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
@@ -30,15 +31,17 @@ open import Modalities.Instances.Truncation
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.CartesianSquares
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open notation
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Simplicial Δ¹ I
-open import Synthetic.Categories.Precategories Δ¹ I I-distr
-open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
-open import Synthetic.Categories.ContravariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+}
 }
 
 \subtree[stt-00FU]{
@@ -54,7 +57,7 @@ covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
 
 is-covariant-is-Δ¹-relative
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant P ⇔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
+    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
 is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
   = covariant-base-change {P = P} f Pc
 is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
@@ -91,7 +94,7 @@ opaque
       → is-covariant B → is-covariant (uncurry C)
       → is-covariant (λ a → Σ (B a) (C a))
   Σ-is-covariant {A = A} {B} {C} Bc Cc
-    = is-covariant⇔is-left-fibration _ .snd is-left where
+    = is-covariant↔is-left-fibration _ .snd is-left where
 
     is-left : is-left-fibration (fst {B = λ a → Σ (B a) (C a)})
     is-left
@@ -146,10 +149,10 @@ opaque
       → is-covariant B
       → is-covariant (λ a → x a ＝ y a)
   ＝-is-covariant {A = A} {B} x y Bc
-    = is-covariant⇔is-left-fibration _ .snd lf where
+    = is-covariant↔is-left-fibration _ .snd lf where
     is-left : is-left-fibration {A = A} {B = Σ A B} (λ a → a , y a)
     is-left = right-orthogonal-left-cancel (point i0)
-                (is-covariant⇔is-left-fibration _ .fst Bc)
+                (is-covariant↔is-left-fibration _ .fst Bc)
                 (point i0 ⊥id)
 
     pb : Arrow-map (fst: λ a → x a ＝ y a) {D = Σ A B} (λ a → a , y a)
@@ -236,12 +239,12 @@ module _
       : ∀ (h : F (σ i0) → G (σ i0))
         → Extᵈ (point i0) (G^F ∘ σ) (point h)
         ≃ Extᵈ (transposed-left-map σ) (G ∘ σ ∘ fst) h
-    transpose-ext-exponentials h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
+    transpose-ext-exponentials h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙e funext≃
 
     transposed-left-map-is-pb
       : Arrow-equiv
           (transposed-left-map σ)
-          (base-change-arrow (fst: F ∘ σ) (point i0))
+          (base-change-arrow (fst: (F ∘ σ)) (point i0))
     transposed-left-map-is-pb .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
     transposed-left-map-is-pb .fst .Arrow-Π.bot = id
     transposed-left-map-is-pb .fst .Arrow-Π.comm = ~refl
@@ -255,12 +258,12 @@ module _
       : is-contravariant F → is-left-anodyne (transposed-left-map σ)
     transposed-left-map-is-left-anodyne rfib
       = is-anodyne←equiv
-          (base-change-arrow (fst: F ∘ σ) (point i0))
+          (base-change-arrow (fst: (F ∘ σ)) (point i0))
           (transposed-left-map σ)
           (inv-Arrow-equiv transposed-left-map-is-pb)
           (point i0)
           (base-change-left-anodyne
-                (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
+                (fst: (F ∘ σ)) (point i0) (is-self-anodyne (point i0))
                 (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
 
   cov^contrav-is-covariant
@@ -273,7 +276,7 @@ module _
                 (unique-extensions←are-orthogonal-fam {P = G}
                   (are-orthogonal-fam←are-orthogonal-fst
                     (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
-                      (is-covariant⇔is-left-fibration G .fst Gcov)))
+                      (is-covariant↔is-left-fibration G .fst Gcov)))
                   (mk-afmap (σ ∘ fst) (h tt)))})
 }
 }

@@ -1,0 +1,374 @@
+\title{Split epimorphisms}
+\author{fredrikbakke}
+\date{2026-04-30}
+\taxon{Module}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.SplitEpimorphisms
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (L[x]; Δ²)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.CanonicalPushouts
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
+open import Synthetic.Categories.SplitMonomorphisms Δ¹ I
+}
+}
+
+\subtree[stt-00QK]{
+\title{Split epimorphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\p{
+A \em{split epimorphism} is a morphism equipped with a retraction.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  split-epi-witness
+    : {a b : A} → Hom A a b → Type (𝓘 ⊔ 𝓤)
+  split-epi-witness {a} {b} f
+    = Σ[ s ∶ Hom A b a ] Hom2 f s (idH b)
+
+  SplitEpi
+    : A → A → Type (𝓘 ⊔ 𝓤)
+  SplitEpi a b = Σ[ f ∶ Hom A a b ] split-epi-witness f
+
+  SplitEpi-fwd
+    : {a b : A} → SplitEpi a b → Hom A a b
+  SplitEpi-fwd = fst
+
+  SplitEpi-sec
+    : {a b : A} → SplitEpi a b → Hom A b a
+  SplitEpi-sec = fst ∘ snd
+
+  SplitEpi-triangle
+    : {a b : A}
+    → (f : SplitEpi a b)
+    → Hom2 (SplitEpi-fwd f) (SplitEpi-sec f) (idH b)
+  SplitEpi-triangle = snd ∘ snd
+}
+}
+
+\subtree[stt-00QU]{
+\title{The total space of split epimorphisms}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-13}
+
+\agda{
+TotalSplitEpi
+  : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+TotalSplitEpi A = Σ[ a ∶ A ] Σ[ b ∶ A ] SplitEpi a b
+
+TotalSplitEpi-fwd-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → TotalSplitEpi A
+  → (Δ¹ → A)
+TotalSplitEpi-fwd-arr (_ , _ , f , _ , _) = f .Homᵈ.hom
+
+TotalSplitEpi-sec-arr
+  : ∀ {𝓤} {A : Type 𝓤}
+  → TotalSplitEpi A
+  → (Δ¹ → A)
+TotalSplitEpi-sec-arr (_ , _ , _ , r , _) = r .Homᵈ.hom
+}
+}
+
+\subtree[stt-00QA]{
+\title{Characterising equality of split epimorphisms}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b : A} where
+
+  SplitEpi-Path
+    : SplitEpi a b → SplitEpi a b → Type (𝓘 ⊔ 𝓤)
+  SplitEpi-Path f g
+    = Σ[ fwd＝ ∶ SplitEpi-fwd f ＝ SplitEpi-fwd g ]
+      Σ[ sec＝ ∶ SplitEpi-sec f ＝ SplitEpi-sec g ]
+        Idᵈ (ap₂ (λ fwd sec → Hom2 fwd sec (idH b)) fwd＝ sec＝)
+          (SplitEpi-triangle f)
+          (SplitEpi-triangle g)
+
+  SplitEpi-path→
+    : {f g : SplitEpi a b}
+    → SplitEpi-Path f g → f ＝ g
+  SplitEpi-path→ (refl , refl , refl)
+    = refl
+
+  SplitEpi-path←
+    : {f g : SplitEpi a b}
+    → f ＝ g → SplitEpi-Path f g
+  SplitEpi-path← refl = (refl , refl , refl)
+
+  SplitEpi-path→-is-equiv
+    :  {f g : SplitEpi a b}
+    → is-equiv (SplitEpi-path→ {f} {g})
+  SplitEpi-path→-is-equiv {f} {g} = mk-eqv qinv coh
+    where
+    qinv : quasi-inv (SplitEpi-path→ {f} {g})
+    qinv .fst = SplitEpi-path←
+    qinv .snd .fst (refl , refl , refl) = refl
+    qinv .snd .snd refl = refl
+
+    coh : qinv-coh qinv
+    coh (refl , refl , refl) = refl
+
+  SplitEpi-path
+    : {f g : SplitEpi a b}
+    → SplitEpi-Path f g ≃ (f ＝ g)
+  SplitEpi-path
+    = mk≃ SplitEpi-path→ SplitEpi-path→-is-equiv
+}
+}
+
+\subtree[stt-00R7]{
+\title{Transporting split epimorphisms along endpoint paths}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {a b a' b' : A} where
+
+  adjust-split-epi-witness
+    : (p : a ＝ a') (q : b ＝ b')
+    → {f : Hom A a b}
+    → split-epi-witness f
+    → split-epi-witness (adjust-hom p q f)
+  adjust-split-epi-witness p q {f} (s , ε)
+    = (s' , ε')
+    where
+    s' : Hom A b' a'
+    s' = adjust-hom q p s
+    ε' : Hom2 (adjust-hom p q f) s' (idH _)
+    ε' = tr (Hom2 (adjust-hom p q f) s') (sym (adjust-idH q)) (adjust-Hom2 q p q ε)
+
+  adjust-SplitEpi
+    : (p : a ＝ a') (q : b ＝ b')
+    → SplitEpi a b
+    → SplitEpi a' b'
+  adjust-SplitEpi p q (f , f-sepi)
+    = (adjust-hom p q f , adjust-split-epi-witness p q f-sepi)
+}
+}
+
+\subtree[stt-00QM]{
+\title{Identity split epimorphisms}
+\author{fredrikbakke}
+\taxon{Construction}
+
+\agda{
+idH-split-epi-witness
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → split-epi-witness (idH a)
+idH-split-epi-witness a = (idH a , idH-Hom2 a)
+
+id-SplitEpi
+  : ∀ {𝓤} {A : Type 𝓤}
+  → (a : A)
+  → SplitEpi a a
+id-SplitEpi a = (idH a , idH-split-epi-witness a)
+
+SplitEpi←Id
+  : ∀ {𝓤} {A : Type 𝓤}
+  → {a b : A}
+  → (a ＝ b)
+  → SplitEpi a b
+SplitEpi←Id refl = id-SplitEpi _
+}
+}
+
+\subtree[stt-00QN]{
+\title{Composition of split epimorphisms}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+Split epimorphisms in a Segal type are closed under composition.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  split-epi-witness≃eq
+    : {a b : A} {f : Hom A a b}
+    → split-epi-witness f
+    ≃ Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+  split-epi-witness≃eq = Σ-snd-≃ λ s → Hom2≃∘= 𝐴
+
+  split-epi-witness-eq
+    : {a b : A} {f : Hom A a b}
+    → split-epi-witness f
+    → Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+  split-epi-witness-eq = _≃_.fwd split-epi-witness≃eq
+
+  split-epi-witness←eq
+    : {a b : A} {f : Hom A a b}
+    → Σ[ s ∶ Hom A b a ] (f ∘[ 𝐴 ] s ＝ idH b)
+    → split-epi-witness f
+  split-epi-witness←eq = _≃_.bwd split-epi-witness≃eq
+
+  ∘-split-epi-witness
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → split-epi-witness g
+    → split-epi-witness f
+    → split-epi-witness (g ∘[ 𝐴 ] f)
+  ∘-split-epi-witness {g = g} {f} (g⁻¹ , ηg) (f⁻¹ , ηf)
+    = split-epi-witness←eq
+        ( ( f⁻¹ ∘[ 𝐴 ] g⁻¹)
+        , ( ∘[ 𝐴 ]-assoc
+          ∙ ap (g ∘[ 𝐴 ]_) (sym ∘[ 𝐴 ]-assoc)
+          ∙ ap (λ q → g ∘[ 𝐴 ] (q ∘[ 𝐴 ] g⁻¹))
+               (snd (split-epi-witness-eq (f⁻¹ , ηf)))
+          ∙ ap (g ∘[ 𝐴 ]_) ∘[ 𝐴 ]-right-unit
+          ∙ snd (split-epi-witness-eq (g⁻¹ , ηg))))
+
+  comp-SplitEpi
+    : {a b c : A} → SplitEpi b c → SplitEpi a b → SplitEpi a c
+  comp-SplitEpi (g , g-sepi) (f , f-sepi)
+    = (g ∘[ 𝐴 ] f , ∘-split-epi-witness g-sepi f-sepi)
+}
+}
+
+\subtree[stt-00Q8]{
+\title{Functorial action on split epimorphisms}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-01}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (F : A → B)
+  where
+
+  ap-split-epi-witness
+    : {a b : A} {f : Hom A a b}
+    → split-epi-witness f
+    → split-epi-witness (ap-hom F f)
+  ap-split-epi-witness {f = f} (s , η)
+    = (ap-hom F s , ap-hom2 F f s (idH _) η)
+
+  ap-SplitEpi
+    : {a b : A}
+    → SplitEpi a b
+    → SplitEpi (F a) (F b)
+  ap-SplitEpi (f , f-sepi)
+    = (ap-hom F f , ap-split-epi-witness f-sepi)
+}
+
+\p{The action preserves identities.}
+
+\agda{
+  ap-idH-split-epi-witness
+    : (a : A)
+    → split-epi-witness (ap-hom F (idH a))
+  ap-idH-split-epi-witness a
+    = ap-split-epi-witness (idH-split-epi-witness a)
+
+  ap-id-SplitEpi
+    : (a : A)
+    → SplitEpi (F a) (F a)
+  ap-id-SplitEpi a
+    = ap-SplitEpi (id-SplitEpi a)
+
+  ap-id-SplitEpi-fwd
+    : (a : A)
+    → SplitEpi-fwd (ap-id-SplitEpi a) ＝ SplitEpi-fwd (id-SplitEpi (F a))
+  ap-id-SplitEpi-fwd a = refl
+
+  ap-id-SplitEpi-sec
+    : (a : A)
+    → SplitEpi-sec (ap-id-SplitEpi a) ＝ SplitEpi-sec (id-SplitEpi (F a))
+  ap-id-SplitEpi-sec a = refl
+}
+
+\p{The action preserves composites.}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
+  (𝐴 : is-segal A)
+  (𝐵 : is-segal B)
+  (F : A → B)
+  where
+
+  ap-∘-split-epi-witness
+    : {a b c : A}
+    → {g : Hom A b c}
+    → {f : Hom A a b}
+    → split-epi-witness g
+    → split-epi-witness f
+    → split-epi-witness (ap-hom F (g ∘[ 𝐴 ] f))
+  ap-∘-split-epi-witness g-sepi f-sepi
+    = ap-split-epi-witness F (∘-split-epi-witness 𝐴 g-sepi f-sepi)
+
+  ap-comp-SplitEpi
+    : {a b c : A}
+    → SplitEpi b c
+    → SplitEpi a b
+    → SplitEpi (F a) (F c)
+  ap-comp-SplitEpi g f
+    = ap-SplitEpi F (comp-SplitEpi 𝐴 g f)
+
+  ap-comp-SplitEpi-fwd
+    : {a b c : A}
+    → (g : SplitEpi b c)
+    → (f : SplitEpi a b)
+    → SplitEpi-fwd
+        (ap-comp-SplitEpi g f)
+    ＝ SplitEpi-fwd
+        (comp-SplitEpi 𝐵 (ap-SplitEpi F g) (ap-SplitEpi F f))
+  ap-comp-SplitEpi-fwd (g , g-sepi) (f , f-sepi)
+    = unique-composite 𝐵 (ap-hom F g) (ap-hom F f)
+        (ap-hom F (g ∘[ 𝐴 ] f))
+        (ap-hom2 F g f (g ∘[ 𝐴 ] f) ∘[ 𝐴 ]-is-composite)
+
+  ap-comp-SplitEpi-sec
+    : {a b c : A}
+    → (g : SplitEpi b c)
+    → (f : SplitEpi a b)
+    → SplitEpi-sec (ap-comp-SplitEpi g f)
+    ＝ SplitEpi-sec (comp-SplitEpi 𝐵 (ap-SplitEpi F g) (ap-SplitEpi F f))
+  ap-comp-SplitEpi-sec (g , (g⁻¹ , ηg)) (f , (f⁻¹ , ηf))
+    = unique-composite 𝐵 (ap-hom F f⁻¹) (ap-hom F g⁻¹)
+        (ap-hom F (f⁻¹ ∘[ 𝐴 ] g⁻¹))
+        (ap-hom2 F f⁻¹ g⁻¹ (f⁻¹ ∘[ 𝐴 ] g⁻¹) ∘[ 𝐴 ]-is-composite)
+}
+\p{
+It remains to show that the action preserves composition up to equality of split
+monomorphisms.
+}
+}

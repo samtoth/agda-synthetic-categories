@@ -1,0 +1,136 @@
+\date{2025-05-21}
+\title{Spines}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Spines {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (L[x]; Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Ergonomics.Extensionality
+
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Truncation
+
+open import Core.CanonicalPushouts
+open import Core.Joins
+open import Core.FlatteningPushouts
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
+open import Core.BipointedWedgeSums
+open import Core.WedgeSums
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+}
+}
+
+\subtree[stt-00E4]{
+\title{Spines}
+\taxon{Definition}
+\author{samueltoth}
+\date{2026-01-24}
+
+\p{
+We construct the #{n}-spine, written #{\II_n}, as the result of gluing
+#{n} copies of the interval end-to-end. By convention, #{\II_0} is the unit type,
+and #{\II_1} is #{\Delta^1}. We also remark that the 2-spine #{\II_2} is
+definitionally equal to the bespoke definition given for the [inner horn](stt-00AD).
+}
+
+\agda{
+Δ¹∗∗ : Type∗∗ 𝓘
+Δ¹∗∗ = mk-type∗∗ Δ¹ i0 i1
+
+Spine∗∗ : ℕ → Type∗∗ 𝓘
+Spine∗∗ 0 = mk-type∗∗ (ULift 𝓘 𝟙) (mk-lift tt) (mk-lift tt)
+Spine∗∗ 1 = Δ¹∗∗
+Spine∗∗ (suc (suc n)) = Wedge∗∗ (Spine∗∗ (suc n)) Δ¹∗∗
+
+Spine : ℕ → Type 𝓘
+Spine n = Type∗∗.Carrier (Spine∗∗ n)
+}
+
+\p{We show that there is an inclusion of the spine into the #{n}-cube, and
+that this inclusion factors through #{\Delta^n}}
+
+\agda{
+Spine-is-0-truncated : ∀ {n} → is-truncated 0 (Spine n)
+Spine-is-0-truncated {0} = trunc!
+Spine-is-0-truncated {1} = trunc!
+Spine-is-0-truncated {suc (suc n)}
+  = Wedge-is-0-truncated (Spine-is-0-truncated {suc n}) carrier-is-0-truncated
+
+Spine-is-set : ∀ {n} → is-set (Spine n)
+Spine-is-set {n} = is-set←is-truncated (Spine-is-0-truncated {n})
+
+Spine-incl-□ : ∀ {n} → Spine n → □^ n
+Spine-incl-□ {0} = id
+Spine-incl-□ {1} = id
+Spine-incl-□ {suc (suc n)} = (Spine-incl-□ ⊗1 Δ¹) ∘ Wedge-embed
+
+Spine-incl : ∀ {n} → Spine n → Δ^ n
+Spine-top : ∀ {n} → Δ-path (Spine-incl (Type∗∗.tgt (Spine∗∗ n))) (Δ-1 {n})
+
+Spine-incl {0} s = ·
+Spine-incl {1} i = (· :≥: i)
+Spine-incl {suc (suc n)} = cogap
+  (mk-cocone
+    (λ s → Spine-incl s :≥: i0)
+    (λ i → Δ-1 :≥: i)
+    λ _ → Δ-ext (Spine-top :≥: refl))
+
+Spine-top {0} = ·
+Spine-top {1} = · :≥: refl
+Spine-top {suc (suc n)} = Δ-refl :≥: refl :≥: refl
+
+Spine-bot : ∀ {n} → Δ-path (Spine-incl (Type∗∗.src (Spine∗∗ n))) (Δ-0 {n})
+Spine-bot {0} = ·
+Spine-bot {1} = · :≥: refl
+Spine-bot {2} = · :≥: refl :≥: refl
+Spine-bot {suc (suc (suc n))} = Spine-bot :≥: refl :≥: refl
+
+Spine-incl∗∗ : ∀ n → map∗∗ (Spine∗∗ n) (Δ∗∗ n)
+Spine-incl∗∗ n .map∗∗.hom = Spine-incl
+Spine-incl∗∗ n .map∗∗.pres-src = Δ-ext Spine-bot
+Spine-incl∗∗ n .map∗∗.pres-tgt = Δ-ext Spine-top
+}
+}
+
+\subtree[stt-00RX]{
+\title{The 0- and 1-spine inclusions are equivalences}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-21}
+
+\agda{
+0-Spine-incl-is-equiv : is-equiv (Spine-incl {0})
+0-Spine-incl-is-equiv = mk-eqv
+  ((λ _ → mk-lift tt) , ~refl , (λ where · → refl))
+  (~refl)
+
+1-Spine-incl-is-equiv : is-equiv (Spine-incl {1})
+1-Spine-incl-is-equiv = mk-eqv
+  ( (λ where (· :≥: i) → i)
+  , ~refl
+  , (λ where (· :≥: i) → Δ-ext (· :≥: refl)))
+  ( λ _ → Δ-is-set _ _ _ _)
+}
+}

@@ -7,14 +7,19 @@
 \agda{
 module Core.CanonicalSequentialColimits where
 
-open import Foundations.Prelude
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 open import Core.CanonicalPushouts
 open import Core.Coequalisers
 open import Core.SeqMapHomotopy
 
 open import Ergonomics.Marker
 open import Ergonomics.Extensionality
+}
 }
 
 \subtree[stt-008B]{
@@ -57,13 +62,13 @@ glue-n
   : ∀ {𝓤} (S : Cotower 𝓤) n
     → ι-cotower S {0} ~ ι-cotower S {n} ∘ Cotower.incrℕ S n
 glue-n S zero = ~refl
-glue-n S (suc n) = glue-n S n ~∙ glue-suc S ▸ Cotower.incrℕ S n
+glue-n S (suc n) = glue-n S n ∙h glue-suc S ▸ Cotower.incrℕ S n
 
 glue-+
   : ∀ {𝓤} (S : Cotower 𝓤) {n} m
     → ι-cotower S {n} ~ ι-cotower S {n +ℕ m} ∘ Cotower.incr-+ S m
 glue-+ S zero = ~refl
-glue-+ S (suc m) = glue-+ S m ~∙ glue-suc S ▸ Cotower.incr-+ S m
+glue-+ S (suc m) = glue-+ S m ∙h glue-suc S ▸ Cotower.incr-+ S m
 }
 }
 
@@ -84,7 +89,7 @@ seq-cocone≃cofork
     → Cofork id (Cotower.incrΣ S) Q
     ≃ Seq-cocone S Q
 seq-cocone≃cofork {_} {_} {S} {Q}
-  = mk≃ map (is-equiv←qinv map-qinv) where
+  = mk≃ map (mk-eqv map-qinv map-coh) where
     open Cotower S
 
     map : Cofork id incrΣ Q → Seq-cocone S Q
@@ -95,6 +100,9 @@ seq-cocone≃cofork {_} {_} {S} {Q}
       = (λ (_ , a) → ι a) , (λ (_ , a) → comm a)
     map-qinv .snd .fst = ~refl
     map-qinv .snd .snd = ~refl
+
+    map-coh : qinv-coh map-qinv
+    map-coh = ~refl
 }
 
 \p{As a consequence, we then have that the canonical sequential colimit
@@ -123,7 +131,7 @@ seq-colim-apβ CC a = let cocone = (cocone←cofork (_≃_.bwd seq-cocone≃cofo
   in ap (seq-colim-rec CC) (sym (glue (inl a)) ∙ glue (inr a))
                           ＝⟨ ap-∙ (seq-colim-rec CC) (sym (glue (inl a))) (glue (inr a)) ⟩
      ap (seq-colim-rec CC) (sym (glue (inl a))) ∙ ap (seq-colim-rec CC) (glue (inr a))
-                          ＝⟨ ap₂ _∙_ (ap-sym (seq-colim-rec CC) _ ∙ ap sym (pushout-rec-apβ (inl a))) (pushout-rec-apβ (inr a)) ⟩
+                          ＝⟨ ap₂ (_∙_) (ap-sym (seq-colim-rec CC) _ ∙ ap sym (pushout-rec-apβ (inl a))) (pushout-rec-apβ (inr a)) ⟩
      sym (Cocone.filler cocone (inl a)) ∙ Cocone.filler cocone (inr a)  ＝⟨⟩
      CC .Seq-cocone.comm (a .snd) ∎
 }
@@ -182,7 +190,7 @@ seq-colimit-map {S = S} {S'} F = seq-colim-rec cc module seq-colim-map where
 
   cc : Seq-cocone _ (Seq-colimit _)
   cc .Seq-cocone.ι = ι-cotower S' ∘ map
-  cc .Seq-cocone.comm = glue-suc S' ▸ map ~∙ ι-cotower S' ◂ comm
+  cc .Seq-cocone.comm = glue-suc S' ▸ map ∙h ι-cotower S' ◂ comm
 
 ap-seq-colimit-map-glue-suc
   : ∀ {𝓤 𝓥} {S : Cotower 𝓤} {S' : Cotower 𝓥}
@@ -227,12 +235,12 @@ seq-colimit-map-id {S = S} = seq-colimit-rec~ H where
   H .fst = ~refl
   H .snd {n}
     = {- (seq-colimit-map id-cotower-map) ◂ (seq-incr S)
-          ~∙ ~refl ▸ incr S        ~⟨⟩ -}
-      (seq-colimit-map id-cotower-map) ◂ (glue-suc S) ~∙ ~refl
-                          ~⟨ ~∙-reflr _ ⟩
+          ∙h ~refl ▸ incr S        ~⟨⟩ -}
+      (seq-colimit-map id-cotower-map) ◂ (glue-suc S) ∙h ~refl
+                          ~⟨ ∙h-reflr _ ⟩
       (seq-colimit-map id-cotower-map) ◂ (glue-suc S)
                           ~⟨ ap-seq-colimit-map-glue-suc id-cotower-map ⟩
-      glue-suc S ~∙ ~refl ~⟨ ~∙-reflr _ ⟩
+      glue-suc S ∙h ~refl ~⟨ ∙h-reflr _ ⟩
       glue-suc S          ~⟨ sym ∘ ap-id ∘ glue-suc S ⟩
       id ◂ glue-suc S     ~∎
 
@@ -337,11 +345,11 @@ module _ {𝓤 𝓥} {S : Cotower 𝓤} {S' : Cotower 𝓥}
     qinv : quasi-inv (seq-colimit-map F)
     qinv .fst = seq-colimit-map Fbwd
     qinv .snd .fst =  happly (seq-colimit-map∘ Fbwd F)
-                  ~∙ seq-colimit-map~ (inverse-seq-map-section Feq)
-                  ~∙ happly seq-colimit-map-id
+                  ∙h seq-colimit-map~ (inverse-seq-map-section Feq)
+                  ∙h happly seq-colimit-map-id
     qinv .snd .snd = happly (seq-colimit-map∘ F Fbwd)
-                  ~∙ seq-colimit-map~ (inverse-seq-map-retraction {F = F} Feq)
-                  ~∙ happly seq-colimit-map-id
+                  ∙h seq-colimit-map~ (inverse-seq-map-retraction {F = F} Feq)
+                  ∙h happly seq-colimit-map-id
 }
 }
 

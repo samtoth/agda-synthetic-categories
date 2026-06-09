@@ -11,14 +11,17 @@ open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Categories.CovariantFamilies
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   where
 
 open import Synthetic.Categories.Groupoids Δ¹ I public
 
 open Lattice I renaming (0l to i0; 1l to i1)
 open import Algebra.Lattice.Instances.Polynomial hiding (L[x]; Δ²)
-private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+private
+  Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+  module 𝕀[x] = Lattice (Algebra.Lattice.Instances.Polynomial.L[x] I I-distr)
+
 
 open import Axioms.UF
 }
@@ -441,6 +444,39 @@ module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where
 
     coe-cov-0≤1 : (p : i0 ≤ i1) → coe-cov p ＝ tr-cov bc id
     coe-cov-0≤1 p = ap (tr-cov-hom bc) (Δ¹-hom-0≤1 p)
+}
+}
+
+\subtree[tot-RYYI]{
+\title{Covariant transport for inequalities in #{𝕀}-algebras}
+\taxon{Lemma}
+
+\agda{
+module CoeIAlg
+  {𝓤} {A : Type 𝓤} (L : Lattice A)
+  (ι : Δ¹ → A) (ι-alg : is-lattice-algebra I L ι)
+  (let module L = Lattice L)
+  where
+
+  hom←≤ : ∀ {i j} → i L.≤ j → Hom A i j
+  hom←≤ {x}{y} p .Homᵈ.hom  i = (ι i L.∨ x) L.∧ (x L.∨ y)
+  hom←≤ {x}{y} p .Homᵈ.hom0
+    = ap₂ (L._∧_)
+          (ap (L._∨ x) (ι-alg .is-lattice-hom.pres-0) ∙ L.∨-comm ∙ L.0-bottom)
+          (L.≤-max p)
+    ∙ p
+  hom←≤ {i} p .Homᵈ.hom1
+    = ap₂
+        (L._∧_)
+        (ap (L._∨ i) (ι-alg .is-lattice-hom.pres-1) ∙ L.∨-comm ∙ L.1-coinit)
+        (L.≤-max p)
+    ∙ L.∧-comm
+    ∙ L.1-top
+
+  module _ {𝓤} (B : A → Type 𝓤) (bc : is-covariant B) where
+
+    coe-cov-alg : {i j : A} → i L.≤ j → B i → B j
+    coe-cov-alg p = tr-cov-hom bc (hom←≤ p)
 }
 }
 

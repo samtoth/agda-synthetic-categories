@@ -73,14 +73,19 @@ open import Core.UniversalFibrations
 
 open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
-open import Algebra.Lattice.Instances.Polynomial hiding (L[x]; Δ²)
-private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+open import Algebra.Lattice.Instances.Polynomial
+  hiding (Δ²; L[x])
+
+private
+  Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+  𝕀[x] = Algebra.Lattice.Instances.Polynomial.L[x] I I-distr
+  module 𝕀[x] = Lattice 𝕀[x]
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
-open import Synthetic.Categories.CovariantFamilies Δ¹ I
-open import Synthetic.Categories.CovariantClosure Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 }
 
@@ -584,6 +589,19 @@ Cov-Nat-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
                 (is-fibrewise-equiv←is-total-equiv
                   (is-fibrewise-equiv←is-total-equiv
                     part1 f) g) α
+
+
+point-Δ² : Fin 3 → Δ²
+point-Δ² fzero               = (i0 , i0)
+point-Δ² (fsuc fzero)        = (i1 , i0)
+point-Δ² (fsuc (fsuc fzero)) = (i1 , i1)
+
+Cov-Nat-Δ²-is-equiv
+  : ∀ {@♭ 𝓤} (F G : Δ² → Space 𝓤)
+      (α : ∀ i → F i .Space.Carrier → G i .Space.Carrier)
+    → (∀ x → is-equiv (α (point-Δ² x)))
+    → is-fibrewise-equiv α
+Cov-Nat-Δ²-is-equiv = {!!}
 }
 }
 
@@ -626,6 +644,17 @@ coe-𝓢-id
   : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤) {i} (p : i ≤ i)
     → coe-𝓢 f p ~ id
 coe-𝓢-id f = coe-cov-id (Space.Carrier ∘ f) (UFib-is-fib f)
+
+
+coe-𝓢-Δ²
+  : ∀ {@♭ 𝓤} (f : Δ² → Space 𝓤) {i j} → i 𝕀[x].≤ j
+    → Space.Carrier (f i) → Space.Carrier (f j)
+coe-𝓢-Δ² f
+  = CoeIAlg.coe-cov-alg 𝕀[x] ι-const
+      (L[x]-is-lattice-algebra I I-distr)
+      (Space.Carrier ∘ f)
+      (UFib-is-fib f)
+
 }
 
 \p{Now we give an inverse map:}
@@ -781,6 +810,19 @@ the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
     : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
       → {x y : Gl A B f i .Carrier} → Gl-path {A = A} {B} {f} i x y → x ＝ y
   Gl-path→ {A = A} {B} i = Id←IdS ⦃ IdS-Gl {A = A} {B} i ⦄
+
+  opaque
+    adj-Gl
+      : ∀ {@♭ 𝓤} {A B C : Space (𝓘 ⊔ 𝓤)}
+        → (e : A .Carrier ≃ B .Carrier)
+        → {f : Carrier B → Carrier C}
+        → (i : Δ¹)
+        → Gl B C f i .Carrier ≃ Gl A C (f ∘ e ._≃_.fwd) i .Carrier
+    adj-Gl {_}{A}{B}{C} e{f} i = IdSJ {a = A}
+                               (λ ((B' , e)) →
+                                  (f : B' .Carrier → C .Carrier) →
+                                  Gl B' C f i .Carrier ≃ Gl A C (f ∘ e ._≃_.fwd) i .Carrier)
+                               (λ _ → id≃) e f
 }
 }
 }
@@ -934,19 +976,12 @@ module 𝓢-is-segal
         Gl (GlΔ²₀ i1) C ((G ∘ fst ∘ coe-𝓢 (Gl A B F) {i1}{i1} 1-top)) i
       ＝⟨ happly (ap (Gl _ C) (funext→ λ i' → ap (G ∘ fst) (coe-𝓢-id (Gl A B F) 1-top i'))) i ⟩
         Gl (GlΔ²₀ i1) C (G ∘ fst) i
-      ＝⟨ ap (λ x → Gl (x .fst) C (x .snd) i) {! Gl!} ⟩
+      ＝⟨ ext! (adj-Gl (Gl-1≃ A B F e⁻¹) i) ⟩
         Gl B C G i ∎
 
     GlΔ²-0≤2 : Δ¹ → Space (𝓘 ⊔ 𝓤)
     GlΔ²-0≤2 = GlΔ² ∘ δ₁²
 
-    -- GlΔ²-0≤2-is-GF : GlΔ²-0≤2 ~ Gl A C (G ∘ F)
-    -- GlΔ²-0≤2-is-GF i
-    --   = GlΔ²-0≤2 i
-    --   ＝⟨⟩
-    --     Gl (GlΔ²₀ i) C (G ∘ fst ∘ coe-𝓢 (Gl A B F) {i} {i1} 1-top) i
-    --   ＝⟨ {!!} ⟩
-    --     {!!} ∎
   SpaceΔ²Σ : ∀ (@♭ 𝓤) → Type (lsuc (𝓘 ⊔ 𝓤))
   SpaceΔ²Σ 𝓤 = Σ[ A B C ∶ Space 𝓤 ]
                Σ[ F ∶ (A .Carrier → B .Carrier) ]
@@ -983,17 +1018,52 @@ module 𝓢-is-segal
     = ( GlΔ²-0≃ A B C F G
       , GlΔ²-1≃ A B C F G
       , GlΔ²-2≃ A B C F G
+
       , ( GlΔ²-1≃ A B C F G ._≃_.fwd ∘ tr-𝓢 (GlΔ²-0≤1 A B C F G)
         ~⟨ {!tr-Gl !}  ⟩
           (Gl-1≃ A B F ._≃_.fwd ∘ tr-𝓢 (Gl A B F) ∘ Gl-0≃ (GlΔ²₀ A B C F G i0) C _ ._≃_.fwd)
         ~⟨ {!!} ⟩
           F ∘ GlΔ²-0≃ A B C F G ._≃_.fwd ~∎)
-      , {!!})
+
+      , (GlΔ²-2≃ A B C F G ._≃_.fwd ∘ {!!}
+        ~⟨ {!!} ⟩
+          G ∘ GlΔ²-1≃ A B C F G ._≃_.fwd ~∎))
+
+  duaΔ²-retract→
+    : ∀ {@♭ 𝓤} (F : Δ² → Space (𝓘 ⊔ 𝓤)) (ij : Δ²)
+      → F ij .Carrier → GlΔ²Σ (duaΔ²Σ F) ij .Carrier
+  duaΔ²-retract→ F (i , j) x .fst = coe-𝓢-Δ² F (𝕀[x].1-top) x
+  duaΔ²-retract→ F (i , j) x .snd refl .fst .fst
+    = coe-𝓢 (F ∘ (_, i0)) (1-top {i})
+            (tr (Space.Carrier ∘ F) (Δ²-ext (refl , refl)) x)
+  duaΔ²-retract→ F (i , j) x .snd refl .fst .snd refl
+    = ( tr (Space.Carrier ∘ F) (Δ²-ext (refl , refl)) x
+      , sym (happly (coe-cov-0≤1 (Carrier ∘ F ∘ (_, i0)) (UFib-is-fib (F ∘ (_, i0))) 1-top )
+                                 (tr (Carrier ∘ F) (Δ²-ext (refl , refl)) x)))
+  duaΔ²-retract→ F (i , j) x .snd refl .snd = {!!}
+  -- (Cov-Nat-Δ²-is-equiv (GlΔ²Σ (duaΔ²Σ F)) F ? ?)
+
+  duaΔ²-retract-is-equiv
+    : ∀ {@♭ 𝓤} (F : Δ² → Space (𝓘 ⊔ 𝓤)) (ij : Δ²)
+      → is-equiv (duaΔ²-retract→ F ij)
+  duaΔ²-retract-is-equiv F
+    = Cov-Nat-Δ²-is-equiv
+        F
+        (GlΔ²Σ (duaΔ²Σ F))
+        (duaΔ²-retract→ F)
+        λ where
+          fzero  → {!!}
+          (fsuc fzero) → {!!}
+          (fsuc (fsuc fzero)) → {!!}
+
 
   duaΔ²-is-equiv : ∀ {@♭ 𝓤} → is-equiv (duaΔ²Σ {𝓘 ⊔ 𝓤})
   duaΔ²-is-equiv = is-equiv←qinv
     ( GlΔ²Σ
-    , (λ a → {!!})
+    , (λ F → funext→
+         (λ ij → ext!
+                   (mk≃ (duaΔ²-retract→ F ij)
+                        (duaΔ²-retract-is-equiv F ij) e⁻¹)))
     , (λ a → {!!}))
 }
 }

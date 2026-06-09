@@ -1,0 +1,167 @@
+\date{2026-05-27}
+\title{Polynomial endofunctors on types}
+\import{stt-macros}
+\taxon{Module}
+
+\agda{
+module Wild.PolynomialEndofunctors where
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.FibrewiseEquivalences
+open import Foundations.SigmaProperties
+open import Foundations.Unit
+open import Foundations.Singletons
+open import Foundations.Nat
+open import Foundations.Fin
+open import Foundations.Empty
+open import Foundations.Bool
+open import Foundations.Coproducts
+open import Foundations.Homotopy
+open import Foundations.TypeFamilies
+}
+
+\subtree[stt-00SU]{
+\taxon{Polynomial endofunctors}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\agda{
+𝑃 : (𝓤 𝓥 : Level) → Type (lsuc (𝓤 ⊔ 𝓥))
+𝑃 = Fam
+{-# NOINLINE 𝑃 #-}
+
+pattern _◃_ A B = (A , B)
+infix 3 _◃_
+
+poly : {𝓤 𝓥 : Level} (A : Type 𝓤) → (A → Type 𝓥) → 𝑃 𝓤 𝓥
+poly A B = A ◃ B
+
+syntax poly A (λ x → B) = [ x ∶ A ]◃ B
+}
+}
+
+\subtree[stt-00SV]{
+\taxon{Example}
+\title{Basic polynomial endofunctors}
+\author{fredrikbakke}
+
+\agda{
+𝟘𝑃 : 𝑃 lzero lzero
+𝟘𝑃 = ∅ ◃ ¡
+
+𝟙𝑃 : 𝑃 lzero lzero
+𝟙𝑃 = [ _ ∶ 𝟙 ]◃ ∅
+
+id𝑃 : 𝑃 lzero lzero
+id𝑃 = [ _ ∶ 𝟙 ]◃ 𝟙
+
+pair𝑃 : 𝑃 lzero lzero
+pair𝑃 = [ _ ∶ 𝟙 ]◃ Bool
+
+maybe𝑃 : 𝑃 lzero lzero
+maybe𝑃 = [ b ∶ Bool ]◃ (is-true b)
+
+list𝑃 : 𝑃 lzero lzero
+list𝑃 = [ n ∶ ℕ ]◃ Fin n
+
+𝕌𝑃 : (𝓤 : Level) → 𝑃 (lsuc 𝓤) 𝓤
+𝕌𝑃 𝓤 = [ X ∶ Type 𝓤 ]◃ X
+}
+}
+
+\subtree[stt-00T1]{
+\taxon{Definition}
+\title{Composition of polynomial endofunctors}
+\author{fredrikbakke}
+
+\agda{
+infixr 40 _∘𝑃_
+
+_∘𝑃_
+  : {𝓤1 𝓤2 𝓥1 𝓥2 : Level}
+  → 𝑃 𝓤1 𝓤2 → 𝑃 𝓥1 𝓥2 → 𝑃 (𝓤1 ⊔ 𝓤2 ⊔ 𝓥1) (𝓤2 ⊔ 𝓥2)
+(A ◃ B) ∘𝑃 (C ◃ D)
+  = [ (a , c) ∶ (Σ[ a ∶ A ] (B a → C)) ]◃ (Σ[ b ∶ B a ] D (c b))
+}
+}
+
+\subtree[stt-00T2]{
+\taxon{Proposition}
+\title{Unit and associativity laws for composition of polynomial endofunctors}
+\author{fredrikbakke}
+
+\agda{
+module _
+  {𝓤 𝓥 : Level}
+  (P@(A ◃ B) : 𝑃 𝓤 𝓥)
+  where
+
+  left-unit-∘𝑃-shape : (id𝑃 ∘𝑃 P) .fst ≃ A
+  left-unit-∘𝑃-shape
+    = mk≃
+      (λ x → x .snd tt)
+      (mk-eqv ((λ a → (tt , (λ _ → a))) , (~refl , ~refl)) ~refl)
+
+  left-unit-∘𝑃 : id𝑃 ∘𝑃 P ≃ᶠ P
+  left-unit-∘𝑃 =
+    (mk≃
+      (λ x → x .snd tt)
+      (mk-eqv ((λ a → (tt , (λ _ → a))) , (~refl , ~refl)) ~refl)
+    , λ _ → Σ-𝟙)
+
+  right-unit-∘𝑃-shape : (P ∘𝑃 id𝑃) .fst ≃ A
+  right-unit-∘𝑃-shape
+    = mk≃ fst (mk-eqv ((λ a → (a , !)) , (~refl , ~refl)) ~refl)
+
+  right-unit-∘𝑃 : P ∘𝑃 id𝑃 ≃ᶠ P
+  right-unit-∘𝑃 = (right-unit-∘𝑃-shape , λ _ → Σ-singleton (λ _ → 𝟙-is-singleton))
+
+module _
+  {𝓤1 𝓤2 𝓥1 𝓥2 𝓦1 𝓦2 : Level}
+  (P@(A ◃ B) : 𝑃 𝓤1 𝓤2)
+  (Q@(C ◃ D) : 𝑃 𝓥1 𝓥2)
+  (R@(E ◃ F) : 𝑃 𝓦1 𝓦2)
+  where
+
+  assoc-shape-∘𝑃
+    : ((P ∘𝑃 Q) ∘𝑃 R) .fst ≃ (P ∘𝑃 (Q ∘𝑃 R)) .fst
+  assoc-shape-∘𝑃 = mk≃
+    (λ ((x , y) , z) → (x , (λ b → (y b , (λ d → z (b , d))))))
+    (mk-eqv
+      ( (λ (x , y) → ((x , fst ∘ y) , (λ (b , d) → y b .snd d)))
+      , (~refl , ~refl))
+      ~refl)
+
+  assoc-∘𝑃 : (P ∘𝑃 Q) ∘𝑃 R ≃ᶠ P ∘𝑃 (Q ∘𝑃 R)
+  assoc-∘𝑃 = (assoc-shape-∘𝑃 , λ _ → Σ-assoc)
+}
+}
+
+\subtree[stt-00SW]{
+\taxon{Definition}
+\title{Products of polynomial endofunctors}
+\author{fredrikbakke}
+
+\agda{
+_×𝑃_
+  : {𝓤1 𝓤2 𝓥1 𝓥2 : Level}
+  → 𝑃 𝓤1 𝓤2 → 𝑃 𝓥1 𝓥2 → 𝑃 (𝓤1 ⊔ 𝓥1) (𝓤2 ⊔ 𝓥2)
+(A ◃ B) ×𝑃 (C ◃ D) = [ (a , c) ∶ A × C ]◃ (B a ⊎ D c)
+}
+}
+
+\subtree[stt-00SY]{
+\taxon{Definition}
+\title{Coproducts of polynomial endofunctors}
+\author{fredrikbakke}
+
+\agda{
+_⊎𝑃_ : {𝓤 𝓥 𝓦 : Level} → 𝑃 𝓤 𝓦 → 𝑃 𝓥 𝓦 → 𝑃 (𝓤 ⊔ 𝓥) 𝓦
+(A ◃ B) ⊎𝑃 (C ◃ D) = (A ⊎ C) ◃ ⊎[ B , D ]
+}
+}

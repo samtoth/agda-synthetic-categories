@@ -11,7 +11,7 @@ open import Foundations.Empty
 open import Algebra.Lattice
 
 module Synthetic.Categories.DirectedGlueing
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (non-triv : i1 ＝ i0 → ∅)
   where
@@ -37,16 +37,18 @@ private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
-open import Synthetic.Categories.CovariantFamilies Δ¹ I
-open import Synthetic.Categories.CovariantClosure Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 }
 
 \p{Define #{\textrm{Cov}(F,G)} to be the type of morphisms...}
 \agda{
-Cov
+Cov-map
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
-Cov {_}{𝓥}{B} F G = Σ[ α ∶ Hom (B → Type 𝓥) F G ] is-covariant (uncurry (α .Homᵈ.hom))
+Cov-map {_}{𝓥}{B} F G
+  = Σ[ α ∶ Hom (B → Type 𝓥) F G ]
+       is-covariant (uncurry (α .Homᵈ.hom))
 
 -- Cov-tr
 --   : ∀ {𝓤 𝓥} {B : Type 𝓤} {F : B → Type 𝓥} {G : B → Type 𝓥}
@@ -94,18 +96,18 @@ module _
         (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
       → is-covariant F → is-covariant G
       → is-covariant (Gl F G α)
-  Gl-is-covariant F G α Fc Gc
+  Gl-is-covariant {B = B} F G α Fc Gc
     = Σ-is-covariant
         {B = G ∘ fst}
         {C = λ bi a → (bi .snd ＝ i0) → fibre (α (bi .fst)) a}
         (covariant-base-change {P = G} (fst: λ _ → Δ¹) Gc)
-        {!!}
-
-        -- {! covariant-base-change {!!}
-        --   (hole1 {F = λ b → fibre (α b) {!!}} {!fibre-is-covariant!}) !}
-
-
--- hole1 {F = λ b → fibre (α (b .fst)) (b .snd)} ?
+        (covariant-base-change
+          {P = λ x → x .snd ＝ i0
+                   → fibre (α (x .fst .fst)) (x .fst .snd)}
+          (λ ((b , i) , g) → ((b , g) , i))
+          (hole1
+            (uncurry (λ b g → fibre (α b) g))
+            (fibre-is-covariant _ _ Fc Gc α)))
 }
 
 
@@ -155,9 +157,9 @@ IdS-Gl {f = f} i .Identity-system.IdS←Id-is-equiv a
   = fundamental-Id _ (Gl-path-is-torsorial {f = f} i a) _
 
 Gl-path→
-  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} {f : ∀ b → F b → G b} i
+  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} (f : ∀ b → F b → G b) i
     → {x y : Gl F G f i} → Gl-path {f = f} i x y → x ＝ y
-Gl-path→ {f = f} i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
+Gl-path→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
 }
 }
 
@@ -323,28 +325,46 @@ module _
     fr0 : ∀ b → quasi-inv (trΣ-retraction→ FF (b , i0))
     fr0 b .fst x = x .snd refl .fst
     fr0 b .snd .fst = ~refl
-    fr0 b .snd .snd a = Gl-path→ (b , i0)
-      ( happly ( coe-cov-0≤1 (F ∘ (b ,_)) {!!} 1-top) (fr0 b .fst a)
-               ∙ a .snd refl .snd
-      , J-set! _
-          ( refl
-          , mk-square
-              (sym'∙ (happly
-                       (coe-cov-0≤1 {!!} {!!} 1-top) (a .snd refl .fst))
-                       (a .snd refl .snd))))
+    fr0 b .snd .snd a
+      = Gl-path→ {B = B} {F ∘ (_, i0)} {F ∘ (_, i1)}
+                 (trΣ FF .snd .snd .fst)
+                 (b , i0)
+                 ( happly
+                      (coe-cov-0≤1
+                         (F ∘ (b ,_))
+                          (covariant-base-change {P = F} (b ,_) Fc)
+                          1-top)
+                     (fr0 b .fst a)
+                 ∙ a .snd refl .snd
+                 ,  J-set! _
+                      ( refl
+                      , mk-square
+                          (sym'∙ (happly
+                                   (coe-cov-0≤1
+                                     (F ∘ (b ,_))
+                                     (covariant-base-change {P = F} (b ,_) Fc)
+                                     1-top)
+                                   (a .snd refl .fst))
+                                 (a .snd refl .snd))))
 
     fr1 : ∀ b →  quasi-inv (trΣ-retraction→ FF (b , i1))
     fr1 b .fst x = x .fst
-    fr1 b .snd .fst x = coe-cov-id {!!} {!!} _ x
+    fr1 b .snd .fst x = coe-cov-id (λ a → F (b , a))
+                          (covariant-base-change {P = F} (λ i → (b , i)) Fc) _ x
     fr1 b .snd .snd (a , _)
       = Σ-path→
-          ( (coe-cov-id {!!} {!!} _ a)
+          ( (coe-cov-id
+               (λ i → F (b , i))
+               (covariant-base-change {P = F} (b ,_) Fc)
+               _
+               a)
           , funext→ (λ x → ¡ (non-triv x)))
 
   trΣ-is-equiv
     : is-equiv (trΣ {𝓤}{𝓥 ⊔ 𝓘}{B})
   trΣ-is-equiv = is-equiv←qinv
     ( trΣ-inv hole1
-    , (λ a → Σ-path→ (funext→ (λ i → ua (trΣ-retraction a i e⁻¹)) , (is-covariant-is-prop (a .fst) _ _)))
+    , (λ a → Σ-path→ ( funext→ (λ i → ua (trΣ-retraction a i e⁻¹))
+                     , is-covariant-is-prop (a .fst) _ _))
     , λ a → ext! (trΣ-section a))
 }

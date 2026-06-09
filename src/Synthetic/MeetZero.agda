@@ -114,14 +114,10 @@ interp-1 {suc zero} i j h = interp1-1 i j h
 interp-1 {suc (suc n)} (i' , i) (j' , j) (h' , h) =
   ×-path→ (interp-1 i' j' h' , interp1-1 i j h)
 
-module _ {n : ℕ} (f : □^ n → Δ¹) (i j : □^ n) (h : i ≤^ j) where
-  help : f (interp i j i0) ≤ f (interp i j i1)
-  help = is-directed (f ∘ interp i j) i0 i1 1-top
-
-  mono1 : f i ≤ f j
-  mono1 =
-    tr (λ x → f x ≤ f j) (interp-0 i j h)
-      (tr (λ x → f (interp i j i0) ≤ f x) (interp-1 i j h) help)
+mono1 : {n : ℕ} (f : □^ n → Δ¹) (i j : □^ n) (h : i ≤^ j) → f i ≤ f j
+mono1 f i j h =
+  tr₂ (λ x y → f x ≤ f y) (interp-0 i j h) (interp-1 i j h)
+    (is-directed (f ∘ interp i j) i0 i1 1-top)
 
 mono : {n m : ℕ} (f : □^ n → □^ m) (i j : □^ n) → i ≤^ j → f i ≤^ f j
 mono {n} {zero} f i j h = ttᴸ
@@ -160,8 +156,8 @@ is-prop-P2 : {p : □^ 2} → is-prop (P2 p)
 is-prop-P2 = carrier-is-set _ _
 
 lem : (i j : Δ¹) → P1 (i , j) → P2 (i , j)
-lem i j = *-prop-rec (carrier-is-set _ _)
-  (λ hi → ap (_∧ j) hi  ∙ 0-init)
+lem i j = *-prop-rec is-prop-P2
+  (λ hi → ap (_∧ j) hi ∙ 0-init)
   (λ hj → ap (i ∧_) hj ∙ ∧-comm ∙ 0-init)
 
 cmp : Σ (□^ 2) P1 → Σ (□^ 2) P2

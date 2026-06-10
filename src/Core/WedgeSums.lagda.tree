@@ -1,0 +1,246 @@
+\title{Wedge sums}
+\taxon{Module}
+\date{2026-02-06}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+module Core.WedgeSums where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.CanonicalPushouts
+open import Core.FlatteningPushouts
+open import Core.Joins
+open import Core.SpanMaps
+open import Core.FunctorialityPullbacks
+open import Core.FunctorialityPushouts
+
+open import Modalities.Instances.Truncation
+
+open import Ergonomics.Extensionality
+}
+}
+
+\subtree[stt-00E8]{
+\title{Wedge sum}
+\taxon{Definition}
+
+\p{Given a pair of pointed types, #{A} and #{B}, their wedge sum, written #{A
+\vee B} is the pushout of #{A \leftarrow 1 \rightarrow B} given by the points of
+#{A} and #{B}. By convention we point the wedge at #{\iota_1(A_{\bullet})}
+(although we just as well could have chosen #{\iota_2(B_{\bullet})}).}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (a : A) (b : B) where
+
+  wedge-span : Span lzero 𝓤 𝓥
+  wedge-span = mk-span 𝟙 (point a) (point b)
+
+  Wedge :  Type (𝓤 ⊔ 𝓥)
+  Wedge = Pushout (point a) (point b)
+  {-# NOINLINE Wedge #-}
+
+  Wedge∙ : Wedge
+  Wedge∙ = ι₁ a
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B} where
+
+  Wedge-glue : Id (Wedge a b) (ι₁ a) (ι₂ b)
+  Wedge-glue = glue tt
+
+  wedge-cocone
+    : {𝓦 : Level} {X : Type 𝓦}
+    → (f : A → X) (g : B → X)
+    → f a ＝ g b
+    → Cocone (wedge-span a b) X
+  wedge-cocone f g p = mk-cocone f g (λ _ → p)
+
+Wedge∗ : ∀ {𝓤 𝓥} → Type∗ 𝓤 → Type∗ 𝓥 → Type∗ (𝓤 ⊔ 𝓥)
+Wedge∗ A B .Type∗.carrier = Wedge (Type∗.pt A) (Type∗.pt B)
+Wedge∗ A B .Type∗.pt = Wedge∙ (Type∗.pt A) (Type∗.pt B)
+}
+}
+
+\subtree[stt-00Q1]{
+\title{Maps out of wedge sums}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-05-14}
+
+\agda{
+Wedge-UP≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+    {a : A} {b : B}
+  → (Wedge a b → X) ≃ Σ[ f ∶ (A → X) ] Σ[ g ∶ (B → X) ] (f a ＝ g b)
+Wedge-UP≃
+  = Pushout-UP≃ ∙e cocone-repr≃ ∙e Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → unit-UP≃))
+}
+}
+
+\subtree[stt-00RG]{
+\title{Associativity}
+\taxon{Lemma}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  (a : A) (b₀ b₁ : B) (c : C)
+  where
+
+  Wedge-assoc→
+    : Wedge a (ι₁ {f = point b₁} {g = point c} b₀)
+    → Wedge (ι₂ {f = point a} {g = point b₀} b₁) c
+  Wedge-assoc→
+    = Pushout-assoc→ (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc←
+    : Wedge (ι₂ {f = point a} {g = point b₀} b₁) c
+    → Wedge a (ι₁ {f = point b₁} {g = point c} b₀)
+  Wedge-assoc←
+    = Pushout-assoc← (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc→-is-equiv : is-equiv Wedge-assoc→
+  Wedge-assoc→-is-equiv
+    = Pushout-assoc→-is-equiv (point a) (point b₀) (point b₁) (point c)
+
+  Wedge-assoc←-is-equiv : is-equiv Wedge-assoc←
+  Wedge-assoc←-is-equiv
+    = Pushout-assoc←-is-equiv (point a) (point b₀) (point b₁) (point c)
+}
+}
+
+\subtree[stt-00E9]{
+\taxon{Lemma}
+
+\p{There is a canonical (pointed) inclusion of the wedge sum into the product.
+The fibre of this map at some #{(x,y) : A \times B} is the join
+#{A_\bullet = x * B_\bullet = y}.}
+
+\agda{
+Wedge-embed
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+    → Wedge a b → A × B
+Wedge-embed {a = a} {b = b}
+  = cogap (mk-cocone
+      (λ a' → (a' , b))
+      (λ b' → (a , b'))
+      ~refl)
+
+opaque
+  Wedge-fibre
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+      → ∀ x y → fibre (Wedge-embed {a = a} {b}) (x , y) ≃ ((b ＝ y) * (a ＝ x))
+  Wedge-fibre {𝓤} {𝓥} {a = a} {b} x y
+    = fibre Wedge-embed (x , y) ≃⟨ cogap-fibre _ (x , y) ⟩
+      Pushout₀ total-fibre-span ≃⟨ tr≃ Pushout₀ (sym (ext! (span-map , span-map-eqv))) ⟩
+      Pushout₀ intended-span    ≃⟨⟩
+      (ULift 𝓤 (b ＝ y) * ULift 𝓥 (a ＝ x))
+                                ≃⟨ mk≃ _
+                                    (is-equiv←qinv
+                                      (Pushout-qinv span-qeqv→ span-qinv)) ⟩
+      ((b ＝ y) * (a ＝ x))     ≃∎ where
+
+    total-fibre-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
+    total-fibre-span = total-span (point a) (point b)
+                         (Fibre-family _ (x , y))
+
+    intended-span : Span (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓥)
+    intended-span .Span.Centre = ULift 𝓤 (b ＝ y) × ULift 𝓥 (a ＝ x)
+    intended-span .Span.Left = ULift 𝓤 (b ＝ y)
+    intended-span .Span.left = fst
+    intended-span .Span.Right = ULift 𝓥 (a ＝ x)
+    intended-span .Span.right = snd
+
+    span-qeqv→ : Span-map intended-span (mk-span ((b ＝ y) × (a ＝ x)) fst snd)
+    span-qeqv→ .Span-map.h₁ = unlift
+    span-qeqv→ .Span-map.h₂ = unlift ⊗ unlift
+    span-qeqv→ .Span-map.h₃ = unlift
+    span-qeqv→ .Span-map.H = ~refl
+    span-qeqv→ .Span-map.K = ~refl
+
+    span-qinv : Span-quasi-inv span-qeqv→
+    span-qinv .Span-quasi-inv.bwd .Span-map.h₁ = mk-lift
+    span-qinv .Span-quasi-inv.bwd .Span-map.h₂ = mk-lift ⊗ mk-lift
+    span-qinv .Span-quasi-inv.bwd .Span-map.h₃ = mk-lift
+    span-qinv .Span-quasi-inv.bwd .Span-map.H = ~refl
+    span-qinv .Span-quasi-inv.bwd .Span-map.K = ~refl
+    span-qinv .Span-quasi-inv.ε = Span-map-homotopy-refl _
+    span-qinv .Span-quasi-inv.η = Span-map-homotopy-refl _
+
+    span-map : Span-map intended-span total-fibre-span
+    span-map .Span-map.h₁ p = (x , ×-path→ (refl , unlift p))
+    span-map .Span-map.h₂ p = (tt , ×-path→ (×-swap→ ((unlift ⊗ unlift) p)))
+    span-map .Span-map.h₃ p = (y , ×-path→ (unlift p , refl))
+    span-map .Span-map.H (mk-lift refl , mk-lift refl)
+      = Σ-path→ (refl , sym (Idᵈ-func←Square (sym Wedge-glue) refl refl
+          (Square-degen-hor _ _
+            ( ap-sym Wedge-embed Wedge-glue
+            ∙ ap sym (pushout-rec-apβ _)
+            ∙ sym (ap-const (sym Wedge-glue))))))
+    span-map .Span-map.K (mk-lift refl , mk-lift refl) = refl
+
+    span-map-eqv : is-Span-equiv span-map
+    span-map-eqv .fst
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.fwd-is-equiv))
+          ((unlift≃ ∙e Σ-＝singl e⁻¹) ._≃_.fwd-is-equiv)
+    span-map-eqv .snd .fst
+      = (×-swap ∙e mk≃ _ (is-equiv⁻¹ (⊗-is-equiv lift-is-equiv lift-is-equiv))
+        ∙e ×-path ∙e Σ-singl 𝟙-is-singleton tt e⁻¹)._≃_.fwd-is-equiv
+    span-map-eqv .snd .snd
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv (λ x → ×-path ._≃_.fwd-is-equiv))
+          ((unlift≃ ∙e Σ-＝singl e⁻¹ ∙e Σ-snd-≃ (λ a₁ → ×-swap)) ._≃_.fwd-is-equiv)
+
+}
+}
+
+\subtree[stt-00EA]{
+\title{Wedges of sets are sets}
+\taxon{Corollary}
+
+\proof{
+\p{By \ref{stt-00E9}, the fibre of the inclusion is a join of paths in #{A} and
+#{B}. If #{A} and #{B} are both sets, then this fibre is a proposition. Hence,
+the wedge is a subset of the product of #{A} and #{B} which is itself a set.}
+}
+
+\agda{
+opaque
+  Wedge-is-0-truncated
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+      → is-truncated 0 A → is-truncated 0 B → is-truncated 0 (Wedge a b)
+  Wedge-is-0-truncated {A = A} {B} {a} {b} as bs = is-truncated←equiv
+    ((Σ[ (x , y) ∶ A × B ] ((b ＝ y) * (a ＝ x)))
+        ≃⟨ Σ-snd-≃ (_e⁻¹ ∘ uncurry Wedge-fibre) ⟩
+     (Σ[ x ∶ A × B ] fibre Wedge-embed x) ≃⟨⟩
+     total-fibre Wedge-embed ≃⟨ total≃total-fibre Wedge-embed ⟩
+     Wedge a b ≃∎)
+    (Σ-is-truncated
+      trunc!
+      (λ _ → suc-is-truncated -1
+              (is-truncated←is-prop
+                (*-is-prop
+                  (is-prop←is-truncated trunc!)
+                  (is-prop←is-truncated trunc!)))))
+    where instance
+      at : Is-truncated 0 A
+      at .Is-truncated.carrier-is-truncated = as
+      bt : Is-truncated 0 B
+      bt .Is-truncated.carrier-is-truncated = bs
+
+instance
+  Wedge-Is-2-truncated
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {a : A} {b : B}
+        ⦃ _ : Is-truncated 0 A ⦄ ⦃ _ : Is-truncated 0 B ⦄
+      → Is-truncated 0 (Wedge a b)
+  Wedge-Is-2-truncated .Is-truncated.carrier-is-truncated
+    = Wedge-is-0-truncated trunc! trunc!
+}
+}

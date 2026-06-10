@@ -1,0 +1,375 @@
+\date{2025-06-17}
+\title{The Free Algebraically Injective HIT}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+module Axioms.FreeAlgebraicInjectives where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.Arrows
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+}
+}
+
+\subtree[stt-005L]{
+\taxon{Definition}
+\title{Lifting operations between maps}
+
+\quiver{
+\begin{tikzcd}
+	A && X \\
+	\\
+	B && Y
+	\arrow[from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["g", from=1-3, to=3-3]
+	\arrow[dashed, from=3-1, to=1-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{
+[Orthogonal maps](stt-004A) require uniqueness of
+lifting solution to lifting problems as above. When this
+uniqueness requirement is lifted we can speak of the type
+of \em{lifting operations} between a pair of maps, which give a chosen
+lift for each lifting problem. When this type is only merely
+inhabited we say that #{g} \em{merely lifts} against #{f}, and that
+#{g} has the \em{lifting property} with respect to #{f}.
+}
+
+\p{
+Due to dependency order, we cannot define the notion of lifting property in
+this module.
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}  {X : Type 𝓦} {Y : Type 𝓛} where
+
+  lifting-operation
+    : (f : A → B) (g : X → Y) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  lifting-operation f g = (H : Arrow-map f g) → Lift H
+}
+}
+
+\subtree[stt-005N]{
+\taxon{Theorem}
+\title{Lifting operations give a section of the pullback power}
+
+\p{The type of lifting operations between #{f} and #{g}
+is equivalent to type of sections of the [pullback power](stt-004D)
+ #{\pullpow{f}{g}}.}
+
+\agda{
+sec-pb-power←lifting-operation
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → lifting-operation f g
+    → section (pullback-power f g)
+sec-pb-power←lifting-operation {f = f} {g} lift
+  = section←fibres _ fib where
+  fib : ∀ (H : Arrow-map f g) → fibre (pullback-power f g) H
+  fib H =  _≃_.bwd (pb-power-fibre≃lifts _ _ _) (lift H)
+
+sec-pb-power≃lifting-operation
+  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓛}
+      {f : A → B} {g : C → D}
+    → lifting-operation f g
+    ≃ section (pullback-power f g)
+sec-pb-power≃lifting-operation {f = f}{g}
+  = Π (Arrow-map f g) Lift
+      ≃⟨ postcomp-Π-≃ (λ c → pb-power-fibre≃lifts _ _ c e⁻¹) ⟩
+    Π (Arrow-map f g) (fibre (pullback-power f g))
+      ≃⟨ section≃fibres _ ⟩
+    section (pullback-power f g) ≃∎
+}
+}
+
+\subtree[stt-005O]{
+\title{Lifting operations for types}
+\taxon{Definition}
+
+\p{
+A lifting operation for a type mirrors the definitions
+for the stronger notion of [orthogonality at types](stt-004O).
+We require not that the precomposition by #{f} is an equivalence,
+but instead talk about the \em{type} of sections to postcomposition by #{f}.
+}
+
+\p{
+A \em{lifting operation} for the type #{X} with respect to a map #{f : A \to B}
+is a section of #{X^f : (B \to X) \to (A \to X)}.
+}
+
+\agda{
+lifting-operation-for-type
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B) (X : Type 𝓦)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+lifting-operation-for-type f X = section (precomp X f)
+}
+}
+
+\subtree[stt-005P]{
+\taxon{Theorem}
+
+\p{
+Mirroring the [corresponding theorem](stt-004Q) for orthogonality,
+we can say that the type of lifting operations for the type #{X} against #{f}
+is equivalent to the type of lifting operations for the map #{! : A \to 1}
+against #{f}.
+}
+
+\todo{Proof!}
+}
+
+\subtree[stt-005J]{
+\taxon{Definition}
+\title{Algebraically injective types}
+
+\p{
+Given a family of maps #{f_i : A_i \to B_i}, we say that the type
+of \em{algebraic} #{f\rm{-injectives}} for #{X} is, for any map
+#{a : A_i \to X}, a choice of extension for #{a} along #{f_i}. That
+is, the following diagram commutes for all #{i}:
+}
+
+\quiver{
+\begin{tikzcd}
+	{A_i} && X \\
+	\\
+	{B_i}
+	\arrow["{a_i}", from=1-1, to=1-3]
+	\arrow["{f_i}"', from=1-1, to=3-1]
+	\arrow[dashed, from=3-1, to=1-3]
+\end{tikzcd}
+}
+
+\p{We observe that this definition is equivalent to asking for
+a chosen [lifting operation](stt-005O) for #{X} against each #{f_i}.}
+
+\agda{
+Algebraic-injective
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      (f : (i : I) → A i → B i)
+      (X : Type 𝓦)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Algebraic-injective f X = ∀ i → lifting-operation-for-type (f i) X
+
+lift-alg-inj
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      {X : Type 𝓦}
+    → Algebraic-injective f X
+    → (i : I) (p : A i → X)
+    → B i → X
+lift-alg-inj alg i = alg i .fst
+}
+}
+
+\subtree[stt-005I]{
+\taxon{Definition}
+\title{Free algebraically injective types}
+\citek{RSS20}
+
+\p{
+Given a family of types #{f_i : A_i \to B_i} and a type #{X}, we can
+define the free algebraically #{f\rm{-injective}} type on #{X}, called
+#{\mathcal{J}_{f}(X)} with the following higher inductive type:
+}
+
+\ul{
+\li{#{\eta : X \to \mathcal{J}_{f}(X)}}
+\li{#{\rm{ext}_i : (A_i \to \mathcal{J}_{f}(X)) \to (B_i \to \mathcal{J}_{f}(X))}}
+\li{#{\rm{isext}_i : \Pi_{(g : A_i \to \mathcal{J}_{f}(X))} \Pi_{(a : A_i)}
+                     \rm{ext}_i(g,f(a)) = g(a)}}
+}
+
+\p{
+In plain agda we have to define higher inductive types via postulates.
+}
+
+\agda{
+module _ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥} where
+
+  postulate
+    FreeInj : (f : (i : I) → A i → B i) → Type 𝓦 → Type 𝓦
+
+  module FreeInj {f : (i : I) → A i → B i} {X : Type 𝓦} where
+
+    postulate
+      inc : X → FreeInj f X
+      ext
+        : {i : I} (g : A i → FreeInj f X) → B i → FreeInj f X
+      is-ext
+        : {i : I}
+          (g : A i → FreeInj f X)
+          (a : A i)
+        → ext g (f i a) ＝ g a
+
+      ind
+        : ∀ {𝓜} (P : FreeInj f X → Type 𝓜)
+            (N : (x : X) → P (inc x))
+            (R : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+               → (b : B i) → P (ext g b))
+            (S : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+                 (a : A i)
+               → tr P (is-ext g a) (R g h (f i a)) ＝ h a)
+          → (x : FreeInj f X) → P x
+
+      ind-inc
+        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
+            {N : (x : X) → P (inc x)}
+            {R : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+               → (b : B i) → P (ext g b)}
+            {S : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+                 (a : A i)
+               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
+          → (x : X) → ind P N R S (inc x) ＝ N x
+
+      ind-ext
+        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
+            {N : (x : X) → P (inc x)}
+            {R : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+               → (b : B i) → P (ext g b)}
+            {S : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+                 (a : A i)
+               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
+          → {i : I} (g : A i → FreeInj f X)
+            (h : (a : A i) → P (g a))
+          → (b : B i) → ind P N R S (ext g b) ＝ R g h b
+
+    ind-ext-base
+      : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
+          {N : (x : X) → P (inc x)}
+          {R : {i : I} (g : A i → FreeInj f X)
+               (h : (a : A i) → P (g a))
+             → (b : B i) → P (ext g b)}
+          {S : {i : I} (g : A i → FreeInj f X)
+               (h : (a : A i) → P (g a))
+               (a : A i)
+             → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
+        → {i : I} (g : A i → FreeInj f X)
+        → (b : B i)
+        → ind P N R S (ext g b)
+        ＝ R g (ind P N R S ∘ g) b
+    ind-ext-base g = ind-ext g _
+
+    {-# REWRITE ind-inc ind-ext-base #-}
+
+    postulate
+      ind-is-ext
+        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
+            {N : (x : X) → P (inc x)}
+            {R : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+               → (b : B i) → P (ext g b)}
+            {S : {i : I} (g : A i → FreeInj f X)
+                 (h : (a : A i) → P (g a))
+                 (a : A i)
+               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
+          → {i : I} (g : A i → FreeInj f X) (a : A i)
+          → apᶠ (ind P N R S) (is-ext g a)
+          ＝ S g (ind P N R S ∘ g) a
+}
+}
+
+\subtree[stt-005W]{
+\date{2025-06-18}
+\title{Free algebraically injective types are algebraically injective}
+\taxon{Theorem}
+
+\agda{
+module _ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥} where
+
+  injector-FreeInj
+    : {f : (i : I) → A i → B i}
+      {X : Type 𝓦}
+    → Algebraic-injective f (FreeInj f X)
+  injector-FreeInj i .fst = FreeInj.ext
+  injector-FreeInj i .snd α
+    = funext→ (FreeInj.is-ext α)
+}
+}
+
+\subtree[stt-0068]{
+\title{Morphisms of algebraic injectives}
+\date{2025-06-21}
+
+\p{
+Given a pair of algebraic injectives #{(X,x)} and #{(Y,y)} over
+the same family of maps, #{f_i}, we define the type of morphisms
+of algebraic injectives: #{\Hom((X,x), (Y,y))} to be the
+type of maps which commute coherently with the given extensions.
+}
+
+\quiver{
+\begin{tikzcd}
+	& X \\
+	{A_i} && Y \\
+	\\
+	{B_i}
+	\arrow["\alpha", from=1-2, to=2-3]
+	\arrow["{p_x}", from=2-1, to=1-2]
+	\arrow["{\alpha p_x}"{description}, from=2-1, to=2-3]
+	\arrow["{f_i}"', from=2-1, to=4-1]
+	\arrow[dashed, from=4-1, to=1-2]
+	\arrow[dashed, from=4-1, to=2-3]
+\end{tikzcd}
+}
+
+\agda{
+record Algebraic-injective-map
+    {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+    {A : I → Type 𝓤} {B : I → Type 𝓥}
+    {f : (i : I) → A i → B i}
+    {X : Type 𝓦} (X-alg : Algebraic-injective f X)
+    {Y : Type 𝓜} (Y-alg : Algebraic-injective f Y)
+    (α : X → Y)
+  : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜) where
+  field
+
+    ext-comm
+      : ∀ i p
+        → (α ∘ lift-alg-inj X-alg i p)
+        ~ lift-alg-inj Y-alg i (α ∘ p)
+    ext-comm-coh
+      : ∀ i
+        → (postcomp (A i) α ◂ X-alg i .snd)
+        ~ (λ a → funext→ (ext-comm i a ∘ f i)) ∙h Y-alg i .snd ▸ postcomp (A i) α
+}
+}
+
+\subtree[stt-0067]{
+\date{2025-06-21}
+\title{The universal property for free algebraic injectives}
+\taxon{Theorem}
+
+\p{
+We show that any map into an algebraically injective type
+factors through the free algebraically injective type. In other
+words, given types #{X} and #{Y}, where #{X} is an algebraically
+injective type, the map #{{-} \circ \eta : (\mathcal{J}_{f}(X) \to Y) \to
+(X \to Y)} is an equivalence.
+}
+
+\todo{Proof}
+}

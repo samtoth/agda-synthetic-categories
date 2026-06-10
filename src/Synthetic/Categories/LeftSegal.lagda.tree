@@ -1,0 +1,348 @@
+\title{The left Segal condition}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.LeftSegal
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.CosliceOrthogonality
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.ArrowEquiv
+open import Core.Coslices
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.ExtPullbacks
+open import Core.PiSection
+open import Core.CanonicalPushouts
+
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.CoComma Δ¹ I
+open import Synthetic.Categories.JoinSlice Δ¹ I
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
+open import Synthetic.Categories.WalkingHomotopy Δ¹ I
+}
+}
+
+\subtree[stt-00DA]{
+\taxon{Definition}
+\title{Left Segal types}
+\contributor{fredrikbakke}
+
+\p{We call a type \em{left Segal} if it is local with respect to the
+map #{\Lambda^2_1 \to 1 \bjoin \Delta^1}.
+}
+
+\remark{See [[stt-00O3]] for the dual concept}
+
+\agda{
+Λ[2,1]-incl◅ : Λ[2,1] → Δ¹ ◅
+Λ[2,1]-incl◅ = cogap (mk-cocone (↑-hom (tt , i0) .Homᵈ.hom) ↑-ι₂
+                             λ a → glue (∂Δ¹-1 , tt , i0))
+
+Λ[2,1]-incl◅∙ : Coslice-map (point (ι₁ i0)) λ _ → ↑-ι₁ tt
+Λ[2,1]-incl◅∙ = (Λ[2,1]-incl◅ , λ _ → glue (∂Δ¹-0 , tt , i0))
+
+is-left-segal : ∀ {𝓤} (A : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-left-segal A = is-local (point Λ[2,1]-incl◅) A
+}
+}
+
+\subtree[stt-00DB]{
+\title{Left Segal types are Segal}
+\taxon{Lemma}
+
+\p{Any [left Segal](stt-00DA) type is [Segal](stt-00AI).}
+
+\proof{
+\p{
+We give a splitting of #{\Delta^2 \hookrightarrow 1 \bjoin \Delta^1},
+which furthermore preserves the inner horn inclusion.
+(Note the split embedding #{\Delta^2 \hookrightarrow \square^2} in
+\ref{stt-00C7} factors through this map.)}
+}
+
+\agda{
+Δ²←Δ¹◅-cocone : Cocone (◅-span Δ¹) Δ²
+Δ²←Δ¹◅-cocone
+  = (mk-cocone
+      (λ (i , tt , j) → (i , i ∧ j) ⦃ ∧-≤-eliml ≤-refl ⦄)
+      ⊎[ (λ _ → (i0 , i0)) , (i1 ,_) ]
+      λ where
+        (∂Δ¹-1 , tt , b) → Δ²-ext (refl , ∧-comm ∙ 1-top)
+        (∂Δ¹-0 , tt , b) → Δ²-ext (refl , 0-init))
+
+Δ²←Δ¹◅ : Δ¹ ◅ → Δ²
+Δ²←Δ¹◅ = cogap Δ²←Δ¹◅-cocone
+
+Δ²←Δ¹◅-resp-horn : Δ²←Δ¹◅ ∘ Λ[2,1]-incl◅ ~ Λ[2,1]-incl
+Δ²←Δ¹◅-resp-horn = pushout-ind _
+  (mk-coconeᵈ
+    (λ l → Δ²-ext (refl , ∧-comm ∙ 0-init))
+    (λ r → refl)
+    (λ _ → Δ²-is-set _ _ _ _))
+
+Δ¹◅←Δ² : Δ² → Δ¹ ◅
+Δ¹◅←Δ² a = ι₁ (Algebra.Lattice.Instances.Polynomial.Δ².s a , tt , Algebra.Lattice.Instances.Polynomial.Δ².t a)
+
+Δ¹◅←Δ²-resp-horn
+  : Δ¹◅←Δ² ∘ Λ[2,1]-incl ~ Λ[2,1]-incl◅
+Δ¹◅←Δ²-resp-horn = pushout-rec-unique _ _
+  ~refl
+  (λ a → glue (∂Δ¹-1 , tt , a))
+  λ a → ap (_∙ glue (∂Δ¹-1 , tt , i0))
+         ( ap-∘ Δ¹◅←Δ² Λ[2,1]-incl (glue a)
+         ∙ ap (ap Δ¹◅←Δ²) (pushout-rec-apβ _)
+         ∙ lem) where
+  lem : ap (Δ¹◅←Δ²) Δ²-refl ＝ refl
+  lem = ap-∘ ι₁ (λ where (i , j) → (i , tt , j)) Δ²-refl
+      ∙ ap (ap ι₁) prop!
+
+private
+  sec-weird-is-sec : Δ²←Δ¹◅ ∘ Δ¹◅←Δ² ~ id
+  sec-weird-is-sec ((a , b) ⦃ p ⦄) = Δ²-ext (refl , ∧-comm ∙ p)
+
+  weird-retract : retract Δ² (Δ¹ ◅)
+  weird-retract = Δ¹◅←Δ² , Δ²←Δ¹◅ , sec-weird-is-sec
+
+Λ[2,1]↪Λ[2,1]-incl◅ : Arrow-map Λ[2,1]-incl Λ[2,1]-incl◅
+Λ[2,1]↪Λ[2,1]-incl◅ = mk-amap id Δ¹◅←Δ² Δ¹◅←Δ²-resp-horn
+
+Λ[2,1]↪Λ[2,1]-incl◅-retraction : retraction-arrow-map Λ[2,1]↪Λ[2,1]-incl◅
+Λ[2,1]↪Λ[2,1]-incl◅-retraction .fst = mk-amap id Δ²←Δ¹◅ Δ²←Δ¹◅-resp-horn
+Λ[2,1]↪Λ[2,1]-incl◅-retraction .snd .fst = ~refl
+Λ[2,1]↪Λ[2,1]-incl◅-retraction .snd .snd .fst = weird-retract .snd .snd
+Λ[2,1]↪Λ[2,1]-incl◅-retraction .snd .snd .snd _ = Δ²-is-set _ _ _ _
+
+is-segal←is-left-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-left-segal A
+    → is-segal A
+is-segal←is-left-segal orth tt
+  = is-orthogonal↔orthogonal-! .fst
+      (left-orthogonal-retraction Λ[2,1]-incl Λ[2,1]-incl◅
+        Λ[2,1]↪Λ[2,1]-incl◅
+        Λ[2,1]↪Λ[2,1]-incl◅-retraction
+        !
+        (is-orthogonal↔orthogonal-! .snd (orth tt)))
+}
+}
+
+\subtree[stt-00DI]{
+\taxon{Lemma}
+
+\p{The map #{\Delta^2 \to {⧅} \amalg_{\Delta^1} 1} is a Segal equivalence.}
+
+\proof{
+\p{By associativity of pushouts, #{{⧅} \amalg_{\Delta^1} 1} is equivalently
+#{X = \Delta^2 \amalg_{\Delta^1} (\Delta^2 \amalg_{\Delta^1} 1)}, where we call the
+right hand component #{\Delta^2 \amalg_{\Delta^1} 1} [the walking homotopy](stt-00DK).
+By the universal property of pushouts, then #{A^X} is equivalently the pullback
+of #{A^{\Delta^2}} with #{A^{\Delta_{\sim}}} along the diagonal. But since
+#{A} is Segal, homotopies form an identity system over morphisms, and we
+can contract away singletons to get an equivalence to the pullback of
+#{A^{\Delta^2}} with the source of the homotopy. So we can contract away
+singletons once more to get that the map #{A^{\Delta^2} \toeq A^X} which
+picks out the lower right simplex is an equivalence.
+}
+}
+
+\agda{
+⧅-degen-top : Type 𝓘
+⧅-degen-top = Pushout {A = Δ¹} {B = ⧅} (ι₂ ∘ (_, i0)) !
+
+⧅-degen' : Pushout Δ²-diagonal src-Δ~▵ → ⧅-degen-top
+⧅-degen' = Pushout-assoc→ Δ²-diagonal Δ²-diagonal (_, i0) !
+
+⧅-degen←Δ² : Δ² → ⧅-degen-top
+⧅-degen←Δ² = ι₁ ∘ ι₁
+
+_ : ∀ {𝓤} {A : Type 𝓤}
+    → precomp A ⧅-degen←Δ²
+      ~ fst ∘ _≊_.fwd cocone-repr≊ ∘ cocone-map _ pushout ∘ precomp A ⧅-degen'
+_ = ~refl
+
+opaque
+  ⧅-degen←Δ²-is-segal-equiv : is-segal-equiv ⧅-degen←Δ²
+  ⧅-degen←Δ²-is-segal-equiv {Q = Q} qpc
+    = is-equiv-∘
+        {f = fst}
+        {_≊_.fwd cocone-repr≊ ∘ cocone-map _ pushout ∘ precomp Q ⧅-degen'}
+        (singleton-fst-is-equiv
+          (λ a →
+            is-single←equiv-to-single
+              ( (Σ-fst-≃ {B = λ f → a ∘ Δ²-diagonal ~ f}
+                          (mk≃ _ (src-is-segal-equiv qpc))
+                           e⁻¹))
+              (SingS-is-single _)))
+        (is-equiv-∘
+          (_≃_.fwd-is-equiv cocone-repr≃)
+          (is-equiv-∘
+            Pushout-has-up-pushout
+            (precomp-equiv
+              (Pushout-assoc→-is-equiv Δ²-diagonal Δ²-diagonal (_, i0) !))))
+}
+}
+
+\subtree[stt-00DG]{
+\taxon{Lemma}
+\title{Triangulated Segal types are left Segal}
+\contributor{fredrikbakke}
+
+\p{A [triangulated type](stt-00CC) is [Segal](stt-00AI) iff it
+is [left Segal](stt-00DA). Consequently, precategories are left Segal.}
+
+\proof{
+
+\p{We factorise the defining map for left Segal types as follows:}
+
+\quiver{
+\begin{tikzcd}
+	{\Lambda^2_1} && {\Delta^2} \\
+	\\
+	\\
+	{1 \bjoin \Delta^1 \simeq \square \amalg_{\Delta^1}1} && {\ttt \amalg_{\Delta^1}1}
+	\arrow["{\sim_{\textit{Segal}}}", from=1-1, to=1-3]
+	\arrow[from=1-1, to=4-1]
+	\arrow["{\sim_{\textit{Segal}}}", from=1-3, to=4-3]
+	\arrow["{\sim_{\textit{Tri.}}}", from=4-3, to=4-1]
+\end{tikzcd}
+}
+
+\p{The top map is a Segal equivalence by definition. The bottom map is a
+triangulated equivalence. Finally, \ref{stt-00DI} gives the right most map as a
+Segal equivalence, so their composite is a triangulated Segal equivalence.}
+}
+
+\agda{
+1◇Δ¹←cone : Pushout {B = □^ 2} (_, i0) (!: Δ¹) → Δ¹ ◅
+1◇Δ¹←cone = Pushout₁
+  (mk-span-map (λ (a , b) → b , tt , a) (λ i → ∂Δ¹-0 , tt , i) inl ~refl ~refl)
+
+1◇Δ¹-is-cone : quasi-inv 1◇Δ¹←cone
+1◇Δ¹-is-cone .fst = ↑-rec (mk-right-cocone ι₂ (ι₁ ∘ (_, i1))
+                           λ (_ , i) → mk-hom (ι₁ ∘ (i ,_)) (glue i) refl)
+1◇Δ¹-is-cone .snd .fst = pushout-ind _
+  (mk-coconeᵈ ~refl ~refl
+    (λ i → Idᵈ-func←Square
+               {f = (1◇Δ¹-is-cone .fst ∘ 1◇Δ¹←cone)} {id} (glue i) refl refl
+               (Square-degen-hor _ _
+                 (ap-∘ (1◇Δ¹-is-cone .fst) 1◇Δ¹←cone (glue i)
+                 ∙ ap (ap (1◇Δ¹-is-cone .fst)) (pushout-rec-apβ _ ∙ ∙-reflr _)
+                 ∙ pushout-rec-apβ _ ∙ sym (ap-id (glue i))))))
+1◇Δ¹-is-cone .snd .snd = pushout-ind _
+  (mk-coconeᵈ ~refl (⊎-ind (~refl , (λ i → glue (∂Δ¹-1 , tt , i))))
+    λ { (∂Δ¹-1 , _ , i)
+           → Idᵈ-func←Square (glue (∂Δ¹-1 , tt , i)) refl (glue (∂Δ¹-1 , tt , i))
+               (coe
+                 (Square-functorial-bot (sym (ap-id (glue (∂Δ¹-1 , _ , i)))))
+                 (Square-flatten-vert
+                   (sym (ap-∘ 1◇Δ¹←cone (1◇Δ¹-is-cone .fst) (glue _)
+                   ∙ ap (ap 1◇Δ¹←cone) (pushout-rec-apβ _)))))
+      ; (∂Δ¹-0 , _ , i)
+           → Idᵈ-func←Square (glue (∂Δ¹-0 , tt , i)) refl refl
+               (Square-degen-hor _ _
+                 (ap-∘ 1◇Δ¹←cone (1◇Δ¹-is-cone .fst) (glue (∂Δ¹-0 , tt , i))
+                 ∙ ap (ap 1◇Δ¹←cone) (pushout-rec-apβ _) ∙ pushout-rec-apβ _
+                 ∙ ∙-reflr _ ∙ sym (ap-id (glue _)))) })
+
+⧅-□-degen-incl
+  : Pushout {B = ⧅} (ι₂ ∘ (_, i0)) ! → Pushout {B = □^ 2} (_, i0) !
+⧅-□-degen-incl
+  = Pushout₁ (mk-span-map ⧅-incl id id ~refl ~refl)
+
+left-segal-factorisation
+  : 1◇Δ¹←cone ∘ ⧅-□-degen-incl ∘ ⧅-degen←Δ² ∘ Λ[2,1]-incl ~ Λ[2,1]-incl◅
+left-segal-factorisation
+  = pushout-rec-unique _ _
+      ~refl
+      (λ i → glue (∂Δ¹-1 , tt , i))
+      λ _ → ap (_∙ glue (∂Δ¹-1 , tt , i0))
+              ( ap-∘ (1◇Δ¹←cone ∘ ⧅-□-degen-incl ∘ ⧅-degen←Δ²)
+                     Λ[2,1]-incl Λ[2,1]-glue
+              ∙ ap (ap (1◇Δ¹←cone ∘ ⧅-□-degen-incl ∘ ⧅-degen←Δ²))
+                   (pushout-rec-apβ tt)
+              ∙ ap-∘ ι₁ _ Δ²-refl
+              ∙ ap (ap ι₁) prop!)
+
+is-based-triangulated
+  : ∀ {𝓤} {A : Type 𝓤}
+    → ⧅-incl ⊥ A → ⧅-□-degen-incl ⊥ A
+is-based-triangulated {A = A} ttA
+  = left-orthogonal-type-pushout₁ map .snd (lem ∘ ev tt)  where
+  -- A map colim(⧅ ← Δ¹ → 𝟙) → colim(□ ← Δ¹ → 𝟙)
+  -- is equivalently a map in the coslice under Δ¹ from ⧅ → □
+  map : Coslice-map {A = Δ¹} (ι₂ ∘ (_, i0)) (_, i0)
+  map .fst = ⧅-incl
+  map .snd = ~refl
+
+  lem : ∀ x → map ⊥ (λ _ → x)
+  lem x = coslice-orthogonality map .fst ttA (λ _ → x)
+
+1◇Δ¹←Δ²-is-triangulated-segal-equiv
+  : ∀ {𝓠} {Q : Type 𝓠}
+    → is-triangulated Q → is-segal Q
+    → is-equiv (precomp Q (1◇Δ¹←cone ∘ ⧅-□-degen-incl ∘ ⧅-degen←Δ²))
+1◇Δ¹←Δ²-is-triangulated-segal-equiv {_} {Q} Qtri Qse
+  = is-equiv-∘
+      {f = precomp Q ⧅-degen←Δ²}
+      {g = precomp Q ⧅-□-degen-incl ∘ precomp Q 1◇Δ¹←cone}
+      (⧅-degen←Δ²-is-segal-equiv Qse)
+      (is-equiv-∘
+        (is-based-triangulated (Qtri tt))
+        (precomp-equiv (is-equiv←qinv 1◇Δ¹-is-cone)))
+
+opaque
+  is-left-segal←is-segal←is-triangulated
+    : ∀ {𝓤} {A : Type 𝓤} → is-triangulated A → is-segal A
+      → is-left-segal A
+  is-left-segal←is-segal←is-triangulated {A = A} atri apc tt
+    = is-equiv-∘~ (λ h → funext→ λ a → ap h (left-segal-factorisation a))
+        (apc tt)
+        (1◇Δ¹←Δ²-is-triangulated-segal-equiv atri apc)
+}
+}

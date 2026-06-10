@@ -1,0 +1,186 @@
+\date{2025-02-24}
+\title{Characterising identity in #{Σ}-types}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+module Foundations.SigmaIdentity where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.FunctionInverses
+open import Foundations.Equivalences
+open import Foundations.QuasiEquivalences
+}
+}
+
+\subtree[stt-0025]{
+\taxon{Theorem}
+\title{Identity in [#{Σ}-types](stt-001A)}
+
+\p{
+Given two elements #{(x_1 , x_2) , (y_1 , y_2) : \Sigma_{(a:A)}B(a)}, we have
+#{(x_1,x_2) = (y_1,y_2) \simeq \Sigma_{(p : x_1 = y_1)}(x_2 =_B^p y_2)}
+}
+
+\agda{
+infix 6 _＝Σ_
+_＝Σ_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → Σ A B → Σ A B → Type (𝓤 ⊔ 𝓥)
+_＝Σ_ {B = B} x y = Σ (x .fst ＝ y .fst) (λ p → Idᶠ B p (x .snd) (y .snd))
+
+Σ-path-refl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B} → x ＝Σ x
+Σ-path-refl = (refl , refl)
+
+JΣ
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B}
+      (P : ∀ y → x ＝Σ y → Type 𝓦)
+    → P x Σ-path-refl
+    → ∀ {y} (q : x ＝Σ y) → P y q
+JΣ P p₀ (refl , refl) = p₀
+
+JΣ-refl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {x : Σ A B}
+      (P : ∀ y → x ＝Σ y → Type 𝓦)
+    → {p₀ : P x Σ-path-refl}
+    → JΣ P p₀ Σ-path-refl ＝ p₀
+JΣ-refl P = refl
+
+Σ-path-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+    → x ＝ y → x .fst ＝ y .fst
+Σ-path-fst refl = refl
+
+Σ-path-snd
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+    → (p : x ＝ y) → Idᶠ B (ap fst p) (x .snd) (y .snd)
+Σ-path-snd refl = refl
+
+Σ-path
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+    → (x ＝Σ y) ≃ (x ＝ y)
+Σ-path {B = B} {x = x1 , x2} {y1 , y2}
+  = equiv←qequiv (mk≊ to-path (from-path , ret , sec)) module Σ-path where
+  to-path : Σ (x1 ＝ y1) (λ p → Idᶠ B p x2 y2) → Id (Σ _ B) (x1 , x2) (y1 , y2)
+  to-path (refl , refl) = refl
+
+  from-path : (x1 , x2) ＝ (y1 , y2) → (x1 , x2) ＝Σ (y1 , y2)
+  from-path p = (ap fst p , Σ-path-snd p)
+
+  sec : section-witness to-path from-path
+  sec refl = refl
+
+  ret : retraction-witness to-path from-path
+  ret (refl , refl) = refl
+
+Σ-path→
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+    → x ＝Σ y → (x ＝ y)
+Σ-path→ = Σ-path ._≃_.fwd
+
+{-# DISPLAY Σ-path.to-path = Σ-path→ #-}
+
+Σ-path-ap-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : Σ A B}
+      {p : x .fst ＝ y .fst}
+      {q : Idᵈ (ap B p) (x .snd) (y .snd)}
+    → ap fst (Σ-path→ (p , q)) ＝ p
+Σ-path-ap-fst {p = refl} {refl} = refl
+
+Σ-path-ap-fstsnd
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → A' → Type 𝓦}
+      {x : A} {a b : A'}
+      {y : B x a} {y' : B x b}
+    → (p : a ＝ b) → (q : Idᵈ (ap (B x) p) y y')
+    → ap {A = Σ[ a ∶ A ] Σ A' (B a)} (fst ∘ snd) (Σ-path→ (refl , Σ-path→ (p , q)))
+    ＝ p
+Σ-path-ap-fstsnd refl refl = refl
+
+Σ-path-ap-snd
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x : A}
+    → {y y' : B x}
+    → {q : y ＝ y'}
+    → ap snd (Σ-path→ {x = x , y} (refl , q)) ＝ q
+Σ-path-ap-snd {q = refl} = refl
+}
+}
+
+\subtree[stt-0026]{
+\taxon{Corollary}
+\title{Paths in [products](stt-001C)}
+
+\agda{
+infix 6 _＝×_
+_＝×_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A × B → A × B → Type (𝓤 ⊔ 𝓥)
+x ＝× y =  (x .fst ＝ y .fst) × (x .snd ＝ y .snd)
+
+×-path-refl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x : A × B} → x ＝× x
+×-path-refl = (refl , refl)
+
+J×
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {x : A × B}
+      (P : ∀ y → x ＝× y → Type 𝓦)
+    → P x ×-path-refl
+    → ∀ {y} (q : x ＝× y) → P y q
+J× P p₀ (refl , refl) = p₀
+
+J×-refl
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {x : A × B}
+      (P : ∀ y → x ＝× y → Type 𝓦)
+    → {p₀ : P x ×-path-refl}
+    → J× P p₀ ×-path-refl ＝ p₀
+J×-refl P = refl
+
+×-path
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B}
+    → (x ＝× y) ≃ (x ＝ y)
+×-path {x = (x , x')} {y , y'} = equiv←qequiv (mk≊ f q) where
+  f : (x ＝ y) × (x' ＝ y') → (x , x') ＝ (y , y')
+  f (refl , refl) = refl
+
+  q : quasi-inv f
+  q .fst refl = refl , refl
+  q .snd .fst (refl , refl) = refl
+  q .snd .snd refl = refl
+
+×-path→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B} → (x ＝× y) → (x ＝ y)
+×-path→ = ×-path ._≃_.fwd
+
+×-path-ap-fst
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B}
+    → {p : x .fst ＝ y .fst} {q : x .snd ＝ y .snd}
+    → ap fst (×-path→ (p , q)) ＝ p
+×-path-ap-fst {p = refl} {refl} = refl
+
+×-path-ap-snd
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A × B}
+    → {p : x .fst ＝ y .fst} {q : x .snd ＝ y .snd}
+    → ap snd (×-path→ (p , q)) ＝ q
+×-path-ap-snd {p = refl} {refl} = refl
+
+×~
+  : ∀ {𝓤 𝓤' 𝓥 𝓥'} {A : Type 𝓤} {A' : Type 𝓤'} {B : Type 𝓥} {B' : Type 𝓥'}
+      {f g : A → A'} {h k : B → B'}
+    → ((f ~ g) × (h ~ k)) → ((f ⊗ h) ~ (g ⊗ k))
+×~ (L , R) (a , b) = ×-path→ (L a , R b)
+
+ap-⊗-×-path
+  : {𝓤 𝓥 𝓦 𝓜 : Level}
+    {A : Type 𝓤} {B : Type 𝓥}
+    {C : Type 𝓦} {D : Type 𝓜}
+    {f : A → B} {g : C → D}
+    {x y : A × C}
+    (p : x .fst ＝ y .fst)
+    (q : x .snd ＝ y .snd)
+  → ap (f ⊗ g) (×-path→ (p , q))
+  ＝ ×-path→ (ap f p , ap g q)
+ap-⊗-×-path refl refl = refl
+}
+}

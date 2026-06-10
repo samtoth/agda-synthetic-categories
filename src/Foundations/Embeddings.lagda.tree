@@ -1,0 +1,153 @@
+\date{2025-02-24}
+\title{Embeddings}
+\import{stt-macros}
+
+\p{Embeddings are the homotopy coherent generalisation of injective functions}
+
+\agda{
+module Foundations.Embeddings where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.Equivalences
+open import Foundations.QuasiEquivalences
+open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.FibreIdentity
+open import Foundations.FibrewiseEquivalences
+open import Foundations.FunctionInverses
+open import Foundations.IdentityReasoning
+open import Foundations.SingletonFibres
+open import Foundations.Singletons
+open import Foundations.SingletonClosure
+open import Foundations.IdentitySystems
+}
+}
+
+\subtree[stt-008I]{
+\title{Embedding}
+\taxon{Definition}
+
+\p{A function #{f : A \to B} is an embedding if #{f^* : x = y \to f(x) = f(y)} is an embedding}
+
+\agda{
+is-embedding : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-embedding f = ∀ {x y} → is-equiv (ap f {x} {y})
+
+unap
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-embedding f → ∀ {x y} → f x ＝ f y → x ＝ y
+unap emb = is-equiv.bwd emb
+
+_◂emb_
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-embedding f → ∀ {𝓦} {C : Type 𝓦} {g h : C → A}
+    → f ∘ g ~ f ∘ h → g ~ h
+(fe ◂emb h) a = unap fe (h a)
+
+embedding≃
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      {f : A → B}
+    → is-embedding f
+    → ∀ x y
+    → (f x ＝ f y)
+    ≃ (x ＝ y)
+embedding≃ emb _ _ = mk≃ (unap emb) (is-equiv⁻¹ emb)
+}
+}
+
+\subtree[stt-006D]{
+\taxon{Theorem}
+\title{Equivalences are embeddings}
+
+\agda{
+is-embedding←is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-equiv f → is-embedding f
+is-embedding←is-equiv {B = B} {f = f} eq {x} {y} = ap-equiv←equiv eq
+
+opaque
+  unap-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → ∀ {x y} → f x ＝ f y → x ＝ y
+  unap-equiv eq = unap (is-embedding←is-equiv eq)
+
+  unap-equiv-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → (fe : is-equiv f) → ∀ {x y} → is-equiv (unap-equiv fe {x} {y})
+  unap-equiv-is-equiv fe = is-equiv⁻¹ (is-embedding←is-equiv fe)
+
+  ap-unap-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} (fe : is-equiv f)
+      → ∀ {x y} (p : f x ＝ f y) → ap f (unap-equiv fe p) ＝ p
+  ap-unap-equiv fe = is-equiv.ε (is-embedding←is-equiv fe)
+
+  unap-ap-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} (fe : is-equiv f)
+      → ∀ {x y} (p : x ＝ y) → unap-equiv fe (ap f p) ＝ p
+  unap-ap-equiv fe = is-equiv.η (is-embedding←is-equiv fe)
+
+  unap-refl
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → (fe : is-equiv f) → ∀ {x} → unap-equiv fe refl ＝ refl {a = x}
+  unap-refl {f = f} fe
+    = unap-equiv {f = ap f} (is-embedding←is-equiv fe) (ap-unap-equiv fe refl)
+
+  sym-unap-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} (fe : is-equiv f)
+        {x y} (p : f x ＝ f y)
+      → sym (unap-equiv fe p) ＝ unap-equiv fe (sym p)
+  sym-unap-equiv {f = f} fe p
+    = unap-equiv {f = ap f} (is-embedding←is-equiv fe)
+        (ap-sym f (unap-equiv fe p) ∙ ap sym (ap-unap-equiv fe p)
+        ∙ sym (ap-unap-equiv fe (sym p)))
+
+
+infixr 16 _◂e⁻¹_
+infixl 17 _▸e⁻¹_
+
+_◂e⁻¹_
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-equiv f → ∀ {𝓦} {C : Type 𝓦} {g h : C → A}
+    → f ∘ g ~ f ∘ h → g ~ h
+_◂e⁻¹_ {f = f} fe {g = g} {h} H = (η h⁻¹) ▸ g ∙h bwd ◂ H ∙h η ▸ h
+  where open is-equiv fe
+
+_▸e⁻¹_
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → ∀ {𝓦} {C : Type 𝓦} {g h : B → C}
+    → g ∘ f ~ h ∘ f → is-equiv f → g ~ h
+(_▸e⁻¹_) {g = g} {h} H fe
+  = (g ◂ ε h⁻¹) ∙h H ▸ bwd ∙h h ◂ ε where open is-equiv fe
+}
+}
+
+\subtree[stt-00H1]{
+\date{2026-03-10}
+\author{fredrikbakke}
+\title{A map whose #{\ap} has sections is an embedding}
+\taxon{Theorem}
+
+\agda{
+is-embedding←sections-ap
+  : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  → ((x y : A) → section (ap f {x} {y}))
+  → is-embedding f
+is-embedding←sections-ap {A = A} {f = f} s {x} {y}
+  = fundamental-Id (λ z → f x ＝ f z) sing (λ z → ap f {x} {z}) y where
+  sec-total : section (total-map (λ z → ap f {x} {z}))
+  sec-total .fst (z , p) = (z , s x z .fst p)
+  sec-total .snd (z , p) = Σ-path→ (refl , s x z .snd p)
+
+  sing : is-singleton (Σ[ z ∶ A ] (f x ＝ f z))
+  sing = is-single←section-single
+           (total-map (λ z → ap f {x} {z}))
+           (sec-total)
+           (Sing-is-singleton)
+}
+}

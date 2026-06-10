@@ -4,25 +4,29 @@
 \author{samueltoth}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Modalities.Instances.Localisation where
 
-open import ufAxioms
-open import Axioms.FreeAlgInj
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Axioms.FreeAlgebraicInjectives
 open import Foundations.Prelude
+open import Foundations.CoproductFunctoriality public
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
-open import Core.PullbackPower
+open import Core.PullbackPowers
 open import Core.CanonicalPushouts
-open import Core.Codiagonal
-open import Core.CoSlice
-open import Core.Arrow
-open import Core.ArrowRetract
+open import Core.Codiagonals
+open import Core.Coslices
+open import Core.Arrows
+open import Core.CartesianSquares
 open import Core.ArrowEquiv
 open import Core.Postwhisker
 open import Ergonomics.Notations.Orthogonality
-open import Modalities.HigherModality
+open import Modalities.HigherModalities
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
@@ -30,7 +34,7 @@ open import Modalities.ModalMaps
 
 open Core.Orthogonal.notation
 }
-%```
+}
 
 \subtree[stt-005F]{
 \taxon{Definition}
@@ -39,12 +43,12 @@ open Core.Orthogonal.notation
 \p{Given a family of maps #{f_i : A_i \to B_i}, we say that a type
 is #{f}-local if it is [orthogonal](stt-004O) to each map.}
 
-%```agda
 \agda{
-is-local : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
-               → (f : (i : I) → A i → B i)
-               → Type 𝓦
-               → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-local
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥}
+    → (f : (i : I) → A i → B i)
+    → Type 𝓦
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
 is-local f A = ∀ i → orthogonal-type (f i) A
 
 is-local-is-prop
@@ -53,7 +57,46 @@ is-local-is-prop
     → ∀ (A : Type 𝓦) → is-prop (is-local f A)
 is-local-is-prop A = Π-is-prop λ i → is-equiv-is-prop
 }
-%```
+}
+
+\subtree[stt-00PF]{
+\title{Local types with respect to coproducts of families of maps}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+module _
+  {𝓘 𝓙 𝓤 𝓥 𝓠}
+  {I : Type 𝓘} {J : Type 𝓙}
+  {A : I → Type 𝓤} {B : I → Type 𝓥}
+  {C : J → Type 𝓤} {D : J → Type 𝓥}
+  {f : (i : I) → A i → B i}
+  {g : (j : J) → C j → D j}
+  {X : Type 𝓠}
+  where
+
+  is-local-⨄₁ᶠ←is-local
+    : is-local f X → is-local g X → is-local (f ⨄₁ᶠ g) X
+  is-local-⨄₁ᶠ←is-local floc gloc (inl i) = floc i
+  is-local-⨄₁ᶠ←is-local floc gloc (inr j) = gloc j
+
+  ×-is-local←is-local-⨄₁ᶠ
+    : is-local (f ⨄₁ᶠ g) X → is-local f X × is-local g X
+  ×-is-local←is-local-⨄₁ᶠ loc = (loc ∘ inl , loc ∘ inr)
+
+  is-local-⨄₁ᶠ↔×-is-local
+    : is-local (f ⨄₁ᶠ g) X ↔ (is-local f X × is-local g X)
+  is-local-⨄₁ᶠ↔×-is-local .fst = ×-is-local←is-local-⨄₁ᶠ
+  is-local-⨄₁ᶠ↔×-is-local .snd (floc , gloc) = is-local-⨄₁ᶠ←is-local floc gloc
+
+  is-local-⨄₁ᶠ≃×-is-local
+    : is-local (f ⨄₁ᶠ g) X ≃ (is-local f X × is-local g X)
+  is-local-⨄₁ᶠ≃×-is-local
+    = equiv←logical
+        (is-local-is-prop X)
+        (×-is-prop (is-local-is-prop X) (is-local-is-prop X))
+        (is-local-⨄₁ᶠ↔×-is-local)
+}
 }
 
 \subtree[stt-007L]{
@@ -63,34 +106,32 @@ is-local-is-prop A = Π-is-prop λ i → is-equiv-is-prop
 \p{If #{f_i} and #{g_i} are [equivalent maps](stt-004R), then #{f}-local
 types are #{g}-local.}
 
-%```agda
 \agda{
-is-local-equiv : ∀ {𝓘 𝓤 𝓤' 𝓥 𝓥' 𝓦} {I : Type 𝓘}
-                   {A : I → Type 𝓤} {A' : I → Type 𝓤'}
-                   {B : I → Type 𝓥} {B' : I → Type 𝓥'}
-                   {f : (i : I) → A i → B i}
-                   {f' : (i : I) → A' i → B' i}
-                   (F : ∀ i → Arrow-map (f i) (f' i))
-                 → (∀ i → is-Arrow-equiv (F i))
-                 → {X : Type 𝓦}
-                 → is-local f X → is-local f' X
+is-local-equiv
+  : ∀ {𝓘 𝓤 𝓤' 𝓥 𝓥' 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤} {A' : I → Type 𝓤'}
+      {B : I → Type 𝓥} {B' : I → Type 𝓥'}
+      {f : (i : I) → A i → B i}
+      {f' : (i : I) → A' i → B' i}
+      (F : ∀ i → Arrow-map (f i) (f' i))
+    → (∀ i → is-Arrow-equiv (F i))
+    → {X : Type 𝓦}
+    → is-local f X → is-local f' X
 is-local-equiv F eq loc i
-  = is-equiv←Arrow-equiv⁻¹ {F = precomp-Arrow-map _ (F i)}
-      (precomp-square-is-equiv (F i) (eq i))
+  = src-is-equiv←Arrow-equiv
+      (precomp-Arrow-map _ (F i) , precomp-square-is-equiv (F i) (eq i))
       (loc i)
 }
-%```
 }
 
 \subtree[stt-005Z]{
 \taxon{Lemma}
 \title{Locality via sections of the codiagonal}
-\citet{RSS2020}{2.13}
+\citet{Thm 2.13}{RSS20}
 
 \p{Given maps #{f_i : A_i \to B_i}, a type #{X} is #{f\rm{-local}}
 iff #{{-} \circ f_i} and #{{-} \circ \nabla_{f_i}} all have sections.}
 
-%```agda
 \agda{
 is-local←sec←sec-∇
   : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
@@ -124,7 +165,6 @@ sec∇←is-local loc i
       (sec-diag←is-pathsplit
         (is-pathsplit←is-equiv (loc i)))
 }
-%```
 }
 
 \subtree[stt-005Y]{
@@ -137,13 +177,12 @@ to all have sections, and so the [free algebraically injective](stt-005I)
 type will not get us all the way to a localisation.}
 
 
-\p{As explained in \citet{2.14}{RSS2020}, even though we don't
+\p{As explained in \citet{2.14}{RSS20}, even though we don't
 immediately get a localisation, we can add some morphisms to the class
 with which we localise against to make it so. By the observation in
 \ref{stt-005Z}, we need to add all maps of the form #{\nabla_{f_i}} to
 #{f}.}
 
-%```agda
 \agda{
 module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
          {A : I → Type 𝓤} {B : I → Type 𝓥}
@@ -162,19 +201,19 @@ module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
     f' f (inr i) = ∇ (f i)
 
   Loc : (f : ∀ i → A i → B i) → Type 𝓦 → Type 𝓦
-  Loc f = Free-inj (f' f)
+  Loc f = FreeInj (f' f)
 
-  Loc-is-local : ∀ {X : Type 𝓦}
-                   {f : ∀ i → A i → B i}
-                 → is-local f (Loc f X)
-  Loc-is-local {X}{f}
+  Loc-is-local
+    : ∀ {X : Type 𝓦}
+        {f : ∀ i → A i → B i}
+      → is-local f (Loc f X)
+  Loc-is-local {X} {f}
     =  is-local←sec←sec-∇
          (λ i → sec-3-for-2 {f = precomp _ unlift} {precomp _ (f i)}
                              (precomp-equiv (is-equiv⁻¹ lift-is-equiv))
-                             (injector-Free-inj (inl i)))
-         (λ i → injector-Free-inj (inr i))
+                             (injector-FreeInj (inl i)))
+         (λ i → injector-FreeInj (inr i))
 }
-%```
 }
 
 \subtree[stt-006C]{
@@ -193,18 +232,17 @@ the category of #{f\rm{-local}} types.}
    is an equivalence.
    }
 
-%```agda
 \agda{
-postcomp-inj : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
-                 {I : Type 𝓘} {A : I → Type 𝓤}
-                 {B : I → Type 𝓥}
-                 {f : (i : I) → A i → B i}
-                 (X : Type 𝓦) {Y : Type 𝓜}
-               → (Free-inj f X → Y)
-               → (X → Y)
-postcomp-inj X {Y} = precomp Y Free-inj.inc
+postcomp-inj
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
+      {I : Type 𝓘} {A : I → Type 𝓤}
+      {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      (X : Type 𝓦) {Y : Type 𝓜}
+    → (FreeInj f X → Y)
+    → (X → Y)
+postcomp-inj X {Y} = precomp Y FreeInj.inc
 }
-%```
 \proof{
 
 \p{To prove this, we use [pathsplit](stt-005Q) as our notion of
@@ -212,20 +250,19 @@ postcomp-inj X {Y} = precomp Y Free-inj.inc
    to #{\rm{ap}_{{-} \circ \eta}^{g,h}} for any pair of maps #{g, h :
    \mathcal{J}_f(X) \to Y}.  }
 
-%```agda
 \agda{
-Free-inj-reflects : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
-                   {I : Type 𝓘} {A : I → Type 𝓤}
-                   {B : I → Type 𝓥}
-                 {f : (i : I) → A i → B i}
-                 (X : Type 𝓦) {Y : Type 𝓜}
-               → is-local f Y
-               → is-equiv (postcomp-inj {f = f} X {Y})
-Free-inj-reflects {I = I} {A}{B}{f} X {Y} Y-loc
+FreeInj-reflects
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜}
+      {I : Type 𝓘} {A : I → Type 𝓤}
+      {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      (X : Type 𝓦) {Y : Type 𝓜}
+    → is-local f Y
+    → is-equiv (postcomp-inj {f = f} X {Y})
+FreeInj-reflects {I = I} {A} {B} {f} X {Y} Y-loc
   = is-equiv←is-pathsplit ps where
   module Y {i} = is-equiv (Y-loc i)
 }
-%```
 
 \p{In the first case, the section of #{({-} \circ \eta)} is relatively
 trivial to construct. To do so, we are given a map #{g : X \to Y} and
@@ -246,18 +283,16 @@ algebraic injective:}
 }
 
 
-%```agda
 \agda{
   sec-postcomp-inj : section (postcomp-inj X)
-  sec-postcomp-inj .fst g = Free-inj.ind
+  sec-postcomp-inj .fst g = FreeInj.ind
                      (λ _ → Y)
                      g
                      (λ _ → Y.bwd)
-                     λ g' h a → tr-const (Free-inj.is-ext g' a)
+                     λ g' h a → tr-const (FreeInj.is-ext g' a)
                                 ∙ happly (Y.ε h) a
   sec-postcomp-inj .snd h = refl
 }
-%```
 
 \p{Now we fix a pair of maps #{g, h : \mathcal{J}_f(X) \to Y}, and
 give a section to #{\rm{ap}_{{-} \circ \eta}^{g,h} : g = h \to g\eta =
@@ -271,7 +306,6 @@ suffices](stt-0069) then to give a section to the map by
 because postcomposition by #{f_i} at #{Y} is an equivalence, then so
 is the postwhiskering by #{f_i} at maps #{B_i \to Y}}
 
-%```agda
 \agda{
   opaque
     Y▸-is-equiv : ∀ {i} {g h : B i → Y} → is-equiv (prewhisker (f i) g h)
@@ -280,7 +314,6 @@ is the postwhiskering by #{f_i} at maps #{B_i \to Y}}
 
   module Y▸ {i} {g h} = is-equiv (Y▸-is-equiv {i} {g} {h})
 }
-%```
 
 \p{Now, we are ready to construct the section. Given #{H : g\eta \sim
 h\eta} we want to show for all #{x : \mathcal{J}_f(X)}, #{g(x) =
@@ -343,36 +376,36 @@ h(x)}, which we do again by induction on #{x} with the motive #{x
      }
 }
 
-%```agda
 \agda{
-  lem : (g h : Free-inj f X → Y)
+  lem : (g h : FreeInj f X → Y)
      (i : I)
-     (g' : A i → Free-inj _ X)
+     (g' : A i → FreeInj _ X)
      (q : g ∘ g' ~ h ∘ g') →
-     precomp Y (f i) (g ∘ Free-inj.ext g') ~
-     precomp Y (f i) (h ∘ Free-inj.ext g')
-  lem g h i g' K =      g ◂ (Free-inj.is-ext g')
-                     ~∙ K
-                     ~∙ (h ◂ Free-inj.is-ext g' ~⁻¹)
+     precomp Y (f i) (g ∘ FreeInj.ext g') ~
+     precomp Y (f i) (h ∘ FreeInj.ext g')
+  lem g h i g' K =      g ◂ (FreeInj.is-ext g')
+                     ∙h K
+                     ∙h ((h ◂ FreeInj.is-ext g') h⁻¹)
 
   opaque
-    secAp : ∀ (g h : Free-inj f X → Y)
-            → section (prewhisker Free-inj.inc g h)
+    secAp
+      : ∀ (g h : FreeInj f X → Y)
+        → section (prewhisker FreeInj.inc g h)
     secAp g h .fst H
-      = Free-inj.ind (λ z → g z ＝ h z)
+      = FreeInj.ind (λ z → g z ＝ h z)
           H
           (λ f' (K : g ∘ f' ~ h ∘ f')
             → Y▸.bwd (lem g h _ f' K))
           λ f' (K : g ∘ f' ~ h ∘ f') a
             → Idᵈ-func←Square
-               (Free-inj.is-ext f' a)
+               (FreeInj.is-ext f' a)
                _
                (K a)
                (Square←brt＝l
-                 (ap g (Free-inj.is-ext f' a))
-                 {ap h (Free-inj.is-ext f' a)}
-                 {Y▸.bwd {g = g ∘ Free-inj.ext f'}
-                         {h = h ∘ Free-inj.ext f'}
+                 (ap g (FreeInj.is-ext f' a))
+                 {ap h (FreeInj.is-ext f' a)}
+                 {Y▸.bwd {g = g ∘ FreeInj.ext f'}
+                         {h = h ∘ FreeInj.ext f'}
                          (lem g h _ f' K) (f _ a)}
                  (sym (happly (Y▸.ε (lem g h _ f' K)) a)))
     secAp g h .snd K = refl
@@ -382,28 +415,26 @@ h(x)}, which we do again by induction on #{x} with the motive #{x
   ps .snd g h = section←Arrow-equiv⁻¹ {F = prewhisker←ap-compose _ _ _}
                                       prewhisker-funext(secAp g h)
 }
-%```
 }
 }
 
 \subtree[stt-006A]{
 \date{2025-06-23}
 \taxon{Lemma}
-\title{#{f} local maps are #{\nabla(f)} local}
+\title{#{f} local maps are #{∇(f)} local}
 
-%```agda
 \agda{
-is-local∇←is-local : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-                 (f : A → B)
-                 {X : Type 𝓦}
-               → is-equiv (precomp X f)
-               → is-equiv (precomp X (∇ f))
+is-local∇←is-local
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+      {X : Type 𝓦}
+    → is-equiv (precomp X f)
+    → is-equiv (precomp X (∇ f))
 is-local∇←is-local f {X} eq = equiv←Coslice-equiv
                                 (Δ←∇ f X)
                                 (Δ←∇-is-equiv)
                                 (diagonal-is-equiv eq)
 }
-%```
 }
 
 \subtree[stt-00GM]{
@@ -412,7 +443,6 @@ is-local∇←is-local f {X} eq = equiv←Coslice-equiv
 \taxon{Proposition}
 \title{Propositions are local when the domains are inhabited}
 
-%```agda
 \agda{
 is-local←is-prop←section-domain
   : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
@@ -422,13 +452,12 @@ is-local←is-prop←section-domain
     → {X : Type 𝓦}
     → is-prop X
     → is-local f X
-is-local←is-prop←section-domain f a Xprop i = is-equiv←qiso qiso where
-  qiso : quasi-iso (precomp _ (f i))
-  qiso .fst α _ = α (a i)
-  qiso .snd .fst β = Π-is-prop (λ _ → Xprop) _ _
-  qiso .snd .snd α = Π-is-prop (λ _ → Xprop) _ _
+is-local←is-prop←section-domain f a Xprop i = is-equiv←qinv qinv where
+  qinv : quasi-inv (precomp _ (f i))
+  qinv .fst α _ = α (a i)
+  qinv .snd .fst β = Π-is-prop (λ _ → Xprop) _ _
+  qinv .snd .snd α = Π-is-prop (λ _ → Xprop) _ _
 }
-%```
 }
 
 \subtree[stt-00IO]{
@@ -437,7 +466,6 @@ is-local←is-prop←section-domain f a Xprop i = is-equiv←qiso qiso where
 \taxon{Proposition}
 \title{Empty types are local when the domains are irrefutable}
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
@@ -448,13 +476,12 @@ module _
   ∅-is-local
     : ((i : I) → ¬ ¬ A i)
     → is-local f ∅
-  ∅-is-local nnA i = is-equiv←qiso qiso where
-    qiso : quasi-iso (precomp ∅ (f i))
-    qiso .fst α _ = nnA i α
-    qiso .snd .fst β = Π-is-prop (λ _ → λ ()) _ _
-    qiso .snd .snd α = Π-is-prop (λ _ → λ ()) _ _
+  ∅-is-local nnA i = is-equiv←qinv qinv where
+    qinv : quasi-inv (precomp ∅ (f i))
+    qinv .fst α _ = nnA i α
+    qinv .snd .fst β = Π-is-prop (λ _ → λ ()) _ _
+    qinv .snd .snd α = Π-is-prop (λ _ → λ ()) _ _
 }
-%```
 }
 
 
@@ -583,7 +610,6 @@ module _
 \p{Localisation at any family of maps forms a reflective subuniverse
 which is not in general #{\Sigma}-closed.}
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
@@ -606,20 +632,21 @@ module _
   Local-gSubU
     : gSubU ((𝓘 ⊔ 𝓤 ⊔ 𝓥) ⊔_)
   Local-gSubU .gSubU.S {𝓤} = Local-SubU 𝓤
-  Local-gSubU .gSubU.∈S←equiv {A = A} {B} e aloc i
-    = is-equiv←Arrow-equiv
-       {F = mk-amap (postcomp _ fwd) (postcomp _ fwd) ~refl}
-       (postcomp-equiv has-is-eqv , postcomp-equiv has-is-eqv)
-       (aloc i) where
+  Local-gSubU .gSubU.∈S←equiv {A = A} {B} e A-loc i
+    = tgt-is-equiv←Arrow-equiv
+       ( mk-amap (postcomp _ fwd) (postcomp _ fwd) ~refl
+       , postcomp-equiv fwd-is-equiv
+       , postcomp-equiv fwd-is-equiv)
+       (A-loc i) where
     open _≃_ e
 
   Local-global-reflectors
     : is-globally-reflective Local-gSubU
   Local-global-reflectors .○ = Loc f
-  Local-global-reflectors .η = Free-inj.inc
-  Local-global-reflectors .has-is-reflector .○∈S = Loc-is-local
-  Local-global-reflectors .has-is-reflector .reflects cloc
-    = Free-inj-reflects _ λ where
+  Local-global-reflectors .η = FreeInj.inc
+  Local-global-reflectors .η-is-reflector .○∈S = Loc-is-local
+  Local-global-reflectors .η-is-reflector .reflects cloc
+    = FreeInj-reflects _ λ where
        (inl i) → is-equiv-∘ (precomp-equiv (is-equiv⁻¹ lift-is-equiv))
                              (cloc i)
        (inr i) → is-local∇←is-local (f i) (cloc i)
@@ -631,7 +658,7 @@ module _
 
   Local-gRSubU : gRSubU ((𝓘 ⊔ 𝓤 ⊔ 𝓥) ⊔_)
   Local-gRSubU .gRSubU.GS = Local-gSubU
-  Local-gRSubU .gRSubU.has-is-globally-reflective = Local-global-reflectors
+  Local-gRSubU .gRSubU.GS-is-globally-reflective = Local-global-reflectors
 
   open gSubU Local-gSubU public using () renaming
     ( ∈S←equiv to is-local←equiv)
@@ -662,7 +689,6 @@ module _
     open gRSubU Local-gRSubU public
     open gReflectiveClosure Local-gRSubU public
 }
-%```
 }
 
 \subtree[stt-00AP]{
@@ -700,22 +726,20 @@ arrange the arrows as below, noting that the fibre is a pullback.}
 preserved by base change.}
 }
 
-%```agda
 \agda{
 module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
          {A : I → Type 𝓤} {B : I → Type 𝓥}
          (f : (i : I) → A i → B i)
          where
 
-  is-modal-map←is-local
+  is-modal-map'←is-local
     : ∀ {𝓜 𝓝} {X : Type 𝓜} {Y : Type 𝓝} (p : X → Y)
-      → (∀ i → are-orthogonal (f i) p) → is-modal-map (Local-SubU f (𝓜 ⊔ 𝓝)) p
-  is-modal-map←is-local p orth y i
-    = is-orthogonal⇔orthogonal-! .fst
-        (orthogonal←pullback
+      → (∀ i → are-orthogonal (f i) p) → is-modal-map' (Local-SubU f (𝓜 ⊔ 𝓝)) p
+  is-modal-map'←is-local p orth y i
+    = is-orthogonal↔orthogonal-! .fst
+        (orthogonal←base-change
           (f i) _
           (fibre-square-is-cartesian p y)
           (orth i))
 }
-%```
 }

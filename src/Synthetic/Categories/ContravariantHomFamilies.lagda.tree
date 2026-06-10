@@ -1,0 +1,209 @@
+\title{Contravariant Hom families}
+\taxon{Module}
+\date{2026-05-06}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.ContravariantHomFamilies
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.CosliceOrthogonality
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.ArrowEquiv
+open import Core.Coslices
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.ExtPullbacks
+open import Core.PiSection
+open import Core.CanonicalPushouts
+
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.CoComma Δ¹ I
+open import Synthetic.Categories.JoinSlice Δ¹ I
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
+open import Synthetic.Categories.RightSegal Δ¹ I
+}
+}
+
+\subtree[stt-00O7]{
+\title{Straightening Hom families}
+\taxon{Remark}
+
+\p{The unstraightening of the family #{\Hom(-,x)} is the canonical projection #{X_{/x} \to X}. Thus
+representable families are contravariant iff #{X_{/x} \to X} are all right
+fibrations.}
+
+\agda{
+hom-fam-is-contrav↔is-right-fibration
+  : ∀ {𝓤} {X : Type 𝓤} (x : X)
+    → is-contravariant (λ a → Hom X a x)
+    ↔ is-right-fibration {A = Slice X (point x)} fst
+hom-fam-is-contrav↔is-right-fibration {X = X} x
+  = is-contravariant↔is-right-fibration (λ a → Hom X a x)
+  ∙iff right-orthogonal-iff←equiv (λ _ → i1) amap amap-eq where
+  amap : Arrow-map (fst {B = λ a → (i : 𝟙) → Hom X a x})
+                   (fst {B = λ a → Hom X a x})
+  amap .Arrow-map.top = total-map (λ a → ev tt)
+  amap .Arrow-map.bot = id
+  amap .Arrow-map.comm = ~refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = is-total-equiv←is-fibrewise-equiv (λ a → unit-ev-is-equiv)
+  amap-eq .snd = id-is-equiv
+}
+}
+
+\subtree[stt-00O0]{
+\taxon{Theorem}
+\title{Contravariance of representable families}
+
+\p{We show that a type #{A} is [right Segal](stt-00O3) iff the family
+#{\Hom(-,x)} is contravariant for each #{x}.}
+
+\proof{
+We will show that every #{A_{/x} \to A} is a right fibration iff A is
+right orthogonal to the map #{\Lambda^2_1 \to \Delta^1 \bjoin 1}.
+
+\p{First we give an equivalence of arrows:}
+
+\quiver{
+\begin{tikzcd}
+	{\Delta^1\bjoin 1 \to_\bullet A} && {{A_{/x}}^{\Delta^1}} \\
+	\\
+	{\Lambda^2_1 \to_\bullet A} && {A^{\Delta^1} \times_A A_{/x}}
+	\arrow["\sim", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{The top equivalence is given by the [join-slice adjunction](stt-00D5), and
+the bottom via the universal property of the horn.}
+
+\p{Now we use \ref{stt-00DC} to finish the proof.}
+}
+
+\closedScope{
+\subtree[stt-00O1]{
+\title{The bottom equivalence}
+\agda{
+char-slice-lift
+  : ∀ {𝓤} {A : Type 𝓤} x
+    → Arrow-map (point i1) {C = Slice A (point x)} (fst)
+    → Coslice-map {X = Λ[2,1]} (λ _ → ι₂ i1) (point x)
+char-slice-lift x (mk-amap top bot comm)
+  = cogap (mk-cocone bot
+                     (top tt .snd tt .Homᵈ.hom)
+                      λ c → comm c ∙ sym (top tt .snd tt .Homᵈ.hom0))
+  , λ _ → top tt .snd tt .Homᵈ.hom1
+
+opaque
+  char-slice-lift-is-equiv
+    : ∀ {𝓤} {A : Type 𝓤} x
+      → is-equiv (char-slice-lift {A = A} x)
+  char-slice-lift-is-equiv x = is-equiv←qinv qinv where
+    qinv : quasi-inv (char-slice-lift x)
+    qinv .fst (f , p) = mk-amap (λ _ → (_ , λ _ → mk-hom (f ∘ ι₂) refl (p tt)))
+                                (f ∘ ι₁)
+                                (ap f ∘ glue)
+    qinv .snd .fst (mk-amap top bot comm)
+      = let pth = ( (top tt .snd tt .Homᵈ.hom0)
+                  , (λ i → ~refl , Square-flatten-hor refl , Square-degen-vert _ _ refl))
+        in Arrow-map-path→
+             ( (λ a → Slice-path→ pth)
+             , ~refl
+             , λ a → ap (_∙ ap fst (Slice-path→ pth)) (pushout-rec-apβ a)
+                   ∙ ap ((comm tt ∙ sym (Homᵈ.hom0 (top tt .snd tt))) ∙_)
+                        (Slice-path-ap-fst pth)
+                   ∙ ∙.cancell _ (∙-sym' (Homᵈ.hom0 (top tt .snd tt))) )
+    qinv .snd .snd (f , p) = ext!
+      ( (sym ∘ pushout-rec-unique _ _ ~refl ~refl ~refl)
+      , ~refl)
+}
+}
+}
+
+\agda{
+slice-is-right↔right-inner-coslice
+  : ∀ {𝓤} {A : Type 𝓤} (x : A)
+    → is-right-fibration {A = Slice A (point x)} fst
+    ↔ (is-equiv (Coslice-map-precompose (point x) Λ[2,1]-incl▻∙))
+slice-is-right↔right-inner-coslice x
+  = src↔tgt-is-equiv←Arrow-equiv (amap , amap-eq) module Cov-hom where
+  amap : Arrow-map (pullback-power (λ _ → i1) (λ r → fst r))
+                   (Coslice-map-precompose (λ _ → x) Λ[2,1]-incl▻∙)
+  amap .Arrow-map.top = join←slice-map (λ _ → x)
+  amap .Arrow-map.bot = char-slice-lift x
+  amap .Arrow-map.comm f = ext!
+    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+              (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
+                                  ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
+                                  ∙ ap-sym (pushout-rec _) (glue _)
+                                  ∙ ap sym (pushout-rec-apβ _))
+                    ∙ ∙-reflr _)
+    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = join←slice-map-is-equiv (λ _ → x)
+  amap-eq .snd = char-slice-lift-is-equiv x
+
+hom-fam-is-contrav↔is-right-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (∀ (x : A) → is-contravariant (λ a → Hom A a x))
+    ↔ is-right-segal A
+hom-fam-is-contrav↔is-right-segal {𝓤} {A}
+  =  postcomp-Π-↔ (λ
+       x → hom-fam-is-contrav↔is-right-fibration x
+         ∙iff slice-is-right↔right-inner-coslice x)
+  ∙iff logical←equiv (precomp-Π-≃ _ unit-UP≃)
+  ∙iff (coslice-orthogonality (Λ[2,1]-incl▻∙) iff⁻¹)
+  ∙iff logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
+
+hom-fam-contrav
+  : {𝓤 : Level} {A : Type 𝓤}
+  → is-right-segal A → (x : A) → is-contravariant (λ a → Hom A a x)
+hom-fam-contrav = hom-fam-is-contrav↔is-right-segal .snd
+}
+}

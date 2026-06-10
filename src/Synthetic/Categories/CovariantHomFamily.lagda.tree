@@ -1,0 +1,381 @@
+\title{The covariant Hom family}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.CovariantHomFamily
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.CosliceOrthogonality
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.ArrowEquiv
+open import Core.Coslices
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.ExtPullbacks
+open import Core.PiSection
+open import Core.CanonicalPushouts
+open import Core.WedgeSums
+
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.CoComma Δ¹ I
+open import Synthetic.Categories.JoinSlice Δ¹ I
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
+open import Synthetic.Categories.LeftSegal Δ¹ I
+}
+}
+
+\subtree[stt-00D6]{
+\title{Straightening the coslice projection}
+\taxon{Remark}
+
+\p{The unstraightening of the type family #{\Hom(x,-)} is the canonical projection #{X_{x/} \to X}. Thus
+representable families are covariant iff #{X_{x/} \to X} are all left fibrations.}
+
+\agda{
+hom-fam-is-cov↔is-left-fibration
+  : ∀ {𝓤} {X : Type 𝓤} (x : X)
+    → is-covariant (λ a → Hom X x a)
+    ↔ is-left-fibration {A = Coslice X (point x)} fst
+hom-fam-is-cov↔is-left-fibration {X = X} x
+  = is-covariant↔is-left-fibration (λ a → Hom X x a)
+  ∙iff right-orthogonal-iff←equiv (λ _ → i0) amap amap-eq where
+  amap : Arrow-map (fst {B = λ c → (i : 𝟙) → Hom X x c})
+                   (fst {B = λ a → Hom X x a})
+  amap .Arrow-map.top = total-map (λ a → ev tt)
+  amap .Arrow-map.bot = id
+  amap .Arrow-map.comm = ~refl
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = is-total-equiv←is-fibrewise-equiv (λ a → unit-ev-is-equiv)
+  amap-eq .snd = id-is-equiv
+}
+}
+
+\subtree[stt-00D9]{
+\taxon{Theorem}
+\title{Covariance of representable families}
+
+\p{We show that a type #{A} is [left Segal](stt-00DA) iff the family
+#{\Hom(x,-)} is covariant for each #{x}.}
+
+\proof{
+We will show that every #{A_{x/} \to A} is a left fibration iff A is right
+orthogonal to the map #{\Lambda^2_1 \to 1 \bjoin \Delta^1}.
+
+\p{First we give an equivalence of arrows:}
+
+\quiver{
+\begin{tikzcd}
+	{1\bjoin \Delta^1 \to_\bullet A} && {{A_{x/}}^{\Delta^1}} \\
+	\\
+	{\Lambda^2_1 \to_\bullet A} && {A^{\Delta^1} \times_A A_{x/}}
+	\arrow["\sim", from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{The top equivalence is given by the [join-coslice adjunction](stt-00D5), and
+the bottom via the universal property of the horn.}
+
+\p{Now we use \ref{stt-00DC} to finish the proof.}
+}
+
+\closedScope{
+\subtree[stt-00DD]{
+\title{The bottom equivalence}
+\agda{
+char-coslice-lift
+  : ∀ {𝓤} {A : Type 𝓤} x
+    → Arrow-map (point i0) {C = Coslice A (point x)} (fst)
+    → Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (point x)
+char-coslice-lift x (mk-amap top bot comm)
+  = cogap (mk-cocone (top tt .snd tt .Homᵈ.hom)
+                     bot
+                     (λ c → top tt .snd tt .Homᵈ.hom1 ∙ sym (comm c)))
+  , λ _ → Homᵈ.hom0 (top tt .snd tt)
+
+opaque
+  char-coslice-lift-is-equiv
+    : ∀ {𝓤} {A : Type 𝓤} x
+      → is-equiv (char-coslice-lift {A = A} x)
+  char-coslice-lift-is-equiv x = is-equiv←qinv qinv where
+    qinv : quasi-inv (char-coslice-lift x)
+    qinv .fst (a , b) = mk-amap (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
+                                (a ∘ ι₂)
+                                (ap a ∘ sym ∘ glue)
+    qinv .snd .fst (mk-amap top bot comm)
+      = let pth = ( top tt .snd tt .Homᵈ.hom1
+                  , λ i → ( ~refl
+                          , Square-degen-vert _ _ refl
+                          , Square-flatten-hor refl))
+        in Arrow-map-path→
+          ( (λ a → Coslice-path→ pth)
+          , (~refl
+          , λ _ → ap (_∙ ap fst (Coslice-path→ pth))
+                    (ap-sym _ Λ[2,1]-glue ∙ ap sym (pushout-rec-apβ tt))
+                ∙ ap (sym (Homᵈ.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
+                     (Coslice-path-ap-fst pth)
+                ∙ ap (_∙ top tt .snd tt .Homᵈ.hom1) (∙-symsym _ (sym (comm tt)))
+                ∙ ∙.cancell _  (∙-sym' (Homᵈ.hom1 (top tt .snd tt)))
+                               {f = sym (sym (comm tt))}
+                ∙ sym-sym))
+    qinv .snd .snd (a , p)
+      = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+                      (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
+             , ~refl)
+}
+}
+}
+
+\agda{
+coslice-is-left↔left-inner-coslice
+  : ∀ {𝓤} {A : Type 𝓤} x
+    → is-left-fibration {A = Coslice A (point x)} fst
+    ↔ (is-equiv (Coslice-map-precompose (point x) Λ[2,1]-incl◅∙))
+coslice-is-left↔left-inner-coslice x
+  = src↔tgt-is-equiv←Arrow-equiv (amap , amap-eq) module Cov-hom where
+  amap : Arrow-map (pullback-power (λ _ → i0) (λ r → fst r))
+                   (Coslice-map-precompose (λ _ → x) Λ[2,1]-incl◅∙)
+  amap .Arrow-map.top = join←coslice-map (λ _ → x)
+  amap .Arrow-map.bot = char-coslice-lift x
+  amap .Arrow-map.comm f = ext!
+    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+          (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
+                              ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
+                              ∙ pushout-rec-apβ _))
+    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
+
+  amap-eq : is-Arrow-equiv amap
+  amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
+  amap-eq .snd = char-coslice-lift-is-equiv x
+
+hom-fam-is-cov↔is-left-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (∀ x → is-covariant (λ a → Hom A x a))
+    ↔ is-left-segal A
+hom-fam-is-cov↔is-left-segal {𝓤} {A}
+  =  postcomp-Π-↔ (λ
+       x → hom-fam-is-cov↔is-left-fibration x
+         ∙iff coslice-is-left↔left-inner-coslice x)
+  ∙iff logical←equiv (precomp-Π-≃ _ unit-UP≃)
+  ∙iff (coslice-orthogonality (Λ[2,1]-incl◅∙) iff⁻¹)
+  ∙iff logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
+
+hom-fam-cov
+  : {𝓤 : Level} {A : Type 𝓤} → is-left-segal A → (a : A) → is-covariant (Hom A a)
+hom-fam-cov = hom-fam-is-cov↔is-left-segal .snd
+}
+}
+
+\subtree[stt-00LN]{
+\title{A triangulated type is Segal iff #{\Hom(x,{-})} is covariant for all #{x}}
+\taxon{Corollary}
+\author{samueltoth}
+\author{fredrikbakke}
+
+\agda{
+hom-fam-is-cov↔is-segal←triangulated
+  : ∀ {𝓤} {A : Type 𝓤} → is-triangulated A
+    → is-segal A ↔ (∀ x → is-covariant (Hom A x))
+hom-fam-is-cov↔is-segal←triangulated Atri
+  = (is-left-segal←is-segal←is-triangulated Atri , is-segal←is-left-segal)
+  ∙iff (hom-fam-is-cov↔is-left-segal iff⁻¹)
+
+coslice-is-left↔is-segal←triangulated
+  : ∀ {𝓤} {A : Type 𝓤} → is-triangulated A
+    → is-segal A ↔ (∀ x → is-left-fibration {A = Coslice A (point x)} fst)
+coslice-is-left↔is-segal←triangulated Atri
+  = hom-fam-is-cov↔is-segal←triangulated Atri
+  ∙iff postcomp-Π-↔ (λ a → hom-fam-is-cov↔is-left-fibration a)
+}
+}
+
+\subtree[stt-00GB]{
+\title{Characterisation of the covariant action of #{\Hom}}
+\date{2026-03-20}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+Given a [left Segal](stt-00DA) type #{A}, the covariant action of
+the family #{(a : A) \mapsto \Hom_A(a,{-})} is given by postcomposition.
+}
+
+\proof{
+\p{
+By [covariance of representable families](stt-00D9), the family
+#{\Hom_A(a,-)} is covariant. Since [left Segal](stt-00DA) types are
+[Segal](stt-00AI) by \ref{stt-00DB}, composition is unique. For
+composable morphisms #{f : \Hom_A(a,b)} and #{g : \Hom_A(b,c)}, choose a 2-simplex
+#{\sigma} witnessing their composition. Restricting that 2-simplex along the map
+#{(s,t) \mapsto (s,s \wedge t)} produces a dependent homotopy over #{g} from #{f} to
+#{g \circ f}. Since covariant transport is defined as the centre of the contractible
+type of such dependent lifts, this point must coincide with the transport of #{f}
+along #{g}. Hence transporting along #{g} sends #{f} to #{g \circ f}.
+}
+}
+
+\agda{
+module CovariantActionPostcomp
+  {𝓤 : Level} {A : Type 𝓤} (𝐴ₗ : is-left-segal A)
+  (let 𝐴 = is-segal←is-left-segal 𝐴ₗ)
+  where
+
+  tr-cov-hom-is-comp
+    : {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+    → tr-cov-hom (hom-fam-cov 𝐴ₗ _) g f
+    ＝ g ∘[ 𝐴 ] f
+  tr-cov-hom-is-comp {a} (mk-hom gh refl refl) f@(mk-hom fh refl fh1)
+    = ap fst (hom-fam-cov 𝐴ₗ a gh f .central (gf , comp-hov))
+    where
+    g = mk-hom gh refl refl
+    gf = g ∘[ 𝐴 ] f
+    σ = ∘[ 𝐴 ]-is-composite {g} {f}
+
+    bd : (x : ∂Δ²) → σ .fst (∂Δ²-incl x) ＝ make-∂Δ² g f gf x
+    bd = σ .snd
+
+    face2 : (s : Δ¹) → σ .fst (s , i0) ＝ fh s
+    face2 s = bd (ι₁ (ι₁ s))
+
+    face0 : (t : Δ¹) → σ .fst (i1 , t) ＝ gh t
+    face0 t = bd (ι₁ (ι₂ t))
+
+    diag : (s : Δ¹) → σ .fst (s , s) ＝ gf .Homᵈ.hom s
+    diag s = bd (ι₂ s)
+
+    wedge-hom : (t : Δ¹) → Hom A (fh i0) (gh t)
+    wedge-hom t = mk-hom
+      (λ s → σ .fst ((s , s ∧ t) ⦃ ∧-≤-eliml ≤-refl ⦄))
+      (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙ face2 i0)
+      (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙ face0 t)
+
+    diag-glue0
+      : face2 i0
+        ＝ (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0) ∙ diag i0) ∙ gf .Homᵈ.hom0
+    diag-glue0
+      = sym (homotopy-cancel bd (glue ∂Δ¹-0))
+      ∙ ap ((ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0) ∙ diag i0) ∙_)
+           (ap sym (pushout-rec-apβ ∂Δ¹-0) ∙ sym-sym)
+
+    diag-glue1
+      : face0 i1
+        ＝ (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1) ∙ diag i1) ∙ gf .Homᵈ.hom1
+    diag-glue1
+      = sym (homotopy-cancel bd (glue ∂Δ¹-1))
+      ∙ ap ((ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1) ∙ diag i1) ∙_)
+           (ap sym (pushout-rec-apβ ∂Δ¹-1) ∙ sym-sym)
+
+    comp-hov-hom0-path : Hom-path (wedge-hom i0) f
+    comp-hov-hom0-path
+      = ( (λ s → ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙ face2 s)
+        , ∙-reflr _ ∙ ap (λ p → ap (σ .fst) p ∙ face2 i0) (Δ²-is-set _ _ _ _)
+        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init))) (face2 i1) fh1
+          ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙_)
+                (ap (face2 i1 ∙_)
+                    (sym (∙-reflr fh1)
+                    ∙ sym (pushout-rec-apβ {c = wedge-cocone fh gh (fh1 ∙ refl)} tt)
+                    ∙ ap-∘ (make-∂Δ² g f gf) ∂Δ²←Λ[2,1] Λ[2,1]-glue)
+                ∙ homotopy-natural bd (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
+          ∙ sym (∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)))
+                          (ap (σ .fst ∘ ∂Δ²-incl) (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
+                          (face0 i0))
+          ∙ ap (_∙ face0 i0)
+               (ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init)) ∙_)
+                    (ap-∘ (σ .fst) ∂Δ²-incl (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
+               ∙ sym (ap-∙ (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 0-init))
+                                     (ap ∂Δ²-incl (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue)))
+               ∙ ap (ap (σ .fst)) (Δ²-is-set _ _ _ _)))
+
+    comp-hov-hom1-path : Hom-path (wedge-hom i1) gf
+    comp-hov-hom1-path
+      = ( (λ s → ap (σ .fst) (Δ²-ext (refl , 1-top)) ∙ diag s)
+        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i0) (gf .Homᵈ.hom0)
+          ∙ ap (_∙ (diag i0 ∙ gf .Homᵈ.hom0))
+               (ap (ap (σ .fst))
+                   (Δ²-is-set _ _
+                     (Δ²-ext (refl , 1-top))
+                     (Δ²-ext (refl , 0-init) ∙ ap ∂Δ²-incl (glue ∂Δ¹-0)))
+               ∙ ap-∙ (σ .fst) (Δ²-ext (refl , 0-init)) (ap ∂Δ²-incl (glue ∂Δ¹-0))
+               ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
+                    (sym (ap-∘ (σ .fst) ∂Δ²-incl (glue ∂Δ¹-0))))
+          ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 0-init)))
+                    (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0))
+                    (diag i0 ∙ gf .Homᵈ.hom0)
+          ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
+               (sym (∙-assoc (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0))
+                             (diag i0) (gf .Homᵈ.hom0))
+               ∙ sym diag-glue0)
+        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i1) (gf .Homᵈ.hom1)
+          ∙ ap (_∙ (diag i1 ∙ gf .Homᵈ.hom1))
+               (ap (ap (σ .fst))
+                   (Δ²-is-set _ _
+                     (Δ²-ext (refl , 1-top))
+                     (Δ²-ext (refl , ∧-comm ∙ 1-top) ∙ ap ∂Δ²-incl (glue ∂Δ¹-1)))
+               ∙ ap-∙ (σ .fst)
+                      (Δ²-ext (refl , ∧-comm ∙ 1-top))
+                      (ap ∂Δ²-incl (glue ∂Δ¹-1))
+               ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙_)
+                    (sym (ap-∘ (σ .fst) ∂Δ²-incl (glue ∂Δ¹-1))))
+          ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)))
+                    (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1))
+                    (diag i1 ∙ gf .Homᵈ.hom1)
+          ∙ ap (ap (σ .fst) (Δ²-ext (refl , ∧-comm ∙ 1-top)) ∙_)
+               (sym (∙-assoc (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1))
+                             (diag i1) (gf .Homᵈ.hom1))
+               ∙ sym diag-glue1))
+
+    comp-hov : Homᵈ (Hom A (fh i0) ∘ gh) f gf
+    comp-hov .Homᵈ.hom = wedge-hom
+    comp-hov .Homᵈ.hom0 = Hom-ext→ comp-hov-hom0-path
+    comp-hov .Homᵈ.hom1 = Hom-ext→ comp-hov-hom1-path
+}
+}

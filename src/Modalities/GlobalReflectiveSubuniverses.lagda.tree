@@ -5,15 +5,17 @@
 \taxon{Module}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Modalities.GlobalReflectiveSubuniverses where
 
-open import Foundations.Prelude
-open import Foundations.CanonicalEqualiser
-open import Foundations.Idempotent
+open import Axioms.UF
+}
 
-open import ufAxioms
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.IdempotentMaps
+open import Foundations.SingletonClosure
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -24,21 +26,20 @@ open import Core.PiSection
 open import Ergonomics.Extensionality
 open import Ergonomics.Universal
 }
-%```
+}
 
 \subtree[stt-007B]{
 \taxon{Definition}
 \title{Global reflectors}
 
 \p{
-For a particular type #{A : \UU}, we say that #{(\circ A, \eta : A \to \circ A)}
+For a particular type #{A : \UU}, we say that #{(\bigcirc A, \eta : A \to \bigcirc A)}
 is a \em{global reflector} for #{A} when postcomposition
 by #{\eta} at modal types (of any universe) is an equivalence. This
-equivalence gives us a recursion principle for #{\circ A}.
+equivalence gives us a recursion principle for #{\bigcirc A}.
 }
 
 
-%```agda
 \agda{
 record is-global-reflector {α} (GS : gSubU α)
          {𝓤} (A : Type 𝓤)
@@ -48,18 +49,20 @@ record is-global-reflector {α} (GS : gSubU α)
   open gSubU GS
   field
     ○∈S : ○A ∈ S
-    reflects : ∀ {𝓥} {Q : Type 𝓥}
-               → Q ∈ S → is-equiv (precomp Q η)
+    reflects
+      : ∀ {𝓥} {Q : Type 𝓥}
+        → Q ∈ S → is-equiv (precomp Q η)
 
   ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
   ○-rec cs = is-equiv.bwd (reflects cs)
 
-  ○-rec-β : ∀ {𝓥} {Q : Type 𝓥} (p : Q ∈ S) (f : A → Q)
-             → ○-rec p f ∘ η ~ f
+  ○-rec-β
+    : ∀ {𝓥} {Q : Type 𝓥} (p : Q ∈ S) (f : A → Q)
+      → ○-rec p f ∘ η ~ f
   ○-rec-β p f a = happly (is-equiv.ε (reflects p) f) a
 
   module ∈S▸η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
-    = is-equiv (prewhisker-is-equiv←ap-compose {A = A} {g = g}{h}
+    = is-equiv (prewhisker-is-equiv←ap-compose {A = A} {g = g} {h}
                          (is-embedding←is-equiv (reflects C∈S)))
 
 is-reflector←global : ∀ {α} {GS : gSubU α} {𝓤}
@@ -82,8 +85,42 @@ is-global-reflector-subtype-equiv {A = A} {○A} {η} eq rfl = lem where
   lem : is-global-reflector _ A ○A η
   lem .is-global-reflector.○∈S = eq _ .fst ○∈S
   lem .is-global-reflector.reflects QK = reflects (eq _ .snd QK)
+
+record gReflector {α} (GS : gSubU α) {𝓤} (A : Type 𝓤) : Typeω where
+  constructor mk-greflector
+  no-eta-equality
+  field
+    ○ : Type 𝓤
+    η : A → ○
+    η-is-global-reflector : is-global-reflector GS A ○ η
+
+  module R = is-global-reflector η-is-global-reflector
+  open R public
+
+Reflector←gReflector
+  : ∀ {α 𝓤} {GS : gSubU α} {A : Type 𝓤}
+    → gReflector GS A
+    → Reflector (SubU←global GS) A
+Reflector←gReflector G
+  = mk-rfltor (G .gReflector.○)
+      (G .gReflector.η)
+      (is-reflector←global (G .gReflector.η-is-global-reflector))
+
+module gReflectorMap
+    {α 𝓤 𝓥} {GS : gSubU α}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (RA : gReflector GS A)
+    (RB : gReflector GS B) where
+
+  module A = gReflector RA
+  module B = gReflector RB
+
+  ○₁ : (A → B) → A.○ → B.○
+  ○₁ f = A.○-rec B.○∈S (B.η ∘ f)
+
+  ○₁-β : (f : A → B) → ○₁ f ∘ A.η ~ B.η ∘ f
+  ○₁-β f = A.○-rec-β B.○∈S (B.η ∘ f)
 }
-%```
 }
 
 \subtree[stt-00IF]{
@@ -95,7 +132,6 @@ is-global-reflector-subtype-equiv {A = A} {○A} {η} eq rfl = lem where
 \p{A global subuniverse is said to be reflective if we have all
 reflectors.}
 
-%```agda
 \agda{
 record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   constructor mk-gReflectors
@@ -103,27 +139,29 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   field
     ○ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
     η : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
-    has-is-reflector : ∀ {𝓤} {A : Type 𝓤}
-                       → is-global-reflector GS A (○ A) η
+    η-is-reflector
+      : ∀ {𝓤} {A : Type 𝓤}
+        → is-global-reflector GS A (○ A) η
 
-  module R {𝓤} {A} = is-global-reflector (has-is-reflector {𝓤} {A})
+  module R {𝓤} {A} = is-global-reflector (η-is-reflector {𝓤} {A})
   open R public
 
   module ▸η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h}
-    = is-equiv (prewhisker-is-equiv←ap-compose {g = g}{h}
+    = is-equiv (prewhisker-is-equiv←ap-compose {g = g} {h}
                  (is-embedding←is-equiv
-                   (reflects {A = B} (○∈S {𝓤}{A}))))
+                   (reflects {A = B} (○∈S {𝓤} {A}))))
 
   reflector : ∀ {𝓤} (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η
-                  (is-reflector←global has-is-reflector)
+                  (is-reflector←global η-is-reflector)
 
 
 
-is-reflective←global : ∀ {α} {GS : gSubU α} → is-globally-reflective GS
-                     → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
-is-reflective←global (mk-gReflectors ○ η has-is-reflector)
-  = mk-reflective ○ η (is-reflector←global has-is-reflector)
+is-reflective←global
+  : ∀ {α} {GS : gSubU α} → is-globally-reflective GS
+    → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
+is-reflective←global (mk-gReflectors ○ η η-is-reflector)
+  = mk-reflective ○ η (is-reflector←global η-is-reflector)
 
 is-globally-reflective-subtype-equiv
   : ∀ {α β} {S : gSubU α} {K : gSubU β}
@@ -132,7 +170,7 @@ is-globally-reflective-subtype-equiv
     → is-globally-reflective K
 is-globally-reflective-subtype-equiv {S = S} eq rfl
   = mk-gReflectors ○ η
-     (is-global-reflector-subtype-equiv eq has-is-reflector)
+     (is-global-reflector-subtype-equiv eq η-is-reflector)
   where open is-globally-reflective rfl
 
 record gRSubU (α : Level → Level) : Typeω where
@@ -140,16 +178,25 @@ record gRSubU (α : Level → Level) : Typeω where
   no-eta-equality
   field
     GS : gSubU α
-    has-is-globally-reflective : is-globally-reflective GS
+    GS-is-globally-reflective : is-globally-reflective GS
 
   open gSubU GS public
-  open is-globally-reflective has-is-globally-reflective public
+  open is-globally-reflective GS-is-globally-reflective public
 
-is-reflective←gRSubU : ∀ {α} (RS : gRSubU α)
-                     → ∀ {𝓤} → is-reflective (SubU←global (RS .gRSubU.GS) {𝓤})
-is-reflective←gRSubU RS = is-reflective←global (RS .gRSubU.has-is-globally-reflective)
+is-reflective←gRSubU
+  : ∀ {α} (RS : gRSubU α)
+    → ∀ {𝓤} → is-reflective (SubU←global (RS .gRSubU.GS) {𝓤})
+is-reflective←gRSubU RS = is-reflective←global (RS .gRSubU.GS-is-globally-reflective)
+
+gReflector←gRSubU
+  : ∀ {α 𝓤} (RS : gRSubU α) (A : Type 𝓤)
+    → gReflector (RS .gRSubU.GS) A
+gReflector←gRSubU RS A
+  = mk-greflector
+      (RS .gRSubU.○ A)
+      (RS .gRSubU.η)
+      (RS .gRSubU.η-is-reflector)
 }
-%```
 }
 
 \subtree[stt-00IJ]{
@@ -163,11 +210,10 @@ is-reflective←gRSubU RS = is-reflective←global (RS .gRSubU.has-is-globally-r
 \p{
 We formalise that [reflective subuniverses](stt-00IF) are closed under
 [retracts](stt-00HE) and forming dependent products,
-[lifting types](Foundations.Lift), [singletons](stt-0006),
+[lifting types](Foundations.UniverseLifts), [singletons](stt-0006),
 [identity types](identity-def), and [homotopies of functions](stt-001M).
 }
 
-%```agda
 \agda{
 module gReflectiveClosure {α} (RS : gRSubU α) where
   open gRSubU RS
@@ -178,22 +224,30 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       → retract X Y
       → Y ∈ S
       → X ∈ S
-  ∈S←retract {X = X} {Y = Y} (s , r , rs) Yloc
-    = in-SubU←η-retraction (reflector X) (r ∘ ○-rec Yloc s , ret) where
-      ret : (r ∘ ○-rec Yloc s) ∘ η {A = X} ~ id
-      ret = r ◂ ○-rec-β Yloc s ~∙ rs
+  ∈S←retract {X = X} {Y = Y} (s , r , rs) Y-loc
+    = in-SubU←η-retraction (reflector X) (r ∘ ○-rec Y-loc s , ret) where
+      ret : (r ∘ ○-rec Y-loc s) ∘ η {A = X} ~ id
+      ret = r ◂ ○-rec-β Y-loc s ∙h rs
 
-  Π∈S : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-        → (∀ a → B a ∈ S)
-        → Π A B ∈ S
+  Π∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → (∀ a → B a ∈ S)
+      → Π A B ∈ S
   Π∈S b = in-SubU←η-retraction (reflector _) ret where
     ret : retraction η
     ret .fst lab a = ○-rec (b a) (ev a) lab
     ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
 
-  ULift∈S : ∀ {𝓤 𝓥} {A : Type 𝓤}
-          → A ∈ S
-          → ULift 𝓥 A ∈ S
+  Πᵢ∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → (∀ {a} → B a ∈ S)
+      → (∀ {a} → B a) ∈ S
+  Πᵢ∈S b = ∈S←equiv Π-implicit≃ (Π∈S (λ a → b {a}))
+
+  ULift∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤}
+      → A ∈ S
+      → ULift 𝓥 A ∈ S
   ULift∈S = ∈S←equiv lift≃
 
   𝟙∈S : 𝟙 ∈ S
@@ -223,10 +277,9 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       {f g : Π A B}
     → ((a : A) → B a ∈ S)
     → (f ~ g) ∈ S
-  ~∈S Bloc
-    = Π∈S (λ a → ＝∈S (Bloc a))
+  ~∈S B-loc
+    = Π∈S (λ a → ＝∈S (B-loc a))
 }
-%```
 }
 
 \subtree[stt-00IK]{
@@ -255,7 +308,6 @@ then if #{A}, #{B}, and #{C} are elements of a [reflective subuniverse](stt-00IF
 then so is #{S}.
 }
 
-%```agda
 \agda{
   Pullback∈S
     : {𝓦 𝓧 𝓨 : Level}
@@ -265,7 +317,7 @@ then so is #{S}.
     → Y ∈ S
     → Q ∈ S
     → Pullback g h ∈ S
-  Pullback∈S {X = X} {Y = Y} {Q = Q} g h Xloc Yloc Qloc
+  Pullback∈S {X = X} {Y = Y} {Q = Q} g h X-loc Y-loc Q-loc
     = in-SubU←η-retraction (reflector (Pullback g h)) ret where
     u = η {A = Pullback g h}
 
@@ -276,23 +328,22 @@ then so is #{S}.
       : is-equiv (λ (C : Cone S' (○ (Pullback g h))) → cone-map S' C u)
     cone-map-equiv
       = cone-map-is-equiv S' u
-          (reflects {A = Pullback g h} Xloc)
-          (reflects {A = Pullback g h} Yloc)
+          (reflects {A = Pullback g h} X-loc)
+          (reflects {A = Pullback g h} Y-loc)
           (λ _ _ → prewhisker-is-equiv←ap-compose
             (is-embedding←is-equiv
-              (reflects {A = Pullback g h} Qloc)))
+              (reflects {A = Pullback g h} Q-loc)))
 
     pb-local : is-equiv (precomp (Pullback g h) u)
     pb-local
       = precomp-is-equiv←cone-precomp-is-equiv S' u
           (pullback g h)
-          (pullback-is-pullback {f = g} {g = h})
+          (pullback-has-up-pullback {f = g} {g = h})
           (cone-map-equiv)
 
     ret : retraction u
     ret = retraction←is-equiv-precomp-dom pb-local
 }
-% ```
 }
 
 \subtree[stt-00IL]{
@@ -309,7 +360,6 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
 [sequential limits](stt-00HL).
 }
 
-% ```
 \agda{
   fibre∈S
     : {𝓦 𝓧 : Level}
@@ -318,25 +368,33 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → X ∈ S
     → Y ∈ S
     → fibre g y ∈ S
-  fibre∈S g y Xloc Yloc
+  fibre∈S g y X-loc Y-loc
     = ∈S←equiv
         (pullback-point≃fibre g y)
-        (Pullback∈S (point y) g 𝟙∈S Xloc Yloc)
+        (Pullback∈S (point y) g 𝟙∈S X-loc Y-loc)
+
+  null-homotopy∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → B ∈ S
+      → null-homotopy f ∈ S
+  null-homotopy∈S {A = A} {B = B} {f = f} B-loc
+    = ∈S←equiv
+        (fibre-const≃null-homotopy f)
+        (fibre∈S (const: B A) f B-loc (Π∈S (λ _ → B-loc)))
 
   Ext∈S
-    : {𝓤 𝓥 𝓦 : Level}
-      {A : Type 𝓤} {B : Type 𝓥}
-      (i : A → B) {X : Type 𝓦} (p : A → X)
-    → X ∈ S
-    → Ext i p ∈ S
-  Ext∈S {A = A} {B} i {X} p Xloc
+    : ∀ {𝓤 𝓥 𝓚}
+        {A : Type 𝓤} {B : Type 𝓥}
+        (f : A → B)
+        {U : B → Type 𝓚}
+      → ((b : B) → U b ∈ S)
+      → (h : Π A (U ∘ f))
+      → Extᵈ f U h ∈ S
+  Ext∈S f {U = U} U∈S h
     = ∈S←equiv
-        (Σ-ap-≃ (λ _ → funext≃))
-        (fibre∈S
-          (precomp-Π (λ (_ : B) → X) i)
-          (p)
-          (Π∈S (λ _ → Xloc))
-          (Π∈S (λ _ → Xloc)))
+        (Ext-precomp-Π-null-homotopy≃ U f h e⁻¹)
+        (Π∈S (λ b → null-homotopy∈S (U∈S b)))
 
   ×∈S
     : {𝓦 𝓧 : Level}
@@ -344,10 +402,10 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → X ∈ S
     → Y ∈ S
     → (X × Y) ∈ S
-  ×∈S {X = X} {Y = Y} Xloc Yloc
+  ×∈S {X = X} {Y = Y} X-loc Y-loc
     = ∈S←equiv
         (×≃pullback-! e⁻¹)
-        (Pullback∈S (!: X) (!: Y) Xloc Yloc 𝟙∈S)
+        (Pullback∈S (!: X) (!: Y) X-loc Y-loc 𝟙∈S)
 
   retract∈S
     : {𝓦 𝓧 : Level}
@@ -355,14 +413,14 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → X ∈ S
     → Y ∈ S
     → (retract X Y) ∈ S
-  retract∈S {X = X} {Y = Y} Xloc Yloc
+  retract∈S {X = X} {Y = Y} X-loc Y-loc
     = ∈S←equiv
         (retract≃fibre-∘)
         (fibre∈S
           (comp-pair)
           (id)
-          (×∈S (Π∈S (λ _ → Yloc)) (Π∈S (λ _ → Xloc)))
-          (Π∈S (λ _ → Xloc)))
+          (×∈S (Π∈S (λ _ → Y-loc)) (Π∈S (λ _ → X-loc)))
+          (Π∈S (λ _ → X-loc)))
 
   biinv∈S
     : {𝓦 𝓧 : Level}
@@ -370,15 +428,15 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → X ∈ S
     → Y ∈ S
     → biinv X Y ∈ S
-  biinv∈S Xloc Yloc
+  biinv∈S X-loc Y-loc
     = ∈S←equiv
         (biinv≃pullback e⁻¹)
         (Pullback∈S
           (fst: section)
           (fst: retraction)
-          (∈S←equiv (section-total≃retract e⁻¹) (retract∈S Yloc Xloc))
-          (retract∈S Xloc Yloc)
-          (Π∈S (λ _ → Yloc)))
+          (∈S←equiv (section-total≃retract e⁻¹) (retract∈S Y-loc X-loc))
+          (retract∈S X-loc Y-loc)
+          (Π∈S (λ _ → Y-loc)))
 
   ≃∈S
     : {𝓦 𝓧 : Level}
@@ -386,8 +444,8 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → X ∈ S
     → Y ∈ S
     → (X ≃ Y) ∈ S
-  ≃∈S Xloc Yloc
-    = ∈S←equiv (≃-rep-biinv e⁻¹) (biinv∈S Xloc Yloc)
+  ≃∈S X-loc Y-loc
+    = ∈S←equiv (≃-rep-biinv e⁻¹) (biinv∈S X-loc Y-loc)
 
   Equaliser∈S
     : {𝓤 𝓥 : Level}
@@ -396,29 +454,28 @@ As a corollary of [pullback closure](stt-00IK), we obtain that
     → A ∈ S
     → B ∈ S
     → Equaliser f g ∈ S
-  Equaliser∈S f g Aloc Bloc
+  Equaliser∈S f g A-loc B-loc
     = ∈S←equiv
         (Equaliser≃Pullback-diagonal e⁻¹)
         (Pullback∈S (λ b → (b , b)) (λ a → (f a , g a))
-          (Bloc)
-          (Aloc)
-          (×∈S Bloc Bloc))
+          (B-loc)
+          (A-loc)
+          (×∈S B-loc B-loc))
 
   Seq-lim∈S
     : {𝓤 : Level}
       (T : Tower 𝓤)
     → (∀ n → Tower.Point T n ∈ S)
     → Seq-lim T ∈ S
-  Seq-lim∈S T Tloc
+  Seq-lim∈S T T-loc
     = ∈S←equiv
-        (Σ-ap-≃ (λ _ → funext≃))
+        (Σ-snd-≃ (λ _ → funext≃))
         (Equaliser∈S
           (id)
           (λ a n → Tower.decr T {n} (a (suc n)))
-          (Π∈S Tloc)
-          (Π∈S Tloc))
+          (Π∈S T-loc)
+          (Π∈S T-loc))
 }
-%```
 }
 
 \subtree[stt-00IM]{
@@ -449,112 +506,197 @@ that #{\textsf{Retracts}_{\UU}(A)}
 }
 }
 
-%```
 \agda{
   preidempotent-map∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
     → preidempotent-map X ∈ S
-  preidempotent-map∈S {X = X} Xloc
+  preidempotent-map∈S {X = X} X-loc
     = ∈S←equiv
-        (Σ-ap-≃ (λ _ → funext≃))
+        (Σ-snd-≃ (λ _ → funext≃))
         (Equaliser∈S
           (λ f → f ∘ f)
           (id)
-          (Π∈S (λ _ → Xloc))
-          (Π∈S (λ _ → Xloc)))
+          (Π∈S (λ _ → X-loc))
+          (Π∈S (λ _ → X-loc)))
 
-  total-Id∈S
+  TotalId∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
-    → total-Id X ∈ S
-  total-Id∈S = ∈S←equiv (total-Id≃ e⁻¹)
+    → TotalId X ∈ S
+  TotalId∈S = ∈S←equiv (TotalId≃ e⁻¹)
 
   quasicoherence-boundary∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
     → quasicoherence-boundary X ∈ S
-  quasicoherence-boundary∈S {X = X} Xloc
+  quasicoherence-boundary∈S {X = X} X-loc
     = Equaliser∈S
         (λ uv → uv .fst .fst)
         (λ uv → uv .snd .fst)
-        (×∈S (total-Id∈S Xloc) (total-Id∈S Xloc))
-        (×∈S Xloc Xloc)
+        (×∈S (TotalId∈S X-loc) (TotalId∈S X-loc))
+        (×∈S X-loc X-loc)
 
   quasicoherence-data∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
     → quasicoherence-data X ∈ S
-  quasicoherence-data∈S {X = X} Xloc
+  quasicoherence-data∈S {X = X} X-loc
     = ∈S←equiv
-        (quasicoherence-data≃total-Id {X = X} e⁻¹)
-        (total-Id∈S (total-Id∈S Xloc))
+        (quasicoherence-data≃TotalId {X = X} e⁻¹)
+        (TotalId∈S (TotalId∈S X-loc))
 
   qidempotent-map∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
     → qidempotent-map X ∈ S
-  qidempotent-map∈S {X = X} Xloc
+  qidempotent-map∈S {X = X} X-loc
     = ∈S←equiv
         (qidempotent-map≃pullback {X = X} e⁻¹)
         (Pullback∈S
           (λ (Q : X → quasicoherence-data X) → fst ∘ Q)
           (quasicoherence-boundary-map {X = X})
-          (Π∈S (λ _ → quasicoherence-data∈S Xloc))
-          (preidempotent-map∈S Xloc)
-          (Π∈S (λ _ → quasicoherence-boundary∈S Xloc)))
+          (Π∈S (λ _ → quasicoherence-data∈S X-loc))
+          (preidempotent-map∈S X-loc)
+          (Π∈S (λ _ → quasicoherence-boundary∈S X-loc)))
 
   Retracts∈S
     : {𝓤 : Level} {A : Type 𝓤}
     → A ∈ S
     → Retracts 𝓤 A ∈ S
-  Retracts∈S {A = A} Aloc
+  Retracts∈S {A = A} A-loc
     = ∈S←retract
         (retracts-qidempotent-map-retract)
-        (qidempotent-map∈S Aloc)
+        (qidempotent-map∈S A-loc)
 
   idempotent-map∈S
     : {𝓤 : Level} {X : Type 𝓤}
     → X ∈ S
     → idempotent-map X ∈ S
-  idempotent-map∈S {X = X} Xloc
+  idempotent-map∈S {X = X} X-loc
     = ∈S←equiv
         (Retracts≃idempotent-map {X = X})
-        (Retracts∈S Xloc)
+        (Retracts∈S X-loc)
 }
-%```
 }
 
-\subtree[stt-00JO]{
-\title{Functoriality of reflective subuniverses}
-\taxon{Construction}
+\subtree[stt-00MK]{
+\date{2026-03-19}
+\author{fredrikbakke}
 \author{samueltoth}
+\taxon{Construction}
+\title{The functorial action of reflective subuniverses}
 
-%```agda
 \agda{
 module gReflectiveReasoning {α} (RS : gRSubU α) where
-  open gRSubU RS public
-  open gReflectiveClosure RS public
+  open gRSubU RS
 
-  has-is-reflective : ∀ {𝓤} → is-reflective (S {𝓤})
-  has-is-reflective = is-reflective←global has-is-globally-reflective
+  ○₁
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → (A → B)
+      → ○ A → ○ B
+  ○₁ f = ○-rec ○∈S (η ∘ f)
 
-  ○-map : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → ○ (A → B) → ○ A → ○ B
-  ○-map = ○-rec (Π∈S (λ _ → ○∈S)) λ f → ○-rec ○∈S λ x → η (f x)
+  ○₁-β
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        (f : A → B)
+      → ○₁ f ∘ η ~ η ∘ f
+  ○₁-β f = ○-rec-β ○∈S (η ∘ f)
 
-  ○-map-β
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {a : A}
-      → ○-map (η f) (η a) ＝ η (f a)
-  ○-map-β {f = f} {a}
-    = ○-rec (Π∈S (λ _ → ○∈S)) (λ f → ○-rec ○∈S λ x → η (f x)) (η f) (η a)
-        ＝⟨ happly (○-rec-β _ _ f) (η a) ⟩
-      ○-rec ○∈S (η ∘ f) (η a)
-        ＝⟨ ○-rec-β ○∈S (η ∘ f) a ⟩
-      η (f a) ∎
+  ○₁-id
+    : ∀ {𝓤} {A : Type 𝓤}
+      → ○₁ (id: A) ~ id
+  ○₁-id {A = A}
+    = ▸η.bwd (○₁-β (id: A))
+
+  ○₁-∘
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (g : B → C) (f : A → B)
+      → ○₁ (g ∘ f) ~ ○₁ g ∘ ○₁ f
+  ○₁-∘ {A = A} g f
+    = ▸η.bwd λ a
+    → ○₁ (g ∘ f) (η a)      ＝⟨ ○₁-β (g ∘ f) a ⟩
+      η (g (f a))           ＝⟨ sym (○₁-β g (f a)) ⟩
+      ○₁ g (η (f a))        ＝⟨ sym (ap (○₁ g) (○₁-β f a)) ⟩
+      ○₁ g (○₁ f (η a))     ∎
+
+  ○₁-section
+    : ∀ {𝓤 𝓥}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → section f
+      → section (○₁ f)
+  ○₁-section {f = f} (s , sec)
+    = ○₁ s
+    , λ y
+      → ○₁ f (○₁ s y) ＝⟨ sym (○₁-∘ f s y) ⟩
+        ○₁ (f ∘ s) y  ＝⟨ ap (λ h → ○₁ h y) (funext→ sec) ⟩
+        ○₁ id y       ＝⟨ ○₁-id y ⟩
+        y             ∎
+
+  ○₁-retraction
+    : ∀ {𝓤 𝓥}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {f : A → B}
+      → retraction f
+      → retraction (○₁ f)
+  ○₁-retraction {f = f} (r , ret)
+    = ○₁ r
+    , λ y
+      → ○₁ r (○₁ f y) ＝⟨ sym (○₁-∘ r f y) ⟩
+        ○₁ (r ∘ f) y  ＝⟨ ap (λ h → ○₁ h y) (funext→ ret) ⟩
+        ○₁ id y       ＝⟨ ○₁-id y ⟩
+        y             ∎
+
+  ○₁-is-biinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-biinv f → is-biinv (○₁ f)
+  ○₁-is-biinv (sec , ret)
+    = ○₁-section sec , ○₁-retraction ret
+
+  is-equiv-○₁
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-equiv (○₁ f)
+  is-equiv-○₁ = is-equiv←is-biinv ∘ ○₁-is-biinv ∘ is-biinv←is-equiv
+
+  ○-biinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → biinv A B → biinv (○ A) (○ B)
+  ○-biinv (f , bi)
+    = ○₁ f , ○₁-is-biinv bi
+
+  ○-retract
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B → retract (○ A) (○ B)
+  ○-retract (f , ret)
+    = ○₁ f , ○₁-retraction ret
+
+  ○-≃
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B → ○ A ≃ ○ B
+  ○-≃ e = mk≃ (○₁ (_≃_.fwd e)) (is-equiv-○₁ (e ._≃_.fwd-is-equiv))
 }
-%```
 }
 
+\subtree[stt-00M9]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Reflections of unit types are contractible}
+
+\agda{
+module _ {α} (RS : gRSubU α) where
+  open gRSubU RS
+  open gReflectiveClosure RS
+
+  ○𝟙-is-single : is-singleton (○ 𝟙)
+  ○𝟙-is-single
+    = is-single←equiv-to-single
+        (mk≃ (η {A = 𝟙}) (η-is-equiv←in-SubU (reflector 𝟙) 𝟙∈S))
+        𝟙-is-singleton
+}
+}
 
 \subtree[stt-00JP]{
 \title{Testing equivalence at modal types}
@@ -566,7 +708,6 @@ every type #{Y}: #{Y^f : Y^B \to Y^A} is an equivalence, then #{f} is an
 equivalence. If #{A} and #{B} are both modal types, then it suffices to check
 precomposition only at modal types.}
 
-%```agda
 \agda{
   is-equiv←precomp-modal
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -574,21 +715,9 @@ precomposition only at modal types.}
       → {f : A → B}
       → (∀ {𝓦} {Y : Type 𝓦} → Y ∈ S → is-equiv (precomp Y f))
       → is-equiv f
-  is-equiv←precomp-modal A∈S B∈S {f = f} Yo = is-equiv←qiso lemma where
-    module e {𝓦} {Y : Type 𝓦} Y∈S = is-equiv (Yo {𝓦}{Y} Y∈S)
-    open e
-
-    lemma : quasi-iso _
-    lemma .fst = bwd A∈S id
-    lemma .snd .fst = happly (ε A∈S id)
-    lemma .snd .snd = happly
-      (ap fst
-        (is-prop←is-single
-          (is-contr-map←is-equiv (Yo B∈S) f)
-          (f ∘ bwd A∈S id , ap (postcomp _ f) (ε A∈S id))
-          (id , refl)))
+  is-equiv←precomp-modal A∈S B∈S {f = f} Yo
+    = is-equiv←equiv-precomp-dom-cod (Yo A∈S) (Yo B∈S)
 }
-%```
 }
 
 \subtree[stt-00JQ]{
@@ -606,7 +735,6 @@ equivalence.
 }
 }
 
-%```agda
 \agda{
   module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
       Σ○-η : Σ _ P → ○ (Σ _ (○ ∘ P))
@@ -615,9 +743,10 @@ equivalence.
       Σ○ : ○ (Σ A P) → ○ (Σ A (○ ∘ P))
       Σ○ = ○-rec ○∈S Σ○-η
 
-      Σ○-up : ∀ {𝓠} {Y : Type 𝓠}
-             → Y ∈ S
-             → is-equiv (precomp Y Σ○-η)
+      Σ○-up
+        : ∀ {𝓠} {Y : Type 𝓠}
+          → Y ∈ S
+          → is-equiv (precomp Y Σ○-η)
       Σ○-up {Y = Y} Ys
         = is-equiv-∘
             uncurry-is-equiv
@@ -640,19 +769,18 @@ equivalence.
 
       Σ○-is-equiv : is-equiv Σ○
       Σ○-is-equiv = is-equiv←precomp-modal ○∈S ○∈S
-        λ Y∈S → 3-for-2~ (fact ~⁻¹) (reflects Y∈S) (Σ○-up Y∈S) where
+        λ Y∈S → 3-for-2~ (fact h⁻¹) (reflects Y∈S) (Σ○-up Y∈S) where
         fact : ∀ {𝓦} {Y : Type 𝓦} → precomp _ η ∘ precomp Y Σ○ ~ precomp _ Σ○-η
         fact x = funext→ (λ a → ap x (○-rec-β ○∈S _ a))
 
       Σ○≃ : ○ (Σ A P) ≃ ○ (Σ A (○ ∘ P))
       Σ○≃ = mk≃ _ Σ○-is-equiv
 }
-%```
 }
 
 \subtree[stt-007D]{
 \taxon{Theorem}
-\title{Induction for #{\Sigma}-closed [global reflective subuniverses](stt-007C)}
+\title{Induction for #{Σ}-closed [global reflective subuniverses](stt-007C)}
 
 \p{
 When a global reflective subuniverse is closed under sigma types we
@@ -674,17 +802,18 @@ funext), thus we can apply the inverse map to get a homotopy #{\pi
 \bar{f} \sim \id}.}  }
 
 
-%```agda
 \agda{
 module gRSubUInduction {α}
         (RS : gRSubU α)
-        (let Sref' = is-reflective←global (RS .gRSubU.has-is-globally-reflective))
         (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
+  open gRSubU RS
   open gReflectiveReasoning RS
+  open gReflectiveClosure RS
 
   opaque
-    ind : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
-          → (Π A (P ∘ η)) → Π (○ A) P
+    ind
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
+        → (Π A (P ∘ η)) → Π (○ A) P
     ind {A = A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
       f'' : A → Σ (○ A) P
       f'' a = (η a , f a)
@@ -695,63 +824,39 @@ module gRSubUInduction {α}
       secη : fst ∘ f' ∘ η ~ η
       secη = fst ◂ ○-rec-β _ _
 
-    ind-β : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
-              (P∈S : ∀ a → P a ∈ S)
-            → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
+    ind-β
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+          (P∈S : ∀ a → P a ∈ S)
+        → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
     ind-β {A = A} {P} PS f a
       = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
            ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
         tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
           ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
         tr (P ∘ fst) (○-rec-β _ f'' a) (snd (f' (η a)))
-          ＝⟨ apᵈ snd (○-rec-β _ f'' a) ⟩
+          ＝⟨ apᶠ snd (○-rec-β _ f'' a) ⟩
         snd (f'' a)
           ＝⟨⟩
         f a ∎       where open ind PS f
 
-
-  ind-qiso : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
-               (PS : ∀ a → P a ∈ S)
-             → quasi-iso {A = (a : A) → P (η a)} {B = (a : ○ A) → P a}
-                         (ind PS)
-  ind-qiso PS .fst = _∘ η
-  ind-qiso PS .snd .fst f = ext! (ind-β _ f)
-  ind-qiso {A = A} {P} PS .snd .snd f = ext!
+  ind-qinv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+        (PS : ∀ a → P a ∈ S)
+      → quasi-inv {A = (a : A) → P (η a)} {B = (a : ○ A) → P a}
+            (ind PS)
+  ind-qinv PS .fst = _∘ η
+  ind-qinv PS .snd .fst f = ext! (ind-β _ f)
+  ind-qinv {A = A} {P} PS .snd .snd f = ext!
     (ind (λ a → ＝-is-modal (is-reflective←gRSubU RS) (PS a))
          (ind-β _ (f ∘ η)))
 
-  ind-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
-                   (PS : ∀ a → P a ∈ S)
-                 → is-equiv {A = (a : A) → P (η a)}
-                            {B = (a : ○ A) → P a}
-                            (ind PS)
-  ind-is-equiv = is-equiv←qiso ∘ ind-qiso
-
-
-  ○-map-is-equiv
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → is-equiv f → is-equiv (○-map (η f))
-  ○-map-is-equiv {f = f} fe = is-equiv←qiso
-    ( ○-map (η bwd)
-    , ind (λ _ → ＝∈S ○∈S)
-          (λ a → ap (○-map (η bwd)) ○-map-β ∙ ○-map-β ∙ ap η (eta a))
-    , ind (λ _ → ＝∈S ○∈S)
-          (λ b → ap (○-map (η f)) ○-map-β ∙ ○-map-β ∙ ap η (ε b))
-    ) where open is-equiv fe renaming (η to eta)
-
-  ○-≃ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → ○ A ≃ ○ B
-  ○-≃ e = mk≃ (○-map (η (_≃_.fwd e))) (○-map-is-equiv (e ._≃_.has-is-eqv))
-
-  Σ-is-connected
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-      → is-connected Sref' A → (∀ a → is-connected Sref' (B a))
-      → is-connected Sref' (Σ A B)
-  Σ-is-connected {A = A}{B} Ac Bc
-    = is-single←equiv-to-single
-        ((○ (Σ A B)       ≃⟨ Σ○≃ B ⟩
-          ○ (Σ A (○ ∘ B)) ≃⟨ ○-≃ (Σ-singleton Bc) ⟩
-          ○ A             ≃∎) e⁻¹)
-        Ac
+  ind-is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+        (PS : ∀ a → P a ∈ S)
+      → is-equiv {A = (a : A) → P (η a)}
+           {B = (a : ○ A) → P a}
+           (ind PS)
+  ind-is-equiv = is-equiv←qinv ∘ ind-qinv
 
   local-Pullback∈S
     : {𝓦 𝓧 𝓨 : Level}
@@ -761,8 +866,8 @@ module gRSubUInduction {α}
     → Y ∈ S
     → (∀ {x y : Q} → (x ＝ y) ∈ S)
     → Pullback g h ∈ S
-  local-Pullback∈S {X = X} {Y = Y} {Q = Q} g h Xloc Yloc Qlocloc
-    = SΣ Xloc (λ a → SΣ Yloc (λ y → Qlocloc))
+  local-Pullback∈S {Q = Q} g h X-loc Y-loc Qlocloc
+    = SΣ X-loc (λ _ → SΣ Y-loc (λ _ → Qlocloc))
 
   local-fibre∈S
     : {𝓦 𝓧 : Level}
@@ -771,16 +876,20 @@ module gRSubUInduction {α}
     → X ∈ S
     → (∀ {x y} → Id Y x y ∈ S)
     → fibre g y ∈ S
-  local-fibre∈S g y Xloc Ylocloc
+  local-fibre∈S g y X-loc Ylocloc
     = ∈S←equiv
         (pullback-point≃fibre g y)
-        (local-Pullback∈S (point y) g 𝟙∈S Xloc Ylocloc)
+        (local-Pullback∈S (point y) g 𝟙∈S X-loc Ylocloc)
 
-  return = η
-  _>>=_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-          → ○ A → (A → ○ B) → ○ B
+  infixl 10 _>>=_
+  _>>=_
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → ○ A → (A → ○ B) → ○ B
   ma >>= f = ind (λ _ → ○∈S) f ma
+
+  return : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
+  return = η
+
   open Universal
 }
-%```
 }

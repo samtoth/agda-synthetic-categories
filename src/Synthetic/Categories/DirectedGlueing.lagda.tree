@@ -42,6 +42,7 @@ open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 }
 
+\subtree[tot-L001]{
 \p{Define #{\textrm{Cov}(F,G)} to be the type of morphisms...}
 \agda{
 Cov-map
@@ -49,18 +50,27 @@ Cov-map
 Cov-map {_}{𝓥}{B} F G
   = Σ[ α ∶ Hom (B → Type 𝓥) F G ]
        is-covariant (uncurry (α .Homᵈ.hom))
-
--- Cov-tr
---   : ∀ {𝓤 𝓥} {B : Type 𝓤} {F : B → Type 𝓥} {G : B → Type 𝓥}
---     → Cov F G → ∀ b → F b → G b
--- Cov-tr (f , cov) b = {! tr-cov-hom {P = F} cov {x = {!!}} (_≃_.bwd Hom-×≃  (0≤1 , (idH b)))!}
 }
+}
+
+\subtree[tot-L002]{
+\title{The glueing of a fibrewise map}
+\taxon{Contruction}
+
+\p{Given a pair of type families #{F\ G : B \to \Type} and a fibrewise map
+#{\alpha_b F_b \to G_b}, then we construct the glueing family
+#{\textrm{Gl}(\alpha) : B \times \Delta^1 \to \Type}.
+##{\textrm{Gl}(\alpha)(b, i) := \Sigma_{g : G_b} i = 0 \to \fibre{\alpha_b}{g}}}
 
 \agda{
 Gl : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥)
      → (α : ∀ b → F b → G b) → B × Δ¹ → Type (𝓘 ⊔ 𝓥)
 Gl F G α (b , i) = Σ[ a ∶ G b ] ((i ＝ i0) → fibre (α b) a)
+}
 
+\p{#{\textrm{Gl}(\alpha)(b,0) = F(b)} and #{\textrm{Gl}(\alpha)(b,1) = G(b)}}
+
+\agda{
 Gl-0
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
     → ∀ b → Gl F G α (b , i0) → F b
@@ -85,7 +95,42 @@ Gl-1-is-equiv
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
     → is-fibrewise-equiv (Gl-1 F G α)
 Gl-1-is-equiv F G α b = singleton-fst-is-equiv (λ _ → Π-is-single (¡ ∘ non-triv))
+}
 
+\p{We may also define a map from
+#{\textrm{Gl}(\alpha)(0,b) \to \textrm{Gl}(\alpha)(1,b)}, which is equivalent as a
+map to #{\alpha_b}.}
+
+\agda{
+module _
+  {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} (α : ∀ b → F b → G b)
+  where
+
+  Gl-map : ∀ b → Gl F G α (b , i0) → Gl F G α (b , i1)
+  Gl-map b = total-map (λ a → precomp-Π _ (¡ ∘ non-triv))
+
+  Gl-naturality : ∀ b → Arrow-equiv (Gl-map b) (α b)
+  Gl-naturality b .fst .Arrow-Π.top  = Gl-0 F G α b
+  Gl-naturality b .fst .Arrow-Π.bot  = Gl-1 F G α b
+  Gl-naturality b .fst .Arrow-Π.comm = sym ∘ snd ∘ ev refl ∘ snd
+  Gl-naturality b .snd .fst = Gl-0-is-equiv F G α b
+  Gl-naturality b .snd .snd = Gl-1-is-equiv F G α b
+}
+}
+
+\subtree[tot-L003]{
+\title{Covariance of the directed glueing}
+\taxon{Lemma}
+
+\p{If #{F} and #{G} are covariant families over #{B}, then the directed glueing of any
+map #{\alpha} is also covariant over #{B \times \Delta^1}.}
+
+\remark{
+This proof relies on a yet to be formalised lemma that if #{X} is some covariant
+family, then #{(a, i) \mapsto i = 0 \to X(a)} is also covariant.
+}
+
+\agda{
 module _
   (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
            → is-covariant F
@@ -108,6 +153,7 @@ module _
           (hole1
             (uncurry (λ b g → fibre (α b) g))
             (fibre-is-covariant _ _ Fc Gc α)))
+}
 }
 
 
@@ -163,60 +209,40 @@ Gl-path→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
 }
 }
 
-\agda{
-module _
-  {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} (α : ∀ b → F b → G b)
-  where
-
-  Gl-map : ∀ b → Gl F G α (b , i0) → Gl F G α (b , i1)
-  Gl-map b = total-map (λ a → precomp-Π _ (¡ ∘ non-triv))
-
-  Gl-naturality : ∀ b → Arrow-equiv (Gl-map b) (α b)
-  Gl-naturality b .fst .Arrow-Π.top  = Gl-0 F G α b
-  Gl-naturality b .fst .Arrow-Π.bot  = Gl-1 F G α b
-  Gl-naturality b .fst .Arrow-Π.comm = sym ∘ snd ∘ ev refl ∘ snd
-  Gl-naturality b .snd .fst = Gl-0-is-equiv F G α b
-  Gl-naturality b .snd .snd = Gl-1-is-equiv F G α b
-}
-
-\agda{
-trΣ : ∀ {𝓤 𝓥} {B : Type 𝓤}
-      → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
-      → (Σ[ X Y ∶ (B → Type 𝓥) ] Σ[ α ∶ (∀ b → X b → Y b) ]
-           (is-covariant X × is-covariant Y))
-trΣ (F , Fcov)
-  = ( F ∘ (_, i0)
-    , F ∘ (_, i1)
-    , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id)
-    , covariant-base-change {P = F} (_, i0) Fcov
-    , covariant-base-change {P = F} (_, i1) Fcov)
-}
-
+\subtree[tot-L201]{
+\title{The data of a covariant fibration over #{\Delta^1}}
+\taxon{Definition}
 
 \agda{
 Cov-Δ¹-bundle
   : ∀ {𝓤} 𝓥 (B : Type 𝓤) → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
 Cov-Δ¹-bundle 𝓥 B
   = Σ[ X Y ∶ (B → Type 𝓥) ] Σ[ α ∶ (∀ b → X b → Y b) ] (is-covariant X × is-covariant Y)
+}
+}
 
+\subtree[tot-L00P]{
+\title{Characterising the identity type of a covariant bundle over #{\Delta^1}}
+\taxon{Lemma}
 
-SpaceΣ-Path
+\agda{
+cov-Δ¹-bundle-Path
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ¹-bundle 𝓥 B)
     → Type (𝓤 ⊔ 𝓥)
-SpaceΣ-Path (A , B , f , _ , _) (X , Y , g , _ , _)
+cov-Δ¹-bundle-Path (A , B , f , _ , _) (X , Y , g , _ , _)
   = Σ[ e ∶ (∀ b → A b ≃ X b) ] Σ[ p ∶ (∀ b → B b ≃ Y b) ]
       (∀ b → p b ._≃_.fwd ∘ f b ~ g b ∘ e b ._≃_.fwd)
 
-SpaceΣ-Path-refl
+cov-Δ¹-bundle-Path-refl
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 B)
-    → SpaceΣ-Path x x
-SpaceΣ-Path-refl x = ((λ _ → id≃) , (λ _ → id≃) , λ _ → ~refl)
+    → cov-Δ¹-bundle-Path x x
+cov-Δ¹-bundle-Path-refl x = ((λ _ → id≃) , (λ _ → id≃) , λ _ → ~refl)
 
 opaque
-  SpaceΣ-Path-is-torsorial
+  cov-Δ¹-bundle-Path-is-torsorial
     : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 B)
-      → is-singleton (Σ _ (SpaceΣ-Path x))
-  SpaceΣ-Path-is-torsorial (A , B , f , Ac , Bc)
+      → is-singleton (Σ _ (cov-Δ¹-bundle-Path x))
+  cov-Δ¹-bundle-Path-is-torsorial (A , B , f , Ac , Bc)
     = is-singleton-structure←parts
        (SingS-is-single A)
        (A , λ _ → id≃)
@@ -231,14 +257,47 @@ opaque
              (mk-singl Bc (is-covariant-is-prop _ _)))))
 
 instance
-  SpaceΣ-IdS
+  cov-Δ¹-bundle-IdS
     : ∀ {𝓤 𝓥} {B : Type 𝓤} → Identity-system (Cov-Δ¹-bundle 𝓥 B) (𝓤 ⊔ 𝓥)
-  SpaceΣ-IdS .Identity-system.IdS = SpaceΣ-Path
-  SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
-  SpaceΣ-IdS .Identity-system.IdS←Id-is-equiv x
-    = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
+  cov-Δ¹-bundle-IdS .Identity-system.IdS = cov-Δ¹-bundle-Path
+  cov-Δ¹-bundle-IdS .Identity-system.IdS←Id {a = A} refl = cov-Δ¹-bundle-Path-refl A
+  cov-Δ¹-bundle-IdS .Identity-system.IdS←Id-is-equiv x
+    = fundamental-Id _ (cov-Δ¹-bundle-Path-is-torsorial x) _
+}
 }
 
+\subtree[tot-L007]{
+\title{The induced transport of a covariant family over #{Δ¹}}
+\taxon{Contruction}
+
+\p{Given a covariant type family #{B \times \Delta^1}, we can construct a pair of
+covariant families #{B \to \Type} together with a fibrewise map between them. We
+call this collection of data a covariant bundle over #{\Delta^1}.}
+
+\agda{
+trΣ : ∀ {𝓤 𝓥} {B : Type 𝓤}
+      → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
+      → (Σ[ X Y ∶ (B → Type 𝓥) ] Σ[ α ∶ (∀ b → X b → Y b) ]
+           (is-covariant X × is-covariant Y))
+trΣ (F , Fcov)
+  = ( F ∘ (_, i0)
+    , F ∘ (_, i1)
+    , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id)
+    , covariant-base-change {P = F} (_, i0) Fcov
+    , covariant-base-change {P = F} (_, i1) Fcov)
+}
+}
+
+\subtree[tot-L034]{
+\title{Directed univalence for covariant families}
+\taxon{Theorem}
+
+\p{The map defined in \ref{tot-L007} induces an equivalence between covariant
+families over #{B \times \Delta^1} and the type consisting of a pair of covariant
+families over #{B} and a fibrewise map between them.}
+
+\proof{
+\p{We first define a putative inverse: }
 
 \agda{
 module _
@@ -253,15 +312,24 @@ module _
     → (Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
   trΣ-inv (A , B , α , Ac , Bc)
     = (Gl A B α , Gl-is-covariant hole1 A B α Ac Bc)
+}
 
+\subtree[tot-LL01]{
+\title{Left inverse}
+\taxon{Lemma}
+
+\p{Under no assumptions, this map is a left inverse.}
+
+\agda{
 module _
   (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
            → is-covariant F
            → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst))))
+  {𝓤 𝓥} {B : Type 𝓤}
   where
 
   tr-Gl-hom
-    : ∀ {𝓤 𝓥} {B : Type 𝓤} {X Y : B → Type (𝓘 ⊔ 𝓥)}
+    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
         (α : ∀ b → X b → Y b)
       → ∀ b x → Homᵈ (Gl X Y α ∘ (b ,_)) x (Gl-map α b x)
   tr-Gl-hom α b x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
@@ -269,14 +337,47 @@ module _
   tr-Gl-hom α b x .Homᵈ.hom1  = Σ-path→ (refl , (funext→ (¡ ∘ non-triv)))
 
   tr-Gl
-    : ∀ {𝓤 𝓥} {B : Type 𝓤} {X Y : B → Type (𝓘 ⊔ 𝓥)}
+    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
         (α : ∀ b → X b → Y b)
         (Xc : is-covariant X) (Yc : is-covariant Y)
-      → ∀ b → tr-cov {P = Gl X Y α} (Gl-is-covariant hole1 X Y α Xc Yc) (b ,_) ~ Gl-map α b
-  tr-Gl {𝓤}{𝓥}{B}{X}{Y} α Xc Yc b x
+      → ∀ b
+      → tr-cov {P = Gl X Y α} (Gl-is-covariant hole1 X Y α Xc Yc) (b ,_)
+      ~ Gl-map α b
+  tr-Gl α Xc Yc b x
     = ap fst
          (Gl-is-covariant hole1 _ _ α Xc Yc (b ,_) x
-           .central (Gl-map α b x , tr-Gl-hom {𝓤}{𝓥}{B = B} {X = X}{Y} α b x))
+           .central (Gl-map α b x , tr-Gl-hom α b x))
+
+  trΣ-section : ∀ x → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv hole1 x)) x
+  trΣ-section (X , Y , F , Ac , Bc) .fst b
+    = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
+  trΣ-section (X , Y , F , Ac , Bc) .snd .fst b
+    = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
+  trΣ-section (X , Y , F , Ac , Bc) .snd .snd b x@(y , p)
+    = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant hole1 X Y F Ac Bc) (b ,_)) x
+    ＝⟨ ap fst (tr-Gl F Ac Bc b x) ⟩
+      x .fst
+    ＝⟨ sym (p refl .snd) ⟩
+      F b (p refl .fst)
+    ∎
+}
+}
+
+\subtree[tot-LP01]{
+\taxon{Lemma}
+\title{A right inverse}
+
+\p{To show that this map is an equivalences we assume an additional axiom; namely that
+for a fibrewise map #{\alpha} between covariant families over #{B \times \Delta^1}, to check it
+is an equivalence, it suffices to check that for all #{b}, #{\alpha_0} and #{\alpha_1}
+is an equivalence.}
+
+\remark{
+This axiom follows from the pair of axioms that [cubes separate]() and the booleans
+cover the global points of #{\Delta^1}.
+}
+
+\agda{
 module _
   {𝓤 𝓥} {B : Type 𝓤}
   (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
@@ -284,24 +385,11 @@ module _
            → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst))))
   (Cov-Nat-is-equiv
     : ∀ {𝓤} (F G : B × Δ¹ → Type 𝓤)
-        (Fc : is-covariant F)(Gc : is-covariant G)
+        (Fc : is-covariant F) (Gc : is-covariant G)
         (α : ∀ i → F i → G i)
       → (∀ x → is-equiv (α ((id ⊗ ∂Δ¹-incl) x)))
       → is-fibrewise-equiv α)
   where
-
-  trΣ-section : ∀ x → SpaceΣ-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv hole1 x)) x
-  trΣ-section (X , Y , F , Ac , Bc) .fst b
-    = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
-  trΣ-section (X , Y , F , Ac , Bc) .snd .fst b
-    = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
-  trΣ-section (X , Y , F , Ac , Bc) .snd .snd b x@(y , p)
-    = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant hole1 X Y F Ac Bc) (b ,_)) x
-    ＝⟨ ap fst (tr-Gl hole1 {𝓤}{𝓥}{B = B}{X}{Y} F Ac Bc b x) ⟩
-      x .fst
-    ＝⟨ sym (p refl .snd) ⟩
-      F b (p refl .fst)
-    ∎
 
   trΣ-retraction→ : ∀ F i → F .fst i → trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} hole1 (trΣ F) .fst i
   trΣ-retraction→ FF@(F , Fc) (b , i) x .fst
@@ -359,12 +447,17 @@ module _
                _
                a)
           , funext→ (λ x → ¡ (non-triv x)))
+}
+}
 
+\agda{
   trΣ-is-equiv
     : is-equiv (trΣ {𝓤}{𝓥 ⊔ 𝓘}{B})
   trΣ-is-equiv = is-equiv←qinv
     ( trΣ-inv hole1
     , (λ a → Σ-path→ ( funext→ (λ i → ua (trΣ-retraction a i e⁻¹))
                      , is-covariant-is-prop (a .fst) _ _))
-    , λ a → ext! (trΣ-section a))
+    , (λ a → ext! (trΣ-section hole1 {𝓤} {𝓥} a)))
+}
+}
 }

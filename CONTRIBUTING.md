@@ -30,6 +30,7 @@ with some extensions.
 | 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                |
 | 5                | Directed function-like formation operators: `_→∗_`, `_⇒_`                                                                                                         |
 | 3                | Parametric pairing operators: `_,_`, `_∷_`                                                                                                                        |
+| 2                | Semantic brackets: `⟦_⟧₀`, `⟦_⟧₁`                                                                                                                                 |
 | 0-1              | Reasoning syntaxes                                                                                                                                                |
 | -∞               | Function type formation: `_→_`                                                                                                                                    |
 

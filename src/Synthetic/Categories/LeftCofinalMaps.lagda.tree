@@ -1,0 +1,154 @@
+\title{Left cofinal maps}
+\taxon{Module}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Lattice
+
+module Synthetic.Categories.LeftCofinalMaps
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+}
+
+\agda-imports{
+\agda{
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (Δ²)
+
+private Δ² = Poly.Δ² I
+
+open import Core.Coslices
+open import Core.CanonicalPushouts
+open import Core.Slices
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.FunctorialityPullbacks
+open import Core.Cube
+
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Truncation
+open import Modalities.ConnectedMaps
+open import Modalities.ConnectedTypes
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+}
+}
+
+\subtree[stt-00TR]{
+\title{Left cofinal maps}
+\taxon{Definition}
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} where
+
+  is-left-cofinal' : (p : E → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-left-cofinal' p
+    = ∀ (b : B) → is-connected Δ¹DiscreteType-gRSubU (p ↓ point b)
+
+
+  is-left-cofinal : (p : E → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-left-cofinal p
+    = is-connected-map Δ¹DiscreteType-gRSubU
+        (fst ∘ base-change-arrow (p ⊗ id) src×tgt)
+}
+}
+
+\subtree[stt-00TT]{
+\title{Left cofinal maps are stable under base change by right fibrations}
+\taxon{Lemma}
+
+\agda{
+
+module _
+  {𝓤 𝓥 𝓦}
+  {E : Type 𝓤} {B : Type 𝓥} (p : E → B)
+  {C : Type 𝓦} (F : C → B) (F-rf : is-right-fibration F)
+  where
+
+  base-change-is-left-cofinal
+    : is-left-cofinal' p → is-left-cofinal' (base-change-arrow F p)
+  base-change-is-left-cofinal plcf c
+    = is-connected←equiv Δ¹DiscreteType-gRSubU
+        (mk≃ map (tgt-is-equiv←Arrow-equiv eq dom-top-is-equiv) e⁻¹)
+        (plcf (F c)) where
+    dom-sq
+      : Arrow-map
+          (base-change-arrow {A = Slice C (point c)} fst (base-change-arrow F p))
+          (base-change-arrow {A = Slice B (point (F c))} fst p)
+    dom-sq .Arrow-Π.top
+      = Pullback₁ (mk-cospan-map
+         (postcompose-slice (point c) F)
+         F
+         pb.π₂
+         ~refl
+         pb.filler)
+    dom-sq .Arrow-Π.bot = postcompose-slice (point c) F
+    dom-sq .Arrow-Π.comm = ~refl
+
+    cube : Cube dom-sq (base-change-arrow-map F p)
+    cube .Cube.left = base-change-arrow-map fst (base-change-arrow F p)
+    cube .Cube.right = base-change-arrow-map fst p
+    cube .Cube.comm .fst = ~refl
+    cube .Cube.comm .snd .fst = ~refl
+    cube .Cube.comm .snd .snd = ∙h-reflr _
+
+    dom-sq-is-cartesian
+      : is-cartesian dom-sq
+    dom-sq-is-cartesian = front-cartesian←cartesian-cube _ _ cube
+      (base-change-arrow-map-is-cartesian fst (base-change-arrow F p))
+      (base-change-arrow-map-is-cartesian fst p)
+      (base-change-arrow-map-is-cartesian F p)
+
+    dom-top-is-equiv
+      : is-equiv (dom-sq .Arrow-map.top)
+    dom-top-is-equiv
+      = top-is-equiv←is-cartesian dom-sq dom-sq-is-cartesian
+          (slice-map-is-equiv←is-right-fibration F F-rf c)
+
+    map : base-change-arrow F p ↓ point c → p ↓ point (F c)
+    map ((c' , e , P) , _ , f) = (e , _ , adjust-hom P refl (ap-hom F f) )
+
+    eq : Arrow-equiv (dom-sq .Arrow-map.top) map
+    eq .fst .Arrow-Π.top = comma-point←pb-slice (base-change-arrow F p) c
+    eq .fst .Arrow-Π.bot = comma-point←pb-slice p (F c)
+    eq .fst .Arrow-Π.comm ((_ , x) , y , refl)
+      = ext!
+        ( refl
+        , refl
+        , ( ~refl
+          , Square-degen-vert _ _
+              (ap (_∙ y .snd .snd) (ap (ap F) (sym (∙-reflr _))))
+          , Square-degen-vert _ _
+              (ap (_∙ refl) (ap (ap F) (sym (∙-reflr _))))))
+    eq .snd .fst = comma-point←pb-slice-is-equiv (base-change-arrow F p) c
+    eq .snd .snd = comma-point←pb-slice-is-equiv p (F c)
+}
+}
+
+\subtree[stt-00TS]{
+\title{Left cofinal maps are left anodyne}
+
+\p{This remains to be formalised, and worked out on paper. It should at least be
+true for maps between categories.}
+
+}

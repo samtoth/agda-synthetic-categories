@@ -10,7 +10,7 @@ open import Algebra.Lattice
 
 module Synthetic.Categories.FullSubcategories
 
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
   where
 
 open Lattice I renaming (0l to i0; 1l to i1)
@@ -19,35 +19,103 @@ open Lattice I renaming (0l to i0; 1l to i1)
 \agda-imports{
 \agda{
 
+open import Core.Arrows
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Foundations.Equivalences
+open import Foundations.Functions
+open import Foundations.FunExt
+open import Foundations.Homotopy
+open import Foundations.Identity
 open import Foundations.Sigma
 open import Foundations.Singletons
 open import Foundations.Subtypes
+open import Foundations.UniverseLifts
 
 open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.Sharp
 
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Categories Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
+open import Synthetic.Hom Δ¹ i0 i1
+
 }
 }
-
-\subtree[stt-2718281828]{
-\title{Full subcategories}
-
-\p{To write.}
 
 \agda{
-module _ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} (S : Subtype ⟨♭| A ⟩ 𝓥) where
+∂Δ¹-to-♭Δ¹ : ∂Δ¹ → ⟨♭| Δ¹ ⟩
+∂Δ¹-to-♭Δ¹ ∂Δ¹-1 = mod♭ i1
+∂Δ¹-to-♭Δ¹ ∂Δ¹-0 = mod♭ i0
 
-  full-subcat : Type (𝓤 ⊔ 𝓥)
-  full-subcat = Σ A (λ a → ⟨♯| (S .Subtype.family) (mod♭ a) ⟩)
+homotopy-∂Δ¹-incl : (ε♭: Δ¹ ∘ ∂Δ¹-to-♭Δ¹) ~ ∂Δ¹-incl
+homotopy-∂Δ¹-incl ∂Δ¹-1 = refl
+homotopy-∂Δ¹-incl ∂Δ¹-0 = refl
+}
 
-  full-subcat-incl : full-subcat → A
-  full-subcat-incl = fst
+\subtree[rie-1234]{
+\title{Full subtypes}
 
-  full-subcat-family : (a : A) → Type 𝓥
-  full-subcat-family a = ⟨♯| (S .Subtype.family) (mod♭ a) ⟩
+\p{Recall that a [subtype](Foundations.Subtypes) of a type #{A} is a family of propositions #{φ} indexed by #{A}. Formally, this data is given by a family of types that we abusively denote #{φ : A \to \UU} together with a proof that each type #{φ a} is a proposition for all #{a : A}. From this data, one may construct a type #{Σ_{A} φ} with an embedding #{Σ_{A} φ \to A}.}
 
-  is-prop-full-subcat-family : (a : A) → is-prop (full-subcat-family a)
-  is-prop-full-subcat-family a x y = modext♯ (mod♯ (S .Subtype.family-is-subtype (mod♭ a) (x .counit♯) (y .counit♯)) )
+\p{Given a crisp type #{A :^\flat \UU} and a family of propositions #{φ} indexed by #{^\flat A}, the \em{full-subtype} is defined to be #{Σ_{A} \overline{φ}} where #{\overline{φ}} denotes the adjoint transpose of the family #{φ} under the adjunction #{\flat ⊣ \sharp}.}
+
+
+\agda{
+module FullSubtype {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} ( φ : Subtype ⟨♭| A ⟩ 𝓥) where
+
+  full-subtype : Type (𝓤 ⊔ 𝓥)
+  full-subtype = Σ A (λ a → ⟨♯| (φ .Subtype.family) (mod♭ a) ⟩)
+
+  full-subtype-incl : full-subtype → A
+  full-subtype-incl = fst
+
+  full-subtype-family : (a : A) → Type 𝓥
+  full-subtype-family a = ⟨♯| (φ .Subtype.family) (mod♭ a) ⟩
+
+  is-prop-full-subtype-family : (a : A) → is-prop (full-subtype-family a)
+  is-prop-full-subtype-family a = ♯-is-prop (φ .Subtype.family-is-subtype (mod♭ a))
+
+  are-orthogonal-fam-̱♭counit-full-subtype-family :
+    {@♭ 𝓦 : Level} → (@♭ B : Type 𝓦) → are-orthogonal-fam (ε♭: B) full-subtype-family
+  are-orthogonal-fam-̱♭counit-full-subtype-family B = are-orthogonal-fam←unique-extensions {P = full-subtype-family}
+    (λ F → mk-singl
+          ((transpose B (F .ArrFam-map.bot) (F .ArrFam-map.top) )
+          , λ b → is-prop-full-subtype-family ((F .ArrFam-map.bot) (ε♭ b)) _ _ )
+          λ e → is-prop-Extᵈ-Subtype {A = ⟨♭| B ⟩} ε♭ (mk-subtype (is-prop-full-subtype-family)) F _ _) where
+      transpose : {@♭ 𝓦 : Level} → (@♭ B : Type 𝓦) → (g : B → A) →
+          Π ⟨♭| B ⟩ ((λ a → ⟨♯| Subtype.family φ (mod♭ (g a)) ⟩) ∘ (ε♭: _)) →
+          Π B (λ a → ⟨♯| Subtype.family φ (mod♭ (g a)) ⟩)
+      transpose B g s b .counit♯ = s (mod♭ b) .counit♯
+
+  are-orthogonal-♭counit-full-subtype-incl : {@♭ 𝓦 : Level} → (@♭ B : Type 𝓦) → are-orthogonal (ε♭: B) (full-subtype-incl )
+  are-orthogonal-♭counit-full-subtype-incl _ = are-orthogonal-fst←are-orthogonal-fam (are-orthogonal-fam-̱♭counit-full-subtype-family _)
+
+}
+
+\agda{
+  module _ (ax : is-equiv ∂Δ¹-to-♭Δ¹) where
+
+    is-ff-full-subtype-incl : is-ff (full-subtype-incl )
+    is-ff-full-subtype-incl _ = left-orthogonal-homotopy _ homotopy-∂Δ¹-incl (left-orthogonal-∘ (ε♭: Δ¹) ∂Δ¹-to-♭Δ¹ _ (are-orthogonal-♭counit-full-subtype-incl Δ¹) (equiv⊥ ax _))
+}
+}
+
+\subtree[rie-4321]{
+\title{Full subcategories}
+
+\p{When #{A} is a category, a full subtype over #{A} is called a \em{full subcategory}
+and satisfies additional properties. Future work will show that this is a category.}
+
+\agda{
+module FullSubcategory {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {Ac : is-category A} ( φ : Subtype ⟨♭| A ⟩ 𝓥) where
+
+  open FullSubtype φ public renaming
+    ( full-subtype to full-subcat ;
+      full-subtype-incl to full-subcat-incl ;
+      full-subtype-family to full-subcat-family)
 
 }
 }

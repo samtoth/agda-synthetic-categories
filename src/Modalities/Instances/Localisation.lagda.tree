@@ -492,43 +492,67 @@ module _
 \taxon{Theorem}
 
 \p{
-Suppose a map #{f : X \to Y} has a section #{s}, and there are maps
-#{g : J \to X}, #{H : J \to X}, and #{j_0,j_1 : X \to J} such that
-#{g(j_0(x)) = g(j_1(x))}, #{H(j_0(x)) = s(f(x))}, and #{H(j_1(x)) = x}
-for all #{x}. Then any #{g}-local type is #{f}-local.
+Suppose given a map #{f : X \to Y} with a section #{s}, and assume there are maps
+#{j_0,j_1 : X \to \tilde{J}} together with a "deformation cone", i.e., a map
+#{H : \tilde{J} \to X} such that #{H(j_0(x)) = s(f(x))} and #{H(j_1(x)) = x} for all
+#{x : X}. Then for every map #{g : \tilde{J} \to X} such that
+#{g(j_0(x)) = g(j_1(x))}, every #{g}-local type is #{f}-local.
+}
+
+\p{
+We call this the (displayed) deformation cone argument, because we think of
+#{\tilde{J}} as a displayed interval over #{X} with endpoints #{j_0} and #{j_1}, and
+#{H} as a homotopy between a constant and the identity function on #{X}. I.e., #{H}
+plays the role of a contracting cone that interpolates between a constant and the
+identity map.
+}
+
+\p{
+Alternatively, as realised in conversation with [[markwilliams]], we may think of
+this algebraically as a (displayed) #{J}-algebra structure on #{X}. The map #{j_0}
+acts as a zero element in #{X}, and #{j_1} acts as the unit. The map #{H} is the
+action of #{J} on #{X}, which appropriately is a constant action at #{j_0} and the
+identity action on #{j_1}. This view point is more obvious in the next version of the
+theorem where we formulate #{J} directly as a dependent type over #{X}.
 }
 
 \agda{
 module _
   {𝓙 𝓤 𝓥 𝓦 : Level}
-  {J : Type 𝓙} {X : Type 𝓤} {Y : Type 𝓥}
-  {A : Type 𝓦}
+  {J : Type 𝓙} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦}
   {g : J → X} {f : X → Y}
   where
 
   is-local←deformation-cone-over
-    : is-local (point g) A
-    → (sf : section f)
+    : (S@(s , _) : section f)
     → (H : J → X)
     → (j0 j1 : X → J)
-    → ((x : X) → g (j0 x) ＝ g (j1 x))
-    → ((x : X) → H (j0 x) ＝ sf .fst (f x))
+    → ((x : X) → H (j0 x) ＝ s (f x))
     → ((x : X) → H (j1 x) ＝ x)
+    → ((x : X) → g (j0 x) ＝ g (j1 x))
+    → is-local (point g) A
     → is-local (point f) A
-  is-local←deformation-cone-over gloc (s , sec) H j0 j1 G H0 H1 _
+  is-local←deformation-cone-over (s , sec) H j0 j1 H0 H1 G gloc _
     = is-equiv←qinv qiso where
 
     qiso : quasi-inv (precomp A f)
     qiso .fst = precomp A s
     qiso .snd .fst α = funext→ (α ◂ sec)
     qiso .snd .snd h = funext→ λ x →
-      h (s (f x))                               ＝⟨ sym (ap h (H0 x)) ⟩
-      h (H (j0 x))                              ＝⟨ sym (happly (is-equiv.ε (gloc tt) (h ∘ H)) (j0 x)) ⟩
-      is-equiv.bwd (gloc tt) (h ∘ H) (g (j0 x)) ＝⟨ ap (is-equiv.bwd (gloc tt) (h ∘ H)) (G x) ⟩
-      is-equiv.bwd (gloc tt) (h ∘ H) (g (j1 x)) ＝⟨ happly (is-equiv.ε (gloc tt) (h ∘ H)) (j1 x) ⟩
-      h (H (j1 x))                              ＝⟨ ap h (H1 x) ⟩
-      h x                                       ∎
+      h (s (f x))
+        ＝⟨ sym (ap h (H0 x)) ⟩
+      h (H (j0 x))
+        ＝⟨ sym (happly (is-equiv.ε (gloc tt) (h ∘ H)) (j0 x)) ⟩
+      is-equiv.bwd (gloc tt) (h ∘ H) (g (j0 x))
+        ＝⟨ ap (is-equiv.bwd (gloc tt) (h ∘ H)) (G x) ⟩
+      is-equiv.bwd (gloc tt) (h ∘ H) (g (j1 x))
+        ＝⟨ happly (is-equiv.ε (gloc tt) (h ∘ H)) (j1 x) ⟩
+      h (H (j1 x))
+        ＝⟨ ap h (H1 x) ⟩
+      h x
+        ∎
 }
+
 
 \p{
 Suppose a map #{f : X \to Y} has a section #{s}, and admits a \em{parametrised
@@ -548,19 +572,22 @@ module _
   where
 
   is-local-at-deformation-cone
-    : is-local (point (fst: J)) A
-    → (sf : section f)
-    → (H : (x : X) → J x → X)
-    → (j0 : (x : X) → J x)
-    → (j1 : (x : X) → J x)
-    → ((x : X) → H x (j0 x) ＝ sf .fst (f x))
+    : (S@(s , _) : section f)
+      (H : (x : X) → J x → X)
+      (j0 : (x : X) → J x)
+      (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ s (f x))
     → ((x : X) → H x (j1 x) ＝ x)
+    → is-local (point (fst: J)) A
     → is-local (point f) A
-  is-local-at-deformation-cone Jloc sf H j0 j1
-    = is-local←deformation-cone-over Jloc sf
+  is-local-at-deformation-cone s H j0 j1 H0 H1
+    = is-local←deformation-cone-over
+        s
         (λ (x , t) → H x t)
         (λ x → x , j0 x)
         (λ x → x , j1 x)
+        H0
+        H1
         (~refl)
 }
 }
@@ -571,6 +598,14 @@ module _
 \author{fredrikbakke}
 \date{2026-04-09}
 
+\p{
+Suppose given a map #{f : X \to Y} with a section #{s}, and assume there are maps
+#{j_0,j_1 : X \to \tilde{J}} together with a "deformation cone", i.e., a map
+#{H : \tilde{J} \to X} such that #{H(j_0(x)) = s(f(x))} and #{H(j_1(x)) = x} for all
+#{x : X}. Then if #{X} is local at some map #{g : \tilde{J} \to X} such that
+#{g(j_0(x)) = g(j_1(x))}, then #{f} is an equivalence.
+}
+
 \agda{
 module _
   {𝓙 𝓤 𝓥 : Level}
@@ -579,21 +614,21 @@ module _
   where
 
   is-equiv←local-deformation-cone
-    : is-local (point g) X
-    → (sf : section f)
-    → (H : J → X)
-    → (j0 : X → J)
-    → (j1 : X → J)
-    → ((x : X) → g (j0 x) ＝ g (j1 x))
-    → ((x : X) → H (j0 x) ＝ sf .fst (f x))
+    : (S@(s , _) : section f)
+      (H : J → X)
+      (j0 : X → J)
+      (j1 : X → J)
+    → ((x : X) → H (j0 x) ＝ s (f x))
     → ((x : X) → H (j1 x) ＝ x)
+    → ((x : X) → g (j0 x) ＝ g (j1 x))
+    → is-local (point g) X
     → is-equiv f
-  is-equiv←local-deformation-cone Xloc sf H j0 j1 G H0 H1
-    = is-equiv←qinv (r .fst , r .snd , sf .snd) where
+  is-equiv←local-deformation-cone s H j0 j1 H0 H1 G X-is-g-local
+    = is-equiv←qinv (r .fst , r .snd , s .snd) where
 
     r : retraction f
     r = retraction←is-equiv-precomp-dom
-          (is-local←deformation-cone-over Xloc sf H j0 j1 G H0 H1 tt)
+          (is-local←deformation-cone-over s H j0 j1 H0 H1 G X-is-g-local tt)
 }
 }
 

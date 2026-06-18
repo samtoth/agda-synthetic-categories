@@ -287,13 +287,35 @@ module _
                   (mk-afmap (σ ∘ fst) (h tt)))})
 }
 
-\p{We give a concrete proof of this fact (without the need for the yet unformalised
-assumption) for the case that #{F} is the contravariant family #{i \mapsto (f(i) = 0)}
-for any #{f : \Delta^1 \to \Delta^1}.
-By the above argument it suffices to show that the arrow map from #{(f(\sigma(0)) = 0)
-\to \Sigma_{i} (f(\sigma(i))=0)} to any left fibration #{G}, where the bottom map is
+\p{We give a concrete proof for a specific instance of this fact (without the need
+for the yet unformalised assumption) for the case that #{F} is the contravariant
+family #{i \mapsto (f(i) = 0)} for any #{f : \Delta^1 \to \Delta^1}.  By the above
+argument it suffices to show that any arrow map from #{(f(\sigma(0)) = 0) \to
+\Sigma_{i} (f(\sigma(i))=0)} to any left fibration #{G}, where the bottom map is
 given by #{\sigma\pi}, has unique extensions when #{f \sigma} is monotone (which it
 always is under the assumption of quasi-coherence).}
+
+
+\proof{
+\p{We give an explicit inverse to the map ##{(\Pi_{(i , p) : \Sigma_{i} f(\sigma(i))
+= 0} P(\sigma(i))) \to (\Pi_{(p : f(\sigma(0)) = 0) P(\sigma(0))} )} Namely we need
+take a function #{x : (f(\sigma(0)) = 0) \to P(0)} and a pair #{i : \Delta^1}, #{p :
+f(\sigma(i)) = 0} to #{P(\sigma(i))}. By the monotonicity of #{f\sigma} we have a map
+#{h : (f(\sigma(i)) = 0) \to (f(\sigma(0)) = 0)}, which is the identity when #{i =
+0}, and by covariance of #{P} we have a map #{P(\sigma(0)) \to P(\sigma(i))}, which
+is also the identity when #{i} is #{0}. Consequently, we may construct a map which is
+clearly a left inverse. To show it is also a right inverse, we require that for any
+#{a : \Pi_{(i , p) : \Sigma_{i} (f(\sigma(i)) = 0)} P(\sigma(i))} and #{(i,p) :
+\Sigma_{i} (f(\sigma(i)) = 0)} that #{P_*(a(0, h_i(p)))} is equal to #{a (i, p)}. By
+the uniqueness of covariant transport, we may give a morphism #{\Hom_{Pσ}^{0 \le
+i}(a(0 , h_i(p)), a (i , p))}. The mapping #{j \mapsto a(i \land j, h'_{j \land i \le
+i}(p))} does the job, where #{h'} generalises #{h} by replacing #{i} and #{0} with
+any pair #{i \ge j}.}
+
+\p{Note that for technical reasons due to the construction of the
+map from #{i \le j \to \Hom(i,j)}, in the formalisation, we have to use the mapping
+#{j \mapsto a((j \lor 0) \land (i \lor 0), ...)}.}
+}
 
 \agda{
 module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) σ) where
@@ -304,12 +326,14 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
   transpose-●-is-left-anodyne P P-cov f fm = is-equiv←qinv
     ( (λ x (i , p) → coe-cov Pσ Pσ-cov 0-init (x (map1 i i0 0-init p)))
     , (λ a → funext→ (λ
-      where (i , p)→ coe-cov Pσ Pσ-cov (0-init {i}) (a (i0 , map1' i p))
+      where (i , p) → coe-cov Pσ Pσ-cov (0-init {i}) (a (i0 , map1' i p))
                   ＝⟨⟩
-                     tr-cov-hom {P = P ∘ σ} Pσ-cov (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
-                  ＝⟨ tr-cov-hom-unique Pσ Pσ-cov (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
-                        (a (i , p)) (connection i p a) ⟩
-                      a (i , p) ∎))
+                     tr-cov-hom Pσ-cov (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
+                  ＝⟨ tr-cov-hom-unique Pσ Pσ-cov
+                       (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
+                       (a (i , p))
+                       (connection i p a) ⟩
+                     a (i , p) ∎))
     , (λ a → funext→ (λ p →
                           coe-cov-id
                             (P ∘ σ)
@@ -322,7 +346,10 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
       opaque
         map1 : ∀ i j → j ≤ i → f (σ i) ＝ i0 → f (σ j) ＝ i0
         map1 i j l p = ≤-antisym
-          (≤-trans (∘-is-monotone ≤-poset ≤-poset ≤-poset f σ fm σ-mono l) (≤←＝ p)) 0-init
+          (≤-trans
+            (∘-is-monotone ≤-poset ≤-poset ≤-poset f σ fm σ-mono l)
+            (≤←＝ p))
+          0-init
 
         map1-at-0 : ∀ p → map1 i0 i0 p ~ id
         map1-at-0 _ p = carrier-is-set _ _ _ p
@@ -331,8 +358,12 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
 
       opaque
         connection
-          : ∀ i (p : f (σ i) ＝ i0) (a : (∀ (x : Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0)) → P (σ (fst x))))
-            → Hom-over {B = P ∘ σ} (Δ¹-hom←≤ 0-init) (a (i0 , map1 i i0 0-init p)) (a (i , p))
+          : ∀ (i : Δ¹) (p : f (σ i) ＝ i0)
+              (a : ∀ (x : Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0)) → P (σ (fst x)))
+            → Hom-over {B = P ∘ σ}
+                (Δ¹-hom←≤ 0-init)
+                (a (i0 , map1 i i0 0-init p))
+                (a (i , p))
         connection i p a .Homᵈ.hom j
           = a ( (j ∨ i0) ∧ (i0 ∨ i)
               , map1 i ((j ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
@@ -342,7 +373,8 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
           path = sym
             (ap₂ _∧_ (∨-comm ∙ 0-bottom)
                      ( ap (_∨ i)
-                          (sym (ap (_∧_ i0) (sym (∨-comm ∙ 0-bottom)) ∙ ∧-∨-abs ∙ refl))
+                          (sym (ap (_∧_ i0) (sym (∨-comm ∙ 0-bottom))
+                               ∙ ∧-∨-abs ∙ refl))
                      ∙ (ap (_∨ i) ∧-comm ∙ ∨-comm ∙ ∨-∧-abs)
                      ∙ refl)
             ∙ ap (_∧_ i0) (sym (∨-comm ∙ 0-bottom)) ∙ ∧-∨-abs ∙ refl)
@@ -350,19 +382,22 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
           lemma3 : Id (Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0))
                       (i0 , map1' i p)
                       ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                      , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
+                      , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
+                               (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
           lemma3 = Σ-path→ (path , carrier-is-set _ _ _ _)
 
           lemma2 : a (i0 , map1' i p)
                  ＝[ ap (P ∘ σ ∘ fst) lemma3 ]
                    a ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
+                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
+                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
           lemma2 = apᶠ a lemma3
 
           lemma1 : a (i0 , map1' i p)
                  ＝[ ap (P ∘ σ) path ]
                    a ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
+                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
+                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
           lemma1 = adjust-idᵈ
                      {P = ap (P ∘ σ ∘ fst) lemma3} {Q = ap (P ∘ σ) path}
                      (ap-∘ (P ∘ σ) fst lemma3 ∙ ap (ap (P ∘ σ)) Σ-path-ap-fst)
@@ -375,14 +410,16 @@ module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Latt
           Σpath : Id (Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0))
                      (i , p)
                      ( (i1 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
+                     , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i))
+                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
           Σpath = Σ-path→ (path , (carrier-is-set _ _ _ _))
 
           lemma1
             : a (i , p)
             ＝[ ap (P ∘ σ) path ]
               a ( (i1 ∨ i0) ∧ (i0 ∨ i)
-                , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
+                , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i))
+                         (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
           lemma1 = adjust-idᵈ {P = ap (P ∘ σ ∘ fst) Σpath} {Q = ap (P ∘ σ) path}
                      (ap-∘ (P ∘ σ) fst Σpath ∙ ap (ap (P ∘ σ)) Σ-path-ap-fst)
                      (apᶠ a Σpath)
@@ -398,7 +435,7 @@ module _ (phoa : Δ¹-endos-are-mono) where
           → is-single←equiv-to-single
               ( fibre-precomp-Π≃Ext (F ∘ σ ∘ fst) (λ z → i0 , z) (p tt)
               ∙e transpose-ext-exponentials ((_＝ i0) ∘ f) F σ (p tt)  e⁻¹)
-              ( has-singleton-fibres←is-equiv
+              (has-singleton-fibres←is-equiv
                    (transpose-●-is-left-anodyne σ (phoa σ) F Fc f (phoa f)) (p tt) )
 }
 }

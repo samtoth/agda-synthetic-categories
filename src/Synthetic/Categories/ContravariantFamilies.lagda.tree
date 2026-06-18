@@ -35,6 +35,9 @@ open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
+
+-- TODO: Remove, only imported for `Δ¹-hom-≤-refl` which should live elsewhere
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
 }
 }
 
@@ -97,20 +100,21 @@ tr-contrav-filler
     → ∀ p → Homᵈ (P ∘ h) (tr-contrav {P = P} Pc h p) p
 tr-contrav-filler cov h = snd ∘ centre ∘ cov h
 
-tr-contrav-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-contravariant P
-    → ∀ {x y} (h : Hom A x y) → P y → P x
-tr-contrav-hom contrav h
-  = fst ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
+opaque
+  tr-contrav-hom
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      → is-contravariant P
+      → ∀ {x y} (h : Hom A x y) → P y → P x
+  tr-contrav-hom contrav h
+    = fst ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
 
-tr-contrav-over
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → (cov : is-contravariant P)
-    → ∀ {x y} (h : Hom A x y) → (y' : P y)
-    → Hom-over h (tr-contrav-hom cov h y') y'
-tr-contrav-over contrav h
-  = snd ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
+  tr-contrav-over
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      → (cov : is-contravariant P)
+      → ∀ {x y} (h : Hom A x y) → (y' : P y)
+      → Hom-over h (tr-contrav-hom cov h y') y'
+  tr-contrav-over contrav h
+    = snd ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
 }
 }
 
@@ -345,23 +349,152 @@ tr-contrav-id
     → tr-contrav Pc (λ _ → x) ~ id
 tr-contrav-id P contrav {x} x' = ap fst (contrav (λ _ → x) x' .central (x' , idH x'))
 
-tr-contrav-idH
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravariant P) {x}
-    → tr-contrav-hom {P = P} Pc (idH x) ~ id
-tr-contrav-idH P contrav {x} x' = ap fst
-  (is-contravariant-hom←is-contravariant contrav (idH x) x' .central (x' , idH x'))
+opaque
+  unfolding tr-contrav-hom
+  tr-contrav-idH
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravariant P) {x}
+      → tr-contrav-hom {P = P} Pc (idH x) ~ id
+  tr-contrav-idH P contrav {x} x' = ap fst
+    (is-contravariant-hom←is-contravariant contrav (idH x) x' .central (x' , idH x'))
 
-tr-contrav-∘
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
-      (contrav : is-contravariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
-      (z' : P z)
-    → tr-contrav-hom contrav (g ∘[ Apc ] f) z'
-    ＝ tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
-tr-contrav-∘ apc P contrav g f z'
-  = ap fst
-      (is-contravariant-hom←is-contravariant contrav (g ∘[ apc ] f) z' .central
-        ( tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
-        , Compᵈ apc P (is-inner-family←is-contravariant contrav) g f
-                (tr-contrav-over contrav g _) (tr-contrav-over contrav f _)))
+  tr-contrav-idH~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P) {x}
+        (f : Hom A x x)
+      → f ＝ idH x
+      → tr-contrav-hom {P = P} contrav f ~ id
+  tr-contrav-idH~ P contrav _ refl = tr-contrav-idH P contrav
+
+  tr-contrav-∘
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
+        (contrav : is-contravariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
+        (z' : P z)
+      → tr-contrav-hom contrav (g ∘[ Apc ] f) z'
+      ＝ tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
+  tr-contrav-∘ apc P contrav g f z'
+    = ap fst
+        (is-contravariant-hom←is-contravariant contrav (g ∘[ apc ] f) z' .central
+          ( tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
+          , Compᵈ apc P (is-inner-family←is-contravariant contrav) g f
+                  (tr-contrav-over contrav g _) (tr-contrav-over contrav f _)))
+
+
+tr∘tr-contrav
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P) {x y z}
+      (p : y ＝ z) (f : Hom A y x)
+    → tr P p ∘ tr-contrav-hom {P = P} contrav f
+    ~ tr-contrav-hom {P = P} contrav (adjust-hom p refl f)
+tr∘tr-contrav P Pc refl f a
+  = ap (λ f → tr-contrav-hom Pc f a) (adjust-hom-refl f)
+}
+}
+
+\subtree[tot-00DH]{
+\title{Morphisms in Hom types}
+\taxon{Lemma}
+
+\p{We show that for a covariant family #{P}, given any #{f : \Hom_A(x,y)},
+the type of dependent morphisms #{\Hom_{Pf}(x',y')} is equivalent to
+#{f^*(x') = y'}.}
+
+\proof{
+\p{We first give a map #{f^*(x') = y'}, by identity induction, it suffices to give
+a morphism #{\Hom_{Pf}(x', f^*(x'))} for each #{x'}, but this is just the
+coherence you get from covariant transport.
+Now since #{\Sigma_{y' : P(f(1))} \Hom_{Pf}(x',y')} is a singleton by the
+definition of transport, the fundamental theorem of identity types gives us that
+this map is an equivalence.}
+}
+
+\agda{
+Hom-contrav
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+      (f : Δ¹ → A) x' y'
+    → tr-contrav {P = P} contrav f y' ＝ x' → Homᵈ (P ∘ f) x' y'
+Hom-contrav _ Pc f x' y' refl = Pc f y' .centre .snd
+
+Hom-contrav-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+      (f : Δ¹ → A) x' y'
+    → is-equiv (Hom-contrav P contrav f x' y')
+Hom-contrav-is-equiv P Pc f x' y'
+  = fundamental-Id _ (Pc f y') (λ x' → Hom-contrav P Pc f x' y') x'
+
+opaque
+  unfolding tr-contrav-hom
+  Hom-contrav'
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+        {x y} (f : Hom A x y) x' y'
+      → tr-contrav-hom {P = P} contrav f y' ＝ x' → Hom-over f x' y'
+  Hom-contrav' P contrav f x' y' refl
+    =  is-contravariant-hom←is-contravariant contrav f y' .centre .snd
+
+Hom-contrav'-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+      {x y} (f : Hom A x y) x' y'
+    → is-equiv (Hom-contrav' P contrav f x' y')
+Hom-contrav'-is-equiv P Pc f x' y'
+  = fundamental-Id
+      _
+      (is-contravariant-hom←is-contravariant Pc f y')
+      (λ x' → Hom-contrav' P Pc f x' y')
+      x'
+
+Hom-contrav'≃
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+      {x y} (f : Hom A x y) x' y'
+    → (tr-contrav-hom {P = P} contrav f y' ＝ x') ≃ (Hom-over f x' y')
+Hom-contrav'≃  P Pc f x' y'
+  = mk≃ (Hom-contrav' P Pc f x' y') (Hom-contrav'-is-equiv P Pc f x' y')
+
+tr-contrav-hom-unique
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P)
+      {x y} (f : Hom A x y) x' y'
+    → (Hom-over f x' y') → tr-contrav-hom {P = P} contrav f y' ＝ x'
+tr-contrav-hom-unique P Pc f x' y' = _≃_.bwd (Hom-contrav'≃ P Pc f x' y')
+}
+}
+
+\subtree[tot-00K3]{
+\title{Contravariant transport along inequalities in #{Δ¹}}
+\taxon{Lemma}
+
+\p{Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.
+consequently, for contravariant families over #{\Delta^1}, we may coerce along
+#{i \le j}. Since #{i \le j} is a proposition, we have the coercing along
+#{i \le i} for any #{i} is the identity and coercing along #{0 \le 1} is the
+same as contravariant transport over the canonical morphisms from #{0} to #{1} given
+by #{id : \Delta^1 \to \Delta^1}.}
+
+\agda{
+-- Δ¹-hom←≤  : ∀ {i j} → i ≤ j → Hom Δ¹ i j
+-- Δ¹-hom←≤ {i} {j} p .Homᵈ.hom l = (l ∨ i) ∧ (i ∨ j)
+-- Δ¹-hom←≤ p .Homᵈ.hom0 = ap₂ (_∧_) (∨-comm ∙ 0-bottom) (≤-max p) ∙ p
+-- Δ¹-hom←≤ p .Homᵈ.hom1 = ap₂ (_∧_) (∨-comm ∙ 1-coinit) (≤-max p) ∙ ∧-comm ∙ 1-top
+
+-- Δ¹-hom-≤-refl : ∀ {i} (p : i ≤ i) → Δ¹-hom←≤ p ＝ idH i
+-- Δ¹-hom-≤-refl {i} p
+--   = Hom-ext→ ( (λ a → ap ((a ∨ i) ∧_) ∨-idem ∙ ∨-∧-abs') , prop! , prop!)
+
+-- Δ¹-hom-0≤1 : (p : i0 ≤ i1) → Δ¹-hom←≤ p ＝ 0≤1
+-- Δ¹-hom-0≤1 p
+--   = Hom-ext→ ( (λ a → ap₂ (_∧_) 0-bottom 1-coinit ∙ 1-top) , prop! , prop!)
+
+module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-contravariant B) where
+
+  coe-contrav : {i j : Δ¹} → i ≤ j → B j → B i
+  coe-contrav p = tr-contrav-hom bc (Δ¹-hom←≤ p)
+
+  opaque
+    unfolding tr-contrav-hom
+    coe-contrav-id : {i  : Δ¹} (p : i ≤ i) → coe-contrav p ~ id
+    coe-contrav-id {i} p
+      =  happly (ap (tr-contrav-hom bc) (Δ¹-hom-≤-refl p))
+      ∙h tr-contrav-idH B bc
+
+    coe-contrav-＝ : {i j : Δ¹} (p : j ＝ i) (q : i ≤ j) → coe-contrav q ~ tr B p
+    coe-contrav-＝ refl = coe-contrav-id
+
+    coe-contrav-0≤1 : (p : i0 ≤ i1) → coe-contrav p ＝ tr-contrav bc id
+    coe-contrav-0≤1 p = ap (tr-contrav-hom bc) (Δ¹-hom-0≤1 p)
 }
 }

@@ -224,6 +224,20 @@ base change by right fibrations.}
 }
 
 \agda{
+contravariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-contravariant P → is-contravariant (P ∘ f)
+contravariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
+
+0≤i : ∀ i → Hom Δ¹ i0 i
+0≤i i .Homᵈ.hom j = j ∧ i
+0≤i i .Homᵈ.hom0 = 0-init
+0≤i i .Homᵈ.hom1 = ∧-comm ∙ 1-top
+
+0≤i-at-0 : 0≤i i0 ＝ idH i0
+0≤i-at-0 = Hom-ext→ ((λ a → ∧-comm ∙ 0-init) , prop! , prop!)
+
 module _
   {𝓤 𝓥 𝓦} {B : Type 𝓤}
   (F : B → Type 𝓥) (G : B → Type 𝓦)
@@ -268,6 +282,120 @@ module _
           (base-change-left-anodyne
                 (fst: (F ∘ σ)) (point i0) (is-self-anodyne (point i0))
                 (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
+
+    cov^contrav-is-covariant-lemma
+      : ∀ (F-contrav : is-contravariant F) (G-cov : is-covariant G)
+        → is-equiv (precomp-Π {B = Σ[ i ∶ Δ¹ ] F (σ i)} (G ∘ σ ∘ fst) (λ p → (i0 , p)))
+    cov^contrav-is-covariant-lemma Fc Gc = is-equiv←qinv qinv where
+      Gσ = G ∘ σ
+      Gσ-cov = covariant-base-change {P = G} σ Gc
+      Fσ = F ∘ σ
+      Fσ-contrav = contravariant-base-change {P = F} σ Fc
+
+      connection
+        : ∀ i (p : F (σ i))
+            (a : ∀ (x : Σ[ i ∶ Δ¹ ] F (σ i)) → G (σ (fst x)))
+          → Hom-over {B = Gσ}
+              (0≤i i)
+              (a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p))
+              (a (i , p))
+      connection i p a .Homᵈ.hom j
+        = a ( j ∧ i
+            , tr-contrav-hom
+                Fσ-contrav
+                (Δ¹-hom←≤ {i = j ∧ i} {j = i} (∧-≤-elimr ≤-refl))
+                p)
+
+      connection i p a .Homᵈ.hom0 = sym lemma1 where
+
+        path : i0 ＝ i0 ∧ i
+        path = sym 0-init
+
+        lemma3
+          : Id (Σ Δ¹ Fσ)
+               (i0 , tr-contrav-hom {P = Fσ} Fσ-contrav (0≤i i) p)
+               (i0 ∧ i , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma3 = Σ-path→
+          ( path
+          , tr∘tr-contrav Fσ Fσ-contrav path (0≤i i) p
+          ∙ ap (λ f → tr-contrav-hom Fσ-contrav f p)
+               (Hom-ext→
+                 ( (λ j → ap₂ _∧_
+                              (≤-antisym
+                                (∨-≤-introl auto!)
+                                (∨-UP (auto! , (∧-≤-eliml auto!))))
+                              (sym (∧-∨-abs')))
+                 , carrier-is-set _ _ _ _
+                 , carrier-is-set _ _ _ _)))
+
+        lemma2 : a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p)
+               ＝[ ap (Gσ ∘ fst) lemma3 ]
+                 a (i0 ∧ i
+                   , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma2 = apᶠ a lemma3
+
+        lemma1 : a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p)
+               ＝[ ap Gσ (sym 0-init) ]
+                 a (i0 ∧ i
+                   , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma1 = adjust-idᵈ (ap-∘ Gσ fst lemma3 ∙ ap (ap Gσ) Σ-path-ap-fst) lemma2
+
+      connection i p a .Homᵈ.hom1 = sym lemma1 where
+
+        lemma3 : Id (Σ Δ¹ Fσ)
+                    (i , p)
+                    ( i1 ∧ i
+                    , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma3 = Σ-path→
+          ( sym (∧-comm ∙ 1-top)
+          , Idᶠ-inr' {B = Fσ} {p = ∧-comm ∙ 1-top}
+               {x = p}
+               {y = tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p}
+               (sym (tr∘tr-contrav Fσ Fσ-contrav (∧-comm ∙ 1-top) _ p
+                    ∙ tr-contrav-hom-unique
+                        Fσ Fσ-contrav
+                        (adjust-hom (∧-comm ∙ 1-top) refl (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)))
+                        p p
+                        (tr (λ f → Hom-over f p p)
+                            {a = idH i}
+                            {b = (adjust-hom (∧-comm ∙ 1-top) refl
+                                             (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)))}
+                            (Hom-ext→
+                              ((λ j → ≤-antisym
+                                       (∧-UP
+                                         ( ∨-≤-intror (∧-UP (1-top , ∧-idem))
+                                         , ∨-≤-intror ≤-refl))
+                                       (∧-≤-elimr
+                                         (∨-UP
+                                           ( (∧-≤-elimr ≤-refl)
+                                           , ≤-refl))))
+                              , carrier-is-set _ _ _ _
+                              , carrier-is-set _ _ _ _))
+                            (idH p)))))
+
+        lemma2 : a (i , p)
+               ＝[ ap (Gσ ∘ fst) lemma3 ]
+                 a ( i1 ∧ i
+                   , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma2 = apᶠ a lemma3
+
+        lemma1 : a (i , p)
+               ＝[ ap Gσ (sym (∧-comm ∙ 1-top)) ]
+                 a ( i1 ∧ i
+                   , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+        lemma1 = adjust-idᵈ (ap-∘ Gσ fst lemma3 ∙ ap (ap Gσ) Σ-path-ap-fst) lemma2
+
+      qinv : quasi-inv (precomp-Π (G ∘ σ ∘ fst) (λ p → i0 , p))
+      qinv .fst x (i , p) = tr-cov-hom Gσ-cov (0≤i i)
+                               (x (tr-contrav-hom Fσ-contrav (0≤i i) p))
+      qinv .snd .fst x = funext→
+        (λ where (i , p) → tr-cov-hom-unique Gσ Gσ-cov (0≤i i)
+                             (x (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p))
+                             (x (i , p))
+                             (connection i p x))
+      qinv .snd .snd x = funext→
+        (λ p → tr-cov-idH~ Gσ Gσ-cov _ 0≤i-at-0 (x (tr-contrav-hom Fσ-contrav (0≤i i0) p))
+             ∙ ap x (tr-contrav-idH~ Fσ Fσ-contrav _ 0≤i-at-0 p))
 
   cov^contrav-is-covariant
     : (base-change-left-anodyne

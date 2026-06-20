@@ -8,6 +8,7 @@
 open import Foundations.Universes
 open import Algebra.Lattice
 open import Algebra.Lattice.Instances.Polynomial
+open import Algebra.Order.Monotone
 
 module Synthetic.Quasicoherence
   {𝓘}
@@ -180,6 +181,9 @@ I-is-quasicoherent
 \subtree[stt-00TC]{
 \taxon{Theorem}
 \title{Phoa's Principle}
+\date{2026-06-10}
+\author{markwilliams}
+\author{nimarasekh}
 
 \p{
 Quasicoherence is very related to an axiom in synthetic domain theory known
@@ -213,7 +217,8 @@ phoas-principle = is-generalised-phoa (initial-Algebra I)
 SQCP : Type 𝓘
 SQCP = is-quasicoherent I[x]
 
-module SQCP (H : SQCP) where
+module _ (H : SQCP) where
+
   I[x]≃Δ¹→Δ¹ : Δ² I ≃ (Δ¹ → Δ¹)
   I[x]≃Δ¹→Δ¹ = equiv←is-quasicoherent H ∙e precomp-≃ Δ¹≃SpecI[x]
 
@@ -234,5 +239,100 @@ module SQCP (H : SQCP) where
 
       α₁ = Δ².s coefs
       α₀ = Δ².t coefs
+
+module _ (H : phoas-principle) where
+
+  SQCP←phoas-principle : SQCP
+  SQCP←phoas-principle = is-equiv←qinv qinv
+    where
+    α-of : Obs (Spec I[x]) → Δ¹ → Δ¹
+    α-of x i = x (_≃_.fwd Δ¹≃SpecI[x] i)
+
+    mono-of : (x : Obs (Spec I[x])) → α-of x i0 ≤ α-of x i1
+    mono-of x =
+      ≤←∨
+        ( ∨-comm
+        ∙ sym (ap (_∨ (α-of x i0)) 1-top)
+        ∙ sym (H (α-of x) i1))
+
+    bwd : Obs (Spec I[x]) → Δ² I
+    bwd x .Δ².s = α-of x i1
+    bwd x .Δ².t = α-of x i0
+    bwd x .Δ².mono = mono-of x
+
+    qinv : quasi-inv (λ f x → x .fst .fst f)
+    qinv .fst = bwd
+    qinv .snd .fst a =
+      Δ²-ext
+        ( ap (_∨ (a .Δ².t)) 1-top
+        ∙ ∨-comm
+        ∙ ≤-max (a .Δ².mono)
+        , ap (_∨ (a .Δ².t)) (∧-comm ∙ 0-init)
+        ∙ ∨-comm
+        ∙ 0-bottom)
+    qinv .snd .snd x =
+      funext→ λ y →
+        let
+          j : Δ¹
+          j = is-equiv.qinv (_≃_.fwd-is-equiv Δ¹≃SpecI[x]) .fst y
+
+          εy : _≃_.fwd Δ¹≃SpecI[x] j ＝ y
+          εy = _≃_.ε Δ¹≃SpecI[x] y
+        in sym (ap (λ z → z .fst .fst (bwd x)) εy)
+         ∙ sym (H (α-of x) j)
+         ∙ ap x εy
+
 }
+}
+
+\subtree[stt-00TV]{
+\taxon{Theorem}
+\title{Endomorphisms of #{Δ¹} are monotone}
+\date{2026-06-11}
+\author{nimarasekh}
+
+\p{
+ We show that Phoa's principle implies that every endomorphism of #{Δ¹} is monotone.
+ This is a consequence of the fact that the monotone maps from #{Δ¹} to #{Δ¹}
+ are precisely the maps of the form #{f(x) = f(0) \vee (x \wedge f(1))},
+ and that these are all the maps from #{Δ¹} to #{Δ¹} by quasicoherence.
+}
+
+\agda{
+Δ¹-endos-are-mono : Type 𝓘
+Δ¹-endos-are-mono = ∀ (f : Δ¹ → Δ¹) → is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) f
+
+module _ (phoa : phoas-principle) where
+
+  Δ¹-endos-are-mono←phoa : Δ¹-endos-are-mono
+  Δ¹-endos-are-mono←phoa f {a} {b} x
+    = f a ∧ f b
+        ＝⟨ ap₂ _∧_ (phoa f a) (phoa f b) ⟩
+      ((f i1 ∧ a) ∨ f i0) ∧ ((f i1 ∧ b) ∨ f i0)
+        ＝⟨ poly-mono ⟩
+      (f i1 ∧ a) ∨ f i0
+        ＝⟨ sym (phoa f a) ⟩
+      f a ∎
+    where
+      poly-mono : ((f i1 ∧ a) ∨ f i0) ≤ ((f i1 ∧ b) ∨ f i0)
+      poly-mono
+        =
+        ∨-UP
+          ( ∨-≤-introl
+              (∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr x))
+          , ∨-≤-intror ≤-refl)
+
+module _ (H : SQCP) where
+
+  Δ¹-endos-are-mono←SQPC : Δ¹-endos-are-mono
+  Δ¹-endos-are-mono←SQPC = Δ¹-endos-are-mono←phoa (phoas-principle←SQCP H)
+
+}
+\p{
+ Note that with the additional information that monotone maps from #{Δ¹} to #{Δ¹}
+ are equivalent to #{Δ²} via the map
+ #{(x,H) ↦ (x(0), x(1), H(0 \le 1))},
+ we can also deduce SQCP from Δ¹-endos-are-mono.
+}
+
 }

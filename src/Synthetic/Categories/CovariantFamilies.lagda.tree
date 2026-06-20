@@ -39,6 +39,8 @@ open import Core.OrthogonalClosure
 open import Core.PushoutSums
 open import Core.SpanMaps
 open import Core.Arrows
+open import Core.CartesianSquares
+open import Core.ArrowEquiv
 open import Core.ArrowRetracts
 open import Core.LiftingSquares
 open import Core.PullbackPowers
@@ -54,9 +56,11 @@ open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
 }
 }
 
@@ -244,6 +248,57 @@ opaque
       → is-covariant B ↔ is-left-fibration (fst: B)
   is-covariant↔is-left-fibration {A = A} B
     = (is-left-family↔is-covariant B iff⁻¹) ∙iff are-orthogonal-fam↔are-orthogonal-fst
+}
+}
+
+\subtree[stt-00TN]{
+\title{Left fibrations are maps which induce equivalences on coslices}
+\taxon{Lemma}
+
+\p{#{p : E \to B} is a left fibration iff for each #{e : E}, the induced map
+#{E_{e/} \to B_{p(e)/}} is an equivalence.}
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+
+  arrow-fibre-left-fibration-is-coslice-map
+    : ∀ (e : E)
+      → Arrow-equiv
+          (postcompose-coslice (point e) p)
+          (arrow-fibre (transpose-square (power-hom (point i0) p)) (point e))
+  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.top
+    = total-map (λ a → ap point) ∘ Coslice-object-repr≃ e ._≃_.fwd
+  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.bot
+    = total-map (λ a → ap point) ∘ Coslice-object-repr≃ (p e) ._≃_.fwd
+  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.comm (e' , f)
+    = fibre-path→ (refl , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (f tt)))
+                        ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (f tt)))
+  arrow-fibre-left-fibration-is-coslice-map e .snd = (lemma e , lemma (p e)) where
+    lemma
+      : ∀ {𝓤} {A : Type 𝓤} (x : A)
+        → is-equiv (total-map (λ _ → ap point) ∘ Coslice-object-repr≃ x ._≃_.fwd)
+    lemma x
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv λ a → is-embedding←is-equiv point-is-equiv)
+          (Coslice-object-repr≃ x ._≃_.fwd-is-equiv )
+
+  coslice-map-is-equiv←is-left-fibration
+    : is-left-fibration p → (∀ e → is-equiv (postcompose-coslice (point e) p))
+  coslice-map-is-equiv←is-left-fibration lfib e
+    = src-is-equiv←Arrow-equiv
+        (arrow-fibre-left-fibration-is-coslice-map e)
+        (transpose-is-cartesian _ (is-cartesian←are-orthogonal lfib) (point e))
+
+
+  is-left-fibration←coslice-map-is-equiv
+    : (∀ e → is-equiv (postcompose-coslice (point e) p)) → is-left-fibration p
+  is-left-fibration←coslice-map-is-equiv eqv
+    = are-orthogonal←is-cartesian
+        (transpose-is-cartesian _
+          λ e
+          → tgt-is-equiv←Arrow-equiv
+              (arrow-fibre-left-fibration-is-coslice-map (e tt))
+              (eqv (e tt)))
 }
 }
 
@@ -468,6 +523,36 @@ tr-cov-hom-naturality {A = A} {F} Fc Gc α f x'
   help
     : {x y : A} (f : Hom A x y) (x' : F x)
     → Hom-over f (α x x') (α y (tr-cov-hom Fc f x'))
+  help (mk-hom f refl refl) x'
+    = mk-hom (λ i → α (f i) ((Fc f x') .centre .snd .Homᵈ.hom i))
+             (ap (α (f i0)) ((Fc f x') .centre .snd .Homᵈ.hom0))
+             (ap (α (f i1)) ((Fc f x') .centre .snd .Homᵈ.hom1))
+}
+}
+
+
+\subtree[stt-00FR]{
+\title{Natural transformations are natural with respect to covariant transport}
+\taxon{Lemma}
+
+\citet{Proposition 8.17}{RS17}
+
+\agda{
+tr-naturality
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+      (Fc : is-covariant F)
+      (Gc : is-covariant G)
+      (α : ∀ a → F a → G a)
+      {x y} (f : Hom A x y)
+    → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
+tr-naturality Fc Gc α f x'
+  = ap fst
+      (is-covariant-hom←is-covariant _ Gc f (α _ x') .central
+        ( α _ (tr-cov-hom Fc f x')
+        , help f x')) where
+  help
+    : ∀ {x y} (f : Hom _ x y) x'
+      → Hom-over f (α x x') (α y (tr-cov-hom Fc f x'))
   help (mk-hom f refl refl) x'
     = mk-hom (λ i → α (f i) ((Fc f x') .centre .snd .Homᵈ.hom i))
              (ap (α (f i0)) ((Fc f x') .centre .snd .Homᵈ.hom0))

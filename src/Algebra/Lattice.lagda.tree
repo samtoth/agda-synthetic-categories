@@ -14,6 +14,7 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+open import Foundations.Subtypes
 
 open import Algebra.Poset
 
@@ -134,6 +135,8 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
       ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
       ≤-antisym {x} {y} p q = sym p ∙ ∧-comm ∙ q
 
+  ≤-poset : Poset ℓ L
+  ≤-poset = mk-poset {_≤_ = _≤_} ≤-is-poset
 
   open is-poset ≤-is-poset public
 
@@ -148,6 +151,9 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
     = a ∨ b             ＝⟨ ap (_∨ b) (sym p) ⟩
       (a ∧ b) ∨ b       ＝⟨ ∧-∨-abs' ⟩
       b ∎
+
+  ≤-max' : ∀ {a b} → b ≤ a → a ∨ b ＝ a
+  ≤-max' b≤a = ∨-comm ∙ ≤-max b≤a
 
   ≤←∨ : ∀ {a b} → a ∨ b ＝ b → a ≤ b
   ≤←∨ {a} {b} p
@@ -229,6 +235,9 @@ record is-lattice-hom
     pres-∧ : {x y : A} → f (x A.∧ y) ＝ f x B.∧ f y
     pres-0 : f A.0l ＝ B.0l
     pres-1 : f A.1l ＝ B.1l
+
+  pres-≤ : {x y : A} → ⦃ x A.≤ y ⦄ → f x B.≤ f y
+  pres-≤ ⦃ p ⦄ = sym pres-∧ ∙ ap f p
 
 unquoteDecl lattice-hom-repr≊ lattice-hom-repr≃
   = make-record-repr lattice-hom-repr≊ lattice-hom-repr≃
@@ -646,7 +655,7 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
   distrib-∧-∨ : ∀ {x y z} → x ∧ (y ∨ z) ＝ (x ∧ y) ∨ (x ∧ z)
   distrib-∧-∨ {x} {y} {z}
     = ⌜ x ⌝ ∧ (y ∨ z)             ＝⟨ ap! (sym ∧-∨-abs) ⟩
-      ((x ∧ (x ∨ z)) ∧ (y ∨ z))  ＝⟨ sym ∧-assoc ⟩
+      ((x ∧ (x ∨ z)) ∧ (y ∨ z))   ＝⟨ sym ∧-assoc ⟩
       (x ∧ (x ∨ z) ∧ (y ∨ z))     ＝⟨ ap₂ (_∧_)
                                          (sym ∨-∧-abs ∙ ∨-comm)
                                          (sym (distrib-∨-∧')) ⟩
@@ -703,6 +712,25 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
         (a₁ ∧ b₁ ∨ (a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x)
           ＝⟨ ∨-comm ⟩
         ((a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x ∨ a₁ ∧ b₁) ∎
+
+    polynomial-mult'-≤
+      : ∀ {a₀ a₁ b₀ b₁} → ⦃ a₁ ≤ a₀ ⦄ → ⦃ b₁ ≤ b₀ ⦄ → ∀ x
+        → ((a₀ ∧ x) ∨ a₁) ∧ ((b₀ ∧ x) ∨ b₁)
+        ＝ ((a₀ ∧ b₀) ∧ x) ∨ (a₁ ∧ b₁)
+    polynomial-mult'-≤ {a₀} {a₁} {b₀} {b₁} x
+      = ((a₀ ∧ x) ∨ a₁) ∧ ((b₀ ∧ x) ∨ b₁)
+          ＝⟨ polynomial-mult' x ⟩
+        (⌜ (a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀) ⌝ ∧ x) ∨ (a₁ ∧ b₁)
+          ＝⟨ ap! lemma ⟩
+        ((a₀ ∧ b₀) ∧ x) ∨ (a₁ ∧ b₁) ∎
+      where
+      lemma : (a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀) ＝ (a₀ ∧ b₀)
+      lemma
+        = ((a₀ ∧ b₁) ∨ ⌜ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀) ⌝)
+            ＝⟨ ap! (≤-max auto!) ⟩
+          ((a₀ ∧ b₁) ∨ (a₀ ∧ b₀))
+            ＝⟨ ≤-max auto! ⟩
+          (a₀ ∧ b₀) ∎
 
 is-distributive-algebra
   : ∀ {𝓤 𝓥} {L : Type 𝓤} {Lat : Lattice L}

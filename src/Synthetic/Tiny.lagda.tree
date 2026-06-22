@@ -18,6 +18,7 @@ open import Foundations.Prelude
 
 open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.LiftingSquares
 open import Modalities.Cohesion.FlatDiscrete
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
@@ -30,6 +31,7 @@ open import Core.ArrowEquiv
 open import Core.PiSection
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
+open import Core.FunctorialityPullbacks
 open import Core.Small
 }
 }
@@ -126,22 +128,17 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
   module is-tiny {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ X : Type 𝓥}
     = is-equiv (is-tiny-str {𝓤} {A} {𝓥} {X})
 
+  untranspose
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+      → (Γ → √ A) → ((I → Γ) → A)
+  untranspose = postcomp _ √ε ∘ postcomp I
+
   transpose
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
       → ⟨♭| ((I → Γ) → A)⟩ → ⟨♭| (Γ → √ A) ⟩
   transpose = is-equiv.bwd is-tiny-str
 
   opaque
-    untranspose
-      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
-        → (Γ → √ A) → ((I → Γ) → A)
-    untranspose = postcomp _ √ε ∘ postcomp I
-
-    is-tiny-str'
-      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
-        → is-equiv (♭-map (untranspose {𝓤} {𝓥} {Γ} {A}))
-    is-tiny-str' = is-tiny-str
-
     transpose-unique'
       : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
           {f : ⟨♭| ((I → Γ) → A)⟩} {g : ⟨♭| (Γ → √ A) ⟩}
@@ -225,7 +222,6 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
         comult-is-equiv
 
   opaque
-    unfolding untranspose
     transpose-naturality
       : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓦} {@♭ A : Type 𝓥}
         → (P : ⟨♭| ((I → Γ) → A)⟩)
@@ -267,12 +263,10 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
   √₁ {B = B} = transpose ∘ ♭-map (precomp B √ε)
 
   opaque
-    unfolding untranspose
     √₁-id : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √₁ (mod♭ id) ＝ mod♭ (id: √ A)
     √₁-id = sym (transpose-unique' refl)
 
   opaque
-    unfolding untranspose
     √₁-nat
       : ∀ {@♭ 𝓤 𝓥 𝓥'} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓥'}
         → (f : ⟨♭| (B → A)⟩)
@@ -295,6 +289,29 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
       ＝⟨⟩
             postcomp (I → _) f ∘ untranspose
       ∎
+
+  opaque
+    √₁-∘
+      : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+          (@♭ f : B → C) (@♭ g : A → B)
+        → ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)) ~ ε♭ (√₁ (mod♭ (f ∘ g)))
+    √₁-∘ {A = A} {B} {C} f g = happly (ε♭ (transpose-unique (mod♭
+      ( untranspose (ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)))
+      ＝⟨⟩
+        untranspose (postcomp _ (ε♭ (√₁ (mod♭ f))) (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        (untranspose ∘ postcomp _ (ε♭ (√₁ (mod♭ f)))) (ε♭ (√₁ (mod♭ g)))
+      ＝⟨ happly (√₁-nat (mod♭ f)) (ε♭ (√₁ (mod♭ g))) ⟩
+        postcomp _ f (untranspose (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        postcomp _ f (untranspose (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f) (sym (ε♭-natural (transpose (♭-map (precomp _ √ε) (mod♭ g))))) ⟩
+        postcomp _ f (ε♭ (♭-map untranspose (transpose (♭-map (precomp _ √ε) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f ∘ ε♭) (is-tiny.ε (♭-map (precomp _ √ε) (mod♭ g))) ⟩
+        postcomp _ f (precomp _ √ε g)
+      ＝⟨⟩
+        f ∘ g ∘ √ε
+      ∎))))
 
   ♭-map' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
              (f : ⟨♭| (A → B)⟩) → ⟨♭| A ⟩ → ⟨♭| B ⟩
@@ -427,7 +444,7 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
       → is-equiv {A = ⟨♭| (Γ → √ A) × (Γ → √ B) ⟩}
                  (♭-map (untranspose ⊗ untranspose))
-  ⊗-tiny-str = src-is-equiv←Arrow-equiv aeq (⊗-is-equiv is-tiny-str' is-tiny-str') where
+  ⊗-tiny-str = src-is-equiv←Arrow-equiv aeq (⊗-is-equiv is-tiny-str is-tiny-str) where
     aeq : Arrow-equiv (♭-map (untranspose ⊗ untranspose))
                       (♭-map untranspose ⊗ ♭-map untranspose )
     aeq .fst .Arrow-Π.top = ♭-pres-× ._≃_.fwd
@@ -465,11 +482,93 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
                                      , happly (√₁-nat (mod♭ snd)) x'))) ⟩
             mod♭ (Σ-Π-swap _ _ (untranspose x'))
           ∎
-        aeq .snd .fst = is-tiny-str'
+        aeq .snd .fst = is-tiny-str
         aeq .snd .snd
           = is-equiv-∘
               ⊗-tiny-str
               (♭-map-is-equiv (Σ-Π-swap≃ _ _ ._≃_.fwd-is-equiv))
+
+  √-cospan : ∀ {@♭ 𝓤 𝓥 𝓦} → @♭ Cospan 𝓤 𝓥 𝓦 → Cospan 𝓤 𝓥 𝓦
+  √-cospan C = √C where
+    open Cospan C
+    √C : Cospan _ _ _
+    √C .Centre = √ Centre
+    √C .Left = √ Left
+    √C .left = ε♭ (√₁ (mod♭ left))
+    √C .Right = √ Right
+    √C .right = ε♭ (√₁ (mod♭ right))
+
+  √-cone : ∀ {@♭ 𝓤 𝓥 𝓦} (@♭ C : Cospan 𝓤 𝓥 𝓦)
+            → Cone (√-cospan C) (√ (Pullback-of-cospan C))
+  √-cone C .Cone.i = ε♭ (√₁ (mod♭ pb.π₁))
+  √-cone C .Cone.j = ε♭ (√₁ (mod♭ (pb.π₂)))
+  √-cone C .Cone.filler x
+    = √₁-∘ (left C) pb.π₁ _
+    ∙ ap (λ p → ε♭ (√₁ p) x) {a = mod♭ (left C ∘ pb.π₁)}{b = mod♭ (right C ∘ pb.π₂)}
+         (mapply♭ (mod♭ (funext→ (pb.filler {f = left C} {g = right C}))))
+    ∙ sym (√₁-∘ (right C) pb.π₂ _) where
+    open Cospan
+
+  untranspose-pullback
+    : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} (@♭ C : Cospan 𝓤 𝓥 𝓦) {@♭ Γ : Type 𝓜}
+      → Pullback-of-cospan (postcomp-cospan Γ (√-cospan C))
+      → Pullback-of-cospan (postcomp-cospan (I → Γ) C)
+  untranspose-pullback C {Γ} = Pullback₁
+    (mk-cospan-map
+      untranspose
+      untranspose
+      untranspose
+      (happly ( {- untranspose ∘ postcomp Γ (ε♭ (√₁ (mod♭ left)))
+              ＝⟨ -} √₁-nat (mod♭ left) {- ⟩
+                postcomp (I → Γ) left ∘ untranspose  ∎ -}))
+      (happly (√₁-nat (mod♭ right)))) where open Cospan C
+
+  ♭untranspose-pullback-is-equiv
+    : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} (@♭ C : Cospan 𝓤 𝓥 𝓦) {@♭ Γ : Type 𝓜}
+      → is-equiv (♭-map (untranspose-pullback C {Γ}))
+  ♭untranspose-pullback-is-equiv = {!!}
+
+  √-is-pullback
+    : ∀ {@♭ 𝓤 𝓥 𝓦} (@♭ C : Cospan 𝓤 𝓥 𝓦)
+      → is-pullback (√-cone C)
+  √-is-pullback C = types-separate (gap (√-cone C))
+    (src-is-equiv←Arrow-equiv aeq (♭-map-is-equiv postcomp-cone-is-pullback)) where
+    open Cospan C
+    module _ {@♭ 𝓜} {@♭ Γ : Type 𝓜} where
+      lemma : (@♭ a : Γ → √ (Pullback-of-cospan C)) →
+          ap (postcomp (I → Γ) left) (happly (√₁-nat (mod♭ pb.π₁)) a)
+        ∙ postcomp-cone .Cone.filler (untranspose a)
+        ＝
+        ( sym
+           (happly
+             (√₁-nat (mod♭ left))
+             (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ pb.π₁))) ∘ a))
+        ∙ ap untranspose
+             (gap postcomp-cone (postcomp Γ (gap (√-cone C)) a) .pb.filler)
+        ∙ happly
+            (√₁-nat (mod♭ right))
+            (ε♭ (√₁ (mod♭ pb.π₂)) ∘ a))
+        ∙ ap (postcomp (I → Γ) right)
+             (happly (√₁-nat (mod♭ pb.π₂)) a)
+      lemma = {!!}
+
+      aeq
+        : Arrow-equiv
+            {X = ⟨♭| ((I → Γ) → Pullback-of-cospan C) ⟩}
+            (♭-map (postcomp Γ (gap (√-cone C)) ))
+            (♭-map (gap (postcomp-cone {D = (I → Γ)})))
+      aeq .fst .Arrow-Π.top = ♭-map untranspose
+      aeq .fst .Arrow-Π.bot = ♭-map (untranspose-pullback C) ∘ ♭-map (gap postcomp-cone)
+      aeq .fst .Arrow-Π.comm (mod♭ a) = mapply♭ (mod♭ (pullback-path→
+        ( {- (untranspose (ε♭ (√₁ (mod♭ pb.π₁)) ∘ a)
+          ＝⟨ -} happly (√₁-nat (mod♭ pb.π₁)) a {- ⟩
+           postcomp _ pb.π₁ (untranspose a) ∎ -}
+        , happly (√₁-nat (mod♭ pb.π₂)) a
+        , lemma a)))
+      aeq .snd .fst = is-tiny-str
+      aeq .snd .snd = is-equiv-∘
+        (♭untranspose-pullback-is-equiv C)
+        (♭-map-is-equiv postcomp-cone-is-pullback)
 }
 }
 
@@ -533,7 +632,6 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
   {-# INLINE √ᵈ #-}
 
   opaque
-    unfolding untranspose
     transpose-lift♭
       : {@♭ 𝓤 𝓥 : Level} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
       → ⟨♭| LiftMap (Type-π 𝓥) A ⟩

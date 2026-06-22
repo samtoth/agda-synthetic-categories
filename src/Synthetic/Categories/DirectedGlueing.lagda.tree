@@ -9,11 +9,13 @@ open import Foundations.Universes
 open import Foundations.Identity
 open import Foundations.Empty
 open import Algebra.Lattice
+open import Synthetic.Quasicoherence
 
 module Synthetic.Categories.DirectedGlueing
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (non-triv : i1 ＝ i0 → ∅)
+  (phoa : Δ¹-endos-are-mono Δ¹ I I-distr)
   where
 
 open import Axioms.UF
@@ -123,17 +125,8 @@ module _
 \p{If #{F} and #{G} are covariant families over #{B}, then the directed glueing of any
 map #{\alpha} is also covariant over #{B \times \Delta^1}.}
 
-\remark{
-This proof relies on a yet to be formalised lemma that if #{X} is some covariant
-family, then #{(a, i) \mapsto i = 0 \to X(a)} is also covariant.
-}
-
 \agda{
-module _
-  (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
-           → is-covariant F
-           → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst)))) where
-
+opaque
   Gl-is-covariant
     : ∀ {𝓤 𝓥} {B : Type 𝓤}
         (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
@@ -148,9 +141,14 @@ module _
           {P = λ x → x .snd ＝ i0
                    → fibre (α (x .fst .fst)) (x .fst .snd)}
           (λ ((b , i) , g) → ((b , g) , i))
-          (hole1
-            (uncurry (λ b g → fibre (α b) g))
-            (fibre-is-covariant _ _ Fc Gc α)))
+          (exp-●-is-covariant
+            phoa
+            (uncurry (λ b g → fibre (α b) g) ∘ fst)
+            (covariant-base-change
+              {P = uncurry (λ b g → fibre (α b) g)}
+              fst
+              (fibre-is-covariant _ _ Fc Gc α))
+            snd))
 }
 }
 
@@ -297,16 +295,13 @@ families over #{B} and a fibrewise map between them.}
 \agda{
 module _
   {𝓤 𝓥} {B : Type 𝓤}
-  (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
-           → is-covariant F
-           → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst))))
   where
 
   trΣ-inv
     : Cov-Δ¹-bundle 𝓥 B
     → (Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
   trΣ-inv ((A , Ac) , (B , Bc) , α)
-    = (Gl A B α , Gl-is-covariant hole1 A B α Ac Bc)
+    = (Gl A B α , Gl-is-covariant A B α Ac Bc)
 }
 
 \subtree[tot-LL01]{
@@ -317,9 +312,6 @@ module _
 
 \agda{
 module _
-  (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
-           → is-covariant F
-           → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst))))
   {𝓤 𝓥} {B : Type 𝓤}
   where
 
@@ -336,20 +328,20 @@ module _
         (α : ∀ b → X b → Y b)
         (Xc : is-covariant X) (Yc : is-covariant Y)
       → ∀ b
-      → tr-cov {P = Gl X Y α} (Gl-is-covariant hole1 X Y α Xc Yc) (b ,_)
+      → tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_)
       ~ Gl-map α b
   tr-Gl α Xc Yc b x
     = ap fst
-         (Gl-is-covariant hole1 _ _ α Xc Yc (b ,_) x
+         (Gl-is-covariant _ _ α Xc Yc (b ,_) x
            .central (Gl-map α b x , tr-Gl-hom α b x))
 
-  trΣ-section : ∀ x → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv hole1 x)) x
+  trΣ-section : ∀ x → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv x)) x
   trΣ-section ((X , _) , (Y , _) , F) .fst b
     = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
   trΣ-section ((X , _) , (Y , _) , F) .snd .fst b
     = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
   trΣ-section ((X , Ac) , (Y , Bc) , F) .snd .snd b x@(y , p)
-    = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant hole1 X Y F Ac Bc) (b ,_)) x
+    = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant X Y F Ac Bc) (b ,_)) x
     ＝⟨ ap fst (tr-Gl F Ac Bc b x) ⟩
       x .fst
     ＝⟨ sym (p refl .snd) ⟩
@@ -375,9 +367,6 @@ cover the global points of #{\Delta^1}.
 \agda{
 module _
   {𝓤 𝓥} {B : Type 𝓤}
-  (hole1 : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥)
-           → is-covariant F
-           → (is-covariant (λ x → (x .snd) ＝ i0 → F (x .fst))))
   (Cov-Nat-is-equiv
     : ∀ {𝓤} (F G : B × Δ¹ → Type 𝓤)
         (Fc : is-covariant F) (Gc : is-covariant G)
@@ -386,7 +375,7 @@ module _
       → is-fibrewise-equiv α)
   where
 
-  trΣ-retraction→ : ∀ F i → F .fst i → trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} hole1 (trΣ F) .fst i
+  trΣ-retraction→ : ∀ F i → F .fst i → trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (trΣ F) .fst i
   trΣ-retraction→ FF@(F , Fc) (b , i) x .fst
     = coe-cov (F ∘ (b ,_)) (covariant-base-change {P = F} (b ,_) Fc) 1-top x
   trΣ-retraction→ (F , Fc) (b , i) x .snd refl
@@ -394,12 +383,12 @@ module _
                                     (covariant-base-change {P = F} (b ,_) Fc)
                                     1-top) x))
 
-  trΣ-retraction : ∀ F i → F .fst i ≃ trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} hole1 (trΣ F) .fst i
+  trΣ-retraction : ∀ F i → F .fst i ≃ trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (trΣ F) .fst i
   trΣ-retraction F i ._≃_.fwd = trΣ-retraction→ F i
   trΣ-retraction FF@(F , Fc) i ._≃_.fwd-is-equiv
     = Cov-Nat-is-equiv F _
       Fc
-      (trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} hole1 (trΣ FF) .snd)
+      (trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (trΣ FF) .snd)
       (trΣ-retraction→ (F , Fc))
       (uncurry λ b →
         ∂Δ¹-UP→
@@ -449,10 +438,10 @@ module _
   trΣ-is-equiv
     : is-equiv (trΣ {𝓤}{𝓥 ⊔ 𝓘}{B})
   trΣ-is-equiv = is-equiv←qinv
-    ( trΣ-inv hole1
+    ( trΣ-inv
     , (λ a → Σ-path→ ( funext→ (λ i → ua (trΣ-retraction a i e⁻¹))
                      , is-covariant-is-prop (a .fst) _ _))
-    , (λ a → ext! (trΣ-section hole1 {𝓤} {𝓥} a)))
+    , (λ a → ext! (trΣ-section {𝓤} {𝓥} a)))
 }
 }
 }

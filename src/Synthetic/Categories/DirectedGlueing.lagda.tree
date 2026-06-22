@@ -24,6 +24,7 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Ergonomics.Extensionality
+open import Ergonomics.Auto
 
 open import Modalities.Instances.Truncation
 
@@ -32,12 +33,9 @@ open import Core.ArrowEquiv
 
 open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
-open import Algebra.Lattice.Instances.Polynomial hiding (L[x]; Δ²)
-private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
-
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
-open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 }
@@ -217,7 +215,7 @@ Gl-path→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
 Cov-Δ¹-bundle
   : ∀ {𝓤} 𝓥 (B : Type 𝓤) → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
 Cov-Δ¹-bundle 𝓥 B
-  = Σ[ X Y ∶ (B → Type 𝓥) ] Σ[ α ∶ (∀ b → X b → Y b) ] (is-covariant X × is-covariant Y)
+  = Σ[ X Y ∶ Σ (B → Type 𝓥) is-covariant ] (∀ b → X .fst b → Y .fst b)
 }
 }
 
@@ -229,7 +227,7 @@ Cov-Δ¹-bundle 𝓥 B
 cov-Δ¹-bundle-Path
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ¹-bundle 𝓥 B)
     → Type (𝓤 ⊔ 𝓥)
-cov-Δ¹-bundle-Path (A , B , f , _ , _) (X , Y , g , _ , _)
+cov-Δ¹-bundle-Path ((A , _) , (B , _) , f) ((X , _) , (Y , _) , g)
   = Σ[ e ∶ (∀ b → A b ≃ X b) ] Σ[ p ∶ (∀ b → B b ≃ Y b) ]
       (∀ b → p b ._≃_.fwd ∘ f b ~ g b ∘ e b ._≃_.fwd)
 
@@ -238,23 +236,23 @@ cov-Δ¹-bundle-Path-refl
     → cov-Δ¹-bundle-Path x x
 cov-Δ¹-bundle-Path-refl x = ((λ _ → id≃) , (λ _ → id≃) , λ _ → ~refl)
 
+instance
+  IdS-cov-fam
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} → Identity-system (Σ (A → Type 𝓥) is-covariant) (𝓤 ⊔ 𝓥)
+  IdS-cov-fam = IdS←Subtype is-covariant-is-prop auto!
+
 opaque
   cov-Δ¹-bundle-Path-is-torsorial
     : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 B)
       → is-singleton (Σ _ (cov-Δ¹-bundle-Path x))
-  cov-Δ¹-bundle-Path-is-torsorial (A , B , f , Ac , Bc)
+  cov-Δ¹-bundle-Path-is-torsorial (A , B , f)
     = is-singleton-structure←parts
        (SingS-is-single A)
        (A , λ _ → id≃)
        (is-singleton-structure←parts
          (SingS-is-single B)
          (B , λ _ → id≃)
-         (is-singleton-structure←rest-single
-           (SingS-is-single _)
-           (_ , λ _ → ~refl)
-           (×-is-single
-             (mk-singl Ac (is-covariant-is-prop _ _))
-             (mk-singl Bc (is-covariant-is-prop _ _)))))
+         (SingS-is-single _))
 
 instance
   cov-Δ¹-bundle-IdS
@@ -277,14 +275,11 @@ call this collection of data a covariant bundle over #{\Delta^1}.}
 \agda{
 trΣ : ∀ {𝓤 𝓥} {B : Type 𝓤}
       → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
-      → (Σ[ X Y ∶ (B → Type 𝓥) ] Σ[ α ∶ (∀ b → X b → Y b) ]
-           (is-covariant X × is-covariant Y))
+      → Cov-Δ¹-bundle 𝓥 B
 trΣ (F , Fcov)
-  = ( F ∘ (_, i0)
-    , F ∘ (_, i1)
-    , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id)
-    , covariant-base-change {P = F} (_, i0) Fcov
-    , covariant-base-change {P = F} (_, i1) Fcov)
+  = ( (F ∘ (_, i0) , covariant-base-change {P = F} (_, i0) Fcov)
+    , (F ∘ (_, i1) , covariant-base-change {P = F} (_, i1) Fcov)
+    , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id))
 }
 }
 
@@ -310,7 +305,7 @@ module _
   trΣ-inv
     : Cov-Δ¹-bundle 𝓥 B
     → (Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
-  trΣ-inv (A , B , α , Ac , Bc)
+  trΣ-inv ((A , Ac) , (B , Bc) , α)
     = (Gl A B α , Gl-is-covariant hole1 A B α Ac Bc)
 }
 
@@ -349,11 +344,11 @@ module _
            .central (Gl-map α b x , tr-Gl-hom α b x))
 
   trΣ-section : ∀ x → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv hole1 x)) x
-  trΣ-section (X , Y , F , Ac , Bc) .fst b
+  trΣ-section ((X , _) , (Y , _) , F) .fst b
     = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
-  trΣ-section (X , Y , F , Ac , Bc) .snd .fst b
+  trΣ-section ((X , _) , (Y , _) , F) .snd .fst b
     = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
-  trΣ-section (X , Y , F , Ac , Bc) .snd .snd b x@(y , p)
+  trΣ-section ((X , Ac) , (Y , Bc) , F) .snd .snd b x@(y , p)
     = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant hole1 X Y F Ac Bc) (b ,_)) x
     ＝⟨ ap fst (tr-Gl F Ac Bc b x) ⟩
       x .fst
@@ -415,7 +410,7 @@ module _
     fr0 b .snd .fst = ~refl
     fr0 b .snd .snd a
       = Gl-path→ {B = B} {F ∘ (_, i0)} {F ∘ (_, i1)}
-                 (trΣ FF .snd .snd .fst)
+                 (trΣ FF .snd .snd)
                  (b , i0)
                  ( happly
                       (coe-cov-0≤1

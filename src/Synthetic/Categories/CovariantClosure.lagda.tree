@@ -181,6 +181,51 @@ opaque
 }
 }
 
+\subtree[tot-0556]{
+\title{Contravariance at #{i = 0}}
+\date{2026-06-22}
+\taxon{Lemma}
+
+\p{Assuming [quasicoherence](), or more specifically that every endomap on #{Δ^1} is
+monotone, the family #{- = 0} is contravariant }
+
+\proof{
+\p{We want to show the family #{{-} = 0} is orthogonal to #{\{1\} \to \Delta^1}. Since
+this family is a proposition it suffices to show that lifts merely exist. Then for
+each #{\sigma : Δ^1 \to Δ^1} such that #{\sigma(1) = 0} we need to show that
+#{\sigma(i) = 0} for each #{0}. But this follows from the fact that #{\sigma} is
+monotone.
+}
+}
+
+\agda{
+contravariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-contravariant P → is-contravariant (P ∘ f)
+contravariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
+
+module _ (phoa : Δ¹-endos-are-mono) where
+
+  ●-unique-extensions : has-unique-extensions (point i1) (_＝ i0)
+  ●-unique-extensions (mk-afmap σ p) .centre .fst a
+    = ≤-antisym (≤-trans (phoa σ auto!) (≤←＝ (p tt))) auto!
+  ●-unique-extensions (mk-afmap σ p) .centre .snd a = prop!
+  ●-unique-extensions F .central
+    = Extᵈ-Subtype-is-prop
+        (point i1)
+        (mk-subtype {family = _＝ i0} λ _ _ _ → prop!)
+        F _
+
+  ●-is-contravariant
+    : ∀ {𝓤} {A : Type 𝓤} (f : A → Δ¹)
+      → is-contravariant ((_＝ i0) ∘ f)
+  ●-is-contravariant f
+    = contravariant-base-change {P = _＝ i0} f
+        (is-right-family↔is-contravariant (_＝ i0) .fst
+          (are-orthogonal-fam←unique-extensions ●-unique-extensions))
+}
+}
 
 \subtree[stt-00OM]{
 \title{Exponentiating covariant families}
@@ -224,12 +269,6 @@ base change by right fibrations.}
 }
 
 \agda{
-contravariant-base-change
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
-    → (f : A → B)
-    → is-contravariant P → is-contravariant (P ∘ f)
-contravariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
-
 0≤i : ∀ i → Hom Δ¹ i0 i
 0≤i i .Homᵈ.hom j = j ∧ i
 0≤i i .Homᵈ.hom0 = 0-init
@@ -398,12 +437,23 @@ module _
              ∙ ap x (tr-contrav-idH~ Fσ Fσ-contrav _ 0≤i-at-0 p))
 
   cov^contrav-is-covariant
+    : is-contravariant F → is-covariant G → is-covariant G^F
+  cov^contrav-is-covariant Fc Gc = is-covariant←has-unique-extensions G^F
+    (λ {(mk-afmap σ h)
+         → is-single←equiv-to-single
+             (  fibre-precomp-Π≃Ext (G ∘ σ ∘ fst) (i0 ,_) (h tt)
+             ∙e transpose-ext-exponentials σ (h tt) e⁻¹)
+             (has-singleton-fibres←is-equiv
+               (cov^contrav-is-covariant-lemma σ Fc Gc)
+               (h tt))})
+
+  cov^contrav-is-covariant-alternative
     : (base-change-left-anodyne
           : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
               (p : C → A) → is-left-anodyne p → is-right-fibration f
             → is-left-anodyne (base-change-arrow f p))
     → is-contravariant F → is-covariant G → is-covariant G^F
-  cov^contrav-is-covariant bcla Fctr Gcov
+  cov^contrav-is-covariant-alternative bcla Fctr Gcov
     = is-covariant←has-unique-extensions G^F (λ
         {(mk-afmap σ h)
             → is-single←equiv-to-single
@@ -444,125 +494,19 @@ any pair #{i \ge j}.}
 map from #{i \le j \to \Hom(i,j)}, in the formalisation, we have to use the mapping
 #{j \mapsto a((j \lor 0) \land (i \lor 0), ...)}.}
 }
+}
+
+\subtree[tot-0AGU]{
+\taxon{Example}
 
 \agda{
-module _ (σ : Δ¹ → Δ¹) (σ-mono : is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) σ) where
-  transpose-●-is-left-anodyne
-    : ∀ {𝓥} (P : Δ¹ → Type 𝓥) (P-cov : is-covariant P)
-        (f : Δ¹ → Δ¹) (f-mono : is-monotone ≤-poset ≤-poset f)
-      → is-equiv (precomp-Π {B = Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0)} (P ∘ σ ∘ fst) (λ p → (i0 , p)))
-  transpose-●-is-left-anodyne P P-cov f fm = is-equiv←qinv
-    ( (λ x (i , p) → coe-cov Pσ Pσ-cov 0-init (x (map1 i i0 0-init p)))
-    , (λ a → funext→ (λ
-      where (i , p) → coe-cov Pσ Pσ-cov (0-init {i}) (a (i0 , map1' i p))
-                    ＝⟨⟩
-                      tr-cov-hom Pσ-cov (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
-                    ＝⟨ tr-cov-hom-unique Pσ Pσ-cov
-                         (Δ¹-hom←≤ 0-init) (a (i0 , map1' i p))
-                         (a (i , p))
-                         (connection i p a) ⟩
-                      a (i , p) ∎))
-    , (λ a → funext→ (λ p → coe-cov-id
-                              (P ∘ σ)
-                              (covariant-base-change {P = P} σ P-cov)
-                              0-init (a (map1' i0 p))
-                          ∙ ap a (map1-at-0 0-init p)))) where
-      Pσ = P ∘ σ
-      Pσ-cov = covariant-base-change {P = P} σ P-cov
-
-      opaque
-        map1 : ∀ i j → j ≤ i → f (σ i) ＝ i0 → f (σ j) ＝ i0
-        map1 i j l p = ≤-antisym
-          (≤-trans
-            (∘-is-monotone ≤-poset ≤-poset ≤-poset f σ fm σ-mono l)
-            (≤←＝ p))
-          0-init
-
-        map1-at-0 : ∀ p → map1 i0 i0 p ~ id
-        map1-at-0 _ p = carrier-is-set _ _ _ p
-
-      map1' = λ i → map1 i i0 0-init
-
-      opaque
-        connection
-          : ∀ (i : Δ¹) (p : f (σ i) ＝ i0)
-              (a : ∀ (x : Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0)) → P (σ (fst x)))
-            → Hom-over {B = P ∘ σ}
-                (Δ¹-hom←≤ 0-init)
-                (a (i0 , map1 i i0 0-init p))
-                (a (i , p))
-        connection i p a .Homᵈ.hom j
-          = a ( (j ∨ i0) ∧ (i0 ∨ i)
-              , map1 i ((j ∨ i0) ∧ (i0 ∨ i)) (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-        connection i p a .Homᵈ.hom0 = sym lemma1 where
-          -- it is important to chose this path in particular
-          path : i0 ＝ (i0 ∨ i0) ∧ (i0 ∨ i)
-          path = sym
-            (ap₂ _∧_ (∨-comm ∙ 0-bottom)
-                     ( ap (_∨ i)
-                          (sym (ap (_∧_ i0) (sym (∨-comm ∙ 0-bottom))
-                               ∙ ∧-∨-abs ∙ refl))
-                     ∙ (ap (_∨ i) ∧-comm ∙ ∨-comm ∙ ∨-∧-abs)
-                     ∙ refl)
-            ∙ ap (_∧_ i0) (sym (∨-comm ∙ 0-bottom)) ∙ ∧-∨-abs ∙ refl)
-
-          lemma3 : Id (Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0))
-                      (i0 , map1' i p)
-                      ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                      , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
-                               (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-          lemma3 = Σ-path→ (path , carrier-is-set _ _ _ _)
-
-          lemma2 : a (i0 , map1' i p)
-                 ＝[ ap (P ∘ σ ∘ fst) lemma3 ]
-                   a ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
-                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-          lemma2 = apᶠ a lemma3
-
-          lemma1 : a (i0 , map1' i p)
-                 ＝[ ap (P ∘ σ) path ]
-                   a ( (i0 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i0 ∨ i0) ∧ (i0 ∨ i))
-                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-          lemma1 = adjust-idᵈ
-                     {P = ap (P ∘ σ ∘ fst) lemma3} {Q = ap (P ∘ σ) path}
-                     (ap-∘ (P ∘ σ) fst lemma3 ∙ ap (ap (P ∘ σ)) Σ-path-ap-fst)
-                     lemma2
-
-        connection i p a .Homᵈ.hom1 = sym lemma1 where
-          path : i ＝ (i1 ∨ i0) ∧ (i0 ∨ i)
-          path = sym (ap₂ _∧_ (∨-comm ∙ 1-coinit) (≤-max 0-init) ∙ ∧-comm ∙ 1-top)
-
-          Σpath : Id (Σ[ i ∶ Δ¹ ] (f (σ i) ＝ i0))
-                     (i , p)
-                     ( (i1 ∨ i0) ∧ (i0 ∨ i)
-                     , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i))
-                              (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-          Σpath = Σ-path→ (path , (carrier-is-set _ _ _ _))
-
-          lemma1
-            : a (i , p)
-            ＝[ ap (P ∘ σ) path ]
-              a ( (i1 ∨ i0) ∧ (i0 ∨ i)
-                , map1 i ((i1 ∨ i0) ∧ (i0 ∨ i))
-                         (∧-≤-elimr (∨-UP (0-init , ≤-refl))) p)
-          lemma1 = adjust-idᵈ {P = ap (P ∘ σ ∘ fst) Σpath} {Q = ap (P ∘ σ) path}
-                     (ap-∘ (P ∘ σ) fst Σpath ∙ ap (ap (P ∘ σ)) Σ-path-ap-fst)
-                     (apᶠ a Σpath)
-
 module _ (phoa : Δ¹-endos-are-mono) where
+
   exp-●-is-covariant
-    : ∀ {𝓤} (F : Δ¹ → Type 𝓤) (F-cov : is-covariant F)
-      → (f : Δ¹ → Δ¹)
+    : ∀ {𝓤 𝓥} {A : Type 𝓥} (F : A → Type 𝓤) (F-cov : is-covariant F)
+      → (f : A → Δ¹)
       → is-covariant (λ i → (f i ＝ i0) → F i)
   exp-●-is-covariant F Fc f
-    = is-covariant←has-unique-extensions (λ i → (f i ＝ i0) → F i)
-        λ AF@(mk-afmap σ p)
-          → is-single←equiv-to-single
-              (  fibre-precomp-Π≃Ext (F ∘ σ ∘ fst) (λ z → i0 , z) (p tt)
-              ∙e transpose-ext-exponentials ((_＝ i0) ∘ f) F σ (p tt)  e⁻¹)
-              (has-singleton-fibres←is-equiv
-                 (transpose-●-is-left-anodyne σ (phoa σ) F Fc f (phoa f)) (p tt) )
+    = cov^contrav-is-covariant ((_＝ i0) ∘ f) F (●-is-contravariant phoa f) Fc
 }
 }

@@ -1,0 +1,226 @@
+\title{Detecting equivalences between covariant type families}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Foundations.Nat
+open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.Identity
+
+open import Algebra.Lattice
+
+open import Synthetic.Tiny
+
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
+
+import Synthetic.Cubes
+
+module Synthetic.Categories.EquivCovariantFamilies
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
+  (open Lattice I renaming (0l to i0; 1l to i1))
+  (open Synthetic.Cubes Δ¹ i0 i1)
+  (@♭ non-triv : i1 ＝ i0 → ∅)
+  (@♭ cubes-separate : family-separates {I = ℕ} □^_)
+  (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Instances.Truncation
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.LiftingSquares
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+}
+}
+
+\agda{
+transport-Nat-lemma
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+    → (α : ∀ x → F x → G x) → ∀ x y (x' : F x) (p : x ＝ y)
+    → tr G p (α x x')
+    ＝ α y (tr F p x')
+transport-Nat-lemma α x y x' refl = refl
+
+
+□-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
+□-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
+□-0-is-left-anodyne {suc zero} r 0r = 0r
+□-0-is-left-anodyne {suc (suc m)} r 0r
+  = left-orthogonal-equiv
+      (point □-0 ⊗ point i0) (point □-0) a ae r
+      (left-orthogonal-× (point □-0) (point i0) r
+        (□-0-is-left-anodyne {suc m} r 0r) 0r) where
+  a : Arrow-map (point □-0 ⊗ point i0) (point (□-0 , i0))
+  a .Arrow-Π.top = !
+  a .Arrow-Π.bot = id
+  a .Arrow-Π.comm = ~refl
+
+  ae : is-Arrow-equiv a
+  ae .fst = sing-!-is-equiv single!
+  ae .snd = id-is-equiv
+}
+
+
+\subtree[tot-TYIN]{
+\taxon{Lemma}
+
+\agda{
+crisp-cov-Nat-is-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
+      (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
+      (@♭ α : fibrewise-map (F .fst) (G .fst))
+    → @♭ is-fibrewise-equiv (α ∘ id ⊗ ∂Δ¹-incl)
+    → is-fibrewise-equiv α
+crisp-cov-Nat-is-equiv {B = B} F G α x
+  = is-fibrewise-equiv←family-separates-with-𝟙
+       □^_ cubes-separate
+       α
+       {0} single!
+       λ n σ → src-is-equiv←Arrow-equiv
+                 (♭-arrow-equiv (orth-aeq n σ))
+                 (tgt-is-equiv n σ x) where
+
+  orth-aeq
+    : ∀ n (σ : □^ n → B × Δ¹)
+      → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ □-0))
+  orth-aeq n σ .fst .Arrow-Π.top = ev □-0
+  orth-aeq n σ .fst .Arrow-Π.bot = ev □-0
+  orth-aeq n σ .fst .Arrow-Π.comm = ~refl
+  orth-aeq n σ .snd .fst
+    = is-equiv-∘
+        {f = ev tt}
+        {precomp-Π (F .fst ∘ σ) (point □-0)}
+        unit-ev-is-equiv
+        (are-orthogonal-fam←are-orthogonal-fst
+          (□-0-is-left-anodyne
+            (fst: F .fst)
+            (is-covariant↔is-left-fibration _  .fst (F .snd))) σ)
+  orth-aeq n σ .snd .snd
+    = is-equiv-∘
+        {f = ev tt}
+        {precomp-Π (G .fst ∘ σ) (point □-0)}
+        unit-ev-is-equiv
+        (are-orthogonal-fam←are-orthogonal-fst
+          (□-0-is-left-anodyne
+            (fst: G .fst)
+            (is-covariant↔is-left-fibration _  .fst (G .snd))) σ)
+
+  tgt-is-equiv
+    : ∀ (@♭ n) (@♭ σ : □^ n → B × Δ¹)
+      → (@♭ x : is-fibrewise-equiv (α ∘ (id ⊗ ∂Δ¹-incl)))
+      → is-equiv (♭-map (α (σ □-0)))
+  tgt-is-equiv n σ x
+    = ♭Δ¹-ind
+        (λ x → is-equiv (♭-map (α (σ □-0 .fst , x))))
+        (♭-map-is-equiv (x (σ □-0 .fst , ∂Δ¹-0)))
+        (♭-map-is-equiv (x (σ □-0 .fst , ∂Δ¹-1)))
+        (σ □-0 .snd)
+
+-- Cov-Nat-crisp
+--   : ∀ {@♭ 𝓤 𝓥} (@♭ n : ℕ) {@♭ B : Type 𝓥}
+--       (@♭ F G : Σ (□^ n × (B × Δ¹) → Type 𝓤) is-covariant)
+--       (@♭ α : fibrewise-map (F .fst) (G .fst))
+--     → @♭ is-fibrewise-equiv (α ∘ id ⊗ (id ⊗ ∂Δ¹-incl))
+--     → is-fibrewise-equiv α
+-- Cov-Nat-crisp m {B} F G α x
+--   = is-fibrewise-equiv←family-separates-with-𝟙
+--        □^_ cubes-separate
+--        α
+--        {0} single!
+--        λ n σ → src-is-equiv←Arrow-equiv
+--                  (♭-arrow-equiv (orth-aeq n σ))
+--                  (tgt-is-equiv n σ x) where
+
+--   orth-aeq
+--     : ∀ n (σ : □^ n → (□^ m) × (B × Δ¹))
+--       → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ □-0))
+--   orth-aeq n σ .fst .Arrow-Π.top = ev □-0
+--   orth-aeq n σ .fst .Arrow-Π.bot = ev □-0
+--   orth-aeq n σ .fst .Arrow-Π.comm = ~refl
+--   orth-aeq n σ .snd .fst
+--     = is-equiv-∘
+--         {f = ev tt}
+--         {precomp-Π (F .fst ∘ σ) (point □-0)}
+--         unit-ev-is-equiv
+--         (are-orthogonal-fam←are-orthogonal-fst
+--           (□-0-is-left-anodyne
+--             (fst: F .fst)
+--             (is-covariant↔is-left-fibration _  .fst (F .snd))) σ)
+--   orth-aeq n σ .snd .snd
+--     = is-equiv-∘
+--         {f = ev tt}
+--         {precomp-Π (G .fst ∘ σ) (point □-0)}
+--         unit-ev-is-equiv
+--         (are-orthogonal-fam←are-orthogonal-fst
+--           (□-0-is-left-anodyne
+--             (fst: G .fst)
+--             (is-covariant↔is-left-fibration _  .fst (G .snd))) σ)
+
+--   tgt-is-equiv
+--     : ∀ (@♭ n) (@♭ σ : □^ n → (□^ m) × B × Δ¹)
+--       → (@♭ x : is-fibrewise-equiv (α ∘ (id ⊗ (id ⊗ ∂Δ¹-incl))))
+--       → is-equiv (♭-map (α (σ □-0)))
+--   tgt-is-equiv n σ x
+--     = ♭Δ¹-ind
+--         (λ x → is-equiv (♭-map (α (σ □-0 .fst , σ □-0 .snd .fst ,  x))))
+--         (♭-map-is-equiv (x (σ □-0 .fst , σ □-0 .snd .fst , ∂Δ¹-0)))
+--         (♭-map-is-equiv (x (σ □-0 .fst , σ □-0 .snd .fst , ∂Δ¹-1)))
+--         (σ □-0 .snd .snd)
+
+-- this isn't true :D
+-- Cov-Nat-is-equiv
+--   : ∀ {@♭ 𝓤} (f g : Σ (Δ¹ → Type 𝓤) is-covariant)
+--       (α : ∀ i → f .fst i  → g .fst i)
+--     → is-fibrewise-equiv (α ∘ ∂Δ¹-incl)
+--     → is-fibrewise-equiv α
+-- Cov-Nat-is-equiv {𝓤} f g α
+--   = is-equiv.bwd
+--       (is-fibrewise-equiv←family-separates-with-𝟙
+--         □^_ cubes-separate
+--         {X = Γ}
+--         {P = λ (F , G , α) → is-fibrewise-equiv α}
+--         {Q = λ (F , G , α) → is-fibrewise-equiv (α ∘ ∂Δ¹-incl)}
+--         (λ _ → precomp-Π _ ∂Δ¹-incl)
+--         {0} single!
+--         (λ n σ → is-equiv←inverse
+--                    (♭-is-prop (Π-is-prop (λ _ → Π-is-prop λ _ → is-equiv-is-prop)))
+--                    (♭-is-prop (Π-is-prop (λ _ → Π-is-prop λ _ → is-equiv-is-prop)))
+--                    (♭-ind λ x → mod♭ λ t → Cov-Nat-crisp n (fst ∘ σ) (fst ∘ snd ∘ σ) (snd ∘ snd ∘ σ) x {!!}  ))
+--         (f , g , α)) where
+
+--     @♭ Γ : Type (𝓘 ⊔ lsuc 𝓤)
+--     Γ = Σ[ F G ∶ Σ (Δ¹ → Type 𝓤) is-covariant ]
+--          (∀ i → fst F i → fst G i)
+
+--     @♭ Γ' : ℕ → Type (𝓘 ⊔ lsuc 𝓤)
+--     Γ' n = Σ[ F G ∶ Σ (□^ n × Δ¹ → Type 𝓤) is-covariant ]
+--             (∀ x → fst F x → fst G x)
+
+--     @♭ adj1 : ∀ n → (□^ n → Γ) → Γ' n
+--     adj1 n
+--       = map-Σ
+--          {!!}
+--          (λ a' → map-Σ {!!} (λ b' → uncurry)
+--                ∘ Σ-Π-swap _ _)
+--       ∘ Σ-Π-swap _ _
+}
+}

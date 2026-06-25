@@ -70,9 +70,17 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   infixr 35 _∨_
 
   _≤_ : L → L → Type ℓ
-  x ≤ y = x ∧ y ＝ x
+  x ≤ y = (x ∧ y ＝ x) × (x ∨ y ＝ y)
+
+  {-# NOINLINE _≤_ #-}
 
   open is-lattice str-is-lattice public
+
+  ≤-min : ∀ {a b} → a ≤ b → a ∧ b ＝ a
+  ≤-min p = p .fst
+
+  ≤-max : ∀ {a b} → a ≤ b → a ∨ b ＝ b
+  ≤-max p = p .snd
 
   1-coinit : ∀ {x} → x ∨ 1l ＝ 1l
   1-coinit {x}
@@ -120,20 +128,26 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
            ; ≤-antisym = ≤-antisym }
     where
       ≤-is-prop : {x y : L} → is-prop (x ≤ y)
-      ≤-is-prop = carrier-is-set _ _
+      ≤-is-prop = ×-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
 
       ≤-refl : {x : L} → x ≤ x
-      ≤-refl = ∧-idem
+      ≤-refl = (∧-idem , ∨-idem)
 
       ≤-trans : {x y z : L} → x ≤ y → y ≤ z → x ≤ z
-      ≤-trans {x} {y} {z} p q =  x ∧ z        ＝⟨ ap (_∧ z) (sym p) ⟩
-                                  (x ∧ y) ∧ z ＝⟨ sym ∧-assoc ⟩
-                                  x ∧ (y ∧ z) ＝⟨ ap (x ∧_) q ⟩
-                                  x ∧ y       ＝⟨ p ⟩
-                                  x ∎
+      ≤-trans {x} {y} {z} p q =
+          ( x ∧ z        ＝⟨ ap (_∧ z) (sym (≤-min p)) ⟩
+            (x ∧ y) ∧ z ＝⟨ sym ∧-assoc ⟩
+            x ∧ (y ∧ z) ＝⟨ ap (x ∧_) (≤-min q) ⟩
+            x ∧ y       ＝⟨ ≤-min p ⟩
+            x ∎)
+        , ( x ∨ z        ＝⟨ ap (x ∨_) (sym (≤-max q)) ⟩
+            x ∨ (y ∨ z) ＝⟨ ∨-assoc ⟩
+            (x ∨ y) ∨ z ＝⟨ ap (_∨ z) (≤-max p) ⟩
+            y ∨ z       ＝⟨ ≤-max q ⟩
+            z ∎)
 
       ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
-      ≤-antisym {x} {y} p q = sym p ∙ ∧-comm ∙ q
+      ≤-antisym {x} {y} p q = sym (≤-min p) ∙ ∧-comm ∙ ≤-min q
 
   ≤-poset : Poset ℓ L
   ≤-poset = mk-poset {_≤_ = _≤_} ≤-is-poset
@@ -146,60 +160,71 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   ≥←＝ : ∀ {a b} → a ＝ b → b ≤ a
   ≥←＝ refl = ≤-refl
 
-  ≤-max : ∀ {a b} → a ≤ b → a ∨ b ＝ b
-  ≤-max {a} {b} p
-    = a ∨ b             ＝⟨ ap (_∨ b) (sym p) ⟩
-      (a ∧ b) ∨ b       ＝⟨ ∧-∨-abs' ⟩
+  =∨←=∧ : ∀ {a b} → a ∧ b ＝ a → a ∨ b ＝ b
+  =∨←=∧ {a} {b} p =
+      a ∨ b       ＝⟨ ap (_∨ b) (sym p) ⟩
+      (a ∧ b) ∨ b ＝⟨ ∧-∨-abs' ⟩
       b ∎
+
+  ≤←∧ : ∀ {a b} → a ∧ b ＝ a → a ≤ b
+  ≤←∧ p = p , =∨←=∧ p
 
   ≤-max' : ∀ {a b} → b ≤ a → a ∨ b ＝ a
   ≤-max' b≤a = ∨-comm ∙ ≤-max b≤a
 
-  ≤←∨ : ∀ {a b} → a ∨ b ＝ b → a ≤ b
-  ≤←∨ {a} {b} p
-    = a ∧ b           ＝⟨ ap (a ∧_) (sym p) ⟩
-      a ∧ (a ∨ b)     ＝⟨ ∧-∨-abs ⟩
+  =∧←=∨ : ∀ {a b} → a ∨ b ＝ b → a ∧ b ＝ a
+  =∧←=∨ {a} {b} p =
+      a ∧ b       ＝⟨ ap (a ∧_) (sym p) ⟩
+      a ∧ (a ∨ b) ＝⟨ ∧-∨-abs ⟩
       a ∎
+
+  ≤←∨ : ∀ {a b} → a ∨ b ＝ b → a ≤ b
+  ≤←∨ p = =∧←=∨ p , p
 
   ∨-UP : ∀ {a b c} → a ≤ c × b ≤ c → (a ∨ b ≤ c)
   ∨-UP {a} {b} {c} (f , g)
-    = ≤←∨ (sym ∨-assoc ∙ ≤-max (ap (a ∧_) (≤-max g) ∙ f) ∙ ≤-max g)
+    = ≤←∨
+        (sym ∨-assoc ∙ ≤-max (≤←∧ (ap (a ∧_) (≤-max g) ∙ ≤-min f))
+          ∙ ≤-max g)
 
   ∨-UP-is-equiv : ∀ {a b c} → is-equiv (∨-UP {a} {b} {c})
   ∨-UP-is-equiv {a} {b} {c} = is-equiv←inverse
-                    (×-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
-                    (carrier-is-set _ _)
-                    λ x → ap (_∧ _) (sym (∧-∨-abs {a} {b}))
-                          ∙ sym ∧-assoc ∙ ap (a ∧_) x
-                          ∙ ∧-∨-abs
-                        , ap (_∧ _) (sym (∧-∨-abs {b} {a}))
+                    (×-is-prop ≤-is-prop ≤-is-prop)
+                    ≤-is-prop
+                    λ x
+                    → ≤←∧ ( ap (_∧ _) (sym (∧-∨-abs {a} {b}))
+                          ∙ sym ∧-assoc ∙ ap (a ∧_) (≤-min x)
+                          ∙ ∧-∨-abs)
+                    , ≤←∧ ( ap (_∧ _) (sym (∧-∨-abs {b} {a}))
                           ∙ sym ∧-assoc
-                          ∙ ap (b ∧_) (ap (_∧ c) ∨-comm ∙ x ∙ ∨-comm)
-                          ∙ ∧-∨-abs
+                          ∙ ap (b ∧_) (ap (_∧ c) ∨-comm ∙ ≤-min x ∙ ∨-comm)
+                          ∙ ∧-∨-abs)
 
   ∨-≤-introl : ∀ {a b c} → a ≤ b → a ≤ (b ∨ c)
-  ∨-≤-introl p = ≤-trans p ∧-∨-abs
+  ∨-≤-introl p = ≤-trans p (≤←∧ ∧-∨-abs)
 
   ∨-≤-intror : ∀ {a b c} → a ≤ c → a ≤ (b ∨ c)
-  ∨-≤-intror p = ≤-trans p (ap (_ ∧_) ∨-comm ∙ ∧-∨-abs)
+  ∨-≤-intror p = ≤-trans p (≤←∧ (ap (_ ∧_) ∨-comm ∙ ∧-∨-abs))
 
   ∧-UP : ∀ {a b c} → a ≤ b × a ≤ c → a ≤ b ∧ c
-  ∧-UP (p , q) = ∧-assoc ∙ ap (_∧ _) p ∙ q
+  ∧-UP (p , q) = ≤←∧ (∧-assoc ∙ ap (_∧ _) (≤-min p) ∙ ≤-min q)
 
   ∧-≤-eliml : ∀ {a b c} → a ≤ c → (a ∧ b) ≤ c
-  ∧-≤-eliml {a} {b} {c} p = ∧-comm ∙ ∧-assoc ∙ ap (_∧ b) (∧-comm ∙ p)
+  ∧-≤-eliml {a} {b} {c} p =
+    ≤←∧ (∧-comm ∙ ∧-assoc ∙ ap (_∧ b) (∧-comm ∙ ≤-min p))
 
   ∧-≤-elimr : ∀ {a b c} → b ≤ c → (a ∧ b) ≤ c
-  ∧-≤-elimr {a} {b} {c} q = sym ∧-assoc ∙ ap (a ∧_) q
+  ∧-≤-elimr {a} {b} {c} q = ≤←∧ (sym ∧-assoc ∙ ap (a ∧_) (≤-min q))
 
   instance
     ≤-bot : ∀ {i} → 0l ≤ i
-    ≤-bot = 0-init
+    ≤-bot = (0-init , ∨-comm ∙ 0-bottom)
 
     ≤-refl-inst : ∀ {i} → i ≤ i
     ≤-refl-inst = ≤-refl
 
-    ≤-top = 1-top
+    ≤-top : ∀ {i} → i ≤ 1l
+    ≤-top = (1-top , 1-coinit)
     {-# INCOHERENT ≤-refl-inst ≤-top #-}
 
     ≤-∧
@@ -237,7 +262,9 @@ record is-lattice-hom
     pres-1 : f A.1l ＝ B.1l
 
   pres-≤ : {x y : A} → ⦃ x A.≤ y ⦄ → f x B.≤ f y
-  pres-≤ ⦃ p ⦄ = sym pres-∧ ∙ ap f p
+  pres-≤ ⦃ p ⦄
+    = ( sym pres-∧ ∙ ap f (A.≤-min p)
+      , sym pres-∨ ∙ ap f (A.≤-max p))
 
 unquoteDecl lattice-hom-repr≊ lattice-hom-repr≃
   = make-record-repr lattice-hom-repr≊ lattice-hom-repr≃

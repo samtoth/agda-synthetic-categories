@@ -13,6 +13,8 @@
 open import Foundations.Universes
 open import Foundations.Nat
 open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.Identity
 
 open import Algebra.Lattice
 
@@ -32,6 +34,7 @@ module Synthetic.Categories.Spaces
   (open Synthetic.Cubes Δ¹ i0 i1)
   (open Synthetic.Quasicoherence Δ¹ I I-distr)
   (@♭ Δ¹-endos-mono : Δ¹-endos-are-mono)
+  (@♭ non-triv : i1 ＝ i0 → ∅)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
   (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
@@ -74,6 +77,8 @@ open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+open import Synthetic.Categories.DirectedGlueing Δ¹ I I-distr non-triv qc
+
 }
 }
 
@@ -308,7 +313,7 @@ opaque
     σ (A , i) = (i ＝ i0) → Carrier A
 
     @♭ ϕ : Π (Δ¹ → Γ) (is-covariant ∘ postcomp Δ¹ σ)
-    ϕ g = ^●-is-covariant (Δ¹-endos-mono) A' A'-is-cov f where
+    ϕ g = ^●-is-covariant Δ¹-endos-mono A' A'-is-cov f where
       A' : Δ¹ → Type 𝓤
       A' = Carrier ∘ fst ∘ g
 
@@ -568,6 +573,57 @@ Cov-Nat-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
 }
 }
 
+\subtree[stt-00KW]{
+\title{Paths in #{\mathcal{S}^→}}
+\taxon{Lemma}
+
+\agda{
+module _ where
+  open Space
+  SpaceΣ : ∀ (@♭ 𝓤) → Type (lsuc (𝓘 ⊔ 𝓤))
+  SpaceΣ 𝓤 = Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)
+
+  SpaceΣ-Path
+    : ∀ {@♭ 𝓤} (x y : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
+      → Type 𝓤
+  SpaceΣ-Path (A , B , f) (X , Y , g)
+    = Σ[ e ∶ A .Carrier ≃ X .Carrier ] Σ[ p ∶ B .Carrier ≃ Y .Carrier ]
+        (p ._≃_.fwd ∘ f ~ g ∘ e ._≃_.fwd)
+
+  SpaceΣ-Path-refl
+    : ∀ {@♭ 𝓤} (x : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
+      → SpaceΣ-Path x x
+  SpaceΣ-Path-refl x = (id≃ , id≃ , ~refl)
+
+module SpacePath
+  (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+                   → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  where
+  open Space
+  open UIdS √ᵈ-is-prop
+
+  opaque
+    SpaceΣ-Path-is-torsorial
+      : ∀ {@♭ 𝓤} (x : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
+        → is-singleton (Σ _ (SpaceΣ-Path x))
+    SpaceΣ-Path-is-torsorial (A , B , f)
+      = is-singleton-structure←parts
+         (SingS-is-single A)
+         (A , id≃)
+         (is-singleton-structure←parts
+           (SingS-is-single B)
+           (B , id≃)
+           (SingS-is-single f))
+
+  instance
+    SpaceΣ-IdS
+      : ∀ {@♭ 𝓤} → Identity-system ((Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B))) 𝓤
+    SpaceΣ-IdS .Identity-system.IdS = SpaceΣ-Path
+    SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
+    SpaceΣ-IdS .Identity-system.IdS←Id-is-equiv x
+      = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
+}
+}
 
 \subtree[stt-00AT]{
 \title{#{\mathcal{S}} is directed univalent}
@@ -597,227 +653,119 @@ dua→
   : ∀ {@♭ 𝓤} → (Δ¹ → Space 𝓤)
     → Σ[ A B ∶ Space 𝓤 ] (Space.Carrier A → Space.Carrier B)
 dua→ h = (h i0 , h i1 , tr-𝓢 h)
-}
 
-\p{Now we give an inverse map:}
+coe-𝓢
+  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤) {i j} → i ≤ j
+    → Space.Carrier (f i) → Space.Carrier (f j)
+coe-𝓢 f = coe-cov (Space.Carrier ∘ f) (UFib-is-fib f)
 
-\agda{
-module DUA
-  (non-triv : i1 ＝ i0 → ∅)
+coe-𝓢-id
+  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤) {i} (p : i ≤ i)
+    → coe-𝓢 f p ~ id
+coe-𝓢-id f = coe-cov-id (Space.Carrier ∘ f) (UFib-is-fib f)
+
+module _
   (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
                    → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
-  (open Space)
   where
+  open SpacePath √ᵈ-is-prop
   open UIdS √ᵈ-is-prop
 
-  Gl : ∀ {@♭ 𝓤} → (A B : Space (𝓘 ⊔ 𝓤)) (f : Carrier A → Carrier B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
-  Gl A B f i
-    = mk-ufib (Σ[ b ∶ Carrier B ] ((i ＝ i0) → fibre f b)) auto! where
-    instance
-      _ : is-acov (Carrier A)
-      _ = A .Carrier-is-afib
-      _ : is-acov (Carrier B)
-      _ = B .Carrier-is-afib
+  module _ {@♭ 𝓤} {@♭ Γ : Type 𝓤} where
+    Cov-bundle←SpaceΣ
+      : ∀ {@♭ 𝓥} → (Γ → SpaceΣ 𝓥) → Cov-Δ¹-bundle 𝓥 Γ
+    Cov-bundle←SpaceΣ
+      = map-Σ
+          UFib-transport
+          (λ _ → map-Σ UFib-transport (λ _ → id) ∘ Σ-Π-swap _ _)
+      ∘ Σ-Π-swap _ _
 
-  GlΣ
-    : ∀ {@♭ 𝓤} → (Σ[ A B ∶ Space (𝓘 ⊔ 𝓤)] (Carrier A → Carrier B))
-      → (Δ¹ → Space (𝓘 ⊔ 𝓤))
-  GlΣ {𝓤} x = Gl {𝓤} (x .fst) (x .snd .fst) (x .snd .snd)
-}
+    Cov-bundle←SpaceΣ-is-♭-equiv
+      : ∀ {@♭ 𝓥} → is-equiv (♭-map (Cov-bundle←SpaceΣ {𝓥}))
+    Cov-bundle←SpaceΣ-is-♭-equiv {𝓥}
+      = src-is-equiv←Arrow-equiv
+          aeq
+          (map-Σ-is-equiv
+            UP-UFib
+            (♭-ind
+              (λ x → map-Σ-is-equiv
+                       UP-UFib
+                       (♭-ind (λ _ → id-is-equiv)))))
+      where
+      open Space
 
-\p{In order to show this map is an inverse, it is useful to characterise
-the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
 
-\closedScope{
-\subtree[stt-00KW]{
-\title{Paths in #{\mathcal{S}^→}}
-\taxon{Lemma}
+      bot-map
+        : ∀ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : X → X → Type 𝓥}
+          → ⟨♭| Σ₂ X Y ⟩ → Σ[♭ a ∶ X ] Σ[♭ b ∶ X ] ⟨♭| Y a b ⟩
+      bot-map = total-map (♭-ind (λ x → ♭-Σ' _)) ∘ ♭-Σ' _
 
-\agda{
-  SpaceΣ-Path
-    : ∀ {@♭ 𝓤} (x y : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
-      → Type 𝓤
-  SpaceΣ-Path (A , B , f) (X , Y , g)
-    = Σ[ e ∶ A .Carrier ≃ X .Carrier ] Σ[ p ∶ B .Carrier ≃ Y .Carrier ]
-        (p ._≃_.fwd ∘ f ~ g ∘ e ._≃_.fwd)
+      bot-map-is-equiv
+        : ∀ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : X → X → Type 𝓥}
+          → is-equiv (bot-map {X = X}{Y})
+      bot-map-is-equiv
+        = is-equiv-∘
+            (is-total-equiv←is-fibrewise-equiv
+              {f = ♭-ind (λ _ → ♭-Σ' _)}
+              (♭-ind (λ X → bwd-is-equiv (♭-commΣ _))))
+            (bwd-is-equiv (♭-commΣ _) )
 
-  SpaceΣ-Path-refl
-    : ∀ {@♭ 𝓤} (x : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
-      → SpaceΣ-Path x x
-  SpaceΣ-Path-refl x = (id≃ , id≃ , ~refl)
+      top-map : (a : ⟨♭| (Γ → SpaceΣ 𝓥) ⟩) →
+          Σ[♭ X ∶ (Γ → Space 𝓥) ]
+          Σ[♭ Y ∶ (Γ → Space 𝓥) ]
+           ⟨♭| fibrewise-map (Carrier ∘ X) (Carrier ∘ Y) ⟩
+      top-map = bot-map
+              ∘ ♭-map (total-map (λ _ → Σ-Π-swap _ _) ∘ Σ-Π-swap _ _)
 
-  opaque
-    SpaceΣ-Path-is-torsorial
-      : ∀ {@♭ 𝓤} (x : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
-        → is-singleton (Σ _ (SpaceΣ-Path x))
-    SpaceΣ-Path-is-torsorial (A , B , f)
-      = is-singleton-structure←parts
-         (SingS-is-single A)
-         (A , id≃)
-         (is-singleton-structure←parts
-           (SingS-is-single B)
-           (B , id≃)
-           (SingS-is-single f))
 
-  instance
-    SpaceΣ-IdS
-      : ∀ {@♭ 𝓤} → Identity-system ((Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B))) 𝓤
-    SpaceΣ-IdS .Identity-system.IdS = SpaceΣ-Path
-    SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
-    SpaceΣ-IdS .Identity-system.IdS←Id-is-equiv x
-      = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
-}
-}
+      aeq : Arrow-equiv
+              {X = Σ[♭ X ∶ (Γ → Space 𝓥)] Σ[♭ Y ∶ (Γ → Space 𝓥)]
+                     ⟨♭| fibrewise-map (Carrier ∘ X) (Carrier ∘ Y) ⟩}
+              {Y = Σ[♭ X ∶ _ ] Σ[♭ Y ∶ (Σ (Γ → Type 𝓥) is-covariant) ]
+                     ⟨♭| fibrewise-map (fst X) (fst Y) ⟩}
+              (♭-map Cov-bundle←SpaceΣ)
+              (map-Σ (♭-map UFib-transport)
+                     (♭-ind (λ _ → map-Σ (♭-map UFib-transport)
+                                         (♭-ind (λ _ → id)))))
+      aeq .fst .Arrow-Π.top = top-map
+      aeq .fst .Arrow-Π.bot = bot-map
+      aeq .fst .Arrow-Π.comm (mod♭ f) = refl
+      aeq .snd .fst
+        = is-equiv-∘
+            bot-map-is-equiv
+            (♭-map-is-equiv
+              (is-equiv-∘
+                (is-total-equiv←is-fibrewise-equiv
+                  (λ _ → Σ-Π-swap≃ _ _ ._≃_.fwd-is-equiv))
+                (Σ-Π-swap≃ _ _ ._≃_.fwd-is-equiv)))
+      aeq .snd .snd = bot-map-is-equiv
 
-\subtree[stt-00KF]{
-\title{Paths in Glue types}
-\taxon{Lemma}
+  dua' : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})
+  dua' {𝓤}
+    = types-separate dua→
+        (λ {𝓥} {Γ}
+         → src-is-equiv←Arrow-equiv
+             ammape
+             (♭-map-is-equiv (trΣ-is-equiv {𝓥}{𝓤} {!Cov-Nat-is-equiv!}))) where
+    open Space
+    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where
 
-\agda{
-  Gl-path
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → Gl A B f i .Carrier → Gl A B f i .Carrier → Type (𝓘 ⊔ 𝓤)
-  Gl-path {f = f} i x y
-    = Σ[ p ∶ x .fst ＝ y .fst ]
-       (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
-                 (Square (x .snd pi .snd) (y .snd pi .snd) (ap f q) p))
+      ammap : Arrow-map (♭-map (postcomp Γ (dua→ {𝓤 ⊔ 𝓘}))) (♭-map (trΣ {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ammap .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
+      ammap .Arrow-Π.bot = ♭-map Cov-bundle←SpaceΣ
+      ammap .Arrow-Π.comm (mod♭ f) = mapply♭ (mod♭ (ext! ⦃ cov-Δ¹-bundle-IdS ⦄
+        ( (λ _ → id≃)
+        , (λ _ → id≃)
+        , (λ _ → ~refl)
+        )))
 
-  Gl-path-refl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → (x : Gl A B f i .Carrier) → Gl-path {A = A} {B} {f} i x x
-  Gl-path-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
-
-  opaque
-    Gl-path-is-torsorial
-      : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-        → (x : Gl A B f i .Carrier) → is-singleton (Σ _ (Gl-path {A = A} {B} {f} i x))
-    Gl-path-is-torsorial i x
-      = is-singleton-structure←parts
-          Sing-is-singleton
-          (_ , refl)
-          (is-single←equiv-to-single
-            (Σ-Π-swap≃ _ λ p y → Σ[ q ∶ x .snd p .fst ＝ y .fst ]
-                                   Square (x .snd p .snd) (y .snd) (ap _ q) refl)
-            (Π-is-single (λ where
-              refl → is-singleton-structure←parts
-                       Sing-is-singleton
-                       (_ , refl)
-                       (Square-degen-hor-is-torsorial
-                         (x .snd refl .snd)))))
-
-  IdS-Gl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → Identity-system (Gl A B f i .Carrier) (𝓘 ⊔ 𝓤)
-  IdS-Gl i .Identity-system.IdS = Gl-path i
-  IdS-Gl {A = A} {B} {f} i .Identity-system.IdS←Id refl
-    = Gl-path-refl {A = A} {B} {f} i _
-  IdS-Gl i .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Gl-path-is-torsorial i a) _
-
-  Gl-path→
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → {x y : Gl A B f i .Carrier} → Gl-path {A = A} {B} {f} i x y → x ＝ y
-  Gl-path→ {A = A} {B} i = Id←IdS ⦃ IdS-Gl {A = A} {B} i ⦄
-}
-}
-}
-
-\p{We first show we have constructed a right inverse. Let #{A\ B : \mathcal{S}}
-and #{f : A \to B}, write #{X := \textrm{Gl}(A,B,f) : \Delta^1 \to \mathcal{S}}.
-We may easily verify that there are equivalences #{e_1 : X(0) \simeq A},
-#{e_2 : X(1) \simeq B} and that these equivalences form a commuting square
-#{e_1 X_* \sim F e_2}.}
-
-\agda{
-  induced-map
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → Gl A B f i0 .Carrier → Gl A B f i1 .Carrier
-  induced-map f (b , p) = (b , ¡ ∘ non-triv)
-
-  tr-Gl-hom
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → ∀ x → Homᵈ (Space.Carrier ∘ Gl A B f) x (induced-map {A = A} {B} f x)
-  tr-Gl-hom f x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
-  tr-Gl-hom f x .Homᵈ.hom0 = Σ-path→ (refl , (funext→ (J-set! _ refl)))
-  tr-Gl-hom f x .Homᵈ.hom1 = Σ-path→ (refl , (funext→ (λ x → ¡ (non-triv x))))
-
-  tr-Gl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → tr-𝓢 (Gl A B f) ~ induced-map f
-  tr-Gl f x = tr-𝓢-unique (Gl _ _ f) {F = induced-map f} x
-                          (tr-Gl-hom f x)
-
-  opaque
-    dua-section : ∀ {@♭ 𝓤} x → SpaceΣ-Path {𝓤 ⊔ 𝓘} (dua→ (GlΣ {𝓤} x)) x
-    dua-section a .fst = mk≃ (fst ∘ ev refl ∘ snd)
-      (is-equiv-∘
-        {f = total←total-fibre (a .snd .snd)}
-        {g = total-map (λ _ → ev refl)}
-        (total≃total-fibre _ ._≃_.fwd-is-equiv)
-        (is-total-equiv←is-fibrewise-equiv
-          (λ _ → sing-ev-is-equiv global-funext (mk-singl refl (J-set! _ refl)))))
-    dua-section a .snd .fst = mk≃ fst
-      (singleton-fst-is-equiv λ _ → Π-is-single (λ x → ¡ (non-triv x)))
-    dua-section (A , B , f) .snd .snd x@(b , p)
-      = (fst ∘ tr-𝓢 (Gl A B f)) x
-      ＝⟨ ap fst (tr-Gl f x) ⟩
-        x .fst
-      ＝⟨ sym (p refl .snd) ⟩
-        f (p refl .fst)
-      ∎
-}
-
-\p{To show we have a left inverse, we make use of \ref{stt-00K6} so that given a
-map #{f : \Delta^1 \to \mathcal{S}}, we can just give a fibrewise map
-#{\alpha : F_i \to \textrm{Gl}(f(0),f(1),f_*)(i)} and show that #{\alpha} is an
-equivalence when restricted to either endpoint. To construct this map we use
-the fact that we can
-[transport covariant families over inequalities in #{\Delta^1}](stt-00K3).
-Finally, using the properties of covariant transport, it is not too challenging
-to verify that this map is an equivalence at each endpoint.}
-
-\agda{
-  opaque
-    dua-retract→ : ∀ {@♭ 𝓤} f i → f i .Carrier → GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract→ f i x .fst =  coe-cov (Carrier ∘ f) (UFib-is-fib f) 1-top x
-    dua-retract→ f i x .snd refl
-      = (x , sym (happly (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) x))
-
-    dua-retract : ∀ {@♭ 𝓤} f i → f i .Carrier ≃ GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract f i ._≃_.fwd = dua-retract→ f i
-    dua-retract f i ._≃_.fwd-is-equiv
-      = Cov-Nat-is-equiv
-          f (GlΣ (dua→ f)) (dua-retract→ f)
-          (∂Δ¹-UP→
-            ( is-equiv←qinv fr0
-            , is-equiv←qinv fr1))
-          i where
-      fr0 : quasi-inv (dua-retract→ f i0)
-      fr0 .fst x = x .snd refl .fst
-      fr0 .snd .fst = ~refl
-      fr0 .snd .snd a = Gl-path→ {A = f i0} {f i1} i0
-        ( happly ( coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (fr0 .fst a)
-                 ∙ a .snd refl .snd
-        , J-set! _
-            ( refl
-            , mk-square
-                (sym'∙ (happly
-                         (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (a .snd refl .fst))
-                         (a .snd refl .snd))))
-
-      fr1 : quasi-inv (dua-retract→ f i1)
-      fr1 .fst x = x .fst
-      fr1 .snd .fst x = coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ x
-      fr1 .snd .snd (a , b)
-        = Σ-path→
-            ( (coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ a)
-            , funext→ (λ x → ¡ (non-triv x)))
-
-  dua : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})
-  dua {𝓤} = is-equiv←qinv
-    ( GlΣ {𝓤}
-    , (λ a → ext! (λ i → dua-retract {𝓤} a i e⁻¹))
-    , (λ a → ext! (dua-section a)))
-}
-}
+      ammape : Arrow-equiv
+                 (♭-map (postcomp Γ (dua→ {𝓤 ⊔ 𝓘})))
+                 (♭-map (trΣ {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ammape .fst = ammap
+      ammape .snd .fst
+        = is-equiv-∘
+            (UIdS.UP-UFib √ᵈ-is-prop)
+            (♭-map-is-equiv uncurry-is-equiv)
+      ammape .snd .snd = Cov-bundle←SpaceΣ-is-♭-equiv
 }

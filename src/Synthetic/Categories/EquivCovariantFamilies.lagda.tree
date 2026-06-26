@@ -14,6 +14,8 @@ open import Algebra.Lattice
 
 open import Synthetic.Tiny
 
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatDiscrete
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
 
@@ -24,7 +26,6 @@ module Synthetic.Categories.EquivCovariantFamilies
   (open Lattice I renaming (0l to i0; 1l to i1))
   (open Synthetic.Cubes Δ¹ i0 i1)
   (@♭ non-triv : i1 ＝ i0 → ∅)
-  (@♭ cubes-separate : family-separates {I = ℕ} □^_)
   (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
   where
 
@@ -52,14 +53,108 @@ open import Synthetic.Categories.CovariantFamilies Δ¹ I
 }
 }
 
+\subtree[tot-TYIN]{
+\taxon{Lemma}
+\title{Detecting when a transformation of covariant families is an equivalence}
+
+\p{If #{X_i} is a (possibly large) family which separates, then for any transformation
+#{\alpha : \Pi_{i : B \times Δ¹}\ (F(i) \to G(i))} between covariant families, #{\alpha} is
+an equivalence iff the restriction #{\alpha_{| \partialΔ¹}} is an equivalence.}
+
+\proof{
+\p{Because #{X} is a separating family, we need to check that #{\flat(\alpha_{(b,i)})} is
+an equivalence for each crisp #{(b , i)} and that for each #{i :^{\flat} I} and
+#{\sigma :^{\flat} X_i \to B \times Δ^1}, the map
+#{\flat(\alpha_*) : \flat (\Pi_{X_i} F\sigma) \to \flat(\Pi_{X_i} G\sigma)} is an
+equivalence. For the first we may directly use the induction principle for crisp
+elements of #{Δ^1}, and for the second, notice that by the fact that the point
+inclusion #{\{x\} \to X} is inner anodyne, we may construct an equivalence of arrows:
+
+\quiver{
+\begin{tikzcd}
+	{F\sigma(x)} && {G\sigma(x)} \\
+	\\
+	{\Pi_{X_i} F\sigma} && {\Pi_{X_i} G\sigma}
+	\arrow[from=1-1, to=1-3]
+	\arrow["\sim"', from=1-1, to=3-1]
+	\arrow["\sim", from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+Then because, #{\pi_2\sigma(x)} is a crisp element of #{\Delta^1}, we may use the
+crisp induction principle to complete the proof.
+}
+}
+
 \agda{
--- TODO: move somewhere appropriate - no longer used here
-transport-Nat-lemma
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
-    → (α : ∀ x → F x → G x) → ∀ x y (x' : F x) (p : x ＝ y)
-    → tr G p (α x x')
-    ＝ α y (tr F p x')
-transport-Nat-lemma α x y x' refl = refl
+module CovNatLemma
+  {@♭ α β : Level → Level}
+  (@♭ I : ∀ (@♭ 𝓤) → Type (α 𝓤))
+  (@♭ X : ∀ {@♭ 𝓤} → I 𝓤 → Type (β 𝓤))
+  (@♭ X-sep : large-family-separates I X)
+  (@♭ X∗ : ∀ {@♭ 𝓤} (i : I 𝓤) → X i)
+  (@♭ X∗-anodyne : ∀ {@♭ 𝓤} (i : I 𝓤) → is-left-anodyne (point (X∗ i)))
+  where
+
+  crisp-cov-Nat-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
+        (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
+        (@♭ α : fibrewise-map (F .fst) (G .fst))
+      → @♭ is-fibrewise-equiv (α ∘ id ⊗ ∂Δ¹-incl)
+      → is-fibrewise-equiv α
+  crisp-cov-Nat-is-equiv {B = B} F G α x
+    = is-fibrewise-equiv←large-family-separates
+         I X
+         X-sep
+         α
+         (λ {(b , i)
+            → ♭Δ¹-ind
+                (λ i → is-equiv (♭-map (α (b , i))))
+                (♭-map-is-equiv (x (b , ∂Δ¹-0)))
+                (♭-map-is-equiv (x (b , ∂Δ¹-1)))
+                i})
+          λ i σ
+            → src-is-equiv←Arrow-equiv
+                (♭-arrow-equiv (orth-aeq i σ))
+                (tgt-is-equiv i σ x)  where
+
+    orth-aeq
+      : ∀ {@♭ 𝓤} (i : I 𝓤) (σ : X i → B × Δ¹)
+        → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ (X∗ i)))
+    orth-aeq i σ .fst .Arrow-Π.top = ev (X∗ i)
+    orth-aeq i σ .fst .Arrow-Π.bot = ev (X∗ i)
+    orth-aeq i σ .fst .Arrow-Π.comm = ~refl
+    orth-aeq i σ .snd .fst
+      = is-equiv-∘
+          {f = ev tt}
+          {precomp-Π (F .fst ∘ σ) (point (X∗ i))}
+          unit-ev-is-equiv
+          (are-orthogonal-fam←are-orthogonal-fst
+            (X∗-anodyne i
+              (fst: F .fst)
+              (is-covariant↔is-left-fibration _  .fst (F .snd))) σ)
+    orth-aeq i σ .snd .snd
+      = is-equiv-∘
+          {f = ev tt}
+          {precomp-Π (G .fst ∘ σ) (point (X∗ i))}
+          unit-ev-is-equiv
+          (are-orthogonal-fam←are-orthogonal-fst
+            (X∗-anodyne i
+              (fst: G .fst)
+              (is-covariant↔is-left-fibration _  .fst (G .snd))) σ)
+
+    tgt-is-equiv
+      : ∀ {@♭ 𝓤} (@♭ i : I 𝓤) (@♭ σ : X i → B × Δ¹)
+        → (@♭ x : is-fibrewise-equiv (α ∘ (id ⊗ ∂Δ¹-incl)))
+        → is-equiv (♭-map (α (σ (X∗ i))))
+    tgt-is-equiv i σ x
+      = ♭Δ¹-ind
+          (λ x → is-equiv (♭-map (α (σ (X∗ i) .fst , x))))
+          (♭-map-is-equiv (x (σ (X∗ i) .fst , ∂Δ¹-0)))
+          (♭-map-is-equiv (x (σ (X∗ i) .fst , ∂Δ¹-1)))
+          (σ (X∗ i) .snd)
+}
 }
 
 \subtree[tot-RIII]{
@@ -86,60 +181,17 @@ transport-Nat-lemma α x y x' refl = refl
 }
 }
 
-\subtree[tot-TYIN]{
-\taxon{Lemma}
-\title{Detecting when a transformation of covariant families is an equivalence}
+\subtree[tot-097B]{
+\taxon{Corollary}
 
 \agda{
-crisp-cov-Nat-is-equiv
-  : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
-      (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
-      (@♭ α : fibrewise-map (F .fst) (G .fst))
-    → @♭ is-fibrewise-equiv (α ∘ id ⊗ ∂Δ¹-incl)
-    → is-fibrewise-equiv α
-crisp-cov-Nat-is-equiv {B = B} F G α x
-  = is-fibrewise-equiv←family-separates-with-𝟙
-       □^_ cubes-separate
-       α
-       {0} single!
-       λ n σ → src-is-equiv←Arrow-equiv
-                 (♭-arrow-equiv (orth-aeq n σ))
-                 (tgt-is-equiv n σ x) where
+module CovNat←cubes (@♭ cubes-separate : family-separates □^_)
+  = CovNatLemma
+      (λ _ → ℕ) □^_
+      (large-family-separates←small □^_ cubes-separate)
+      (λ _ → □-0)
+      (λ _ → □-0-is-left-anodyne)
 
-  orth-aeq
-    : ∀ n (σ : □^ n → B × Δ¹)
-      → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ □-0))
-  orth-aeq n σ .fst .Arrow-Π.top = ev □-0
-  orth-aeq n σ .fst .Arrow-Π.bot = ev □-0
-  orth-aeq n σ .fst .Arrow-Π.comm = ~refl
-  orth-aeq n σ .snd .fst
-    = is-equiv-∘
-        {f = ev tt}
-        {precomp-Π (F .fst ∘ σ) (point □-0)}
-        unit-ev-is-equiv
-        (are-orthogonal-fam←are-orthogonal-fst
-          (□-0-is-left-anodyne
-            (fst: F .fst)
-            (is-covariant↔is-left-fibration _  .fst (F .snd))) σ)
-  orth-aeq n σ .snd .snd
-    = is-equiv-∘
-        {f = ev tt}
-        {precomp-Π (G .fst ∘ σ) (point □-0)}
-        unit-ev-is-equiv
-        (are-orthogonal-fam←are-orthogonal-fst
-          (□-0-is-left-anodyne
-            (fst: G .fst)
-            (is-covariant↔is-left-fibration _  .fst (G .snd))) σ)
-
-  tgt-is-equiv
-    : ∀ (@♭ n) (@♭ σ : □^ n → B × Δ¹)
-      → (@♭ x : is-fibrewise-equiv (α ∘ (id ⊗ ∂Δ¹-incl)))
-      → is-equiv (♭-map (α (σ □-0)))
-  tgt-is-equiv n σ x
-    = ♭Δ¹-ind
-        (λ x → is-equiv (♭-map (α (σ □-0 .fst , x))))
-        (♭-map-is-equiv (x (σ □-0 .fst , ∂Δ¹-0)))
-        (♭-map-is-equiv (x (σ □-0 .fst , ∂Δ¹-1)))
-        (σ □-0 .snd)
+open CovNat←cubes public
 }
 }

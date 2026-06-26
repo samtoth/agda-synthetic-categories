@@ -44,25 +44,14 @@ open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
 }
 
-\subtree[tot-L001]{
-\p{Define #{\textrm{Cov}(F,G)} to be the type of morphisms...}
-\agda{
-Cov-map
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
-Cov-map {_}{𝓥}{B} F G
-  = Σ[ α ∶ Hom (B → Type 𝓥) F G ]
-       is-covariant (uncurry (α .Homᵈ.hom))
-}
-}
-
 \subtree[tot-L002]{
 \title{The glueing of a fibrewise map}
 \taxon{Construction}
 
-\p{Given a pair of type families #{F\ G : B \to \Type} and a fibrewise map
-#{\alpha_b F_b \to G_b}, then we construct the glueing family
+\p{Given a pair of type families #{F, G : B \to \Type} and a fibrewise map
+#{\alpha_b F_b \to G_b}, we can construct the glueing family
 #{\textrm{Gl}(\alpha) : B \times \Delta^1 \to \Type}.
-##{\textrm{Gl}(\alpha)(b, i) := \Sigma_{g : G_b} i = 0 \to \fibre{\alpha_b}{g}}}
+##{\textrm{Gl}(\alpha)(b, i) := \Sigma_{g : G_b} (i = 0) \to \fibre{\alpha_b}{g}}}
 
 \agda{
 Gl : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥)
@@ -73,30 +62,29 @@ Gl F G α (b , i) = Σ[ a ∶ G b ] ((i ＝ i0) → fibre (α b) a)
 \p{#{\textrm{Gl}(\alpha)(b,0) = F(b)} and #{\textrm{Gl}(\alpha)(b,1) = G(b)}}
 
 \agda{
-Gl-0
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
-    → ∀ b → Gl F G α (b , i0) → F b
-Gl-0 F G α b = fst ∘ ev refl ∘ snd
+module _
+  {𝓤 𝓥} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓥)
+  (α : ∀ b → F b → G b)
+  where
 
-Gl-0-is-equiv
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
-    → is-fibrewise-equiv (Gl-0 F G α)
-Gl-0-is-equiv F G α b
-  = is-equiv-∘
-      (total≃total-fibre _ ._≃_.fwd-is-equiv)
-      (is-total-equiv←is-fibrewise-equiv
-        (λ _ → sing-ev-is-equiv global-funext
-                 (mk-singl refl (J-set! _ refl))))
+  Gl-0 : ∀ b → Gl F G α (b , i0) → F b
+  Gl-0 b = fst ∘ ev refl ∘ snd
 
-Gl-1
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
-    → ∀ b → Gl F G α (b , i1) → G b
-Gl-1 F G α b = fst
+  Gl-0-is-equiv : is-fibrewise-equiv Gl-0
+  Gl-0-is-equiv b
+    = is-equiv-∘
+        (total≃total-fibre _ ._≃_.fwd-is-equiv)
+        (is-total-equiv←is-fibrewise-equiv
+          (λ _
+           → sing-ev-is-equiv global-funext
+               (mk-singl refl (J-set! _ refl))))
 
-Gl-1-is-equiv
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
-    → is-fibrewise-equiv (Gl-1 F G α)
-Gl-1-is-equiv F G α b = singleton-fst-is-equiv (λ _ → Π-is-single (¡ ∘ non-triv))
+  Gl-1 : ∀ b → Gl F G α (b , i1) → G b
+  Gl-1 b = fst
+
+  Gl-1-is-equiv : is-fibrewise-equiv Gl-1
+  Gl-1-is-equiv b = singleton-fst-is-equiv (λ _ → Π-is-single (¡ ∘ non-triv))
 }
 
 \p{We may also define a map from
@@ -131,7 +119,8 @@ map #{\alpha} is also covariant over #{B \times \Delta^1}.}
 opaque
   Gl-is-covariant
     : ∀ {𝓤 𝓥} {B : Type 𝓤}
-        (F : B → Type 𝓥) (G : B → Type 𝓥) (α : ∀ b → F b → G b)
+        (F : B → Type 𝓥) (G : B → Type 𝓥)
+        (α : ∀ b → F b → G b)
       → is-covariant F → is-covariant G
       → is-covariant (Gl F G α)
   Gl-is-covariant {B = B} F G α Fc Gc
@@ -160,50 +149,55 @@ opaque
 \taxon{Lemma}
 
 \agda{
-Gl-path
-  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} {f : ∀ b → F b → G b} i
-    → Gl F G f i → Gl F G f i → Type (𝓘 ⊔ 𝓥)
-Gl-path {B = B}{F}{G}{f} (b , i) x y
-  = Σ[ p ∶ x .fst ＝ y .fst ]
-     (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
-               (Square (x .snd pi .snd) (y .snd pi .snd) (ap (f b) q) p))
+module _
+  {𝓤 𝓥} {B : Type 𝓤}
+  {F G : B → Type 𝓥}
+  {f : ∀ b → F b → G b}
+  where
 
-Gl-path-refl
-  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} {f : ∀ b → F b → G b} i
-    → (x : Gl F G f i) → Gl-path {B = B}{F}{G}{f} i x x
-Gl-path-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
+  Gl-Id : ∀ i → Gl F G f i → Gl F G f i → Type (𝓘 ⊔ 𝓥)
+  Gl-Id (b , i) x y
+    = Σ[ p ∶ x .fst ＝ y .fst ]
+       (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
+                 (Square (x .snd pi .snd) (y .snd pi .snd) (ap (f b) q) p))
 
-opaque
-  Gl-path-is-torsorial
-    : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} {f : ∀ b → F b → G b} i
-      → (x : Gl F G f i) → is-singleton (Σ _ (Gl-path {B = B}{F}{G}{f} i x))
-  Gl-path-is-torsorial i x
-    = is-singleton-structure←parts
-        Sing-is-singleton
-        (_ , refl)
-        (is-single←equiv-to-single
-          (Σ-Π-swap≃ _ λ p y → Σ[ q ∶ x .snd p .fst ＝ y .fst ]
-                                 Square (x .snd p .snd) (y .snd) (ap _ q) refl)
-          (Π-is-single (λ where
-            refl → is-singleton-structure←parts
-                     Sing-is-singleton
-                     (_ , refl)
-                     (Square-degen-hor-is-torsorial
-                       (x .snd refl .snd)))))
+  Gl-Id-refl : ∀ i → (x : Gl F G f i) → Gl-Id i x x
+  Gl-Id-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
 
-IdS-Gl
-  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} {f : ∀ b → F b → G b} i
-    → Identity-system (Gl F G f i) (𝓘 ⊔ 𝓥)
-IdS-Gl {F = F}{G}{f} i .Identity-system.IdS = Gl-path {F = F}{G}{f} i
-IdS-Gl {F = F}{G}{f} i .Identity-system.IdS←Id refl
-  = Gl-path-refl {F = F}{G = G}{f}  i _
-IdS-Gl {f = f} i .Identity-system.IdS←Id-is-equiv a
-  = fundamental-Id _ (Gl-path-is-torsorial {f = f} i a) _
+  opaque
+    Gl-Id-is-torsorial
+      : ∀ i → (x : Gl F G f i) → is-singleton (Σ _ (Gl-Id i x))
+    Gl-Id-is-torsorial i x
+      = is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          (is-single←equiv-to-single
+            (Σ-Π-swap≃ _ λ p y
+              → Σ[ q ∶ x .snd p .fst ＝ y .fst ]
+                 Square (x .snd p .snd) (y .snd) (ap _ q) refl)
+            (Π-is-single (λ where
+              refl → is-singleton-structure←parts
+                       Sing-is-singleton
+                       (_ , refl)
+                       (Square-degen-hor-is-torsorial
+                         (x .snd refl .snd)))))
 
-Gl-path→
-  : ∀ {𝓤 𝓥}{B : Type 𝓤} {F G : B → Type 𝓥} (f : ∀ b → F b → G b) i
-    → {x y : Gl F G f i} → Gl-path {f = f} i x y → x ＝ y
-Gl-path→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
+  IdS-Gl
+    : ∀ i → Identity-system (Gl F G f i) (𝓘 ⊔ 𝓥)
+  IdS-Gl i .Identity-system.IdS = Gl-Id i
+  IdS-Gl i .Identity-system.IdS←Id refl
+    = Gl-Id-refl i _
+  IdS-Gl i .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (Gl-Id-is-torsorial i a) _
+
+Gl-Id→
+  : ∀ {𝓤 𝓥} {B : Type 𝓤}
+      {F G : B → Type 𝓥}
+      (f : ∀ b → F b → G b)
+      (i : B × Δ¹)
+      {x y : Gl F G f i}
+    → Gl-Id {f = f} i x y → x ＝ y
+Gl-Id→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
 }
 }
 
@@ -273,9 +267,10 @@ covariant families #{B \to \Type} together with a fibrewise map between them. We
 call this collection of data a covariant bundle over #{\Delta^1}.}
 
 \agda{
-trΣ : ∀ {𝓤 𝓥} {B : Type 𝓤}
-      → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
-      → Cov-Δ¹-bundle 𝓥 B
+trΣ
+  : ∀ {𝓤 𝓥} {B : Type 𝓤}
+    → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
+    → Cov-Δ¹-bundle 𝓥 B
 trΣ (F , Fcov)
   = ( (F ∘ (_, i0) , covariant-base-change {P = F} (_, i0) Fcov)
     , (F ∘ (_, i1) , covariant-base-change {P = F} (_, i1) Fcov)
@@ -398,26 +393,26 @@ module _
     fr0 b .fst x = x .snd refl .fst
     fr0 b .snd .fst = ~refl
     fr0 b .snd .snd a
-      = Gl-path→ {B = B} {F ∘ (_, i0)} {F ∘ (_, i1)}
-                 (trΣ FF .snd .snd)
-                 (b , i0)
-                 ( happly
-                      (coe-cov-0≤1
-                         (F ∘ (b ,_))
-                          (covariant-base-change {P = F} (b ,_) Fc)
-                          1-top)
-                     (fr0 b .fst a)
-                 ∙ a .snd refl .snd
-                 ,  J-set! _
-                      ( refl
-                      , mk-square
-                          (sym'∙ (happly
-                                   (coe-cov-0≤1
-                                     (F ∘ (b ,_))
-                                     (covariant-base-change {P = F} (b ,_) Fc)
-                                     1-top)
-                                   (a .snd refl .fst))
-                                 (a .snd refl .snd))))
+      = Gl-Id→ {F = F ∘ (_, i0)} {F ∘ (_, i1)}
+          (trΣ FF .snd .snd)
+          (b , i0)
+          ( happly
+               (coe-cov-0≤1
+                  (F ∘ (b ,_))
+                   (covariant-base-change {P = F} (b ,_) Fc)
+                   1-top)
+              (fr0 b .fst a)
+          ∙ a .snd refl .snd
+          ,  J-set! _
+               ( refl
+               , mk-square
+                   (sym'∙ (happly
+                            (coe-cov-0≤1
+                              (F ∘ (b ,_))
+                              (covariant-base-change {P = F} (b ,_) Fc)
+                              1-top)
+                            (a .snd refl .fst))
+                          (a .snd refl .snd))))
 
     @♭ fr1 : ∀ b →  quasi-inv (trΣ-retraction→ FF (b , i1))
     fr1 b .fst x = x .fst

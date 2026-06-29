@@ -1,0 +1,223 @@
+\date{2026-05-27}
+\title{Celled types}
+\author{fredrikbakke}
+\import{stt-macros}
+\taxon{Module}
+
+\agda{
+module Wild.Celled.Types where
+
+open import Wild.PolynomialEndofunctors
+open import Wild.FunctorialityPolynomialEndofunctors
+
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.Nat
+open import Foundations.Functions
+}
+
+\subtree[fre-QWAA]{
+\title{Celled types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-27}
+
+\p{
+Given a sequence of [polynomial endofunctors](Wild.PolynomialEndofunctors)
+#{\mathit{S}} and a type #{X_0}, an #{\mathit{S}}-\em{cell structure} on #{X} is, for
+every #{\mathit{S}_0}-structure on #{X_0}, a type of \em{1-cells} together with,
+coinductively, an #{\mathit{S}[1]}-cell structure on the 1-cells.
+An #{\mathit{S}}-\em{celled type} is a type together with an #{\mathit{S}}-cell
+structure on it.
+}
+
+\p{
+In the formalisation we define these two concepts mutually. An
+#{\mathit{S}}-cell structure on #{X_0} is formalised as an #{\mathit{S}_0X_0}-indexed
+family of #{\mathit{S}}-celled types, and an #{\mathit{S}}-celled type is,
+coinductively, a type with an #{\mathit{S}}-cell structure.
+}
+
+\agda{
+record CelledType {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥) 𝓦 : Type (𝓤 ⊔ 𝓥 ⊔ lsuc 𝓦)
+
+Cells
+  : ∀ {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥) {𝓦1} 𝓦2 (X : Type 𝓦1)
+  → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦1 ⊔ lsuc 𝓦2)
+Cells 𝑺 𝓦2 X = 𝑃₀ (𝑺 0) X → CelledType (𝑺 ∘ suc) 𝓦2
+
+record CelledType {𝓤} {𝓥} 𝑺 𝓦
+  where
+  coinductive
+  constructor mk-celled
+  field
+    carrier : Type 𝓦
+    cells : Cells 𝑺 𝓦 carrier
+}
+}
+
+\subtree[fre-1C10]{
+\title{Dependent celled types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-27}
+
+\p{
+Given an #{\mathit{S}}-celled type #{X}, a \em{dependent #{\mathit{S}}-celled type}
+#{Y} over #{X} is a dependent type #{Y_0} over #{X_0} together with, coinductively,
+for every #{\mathit{S}_0}-structure #{\sigma} on #{\Sigma_{(x : X_0) Y_0(x)}}, a
+dependent #{\mathit{S}[1]}-celled type over #{X[1](\sigma_0)}, where #{\sigma_0} is
+the underlying #{\mathit{S}_0}-structure on #{X_0}.
+}
+
+\agda{
+record DepCelledType
+  {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥)
+  {𝓦1} 𝓦2 (X : CelledType 𝑺 𝓦1)
+  : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦1 ⊔ lsuc 𝓦2)
+
+Cellsᵈ
+  : ∀ {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥)
+      {𝓦1 𝓦2} 𝓦3
+      (X : CelledType 𝑺 𝓦1) (Y : X .CelledType.carrier → Type 𝓦2)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ lsuc 𝓦3)
+Cellsᵈ 𝑺 𝓦3 X Y
+  = (σ : 𝑃₀ (𝑺 0) (Σ (X .CelledType.carrier) Y))
+  → DepCelledType (𝑺 ∘ suc) 𝓦3 (X .CelledType.cells (𝑃₁ (𝑺 0) fst σ))
+
+record DepCelledType {𝓤 𝓥} 𝑺 {𝓦1} 𝓦2 X
+  where
+  coinductive
+  constructor mk-celledᵈ
+  field
+    carrier
+      : X .CelledType.carrier → Type 𝓦2
+    cells
+      : Cellsᵈ 𝑺 𝓦2 X carrier
+}
+}
+
+\subtree[fre-QWAC]{
+\title{Constant dependent celled types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-27}
+
+\p{
+Every #{\mathit{S}}-celled type determines a constant dependent
+#{\mathit{S}}-celled type over any other #{\mathit{S}}-celled type.
+}
+
+\agda{
+const-DepCelledType
+  : ∀ {𝓤 𝓥} {𝑺 : ℕ → 𝑃 𝓤 𝓥}
+      {𝓦1 𝓦2}
+      (X : CelledType 𝑺 𝓦1)
+    → CelledType 𝑺 𝓦2
+    → DepCelledType 𝑺 𝓦2 X
+
+const-Cellsᵈ
+  : ∀ {𝓤 𝓥 𝓦1 𝓦2}
+      {𝑺 : ℕ → 𝑃 𝓤 𝓥}
+      {X : Type 𝓦1} {Y : Type 𝓦2}
+      (CX : Cells 𝑺 𝓦1 X)
+      (CY : Cells 𝑺 𝓦2 Y)
+    → Cellsᵈ 𝑺 𝓦2 (mk-celled X CX) (λ _ → Y)
+const-Cellsᵈ {𝑺 = 𝑺} CX CY σ
+  = const-DepCelledType (CX (𝑃₁ (𝑺 0) fst σ)) (CY (𝑃₁ (𝑺 0) snd σ))
+
+const-DepCelledType X Y .DepCelledType.carrier _
+  = Y .CelledType.carrier
+const-DepCelledType {𝑺 = 𝑺} X Y .DepCelledType.cells
+  = const-Cellsᵈ {𝑺 = 𝑺} (X .CelledType.cells) (Y .CelledType.cells)
+}
+}
+
+\subtree[fre-QWAD]{
+\title{Doubly dependent celled types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-27}
+
+\agda{
+record Dep²CelledType
+  {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥)
+  {𝓦1 𝓦2} 𝓦3
+  (X : CelledType 𝑺 𝓦1)
+  (Y : DepCelledType 𝑺 𝓦2 X)
+  : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ lsuc 𝓦3)
+
+Cellsᵈ²
+  : ∀ {𝓤 𝓥} (𝑺 : ℕ → 𝑃 𝓤 𝓥)
+      {𝓦1 𝓦2 𝓦3} 𝓦4
+      (X : CelledType 𝑺 𝓦1)
+      (Y : DepCelledType 𝑺 𝓦2 X)
+      (Z : (x : X .CelledType.carrier) → Y .DepCelledType.carrier x → Type 𝓦3)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦1 ⊔ 𝓦2 ⊔ 𝓦3 ⊔ lsuc 𝓦4)
+Cellsᵈ² 𝑺 𝓦4 X Y Z
+  = (σ :
+      𝑃₀
+        (𝑺 0)
+        (Σ[ x ∶ X .CelledType.carrier ] Σ[ y ∶ Y .DepCelledType.carrier x ] (Z x y)))
+  → Dep²CelledType (𝑺 ∘ suc) 𝓦4
+      (X .CelledType.cells (𝑃₁ (𝑺 0) fst σ))
+      (Y .DepCelledType.cells (𝑃₁ (𝑺 0) (λ p → p .fst , p .snd .fst) σ))
+
+record Dep²CelledType {𝓤 𝓥} 𝑺 {𝓦1 𝓦2} 𝓦3 X Y
+  where
+  coinductive
+  constructor mk-celledᵈ²
+  field
+    carrier
+      : (x : X .CelledType.carrier) → Y .DepCelledType.carrier x → Type 𝓦3
+    cells
+      : Cellsᵈ² 𝑺 𝓦3 X Y carrier
+}
+}
+
+\subtree[fre-QWAE]{
+\title{Constant doubly dependent celled types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-05-27}
+
+\p{
+Every #{\mathit{S}}-celled type determines a constant doubly dependent
+#{\mathit{S}}-celled type over any dependent #{\mathit{S}}-celled type.
+}
+
+\agda{
+const-Dep²CelledType
+  : ∀ {𝓤 𝓥}
+      {𝑺 : ℕ → 𝑃 𝓤 𝓥}
+      {𝓦1 𝓦2 𝓦3}
+      (X : CelledType 𝑺 𝓦1)
+      (Y : DepCelledType 𝑺 𝓦2 X)
+    → CelledType 𝑺 𝓦3
+    → Dep²CelledType 𝑺 𝓦3 X Y
+
+const-Cellsᵈ²
+  : ∀ {𝓤 𝓥 𝓦1 𝓦2 𝓦3}
+      {𝑺 : ℕ → 𝑃 𝓤 𝓥}
+      {X : Type 𝓦1} {Z : Type 𝓦3}
+      (CX : Cells 𝑺 𝓦1 X)
+      (Y : X → Type 𝓦2)
+      (CY : Cellsᵈ 𝑺 𝓦2 (mk-celled X CX) Y)
+      (CZ : Cells 𝑺 𝓦3 Z)
+    → Cellsᵈ² 𝑺 𝓦3 (mk-celled X CX) (mk-celledᵈ Y CY) (λ _ _ → Z)
+const-Cellsᵈ² {𝑺 = 𝑺} CX Y CY CZ σ
+  = const-Dep²CelledType
+      (CX (𝑃₁ (𝑺 0) fst σ))
+      (CY (𝑃₁ (𝑺 0) (λ p → p .fst , p .snd .fst) σ))
+      (CZ (𝑃₁ (𝑺 0) (λ p → p .snd .snd) σ))
+
+const-Dep²CelledType X Y Z .Dep²CelledType.carrier _ _
+  = Z .CelledType.carrier
+const-Dep²CelledType {𝑺 = 𝑺} X Y Z .Dep²CelledType.cells
+  = const-Cellsᵈ² {𝑺 = 𝑺}
+      (X .CelledType.cells)
+      (Y .DepCelledType.carrier)
+      (Y .DepCelledType.cells)
+      (Z .CelledType.cells)
+}
+}

@@ -27,9 +27,6 @@ module Synthetic.Categories.EquivCovariantFamilies
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (open Synthetic.Cubes Δ¹ i0 i1)
-  (@♭ ♭Δ¹-ind
-    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
-      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
   where
 
 open import Axioms.UF
@@ -60,18 +57,20 @@ open import Synthetic.Categories.CovariantFamilies Δ¹ I
 \taxon{Lemma}
 \title{Detecting when a transformation of covariant families is an equivalence}
 
-\p{If #{X_i} is a (possibly large) family which separates, then for any transformation
-#{\alpha : \Pi_{i : B \times Δ¹}\ (F(i) \to G(i))} between covariant families, #{\alpha} is
-an equivalence iff the restriction #{\alpha|_{\partial Δ¹}} is an equivalence.}
+\p{Let #{X_i} be a (possibly large) family which separates with points
+#{x_i} such that the point inclusion #{\{x_i\} \to X_i} is left anodyne.
+Then for any transformation #{\alpha : \Pi_{b : B}\ (F(b) \to G(b))} between covariant
+families, #{\alpha} is a fibrewise equivalence iff the restriction #{\alpha|_{\flat B}}
+to crisp elements of #{B} is an equivalence.}
 
 \proof{
-\p{Because #{X} is a separating family, we need to check that #{\flat(\alpha_{(b,i)})} is
-an equivalence for each crisp #{(b , i)} and that for each #{i :^{\flat} \Delta^1} and
-#{\sigma :^{\flat} X_i \to B \times Δ^1}, the map
+\p{Because #{X} is a separating family, we need to check that #{\flat(\alpha_{b})} is
+an equivalence for each crisp #{b : B} and that for each #{i :^{\flat} I} and
+#{\sigma :^{\flat} X_i \to B}, the map
 #{\flat(\alpha_*) : \flat (\Pi_{X_i} F\sigma) \to \flat(\Pi_{X_i} G\sigma)} is an
-equivalence. For the first we may directly use the induction principle for crisp
-elements of #{Δ^1}, and for the second, notice that by the fact that the point
-inclusion #{\{x\} \to X} is inner anodyne we may construct an equivalence of arrows:
+equivalence. The first follows directly from our assumption, and for the second,
+notice that by the fact that the point inclusion #{\{x_i\} \to X_i} is inner anodyne
+we may construct an equivalence of arrows:
 
 \quiver{
 \begin{tikzcd}
@@ -85,8 +84,7 @@ inclusion #{\{x\} \to X} is inner anodyne we may construct an equivalence of arr
 \end{tikzcd}
 }
 
-Then because, #{\pi_2\sigma(x)} is a crisp element of #{\Delta^1}, we may use the
-crisp induction principle to complete the proof.
+so that #{\sigma(x)} is a crisp element of #{B}.
 }
 }
 
@@ -96,71 +94,52 @@ module CovNatLemma
   (@♭ I : ∀ (@♭ 𝓤) → Type (α 𝓤))
   (@♭ X : ∀ {@♭ 𝓤} → I 𝓤 → Type (β 𝓤))
   (@♭ X-sep : large-family-separates I X)
-  (@♭ x₀ : ∀ {@♭ 𝓤} (i : I 𝓤) → X i)
-  (@♭ x₀-anodyne : ∀ {@♭ 𝓤} (i : I 𝓤) → is-left-anodyne (point (x₀ i)))
+  (@♭ x : ∀ {@♭ 𝓤} (i : I 𝓤) → X i)
+  (@♭ x-anodyne : ∀ {@♭ 𝓤} (i : I 𝓤) → is-left-anodyne (point (x i)))
   where
 
   crisp-cov-Nat-is-equiv
     : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
-        (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
+        (@♭ F G : Σ (B → Type 𝓥) is-covariant)
         (@♭ α : fibrewise-map (F .fst) (G .fst))
-      → @♭ is-fibrewise-equiv (α ∘ (id ⊗ ∂Δ¹-incl))
+      → @♭ (∀ (@♭ b : B) → is-equiv (♭-map (α b)))
       → is-fibrewise-equiv α
-  crisp-cov-Nat-is-equiv {B = B} F G α x
+  crisp-cov-Nat-is-equiv {B = B} F G α αe
     = is-fibrewise-equiv←large-family-separates
          I X
          X-sep
          α
-         (λ (b , i)
-          → ♭Δ¹-ind
-              (λ i
-               → ( is-equiv (♭-map (α (b , i)))
-                 , is-equiv-is-prop))
-              (♭-map-is-equiv (x (b , ∂Δ¹-0)))
-              (♭-map-is-equiv (x (b , ∂Δ¹-1)))
-              i)
+         αe
          (λ i σ
           → src-is-equiv←Arrow-equiv
               (♭-arrow-equiv (orth-aeq i σ))
-              (tgt-is-equiv i σ x))  where
+              (αe (σ (x i))))  where
 
     orth-aeq
-      : ∀ {@♭ 𝓤} (i : I 𝓤) (σ : X i → B × Δ¹)
-        → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ (x₀ i)))
-    orth-aeq i σ .fst .Arrow-Π.top = ev (x₀ i)
-    orth-aeq i σ .fst .Arrow-Π.bot = ev (x₀ i)
+      : ∀ {@♭ 𝓤} (i : I 𝓤) (σ : X i → B)
+        → Arrow-equiv (postcomp-Π (α ∘ σ)) (α (σ (x i)))
+    orth-aeq i σ .fst .Arrow-Π.top = ev (x i)
+    orth-aeq i σ .fst .Arrow-Π.bot = ev (x i)
     orth-aeq i σ .fst .Arrow-Π.comm = ~refl
     orth-aeq i σ .snd .fst
       = is-equiv-∘
           {f = ev tt}
-          {precomp-Π (F .fst ∘ σ) (point (x₀ i))}
+          {precomp-Π (F .fst ∘ σ) (point (x i))}
           unit-ev-is-equiv
           (are-orthogonal-fam←are-orthogonal-fst
-            (x₀-anodyne i
+            (x-anodyne i
               (fst: F .fst)
               (is-covariant↔is-left-fibration _  .fst (F .snd))) σ)
     orth-aeq i σ .snd .snd
       = is-equiv-∘
           {f = ev tt}
-          {precomp-Π (G .fst ∘ σ) (point (x₀ i))}
+          {precomp-Π (G .fst ∘ σ) (point (x i))}
           unit-ev-is-equiv
           (are-orthogonal-fam←are-orthogonal-fst
-            (x₀-anodyne i
+            (x-anodyne i
               (fst: G .fst)
               (is-covariant↔is-left-fibration _  .fst (G .snd))) σ)
 
-    tgt-is-equiv
-      : ∀ {@♭ 𝓤} (@♭ i : I 𝓤) (@♭ σ : X i → B × Δ¹)
-        → (@♭ x : is-fibrewise-equiv (α ∘ (id ⊗ ∂Δ¹-incl)))
-        → is-equiv (♭-map (α (σ (x₀ i))))
-    tgt-is-equiv i σ x
-      = ♭Δ¹-ind
-          (λ x
-           → ( is-equiv (♭-map (α (σ (X∗ i) .fst , x)))
-             , is-equiv-is-prop))
-          (♭-map-is-equiv (x (σ (X∗ i) .fst , ∂Δ¹-0)))
-          (♭-map-is-equiv (x (σ (X∗ i) .fst , ∂Δ¹-1)))
-          (σ (X∗ i) .snd)
 }
 }
 
@@ -191,8 +170,14 @@ module CovNatLemma
 \subtree[tot-097B]{
 \taxon{Corollary}
 
+\p{If cubes separate and crisp elements of #{\Delta^1} are covered by the booleans,
+then a crisp transformation between covariant crisp type families #{F, G} over
+#{B \times \Delta} is a fibrewise equivalence iff it is a flat equivalence at
+#{(b , 0)} and #{(b, 1)} for crisp elements #{b : B}.}
+
 \agda{
-module CovNat←cubes (@♭ cubes-separate : family-separates □^_)
+module CovNat←cubes
+  (@♭ cubes-separate : family-separates □^_)
   = CovNatLemma
       (λ _ → ℕ) □^_
       (large-family-separates←small □^_ cubes-separate)
@@ -200,5 +185,30 @@ module CovNat←cubes (@♭ cubes-separate : family-separates □^_)
       (λ _ → □-0-is-left-anodyne)
 
 open CovNat←cubes public
+
+module _
+  (@♭ cubes-separate : family-separates □^_)
+  (@♭ ♭Δ¹-ind
+    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
+      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
+  where
+  ∂Δ¹-cov-Nat-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
+        (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
+        (@♭ α : fibrewise-map (F .fst) (G .fst))
+      → @♭ (∀ (@♭ b : B) (@♭ x : ∂Δ¹) → is-equiv (♭-map (α (b , ∂Δ¹-incl x))))
+      → is-fibrewise-equiv α
+  ∂Δ¹-cov-Nat-is-equiv F G α αeq
+    = crisp-cov-Nat-is-equiv
+        cubes-separate
+        F G α
+        (λ {(b , i)
+           → ♭Δ¹-ind
+               (λ x
+                → ( is-equiv (♭-map (α (b , x))))
+                  , is-equiv-is-prop)
+               (αeq b ∂Δ¹-0 )
+               (αeq b ∂Δ¹-1)
+               i})
 }
 }

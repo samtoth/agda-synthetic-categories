@@ -1,0 +1,156 @@
+\title{An #{(n+1)}-simplex in a lattice is an #{n}-simplex in a coslice lattice}
+\taxon{Module}
+\author{ecavallo}
+\date{2026-06-29}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Prelude
+open import Axioms.UF
+
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Coslice
+import Algebra.Lattice.Instances.Free.Inductive as Ind
+
+module Algebra.Lattice.Instances.Free.SimplexCoslice where
+}
+
+\subtree[uma-0000]{
+\title{An #{(n+1)}-simplex in a lattice is an #{n}-simplex in a coslice lattice}
+\taxon{Theorem}
+\date{2026-06-29}
+\author{ecavallo}
+
+\p{For #{n \ge 0}, the type of descending chains
+#{i_0 \ge \cdots \ge i_{n - 1} \ge i_n} of length #{n+1} in a lattice #{L} is
+equivalent to the type of dependent pairs #{(i_n, i_0 \ge \cdots \ge i_{n - 1})}
+where #{i_n ∈ L} and #{i_0 \ge \cdots \ge i_{n - 1}} is a descending chain of length
+#{n} in the coslice lattice #{L_{i_n/}}}.
+}
+
+\agda{
+module _
+  {𝓤} {B : Type 𝓤} (M : Lattice B)
+  (let module M = Lattice M)
+  where
+
+  Δ-coslice'
+    : ∀ {n}
+      (xs : Ind.Δ^_ _ M n)
+      (y : B)
+      → ⦃ y M.≤ Ind.last-Δ _ M xs ⦄
+      → Ind.Δ^_ _ (Lattice-coslice M y) n
+  Δ-coslice-last
+    : ∀ {n}
+      (xs : Ind.Δ^_ _ M n)
+      (y : B)
+      ⦃ le : y M.≤ Ind.last-Δ _ M xs ⦄
+      → Ind.last-Δ _ _ (Δ-coslice' xs y ⦃ le ⦄) .fst
+        ＝ Ind.last-Δ _ _ xs
+
+  Δ-coslice' Ind.· y = Ind.·
+  Δ-coslice' ((xs Ind.:≥: x) ⦃ ≤x ⦄) y ⦃ ≤y ⦄ =
+    (Δ-coslice' xs y ⦃ M.≤-trans ≤y ≤x ⦄ Ind.:≥: (x , ≤y))
+      ⦃ subtype-path
+          (M.≤-trans
+            ≤x
+            (M.≤←＝ (sym (Δ-coslice-last xs y ⦃ _ ⦄)))) ⦄
+    where
+    open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {y} {b}))
+
+  Δ-coslice-last Ind.· y = refl
+  Δ-coslice-last (xs Ind.:≥: j) y = refl
+
+  Δ-coslice
+    : ∀ {n}
+      (xs : Ind.Δ^_ _ M (suc n))
+      → Σ[ y ∶ B ] Ind.Δ^_ _ (Lattice-coslice M y) n
+  Δ-coslice (xs Ind.:≥: y) = (y , Δ-coslice' xs y)
+
+  Δ-uncoslice'
+    : ∀ {n} (y : B)
+      → Ind.Δ^_ _ (Lattice-coslice M y) n
+      → Ind.Δ^_ _ M n
+  Δ-uncoslice-last
+    : ∀ {n} (y : B)
+      → (xs : Ind.Δ^_ _ (Lattice-coslice M y) n)
+      → Ind.last-Δ _ _ (Δ-uncoslice' y xs) ＝ Ind.last-Δ _ _ xs .fst
+
+  Δ-uncoslice' y Ind.· = Ind.·
+  Δ-uncoslice' y ((xs Ind.:≥: x) ⦃ le ⦄)
+    = (Δ-uncoslice' y xs Ind.:≥: x .fst)
+        ⦃ ap (x .fst M.∧_) (Δ-uncoslice-last y xs) ∙ ap fst le ⦄
+
+  Δ-uncoslice-last y Ind.· = refl
+  Δ-uncoslice-last y (xs Ind.:≥: x) = refl
+
+  Δ-uncoslice-last-≤
+    : ∀ {n} (y : B)
+      → (xs : Ind.Δ^_ _ (Lattice-coslice M y) n)
+      → y M.≤ Ind.last-Δ _ _ (Δ-uncoslice' y xs)
+  Δ-uncoslice-last-≤ y Ind.· = M.≤-top
+  Δ-uncoslice-last-≤ y (xs Ind.:≥: x) = x .snd
+
+  Δ-uncoslice
+    : ∀ {n}
+      → Σ[ y ∶ B ] Ind.Δ^_ _ (Lattice-coslice M y) n
+      → Ind.Δ^_ _ M (suc n)
+  Δ-uncoslice (y , xs)
+    = (Δ-uncoslice' y xs Ind.:≥: y) ⦃ Δ-uncoslice-last-≤ y xs ⦄
+
+  Δ-uncoslice-coslice'
+    : ∀ {n}
+      → (xs : Ind.Δ^_ _ M n)
+      → (y : B)
+      → ⦃ le : y M.≤ Ind.last-Δ _ _ xs ⦄
+      → Ind.Δ-path _ _ (Δ-uncoslice' y (Δ-coslice' xs y)) xs
+  Δ-uncoslice-coslice' Ind.· y
+    = Ind.·
+  Δ-uncoslice-coslice' (xs Ind.:≥: x) y
+    = Δ-uncoslice-coslice' xs y ⦃ _ ⦄ Ind.:≥: refl
+
+  Δ-uncoslice-coslice
+    : ∀ {n}
+      → (xs : Ind.Δ^_ _ M (suc n))
+      → Δ-uncoslice (Δ-coslice xs) ＝ xs
+  Δ-uncoslice-coslice (xs Ind.:≥: y)
+    = Ind.Δ-ext _ _ (Δ-uncoslice-coslice' xs y Ind.:≥: refl)
+
+  Δ-coslice-uncoslice'
+    : ∀ {n} (y : B)
+      (xs : Ind.Δ^_ _ (Lattice-coslice M y) n)
+      ⦃ le : y M.≤ Ind.last-Δ _ _ (Δ-uncoslice' y xs) ⦄
+      → Ind.Δ-path _ _
+          (Δ-coslice' (Δ-uncoslice' y xs) y ⦃ le ⦄)
+          xs
+  Δ-coslice-uncoslice' y Ind.· = Ind.·
+  Δ-coslice-uncoslice' y (xs Ind.:≥: x)
+    = Δ-coslice-uncoslice' y xs ⦃ _ ⦄ Ind.:≥: subtype-path refl
+    where
+    open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {y} {b}))
+
+  Δ-coslice-uncoslice
+    : ∀ {n}
+      → (yxs : Σ[ y ∶ B ] Ind.Δ^_ _ (Lattice-coslice M y) n)
+      → Δ-coslice (Δ-uncoslice yxs) ＝ yxs
+  Δ-coslice-uncoslice (y , xs)
+    = ap (y ,_) (Ind.Δ-ext _ _ (Δ-coslice-uncoslice' y xs ⦃ _ ⦄))
+
+  Δ-coslice-is-equiv
+    : ∀ {n} → is-equiv (Δ-coslice {n})
+  Δ-coslice-is-equiv = is-equiv←qinv e
+    where
+    e : quasi-inv Δ-coslice
+    e .fst = Δ-uncoslice
+    e .snd .fst = Δ-uncoslice-coslice
+    e .snd .snd = Δ-coslice-uncoslice
+
+  Δ-coslice-equiv
+    : ∀ n
+      → Ind.Δ^_ _ M (suc n)
+      ≃ Σ[ y ∶ B ] Ind.Δ^_ _ (Lattice-coslice M y) n
+  Δ-coslice-equiv n = mk≃ Δ-coslice Δ-coslice-is-equiv
+
+}
+}

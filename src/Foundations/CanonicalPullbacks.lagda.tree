@@ -8,7 +8,10 @@
 
 \agda{
 module Foundations.CanonicalPullbacks where
+}
 
+\agda-imports{
+\agda{
 open import Foundations.Universes
 open import Foundations.Spans
 open import Foundations.Functions
@@ -32,10 +35,11 @@ open import Foundations.IdentityEquiv
 open import Foundations.EquivSingleton
 open import Foundations.Embeddings
 open import Foundations.SingletonFibres
-import Foundations.FunExt as FE
-import Foundations.CompositionEquiv as CE
-}
+open import Foundations.FunExt
 
+import Foundations.CompositionEquiv
+}
+}
 
 \subtree[stt-003J]{
 \taxon{Definition}
@@ -152,9 +156,9 @@ iff the gap map is, so we use then use the fact canonical pullbacks are pullback
 }
 
 \agda{
-module WithFunExt-gap (FE : FE.FunExt-global) where
-  open FE.WithFunExt-global FE
-  open CE FE
+module WithFunExt-gap (FE : FunExt-global) where
+  open Foundations.FunExt.WithFunExt-global FE
+  open Foundations.CompositionEquiv FE
 
   up-pullback←is-pullback
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
@@ -212,16 +216,12 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 
   fib-π₂ : ∀ c → fibre π₂ c ≃ fibre f (g c)
   fib-π₂ c
-    = fibre π₂ c                                    ≃⟨⟩
-      Σ[ p ∶ Pullback _ _ ] ((π₂ p) ＝ c)            ≃⟨ Σ-assoc ⟩
-      (Σ[ b ∶ B ]
-        ((Σ[ p ∶ (Σ[ c' ∶ C ] (f b ＝ g c')) ]
-          (fst p ＝ c))))                           ≃⟨ Σ-snd-≃ (λ b → Σ-assoc) ⟩
-      (Σ[ b ∶ B ]
-        ((Σ[ c' ∶ C ] ((f b ＝ g c') × (c' ＝ c)))))  ≃⟨ Σ-snd-≃ (λ b → Σ-snd-≃ (λ c → ×-swap)) ⟩
-      (Σ[ b ∶ B ]
-        ((Σ[ c' ∶ C ] ((c' ＝ c) × (f b ＝ g c')))))  ≃⟨ Σ-snd-≃ (λ b → Σ-＝singl) ⟩
-      (Σ[ b ∶ B ] (f b ＝ g c))                     ≃⟨⟩
+    = fibre π₂ c
+        ≃⟨ Σ-assoc ∙e Σ-snd-≃ (λ b → Σ-assoc) ⟩
+      (Σ[ b ∶ B ] Σ[ c' ∶ C ] ((f b ＝ g c') × (c' ＝ c)))
+        ≃⟨ Σ-snd-≃ (λ b → Σ-snd-≃ (λ c → ×-swap)) ⟩
+      (Σ[ b ∶ B ] Σ[ c' ∶ C ] ((c' ＝ c) × (f b ＝ g c')))
+        ≃⟨ Σ-snd-≃ (λ b → Σ-＝singl) ⟩
       fibre f (g c) ≃∎
 }
 }
@@ -363,9 +363,9 @@ pullback, in fact, a fibre:
 }
 
 \agda{
-module WithFunExt (FE : FE.FunExt-global) where
-  open FE.WithFunExt-global FE
-  open CE FE
+module CanonicalPullbacksWithFunExt (FE : FunExt-global) where
+  open WithFunExt-global FE
+  open Foundations.CompositionEquiv FE
 
   module _
     {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
@@ -376,7 +376,7 @@ module WithFunExt (FE : FE.FunExt-global) where
           (mk-cospan (A → A) (point id) comp-pair)
           (retract A B)
     retract-cone
-      = mk-cone ! (λ (s , r , _) → (s , r)) (funext→ ∘ _~⁻¹ ∘ snd ∘ snd)
+      = mk-cone ! (λ (s , r , _) → (s , r)) (funext→ ∘ _h⁻¹ ∘ snd ∘ snd)
 
     retract-is-equiv
       : is-pullback (retract-cone)
@@ -385,10 +385,10 @@ module WithFunExt (FE : FE.FunExt-global) where
       qinv .fst (tt , (s , r) , p) = s , r , happly (sym p)
       qinv .snd .fst (s , r , p)
         = Σ-path→ (refl , Σ-path→ (refl , funext→ retp)) where
-          retp : happly (sym (funext→ (p ~⁻¹))) ~ p
+          retp : happly (sym (funext→ (p h⁻¹))) ~ p
           retp a
-            = happly (happly-sym (funext→ (p ~⁻¹)) a) a
-            ∙ ap sym (happly (funext.ε (p ~⁻¹)) a)
+            = happly (happly-sym (funext→ (p h⁻¹)) a) a
+            ∙ ap sym (happly (funext.ε (p h⁻¹)) a)
             ∙ sym-sym
       qinv .snd .snd (tt , (s , r) , p) = Σ-path→
         ( refl
@@ -409,7 +409,7 @@ module WithFunExt (FE : FE.FunExt-global) where
       ≃ retract A B
     retract≃fibre-∘
       =  (pullback-point≃fibre comp-pair id e⁻¹)
-      ∙≃ (retract≃pullback e⁻¹)
+      ∙e (retract≃pullback e⁻¹)
 
     section-total≃retract
       : (Σ[ f ∶ (A → B) ] section f)
@@ -457,28 +457,6 @@ diagonal-is-equiv {f = f} feq
 }
 }
 
-\subtree[stt-007Z]{
-\date{2025-07-23}
-\taxon{Lemma}
-\title{Pulling back equivalences}
-
-\p{We show that if #{g : B \to C} is an equivalence,
-then pulling back #{g} along any map gives an equivalence}
-
-
-\agda{
-pullback-equiv₁ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-                    {f : A → C} {g : B → C}
-                  → is-equiv g
-                  → is-equiv pb.π₁
-pullback-equiv₁ {f = f} {g} geq
-  = is-equiv←has-singleton-fibres (λ
-      a → is-single←equiv-to-single
-            (fib-π₁ f g a e⁻¹)
-            (has-singleton-fibres←is-equiv geq (f a)))
-}
-}
-
 \subtree[stt-009P]{
 \title{Pullback is commutative}
 \taxon{Theorem}
@@ -493,5 +471,38 @@ pullback-swap {f = f} {g}
       (Σ[ a ∶ _ ] Σ[ b ∶ _ ] (f b ＝ g a))
         ≃⟨ Σ-snd-≃ (λ _ → Σ-snd-≃ (λ _ → sym≃)) ⟩
       Pullback g f ≃∎
+}
+}
+
+\subtree[stt-007Z]{
+\date{2025-07-23}
+\taxon{Lemma}
+\title{Pulling back equivalences}
+
+\p{We show that if #{g : B \to C} is an equivalence,
+then pulling back #{g} along any map gives an equivalence}
+
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : A → C} {g : B → C}
+  (open pb)
+  where
+
+  pullback-equiv₁ : is-equiv g →  is-equiv π₁
+  pullback-equiv₁ geq
+    = is-equiv←has-singleton-fibres
+        (λ a → is-single←equiv-to-single
+                 (fib-π₁ f g a e⁻¹)
+                 (has-singleton-fibres←is-equiv geq (f a)))
+
+
+  pullback-equiv₂ : is-equiv f → is-equiv π₂
+  pullback-equiv₂ geq
+    = is-equiv←has-singleton-fibres
+        (λ a → is-single←equiv-to-single
+                 (fib-π₂ f g a e⁻¹)
+                 (has-singleton-fibres←is-equiv geq (g a)))
 }
 }

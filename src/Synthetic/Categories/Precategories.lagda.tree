@@ -7,23 +7,21 @@
 \transclude{stt-00AB}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
-module Synthetic.Categories.Precategories
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
-  where
-
-open import Axioms.UF
+module Synthetic.Categories.Precategories {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)  where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
-open is-distributive I-distr
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I I-distr
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -40,21 +38,24 @@ open import Core.Postwhisker
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open notation
+
 open import Ergonomics.Notations.Orthogonality
 
-open import Synthetic.Simplicial Δ¹ I I-distr
-open import Synthetic.Horns Δ¹ I I-distr
-open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Triangles Δ¹ I
 
 open import Ergonomics.Extensionality
-}
 
+open import Wild.Categories.Structure
+}
+}
 
 \subtree[stt-00AI]{
 \title{Segal types}
 \taxon{Definition}
-
 
 \p{We say that a type is \strong{Segal} if it is local with respect to
 the inclusion of the [#{(2,1)} horn](stt-00AD) into the 2-simplex. We
@@ -76,6 +77,9 @@ is-segal = is-local (point Λ[2,1]-incl)
 Segal-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
 Segal-SubU = Local-SubU (point Λ[2,1]-incl) _
 
+Segal-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
+Segal-U 𝓤 = Subtype.Σ̃ (Segal-SubU {𝓤 = 𝓘 ⊔ 𝓤})
+
 Segal-gSubU : gSubU (_⊔ 𝓘)
 Segal-gSubU = Local-gSubU (point Λ[2,1]-incl)
 
@@ -90,7 +94,6 @@ Segal-gRSubU .gRSubU.GS-is-globally-reflective = Segal-is-globally-reflective
 
 open gSubU Segal-gSubU public using () renaming
   ( ∈S←equiv to is-segal←equiv)
-
 open gReflectiveClosure Segal-gRSubU public using () renaming
   ( Π∈S to Π-is-segal
   ; ULift∈S to ULift-is-segal
@@ -119,6 +122,27 @@ module Segal where
   open gRSubU Segal-gRSubU public
   open gReflectiveClosure Segal-gRSubU public
   open gRSubUHomClosure Segal-gRSubU public
+}
+
+\subtree[stt-00TZ]{
+\title{The inner horn inclusion is anodyne at the inclusion of the inner horn into endomaps on #{\Delta^1}}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+\agda{
+is-segal←is-Δ¹-endo←Λ[2,1]-local
+  : {𝓤 : Level} {A : Type 𝓤}
+  → is-local (point Δ¹-endo←Λ[2,1]) A
+  → is-segal A
+is-segal←is-Δ¹-endo←Λ[2,1]-local orth tt
+  = is-orthogonal↔orthogonal-! .fst
+      (left-orthogonal-retraction Λ[2,1]-incl Δ¹-endo←Λ[2,1]
+        Δ¹-endo←Λ[2,1]-section
+        Δ¹-endo←Λ[2,1]-ret
+        !
+        (is-orthogonal↔orthogonal-! .snd (orth tt)))
+}
 }
 
 \agda{
@@ -170,18 +194,8 @@ A \em{precategory} is a [simplicial](stt-00AC) [Segal type](stt-00AI).
 }
 
 \agda{
-fam-is-precategory-dom : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
-fam-is-precategory-dom (inl _) = Λ[2,1]
-fam-is-precategory-dom (inr ij) = fam-is-simplicial ij
-
-fam-is-precategory-cod : 𝟙 ⊎ (Δ¹ × Δ¹) → Type 𝓘
-fam-is-precategory-cod (inl _) = Δ²
-fam-is-precategory-cod (inr _) = ULift 𝓘 𝟙
-
-fam-is-precategory
-  : (s : 𝟙 ⊎ (Δ¹ × Δ¹)) → fam-is-precategory-dom s → fam-is-precategory-cod s
-fam-is-precategory (inl _) = Λ[2,1]-incl
-fam-is-precategory (inr ij) = mk-lift ∘ !
+fam-is-precategory : fibrewise-map _ _
+fam-is-precategory = point Λ[2,1]-incl ⨄₁ᶠ (!ᴸ: 𝓘 ∘ fam-is-simplicial)
 
 is-precategory : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
 is-precategory = is-local fam-is-precategory
@@ -202,7 +216,6 @@ Precat-gRSubU .gRSubU.GS-is-globally-reflective = Precat-is-globally-reflective
 
 open gSubU Precat-gSubU public using () renaming
   ( ∈S←equiv to is-precategory←equiv)
-
 open gReflectiveClosure Precat-gRSubU public using () renaming
   ( Π∈S to Π-is-precategory
   ; ULift∈S to ULift-is-precategory
@@ -238,28 +251,25 @@ is-precategory-equiv
 is-precategory-equiv f
   = ∀ {𝓠} {Q : Type 𝓠} → is-precategory Q → is-equiv (precomp Q f)
 
-is-precategory←is-segal×is-simplicial
+is-precategory←is-segal←is-simplicial
   : ∀ {𝓤} {A : Type 𝓤}
-    → is-segal A × is-simplicial A
+    → is-segal A
+    → is-simplicial A
     → is-precategory A
-is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inl *) = apc tt
-is-precategory←is-segal×is-simplicial {A = X} (apc , simp) (inr ij)
-  = is-local-sing←is-null
-      (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
-      (λ _ → mk-lift ∘ !)
-      simp ij
+is-precategory←is-segal←is-simplicial 𝐴 simp
+  = is-local-⨄₁ᶠ←is-local
+      (𝐴)
+      (is-local-sing←is-null (λ _ → 𝟙ᴸ-is-singleton) (λ _ → !ᴸ) simp)
 
 is-segal←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-segal A
-is-segal←is-precategory pcat = λ _ → pcat (inl tt)
+is-segal←is-precategory pcat
+  = ×-is-local←is-local-⨄₁ᶠ pcat .fst
 
 is-simplicial←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-simplicial A
 is-simplicial←is-precategory {A = X} pcat
-  = is-null←is-local-sing
-      (λ _ → is-single←equiv-to-single lift≃ 𝟙-is-singleton)
-      (λ _ → mk-lift ∘ !)
-      (λ ij → pcat (inr ij))
+  = is-null←is-localᴸ (×-is-local←is-local-⨄₁ᶠ pcat .snd)
 
 is-segal×is-simplicial←is-precategory
   : ∀ {𝓤} {A : Type 𝓤}
@@ -268,21 +278,14 @@ is-segal×is-simplicial←is-precategory
 is-segal×is-simplicial←is-precategory pcat
   = (is-segal←is-precategory pcat , is-simplicial←is-precategory pcat)
 
-is-segal×is-simplicial-is-prop
+is-local-fam-is-simplicial≃is-simplicial
   : ∀ {𝓤} {A : Type 𝓤}
-    → is-prop (is-segal A × is-simplicial A)
-is-segal×is-simplicial-is-prop {A = A}
-  = ×-is-prop (is-local-is-prop A) (is-null-is-prop A)
-
-is-precategory≃is-segal×is-simplicial
-  : ∀ {𝓤} {A : Type 𝓤}
-    → is-precategory A ≃ (is-segal A × is-simplicial A)
-is-precategory≃is-segal×is-simplicial {A = A}
-  = mk≃ is-segal×is-simplicial←is-precategory
-      (is-equiv←inverse
-        (is-local-is-prop A)
-        is-segal×is-simplicial-is-prop
-        is-precategory←is-segal×is-simplicial)
+    → is-local (!ᴸ: 𝓘 ∘ fam-is-simplicial) A ≃ is-simplicial A
+is-local-fam-is-simplicial≃is-simplicial {A = A}
+  = equiv←logical
+      (is-local-is-prop A)
+      (is-null-is-prop A)
+      (is-null←is-localᴸ , is-localᴸ←is-null)
 
 is-triangulated←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-triangulated A
@@ -296,12 +299,15 @@ Precategory-U-is-simplicial
   : {𝓤 : Level} → is-simplicial (Precategory-U 𝓤)
 Precategory-U-is-simplicial {𝓤}
   = is-simplicial←equiv
-      ((Σ-snd-≃ λ A → is-precategory≃is-segal×is-simplicial {A = A}) e⁻¹)
+      ( ( Σ-snd-≃ λ A
+          → is-local-⨄₁ᶠ≃×-is-local
+          ∙e Σ-snd-≃ λ _ → is-local-fam-is-simplicial≃is-simplicial {A = A})
+        e⁻¹)
       (Null-in-gSubU-is-null←is-prop
         {𝓤 = 𝓘} {𝓥 = 𝓤}
         {P = fam-is-simplicial}
         {S = Segal-gSubU}
-        (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+        (fam-is-simplicial-is-prop)
         (λ _ → Π-is-segal))
 }
 }
@@ -322,91 +328,14 @@ opaque
   Σ-is-segal
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → is-segal A → is-inner-family B → is-segal (Σ A B)
-  Σ-is-segal apc bin tt
-    = is-orthogonal⇔orthogonal-! .fst
+  Σ-is-segal 𝐴 bin tt
+    = is-orthogonal↔orthogonal-! .fst
         (right-orthogonal-∘
           Λ[2,1]-incl
-          (is-orthogonal⇔orthogonal-! .snd (apc tt))
+          (is-orthogonal↔orthogonal-! .snd (𝐴 tt))
           bin)
 }
 }
-
-\subtree[stt-00AK]{
-\title{Composite morphisms}
-\taxon{Definition}
-
-\p{Given the data of the boundary of a 2-simplex:}
-
-\quiver{
-\begin{tikzcd}
-        x && y \\
-	\\
-	&& z
-	\arrow["g", from=1-1, to=1-3]
-	\arrow["h"', from=1-1, to=3-3]
-	\arrow["f", from=1-3, to=3-3]
-\end{tikzcd}
-}
-
-\p{We define the type of fillers, written #{\Hom 2(f,g;h)}, which we say witnesses
-that #{fg \sim h}.}
-
-\agda{
-Hom2
-  : ∀ {𝓤} {A : Type 𝓤} {x y z : A}
-      (f : Hom _ y z) (g : Hom _ x y) (h : Hom _ x z)
-    → Type (𝓘 ⊔ 𝓤)
-Hom2 {A = A} f g h = Ext ∂Δ²-incl (make-∂Δ² f g h)
-}
-
-\p{We show functions have actions on 2-simplices.}
-
-\agda{
-opaque
-  ap-∂Δ²
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
-        {x y z} {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
-      → F ∘ make-∂Δ² f g h ~ make-∂Δ² (ap-hom F f) (ap-hom F g) (ap-hom F h)
-  ap-∂Δ² F {f = f} {g} {h}
-    = pushout-rec-unique _ _
-        (pushout-rec-unique _ _
-          ~refl
-          ~refl
-          (λ _ → ∙-reflr _ ∙ ap-∘ F _ (glue tt) ∙ ap (ap F) (pushout-rec-apβ _)
-               ∙ ap-∙ F (g .Homᵈ.hom1) _
-               ∙ ap (ap F (g .Homᵈ.hom1) ∙_) (ap-sym F _)))
-        ~refl
-        λ { (mk-lift true)  → ∙-reflr _ ∙ ap-∘ F (make-∂Δ² f g h) (glue ∂Δ¹-1)
-                            ∙ ap (ap F) (pushout-rec-apβ _)
-                            ∙ ap-∙ F  (f .Homᵈ.hom1) _
-                            ∙ ap (ap F (f .Homᵈ.hom1) ∙_) (ap-sym F _)
-          ; (mk-lift false) → ∙-reflr _ ∙ ap-∘ F (make-∂Δ² f g h) (glue ∂Δ¹-0)
-                            ∙ ap (ap F) (pushout-rec-apβ _)
-                            ∙ ap-∙ F  (g .Homᵈ.hom0) _
-                            ∙ ap (ap F (g .Homᵈ.hom0) ∙_) (ap-sym F _)}
-
-ap-hom2
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
-      {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
-    → Hom2 f g h → Hom2 (ap-hom F f) (ap-hom F g) (ap-hom F h)
-ap-hom2 F f g h K .fst = F ∘ K .fst
-ap-hom2 F f g h K .snd a = ap F (K .snd a) ∙ ap-∂Δ² F a
-
-Hom2-Σ-fst
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-      {x y z} (g : Hom (Σ A P) y z) (f : Hom (Σ A P) x y) (h : Hom (Σ A P) x z)
-    → Hom2 g f h
-    → Hom2 (Hom-Σ-fst g) (Hom-Σ-fst f) (Hom-Σ-fst h)
-Hom2-Σ-fst f g h K
-  = coe
-     (ap₃ Hom2
-          (Hom-Σ-ap-fst f)
-          (Hom-Σ-ap-fst g)
-          (Hom-Σ-ap-fst h))
-     (ap-hom2 fst f g h K)
-}
-}
-
 
 \subtree[stt-00AL]{
 \title{Morphisms in a Segal type have unique composites}
@@ -415,7 +344,6 @@ Hom2-Σ-fst f g h K
 \p{Given a pair of composable morphisms, we can naturally define a map
 #{\Lambda^2_1 \to C}. We show that there is a unique 2-simplex that extends
 #{f} and #{g}.}
-
 
 \proof{
 \p{[Segal types](stt-00AI) are defined to be those types which are local
@@ -430,8 +358,8 @@ opaque
     : ∀ {𝓤} {A : Type 𝓤} {x y z} → is-segal A
       → (f : Hom A y z) (g : Hom A x y)
       → is-singleton (Σ[ H ∶ (Δ² → A)] (H ∘ Λ[2,1]-incl ＝ make-horn f g))
-  segal-unique-composite Apc f g
-    = has-singleton-fibres←is-equiv (Apc tt) (make-horn f g)
+  segal-unique-composite 𝐴 f g
+    = has-singleton-fibres←is-equiv (𝐴 tt) (make-horn f g)
 
 
 ext-Λ[2,1]
@@ -457,10 +385,10 @@ ext-Λ[2,1] {A = A} fg
   map1=-is-equiv
     = is-equiv-∘
         (total-is-equiv←fst-is-equiv
-          (is-equiv⁻¹ (_≃_.fwd-is-equiv cocone-repr≃)))
+          (bwd-is-equiv cocone-repr≃))
         (is-equiv-∘
-          (is-equiv⁻¹ (_≃_.fwd-is-equiv
-            (remove-singleton-structure Sing'-is-singleton (_ , refl))))
+          (bwd-is-equiv
+            (remove-singleton-structure Sing'-is-singleton (_ , refl)))
           (is-equiv-∘
             (is-total-equiv←is-fibrewise-equiv
               (λ a → is-equiv-∘ (∂Δ¹-UP ._≃_.fwd-is-equiv)
@@ -518,23 +446,23 @@ opaque
 
     ext=-mk-horn-is-equiv : is-equiv ext=-mk-horn
     ext=-mk-horn-is-equiv
-      = homotopy-is-equiv
-         (λ where
+      = is-equiv-∘~
+          ( λ where
             h@(mk-hom hh refl refl) → fibre-path→
               ( funext→ (pushout-rec-unique _ _ ~refl ~refl
-                          (~∙-reflr _ ~∙ pushout-rec-apβ
-                          ~∙ ∂Δ¹-UP→ ( sym-sym ∙ sym (∙-reflr _)
+                          (∙h-reflr _ ∙h pushout-rec-apβ
+                          ∙h ∂Δ¹-UP→ ( sym-sym ∙ sym (∙-reflr _)
                                      , sym-sym ∙ sym (∙-reflr _))))
               , ∙-reflr _ ∙ sym (commutes-prewhisker-funext _) ∙ funext-refl))
-         (is-equiv-∘ ext=-Λ[2,1]-is-equiv
-                     (adjust-hom-is-equiv (sym (g .Homᵈ.hom0)) (sym (f .Homᵈ.hom1))))
+          ext=-Λ[2,1]-is-equiv
+          (adjust-hom-is-equiv (sym (g .Homᵈ.hom0)) (sym (f .Homᵈ.hom1)))
 
 ext-mk-horn-compute-diagonal
   : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
     → Homᵈ.hom ∘ is-equiv.bwd (ext-mk-horn-is-equiv f g) ~ precomp A ι₂ ∘ fst
 ext-mk-horn-compute-diagonal f g
   = (Homᵈ.hom ◂ is-equiv.η (ext-mk-horn-is-equiv f g))
-    ▸eqv (ext-mk-horn-is-equiv f g)
+    ▸e⁻¹ (ext-mk-horn-is-equiv f g)
 
 opaque
   composite←horn-extension
@@ -579,38 +507,87 @@ horn-extension≃composite f g ._≃_.fwd
 horn-extension≃composite f g ._≃_.fwd-is-equiv
   = composite←horn-extension-is-equiv f g
 
+infix 15 _∘[_]_
+
 _∘[_]_
   : ∀ {𝓤} {A : Type 𝓤} {x y z} → Hom A y z → is-segal A
     → Hom A x y → Hom A x z
-f ∘[ apc ] g = fst (composite←horn-extension f g
-                    (centre (segal-unique-composite apc f g)))
+f ∘[ 𝐴 ] g = fst (composite←horn-extension f g
+                    (centre (segal-unique-composite 𝐴 f g)))
 
 ∘[_]-is-composite
-  : ∀ {𝓤} {A : Type 𝓤} {x y z} {f : Hom A y z} {g : Hom A x y}
-    → (apc : is-segal A) → Hom2 f g (f ∘[ apc ] g)
-∘[_]-is-composite {f = f} {g} apc
+  : ∀ {𝓤} {A : Type 𝓤} {x y z} (𝐴 : is-segal A)
+    → {f : Hom A y z} {g : Hom A x y}
+    → Hom2 f g (f ∘[ 𝐴 ] g)
+∘[ 𝐴 ]-is-composite {f} {g}
   = snd (composite←horn-extension _ _
-          (centre (segal-unique-composite apc f g)))
+          (centre (segal-unique-composite 𝐴 f g)))
 
 opaque
   composite-is-prop
-    : ∀ {𝓤} {A : Type 𝓤} (apc : is-segal A)
+    : ∀ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A)
         {x y z} (f : Hom A y z) (g : Hom A x y)
       → is-prop (Σ (Hom A x z) (Hom2 f g))
-  composite-is-prop apc f g
+  composite-is-prop 𝐴 f g
     = is-prop←equiv-to-prop
         (horn-extension≃composite f g)
-        (is-prop←is-single (segal-unique-composite apc f g))
+        (is-prop←is-single (segal-unique-composite 𝐴 f g))
 
   unique-composite
-    : ∀ {𝓤} {A : Type 𝓤} (apc : is-segal A)
+    : ∀ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A)
         {x y z} (f : Hom A y z) (g : Hom A x y)
-      → (h : Hom A x z) → Hom2 f g h → h ＝ (f ∘[ apc ] g)
-  unique-composite apc f g h K
+      → (h : Hom A x z) → Hom2 f g h → h ＝ (f ∘[ 𝐴 ] g)
+  unique-composite 𝐴 f g h K
     = sym (ap fst
              (is-single←equiv-to-single
                 (horn-extension≃composite f g)
-                (segal-unique-composite apc f g) .central (h , K)))
+                (segal-unique-composite 𝐴 f g) .central (h , K)))
+
+module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  Hom-comp-prestruct : CompPrestructure (𝓘 ⊔ 𝓤) A
+  Hom-comp-prestruct .CompPrestructure.Homʷ = Hom A
+  Hom-comp-prestruct .CompPrestructure.idʷ: = idH
+  Hom-comp-prestruct .CompPrestructure.compʷ: _ _ _ = _∘[ 𝐴 ]_
+}
+}
+
+\subtree[stt-00QB]{
+\title{2-simplices are composition triangles}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-04-30}
+
+\agda{
+module _
+  {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) {a b c : A}
+  {f : Hom A b c} {g : Hom A a b} {h : Hom A a c}
+  where
+
+  Hom2≃∘=
+    : Hom2 f g h ≃ (f ∘[ 𝐴 ] g ＝ h)
+  Hom2≃∘= = mk≃ (λ K → ap fst (composite-is-prop 𝐴 f g _ _)) (is-equiv←qinv qinv) where
+    fwd : Hom2 f g h → f ∘[ 𝐴 ] g ＝ h
+    fwd K = ap fst (composite-is-prop 𝐴 f g _ _)
+
+    bwd : f ∘[ 𝐴 ] g ＝ h → Hom2 f g h
+    bwd p = tr (Hom2 f g) p ∘[ 𝐴 ]-is-composite
+
+    qinv : quasi-inv fwd
+    qinv .fst = bwd
+    qinv .snd .fst K = Σ-path-snd (composite-is-prop 𝐴 f g _ _)
+    qinv .snd .snd refl
+      = ap (ap fst)
+           (is-prop←is-single
+             (＝-is-single←is-prop (composite-is-prop 𝐴 f g) _ _)
+             (composite-is-prop 𝐴 f g _ _)
+             (refl))
+
+  ∘=←Hom2 : Hom2 f g h → (f ∘[ 𝐴 ] g ＝ h)
+  ∘=←Hom2 = _≃_.fwd Hom2≃∘=
+
+  Hom2←∘= : (f ∘[ 𝐴 ] g ＝ h) → Hom2 f g h
+  Hom2←∘= = _≃_.bwd Hom2≃∘=
 }
 }
 
@@ -625,36 +602,56 @@ we can define a composition operator on morphisms over #{f} and #{g} which
 lives over the composite #{f \circ g}.}
 
 \proof{
-Follows from the fact the the total type is Segal, and thus admits a composition
+Follows from the fact that the total type is Segal, and thus admits a composition
 operator, which agrees (by uniqueness of composites) with the base composition.
 }
 
 \agda{
 Hom-Σ-fst-∘
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A)
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A)
       {P : A → Type 𝓥} (inn : is-inner-family P)
       {x y z} {x' : P x} {y' : P y} {z' : P z}
-      (g : Hom _ (y , y') (z , z')) (f : Hom _ (x , x') (y , y'))
-    → Hom-Σ-fst (g ∘[ Σ-is-segal Apc inn ] f)
-    ＝ (Hom-Σ-fst g ∘[ Apc ] Hom-Σ-fst f)
-Hom-Σ-fst-∘ Apc inn f g
-  = unique-composite Apc (Hom-Σ-fst f) (Hom-Σ-fst g)
-      (Hom-Σ-fst (f ∘[ Σ-is-segal Apc inn ] g))
-      (Hom2-Σ-fst _ _ _ ∘[ Σ-is-segal Apc inn ]-is-composite)
+      (g : Hom (Σ A P) (y , y') (z , z')) (f : Hom (Σ A P) (x , x') (y , y'))
+    → Hom-Σ-fst (g ∘[ Σ-is-segal 𝐴 inn ] f)
+    ＝ (Hom-Σ-fst g ∘[ 𝐴 ] Hom-Σ-fst f)
+Hom-Σ-fst-∘ 𝐴 inn f g
+  = unique-composite 𝐴 (Hom-Σ-fst f) (Hom-Σ-fst g)
+      (Hom-Σ-fst (f ∘[ Σ-is-segal 𝐴 inn ] g))
+      (Hom2-Σ-fst _ _ _ ∘[ Σ-is-segal 𝐴 inn ]-is-composite)
 
 opaque
   Compᵈ
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) (P : A → Type 𝓥)
         (inn : is-inner-family P) {x y z} (g : Hom A y z) (f : Hom A x y)
         {x' : P x} {y' : P y} {z' : P z}
         (g' : Hom-over g y' z') (f' : Hom-over f x' y')
-      → Hom-over (g ∘[ Apc ] f) x' z'
-  Compᵈ apc P inn {x} {y} {z} g f {x'} {y'} {z'} g' f'
+      → Hom-over (g ∘[ 𝐴 ] f) x' z'
+  Compᵈ 𝐴 P inn {x} {y} {z} g f {x'} {y'} {z'} g' f'
     = tr (λ p → Hom-over {x = x} {y = z} p x' z')
-         {Hom-Σ-fst (Hom-Σ (g , g') ∘[ Σ-is-segal apc inn ] Hom-Σ (f , f'))}
-         {g ∘[ apc ] f}
-         (Hom-Σ-fst-∘ apc inn (Hom-Σ (g , g')) (Hom-Σ (f , f'))
-          ∙ ap₂ (_∘[ apc ]_) (Hom-Σ-fst-β _ _) (Hom-Σ-fst-β _ _))
-         (Hom-Σ-snd ((Hom-Σ (g , g')) ∘[ Σ-is-segal apc inn ] (Hom-Σ (f , f'))))
+         {Hom-Σ-fst (Hom-Σ (g , g') ∘[ Σ-is-segal 𝐴 inn ] Hom-Σ (f , f'))}
+         {g ∘[ 𝐴 ] f}
+         (Hom-Σ-fst-∘ 𝐴 inn (Hom-Σ (g , g')) (Hom-Σ (f , f'))
+          ∙ ap₂ (_∘[ 𝐴 ]_) (Hom-Σ-fst-β _ _) (Hom-Σ-fst-β _ _))
+         (Hom-Σ-snd ((Hom-Σ (g , g')) ∘[ Σ-is-segal 𝐴 inn ] (Hom-Σ (f , f'))))
+}
+}
+
+\subtree[stt-00QJ]{
+\title{Precomposition and postcomposition of morphisms}
+\author{fredrikbakke}
+\taxon{Definition}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
+
+  postcomp-hom
+    : {a b : A} (c : A)
+    → Hom A a b → Hom A c a → Hom A c b
+  postcomp-hom c f = f ∘[ 𝐴 ]_
+
+  precomp-hom
+    : {a b : A} (c : A)
+    → Hom A a b → Hom A b c → Hom A a c
+  precomp-hom c f = _∘[ 𝐴 ] f
 }
 }

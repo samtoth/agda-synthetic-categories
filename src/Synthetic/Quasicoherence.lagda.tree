@@ -1,0 +1,338 @@
+\date{2026-03-12}
+\title{Quasicoherent Algebras}
+\author{markwilliams}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Polynomial
+open import Algebra.Order.Monotone
+
+module Synthetic.Quasicoherence
+  {𝓘}
+  (Δ¹ : Type 𝓘)
+  (I : Lattice Δ¹)
+  (I-distr : is-distributive I)
+  (let I[x] = Free-Algebra I I-distr)
+  (let module I[x] = Algebra (Free-Algebra I I-distr))
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.Coslices
+open import Algebra.Lattice.Instances.Pointwise
+open import Modalities.Instances.Truncation
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+}
+}
+
+\subtree[stt-00TA]{
+\taxon{Definition}
+\title{Quasicoherent Algebras}
+
+\p{
+A remarkable property of the distributive lattice in simplicial type theory
+is that it satisfies a strong algebraic duality principle, known as
+\strong{Blechschmidt duality}. This tells us that all functions between types
+that are algebraic subsets of #{\II^n} are actually given by polynomials.
+}
+
+\p{
+Formally an algebraic subset is specified by an algebra #{\II \to A}.
+The algebraic subset is then defined as
+#{\Spec(A) := \Hom_{\II\textrm{-}\Alg}(A, \II)}.
+The functor #{\Spec} is right adjoint to a functor #{\Obs}
+giving the algebra of observations on a set #{X}, where an observation is a
+map #{X \to \II}.
+}
+
+\p{
+We will call an algebra \strong{quasicoherent} if the counit of this
+adjunction #{A \to \Obs(\Spec(A))} is an equivalence of
+algebras.
+}
+
+\agda{
+Spec : ∀ {𝓤} {X : Type 𝓤} → (A : Algebra I X) → Type (𝓘 ⊔ 𝓤)
+Spec {X = X} A = LatticeAlgHom A (initial-Algebra I)
+
+Spec-map
+  : ∀ {𝓤 𝓥}
+      {X : Type 𝓤} {Y : Type 𝓥}
+      {A : Algebra I X} {B : Algebra I Y}
+    → LatticeAlgHom A B
+    → Spec B → Spec A
+Spec-map f g = LatticeAlgHom-∘ g f
+
+Obs : {𝓤 : Level} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+Obs X = X → Δ¹
+
+ObsAlg : {𝓤 : Level} (X : Type 𝓤) → Algebra I (Obs X)
+ObsAlg X = Pointwise-Algebra X λ _ → initial-Algebra _
+
+Obs-map
+  : ∀ {𝓤 𝓥}
+      {X : Type 𝓤} {Y : Type 𝓥}
+      (f : X → Y)
+    → LatticeAlgHom (ObsAlg Y) (ObsAlg X)
+Obs-map f .fst .fst p = p ∘ f
+Obs-map f .fst .snd x = refl
+Obs-map {X = X} {Y} f .snd = mk-is-lattice-alg-hom
+  λ where
+    .is-lattice-hom.pres-∨ → refl
+    .is-lattice-hom.pres-∧ → refl
+    .is-lattice-hom.pres-0 → refl
+    .is-lattice-hom.pres-1 → refl
+
+obs-spec-ε : {𝓤 : Level} {X : Type 𝓤}  → X → Spec (ObsAlg X)
+obs-spec-ε x .fst .fst f =  f x
+obs-spec-ε x .fst .snd = λ a → refl
+obs-spec-ε x .snd = mk-is-lattice-alg-hom
+  λ where
+      .is-lattice-hom.pres-∨ → refl
+      .is-lattice-hom.pres-∧ → refl
+      .is-lattice-hom.pres-0 → refl
+      .is-lattice-hom.pres-1 → refl
+
+eval : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → X → Spec A → Δ¹
+eval A f x = x .fst .fst f
+
+obs-spec-η
+  : ∀ {𝓤} {X : Type 𝓤} (A : Algebra I X)
+    → LatticeAlgHom A (ObsAlg (Spec A))
+obs-spec-η A .fst .fst = eval A
+obs-spec-η A .fst .snd a = funext→ λ a₁ → a₁ .fst .snd a
+obs-spec-η A .snd = mk-is-lattice-alg-hom
+  λ where
+    .pres-∨ → funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∨
+    .pres-∧ → funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-∧
+    .pres-0 → funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-0
+    .pres-1 → funext→ λ a → un-is-lattice-alg-hom (a .snd) .pres-1
+  where
+    open is-lattice-hom
+
+obs-spec-adjunction
+  : ∀ {𝓤 𝓥} {U : Type 𝓤}
+      (A : Algebra I U) (X : Type 𝓥)
+    → (X → Spec A) ≃ LatticeAlgHom A (ObsAlg X)
+obs-spec-adjunction A X
+  = mk≃ fwd (is-equiv←qinv qinv)
+    where
+      fwd : (X → Spec A) → LatticeAlgHom A (ObsAlg X)
+      fwd f = LatticeAlgHom-∘ (Obs-map f) (obs-spec-η A)
+
+      bwd : LatticeAlgHom A (ObsAlg X) → (X → Spec A)
+      bwd f =  Spec-map f ∘ obs-spec-ε
+
+      qinv : quasi-inv fwd
+      qinv .fst = bwd
+      qinv .snd .fst f = ext! λ x u → refl
+      qinv .snd .snd f = ext! λ a → refl
+
+is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓤 ⊔ 𝓘)
+is-quasicoherent A = is-LatticeAlgHom-equiv (obs-spec-η A)
+
+equiv←is-quasicoherent
+  : ∀ {𝓤} {X : Type 𝓤} {A : Algebra I X}
+    → is-quasicoherent A
+    → X ≃ Obs (Spec A)
+equiv←is-quasicoherent {A = A} qc  = mk≃ (obs-spec-η A .fst .fst) qc
+
+Spec-map-is-equiv←quasicoherent
+  : ∀ {𝓤} {X : Type 𝓤}
+      (A : Algebra I X) (_ : is-quasicoherent A) (B : Algebra I X)
+    → is-equiv (Spec-map {A = B} {A})
+Spec-map-is-equiv←quasicoherent A qc B = is-equiv←qinv qinv
+  where
+    qinv : quasi-inv (Spec-map {A = B} {A})
+    qinv .fst f =
+      LatticeAlgHom-∘
+        (LatticeAlgHom-∘
+          (is-LatticeAlgHom-equiv-bwd {f = obs-spec-η A} qc)
+          (Obs-map f))
+        (obs-spec-η B)
+    qinv .snd .fst ((f , _) , _) = ext! λ a → is-equiv.η qc (f a)
+    qinv .snd .snd ϕ
+      = funext→ λ f → ext! λ x →
+          happly (is-equiv.ε qc (λ a → ϕ a .fst .fst x)) f
+
+I-is-quasicoherent : is-quasicoherent (initial-Algebra I)
+I-is-quasicoherent
+  = is-equiv←~
+      (λ a → funext→ λ ((f , coslice) , _) → coslice a)
+      (_≃_.fwd-is-equiv H)
+  where
+    H : Δ¹ ≃ Obs (Spec (initial-Algebra I))
+    H =  unit-UP≃ e⁻¹
+      ∙e precomp-≃ (singleton≃𝟙 (initial-Algebra-is-initial _ _))
+}
+}
+
+\subtree[stt-00TC]{
+\taxon{Theorem}
+\title{Phoa's Principle}
+\date{2026-06-10}
+\author{markwilliams}
+\author{nimarasekh}
+
+\p{
+Quasicoherence is very related to an axiom in synthetic domain theory known
+as Phoa's principle. This axiom states that every map
+#{\II \to \II} is monotone, of the form
+#{f(x) = f(0) \vee (x \wedge f(1))}. We deduce this property from the axiom
+SQCP: that #{\II[x]} is quasicoherent.
+}
+
+\agda{
+is-generalised-phoa
+  : ∀ {𝓤} {X : Type 𝓤} (A : Algebra I X)
+    → Type (𝓤 ⊔ 𝓘)
+is-generalised-phoa {X = X} A
+  = (α : Δ¹ → X) (x : Δ¹) → α x ＝ (α i1 A.∧ A.ι x) A.∨ α i0
+  where module A = Algebra A
+
+is-generalised-phoa-is-prop
+  : ∀ {𝓤} {X : Type 𝓤} {A : Algebra I X}
+    → is-prop (is-generalised-phoa A)
+is-generalised-phoa-is-prop {A = A} = is-prop←is-truncated trunc!
+  where open Algebra A
+
+phoas-principle : Type 𝓘
+phoas-principle = is-generalised-phoa (initial-Algebra I)
+
+Δ¹≃SpecI[x] : Δ¹ ≃ Spec I[x]
+Δ¹≃SpecI[x]
+  = mk≃ _ (Free-Algebra-is-free-algebra I I-distr (initial-Algebra I) I-distr)
+
+SQCP : Type 𝓘
+SQCP = is-quasicoherent I[x]
+
+module _ (H : SQCP) where
+
+  I[x]≃Δ¹→Δ¹ : Δ² I ≃ (Δ¹ → Δ¹)
+  I[x]≃Δ¹→Δ¹ = equiv←is-quasicoherent H ∙e precomp-≃ Δ¹≃SpecI[x]
+
+  phoas-principle←SQCP : phoas-principle
+  phoas-principle←SQCP α i
+    = sym (happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i)
+      ∙ ap₂ _∨_
+          (ap (_∧ i)
+            ( α₁             ＝⟨ sym (ap (_∨ α₀) 1-top ∙ ∨-comm ∙ ≤-max (coefs .Δ².mono)) ⟩
+              (α₁ ∧ i1) ∨ α₀ ＝⟨ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i1 ⟩
+              α i1 ∎))
+          ( α₀            ＝⟨ sym (ap (_∨ α₀) (∧-comm ∙ 0-init ) ∙  ∨-comm ∙ 0-bottom) ⟩
+            (α₁ ∧ i0) ∨ α₀ ＝⟨ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i0  ⟩
+            α i0 ∎)
+    where
+      coefs : Δ² I
+      coefs = is-equiv.qinv H .fst (λ a → α (a .fst .fst (i1 , i0)))
+
+      α₁ = Δ².s coefs
+      α₀ = Δ².t coefs
+
+module _ (H : phoas-principle) where
+
+  SQCP←phoas-principle : SQCP
+  SQCP←phoas-principle = is-equiv←qinv qinv
+    where
+    α-of : Obs (Spec I[x]) → Δ¹ → Δ¹
+    α-of x i = x (_≃_.fwd Δ¹≃SpecI[x] i)
+
+    mono-of : (x : Obs (Spec I[x])) → α-of x i0 ≤ α-of x i1
+    mono-of x =
+      ≤←∨
+        ( ∨-comm
+        ∙ sym (ap (_∨ (α-of x i0)) 1-top)
+        ∙ sym (H (α-of x) i1))
+
+    bwd : Obs (Spec I[x]) → Δ² I
+    bwd x .Δ².s = α-of x i1
+    bwd x .Δ².t = α-of x i0
+    bwd x .Δ².mono = mono-of x
+
+    qinv : quasi-inv (λ f x → x .fst .fst f)
+    qinv .fst = bwd
+    qinv .snd .fst a =
+      Δ²-ext
+        ( ap (_∨ (a .Δ².t)) 1-top
+        ∙ ∨-comm
+        ∙ ≤-max (a .Δ².mono)
+        , ap (_∨ (a .Δ².t)) (∧-comm ∙ 0-init)
+        ∙ ∨-comm
+        ∙ 0-bottom)
+    qinv .snd .snd x =
+      funext→ λ y →
+        let
+          j : Δ¹
+          j = is-equiv.qinv (_≃_.fwd-is-equiv Δ¹≃SpecI[x]) .fst y
+
+          εy : _≃_.fwd Δ¹≃SpecI[x] j ＝ y
+          εy = _≃_.ε Δ¹≃SpecI[x] y
+        in sym (ap (λ z → z .fst .fst (bwd x)) εy)
+         ∙ sym (H (α-of x) j)
+         ∙ ap x εy
+
+}
+}
+
+\subtree[stt-00TV]{
+\taxon{Theorem}
+\title{Endomorphisms of #{Δ¹} are monotone}
+\date{2026-06-11}
+\author{nimarasekh}
+
+\p{
+ We show that Phoa's principle implies that every endomorphism of #{Δ¹} is monotone.
+ This is a consequence of the fact that the monotone maps from #{Δ¹} to #{Δ¹}
+ are precisely the maps of the form #{f(x) = f(0) \vee (x \wedge f(1))},
+ and that these are all the maps from #{Δ¹} to #{Δ¹} by quasicoherence.
+}
+
+\agda{
+Δ¹-endos-are-mono : Type 𝓘
+Δ¹-endos-are-mono = ∀ (f : Δ¹ → Δ¹) → is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) f
+
+module _ (phoa : phoas-principle) where
+
+  Δ¹-endos-are-mono←phoa : Δ¹-endos-are-mono
+  Δ¹-endos-are-mono←phoa f {a} {b} x
+    = f a ∧ f b
+        ＝⟨ ap₂ _∧_ (phoa f a) (phoa f b) ⟩
+      ((f i1 ∧ a) ∨ f i0) ∧ ((f i1 ∧ b) ∨ f i0)
+        ＝⟨ poly-mono ⟩
+      (f i1 ∧ a) ∨ f i0
+        ＝⟨ sym (phoa f a) ⟩
+      f a ∎
+    where
+      poly-mono : ((f i1 ∧ a) ∨ f i0) ≤ ((f i1 ∧ b) ∨ f i0)
+      poly-mono
+        =
+        ∨-UP
+          ( ∨-≤-introl
+              (∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr x))
+          , ∨-≤-intror ≤-refl)
+
+module _ (H : SQCP) where
+
+  Δ¹-endos-are-mono←SQPC : Δ¹-endos-are-mono
+  Δ¹-endos-are-mono←SQPC = Δ¹-endos-are-mono←phoa (phoas-principle←SQCP H)
+
+}
+\p{
+ Note that with the additional information that monotone maps from #{Δ¹} to #{Δ¹}
+ are equivalent to #{Δ²} via the map
+ #{(x,H) ↦ (x(0), x(1), H(0 \le 1))},
+ we can also deduce SQCP from Δ¹-endos-are-mono.
+}
+
+}

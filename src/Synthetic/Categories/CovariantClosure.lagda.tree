@@ -5,22 +5,25 @@
 \import{stt-macros}
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
 module Synthetic.Categories.CovariantClosure
-         {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I) where
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
+  where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
-open is-distributive I-distr
-
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I I-distr
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Algebra.Order.Monotone
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
@@ -30,15 +33,19 @@ open import Modalities.Instances.Truncation
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.CartesianSquares
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open notation
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Simplicial Δ¹ I I-distr
-open import Synthetic.Categories.Precategories Δ¹ I I-distr
-open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
-open import Synthetic.Categories.ContravariantFamilies Δ¹ I I-distr
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Quasicoherence Δ¹ I I-distr
+open import Synthetic.Categories.WalkingHom Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+}
 }
 
 \subtree[stt-00FU]{
@@ -54,7 +61,7 @@ covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
 
 is-covariant-is-Δ¹-relative
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant P ⇔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
+    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
 is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
   = covariant-base-change {P = P} f Pc
 is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
@@ -91,16 +98,16 @@ opaque
       → is-covariant B → is-covariant (uncurry C)
       → is-covariant (λ a → Σ (B a) (C a))
   Σ-is-covariant {A = A} {B} {C} Bc Cc
-    = is-covariant⇔is-left-fibration _ .snd is-left where
+    = is-covariant↔is-left-fibration _ .snd is-left where
 
     is-left : is-left-fibration (fst {B = λ a → Σ (B a) (C a)})
     is-left
-      = right-orthogonal-∘ (const _ 𝟙 i0)
+      = right-orthogonal-∘ (const: _ 𝟙 i0)
           {g = fst} {fst ∘ _≃_.bwd Σ-assoc}
-          (is-covariant⇔is-left-fibration B .fst Bc)
-          (right-orthogonal-∘ (const _ 𝟙 i0)
-            (is-covariant⇔is-left-fibration (uncurry C) .fst Cc)
-            (⊥equiv (const _ 𝟙 i0) _ (is-equiv⁻¹ (Σ-assoc ._≃_.fwd-is-equiv))))
+          (is-covariant↔is-left-fibration B .fst Bc)
+          (right-orthogonal-∘ (const: _ 𝟙 i0)
+            (is-covariant↔is-left-fibration (uncurry C) .fst Cc)
+            (⊥equiv (const: _ 𝟙 i0) _ (bwd-is-equiv Σ-assoc)))
 }
 }
 
@@ -134,7 +141,7 @@ diagram:}
 }
 
 \p{Now #{p} is a left fibration by assumption, and so too is #{pa} since #{a} is
-a section, so by the left cancelative property of left fibrations, we have that
+a section, so by the left cancellative property of left fibrations, we have that
 #{a} is a left fibration. Finally, #{a({-}) = b({-})} is obtained as a pullback
 of #{a} and hence is also a left fibration.}
 }
@@ -146,11 +153,12 @@ opaque
       → is-covariant B
       → is-covariant (λ a → x a ＝ y a)
   ＝-is-covariant {A = A} {B} x y Bc
-    = is-covariant⇔is-left-fibration _ .snd lf where
+    = is-covariant↔is-left-fibration _ .snd lf where
     is-left : is-left-fibration {A = A} {B = Σ A B} (λ a → a , y a)
-    is-left = right-orthogonal-left-cancel (point i0)
-                (is-covariant⇔is-left-fibration _ .fst Bc)
-                (point i0 ⊥id)
+    is-left
+      = right-orthogonal-left-cancel (point i0)
+          (is-covariant↔is-left-fibration _ .fst Bc)
+          (point i0 ⊥id)
 
     pb : Arrow-map (fst: λ a → x a ＝ y a) {D = Σ A B} (λ a → a , y a)
     pb .Arrow-Π.top = fst
@@ -175,18 +183,53 @@ opaque
 }
 }
 
+\subtree[stt-00UD]{
+\title{Contravariance of the family #{i \mapsto (i = 0)}}
+\date{2026-06-22}
+\taxon{Example}
 
-\subtree[stt-00OM]{
-\title{Exponentiating covariant families}
-\taxon{Lemma}
-
-\p{We show that given a [contravariant type family](stt-00OD) #{F},
-and a [covariant type family](stt-00AY) #{G}, the type family given by
-#{x \mapsto F(x) \to G(x)} is also covariant.}
+\p{Assuming [quasicoherence](stt-00TA), or more specifically that every endomap on #{Δ^1} is
+monotone, the family #{i \mapsto (i = 0)} is contravariant.}
 
 \proof{
-\p{First notice that solutions to the left lifting problem are in bijection with
-solutions to the right lifting problem.}
+\p{We want to show the family #{({-}) = 0} is orthogonal to the point inclusion #{\{1\} \to \Delta^1}. Since
+this is a family of propositions it suffices to construct some lift. In other words, for
+each #{\sigma : Δ^1 \to Δ^1} such that #{\sigma(1) = 0} we need to show that
+#{\sigma(i) = 0} for each #{i}, but this follows from the fact that #{\sigma} is
+monotone.
+}
+}
+
+\agda{
+module _ (Δ¹-mono : Δ¹-endos-are-mono) where
+
+  ●-unique-extensions : has-unique-extensions (point i1) (_＝ i0)
+  ●-unique-extensions (mk-afmap σ p) .centre .fst a
+    = ≤-antisym (≤-trans (Δ¹-mono σ auto!) (≤←＝ (p tt))) auto!
+  ●-unique-extensions (mk-afmap σ p) .centre .snd a = prop!
+  ●-unique-extensions F .central
+    = Extᵈ-Subtype-is-prop
+        (point i1)
+        (mk-subtype {family = _＝ i0} λ _ _ _ → prop!)
+        F _
+
+  ●-is-contravariant
+    : ∀ {𝓤} {A : Type 𝓤} (f : A → Δ¹)
+      → is-contravariant ((_＝ i0) ∘ f)
+  ●-is-contravariant f
+    = contravariant-base-change {P = (_＝ i0)} f
+        (is-right-family↔is-contravariant (_＝ i0) .fst
+          (are-orthogonal-fam←unique-extensions ●-unique-extensions))
+}
+}
+
+\subtree[stt-00UJ]{
+\taxon{Lemma}
+
+\p{Given type families #{F} and #{G}, solutions of the left lifting problem are
+equivalent to solutions of the right lifting problem depicted below. This can be seen
+as transporting a lifting problem across the adjunction between base change and
+exponentiation.}
 
 \quiver{
 \begin{tikzcd}[cramped]
@@ -204,17 +247,335 @@ solutions to the right lifting problem.}
 \end{tikzcd}
 }
 
-\p{Now we may see that the leftmost map of the second diagram is obtained
-as the pullback of #{\{0\} \to \Delta^1} by the projection
-#{\Sigma_{i} F_{f(i)} \to \Delta^1}. Hence we have a lifting problem where the
-left map is a pullback of a left anodyne map by a right fibration and hence
-is a left anodyne map. Since the right family is covariant by assumption, this
-means solutions to the lifting problem exist uniquely.}
+\agda{
+module _
+  {𝓤 𝓥 𝓦}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (p : A → B)
+  (F : B → Type 𝓦)
+  where
+
+  base-change-fst
+    : Σ A (F ∘ p) → Σ B F
+  base-change-fst = total-map-fst p
+
+  base-change-fst-is-base-change
+    : Arrow-equiv
+        base-change-fst
+        (base-change-arrow (fst: F) p)
+  base-change-fst-is-base-change .fst .Arrow-Π.top a
+    = (total-map-fst p a , a .fst , refl)
+  base-change-fst-is-base-change .fst .Arrow-Π.bot = id
+  base-change-fst-is-base-change .fst .Arrow-Π.comm = ~refl
+  base-change-fst-is-base-change .snd .fst
+    = is-equiv←qinv
+        ( (λ {((.(p a) , f) , a , refl) → (a , f)})
+        , ~refl
+        , λ {(_ , _ , refl) → refl})
+  base-change-fst-is-base-change .snd .snd = id-is-equiv
+
+module _
+  {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} (p : A → B)
+  {C : Type 𝓝} (F : C → Type 𝓦) (G : C → Type 𝓜)
+  (let G^F b = F b → G b)
+  (σ : B → C)
+  where
+
+  transpose-ext-exponentials'
+    : ∀ (h : (a : A) → F (σ (p a)) → G (σ (p a)))
+      → Extᵈ p (G^F ∘ σ) h
+      ≃ Extᵈ (base-change-fst p (F ∘ σ)) (G ∘ σ ∘ fst) (uncurry h)
+  transpose-ext-exponentials' h
+    = Σ-≃
+        uncurry≃
+        (λ h
+         →  postcomp-Π-≃ (λ c → funext≃)
+         ∙e uncurry≃)
+
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (let G^F b = F b → G b)
+  (let
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x))
+  where
+
+  module _ (σ : Δ¹ → B) where
+    transpose-ext-exponentials-at-point-i0
+      : ∀ (h : F (σ i0) → G (σ i0))
+        → Extᵈ (point i0) (G^F ∘ σ) (point h)
+        ≃ Extᵈ (transposed-left-map σ) (G ∘ σ ∘ fst) h
+    transpose-ext-exponentials-at-point-i0 h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙e funext≃
+
+    transposed-left-map-is-pb
+      : Arrow-equiv
+          (transposed-left-map σ)
+          (base-change-arrow (fst: (F ∘ σ)) (point i0))
+    transposed-left-map-is-pb .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
+    transposed-left-map-is-pb .fst .Arrow-Π.bot = id
+    transposed-left-map-is-pb .fst .Arrow-Π.comm = ~refl
+    transposed-left-map-is-pb .snd .fst
+      = is-equiv←qinv
+          ( (λ {((_ , a) , _ , refl) → a})
+          , ~refl
+          , λ {(_ , _ , refl) → refl})
+    transposed-left-map-is-pb .snd .snd = id-is-equiv
+}
 }
 
+\subtree[stt-00OM]{
+\title{Exponentiating covariant families}
+\taxon{Lemma}
+
+\p{Given a [contravariant type family](stt-00OD) #{F},
+and a [covariant type family](stt-00AY) #{G}, the type family given by
+#{x \mapsto F(x) \to G(x)} is also covariant.}
+
+\proof{
+
+\p{From here we present a pair of proof strategies, the first is
+conceptually simpler, but relies on a yet to be formalised lemma and the second
+takes a somewhat more bruteforce approach, but is completely formalised within the
+library.}
+
+\subtree[stt-00UG]{
+\p{
+We may see that the leftmost map of the second of the [above diagrams](stt-00OM) is
+obtained as the pullback of #{\{0\} \to \Delta^1} by the projection #{\Sigma_{i}
+F_{f(i)} \to \Delta^1}. Hence we have a lifting problem where the left map is a
+pullback of a left anodyne map by a right fibration and hence is a left anodyne
+map. Since the right family is covariant by assumption, this means solutions to the
+lifting problem exist uniquely.}
+
 \remark{
-\p{We have not yet formalised the fact that left-anodyne maps are stable under
+\p{We have not yet formalised the fact that left anodyne maps are stable under
 base change by right fibrations.}
+}
+
+\agda{
+module FromBaseChangeLeftAnodyne
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (let G^F b = F b → G b)
+  (let
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x))
+  (base-change-left-anodyne
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : B → A) (p : C → A)
+      → is-left-anodyne p
+      → is-right-fibration f
+      → is-left-anodyne (base-change-arrow f p))
+  where
+
+  transposed-left-map-is-left-anodyne
+    : (σ : Δ¹ → B)
+    → is-contravariant F → is-left-anodyne (transposed-left-map σ)
+  transposed-left-map-is-left-anodyne σ rfib
+    = is-anodyne←equiv
+        (base-change-arrow (fst: (F ∘ σ)) (point i0))
+        (transposed-left-map σ)
+        (inv-Arrow-equiv (transposed-left-map-is-pb F G σ))
+        (point i0)
+        (base-change-left-anodyne
+          (fst: (F ∘ σ)) (point i0) (is-self-anodyne (point i0))
+          (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
+
+  cov^contrav-is-covariant-alternative
+    : is-contravariant F → is-covariant G → is-covariant G^F
+  cov^contrav-is-covariant-alternative Fctr Gcov
+    = is-covariant←has-unique-extensions G^F
+        (λ {(mk-afmap σ h)
+           → is-single←equiv-to-single
+               (transpose-ext-exponentials-at-point-i0 F G σ (h tt) e⁻¹)
+               (unique-extensions←are-orthogonal-fam {P = G}
+                 (are-orthogonal-fam←are-orthogonal-fst
+                   (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
+                     (is-covariant↔is-left-fibration G .fst Gcov)))
+               (mk-afmap (σ ∘ fst) (h tt)))})
+}
+}
+
+\subtree[stt-00UE]{
+\p{Alternatively we can show directly that lifts exist uniquely for lifting problems
+in the shape of the rightmost diagram. In particular we show that for any covariant
+type family #{G}, the natural map ##{(\Pi_{i}\ (F\sigma(i) \to G\sigma(i))) \to
+(F\sigma(0) \to G(\sigma(0)))} (whose fibres are the lifting solutions) is an
+equivalence. For the inverse map, suppose that we have a map #{x : F(\sigma(0)) \to
+G(\sigma(0))}, then to obtain a map #{F\sigma(i) \to G\sigma(i)}, we take the composite
+##{F\sigma(i) \to F\sigma(0) \xrightarrow{x} G\sigma(0) \to G\sigma(i)} where the first map is
+induced by contravariant transport, and the last by covariant transport. When #{i =
+0}, this map is clearly equal to #{x} itself, so we have defined a left
+inverse, and all that remains is to show it is a right inverse. To do so, let #{x :
+\Pi_{i}\ (F\sigma(i) \to G\sigma(i))} so that we need to show #{G_* x(0) F^* \sim x}.
+We may use the uniqueness of covariant transport and give a dependent morphism
+#{\Hom_{Gσ}^{0 \le i}(x(0, F^*(p)), x(i,p))} for all #{i : \Delta^1} and #{p :
+F\sigma(i)}. The morphism can be given by #{j \mapsto x(i \land j, F^*(p))}, and this
+can be shown to have the correct boundary trivially at #{0}, and at #{1} by again
+applying uniqueness of transport with a similarly constructed dependent morphism.
+}
+
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : B → Type 𝓦)
+  (let G^F b = F b → G b)
+  (let
+    transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
+    transposed-left-map σ x = (i0 , x))
+  (σ : Δ¹ → B)
+  (Fc : is-contravariant F)
+  (Gc : is-covariant G)
+  (let Gσ = G ∘ σ)
+  (let Gσ-cov = covariant-base-change {P = G} σ Gc)
+  (let Fσ = F ∘ σ)
+  (let Fσ-contrav = contravariant-base-change {P = F} σ Fc)
+  where
+
+  connection
+    : ∀ (i : Δ¹) (p : F (σ i))
+        (a : ∀ (x : Σ[ i ∶ Δ¹ ] F (σ i)) → G (σ (fst x)))
+      → Hom-over {B = Gσ}
+          (0≤i i)
+          (a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p))
+          (a (i , p))
+  connection i p a .Homᵈ.hom j
+    = a ( j ∧ i
+        , tr-contrav-hom
+            Fσ-contrav
+            (Δ¹-hom←≤ {i = j ∧ i} {j = i} (∧-≤-elimr ≤-refl))
+            p)
+
+}
+
+\p{The calculation of the endpoints of this map is somewhat tedious and hence hidden
+in a \em{closed} tree.}
+
+\closedScope{
+\subtree{
+
+\title{Showing the morphism has the correct endpoints}
+
+\agda{
+  connection i p a .Homᵈ.hom0 = sym lemma3 where
+
+    path : i0 ＝ i0 ∧ i
+    path = sym 0-init
+
+    lemma1
+      : Id (Σ Δ¹ Fσ)
+         (i0 , tr-contrav-hom {P = Fσ} Fσ-contrav (0≤i i) p)
+         ( i0 ∧ i
+         , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma1
+      = Σ-path→
+        ( path
+        , tr∘tr-contrav Fσ Fσ-contrav path (0≤i i) p
+        ∙ ap (λ f → tr-contrav-hom Fσ-contrav f p)
+             (Hom-ext→
+               ( (λ j
+                  → ap₂
+                      (_∧_)
+                      (≤-antisym
+                        (∨-≤-introl auto!)
+                        (∨-UP (auto! , (∧-≤-eliml auto!))))
+                      (sym (∧-∨-abs')))
+               , carrier-is-set _ _ _ _
+               , carrier-is-set _ _ _ _)))
+
+    lemma2
+      : a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p)
+      ＝[ ap (Gσ ∘ fst) lemma1 ]
+        a (i0 ∧ i
+          , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma2 = apᶠ a lemma1
+
+    lemma3
+      : a (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p)
+      ＝[ ap Gσ (sym 0-init) ]
+        a (i0 ∧ i
+          , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma3 = adjust-Idᵈ (ap-∘ Gσ fst lemma1 ∙ ap (ap Gσ) Σ-path-ap-fst) lemma2
+
+  connection i p a .Homᵈ.hom1 = sym lemma3 where
+
+    lemma1
+      : Id (Σ Δ¹ Fσ)
+         (i , p)
+         ( i1 ∧ i
+         , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma1 = Σ-path→
+      ( sym (∧-comm ∙ 1-top)
+      , Idᶠ-inr' {B = Fσ} {p = ∧-comm ∙ 1-top}
+          {x = p}
+          {y = tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p}
+          (sym ( tr∘tr-contrav Fσ Fσ-contrav (∧-comm ∙ 1-top) _ p
+               ∙ tr-contrav-hom-unique
+                   Fσ Fσ-contrav
+                   (adjust-hom (∧-comm ∙ 1-top) refl (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)))
+                   p p
+                   (tr
+                     (λ f → Hom-over f p p)
+                     {a = idH i}
+                     {b = (adjust-hom
+                            (∧-comm ∙ 1-top)
+                            refl
+                            (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)))}
+                     (Hom-ext→
+                       ((λ j
+                         → ≤-antisym
+                             (∧-UP
+                               ( ∨-≤-intror (∧-UP (1-top , ∧-idem))
+                               , ∨-≤-intror ≤-refl))
+                             (∧-≤-elimr
+                               (∨-UP
+                                 ( (∧-≤-elimr ≤-refl)
+                                 , ≤-refl))))
+                       , carrier-is-set _ _ _ _
+                       , carrier-is-set _ _ _ _))
+                     (idH p)))))
+
+    lemma2
+      : a (i , p)
+      ＝[ ap (Gσ ∘ fst) lemma1 ]
+        a ( i1 ∧ i
+          , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma2 = apᶠ a lemma1
+
+    lemma3
+      : a (i , p)
+      ＝[ ap Gσ (sym (∧-comm ∙ 1-top)) ]
+        a ( i1 ∧ i
+          , tr-contrav-hom {P = Fσ} Fσ-contrav (Δ¹-hom←≤ (∧-≤-elimr ≤-refl)) p)
+    lemma3 = adjust-Idᵈ (ap-∘ Gσ fst lemma1 ∙ ap (ap Gσ) Σ-path-ap-fst) lemma2
+}
+}
+}
+
+\p{With this dependent morphism constructed, giving the rest of the quasi-inverse
+follows quite directly:}
+
+\agda{
+  cov^contrav-is-covariant-lemma
+    : is-equiv (precomp-Π {B = Σ[ i ∶ Δ¹ ] F (σ i)} (G ∘ σ ∘ fst) (i0 ,_))
+  cov^contrav-is-covariant-lemma = is-equiv←qinv qinv where
+
+    qinv : quasi-inv (precomp-Π (G ∘ σ ∘ fst) (λ p → i0 , p))
+    qinv .fst x (i , p)
+      = tr-cov-hom Gσ-cov (0≤i i)
+          (x (tr-contrav-hom Fσ-contrav (0≤i i) p))
+    qinv .snd .fst x = funext→
+      (λ (i , p)
+       → tr-cov-hom-unique Gσ Gσ-cov (0≤i i)
+           (x (i0 , tr-contrav-hom Fσ-contrav (0≤i i) p))
+           (x (i , p))
+           (connection i p x))
+    qinv .snd .snd x = funext→
+      (λ p
+       → tr-cov-idH~ Gσ Gσ-cov _ 0≤i-at-0 (x (tr-contrav-hom Fσ-contrav (0≤i i0) p))
+       ∙ ap x (tr-contrav-idH~ Fσ Fσ-contrav _ 0≤i-at-0 p))
 }
 
 \agda{
@@ -225,55 +586,39 @@ module _
   (let
     transposed-left-map : ∀ σ → F (σ i0) → Σ Δ¹ (F ∘ σ)
     transposed-left-map σ x = (i0 , x))
-  (base-change-left-anodyne
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : B → A) {C : Type 𝓦}
-        (p : C → A) → is-left-anodyne p → is-right-fibration f
-      → is-left-anodyne (base-change-arrow f p))
   where
-
-  module _ (σ : Δ¹ → B) where
-    transpose-ext-exponentials
-      : ∀ (h : F (σ i0) → G (σ i0))
-        → Extᵈ (point i0) (G^F ∘ σ) (point h)
-        ≃ Extᵈ (transposed-left-map σ) (G ∘ σ ∘ fst) h
-    transpose-ext-exponentials h = Σ-≃ uncurry≃ λ f → unit-UP≃ ∙≃ funext≃
-
-    transposed-left-map-is-pb
-      : Arrow-equiv
-          (transposed-left-map σ)
-          (base-change-arrow (fst: F ∘ σ) (point i0))
-    transposed-left-map-is-pb .fst .Arrow-Π.top a = ((_ , a) , tt , refl)
-    transposed-left-map-is-pb .fst .Arrow-Π.bot = id
-    transposed-left-map-is-pb .fst .Arrow-Π.comm = ~refl
-    transposed-left-map-is-pb .snd .fst = is-equiv←qinv
-      ( (λ {((_ , a) , _ , refl) → a})
-      , ~refl
-      , λ {(_ , _ , refl) → refl})
-    transposed-left-map-is-pb .snd .snd = id-is-equiv
-
-    transposed-left-map-is-left-anodyne
-      : is-contravariant F → is-left-anodyne (transposed-left-map σ)
-    transposed-left-map-is-left-anodyne rfib
-      = is-anodyne←equiv
-          (base-change-arrow (fst: F ∘ σ) (point i0))
-          (transposed-left-map σ)
-          (inv-Arrow-equiv transposed-left-map-is-pb)
-          (point i0)
-          (base-change-left-anodyne
-                (fst: F ∘ σ) (point i0) (is-self-anodyne (point i0))
-                (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
 
   cov^contrav-is-covariant
     : is-contravariant F → is-covariant G → is-covariant G^F
-  cov^contrav-is-covariant Fctr Gcov
-    = is-covariant←has-unique-extensions G^F (λ
-        {(mk-afmap σ h)
-            → is-single←equiv-to-single
-                (transpose-ext-exponentials σ (h tt) e⁻¹)
-                (unique-extensions←are-orthogonal-fam {P = G}
-                  (are-orthogonal-fam←are-orthogonal-fst
-                    (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
-                      (is-covariant⇔is-left-fibration G .fst Gcov)))
-                  (mk-afmap (σ ∘ fst) (h tt)))})
+  cov^contrav-is-covariant Fc Gc
+    = is-covariant←has-unique-extensions G^F
+        (λ {(mk-afmap σ h)
+           → is-single←equiv-to-single
+               (  fibre-precomp-Π≃Ext (G ∘ σ ∘ fst) (i0 ,_) (h tt)
+               ∙e transpose-ext-exponentials-at-point-i0 F G σ (h tt) e⁻¹)
+               (has-singleton-fibres←is-equiv
+                 (cov^contrav-is-covariant-lemma F G σ Fc Gc)
+                 (h tt))})
+
+}
+}
+}
+}
+
+\subtree[stt-00UF]{
+\taxon{Corollary}
+
+\p{For any #{f : A \to Δ^1} and covariant family #{F}, the type family
+#{(a \mapsto (f(a) = 0) \to F(a))} is covariant.}
+
+\agda{
+module _ (Δ¹-mono : Δ¹-endos-are-mono) where
+
+  ^●-is-covariant
+    : ∀ {𝓤 𝓥} {A : Type 𝓥} (F : A → Type 𝓤) (F-cov : is-covariant F)
+      → (f : A → Δ¹)
+      → is-covariant (λ i → (f i ＝ i0) → F i)
+  ^●-is-covariant F Fc f
+    = cov^contrav-is-covariant ((_＝ i0) ∘ f) F (●-is-contravariant Δ¹-mono f) Fc
 }
 }

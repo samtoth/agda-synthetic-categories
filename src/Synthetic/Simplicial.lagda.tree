@@ -12,23 +12,21 @@ call this type the generic interval.}
 }
 
 \agda{
-open import Foundations.Prelude
+open import Foundations.Universes
 open import Algebra.Lattice
 
-module Synthetic.Simplicial
-  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) (I-distr : is-distributive I)
-  where
-
-open import Axioms.UF
+module Synthetic.Simplicial {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
-open is-distributive I-distr
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -53,10 +51,10 @@ open import Ergonomics.Auto
 
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Horns Δ¹ I I-distr
-open import Synthetic.Boundaries Δ¹ I I-distr
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
 }
-
+}
 
 \subtree[stt-00AC]{
 \taxon{Definition}
@@ -70,6 +68,9 @@ family of propositions #{(i \le j) \lor (j \le i)}.}
 \agda{
 fam-is-simplicial : Δ¹ × Δ¹ → Type 𝓘
 fam-is-simplicial (i , j) = (i ≤ j) * (j ≤ i)
+
+fam-is-simplicial-is-prop : (u : Δ¹ × Δ¹) → is-prop (fam-is-simplicial u)
+fam-is-simplicial-is-prop u = *-is-prop ≤-is-prop ≤-is-prop
 
 is-simplicial : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
 is-simplicial = is-null fam-is-simplicial
@@ -96,7 +97,6 @@ Simplicial-gRSubU .gRSubU.GS-is-globally-reflective = Simplicial-is-globally-ref
 
 open gSubU Simplicial-gSubU public using () renaming
   ( ∈S←equiv to is-simplicial←equiv)
-
 open gReflectiveClosure Simplicial-gRSubU public using () renaming
   ( Π∈S to Π-is-simplicial
   ; ULift∈S to ULift-is-simplicial
@@ -138,9 +138,9 @@ module Simp where
     → ((p : i ＝ j) → l (≤←＝ p) ＝ r (≥←＝ p)) → A
 Δ²-≤-rec {i = i} {j} asimp l r eq
   = is-equiv.bwd (asimp (i , j)) (cogap (mk-cocone l r
-      λ (p , q) → ap l (is-prop-separated _ _ _ _)
+      λ (p , q) → ap l (carrier-is-set _ _ _ _)
                 ∙ eq (≤-antisym p q)
-                ∙ ap r (is-prop-separated _ _ _ _)))
+                ∙ ap r (carrier-is-set _ _ _ _)))
 
 Δ²-≤-rec!
   : ∀ {𝓤} {A : Type 𝓤} i j → is-simplicial A
@@ -176,7 +176,7 @@ Simplicial-U-is-simplicial
 Simplicial-U-is-simplicial {𝓤}
   = Null-U-is-null←is-prop
       {𝓤 = 𝓘} {𝓥 = 𝓤}
-      (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+      (fam-is-simplicial-is-prop)
 
 Simplicial-Trunc-U
   : (n : 𝕋) (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
@@ -190,7 +190,7 @@ Simplicial-Trunc-U-is-simplicial n {𝓤}
   = Null-in-gSubU-is-null←is-prop
       {𝓤 = 𝓘} {𝓥 = 𝓤}
       {S = Truncation-gSubU n}
-      (λ (i , j) → *-is-prop ≤-is-prop ≤-is-prop)
+      (fam-is-simplicial-is-prop)
       (λ _ → Π-is-truncated)
 
 Simplicial-Set-U
@@ -262,8 +262,8 @@ which #{(i \leq j) \lor (j \leq i)}.}
 
 □²-diagonal-is-emb : is-embedding □²-diagonal
 □²-diagonal-is-emb = is-equiv←inverse
-                       (is-prop-separated _ _)
-                       (is-set←is-truncated (□-is-truncated carrier-is-0-truncated) _ _)
+                       (carrier-is-set _ _)
+                       (□-is-set carrier-is-set _ _)
                        (ap fst)
 
 □²-Δ²-via-diag : □²-diagonal ~ □←Δ²-upper ∘ Δ²-diagonal
@@ -272,17 +272,17 @@ which #{(i \leq j) \lor (j \leq i)}.}
 □←Δ²-upper-is-emb : is-embedding □←Δ²-upper
 □←Δ²-upper-is-emb = is-equiv←inverse
                       (Δ²-is-set _ _)
-                      (is-set←is-truncated (□-is-truncated carrier-is-0-truncated) _ _)
+                      (□-is-set carrier-is-set _ _)
                       λ p → Δ²-ext (ap fst p , ap snd p)
 
 □←Δ²-lower-is-emb : is-embedding □←Δ²-lower
 □←Δ²-lower-is-emb = is-equiv←inverse
                       (Δ²-is-set _ _)
-                      (is-set←is-truncated (□-is-truncated carrier-is-0-truncated) _ _)
+                      (□-is-set carrier-is-set _ _)
                       λ p → Δ²-ext (ap snd p , ap fst p)
 
-⧅-square : Arrow-map (ι-const I I-distr) □←Δ²-upper
-⧅-square .Arrow-map.top = ι-const I I-distr
+⧅-square : Arrow-map ι-const □←Δ²-upper
+⧅-square .Arrow-map.top = ι-const
 ⧅-square .Arrow-map.bot = □←Δ²-lower
 ⧅-square .Arrow-map.comm = ~refl
 
@@ -291,10 +291,10 @@ which #{(i \leq j) \lor (j \leq i)}.}
 
 ⧅-Sub : Subtype (□^ 2) 𝓘
 ⧅-Sub .Subtype.family (i , j) = (i ≤ j) * (j ≤ i)
-⧅-Sub .Subtype.family-is-subtype (i , j) = *-is-prop ≤-is-prop ≤-is-prop
+⧅-Sub .Subtype.family-is-subtype = fam-is-simplicial-is-prop
 
 opaque
-  fibre-⧅-incl : ∀ x → fibre ⧅-incl x ≃ x ∈ ⧅-Sub
+  fibre-⧅-incl : ∀ x → fibre ⧅-incl x ≃ (x ∈ ⧅-Sub)
   fibre-⧅-incl x@(i , j)
     = fibre ⧅-incl x   ≃⟨ cogap-fibre _ x ⟩
       Pushout _ _       ≃⟨ Pushout-equiv←logical
@@ -383,7 +383,6 @@ Triangulated-gRSubU .gRSubU.GS-is-globally-reflective
 
 open gSubU Triangulated-gSubU public using () renaming
   ( ∈S←equiv to is-triangulated←equiv)
-
 open gReflectiveClosure Triangulated-gRSubU public using () renaming
   ( Π∈S to Π-is-triangulated
   ; ULift∈S to ULift-is-triangulated
@@ -421,7 +420,7 @@ module Triang where
 
 \proof{
 \p{We have that for all #{(i,j) : \square}, #{((i \leq j) * (j \leq i)) \perp A}.
-   By closure of left ortgogonality under #{\Sigma}, this gives us
+   By closure of left orthogonality under #{\Sigma}, this gives us
    #{\underset{\square}{\overset{\Sigma_{i,j}((i \leq j) * (j \leq i))}{\downarrow}}
    \perp A}.  But by the [above lemma](stt-00CC) this sigma type is exactly the
    triangulated square.  }
@@ -431,18 +430,18 @@ module Triang where
 simp-is-triangulated
   : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-triangulated A
 simp-is-triangulated {_} {A} simp tt
-  = is-orthogonal⇔orthogonal-! .fst
+  = is-orthogonal↔orthogonal-! .fst
       (left-orthogonal-equiv _ _ amap amap-is-eqv !
         (left-orthogonal-Σ _ !
-          (is-orthogonal⇔orthogonal-! .snd
+          (is-orthogonal↔orthogonal-! .snd
           ∘ (is-local←is-null simp)))) where
   amap : Arrow-map (total-map (λ _ → !)) ⧅-incl
   amap .Arrow-map.top = _≃_.bwd ⧅-as-subtype
   amap .Arrow-map.bot = fst
-  amap .Arrow-map.comm = ⧅-pres-carrier' ~⁻¹
+  amap .Arrow-map.comm = ⧅-pres-carrier' h⁻¹
 
   amap-is-eqv : is-Arrow-equiv amap
-  amap-is-eqv .fst = is-equiv⁻¹ (_≃_.fwd-is-equiv ⧅-as-subtype)
+  amap-is-eqv .fst = bwd-is-equiv ⧅-as-subtype
   amap-is-eqv .snd = singleton-fst-is-equiv (λ _ → 𝟙-is-singleton)
 }
 }

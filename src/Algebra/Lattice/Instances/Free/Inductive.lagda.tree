@@ -10,11 +10,16 @@ open import Foundations.Prelude
 open import Axioms.UF
 
 open import Algebra.Lattice
+import Algebra.Lattice.Instances.Polynomial as Poly
 
 module Algebra.Lattice.Instances.Free.Inductive
        {𝓘} (I : Type 𝓘) (L : Lattice I) where
+}
 
+\agda-imports{
+\agda{
 open import Algebra.Poset
+open import Core.Coslices
 open import Modalities.Instances.Truncation
 open import Modalities.SeparatedTypes
 
@@ -22,11 +27,14 @@ open import Ergonomics.Auto
 open import Ergonomics.Extensionality
 
 open Lattice L renaming (0l to i0; 1l to i1)
+open Poly
+}
 }
 
 \subtree[stt-00E1]{
-\title{General simplices}
+\title{Standard simplices}
 \taxon{Definition}
+\contributor{ecavallo}
 
 \p{Just as in the case of the [1-variable free algebra](stt-009X), we give a
 geometrically suggestive name to the underlying type of the free algebra on
@@ -48,7 +56,7 @@ data Δ^_ where
   · : Δ^ 0
   _:≥:_ : ∀ {n} → (i : Δ^ n) → (j : I) → ⦃ j ≤ last-Δ i ⦄ → Δ^ (suc n)
 
-infixl 5 _:≥:_
+infixl 27 _:≥:_
 
 last-Δ · = i1
 last-Δ (x :≥: j) = j
@@ -59,18 +67,27 @@ last-Δ (x :≥: j) = j
 Δ-suc ._≊_.fwd-qinv .snd .fst (x :≥: j) = refl
 Δ-suc ._≊_.fwd-qinv .snd .snd = ~refl
 
+Δ-diagonal : ∀ {n} → I → Δ^ n
+Δ-diagonal-≤ : ∀ {i n} → i ≤ last-Δ {n} (Δ-diagonal i)
+
+Δ-diagonal {zero} i = ·
+Δ-diagonal {suc n} i = (Δ-diagonal i :≥: i) ⦃ Δ-diagonal-≤ {i} {n} ⦄
+
+Δ-diagonal-≤ {i} {zero} = auto!
+Δ-diagonal-≤ {i} {suc n} = auto!
+
 Δ-1 : ∀ {n} → Δ^ n
+Δ-1 = Δ-diagonal i1
+
+Δ-0 : ∀ {n} → Δ^ n
+Δ-0 = Δ-diagonal i0
+
 Δ-1-≤ : ∀ {i n} → i ≤ last-Δ {n} (Δ-1)
-
-Δ-1 {zero} = ·
-Δ-1 {suc n} = (Δ-1 :≥: i1) ⦃ Δ-1-≤ {i1} {n} ⦄
-
 Δ-1-≤ {i} {zero} = auto!
 Δ-1-≤ {i} {suc n} = auto!
 
-Δ-0 : ∀ {n} → Δ^ n
-Δ-0 {zero} = ·
-Δ-0 {suc n} = (Δ-0 :≥: i0)
+Δ∗∗ : ℕ → Type∗∗ 𝓘
+Δ∗∗ n = mk-type∗∗ (Δ^ n) Δ-0 Δ-1
 }
 }
 
@@ -131,14 +148,18 @@ instance
 Δ-path-is-prop : ∀ {n} {a b : Δ^ n} → is-prop (Δ-path a b)
 Δ-path-is-prop · · = refl
 Δ-path-is-prop (p :≥: q) (r :≥: s)
-  = ap₂ _:≥:_ (Δ-path-is-prop p r) prop!
+  = ap₂ (_:≥:_) (Δ-path-is-prop p r) prop!
 
 opaque
   unfolding is-n-separated
   Δ-is-0-truncated : ∀ {n} → is-truncated 0 (Δ^ n)
-  Δ-is-0-truncated {n} _ _ = is-truncated←equiv
-                              (ext!≃ ⦃ Δ-IdS ⦄ e⁻¹)
-                              (is-truncated←is-prop (Δ-path-is-prop))
+  Δ-is-0-truncated {n} _ _
+    = is-truncated←equiv
+        (ext!≃ ⦃ Δ-IdS ⦄ e⁻¹)
+        (is-truncated←is-prop (Δ-path-is-prop))
+
+  Δ-is-set : ∀ {n} → is-set (Δ^ n)
+  Δ-is-set = is-set←is-truncated Δ-is-0-truncated
 
 instance
   Δ-Is-n-truncated : ∀ {n k} → Is-truncated (𝕋←ℕ k) (Δ^ n)
@@ -146,9 +167,200 @@ instance
 }
 }
 
+\subtree[stt-00UL]{
+\title{#{Δ⁰} is a singleton}
+\taxon{Lemma}
+\date{2026-06-25}
+\author{ecavallo}
+
+\agda{
+Δ⁰-is-singleton : is-singleton (Δ^ 0)
+Δ⁰-is-singleton .centre = ·
+Δ⁰-is-singleton .central · = refl
+}
+}
+
+
+\subtree[stt-00UM]{
+\title{#{Δ¹} is the base lattice}
+\taxon{Lemma}
+\date{2026-06-25}
+\author{ecavallo}
+
+\agda{
+Δ¹-diagonal-is-equiv : is-equiv (Δ-diagonal {1})
+Δ¹-diagonal-is-equiv = is-equiv←qinv qinv
+  where
+  qinv : quasi-inv (Δ-diagonal {1})
+  qinv .fst (· :≥: j) = j
+  qinv .snd .fst _ = refl
+  qinv .snd .snd (· :≥: j) = Δ-ext (· :≥: refl)
+}
+}
+
+\subtree[stt-00RL]{
+\title{The two definitions of #{Δ²} agree}
+\taxon{Lemma}
+\date{2026-01-24}
+\author{samueltoth}
+
+\agda{
+Δ←Δ² : Δ² L → Δ^ 2
+Δ←Δ² (i , j) = (· :≥: i :≥: j)
+
+Δ←Δ²-is-equiv : is-equiv Δ←Δ²
+Δ←Δ²-is-equiv = mk-eqv
+  ( (λ where (· :≥: i :≥: j) → (i , j))
+  , (~refl)
+  , λ where (· :≥: i :≥: j) → Δ-ext (· :≥: refl :≥: refl))
+  ( λ _ → Δ-is-set _ _ _ _)
+}
+}
+
 \subtree[stt-00E3]{
 \title{There is a lattice structure on the #{n}-simplex}
 \taxon{Lemma}
+\date{2026-06-09}
+\author{ecavallo}
 
-\p{This remains to be formalised.}
+\p{The lattice structure on #{\II} induces a lattice structure on #{\Delta^n}.
+The lattice operations on #{\Delta^n} are defined pointwise, using the fact that the
+lattice operations are monotone with respect to the order they induce.
+}
+
+\agda{
+_Δ-∧_ : {n : ℕ} → Δ^ n → Δ^ n → Δ^ n
+Δ-∧-≤
+  : ∀ {n p p' j j'} → ⦃ j ≤ last-Δ {n} p ⦄ → ⦃ j' ≤ last-Δ {n} p' ⦄
+    → j ∧ j' ≤ last-Δ (p Δ-∧ p')
+
+_Δ-∧_ {0} · · = ·
+_Δ-∧_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∧ p') :≥: (j ∧ j')) ⦃ Δ-∧-≤ {n} ⦄
+
+Δ-∧-≤ {zero} {·} {·} = auto!
+Δ-∧-≤ {suc n} {p :≥: j} {p' :≥: j'} = auto!
+
+_Δ-∨_ : {n : ℕ} → Δ^ n → Δ^ n → Δ^ n
+Δ-∨-≤
+  : ∀ {n p p' j j'} → ⦃ j ≤ last-Δ {n} p ⦄ → ⦃ j' ≤ last-Δ {n} p' ⦄
+    → j ∨ j' ≤ last-Δ (p Δ-∨ p')
+
+_Δ-∨_ {0} · · = ·
+_Δ-∨_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∨ p') :≥: (j ∨ j')) ⦃ Δ-∨-≤ {n} ⦄
+
+Δ-∨-≤ {zero} {·} {·} = auto!
+Δ-∨-≤ {suc n} {p :≥: j} {p' :≥: j'} = auto!
+
+Δ-∧-assoc-path : {n : ℕ} {p q r : Δ^ n} → Δ-path (p Δ-∧ (q Δ-∧ r)) ((p Δ-∧ q) Δ-∧ r)
+Δ-∧-assoc-path {zero} {·} {·} {·} = ·
+Δ-∧-assoc-path {suc n} {p :≥: j} {q :≥: k} {r :≥: l} = Δ-∧-assoc-path :≥: ∧-assoc
+
+Δ-∨-assoc-path : {n : ℕ} {p q r : Δ^ n} → Δ-path (p Δ-∨ (q Δ-∨ r)) ((p Δ-∨ q) Δ-∨ r)
+Δ-∨-assoc-path {zero} {·} {·} {·} = ·
+Δ-∨-assoc-path {suc n} {p :≥: j} {q :≥: k} {r :≥: l} = Δ-∨-assoc-path :≥: ∨-assoc
+
+Δ-∧-comm-path : {n : ℕ} {p q : Δ^ n} → Δ-path (p Δ-∧ q) (q Δ-∧ p)
+Δ-∧-comm-path {zero} {·} {·} = ·
+Δ-∧-comm-path {suc n} {p :≥: j} {q :≥: k} = Δ-∧-comm-path :≥: ∧-comm
+
+Δ-∨-comm-path : {n : ℕ} {p q : Δ^ n} → Δ-path (p Δ-∨ q) (q Δ-∨ p)
+Δ-∨-comm-path {zero} {·} {·} = ·
+Δ-∨-comm-path {suc n} {p :≥: j} {q :≥: k} = Δ-∨-comm-path :≥: ∨-comm
+
+Δ-∨-∧-abs-path : {n : ℕ} {p q : Δ^ n} → Δ-path (p Δ-∨ (p Δ-∧ q)) p
+Δ-∨-∧-abs-path {zero} {·} {·} = ·
+Δ-∨-∧-abs-path {suc n} {p :≥: j} {q :≥: k} = Δ-∨-∧-abs-path :≥: ∨-∧-abs
+
+Δ-∧-∨-abs-path : {n : ℕ} {p q : Δ^ n} → Δ-path (p Δ-∧ (p Δ-∨ q)) p
+Δ-∧-∨-abs-path {zero} {·} {·} = ·
+Δ-∧-∨-abs-path {suc n} {p :≥: j} {q :≥: k} = Δ-∧-∨-abs-path :≥: ∧-∨-abs
+
+Δ-0-bottom-path : {n : ℕ} {p : Δ^ n} → Δ-path (p Δ-∨ Δ-0) p
+Δ-0-bottom-path {zero} {·} = ·
+Δ-0-bottom-path {suc n} {p :≥: j} = Δ-0-bottom-path :≥: 0-bottom
+
+Δ-1-top-path : {n : ℕ} {p : Δ^ n} → Δ-path (p Δ-∧ Δ-1) p
+Δ-1-top-path {zero} {·} = ·
+Δ-1-top-path {suc n} {p :≥: j} = Δ-1-top-path :≥: 1-top
+
+Δ-Lattice : (n : ℕ) → Lattice (Δ^ n)
+Δ-Lattice n .Lattice.0l = Δ-0
+Δ-Lattice n .Lattice.1l = Δ-1
+Δ-Lattice n .Lattice._∧_ = _Δ-∧_
+Δ-Lattice n .Lattice._∨_ = _Δ-∨_
+Δ-Lattice n .Lattice.str-is-lattice = l
+  where
+  l : is-lattice _ _ _ _
+  l .is-lattice.carrier-is-0-truncated = Δ-is-0-truncated
+  l .is-lattice.∧-assoc = Δ-ext Δ-∧-assoc-path
+  l .is-lattice.∨-assoc = Δ-ext Δ-∨-assoc-path
+  l .is-lattice.∧-comm = Δ-ext Δ-∧-comm-path
+  l .is-lattice.∨-comm = Δ-ext Δ-∨-comm-path
+  l .is-lattice.∨-∧-abs = Δ-ext Δ-∨-∧-abs-path
+  l .is-lattice.∧-∨-abs = Δ-ext Δ-∧-∨-abs-path
+  l .is-lattice.0-bottom = Δ-ext Δ-0-bottom-path
+  l .is-lattice.1-top = Δ-ext Δ-1-top-path
+}
+}
+
+\subtree[stt-00UN]{
+\title{The #{n}-simplex is an #{I}-algebra}
+\taxon{Theorem}
+\date{2026-06-25}
+\author{ecavallo}
+
+\p{The #{n}-ary diagonal map from the base lattice #{I} to the #{n}-simplex is a
+lattice homomorphism, making #{Δⁿ} into an #{I}-algebra.
+If #{I} is a distributive lattice, then #{Δⁿ} is a distributive #{I}-algebra.
+Because #{Δ¹} is equivalent to #{I}, it is also the initial #{I}-algebra.
+}
+
+\agda{
+Δ-Lattice-is-lattice-algebra
+  : ∀ {n} → is-lattice-hom L (Δ-Lattice n) Δ-diagonal
+Δ-Lattice-is-lattice-algebra .is-lattice-hom.pres-∨ = Δ-ext Δ-diagonal-∨-path
+  where
+  Δ-diagonal-∨-path
+    : {n : ℕ} {j k : I}
+    → Δ-path {n} (Δ-diagonal (j ∨ k)) (Δ-diagonal j Δ-∨ Δ-diagonal k)
+  Δ-diagonal-∨-path {zero} = ·
+  Δ-diagonal-∨-path {suc n} = Δ-diagonal-∨-path :≥: refl
+Δ-Lattice-is-lattice-algebra .is-lattice-hom.pres-∧ = Δ-ext Δ-diagonal-∧-path
+  where
+  Δ-diagonal-∧-path
+    : {n : ℕ} {j k : I}
+    → Δ-path {n} (Δ-diagonal (j ∧ k)) (Δ-diagonal j Δ-∧ Δ-diagonal k)
+  Δ-diagonal-∧-path {zero} = ·
+  Δ-diagonal-∧-path {suc n} = Δ-diagonal-∧-path :≥: refl
+Δ-Lattice-is-lattice-algebra .is-lattice-hom.pres-0 = refl
+Δ-Lattice-is-lattice-algebra .is-lattice-hom.pres-1 = refl
+
+Δ-Algebra : ∀ n → Algebra L (Δ^ n)
+Δ-Algebra n .Algebra.str-Lattice = Δ-Lattice n
+Δ-Algebra n .Algebra.ι = Δ-diagonal
+Δ-Algebra n .Algebra.ι-alg = Δ-Lattice-is-lattice-algebra
+
+Δ-Algebra-is-distributive
+  : ∀ {n}
+    → is-distributive L
+    → is-distributive-algebra (Δ-Algebra n)
+Δ-Algebra-is-distributive {n} dI .is-distributive.distrib-∨-∧
+  = Δ-ext (lemma _ _ _)
+  where
+  lemma
+    : ∀ {n} (p q r : Δ^ n) → Δ-path (p Δ-∨ (q Δ-∧ r)) ((p Δ-∨ q) Δ-∧ (p Δ-∨ r))
+  lemma {zero} · · · = ·
+  lemma {suc n} (p :≥: j) (q :≥: k) (r :≥: l)
+    = lemma p q r :≥: dI .is-distributive.distrib-∨-∧
+
+Δ¹-Algebra-is-initial
+  : ∀ {𝓤} {X : Type 𝓤} (AX : Algebra L X)
+    → is-singleton (LatticeAlgHom (Δ-Algebra 1) AX)
+Δ¹-Algebra-is-initial AX
+  = is-single←equiv-to-single
+      ((LatticeAlgHom-precomp≃
+          (initial-Algebra-is-initial L (Δ-Algebra 1) .centre)
+          (Δ¹-diagonal-is-equiv)) e⁻¹)
+      (initial-Algebra-is-initial L AX)
+}
 }

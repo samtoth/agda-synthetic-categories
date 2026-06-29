@@ -9,35 +9,43 @@
 
 \agda{
 {-# OPTIONS --lossy-unification #-}
-open import Foundations.Prelude
+
+open import Foundations.Universes
+open import Foundations.Nat
+open import Foundations.Unit
+
 open import Algebra.Lattice
+
 open import Synthetic.Tiny
+
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
-import Synthetic.Cubes as C
 
+import Synthetic.Cubes
+import Synthetic.Quasicoherence
+}
+
+\agda{
 module Synthetic.Categories.Spaces
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
-  (open C Δ¹ i0 i1)
+  (open Synthetic.Cubes Δ¹ i0 i1)
+  (open Synthetic.Quasicoherence Δ¹ I I-distr)
+  (@♭ Δ¹-mono : Δ¹-endos-are-mono)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
-  (@♭ √-is-tiny-str
-    : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure Δ¹ A (√ A) √ε)
-  (@♭ cubes-detect-cont : detects-continuity □^_)
-  (@♭ simplicial-conn : detects-connectivity (point Δ¹))
+  (@♭ √-is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
+                    → is-tiny-structure Δ¹ A (√ A) √ε)
+  (@♭ cubes-detect-cont : detects-continuity {I = ℕ} □^_)
   (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
   where
 
 open import Axioms.UF
+}
 
-import Algebra.Lattice.Instances.Polynomial as Poly
-open Poly  hiding (L[x]; Δ²)
-open is-distributive I-distr
-
-private
-  Δ² = Poly.Δ² I
-  I[x] = Poly.L[x] I
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
@@ -63,9 +71,10 @@ open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Boundaries Δ¹ I I-distr
-open import Synthetic.Categories.CovariantFamilies Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+}
 }
 
 \p{We recall a few easy consequences of the cubes detect continuity and
@@ -80,12 +89,15 @@ opaque
     : ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
       → @♭ ((∀ {@♭ n} → is-equiv (♭-map (postcomp (□^ n) f))))
       → is-equiv f
-  cubes-separate' fa eq = cubes-separate fa
-                     ((is-equiv←Arrow-equiv {F = amap} amap-is-equiv (eq {0}))) eq where
+  cubes-separate' fa eq
+    = cubes-separate
+        fa
+        (tgt-is-equiv←Arrow-equiv (amap , amap-is-equiv) (eq {0}))
+        eq where
     open Arrow fa
     amap : Arrow-map (♭-map (postcomp (□^ 0) f)) (♭-map f)
-    amap .Arrow-Π.top = ♭-map (ev (mk-lift tt))
-    amap .Arrow-Π.bot = ♭-map (ev (mk-lift tt))
+    amap .Arrow-Π.top = ♭-map (ev ttᴸ)
+    amap .Arrow-Π.bot = ♭-map (ev ttᴸ)
     amap .Arrow-Π.comm (mod♭ f) = refl
 
     amap-is-equiv : is-Arrow-equiv amap
@@ -141,9 +153,9 @@ factors through #{\mathcal{S}}.}
 groupoids-in-Space : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-Δ¹-discrete A → is-acov A
 groupoids-in-Space A Δ¹-discrete
   = ε♭ (liftFib .fst
-         (mod♭ (is-covariant⇔is-left-fibration
+         (mod♭ (is-covariant↔is-left-fibration
                  (λ _ → A) .snd
-                   (is-orthogonal⇔orthogonal-! .snd
+                   (is-orthogonal↔orthogonal-! .snd
                      (is-left←is-Δ¹-discrete
                        (Null-globally-Σ-closed
                          (𝟙-is-Δ¹-discrete)
@@ -192,7 +204,7 @@ opaque
   ×-is-acov {𝓤} {𝓥} a b = need ((mk-ufib _ a) , (mk-ufib _ b)) where
     open Space
     @♭ ϕ : (x : Δ¹ → Space 𝓤 × Space 𝓥)
-         → is-covariant (λ i → x i .fst .Carrier × x i .snd .Carrier)
+         → is-covariant (λ i → x i .fst .Carrier × x i .snd .Carrier)
     ϕ Γ = ×-is-covariant
                {P = Carrier ∘ fst ∘ Γ}
                {Q = Carrier ∘ snd ∘ Γ}
@@ -280,6 +292,40 @@ instance
     : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A} ⦃ _ : is-acov A ⦄
       → is-acov (a ＝ b)
   ＝-is-Acov = ＝-is-acov auto!
+
+opaque
+  exp-●-is-acov
+   : ∀ {@♭ 𝓤} {A : Type 𝓤}
+     → is-acov A
+     → (∀ {i} → is-acov (i ＝ i0 → A))
+  exp-●-is-acov {𝓤}{A} ac {i}
+    = √ᵈ-naturality← _ _ _ (ϕ̂ (mk-ufib A ac , i)) where
+    open Space
+    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤))
+    Γ = Space 𝓤 × Δ¹
+
+    @♭ σ : Γ → Type (𝓘 ⊔ 𝓤)
+    σ (A , i) = (i ＝ i0) → Carrier A
+
+    @♭ ϕ : Π (Δ¹ → Γ) (is-covariant ∘ postcomp Δ¹ σ)
+    ϕ g = ^●-is-covariant Δ¹-mono A' A'-is-cov f where
+      A' : Δ¹ → Type 𝓤
+      A' = Carrier ∘ fst ∘ g
+
+      A'-is-cov : is-covariant A'
+      A'-is-cov = UFib-is-fib (fst ∘ g)
+
+      f : Δ¹ → Δ¹
+      f = snd ∘ g
+
+    @♭ ϕ̂ : Π Γ (√ᵈ (is-covariant ∘ postcomp Δ¹ σ))
+    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+
+instance
+  exp-●-is-Acov
+    : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄
+      → (∀ {i} → is-acov (i ＝ i0 → A))
+  exp-●-is-Acov = exp-●-is-acov auto!
 }
 }
 
@@ -292,16 +338,16 @@ a natural transformation #{\alpha : \Pi_{i} F(i) \to G(i)} is a fibrewise
 equivalence iff the restriction along #{\partial \Delta^1 \hookrightarrow \Delta^1}
 is a fibrewise-equivalence.}
 
-\p{The proof follows exactly \citet{Lemma 6.8}{GWB2024}, although their result
+\p{The proof follows exactly \citet{Lemma 6.8}{GWB24}, although their result
 holds more generally for copresheaves #{\Delta^n \to \mathcal{S}}.}
 
 \agda{
-transport-NT-lemma
+transport-Nat-lemma
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
     → (α : ∀ x → F x → G x) → ∀ x y (x' : F x) (p : x ＝ y)
     → tr G p (α x x')
     ＝ α y (tr F p x')
-transport-NT-lemma α x y x' refl = refl
+transport-Nat-lemma α x y x' refl = refl
 
 
 □-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
@@ -323,10 +369,10 @@ transport-NT-lemma α x y x' refl = refl
 }
 
 \agda{
-Cov-NT-is-equiv
+Cov-Nat-is-equiv
   : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Space.Carrier → g i .Space.Carrier)
     → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i)
-Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
+Cov-Nat-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
   @♭ Y : Type (lsuc (𝓤 ⊔ 𝓘))
   Y = Σ[ F G ∶ (Δ¹ → Space 𝓤)]
         Σ[ α' ∶ (∀ i → F i .Space.Carrier → G i .Space.Carrier) ]
@@ -422,15 +468,15 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
        make-orthogonality-is-equiv .fst
          = orthogonal-point-pullback-condition □-0
              (□-0-is-left-anodyne fst
-               (is-covariant⇔is-left-fibration (Carrier ∘ F) .fst (UFib-is-fib F)))
+               (is-covariant↔is-left-fibration (Carrier ∘ F) .fst (UFib-is-fib F)))
        make-orthogonality-is-equiv .snd
          = orthogonal-point-pullback-condition □-0
              (□-0-is-left-anodyne fst
-               (is-covariant⇔is-left-fibration (Carrier ∘ G) .fst (UFib-is-fib G)))
+               (is-covariant↔is-left-fibration (Carrier ∘ G) .fst (UFib-is-fib G)))
 
        @♭ final-map : (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| F (k □-0) .Carrier ⟩)
                     → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| G (k □-0) .Carrier ⟩)
-       final-map = total-map (♭-ind _ λ a → ♭-map (α (a □-0)))
+       final-map = total-map (♭ᶠ-map (λ a → α (a □-0)))
 
        @♭ refactor-map
          : ∀ (@♭ K : Γ n → Space 𝓤)
@@ -468,7 +514,7 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
                    , mapply♭
                        (mod♭ (ap (λ p → tr (Carrier ∘ G) p (α x x'))
                                  (ap (_∙ refl) (ap-id p) ∙ ∙-reflr _)
-                             ∙ transport-NT-lemma α x (y □-0) x' p)))
+                             ∙ transport-Nat-lemma α x (y □-0) x' p)))
 
        @♭ refactor-is-equiv : is-Arrow-equiv refactor
        refactor-is-equiv .fst = refactor-map-is-equiv F
@@ -476,17 +522,17 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
 
        @♭ part4 : is-equiv final-map
        part4 = is-total-equiv←is-fibrewise-equiv
-         (♭-ind _ λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
+         (♭-ind λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
                                 (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-0)))
                                 (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-1)))
                                 (snd (x □-0)))
 
        @♭ part3 : is-equiv (♭-map (postcomp (□^ m) α̂))
-       part3 = is-equiv←Arrow-equiv⁻¹
-                 {F = paste-squares refactor (♭Square make-orthogonality)}
-                 (paste-squares-is-equiv
-                   _ refactor-is-equiv
-                   _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
+       part3 = src-is-equiv←Arrow-equiv
+                 ( paste-squares refactor (♭Square make-orthogonality)
+                 , paste-squares-is-equiv
+                     _ refactor-is-equiv
+                     _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
                  part4
 
      @♭ part2 : is-equiv (♭-map (precomp-Π (λ k → is-equiv (α k))
@@ -494,23 +540,23 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
      part2 = is-equiv←inverse
                (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
                (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
-               (♭-ind _ lemma)
+               (♭-ind lemma)
 
 
   part1 : is-equiv forget
   part1 = cubes-separate'
     (mk-arrow forget)
-    (λ {n} → is-equiv←Arrow-equiv⁻¹
-       {F = ♭Square (arr n)}
-       ( ♭-map-is-equiv (arr-is-equiv n .fst)
+    (λ {n} → src-is-equiv←Arrow-equiv
+       ( ♭Square (arr n)
+       , ♭-map-is-equiv (arr-is-equiv n .fst)
        , ♭-map-is-equiv (arr-is-equiv n .snd))
        (♭-map-total-is-equiv _
          (is-total-equiv←is-fibrewise-equiv
-           (♭-ind _ λ F → ♭-map-total-is-equiv _
+           (♭-ind λ F → ♭-map-total-is-equiv _
              (is-total-equiv←is-fibrewise-equiv
-               (♭-ind _ λ G → ♭-map-total-is-equiv _
+               (♭-ind λ G → ♭-map-total-is-equiv _
                  (is-total-equiv←is-fibrewise-equiv
-                   (♭-ind _ (λ α → part2 n F G α)))))))))
+                   (♭-ind (λ α → part2 n F G α)))))))))
 
   opaque
     part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
@@ -532,8 +578,7 @@ Cov-NT-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
 between them.}
 
 \proof{
-
-\p{We start by notating that there is a canonial map
+\p{We start by noting that there is a canonial map
 from #{F : \mathcal{S}^{\Delta^1}} to #{F(0) \to F(1)} given by covariant
 transport.}
 
@@ -558,11 +603,9 @@ dua→ h = (h i0 , h i1 , tr-𝓢 h)
 
 \agda{
 module DUA
-  ⦃ _ : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄ → (∀ {i} → is-acov (i ＝ i0 → A)) ⦄
   (non-triv : i1 ≠ i0)
-  (@♭ √ᵈ-is-prop
-    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
-      → ((γ : Δ¹ → Γ) → is-prop (A γ)) → (γ : Γ) → is-prop (√ᵈ A γ))
+  (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+                   → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
   (open Space)
   where
   open UIdS √ᵈ-is-prop
@@ -583,7 +626,7 @@ module DUA
 }
 
 \p{In order to show this map is an inverse, it is useful to characterise
-the paths in #{\Sigma_{A\ B} A \to B} and #{\textrm{Gl}(A,B,f)}:}
+the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
 
 \closedScope{
 \subtree[stt-00KW]{
@@ -736,15 +779,14 @@ to verify that this map is an equivalence at each endpoint.}
 \agda{
   opaque
     dua-retract→ : ∀ {@♭ 𝓤} f i → f i .Carrier → GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract→ f i x .fst =  coe-cov (UFib-is-fib f) 1-top x
+    dua-retract→ f i x .fst =  coe-cov (Carrier ∘ f) (UFib-is-fib f) 1-top x
     dua-retract→ f i x .snd refl
-      = (x , sym (happly (coe-cov-0≤1 (UFib-is-fib f) 1-top) x))
-
+      = (x , sym (happly (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) x))
 
     dua-retract : ∀ {@♭ 𝓤} f i → f i .Carrier ≃ GlΣ {𝓤} (dua→ f) i .Carrier
     dua-retract f i ._≃_.fwd = dua-retract→ f i
     dua-retract f i ._≃_.fwd-is-equiv
-      = Cov-NT-is-equiv
+      = Cov-Nat-is-equiv
           f (GlΣ (dua→ f)) (dua-retract→ f)
           (∂Δ¹-UP→
             ( is-equiv←qinv fr0
@@ -754,21 +796,21 @@ to verify that this map is an equivalence at each endpoint.}
       fr0 .fst x = x .snd refl .fst
       fr0 .snd .fst = ~refl
       fr0 .snd .snd a = Gl-path→ {A = f i0} {f i1} i0
-        ( happly ( coe-cov-0≤1 (UFib-is-fib f) 1-top) (fr0 .fst a)
+        ( happly ( coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (fr0 .fst a)
                  ∙ a .snd refl .snd
         , J-set! _
             ( refl
             , mk-square
                 (sym'∙ (happly
-                         (coe-cov-0≤1 (UFib-is-fib f) 1-top) (a .snd refl .fst))
+                         (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (a .snd refl .fst))
                          (a .snd refl .snd))))
 
       fr1 : quasi-inv (dua-retract→ f i1)
       fr1 .fst x = x .fst
-      fr1 .snd .fst x = coe-cov-id (UFib-is-fib f) _ x
+      fr1 .snd .fst x = coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ x
       fr1 .snd .snd (a , b)
         = Σ-path→
-            ( (coe-cov-id (UFib-is-fib f) _ a)
+            ( (coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ a)
             , funext→ (λ x → ¡ (non-triv x)))
 
   dua : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})

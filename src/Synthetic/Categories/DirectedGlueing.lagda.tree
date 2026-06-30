@@ -39,6 +39,7 @@ open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 }
@@ -159,16 +160,17 @@ module _
   Gl-Id : ∀ i → Gl F G f i → Gl F G f i → Type (𝓘 ⊔ 𝓥)
   Gl-Id (b , i) x y
     = Σ[ p ∶ x .fst ＝ y .fst ]
-       (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
-                 (Square (x .snd pi .snd) (y .snd pi .snd) (ap (f b) q) p))
+       (∀ (pi : i ＝ i0)
+        → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
+           (Square (x .snd pi .snd) (y .snd pi .snd) (ap (f b) q) p))
 
   Gl-Id-refl : ∀ i → (x : Gl F G f i) → Gl-Id i x x
   Gl-Id-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
 
   opaque
     Gl-Id-is-torsorial
-      : ∀ i → (x : Gl F G f i) → is-singleton (Σ _ (Gl-Id i x))
-    Gl-Id-is-torsorial i x
+      : ∀ (bi : B × Δ¹) → (x : Gl F G f bi) → is-singleton (Σ _ (Gl-Id bi x))
+    Gl-Id-is-torsorial bi x
       = is-singleton-structure←parts
           Sing-is-singleton
           (_ , refl)
@@ -184,26 +186,26 @@ module _
                          (x .snd refl .snd)))))
 
   IdS-Gl
-    : ∀ i → Identity-system (Gl F G f i) (𝓘 ⊔ 𝓥)
-  IdS-Gl i .Identity-system.IdS = Gl-Id i
-  IdS-Gl i .Identity-system.IdS←Id refl
-    = Gl-Id-refl i _
-  IdS-Gl i .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Gl-Id-is-torsorial i a) _
+    : ∀ bi → Identity-system (Gl F G f bi) (𝓘 ⊔ 𝓥)
+  IdS-Gl bi .Identity-system.IdS = Gl-Id bi
+  IdS-Gl bi .Identity-system.IdS←Id refl
+    = Gl-Id-refl bi _
+  IdS-Gl bi .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (Gl-Id-is-torsorial bi a) _
 
 Gl-Id→
   : ∀ {𝓤 𝓥} {B : Type 𝓤}
       {F G : B → Type 𝓥}
       (f : ∀ b → F b → G b)
-      (i : B × Δ¹)
-      {x y : Gl F G f i}
-    → Gl-Id {f = f} i x y → x ＝ y
-Gl-Id→ f i = Id←IdS ⦃ IdS-Gl {f = f} i ⦄
+      (bi : B × Δ¹)
+      {x y : Gl F G f bi}
+    → Gl-Id {f = f} bi x y → x ＝ y
+Gl-Id→ f bi = Id←IdS ⦃ IdS-Gl {f = f} bi ⦄
 }
 }
 
 \subtree[tot-L201]{
-\title{The data of a covariant fibration over #{\Delta^1}}
+\title{The data of a covariant type family over #{\Delta^1}}
 \taxon{Definition}
 
 \agda{
@@ -263,16 +265,16 @@ instance
 \title{The induced transport of a covariant family over #{Δ¹}}
 \taxon{Construction}
 
-\p{Given a covariant type family #{B \times \Delta^1}, we can construct a pair of
+\p{Given a covariant type family over #{B \times \Delta^1}, we can construct a pair of
 covariant families #{B \to \Type} together with a fibrewise map between them. We
 call this collection of data a \em{covariant bundle} over #{\Delta^1}.}
 
 \agda{
-trΣ
+total-tr-cov
   : ∀ {𝓤 𝓥} {B : Type 𝓤}
     → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
     → Cov-Δ¹-bundle 𝓥 B
-trΣ (F , Fcov)
+total-tr-cov (F , Fcov)
   = ( (F ∘ (_, i0) , covariant-base-change {P = F} (_, i0) Fcov)
     , (F ∘ (_, i1) , covariant-base-change {P = F} (_, i1) Fcov)
     , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id))
@@ -295,10 +297,10 @@ module _
   {𝓤 𝓥} {B : Type 𝓤}
   where
 
-  trΣ-inv
+  total-tr-cov-inv
     : Cov-Δ¹-bundle 𝓥 B
     → (Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
-  trΣ-inv ((A , Ac) , (B , Bc) , α)
+  total-tr-cov-inv ((A , Ac) , (B , Bc) , α)
     = (Gl A B α , Gl-is-covariant A B α Ac Bc)
 }
 
@@ -333,12 +335,14 @@ module _
          (Gl-is-covariant _ _ α Xc Yc (b ,_) x
            .central (Gl-map α b x , tr-Gl-hom α b x))
 
-  trΣ-section : ∀ x → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (trΣ (trΣ-inv x)) x
-  trΣ-section ((X , _) , (Y , _) , F) .fst b
+  total-tr-cov-section
+    : ∀ (x : Cov-Δ¹-bundle (𝓘 ⊔ 𝓥) B)
+      → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (total-tr-cov (total-tr-cov-inv x)) x
+  total-tr-cov-section ((X , _) , (Y , _) , F) .fst b
     = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
-  trΣ-section ((X , _) , (Y , _) , F) .snd .fst b
+  total-tr-cov-section ((X , _) , (Y , _) , F) .snd .fst b
     = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
-  trΣ-section ((X , Ac) , (Y , Bc) , F) .snd .snd b x@(y , p)
+  total-tr-cov-section ((X , Ac) , (Y , Bc) , F) .snd .snd b x@(y , p)
     = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant X Y F Ac Bc) (b ,_)) x
     ＝⟨ ap fst (tr-Gl F Ac Bc b x) ⟩
       x .fst
@@ -355,7 +359,7 @@ module _
 \p{To show that this map is an equivalence we assume an additional axiom; namely that
 for a crisp fibrewise map #{\alpha} between crisp covariant families over #{B \times
 \Delta^1}, to check it is an equivalence it suffices to check that for all #{b},
-#{\alpha_0} and #{\alpha_1} is an equivalence.}
+#{\alpha_{(b, 0)}} and #{\alpha_{(b,1)}} is an equivalence.}
 
 \remark{
 This axiom follows for example from the pair of axioms that [cubes
@@ -363,6 +367,55 @@ separate](stt-00J7) and the booleans cover the global points of #{\Delta^1}.
 }
 
 \agda{
+module _
+  {𝓤 𝓥} {B : Type 𝓤}
+  (FF@(F , Fc) : Σ (B × Δ¹ → Type (𝓘 ⊔ 𝓥)) is-covariant)
+  (let Fbc b = covariant-base-change {P = F} (b ,_) Fc)
+  where
+
+  Gl←cov-fam
+    : (i : B × Δ¹)
+    → F i
+    → Gl
+       (F ∘ (_, i0))
+       (F ∘ (_, i1))
+       (λ b → tr-cov {P = F} Fc (b ,_))
+       i
+  Gl←cov-fam (b , i) x .fst
+    = tr-cov-hom {P = F ∘ (b ,_)}
+        (Fbc b)
+        (Δ¹-hom←≤ 1-top)
+        x
+  Gl←cov-fam (b , i) x .snd refl
+    = ( x
+      , sym
+         (happly
+           (coe-cov-0≤1 (F ∘ (b ,_)) (Fbc b) 1-top)
+           x))
+
+  Gl←cov-fam-is-equiv-at-0
+    : ∀ b → is-equiv (Gl←cov-fam (b , i0))
+  Gl←cov-fam-is-equiv-at-0 b
+    = 3-for-2
+        (Gl-0-is-equiv
+           (F ∘ (_, i0))
+           (F ∘ (_, i1))
+           (λ b → tr-cov {P = F} Fc (b ,_))
+           b)
+        id-is-equiv
+
+  Gl←cov-fam-is-equiv-at-1
+    : ∀ b → is-equiv (Gl←cov-fam (b , i1))
+  Gl←cov-fam-is-equiv-at-1 b
+    = 3-for-2~
+        (tr-cov-idH~ (F ∘ (b ,_)) (Fbc b) (Δ¹-hom←≤ 1-top) (Δ¹-hom-≤-refl 1-top) h⁻¹)
+        (Gl-1-is-equiv
+           (F ∘ (_, i0))
+           (F ∘ (_, i1))
+           (λ b → tr-cov {P = F} Fc (b ,_))
+           b)
+        id-is-equiv
+
 module _
   {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
   (@♭ crisp-cov-Nat-is-equiv
@@ -372,70 +425,32 @@ module _
       → is-fibrewise-equiv α)
   where
 
-  @♭ trΣ-retraction→ : ∀ F i → F .fst i → trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (trΣ F) .fst i
-  trΣ-retraction→ FF@(F , Fc) (b , i) x .fst
-    = coe-cov (F ∘ (b ,_)) (covariant-base-change {P = F} (b ,_) Fc) 1-top x
-  trΣ-retraction→ (F , Fc) (b , i) x .snd refl
-    = (x , sym (happly (coe-cov-0≤1 (F ∘ (b ,_))
-                                    (covariant-base-change {P = F} (b ,_) Fc)
-                                    1-top) x))
+  Gl←cov-fam-is-equiv
+    : ∀ (@♭ F : Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
+      → is-fibrewise-equiv (Gl←cov-fam {𝓤} {𝓥} F)
+  Gl←cov-fam-is-equiv FF@(F , Fc)
+    = crisp-cov-Nat-is-equiv FF (total-tr-cov-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (total-tr-cov FF))
+        (Gl←cov-fam (F , Fc))
+        ( λ { b ∂Δ¹-1 → ♭-map-is-equiv (Gl←cov-fam-is-equiv-at-1 (F , Fc) b)
+            ; b ∂Δ¹-0 → ♭-map-is-equiv (Gl←cov-fam-is-equiv-at-0 (F , Fc) b) })
 
-  trΣ-retraction
-    : ∀ (@♭ F) i → F .fst i ≃ trΣ-inv {𝓤} {𝓥 ⊔ 𝓘} {B} (trΣ F) .fst i
-  trΣ-retraction F i ._≃_.fwd = trΣ-retraction→ F i
-  trΣ-retraction FF@(F , Fc) i ._≃_.fwd-is-equiv
-    = crisp-cov-Nat-is-equiv FF (trΣ-inv {𝓤}{𝓥 ⊔ 𝓘}{B} (trΣ FF))
-      (trΣ-retraction→ (F , Fc))
-      ( λ { b ∂Δ¹-1 → ♭-map-is-equiv (is-equiv←qinv (fr1 b))
-          ; b ∂Δ¹-0 → ♭-map-is-equiv (is-equiv←qinv (fr0 b)) }) i where
-    @♭ fr0 : ∀ b → quasi-inv (trΣ-retraction→ FF (b , i0))
-    fr0 b .fst x = x .snd refl .fst
-    fr0 b .snd .fst = ~refl
-    fr0 b .snd .snd a
-      = Gl-Id→ {F = F ∘ (_, i0)} {F ∘ (_, i1)}
-          (trΣ FF .snd .snd)
-          (b , i0)
-          ( happly
-               (coe-cov-0≤1
-                  (F ∘ (b ,_))
-                   (covariant-base-change {P = F} (b ,_) Fc)
-                   1-top)
-              (fr0 b .fst a)
-          ∙ a .snd refl .snd
-          ,  J-set! _
-               ( refl
-               , mk-square
-                   (sym'∙ (happly
-                            (coe-cov-0≤1
-                              (F ∘ (b ,_))
-                              (covariant-base-change {P = F} (b ,_) Fc)
-                              1-top)
-                            (a .snd refl .fst))
-                          (a .snd refl .snd))))
-
-    @♭ fr1 : ∀ b →  quasi-inv (trΣ-retraction→ FF (b , i1))
-    fr1 b .fst x = x .fst
-    fr1 b .snd .fst x = coe-cov-id (λ a → F (b , a))
-                          (covariant-base-change {P = F} (λ i → (b , i)) Fc) _ x
-    fr1 b .snd .snd (a , _)
-      = Σ-path→
-          ( (coe-cov-id
-               (λ i → F (b , i))
-               (covariant-base-change {P = F} (b ,_) Fc)
-               _
-               a)
-          , funext→ (λ x → ¡ (non-triv x)))
+  total-tr-cov-retraction
+    : ∀ (@♭ F : Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
+      → (bi : B × Δ¹)
+      → F .fst bi ≃ total-tr-cov-inv {𝓤} {𝓥 ⊔ 𝓘} {B} (total-tr-cov F) .fst bi
+  total-tr-cov-retraction F bi ._≃_.fwd = Gl←cov-fam {𝓤} {𝓥} F bi
+  total-tr-cov-retraction F bi ._≃_.fwd-is-equiv = Gl←cov-fam-is-equiv F bi
 }
 }
 
 \agda{
   opaque
-    trΣ-is-equiv
-      : is-equiv (♭-map (trΣ {𝓤} {𝓥 ⊔ 𝓘} {B}))
-    trΣ-is-equiv = is-equiv←qinv
-      ( ♭-map trΣ-inv
-      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (λ b → trΣ-retraction a b e⁻¹))))
-      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (trΣ-section {𝓤} {𝓥} a)))))
+    total-tr-cov-is-♭-equiv
+      : is-equiv (♭-map (total-tr-cov {𝓤} {𝓥 ⊔ 𝓘} {B}))
+    total-tr-cov-is-♭-equiv = is-equiv←qinv
+      ( ♭-map total-tr-cov-inv
+      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (λ b → total-tr-cov-retraction a b e⁻¹))))
+      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (total-tr-cov-section {𝓤} {𝓥} a)))))
 }
 }
 }

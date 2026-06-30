@@ -26,9 +26,14 @@ open import Axioms.UF
 
 \agda-imports{
 \agda{
+open import Synthetic.Directedness Δ¹ I
+
 open import Foundations.Prelude
+
 open import Core.Coslices
+
 open import Algebra.Lattice.Instances.Pointwise
+
 open import Modalities.Instances.Truncation
 
 open import Ergonomics.Auto
@@ -75,7 +80,7 @@ Spec-map
 Spec-map f g = LatticeAlgHom-∘ g f
 
 Obs : {𝓤 : Level} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
-Obs X = X → Δ¹
+Obs X = (X → Δ¹)
 
 ObsAlg : {𝓤 : Level} (X : Type 𝓤) → Algebra I (Obs X)
 ObsAlg X = Pointwise-Algebra X λ _ → initial-Algebra _
@@ -189,7 +194,7 @@ I-is-quasicoherent
 Quasicoherence is very related to an axiom in synthetic domain theory known
 as Phoa's principle. This axiom states that every map
 #{\II \to \II} is monotone, of the form
-#{f(x) = f(0) \vee (x \wedge f(1))}. We deduce this property from the axiom
+#{f(x) = (f(1) \wedge x) \vee f(0)}. We deduce this property from the axiom
 SQCP: that #{\II[x]} is quasicoherent.
 }
 
@@ -294,45 +299,59 @@ module _ (H : phoas-principle) where
 \p{
  We show that Phoa's principle implies that every endomorphism of #{Δ¹} is monotone.
  This is a consequence of the fact that the monotone maps from #{Δ¹} to #{Δ¹}
- are precisely the maps of the form #{f(x) = f(0) \vee (x \wedge f(1))},
+ are precisely the maps of the form #{f(x) = (f(1) \wedge x) \vee f(0)},
  and that these are all the maps from #{Δ¹} to #{Δ¹} by quasicoherence.
 }
 
 \agda{
-Δ¹-endos-are-mono : Type 𝓘
-Δ¹-endos-are-mono = ∀ (f : Δ¹ → Δ¹) → is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) f
+Δ¹-is-directed←phoa : phoas-principle → Δ¹-is-directed
+Δ¹-is-directed←phoa phoa f {a} {b} x
+  = f a ∧ f b
+      ＝⟨ ap₂ _∧_ (phoa f a) (phoa f b) ⟩
+    ((f i1 ∧ a) ∨ f i0) ∧ ((f i1 ∧ b) ∨ f i0)
+      ＝⟨ poly-is-mono (f i1) (f i0) x ⟩
+    (f i1 ∧ a) ∨ f i0
+      ＝⟨ sym (phoa f a) ⟩
+    f a ∎
 
-module _ (phoa : phoas-principle) where
-
-  Δ¹-endos-are-mono←phoa : Δ¹-endos-are-mono
-  Δ¹-endos-are-mono←phoa f {a} {b} x
-    = f a ∧ f b
-        ＝⟨ ap₂ _∧_ (phoa f a) (phoa f b) ⟩
-      ((f i1 ∧ a) ∨ f i0) ∧ ((f i1 ∧ b) ∨ f i0)
-        ＝⟨ poly-mono ⟩
-      (f i1 ∧ a) ∨ f i0
-        ＝⟨ sym (phoa f a) ⟩
-      f a ∎
-    where
-      poly-mono : ((f i1 ∧ a) ∨ f i0) ≤ ((f i1 ∧ b) ∨ f i0)
-      poly-mono
-        =
-        ∨-UP
-          ( ∨-≤-introl
-              (∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr x))
-          , ∨-≤-intror ≤-refl)
-
-module _ (H : SQCP) where
-
-  Δ¹-endos-are-mono←SQPC : Δ¹-endos-are-mono
-  Δ¹-endos-are-mono←SQPC = Δ¹-endos-are-mono←phoa (phoas-principle←SQCP H)
-
+Δ¹-is-directed←SQPC : SQCP → Δ¹-is-directed
+Δ¹-is-directed←SQPC = Δ¹-is-directed←phoa ∘ phoas-principle←SQCP
 }
+
 \p{
- Note that with the additional information that monotone maps from #{Δ¹} to #{Δ¹}
- are equivalent to #{Δ²} via the map
- #{(x,H) ↦ (x(0), x(1), H(0 \le 1))},
- we can also deduce SQCP from Δ¹-endos-are-mono.
+Note that with the additional information that #{Δ²} classifies monotone maps on
+#{Δ¹}, we can also deduce SQCP from #{Δ¹}-endos-are-mono.
+}
+}
+
+\subtree[fre-9F01]{
+\title{Quasicoherence when #{Δ²} classifies endomorphisms on #{Δ¹}}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-06-30}
+
+\p{
+When #{Δ²} classifies endomorphisms on #{Δ¹}, i.e., when it classifies monomorphism
+on #{Δ¹} and monomorphisms on #{Δ¹} classify endomorphisms, we may derive
+quasicoherence.
+}
+
+\agda{
+phoa←Δ¹-is-directed
+  : Δ¹-is-directed → Δ²-classifies-Δ¹-monos → phoas-principle
+phoa←Δ¹-is-directed endos-mono class α
+  = happly (ap fst (sym compute))
+  where
+  α-mono : PosetHom (Lattice.≤-poset I) (Lattice.≤-poset I)
+  α-mono = (α , endos-mono α)
+
+  compute : Δ¹-mono←Δ² (Δ²←Δ¹-mono α-mono) ＝ α-mono
+  compute = unap-equiv class (Δ²←Δ¹-mono←Δ² (Δ²←Δ¹-mono α-mono))
+
+SQCP←Δ¹-is-directed
+  : Δ¹-is-directed → Δ²-classifies-Δ¹-monos → SQCP
+SQCP←Δ¹-is-directed endos-mono class =
+  SQCP←phoas-principle (phoa←Δ¹-is-directed endos-mono class)
 }
 
 }

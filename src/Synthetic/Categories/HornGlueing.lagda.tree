@@ -153,6 +153,23 @@ opaque
               (f , (λ _ → ~refl))
               (SingS-is-single g))))
 
+cov-Δ²-bundle-Id←Arrow-equivs
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ²-bundle B 𝓥)
+      (F : ∀ b → Arrow-equiv (x .snd .snd .snd .fst b) (y .snd .snd .snd .fst b))
+      (G : ∀ b → Arrow-equiv (x .snd .snd .snd .snd b) (y .snd .snd .snd .snd b))
+      (h : ∀ b → F b .fst .Arrow-map.top ~ G b .fst .Arrow-map.bot)
+    → cov-Δ²-bundle-Id x y
+cov-Δ²-bundle-Id←Arrow-equivs x y F G H .fst b
+  = mk≃ (G b .fst .Arrow-map.top) (G b .snd .fst)
+cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .fst b
+  = mk≃ (G b .fst .Arrow-map.bot) (G b .snd .snd)
+cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .fst b
+  = mk≃ (F b .fst .Arrow-map.bot) (F b .snd .snd)
+cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .snd .fst b
+  = F b .fst .Arrow-map.comm ∙h (y .snd .snd .snd .fst b ◂ H b)
+cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .snd .snd b
+  = G b .fst .Arrow-map.comm
+
 instance
   cov-Δ²-bundle-IdS
     : ∀ {𝓤 𝓥} {B : Type 𝓤} → Identity-system (Cov-Δ²-bundle B 𝓥) (𝓤 ⊔ 𝓥)
@@ -312,6 +329,11 @@ module HornGluing
 
   Gl²-2-is-equiv : is-fibrewise-equiv Gl²-2
   Gl²-2-is-equiv = Gl-1-is-equiv _ Z _
+
+  tr-Gl²-refl
+    : ∀ {i j} {p q : j ≤ i} b → tr (Gl² ∘ (b ,_)) (Δ²-refl {p = p}{q}) ~ id
+  tr-Gl²-refl b x = tr∘ (Gl²' ∘ _≃_.bwd ×-assoc ∘ (b ,_)) □←Δ²-upper Δ²-refl
+                  ∙ sym (tr-refl _ x prop!)
 }
 }
 
@@ -325,7 +347,7 @@ covariant families, which by \ref{tot-L003} is covariant.
 }
 
 \agda{
-module _
+module Gl²-cov
   {𝓤 𝓥} {B : Type 𝓤}
   (X Y Z : B → Type (𝓘 ⊔ 𝓥)) (β : ∀ b → Y b → Z b) (α : ∀ b → X b → Y b)
   where
@@ -376,12 +398,13 @@ families over #{B} and fibrewise maps between them.}
 module _
   {𝓤 𝓥} {B : Type 𝓤}
   where
+  open Gl²-cov {𝓤} {𝓥}
 
   tr²Σ-inv
     : Cov-Δ²-bundle B (𝓥 ⊔ 𝓘)
     → (Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant)
   tr²Σ-inv ((A , Ac) , (B , Bc) , (C , Cc) , β , α)
-    = (HornGluing.Gl² {𝓤} {𝓥} A B C β α , Gl²-is-covariant {𝓤} {𝓥} A B C β α Ac Bc Cc)
+    = (HornGluing.Gl² {𝓤} {𝓥} A B C β α , Gl²-is-covariant A B C β α Ac Bc Cc)
 }
 
 
@@ -390,60 +413,109 @@ module _
   {𝓤 𝓥} {B : Type 𝓤} (c@((X , Xc) , (Y , Yc) , (Z , Zc) , f , g) : Cov-Δ²-bundle B (𝓘 ⊔ 𝓥))
   where
   open HornGluing {𝓤} {𝓥} X Y Z f g
+  open Gl²-cov {𝓤} {𝓥} X Y Z f g
 
   tr-Gl²-0≤1
     : ∀ b
       → Arrow-equiv
         (tr-cov-hom
           {P = Gl² ∘ (b ,_)}
-          (Gl²∘-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc (b ,_))
+          (Gl²∘-is-covariant Xc Yc Zc (b ,_))
           Δ²-0≤1)
         (g b)
   tr-Gl²-0≤1 b
-    = concat-Arrow-equiv
-       (concat-Arrow-equiv
-         (tr-Δ²-0≤1-lemma (Gl² ∘ (b ,_))
-           (Gl²∘-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc (b ,_)))
-         (adjust-tr-cov-hom
-           (Gl²∘-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc (λ i → b , (i , i0)))
+    = tr-cov-hom (Gl²∘-is-covariant Xc Yc Zc (b ,_)) Δ²-0≤1
+
+    Arr≃⟨ tr-Δ²-0≤1-lemma (Gl² ∘ (b ,_)) (Gl²∘-is-covariant Xc Yc Zc (b ,_)) ⟩
+
+     tr-cov-hom (Gl²∘-is-covariant Xc Yc Zc λ i → (b , δ₂² i)) 0≤1
+
+    Arr≃⟨ adjust-tr-cov-hom
+           (Gl²∘-is-covariant Xc Yc Zc (λ i → b , δ₂² i))
            (Gl∘-is-covariant (b ,_) X Y g Xc Yc)
-           (Gl-0 (Gl X Y g) (Z ∘ fst) (λ i → fibre-map (i .snd) (i .fst)) ∘ (b ,_))
+           (Gl-0 (Gl X Y g ∘ (b ,_)) (const (Z b)) (λ i → fibre-map i b))
            (Gl-0-is-equiv (Gl X Y g ∘ (b ,_)) (const (Z b)) (λ i → fibre-map i b))
-           0≤1))
-       (tr-Gl-0≤1H {𝓤}{𝓥} g Xc Yc b)
+           0≤1 ⟩
 
-  tr-Gl²-1≤2
-    : ∀ b
-      → Arrow-equiv
-          (tr-cov-hom
-              {P = Gl² ∘ (b ,_)}
-              (Gl²∘-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc (b ,_))
-              Δ²-1≤2)
-          (f b)
-  tr-Gl²-1≤2 b
-    = concat-Arrow-equiv
-        ( (mk-amap id id {!!})
-        , (id-is-equiv , id-is-equiv))
-        (concat-Arrow-equiv
-          (tr-Gl-0≤1H {𝓤} {𝓥} (fibre-map i1) (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc b)
-          ( mk-amap (Gl-1 X Y g b) id ~refl
-          , Gl-1-is-equiv X Y g b
-          , id-is-equiv))
+     tr-cov-hom (Gl∘-is-covariant (b ,_) X Y g Xc Yc) 0≤1
 
-  tr-Gl²-1~
-    : ∀ b → tr-Gl²-1≤2 b .fst .Arrow-map.top ~ tr-Gl²-0≤1 b .fst .Arrow-map.bot
-  tr-Gl²-1~ b = ~refl
+   Arr≃⟨ tr-Gl-0≤1H {𝓤} {𝓥} g Xc Yc b ⟩
 
-  tr²Σ-section
-    : cov-Δ²-bundle-Id {𝓤} {𝓘 ⊔ 𝓥} {B} (tr²Σ (tr²Σ-inv {𝓤} {𝓥} c)) c
-  tr²Σ-section .fst b
-    = mk≃ (tr-Gl²-0≤1 b .fst .Arrow-map.top) (tr-Gl²-0≤1 b .snd .fst)
-  tr²Σ-section .snd .fst b
-    = mk≃ (tr-Gl²-0≤1 b .fst .Arrow-map.bot) (tr-Gl²-0≤1 b .snd .snd)
-  tr²Σ-section .snd .snd .fst b
-    = mk≃ (tr-Gl²-1≤2 b .fst .Arrow-map.bot) (tr-Gl²-1≤2 b .snd .snd)
-  tr²Σ-section .snd .snd .snd .fst b = tr-Gl²-1≤2 b .fst .Arrow-map.comm
-  tr²Σ-section .snd .snd .snd .snd b = tr-Gl²-0≤1 b .fst .Arrow-map.comm
+     g b Arr≃∎
+
+  lemma2
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+        (F : Y → Type 𝓦) (Fc : is-covariant F)
+        (Ffc : is-covariant (F ∘ f))
+        (h : covariant-base-change {P = F} f Fc ＝ Ffc)
+        {a b : X}
+        (h : Hom X a b)
+        (g : Hom Y (f a) (f b))
+        (p : g ＝ ap-hom f h)
+      → tr-cov-hom {P = F} Fc g
+      ~ tr-cov-hom {P = F ∘ f} Ffc h
+  lemma2 f F Fc Ffc refl h _ refl x = tr-cov-hom-unique F Fc (ap-hom f h) x
+    (tr-cov-hom (covariant-base-change {P = F} f Fc) h x)
+    (adjust-homᵈ (F ∘ f ∘ h .Homᵈ.hom)
+      (ap (λ p → coe p x) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom0))))
+      (ap (λ p → coe p _) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom1))))
+      (tr-cov-over (covariant-base-change {P = F} f Fc) h x) )
+
+  opaque
+    unfolding tr-cov-hom
+    tr-Gl²-1≤2
+      : ∀ b
+        → Arrow-equiv
+            (tr-cov-hom
+                {P = Gl² ∘ (b ,_)}
+                (Gl²∘-is-covariant Xc Yc Zc (b ,_))
+                Δ²-1≤2)
+            (f b)
+    tr-Gl²-1≤2 b
+      = tr-cov-hom (Gl²∘-is-covariant Xc Yc Zc (b ,_)) Δ²-1≤2
+
+      Arr≃⟨ tr-Δ²-1≤2-lemma (Gl² ∘ (b ,_)) (Gl²∘-is-covariant Xc Yc Zc (b ,_)) ⟩
+
+        tr-cov-hom {P = Gl² ∘ (λ i → b , δ₀² i)}
+          (Gl²∘-is-covariant Xc Yc Zc λ i → b , δ₀² i) 0≤1
+
+      Arr≃⟨ adjust-tr-cov-hom
+              {F = Gl² ∘ (λ i → b , δ₀² i)}
+              (Gl²∘-is-covariant Xc Yc Zc λ i → b , δ₀² i)
+              (Gl∘-is-covariant (b ,_) (Gl X Y g ∘ (_, i1)) Z (fibre-map i1)
+                (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc)
+              (λ _ → id) (λ _ → id-is-equiv) 0≤1 ⟩
+
+        tr-cov-hom
+          {P = Gl (Gl X Y g ∘ (_, i1)) Z (fibre-map i1) ∘ (b ,_)}
+          (Gl∘-is-covariant (b ,_) (Gl X Y g ∘ (_, i1)) Z (fibre-map i1)
+            (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc)
+          0≤1
+
+      Arr≃⟨  tr-Gl-0≤1H {𝓤} {𝓥}
+              (fibre-map i1)
+              (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc b  ⟩
+
+        f b ∘ Gl-1 X Y g b
+
+      Arr≃⟨ (  mk-amap (Gl-1 X Y g b) id ~refl
+            , (Gl-1-is-equiv X Y g b , id-is-equiv)) ⟩
+
+        f b Arr≃∎
+
+    tr-Gl²-1~
+      : ∀ b → tr-Gl²-1≤2 b .fst .Arrow-map.top ~ tr-Gl²-0≤1 b .fst .Arrow-map.bot
+    tr-Gl²-1~ b = Gl²-1 b ◂ tr-Gl²-refl b
+
+    tr²Σ-section
+      : cov-Δ²-bundle-Id {𝓤} {𝓘 ⊔ 𝓥} {B} (tr²Σ (tr²Σ-inv {𝓤} {𝓥} c)) c
+    tr²Σ-section
+      = cov-Δ²-bundle-Id←Arrow-equivs
+          (tr²Σ (tr²Σ-inv {𝓤} {𝓥} c))
+          c
+          tr-Gl²-1≤2
+          tr-Gl²-0≤1
+          tr-Gl²-1~
 }
 
 \agda{
@@ -532,10 +604,10 @@ module _
   where
   open HornGluing {𝓤} {𝓥}
 
-  tr²Σ-retraction-is-equiv
+  Gl²←cov-fam-is-equiv
     : ∀ (@♭ F : Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant) (b : B × Δ²)
       → is-equiv (Gl²←cov-fam {𝓤} {𝓥} F b)
-  tr²Σ-retraction-is-equiv F = crisp-cov-Nat-is-equiv
+  Gl²←cov-fam-is-equiv F = crisp-cov-Nat-is-equiv
     F
     (tr²Σ-inv {𝓤} {𝓥 ⊔ 𝓘}{B} (tr²Σ F))
     (Gl²←cov-fam F)
@@ -551,7 +623,7 @@ module _
           ( (♭-map (tr²Σ-inv {𝓤} {𝓘 ⊔ 𝓥}))
           , ♭-ind (λ F
                    → mapply♭ (mod♭ (ext! λ a
-                   → mk≃ (Gl²←cov-fam {𝓤} {𝓥} F a) (tr²Σ-retraction-is-equiv F a) e⁻¹)))
+                   → mk≃ (Gl²←cov-fam {𝓤} {𝓥} F a) (Gl²←cov-fam-is-equiv F a) e⁻¹)))
           , ♭-ind (λ a → mapply♭ (mod♭ (ext! (tr²Σ-section {𝓤}{𝓥} a)))))
 }
 }

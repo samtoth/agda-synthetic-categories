@@ -19,6 +19,7 @@ module Synthetic.Categories.HornGlueing
   where
 
 open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²
 private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Axioms.UF
@@ -188,7 +189,7 @@ tr²Σ' (F , Fcov)
 
 
 \agda{
-module _
+module HornGluing
   {𝓤 𝓥} {B : Type 𝓤}
   (X Y Z : B → Type (𝓘 ⊔ 𝓥)) (β : ∀ b → Y b → Z b) (α : ∀ b → X b → Y b)
   where
@@ -266,20 +267,27 @@ module _
   {𝓤 𝓥} {B : Type 𝓤}
   (X Y Z : B → Type (𝓘 ⊔ 𝓥)) (β : ∀ b → Y b → Z b) (α : ∀ b → X b → Y b)
   where
+  open HornGluing {𝓤} {𝓥} X Y Z β α
+
+  Gl²'-is-covariant
+    : is-covariant X → is-covariant Y → is-covariant Z
+    → is-covariant Gl²'
+  Gl²'-is-covariant Xc Yc Zc
+    = Gl-is-covariant
+        (Gl X Y α)
+        (Z ∘ fst)
+        (uncurry fibre-map ∘ ×-swap→)
+        (Gl-is-covariant X Y α Xc Yc)
+        (covariant-base-change {P = Z} fst Zc)
 
   Gl²-is-covariant
     : is-covariant X → is-covariant Y → is-covariant Z
-    → is-covariant (Gl² {𝓤} {𝓥} X Y Z β α)
+    → is-covariant Gl²
   Gl²-is-covariant Xc Yc Zc
     = covariant-base-change
-        {P = Gl²' {_}{𝓥}X Y Z β α}
+        {P = Gl²'}
         (_≃_.bwd ×-assoc ∘ (id ⊗ □←Δ²-upper))
-        (Gl-is-covariant
-          (Gl X Y α)
-          (Z ∘ fst)
-          (uncurry (fibre-map {_} {𝓥} X Y Z β α) ∘ ×-swap→)
-          (Gl-is-covariant X Y α Xc Yc)
-          (covariant-base-change {P = Z} fst Zc))
+        (Gl²'-is-covariant Xc Yc Zc)
 }
 }
 
@@ -301,83 +309,128 @@ module _
     : Cov-Δ²-bundle B (𝓥 ⊔ 𝓘)
     → (Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant)
   tr²Σ-inv ((A , Ac) , (B , Bc) , (C , Cc) , β , α)
-    = (Gl² {𝓤} {𝓥} A B C β α , Gl²-is-covariant {𝓤} {𝓥} A B C β α Ac Bc Cc)
+    = (HornGluing.Gl² {𝓤} {𝓥} A B C β α , Gl²-is-covariant {𝓤} {𝓥} A B C β α Ac Bc Cc)
 }
 
 
 \agda{
+opaque
+  unfolding tr-cov
+  adjust-transport
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+        (Fc : is-covariant F) (Gc : is-covariant G)
+        (e : ∀ a → F a ≃ G a)
+        (h : Δ¹ → A)
+      → Arrow-equiv (tr-cov {P = F} Fc h) (tr-cov {P = G} Gc h)
+  adjust-transport {F = F} {G} Fc Gc e h .fst .Arrow-Π.top = e (h i0) ._≃_.fwd
+  adjust-transport {F = F} {G} Fc Gc e h .fst .Arrow-Π.bot = e (h i1) ._≃_.fwd
+  adjust-transport {F = F} {G} Fc Gc e h .fst .Arrow-Π.comm x
+    = sym (ap fst (central (Gc h (e (h i0) ._≃_.fwd x))
+                           ( e (h i1) ._≃_.fwd (tr-cov {P = F} Fc h x)
+                           , apᵈ-hom
+                              (λ {i} → e (h i) ._≃_.fwd)
+                              (tr-cov-filler {P = F} Fc h x))))
+  adjust-transport {F = F} {G} Fc Gc e h .snd .fst = e (h i0) ._≃_.fwd-is-equiv
+  adjust-transport {F = F} {G} Fc Gc e h .snd .snd = e (h i1) ._≃_.fwd-is-equiv
+
+  tr-cov-base-change
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) (F : B → Type 𝓦)
+        (Fc : is-covariant F)
+        (h : Δ¹ → A)
+      → tr-cov {P = F ∘ f} (covariant-base-change {P = F} f Fc) h
+      ~ tr-cov {P = F} Fc (f ∘ h)
+  tr-cov-base-change f F Fc h x = refl
 
 module _
-  {𝓤 𝓥} {B : Type 𝓤} (x@((X , Xc) , (Y , Yc) , (Z , Zc) , f , g) : Cov-Δ²-bundle B (𝓘 ⊔ 𝓥))
+  {𝓤 𝓥} {B : Type 𝓤} (c@((X , Xc) , (Y , Yc) , (Z , Zc) , f , g) : Cov-Δ²-bundle B (𝓘 ⊔ 𝓥))
   where
+  open HornGluing {𝓤} {𝓥} X Y Z f g
 
-  tr-Gl²-δ₀²
-    : ∀ b
-      → Arrow-equiv
-        (tr-cov
-          {P = Gl² {𝓤} {𝓥} X Y Z f g}
-          (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc)
-          λ i → b , δ₀² i)
-        (f b)
-  tr-Gl²-δ₀² b .fst .Arrow-Π.top = Gl²-1 {𝓤} {𝓥} X Y Z f g b
-  tr-Gl²-δ₀² b .fst .Arrow-Π.bot = Gl²-2 {𝓤} {𝓥} X Y Z f g b
-  tr-Gl²-δ₀² b .fst .Arrow-Π.comm (a , p)
-    = Gl²-2 {𝓤} {𝓥} X Y Z f g b
-        (tr-cov
-          {P = Gl² {𝓤} {𝓥} X Y Z f g}
-          (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc) (λ i → (b , δ₀² i))
-          (a , p))
-    ＝⟨ {!!} ⟩
-      f b (Gl²-1 {𝓤} {𝓥} X Y Z f g b (a , p))
-    ∎
-  tr-Gl²-δ₀² b .snd = {!!}
+  opaque
+    unfolding tr-cov
+    -- tr (Gl² ∘ (id ⊗ δ₀²)) (b, _) ≃ tr (Gl (Gl X Y g) Z fibre-map) ≃ fibre-map i1 b ≃ f b
+    tr-Gl²-δ₀²
+      : ∀ b
+        → Arrow-equiv
+          (tr-cov
+            {P = Gl²}
+            (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc)
+            (λ i → b , δ₀² i))
+          (f b)
+    tr-Gl²-δ₀² b
+        = concat-Arrow-equiv
+            (tr-Gl-0≤1
+              {𝓘 ⊔ 𝓤} {𝓘 ⊔ 𝓥} {B = B × Δ¹} {X = Gl X Y g} {Z ∘ fst}
+              (uncurry fibre-map ∘ ×-swap→)
+              (Gl-is-covariant X Y g Xc Yc)
+              (covariant-base-change {P = Z} fst Zc)
+              (b , i1))
+            ( (mk-amap (Gl-1 X Y g b) id ~refl)
+            , (Gl-1-is-equiv X Y g b) , id-is-equiv)
 
-  tr-Gl²-δ₂²
-    : ∀ b
-      → Arrow-equiv
-        (tr-cov
-          {P = Gl² {𝓤} {𝓥} X Y Z f g}
-          (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc)
-          λ i → b , δ₂² i)
-        (g b)
-  tr-Gl²-δ₂² b .fst .Arrow-Π.top = Gl²-0 {𝓤} {𝓥} X Y Z f g b
-  tr-Gl²-δ₂² b .fst .Arrow-Π.bot = Gl²-1 {𝓤} {𝓥} X Y Z f g b
-  tr-Gl²-δ₂² b .fst .Arrow-Π.comm (a , p)
-    = Gl²-1 {𝓤} {𝓥} X Y Z f g b
-        (tr-cov
-          {P = Gl² {𝓤} {𝓥} X Y Z f g}
-          (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc)
-          (λ i → b , δ₂² i)
-          (a , p))
-    ＝⟨⟩
-      {!!}
-    ＝⟨ {!!} ⟩
-      g b {!p refl .fst!}
-    ＝⟨⟩
-      g b (Gl²-0 {𝓤} {𝓥} X Y Z f g b (a , p))
-    ∎
-  tr-Gl²-δ₂² b .snd = {!!}
+    tr-Gl²-δ₂²
+      : ∀ b
+        → Arrow-equiv
+          (tr-cov
+            {P = Gl²}
+            (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc)
+            λ i → b , δ₂² i)
+          (g b)
+    tr-Gl²-δ₂² b
+      = concat-Arrow-equiv
+          {f = tr-cov
+                 {P = Gl² ∘ (id ⊗ δ₂²)}
+                 (covariant-base-change
+                   {P = Gl²}
+                   (id ⊗ δ₂²)
+                   (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc))
+                 (b ,_)}
+          {g = tr-cov
+                 {P = Gl X Y g}
+                 (Gl-is-covariant X Y g Xc Yc)
+                 (b ,_)}
+          (adjust-transport
+             {F = Gl² ∘ (id ⊗ δ₂²)}
+             {Gl X Y g}
+             (covariant-base-change
+                   {P = Gl²}
+                   (id ⊗ δ₂²)
+                   (Gl²-is-covariant {𝓤} {𝓥} X Y Z f g Xc Yc Zc))
+             (Gl-is-covariant X Y g Xc Yc)
+             (λ b → mk≃ (Gl-0 (Gl X Y g) (Z ∘ fst) (uncurry fibre-map ∘ ×-swap→) b)
+                        (Gl-0-is-equiv (Gl X Y g) (Z ∘ fst) (uncurry fibre-map ∘ ×-swap→) b))
+             (b ,_))
+          (tr-Gl-0≤1 {𝓤} {𝓥} g Xc Yc b)
 
-  tr²Σ-section
-    : cov-Δ²-bundle'-Id {𝓤} {𝓘 ⊔ 𝓥} {B}
-              (tr²Σ' (tr²Σ-inv {𝓤} {𝓥} (x)))
-              (Cov-Δ²-bundle-decoh x)
-  tr²Σ-section .fst b
-    = mk≃ (Gl²-0 {𝓤} {𝓥} {B} X Y Z f g b) (Gl²-0-is-equiv {𝓤}{𝓥} X Y Z f g b)
-  tr²Σ-section .snd .fst b
-    = mk≃ (Gl²-1 {𝓤} {𝓥} {B} X Y Z f g b) (Gl²-1-is-equiv {𝓤}{𝓥} X Y Z f g b)
-  tr²Σ-section .snd .snd .fst b
-    = mk≃ (Gl²-1 {𝓤} {𝓥} {B} X Y Z f g b) (Gl²-1-is-equiv {𝓤}{𝓥} X Y Z f g b)
-  tr²Σ-section .snd .snd .snd .fst b
-    = mk≃ (Gl²-2 {𝓤} {𝓥} {B} X Y Z f g b) (Gl²-2-is-equiv {𝓤}{𝓥} X Y Z f g b)
-  tr²Σ-section .snd .snd .snd .snd .fst b x
-    =  Gl²-1 {𝓤} {𝓥} X Y Z f g b (tr (Gl² {𝓤} {𝓥} X Y Z f g ∘ (b ,_)) Δ²-refl x)
-    ＝⟨ ap (Gl²-1 {𝓤} {𝓥} {B} X Y Z f g b)
-           {tr (Gl² {𝓤} {𝓥} X Y Z f g ∘ (b ,_)) Δ²-refl x}
-           {x}
-           {!!} ⟩
-      Gl²-1 {𝓤} {𝓥} X Y Z f g b x ∎
-  tr²Σ-section .snd .snd .snd .snd .snd .fst b = tr-Gl²-δ₀² b .fst .Arrow-map.comm
-  tr²Σ-section .snd .snd .snd .snd .snd .snd b = tr-Gl²-δ₂² b .fst .Arrow-map.comm
+  opaque
+    unfolding tr-cov tr-Gl²-δ₂² tr-Gl²-δ₀² adjust-transport
+    tr²Σ-section
+      : cov-Δ²-bundle'-Id {𝓤} {𝓘 ⊔ 𝓥} {B}
+                (tr²Σ' (tr²Σ-inv {𝓤} {𝓥} c))
+                (Cov-Δ²-bundle-decoh c)
+    tr²Σ-section .fst b
+      = mk≃ (Gl²-0 b) (Gl²-0-is-equiv b)
+    tr²Σ-section .snd .fst b
+      = mk≃ (Gl²-1 b) (Gl²-1-is-equiv b)
+    tr²Σ-section .snd .snd .fst b
+      = mk≃ (Gl²-1 b) (Gl²-1-is-equiv b)
+    tr²Σ-section .snd .snd .snd .fst b
+      = mk≃ (Gl²-2 b) (Gl²-2-is-equiv b)
+    tr²Σ-section .snd .snd .snd .snd .fst b x
+      =  Gl²-1 b (tr (Gl² ∘ (b ,_)) Δ²-refl x)
+      ＝⟨ ap (Gl²-1 b)
+             ( tr (Gl² ∘ (b ,_)) Δ²-refl x
+             ＝⟨  tr∘
+                   (Gl²' ∘ _≃_.bwd ×-assoc)
+                   ((b ,_) ∘ □←Δ²-upper)
+                   Δ²-refl {x} ⟩
+               tr (Gl²' ∘ _≃_.bwd ×-assoc)
+                  (ap (λ i → (b , □←Δ²-upper i)) Δ²-refl)
+                  x
+             ＝⟨ sym (tr-refl _ x (ap-∘ (b ,_) □←Δ²-upper Δ²-refl  ∙ ap (ap (b ,_)) prop!)) ⟩
+               x ∎) ⟩
+        Gl²-1 b x ∎
+    tr²Σ-section .snd .snd .snd .snd .snd .fst b = tr-Gl²-δ₀² b .fst .Arrow-map.comm
+    tr²Σ-section .snd .snd .snd .snd .snd .snd b = tr-Gl²-δ₂² b .fst .Arrow-map.comm
 }
 }

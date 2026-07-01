@@ -8,20 +8,28 @@
 open import Foundations.Universes
 open import Foundations.Identity
 open import Foundations.Empty
+open import Foundations.Singletons
 open import Algebra.Lattice
 open import Synthetic.Quasicoherence
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+
+import Synthetic.Categories.Precategories
+import Synthetic.Hom
 
 module Synthetic.Categories.HornGlueing
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (@♭ non-triv : i1 ＝ i0 → ∅)
   (@♭ phoa : Δ¹-endos-are-mono Δ¹ I I-distr)
+  (open Synthetic.Categories.Precategories Δ¹ I)
+  (@♭ Δ¹-is-segal : is-segal Δ¹)
+  (let @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I)
+  (open Synthetic.Hom Δ¹ i0 i1)
+  (@♭ Δ²-is-coskeletal : ∀ {x y} → is-prop (Hom Δ² x y))
   where
 
-open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
 module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²
 module I[x] = Lattice (Free-Lattice I I-distr)
-private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Axioms.UF
 }
@@ -42,7 +50,6 @@ open import Core.ArrowEquiv
 
 open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
-open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Simplicial Δ¹ I
@@ -51,6 +58,11 @@ open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
 open import Synthetic.Categories.DirectedGlueing Δ¹ I I-distr non-triv phoa
 }
+}
+
+\agda{
+Δ²-is-segal : is-segal Δ²
+Δ²-is-segal = is-segal←retract Δ²-retract-Δ¹×Δ¹ (×-is-segal Δ¹-is-segal Δ¹-is-segal)
 }
 
 \subtree[tot-AA01]{
@@ -565,7 +577,7 @@ module _
           , covariant-base-change {P = F} (id ⊗ (_, i0)) Fc)
           (b , i)
           (tr F (ap (b ,_) Δ²-refl) x)
-    Gl²←cov-fam (b , (i , i0)) x .snd refl .snd
+    Gl²←cov-fam (b , ii@(i , i0)) x .snd refl .snd
       = (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2
              (tr-cov-hom {P = F ∘ (λ i → b , (i , i0))}
                 (covariant-base-change {P = F} (λ i → b , (i , i0)) Fc)
@@ -576,7 +588,7 @@ module _
                      (covariant-base-change {P = F ∘ (b ,_)} δ₂² (Fbc b))
                      refl
                      (Δ¹-hom←≤ 1-top)
-                     (Δ²-hom←≤ ((i , i0) ⦃ 0-init ⦄) 1 (Δ²-ext (1-top , ≤-refl)))
+                     (Δ²-hom←≤ (i , i0) 1 (Δ²-ext (1-top , ≤-refl)))
                      (Hom-ext→
                        ( (λ j
                           → Δ²-ext
@@ -585,12 +597,39 @@ module _
                        , (Δ²-is-set _ _ _ _ , Δ²-is-set _ _ _ _)))
                      (tr F (ap (b ,_) Δ²-refl) x)
                      )) ⟩
+
         (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2
            (tr-cov-hom {P = F ∘ (b ,_)}
               (Fbc b)
               (Δ²-hom←≤ ((i , i0) ⦃ 0-init ⦄) 1 (Δ²-ext (1-top , ≤-refl)))
               (tr F (ap (b ,_) Δ²-refl) x)))
+
       ＝⟨ {!!} ⟩
+
+        tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2
+           (tr-cov-hom {P = F ∘ (b ,_)}
+              (Fbc b)
+              (Δ²-hom←≤ ii 1 (Δ²-ext (1-top , ≤-refl)))
+              (tr F (ap (b ,_) Δ²-refl) x))
+
+      ＝⟨ sym ( tr-cov-∘ Δ²-is-segal (F ∘ (b ,_)) (Fbc b)
+                  Δ²-1≤2 (Δ²-hom←≤ ii 1 (Δ²-ext (1-top , ≤-refl)))
+                  (tr F (ap (b ,_) Δ²-refl) x)) ⟩
+
+        tr-cov-hom {P = F ∘ (b ,_)} (Fbc b)
+          (  Δ²-1≤2
+          ∘[ Δ²-is-segal ]
+            (Δ²-hom←≤ ii 1 (Δ²-ext (1-top , ≤-refl))))
+          (tr F (ap (b ,_) Δ²-refl) x)
+
+      ＝⟨ tr-cov-equal-hom {P = F ∘ (b ,_)} (Fbc b)
+            (  Δ²-1≤2
+            ∘[ Δ²-is-segal ]
+              (Δ²-hom←≤ ii 1 (Δ²-ext (1-top , ≤-refl))))
+            (Δ²-top (i , i0))
+            (Δ²-is-coskeletal _ _)
+            (tr F (ap (b ,_) Δ²-refl) x) ⟩
+
         (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) (Δ²-top (i , i0))
                 (tr F (ap (b ,_) Δ²-refl) x))
       ＝⟨ ap (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) (Δ²-top (i , i0)))

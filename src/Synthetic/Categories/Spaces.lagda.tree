@@ -68,6 +68,7 @@ open import Ergonomics.Extensionality
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
 open import Core.PullbackPowers
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
@@ -75,11 +76,21 @@ open import Core.FunctorialityPullbacks
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
+
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private
+  @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²
+module I[x] = Lattice (Free-Lattice I I-distr)
+
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.DirectedGlueing Δ¹ I I-distr non-triv Δ¹-endos-mono
+open import Synthetic.Categories.HornGlueing Δ¹ I I-distr non-triv Δ¹-endos-mono {!!} {!!}
 open import Synthetic.Categories.EquivCovariantFamilies Δ¹ I I-distr
 }
 }
@@ -516,6 +527,13 @@ opaque
       → ∀ x → (Homᵈ (Space.Carrier ∘ f) x (F x))
       → tr-𝓢 f x ＝ F x
   tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
+
+tr-𝓢-hom
+  : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (F : A → Space 𝓥)
+      {x y} (f : Hom A x y)
+    → Space.Carrier (F x) → Space.Carrier (F y)
+tr-𝓢-hom F = tr-cov-hom {P = Space.Carrier ∘ F} (UFib-is-fib F)
+
 }
 
 \p{Directed univalence then says that the induced map
@@ -589,21 +607,170 @@ module _
             (♭-map (total-tr-cov {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
       ammap .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
       ammap .Arrow-Π.bot = ♭-map Cov-bundle←SpaceΣ
-      ammap .Arrow-Π.comm (mod♭ f) = mapply♭ (mod♭ ( ext! ⦃ cov-Δ¹-bundle-IdS ⦄
-        ( (λ _ → id≃)
-        , (λ _ → id≃)
-        , (λ _ → ~refl))))
+      ammap .Arrow-Π.comm (mod♭ f) = refl
 
       ammape
         : Arrow-equiv
             (♭-map (postcomp Γ (tot-dua→ {𝓤 ⊔ 𝓘})))
             (♭-map (total-tr-cov  {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
       ammape .fst = ammap
-      ammape .snd .fst
-        = is-equiv-∘
-            (UIdS.UP-UFib √ᵈ-is-prop)
-            (♭-map-is-equiv uncurry-is-equiv)
+      ammape .snd .fst = is-equiv-∘ UP-UFib (♭-map-is-equiv uncurry-is-equiv)
       ammape .snd .snd = Cov-bundle←SpaceΣ-is-♭-equiv
 }
+}
+}
+
+\subtree[tot-56BW]{
+\title{#{Δ²}-directed univalence}
+
+\agda{
+Space²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
+Space²Σ 𝓥
+  = Σ[ X Y Z ∶ Space 𝓥 ]
+    ( (Y .Space.Carrier → Z .Space.Carrier)
+    × (X .Space.Carrier → Y .Space.Carrier))
+
+SpaceΛ₁²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
+SpaceΛ₁²Σ 𝓥
+  = Σ[ X Y Y' Z ∶ Space 𝓥 ]
+    ( (Y .Space.Carrier ≃ Y' .Space.Carrier)
+    × (Y' .Space.Carrier → Z .Space.Carrier)
+    × (X .Space.Carrier → Y .Space.Carrier))
+
+SpaceΛ₁²Σ-decoh
+  : ∀ {@♭ 𝓤} → Space²Σ 𝓤 → SpaceΛ₁²Σ 𝓤
+SpaceΛ₁²Σ-decoh (A , B , C , f , g) = (A , B , B , C , id≃ , f , g)
+
+SpaceΛ₁²Σ-decoh-is-equiv
+  : ∀ {@♭ 𝓤} → is-equiv (SpaceΛ₁²Σ-decoh {𝓤})
+SpaceΛ₁²Σ-decoh-is-equiv = {!!}
+
+map-Σ-is-♭-equiv
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
+      {@♭ X : A → Type 𝓦} {@♭ Y : A' → Type 𝓜}
+      (@♭ f : A → A') (@♭ g : ∀ a → X a → Y (f a))
+    → is-equiv (♭-map f)
+    → (∀ (@♭ a) → is-equiv (♭-map (g a)))
+    → is-equiv (♭-map (map-Σ {Y = Y} f g))
+map-Σ-is-♭-equiv {X = X} {Y} f g fe ge
+  = src-is-equiv←Arrow-equiv
+      aeq
+      (map-Σ-is-equiv
+        fe
+        (♭-ind ge)) where
+  aeq
+    : Arrow-equiv
+        (♭-map (map-Σ f g))
+        (map-Σ (♭-map f) (♭-ind λ a → ♭-map (g a)))
+  aeq .fst .Arrow-Π.top = ♭-Σ' _
+  aeq .fst .Arrow-Π.bot = ♭-Σ' _
+  aeq .fst .Arrow-Π.comm (mod♭ a) = refl
+  aeq .snd .fst = bwd-is-equiv (♭-commΣ _)
+  aeq .snd .snd = bwd-is-equiv (♭-commΣ _)
+
+is-♭-equiv-∘
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ g : B → C} {@♭ f : A → B}
+    → is-equiv (♭-map g)
+    → is-equiv (♭-map f)
+    → is-equiv (♭-map (g ∘ f))
+is-♭-equiv-∘ fe ge
+  = {!!}
+
+Cov-Δ²-bundle←Space
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} → (Γ → Space²Σ 𝓥) → Cov-Δ²-bundle Γ 𝓥
+Cov-Δ²-bundle←Space
+  = map-Σ
+      UFib-transport
+      (λ a
+       → map-Σ
+           UFib-transport
+           (λ b
+            → map-Σ
+                UFib-transport
+                (λ c → Σ-Π-swap _ _)
+            ∘ Σ-Π-swap _ _ )
+       ∘ Σ-Π-swap _ _)
+  ∘ Σ-Π-swap _ _
+
+
+
+tot-dua²→ : ∀ {@♭ 𝓥} → (Δ² → Space 𝓥) → Space²Σ 𝓥
+tot-dua²→ F = (F 0 , F 1 , F 2 , tr-𝓢-hom F Δ²-1≤2 , tr-𝓢-hom F Δ²-0≤1)
+
+module _
+  (@♭ √ᵈ-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+      → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  where
+  open SpacePath √ᵈ-is-prop
+  open UIdS √ᵈ-is-prop
+  open CovBundle √ᵈ-is-prop
+
+  Cov-Δ²-bundle←Space-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → is-equiv (♭-map (Cov-Δ²-bundle←Space {𝓤} {𝓥} {Γ}))
+  Cov-Δ²-bundle←Space-is-equiv
+    = is-♭-equiv-∘
+       (map-Σ-is-♭-equiv _ _
+         UP-UFib
+         (λ _
+          → is-♭-equiv-∘
+              (map-Σ-is-♭-equiv _ _
+                UP-UFib
+                (λ _
+                 → is-♭-equiv-∘
+                     (map-Σ-is-♭-equiv _ _
+                        UP-UFib
+                        λ _ → ♭-map-is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)) )
+                     (♭-map-is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))))
+              (♭-map-is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))))
+       (♭-map-is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))
+
+  tot-dua² : ∀ {@♭ 𝓤} → is-equiv (tot-dua²→ {𝓤 ⊔ 𝓘})
+  tot-dua² {𝓤}
+    = types-separate tot-dua²→
+        (λ {𝓥} {Γ}
+         → src-is-equiv←Arrow-equiv
+             ae
+             (tr²Σ-is-♭-equiv {𝓥}{𝓤}
+               {!!})) where
+    open Space
+    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where opaque
+
+      ae
+        : Arrow-equiv
+            (♭-map (postcomp Γ (tot-dua²→ {𝓤 ⊔ 𝓘})))
+            (♭-map (tr²Σ {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ae .fst .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
+      ae .fst .Arrow-Π.bot = ♭-map Cov-Δ²-bundle←Space
+      ae .fst .Arrow-Π.comm (mod♭ x) = refl
+      ae .snd .fst = is-equiv-∘ UP-UFib (♭-map-is-equiv uncurry-is-equiv)
+      ae .snd .snd = Cov-Δ²-bundle←Space-is-equiv
+
+  horn-dua→ : ∀ {@♭ 𝓤} → (Λ[2,1] → Space 𝓤) → SpaceΛ₁²Σ 𝓤
+  horn-dua→ = map2 ∘ cocone-map _ pushout where
+    map2 : (Cocone (mk-span 𝟙 (λ _ → i1) (λ _ → i0)) (Space _)) → SpaceΛ₁²Σ _
+    map2 x
+      = ( x .Cocone.p 0 , x .Cocone.p 1 , x .Cocone.q 0 , x .Cocone.q 1
+        , tr≃ Space.Carrier (x .Cocone.filler tt)
+        , tr-𝓢 (x .Cocone.q)
+        , tr-𝓢 (x .Cocone.p))
+
+  horn-dua : ∀ {@♭ 𝓤} → is-equiv (horn-dua→ {𝓤})
+  horn-dua = {!!}
+
+  Space-is-segal
+    : ∀ {@♭ 𝓤} → is-segal (Space (𝓤 ⊔ 𝓘))
+  Space-is-segal {𝓤} _
+    = 3-for-2~ (triangle h⁻¹)
+        horn-dua
+        (is-equiv-∘
+           SpaceΛ₁²Σ-decoh-is-equiv
+           (tot-dua² {𝓤})) where
+    triangle
+      : horn-dua→ ∘ precomp (Space (𝓤 ⊔ 𝓘)) Λ[2,1]-incl
+      ~ SpaceΛ₁²Σ-decoh ∘ tot-dua²→ {𝓤 ⊔ 𝓘}
+    triangle x = {!!}
 }
 }

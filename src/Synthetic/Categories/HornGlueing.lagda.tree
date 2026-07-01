@@ -455,23 +455,6 @@ module _
 
      g b Arr≃∎
 
-  lemma2
-    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
-        (F : Y → Type 𝓦) (Fc : is-covariant F)
-        (Ffc : is-covariant (F ∘ f))
-        (h : covariant-base-change {P = F} f Fc ＝ Ffc)
-        {a b : X}
-        (h : Hom X a b)
-        (g : Hom Y (f a) (f b))
-        (p : g ＝ ap-hom f h)
-      → tr-cov-hom {P = F} Fc g
-      ~ tr-cov-hom {P = F ∘ f} Ffc h
-  lemma2 f F Fc Ffc refl h _ refl x = tr-cov-hom-unique F Fc (ap-hom f h) x
-    (tr-cov-hom (covariant-base-change {P = F} f Fc) h x)
-    (adjust-homᵈ (F ∘ f ∘ h .Homᵈ.hom)
-      (ap (λ p → coe p x) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom0))))
-      (ap (λ p → coe p _) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom1))))
-      (tr-cov-over (covariant-base-change {P = F} f Fc) h x) )
 
   opaque
     unfolding tr-cov-hom
@@ -542,9 +525,22 @@ module _
   , Δ²-is-set _ _ _ _
   , Δ²-is-set _ _ _ _)
 
+-- TODO: This can be defined generically for any I-alg
 Δ²-hom←≤ : ∀ x y → (x I[x].≤ y) → Hom Δ² x y
-Δ²-hom←≤ x y p = mk-hom (λ i → (x I[x].∨ ι-const i) I[x].∧ (x I[x].∨ y))
-  {!!} {!!}
+Δ²-hom←≤ x y p .Homᵈ.hom i = (x I[x].∨ ι-const i) I[x].∧ (x I[x].∨ y)
+Δ²-hom←≤ x y p .Homᵈ.hom0
+  = ap₂ (I[x]._∧_)
+      ( ap (x I[x].∨_)
+           (Free-Lattice-is-lattice-algebra I I-distr .is-lattice-hom.pres-0)
+      ∙ I[x].0-bottom)
+      (I[x].≤-max p)
+  ∙ p
+Δ²-hom←≤ x y p .Homᵈ.hom1
+  = ap₂ I[x]._∧_
+      (I[x].1-coinit {x})
+      (I[x].≤-max p)
+  ∙ I[x].∧-comm
+  ∙ I[x].1-top
 
 module _
   {𝓤 𝓥} {B : Type 𝓤}
@@ -575,12 +571,25 @@ module _
                 (covariant-base-change {P = F} (λ i → b , (i , i0)) Fc)
                 (Δ¹-hom←≤ 1-top)
                 (tr F (ap (b ,_) Δ²-refl) x)))
-      ＝⟨ {!!} ⟩
-          (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2
-             (tr-cov-hom {P = F ∘ (b ,_)}
-                (Fbc b)
-                (Δ²-hom←≤ ((i , i0) ⦃ 0-init ⦄) 1 (Δ²-ext (1-top , ≤-refl)))
-                (tr F (ap (b ,_) Δ²-refl) x)))
+      ＝⟨ ap (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2)
+             (sym (tr-cov-ap-hom δ₂² (F ∘ (b ,_)) (Fbc b)
+                     (covariant-base-change {P = F ∘ (b ,_)} δ₂² (Fbc b))
+                     refl
+                     (Δ¹-hom←≤ 1-top)
+                     (Δ²-hom←≤ ((i , i0) ⦃ 0-init ⦄) 1 (Δ²-ext (1-top , ≤-refl)))
+                     (Hom-ext→
+                       ( (λ j
+                          → Δ²-ext
+                              ( (ap (_∧ (i ∨ i1)) ∨-comm)
+                              , (∧-comm ∙  ap (_∧ (i0 ∨ j)) 0-bottom  ∙ 0-init)))
+                       , (Δ²-is-set _ _ _ _ , Δ²-is-set _ _ _ _)))
+                     (tr F (ap (b ,_) Δ²-refl) x)
+                     )) ⟩
+        (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2
+           (tr-cov-hom {P = F ∘ (b ,_)}
+              (Fbc b)
+              (Δ²-hom←≤ ((i , i0) ⦃ 0-init ⦄) 1 (Δ²-ext (1-top , ≤-refl)))
+              (tr F (ap (b ,_) Δ²-refl) x)))
       ＝⟨ {!!} ⟩
         (tr-cov-hom {P = F ∘ (b ,_)} (Fbc b) (Δ²-top (i , i0))
                 (tr F (ap (b ,_) Δ²-refl) x))

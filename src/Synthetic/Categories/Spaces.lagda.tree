@@ -8,11 +8,13 @@
 \transclude{stt-00AB}
 
 \agda{
-{-# OPTIONS --lossy-unification #-}
-
 open import Foundations.Universes
 open import Foundations.Nat
 open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.Identity
+open import Foundations.Sigma
+open import Foundations.Singletons
 
 open import Algebra.Lattice
 
@@ -22,6 +24,7 @@ open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
 
 import Synthetic.Cubes
+import Synthetic.Quasicoherence
 }
 
 \agda{
@@ -29,13 +32,17 @@ module Synthetic.Categories.Spaces
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (open Synthetic.Cubes Δ¹ i0 i1)
+  (open Synthetic.Quasicoherence Δ¹ I I-distr)
+  (@♭ Δ¹-endos-mono : Δ¹-endos-are-mono)
+  (@♭ non-triv : i1 ＝ i0 → ∅)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
   (@♭ is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤}
                     → is-tiny-structure Δ¹ A (√ A) √ε)
-  (@♭ cubes-detect-cont : detects-continuity {I = ℕ} □^_)
-  (@♭ simplicial-conn : detects-connectivity (point Δ¹))
-  (@♭ ♭Δ¹-ind : ∀ {𝓤} (P : @♭ Δ¹ → Type 𝓤) → P i0 → P i1 → (@♭ x : Δ¹) → P x)
+  (@♭ cubes-separate : family-separates □^_)
+  (@♭ ♭Δ¹-ind
+    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
+      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
   where
 
 open import Axioms.UF
@@ -71,36 +78,10 @@ open import Core.UniversalFibrations
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
-open import Synthetic.Categories.CovariantClosure Δ¹ I
+open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
+open import Synthetic.Categories.DirectedGlueing Δ¹ I I-distr non-triv Δ¹-endos-mono
+open import Synthetic.Categories.EquivCovariantFamilies Δ¹ I I-distr
 }
-}
-
-\p{We recall a few easy consequences of the cubes detect continuity and
-#{\Delta^1} detects connectivity axioms.}
-
-\agda{
-opaque
-  cubes-separate : family-separates □^_
-  cubes-separate = family-separates←detects-continuity □^_ cubes-detect-cont
-
-  cubes-separate'
-    : ∀ {@♭ 𝓤 𝓥} (@♭ fa : Arrow 𝓤 𝓥) (let @♭ f = Arrow.f fa)
-      → @♭ ((∀ {@♭ n} → is-equiv (♭-map (postcomp (□^ n) f))))
-      → is-equiv f
-  cubes-separate' fa eq
-    = cubes-separate
-        fa
-        (tgt-is-equiv←Arrow-equiv (amap , amap-is-equiv) (eq {0}))
-        eq where
-    open Arrow fa
-    amap : Arrow-map (♭-map (postcomp (□^ 0) f)) (♭-map f)
-    amap .Arrow-Π.top = ♭-map (ev ttᴸ)
-    amap .Arrow-Π.bot = ♭-map (ev ttᴸ)
-    amap .Arrow-Π.comm (mod♭ f) = refl
-
-    amap-is-equiv : is-Arrow-equiv amap
-    amap-is-equiv .fst = ♭-map-is-equiv (sing-ev-is-equiv global-funext single!)
-    amap-is-equiv .snd = ♭-map-is-equiv (sing-ev-is-equiv global-funext single!)
 }
 
 \subtree[stt-00AS]{
@@ -130,13 +111,17 @@ is-covariant-is-relative {B = A} P = (fwd , bwd) where
 
 open Dependent√ Δ¹ √ √ε is-tiny-str
                public
-open AmazinglyFibrant Δ¹ √ √ε is-tiny-str
-               is-covariant is-covariant-is-prop is-covariant-is-relative
-               public
-  renaming (is-afib to is-acov;
-            UFib to Space;
-            UFib∙ to Space∙;
-            UFib-π-is-fib to Space-π-is-covariant)
+open AmazinglyFibrant
+  Δ¹ √ √ε is-tiny-str
+  is-covariant
+  is-covariant-is-prop
+  is-covariant-is-relative
+  public
+  renaming
+    ( is-afib to is-acov
+    ; UFib to Space
+    ; UFib∙ to Space∙
+    ; UFib-π-is-fib to Space-π-is-covariant)
 }
 }
 
@@ -290,6 +275,40 @@ instance
     : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A} ⦃ _ : is-acov A ⦄
       → is-acov (a ＝ b)
   ＝-is-Acov = ＝-is-acov auto!
+
+opaque
+  exp-●-is-acov
+   : ∀ {@♭ 𝓤} {A : Type 𝓤}
+     → is-acov A
+     → (∀ {i} → is-acov (i ＝ i0 → A))
+  exp-●-is-acov {𝓤} {A} ac {i}
+    = √ᵈ-naturality← _ _ _ (ϕ̂ (mk-ufib A ac , i)) where
+    open Space
+    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤))
+    Γ = Space 𝓤 × Δ¹
+
+    @♭ σ : Γ → Type (𝓘 ⊔ 𝓤)
+    σ (A , i) = (i ＝ i0) → Carrier A
+
+    @♭ ϕ : Π (Δ¹ → Γ) (is-covariant ∘ postcomp Δ¹ σ)
+    ϕ g = ^●-is-covariant Δ¹-endos-mono A' A'-is-cov f where
+      A' : Δ¹ → Type 𝓤
+      A' = Carrier ∘ fst ∘ g
+
+      A'-is-cov : is-covariant A'
+      A'-is-cov = UFib-is-fib (fst ∘ g)
+
+      f : Δ¹ → Δ¹
+      f = snd ∘ g
+
+    @♭ ϕ̂ : Π Γ (√ᵈ (is-covariant ∘ postcomp Δ¹ σ))
+    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+
+instance
+  exp-●-is-Acov
+    : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄
+      → (∀ {i} → is-acov (i ＝ i0 → A))
+  exp-●-is-Acov = exp-●-is-acov auto!
 }
 }
 
@@ -302,303 +321,46 @@ a natural transformation #{\alpha : \Pi_{i} F(i) \to G(i)} is a fibrewise
 equivalence iff the restriction along #{\partial \Delta^1 \hookrightarrow \Delta^1}
 is a fibrewise-equivalence.}
 
-\p{The proof follows exactly \citet{Lemma 6.8}{GWB24}, although their result
-holds more generally for copresheaves #{\Delta^n \to \mathcal{S}}.}
-
-\agda{
-transport-Nat-lemma
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
-    → (α : ∀ x → F x → G x) → ∀ x y (x' : F x) (p : x ＝ y)
-    → tr G p (α x x')
-    ＝ α y (tr F p x')
-transport-Nat-lemma α x y x' refl = refl
-
-
-□-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
-□-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
-□-0-is-left-anodyne {suc zero} r 0r = 0r
-□-0-is-left-anodyne {suc (suc m)} r 0r
-  = left-orthogonal-equiv
-      (point □-0 ⊗ point i0) (point □-0) a ae r
-      (left-orthogonal-× (point □-0) (point i0) r
-        (□-0-is-left-anodyne {suc m} r 0r) 0r) where
-  a : Arrow-map (point □-0 ⊗ point i0) (point (□-0 , i0))
-  a .Arrow-Π.top = !
-  a .Arrow-Π.bot = id
-  a .Arrow-Π.comm = ~refl
-
-  ae : is-Arrow-equiv a
-  ae .fst = sing-!-is-equiv single!
-  ae .snd = id-is-equiv
-}
-
 \agda{
 Cov-Nat-is-equiv
   : ∀ {@♭ 𝓤} (f g : Δ¹ → Space 𝓤) (α : ∀ i → f i .Space.Carrier → g i .Space.Carrier)
     → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i)
-Cov-Nat-is-equiv {𝓤} f g α epeq = is-equiv.bwd part1' epeq where
-  @♭ Y : Type (lsuc (𝓤 ⊔ 𝓘))
-  Y = Σ[ F G ∶ (Δ¹ → Space 𝓤)]
-        Σ[ α' ∶ (∀ i → F i .Space.Carrier → G i .Space.Carrier) ]
-          ∀ i → is-equiv (α' i)
-
-  @♭ X : Type (lsuc (𝓤 ⊔ 𝓘))
-  X = Σ[ F G ∶ (Δ¹ → Space 𝓤)]
-        Σ[ α' ∶ (∀ i → F i .Space.Carrier → G i .Space.Carrier) ]
-          ∀ x → is-equiv (α' (∂Δ¹-incl x))
-
-  @♭ forget : Y → X
-  forget = total-map
-            (λ X → total-map
-              (λ Y → total-map (λ α → precomp-Π _ ∂Δ¹-incl)))
-
-  @♭ Γ : ℕ → Type 𝓘
-  Γ n = □^ n × Δ¹
-
-  @♭ Γ-is-truncated : ∀ n {k} → is-truncated (𝕋←ℕ k) (Γ n)
-  Γ-is-truncated zero = trunc!
-  Γ-is-truncated (suc zero) = trunc!
-  Γ-is-truncated (suc (suc n)) = trunc!
-
-  open Space
-
-  @♭ Y' : ∀ n → Type (lsuc (𝓘 ⊔ 𝓤))
-  Y' n = Σ[ F G ∶ (Γ n → Space 𝓤)]
-          Σ[ α' ∶ (∀ i → F i .Space.Carrier → G i .Space.Carrier) ]
-            ∀ i → is-equiv (α' i)
-
-  @♭ X' : ∀ n → Type (lsuc (𝓘 ⊔ 𝓤))
-  X' n = Σ[ F G ∶ (Γ n → Space 𝓤)]
-          Σ[ α' ∶ (∀ i → F i .Space.Carrier → G i .Space.Carrier) ]
-            ∀ i → is-equiv (α' (i .fst , ∂Δ¹-incl (i .snd)))
-
-  @♭ arr : ∀ (@♭ n)
-        → Arrow-map
-            ((postcomp (□^ n) forget))
-            {C = Y' n} {X' n}
-            (total-map (λ F → total-map λ G → total-map
-              (λ α → precomp-Π _ (total-map (λ _ → ∂Δ¹-incl)))))
-  arr n .Arrow-Π.top F
-    = ( uncurry (fst ∘ F) , uncurry (fst ∘ snd ∘ F)
-      , uncurry (fst ∘ snd ∘ snd ∘ F) , uncurry (snd ∘ snd ∘ snd ∘ F))
-  arr n .Arrow-Π.bot F
-    = ( uncurry (fst ∘ F) , uncurry (fst ∘ snd ∘ F)
-      , uncurry (fst ∘ snd ∘ snd ∘ F) , uncurry (snd ∘ snd ∘ snd ∘ F))
-  arr n .Arrow-Π.comm = ~refl
-
-  @♭ arr-is-equiv : ∀ (@♭ n) → is-Arrow-equiv (arr n)
-  arr-is-equiv n .fst =
-    is-equiv←qinv
-      ( (λ F g → ( curry (fst F) g , curry (F .snd .fst) g
-                 , curry (F .snd .snd .fst) g , curry (F .snd .snd .snd) g))
-      , ~refl , ~refl)
-  arr-is-equiv n .snd =
-    is-equiv←qinv
-      ( (λ F g → ( curry (fst F) g , curry (F .snd .fst) g
-                 , curry (F .snd .snd .fst) g , curry (F .snd .snd .snd) g))
-      , ~refl , ~refl)
-
-  module _ (@♭ n) (@♭ F G : Γ n → Space 𝓤) (@♭ α : ∀ i → F i .Carrier → G i .Carrier) where
-     @♭ F̂ : Type (𝓘 ⊔ 𝓤)
-     F̂ = Σ (Γ n) (Carrier ∘ F)
-
-     @♭ Ĝ : Type (𝓘 ⊔ 𝓤)
-     Ĝ = Σ (Γ n) (Carrier ∘ G)
-
-     @♭ α̂ : F̂ → Ĝ
-     α̂ = total-map α
-
-     @♭ lemma
-       : @♭ (∀ (k : Σ (□^ n) (λ _ → ∂Δ¹))
-         → (is-equiv (α (k .fst , ∂Δ¹-incl (k .snd)))))
-         → ⟨♭| Π (Γ n) (λ k → is-equiv (α k)) ⟩
-     lemma k = mod♭ (is-fibrewise-equiv←is-total-equiv
-                      (cubes-separate'
-                        (mk-arrow α̂)
-                        λ {m} → part3 m)) where module _ (@♭ m : ℕ) where
-       @♭ make-orthogonality
-         : Arrow-map (postcomp (□^ m) α̂)
-                       {C = Pullback {B = F̂}fst (ev (□-0 {m}))}
-                       {D = Pullback {B = Ĝ}fst (ev (□-0 {m}))}
-                       (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl))
-       make-orthogonality .Arrow-Π.top = orthogonal-point-gap-map □-0
-       make-orthogonality .Arrow-Π.bot = orthogonal-point-gap-map □-0
-       make-orthogonality .Arrow-Π.comm x = pullback-path→
-         ( refl
-         , refl
-         , ap (_∙ refl) (ap-id (ap (ev tt) (sym (funext→ ~refl)) ∙ refl)))
-
-       make-orthogonality-is-equiv : is-Arrow-equiv make-orthogonality
-       make-orthogonality-is-equiv .fst
-         = orthogonal-point-pullback-condition □-0
-             (□-0-is-left-anodyne fst
-               (is-covariant↔is-left-fibration (Carrier ∘ F) .fst (UFib-is-fib F)))
-       make-orthogonality-is-equiv .snd
-         = orthogonal-point-pullback-condition □-0
-             (□-0-is-left-anodyne fst
-               (is-covariant↔is-left-fibration (Carrier ∘ G) .fst (UFib-is-fib G)))
-
-       @♭ final-map : (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| F (k □-0) .Carrier ⟩)
-                    → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| G (k □-0) .Carrier ⟩)
-       final-map = total-map (♭ᶠ-map (λ a → α (a □-0)))
-
-       @♭ refactor-map
-         : ∀ (@♭ K : Γ n → Space 𝓤)
-             (let @♭ K̂ = Σ _ (Carrier ∘ K))
-         → ⟨♭| Pullback {B = K̂}fst (ev (□-0 {m}))⟩
-         → (Σ[♭ k ∶ (□^ m → Γ n)] ⟨♭| K (k □-0) .Carrier ⟩)
-       refactor-map K (mod♭ ((a , a') , b , p))
-          = (mod♭ b , mod♭ (tr (Carrier ∘ K) p a'))
-
-       @♭ refactor-map-is-equiv
-         : ∀ (@♭ K : Γ n → Space 𝓤) → is-equiv (refactor-map K)
-       refactor-map-is-equiv K = is-equiv←qinv
-         ( (λ where (mod♭ f , mod♭ g) → mod♭ ((f □-0 , g) , f , refl))
-         , (λ where
-               (mod♭ ((a , a') , b , p))
-                 → mapply♭
-                     (mod♭ (pullback-path→
-                             ( Σ-path→ (sym p , tr∘tr-sym p a')
-                             , refl
-                             , is-set←is-truncated
-                                 (Γ-is-truncated n)
-                                 _ _ _ _))))
-         , λ where (mod♭ a , mod♭ b) → refl)
-
-       @♭ refactor
-         : Arrow-map
-             {A = ⟨♭| Pullback {B = F̂}fst (ev (□-0 {m}))⟩}
-             {B = ⟨♭| Pullback {B = Ĝ}fst (ev (□-0 {m}))⟩}
-             (♭-map (Pullback₁ (mk-cospan-map α̂ id id ~refl ~refl)))
-             (final-map)
-       refactor .Arrow-Π.top = refactor-map F
-       refactor .Arrow-Π.bot = refactor-map G
-       refactor .Arrow-Π.comm (mod♭ ((x , x') , y , p))
-         = Σ-path→ (refl
-                   , mapply♭
-                       (mod♭ (ap (λ p → tr (Carrier ∘ G) p (α x x'))
-                                 (ap (_∙ refl) (ap-id p) ∙ ∙-reflr _)
-                             ∙ transport-Nat-lemma α x (y □-0) x' p)))
-
-       @♭ refactor-is-equiv : is-Arrow-equiv refactor
-       refactor-is-equiv .fst = refactor-map-is-equiv F
-       refactor-is-equiv .snd = refactor-map-is-equiv G
-
-       @♭ part4 : is-equiv final-map
-       part4 = is-total-equiv←is-fibrewise-equiv
-         (♭-ind λ x → ♭Δ¹-ind (λ i → is-equiv (♭-map (α (x □-0 .fst , i))))
-                                (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-0)))
-                                (♭-map-is-equiv (k (x □-0 .fst , ∂Δ¹-1)))
-                                (snd (x □-0)))
-
-       @♭ part3 : is-equiv (♭-map (postcomp (□^ m) α̂))
-       part3 = src-is-equiv←Arrow-equiv
-                 ( paste-squares refactor (♭Square make-orthogonality)
-                 , paste-squares-is-equiv
-                     _ refactor-is-equiv
-                     _ (♭-square-is-equiv _ (make-orthogonality-is-equiv)))
-                 part4
-
-     @♭ part2 : is-equiv (♭-map (precomp-Π (λ k → is-equiv (α k))
-                                        (total-map (λ _ → ∂Δ¹-incl))))
-     part2 = is-equiv←inverse
-               (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
-               (♭-is-prop (Π-is-prop (λ a → is-equiv-is-prop)))
-               (♭-ind lemma)
-
-
-  part1 : is-equiv forget
-  part1 = cubes-separate'
-    (mk-arrow forget)
-    (λ {n} → src-is-equiv←Arrow-equiv
-       ( ♭Square (arr n)
-       , ♭-map-is-equiv (arr-is-equiv n .fst)
-       , ♭-map-is-equiv (arr-is-equiv n .snd))
-       (♭-map-total-is-equiv _
-         (is-total-equiv←is-fibrewise-equiv
-           (♭-ind λ F → ♭-map-total-is-equiv _
-             (is-total-equiv←is-fibrewise-equiv
-               (♭-ind λ G → ♭-map-total-is-equiv _
-                 (is-total-equiv←is-fibrewise-equiv
-                   (♭-ind (λ α → part2 n F G α)))))))))
-
-  opaque
-    part1' : is-equiv (precomp-Π (λ i → is-equiv (α i)) ∂Δ¹-incl)
-    part1' = is-fibrewise-equiv←is-total-equiv
-                {f = λ α → precomp-Π _ ∂Δ¹-incl}
-                (is-fibrewise-equiv←is-total-equiv
-                  (is-fibrewise-equiv←is-total-equiv
-                    part1 f) g) α
+Cov-Nat-is-equiv {𝓤} f g α
+  = is-equiv.bwd
+       (is-fibrewise-equiv←family-separates-with-𝟙
+         □^_ cubes-separate
+         {X = Σ[ X Y ∶ (Δ¹ → Space 𝓤) ] (∀ i → X i .Space.Carrier → Y i .Space.Carrier)}
+         {P = λ (X , Y , α) → is-fibrewise-equiv α}
+         {Q = λ (X , Y , α) → is-fibrewise-equiv (α ∘ ∂Δ¹-incl)}
+         (λ (X , Y , α) → precomp-Π (is-equiv ∘ α) ∂Δ¹-incl)
+         {0} single!
+         (λ m σ
+          → is-equiv←inverse
+              (♭-is-prop (Π-is-prop (λ _ → Π-is-prop (λ _ → is-equiv-is-prop))))
+              (♭-is-prop (Π-is-prop (λ _ → Π-is-prop (λ _ → is-equiv-is-prop))))
+              (♭-ind (λ x → mod♭ (λ c i
+               → ∂Δ¹-cov-Nat-is-equiv
+                   cubes-separate
+                   ♭Δ¹-ind
+                   (UFib-transport (uncurry (fst ∘ σ)) )
+                   (UFib-transport (uncurry (fst ∘ snd ∘ σ)))
+                   (uncurry (snd ∘ snd ∘ σ))
+                   (λ b i → ♭-map-is-equiv (x b i))
+                   (c , i)))))
+         (f , g , α))
 }
 }
 
-
-\subtree[stt-00AT]{
-\title{#{\mathcal{S}} is directed univalent}
-\taxon{Theorem}
-
-\p{We show that #{\mathcal{S}} is directed univalent. That is, arrows in
-#{\mathcal{S}} correspond exactly to pairs of groupoids, together with a function
-between them.}
-
-\proof{
-\p{We start by noting that there is a canonial map
-from #{F : \mathcal{S}^{\Delta^1}} to #{F(0) \to F(1)} given by covariant
-transport.}
-
-\agda{
-tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → Space 𝓤) → Space.Carrier (f i0) → Space.Carrier (f i1)
-tr-𝓢 = tr-cov {P = Space.Carrier} Space-π-is-covariant
-
-tr-𝓢-unique
-  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤)
-      {F : Space.Carrier (f i0) → Space.Carrier (f i1)}
-    → ∀ x → (Homᵈ (Space.Carrier ∘ f) x (F x))
-    → tr-𝓢 f x ＝ F x
-tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
-
-dua→
-  : ∀ {@♭ 𝓤} → (Δ¹ → Space 𝓤)
-    → Σ[ A B ∶ Space 𝓤 ] (Space.Carrier A → Space.Carrier B)
-dua→ h = (h i0 , h i1 , tr-𝓢 h)
-}
-
-\p{Now we give an inverse map:}
-
-\agda{
-module DUA
-  ⦃ _ : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄ → (∀ {i} → is-acov (i ＝ i0 → A)) ⦄
-  (non-triv : i1 ＝ i0 → ∅)
-  (@♭ √ᵈ-is-prop : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
-                   → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
-  (open Space)
-  where
-  open UIdS √ᵈ-is-prop
-
-  Gl : ∀ {@♭ 𝓤} → (A B : Space (𝓘 ⊔ 𝓤)) (f : Carrier A → Carrier B) → (Δ¹ → Space (𝓘 ⊔ 𝓤))
-  Gl A B f i
-    = mk-ufib (Σ[ b ∶ Carrier B ] ((i ＝ i0) → fibre f b)) auto! where
-    instance
-      _ : is-acov (Carrier A)
-      _ = A .Carrier-is-afib
-      _ : is-acov (Carrier B)
-      _ = B .Carrier-is-afib
-
-  GlΣ
-    : ∀ {@♭ 𝓤} → (Σ[ A B ∶ Space (𝓘 ⊔ 𝓤)] (Carrier A → Carrier B))
-      → (Δ¹ → Space (𝓘 ⊔ 𝓤))
-  GlΣ {𝓤} x = Gl {𝓤} (x .fst) (x .snd .fst) (x .snd .snd)
-}
-
-\p{In order to show this map is an inverse, it is useful to characterise
-the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
-
-\closedScope{
 \subtree[stt-00KW]{
 \title{Paths in #{\mathcal{S}^→}}
 \taxon{Lemma}
 
 \agda{
+module _ where
+  open Space
+  SpaceΣ : ∀ (@♭ 𝓤) → Type (lsuc (𝓘 ⊔ 𝓤))
+  SpaceΣ 𝓤 = Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)
+
   SpaceΣ-Path
     : ∀ {@♭ 𝓤} (x y : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
       → Type 𝓤
@@ -610,6 +372,14 @@ the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
     : ∀ {@♭ 𝓤} (x : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
       → SpaceΣ-Path x x
   SpaceΣ-Path-refl x = (id≃ , id≃ , ~refl)
+
+module SpacePath
+  (@♭ √ᵈ-is-prop
+        : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+          → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  where
+  open Space
+  open UIdS √ᵈ-is-prop
 
   opaque
     SpaceΣ-Path-is-torsorial
@@ -634,155 +404,206 @@ the paths in #{\Sigma_{A\ B}(A \to B)} and #{\textrm{Gl}(A,B,f)}:}
 }
 }
 
-\subtree[stt-00KF]{
-\title{Paths in Glue types}
+\subtree[stt-00UW]{
 \taxon{Lemma}
 
-\agda{
-  Gl-path
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → Gl A B f i .Carrier → Gl A B f i .Carrier → Type (𝓘 ⊔ 𝓤)
-  Gl-path {f = f} i x y
-    = Σ[ p ∶ x .fst ＝ y .fst ]
-       (∀ pi → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
-                 (Square (x .snd pi .snd) (y .snd pi .snd) (ap f q) p))
-
-  Gl-path-refl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → (x : Gl A B f i .Carrier) → Gl-path {A = A} {B} {f} i x x
-  Gl-path-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
-
-  opaque
-    Gl-path-is-torsorial
-      : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-        → (x : Gl A B f i .Carrier) → is-singleton (Σ _ (Gl-path {A = A} {B} {f} i x))
-    Gl-path-is-torsorial i x
-      = is-singleton-structure←parts
-          Sing-is-singleton
-          (_ , refl)
-          (is-single←equiv-to-single
-            (Σ-Π-swap≃ _ λ p y → Σ[ q ∶ x .snd p .fst ＝ y .fst ]
-                                   Square (x .snd p .snd) (y .snd) (ap _ q) refl)
-            (Π-is-single (λ where
-              refl → is-singleton-structure←parts
-                       Sing-is-singleton
-                       (_ , refl)
-                       (Square-degen-hor-is-torsorial
-                         (x .snd refl .snd)))))
-
-  IdS-Gl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → Identity-system (Gl A B f i .Carrier) (𝓘 ⊔ 𝓤)
-  IdS-Gl i .Identity-system.IdS = Gl-path i
-  IdS-Gl {A = A} {B} {f} i .Identity-system.IdS←Id refl
-    = Gl-path-refl {A = A} {B} {f} i _
-  IdS-Gl i .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Gl-path-is-torsorial i a) _
-
-  Gl-path→
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} {f : Carrier A → Carrier B} i
-      → {x y : Gl A B f i .Carrier} → Gl-path {A = A} {B} {f} i x y → x ＝ y
-  Gl-path→ {A = A} {B} i = Id←IdS ⦃ IdS-Gl {A = A} {B} i ⦄
-}
-}
-}
-
-\p{We first show we have constructed a right inverse. Let #{A\ B : \mathcal{S}}
-and #{f : A \to B}, write #{X := \textrm{Gl}(A,B,f) : \Delta^1 \to \mathcal{S}}.
-We may easily verify that there are equivalences #{e_1 : X(0) \simeq A},
-#{e_2 : X(1) \simeq B} and that these equivalences form a commuting square
-#{e_1 X_* \sim F e_2}.}
+\p{There is a map ##{(\Gamma \to \Sigma_{X, Y : \mathcal{S}} (X \to Y)) \to
+\Sigma_{X, Y : \textrm{LFib}_\Gamma} (X \to Y)} given by the fact #{\mathcal{S}
+\to \UU} is a covariant type family. Because #{\mathcal{S}} is the universal such
+family, this map is a #{\flat}-equivalence.}
 
 \agda{
-  induced-map
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → Gl A B f i0 .Carrier → Gl A B f i1 .Carrier
-  induced-map f (b , p) = (b , ¡ ∘ non-triv)
+module CovBundle
+  (@♭ √ᵈ-is-prop
+        : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+          → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  {@♭ 𝓤} {@♭ Γ : Type 𝓤}
+  where
+  open SpacePath √ᵈ-is-prop
+  open UIdS √ᵈ-is-prop
 
-  tr-Gl-hom
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → ∀ x → Homᵈ (Space.Carrier ∘ Gl A B f) x (induced-map {A = A} {B} f x)
-  tr-Gl-hom f x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
-  tr-Gl-hom f x .Homᵈ.hom0 = Σ-path→ (refl , (funext→ (J-set! _ refl)))
-  tr-Gl-hom f x .Homᵈ.hom1 = Σ-path→ (refl , (funext→ (λ x → ¡ (non-triv x))))
+  Cov-bundle←SpaceΣ
+    : ∀ {@♭ 𝓥} → (Γ → SpaceΣ 𝓥) → Cov-Δ¹-bundle 𝓥 Γ
+  Cov-bundle←SpaceΣ
+    = map-Σ
+        UFib-transport
+        (λ _ → map-Σ UFib-transport (λ _ → id) ∘ Σ-Π-swap _ _)
+    ∘ Σ-Π-swap _ _
 
-  tr-Gl
-    : ∀ {@♭ 𝓤} {A B : Space (𝓘 ⊔ 𝓤)} (f : Carrier A → Carrier B)
-      → tr-𝓢 (Gl A B f) ~ induced-map f
-  tr-Gl f x = tr-𝓢-unique (Gl _ _ f) {F = induced-map f} x
-                          (tr-Gl-hom f x)
+  Cov-bundle←SpaceΣ-is-♭-equiv
+    : ∀ {@♭ 𝓥} → is-equiv (♭-map (Cov-bundle←SpaceΣ {𝓥}))
+  Cov-bundle←SpaceΣ-is-♭-equiv {𝓥}
+    = src-is-equiv←Arrow-equiv
+        aeq
+        (map-Σ-is-equiv
+          UP-UFib
+          (♭-ind
+            (λ x
+             → map-Σ-is-equiv
+                 UP-UFib
+                 (♭-ind (λ _ → id-is-equiv)))))
+    where
+    open Space
 
-  opaque
-    dua-section : ∀ {@♭ 𝓤} x → SpaceΣ-Path {𝓤 ⊔ 𝓘} (dua→ (GlΣ {𝓤} x)) x
-    dua-section a .fst = mk≃ (fst ∘ ev refl ∘ snd)
-      (is-equiv-∘
-        {f = total←total-fibre (a .snd .snd)}
-        {g = total-map (λ _ → ev refl)}
-        (total≃total-fibre _ ._≃_.fwd-is-equiv)
-        (is-total-equiv←is-fibrewise-equiv
-          (λ _ → sing-ev-is-equiv global-funext (mk-singl refl (J-set! _ refl)))))
-    dua-section a .snd .fst = mk≃ fst
-      (singleton-fst-is-equiv λ _ → Π-is-single (λ x → ¡ (non-triv x)))
-    dua-section (A , B , f) .snd .snd x@(b , p)
-      = (fst ∘ tr-𝓢 (Gl A B f)) x
-      ＝⟨ ap fst (tr-Gl f x) ⟩
-        x .fst
-      ＝⟨ sym (p refl .snd) ⟩
-        f (p refl .fst)
-      ∎
+
+    bot-map
+      : ∀ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : X → X → Type 𝓥}
+        → ⟨♭| Σ₂ X Y ⟩ → Σ[♭ a ∶ X ] Σ[♭ b ∶ X ] ⟨♭| Y a b ⟩
+    bot-map = total-map (♭-ind (λ x → ♭-Σ' _)) ∘ ♭-Σ' _
+
+    bot-map-is-equiv
+      : ∀ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : X → X → Type 𝓥}
+        → is-equiv (bot-map {X = X} {Y})
+    bot-map-is-equiv
+      = is-equiv-∘
+          (is-total-equiv←is-fibrewise-equiv
+            {f = ♭-ind (λ _ → ♭-Σ' _)}
+            (♭-ind (λ X → bwd-is-equiv (♭-commΣ _))))
+          (bwd-is-equiv (♭-commΣ _) )
+
+    top-map
+      : (a : ⟨♭| (Γ → SpaceΣ 𝓥) ⟩)
+      → Σ[♭ X ∶ (Γ → Space 𝓥) ]
+        Σ[♭ Y ∶ (Γ → Space 𝓥) ]
+         ⟨♭| fibrewise-map (Carrier ∘ X) (Carrier ∘ Y) ⟩
+    top-map = bot-map ∘ ♭-map (total-map (λ _ → Σ-Π-swap _ _) ∘ Σ-Π-swap _ _)
+
+
+    aeq
+      : Arrow-equiv
+          {X = Σ[♭ X ∶ (Γ → Space 𝓥)] Σ[♭ Y ∶ (Γ → Space 𝓥)]
+                ⟨♭| fibrewise-map (Carrier ∘ X) (Carrier ∘ Y) ⟩}
+          {Y = Σ[♭ X ∶ _ ] Σ[♭ Y ∶ (Σ (Γ → Type 𝓥) is-covariant) ]
+                 ⟨♭| fibrewise-map (fst X) (fst Y) ⟩}
+          (♭-map Cov-bundle←SpaceΣ)
+          (map-Σ (♭-map UFib-transport)
+                 (♭-ind (λ _ → map-Σ (♭-map UFib-transport) (♭-ind (λ _ → id)))))
+    aeq .fst .Arrow-Π.top = top-map
+    aeq .fst .Arrow-Π.bot = bot-map
+    aeq .fst .Arrow-Π.comm (mod♭ f) = refl
+    aeq .snd .fst
+      = is-equiv-∘
+          bot-map-is-equiv
+          (♭-map-is-equiv
+            (is-equiv-∘
+              (is-total-equiv←is-fibrewise-equiv
+                (λ _ → Σ-Π-swap≃ _ _ ._≃_.fwd-is-equiv))
+              (Σ-Π-swap≃ _ _ ._≃_.fwd-is-equiv)))
+    aeq .snd .snd = bot-map-is-equiv
+}
 }
 
-\p{To show we have a left inverse, we make use of \ref{stt-00K6} so that given a
-map #{f : \Delta^1 \to \mathcal{S}}, we can just give a fibrewise map
-#{\alpha : F_i \to \textrm{Gl}(f(0),f(1),f_*)(i)} and show that #{\alpha} is an
-equivalence when restricted to either endpoint. To construct this map we use
-the fact that we can
-[transport covariant families over inequalities in #{\Delta^1}](stt-00K3).
-Finally, using the properties of covariant transport, it is not too challenging
-to verify that this map is an equivalence at each endpoint.}
+\subtree[stt-00AT]{
+\title{#{\mathcal{S}} is directed univalent}
+\taxon{Theorem}
+
+\p{We show that #{\mathcal{S}} is directed univalent. That is, arrows in
+#{\mathcal{S}} correspond exactly to pairs of groupoids, together with a function
+between them.}
+
+\p{We start by noting that there is a canonial map
+from #{F : \mathcal{S}^{\Delta^1}} to #{F(0) \to F(1)} given by covariant
+transport.}
 
 \agda{
-  opaque
-    dua-retract→ : ∀ {@♭ 𝓤} f i → f i .Carrier → GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract→ f i x .fst =  coe-cov (Carrier ∘ f) (UFib-is-fib f) 1-top x
-    dua-retract→ f i x .snd refl
-      = (x , sym (happly (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) x))
+tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → Space 𝓤) → Space.Carrier (f i0) → Space.Carrier (f i1)
+tr-𝓢 = tr-cov {P = Space.Carrier} Space-π-is-covariant
 
-    dua-retract : ∀ {@♭ 𝓤} f i → f i .Carrier ≃ GlΣ {𝓤} (dua→ f) i .Carrier
-    dua-retract f i ._≃_.fwd = dua-retract→ f i
-    dua-retract f i ._≃_.fwd-is-equiv
-      = Cov-Nat-is-equiv
-          f (GlΣ (dua→ f)) (dua-retract→ f)
-          (∂Δ¹-UP→
-            ( is-equiv←qinv fr0
-            , is-equiv←qinv fr1))
-          i where
-      fr0 : quasi-inv (dua-retract→ f i0)
-      fr0 .fst x = x .snd refl .fst
-      fr0 .snd .fst = ~refl
-      fr0 .snd .snd a = Gl-path→ {A = f i0} {f i1} i0
-        ( happly ( coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (fr0 .fst a)
-                 ∙ a .snd refl .snd
-        , J-set! _
-            ( refl
-            , mk-square
-                (sym'∙ (happly
-                         (coe-cov-0≤1 (Carrier ∘ f) (UFib-is-fib f) 1-top) (a .snd refl .fst))
-                         (a .snd refl .snd))))
+tr-𝓢-unique
+  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤)
+      {F : Space.Carrier (f i0) → Space.Carrier (f i1)}
+    → ∀ x → (Homᵈ (Space.Carrier ∘ f) x (F x))
+    → tr-𝓢 f x ＝ F x
+tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
+}
 
-      fr1 : quasi-inv (dua-retract→ f i1)
-      fr1 .fst x = x .fst
-      fr1 .snd .fst x = coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ x
-      fr1 .snd .snd (a , b)
-        = Σ-path→
-            ( (coe-cov-id (Carrier ∘ f) (UFib-is-fib f) _ a)
-            , funext→ (λ x → ¡ (non-triv x)))
+\p{Directed univalence then says that the induced map
+#{\mathcal{S}^{\Delta^1} \to \Sigma_{(X, Y : \mathcal{S})} X \to Y}
+is an equivalence.}
 
-  dua : ∀ {@♭ 𝓤} → is-equiv (dua→ {𝓤 ⊔ 𝓘})
-  dua {𝓤} = is-equiv←qinv
-    ( GlΣ {𝓤}
-    , (λ a → ext! (λ i → dua-retract {𝓤} a i e⁻¹))
-    , (λ a → ext! (dua-section a)))
+\proof{
+\p{For concision, let #{M := \Sigma_{(X, Y : \mathcal{S})} X \to Y} and
+#{N := \Sigma_{X, Y : \textrm{LFib}_{\Gamma}} X \to Y}.
+By the fact that types separate, it is enough to show that the induced map
+#{\flat(\mathcal{S}^\Gamma) \to \flat(M^{\Gamma})} is an
+equivalence. We may construct a square:
+
+\quiver{
+\begin{tikzcd}[cramped]
+	{\flat(\mathcal{S}^\Gamma)} && {\flat(\textrm{LFib}_{\Delta^1 \times \Gamma})} \\
+	\\
+	{\flat(M^\Gamma)} && {\flat(N)}
+	\arrow["\sim", from=1-1, to=1-3]
+	\arrow["{tr_{\mathcal{S}}}"', from=1-1, to=3-1]
+	\arrow["{tr_{\textrm{LFib}}}", from=1-3, to=3-3]
+	\arrow["\sim"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+where the top equivalence is given by the universal property of #{\mathcal{S}}, and
+the bottom by the equivalence constructed in \ref{stt-00UW}. Finally, the domain of this
+arrow equivalence is itself an equivalence by \ref{stt-00V5}, where the inverse is
+given by constructing the [directed gluing family](2).
+}
+
+\agda{
+tot-dua→
+  : ∀ {@♭ 𝓤} → (Δ¹ → Space 𝓤)
+    → Σ[ A B ∶ Space 𝓤 ] (Space.Carrier A → Space.Carrier B)
+tot-dua→ h = (h i0 , h i1 , tr-𝓢 h)
+
+coe-𝓢
+  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤) {i j} → i ≤ j
+    → Space.Carrier (f i) → Space.Carrier (f j)
+coe-𝓢 f = coe-cov (Space.Carrier ∘ f) (UFib-is-fib f)
+
+coe-𝓢-id
+  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤) {i} (p : i ≤ i)
+    → coe-𝓢 f p ~ id
+coe-𝓢-id f = coe-cov-id (Space.Carrier ∘ f) (UFib-is-fib f)
+
+module _
+  (@♭ √ᵈ-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+      → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  where
+  open SpacePath √ᵈ-is-prop
+  open UIdS √ᵈ-is-prop
+  open CovBundle √ᵈ-is-prop
+
+  tot-dua : ∀ {@♭ 𝓤} → is-equiv (tot-dua→ {𝓤 ⊔ 𝓘})
+  tot-dua {𝓤}
+    = types-separate tot-dua→
+        (λ {𝓥} {Γ}
+         → src-is-equiv←Arrow-equiv
+             ammape
+             (total-tr-cov-is-♭-equiv {𝓥} {𝓤}
+               (∂Δ¹-cov-Nat-is-equiv cubes-separate ♭Δ¹-ind))) where
+    open Space
+    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where
+
+      ammap
+        : Arrow-map
+            (♭-map (postcomp Γ (tot-dua→ {𝓤 ⊔ 𝓘})))
+            (♭-map (total-tr-cov {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ammap .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
+      ammap .Arrow-Π.bot = ♭-map Cov-bundle←SpaceΣ
+      ammap .Arrow-Π.comm (mod♭ f) = mapply♭ (mod♭ (ext! ⦃ cov-Δ¹-bundle-IdS ⦄
+        ( (λ _ → id≃)
+        , (λ _ → id≃)
+        , (λ _ → ~refl)
+        )))
+
+      ammape
+        : Arrow-equiv
+            (♭-map (postcomp Γ (tot-dua→ {𝓤 ⊔ 𝓘})))
+            (♭-map (total-tr-cov  {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ammape .fst = ammap
+      ammape .snd .fst
+        = is-equiv-∘
+            (UIdS.UP-UFib √ᵈ-is-prop)
+            (♭-map-is-equiv uncurry-is-equiv)
+      ammape .snd .snd = Cov-bundle←SpaceΣ-is-♭-equiv
 }
 }
 }

@@ -45,14 +45,14 @@ is both more aesthetic and avoids using the local name of the implicit type
 parameter. To make these wrappers as ergonomic as possible we give guidelines for
 defining them below.
 
-- **Fixity.** If the wrapper has one explicit type parameter that is expected to used
-  by itself, we declare it as a unary prefix operator with precedence level 25:
+- **Fixity.** If the wrapper has a single explicit type parameter that is expected to
+  used by itself, we declare it as a unary prefix operator with precedence level 25:
 
   ```agda
   infix 25 id:_
   ```
 
-  This lets us write `id: fibre f y` instead of `(id: (fibre f y))`. Examples include
+  This lets us write `id: fibre f y` instead of `id: (fibre f y)`. Examples include
   `id:_`, `~refl:_`, `fst:_`, and `ε♭:_`.
 
   Note that while all of these return functions themselves, we rarely if ever have to

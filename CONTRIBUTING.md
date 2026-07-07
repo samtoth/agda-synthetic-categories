@@ -27,7 +27,7 @@ with some extensions.
 | 16               | Right whiskering: `_◂_`, `_◂e⁻¹_`                                                                                                                                 |
 | 15               | Parametric multiplicative operators: `_×_`,`_*_`, `_□_`. Composition operators: `_∘_`, `_∘[_]_`. Concatenation operators: `_∙_`, `_∙e_`, `_∙h_`, `_∙q_`, `_∙iff_` |
 | 10               | Parametric additive operators: `_⊎_`. Monadic bind operators.                                                                                                     |
-| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                 |
+| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                |
 | 5                | Directed function-like formation operators: `_→∗_`, `_⇒_`                                                                                                         |
 | 3                | Parametric pairing operators: `_,_`, `_∷_`                                                                                                                        |
 | 2                | Semantic brackets: `⟦_⟧₀`, `⟦_⟧₁`                                                                                                                                 |

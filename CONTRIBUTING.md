@@ -27,7 +27,7 @@ with some extensions.
 | 16               | Right whiskering: `_◂_`, `_◂e⁻¹_`                                                                                                                                 |
 | 15               | Parametric multiplicative operators: `_×_`,`_*_`, `_□_`. Composition operators: `_∘_`, `_∘[_]_`. Concatenation operators: `_∙_`, `_∙e_`, `_∙h_`, `_∙q_`, `_∙iff_` |
 | 10               | Parametric additive operators: `_⊎_`. Monadic bind operators.                                                                                                     |
-| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                |
+| 6                | Parametric relational operators: `_＝_`, `_~_`, `_≃_`, `_≊_`, `_↔_`, `_⊥_`, `_∈_`                                                                                 |
 | 5                | Directed function-like formation operators: `_→∗_`, `_⇒_`                                                                                                         |
 | 3                | Parametric pairing operators: `_,_`, `_∷_`                                                                                                                        |
 | 2                | Semantic brackets: `⟦_⟧₀`, `⟦_⟧₁`                                                                                                                                 |
@@ -46,7 +46,8 @@ parameter. To make these wrappers as ergonomic as possible we give guidelines fo
 defining them below.
 
 - **Fixity.** If the wrapper has a single explicit type parameter that is expected to
-  used by itself, we declare it as a unary prefix operator with precedence level 25:
+  primarily be used by itself, we declare it as a unary prefix operator with
+  precedence level 25:
 
   ```agda
   infix 25 id:_

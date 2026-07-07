@@ -57,8 +57,10 @@ defining them below.
   `id:_`, `~refl:_`, `fst:_`, and `ε♭:_`.
 
   Note that while all of these return functions themselves, we rarely if ever have to
-  provide the typing information when we evaluate them. Therefore it is safe to
-  define these as unary prefix operators.
+  provide the typing information when we evaluate them. For instance, if we evaluate
+  `id: X` at `a`, then the typing argument `X` becomes redundant and we should've
+  just written `id a`. Therefore it is safe to define these as unary prefix
+  operators.
 
   We do not make wrappers prefix operators when they are normally used with further
   explicit arguments. For example, `♭-ind:` is not made a unary prefix operator,

@@ -25,6 +25,10 @@ open import Modalities.Cohesion.Continuity
 
 import Synthetic.Cubes
 import Synthetic.Quasicoherence
+import Synthetic.Categories.Precategories
+import Synthetic.Hom
+
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
 }
 
 \agda{
@@ -43,6 +47,15 @@ module Synthetic.Categories.Spaces
   (@♭ ♭Δ¹-ind
     : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
       → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
+  -- The following two assumptions follow from quasicoherence, but this fact is not
+  -- yet formalised
+  (open Synthetic.Categories.Precategories Δ¹ I)
+  (open Synthetic.Hom Δ¹ i0 i1)
+  (let @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I)
+  (let module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²)
+  (let module I[x] = Lattice (Free-Lattice I I-distr))
+  (@♭ Δ¹-is-segal : is-segal Δ¹)
+  (@♭ Δ²-is-coskeletal : ∀ {i j : Δ²} → is-prop (Hom Δ² i j))
   where
 
 open import Axioms.UF
@@ -67,30 +80,27 @@ open import Ergonomics.Auto
 open import Ergonomics.Extensionality
 
 open import Core.Arrows
+open import Core.CartesianSquares
 open import Core.ArrowEquiv
+open import Core.Cube
 open import Core.CanonicalPushouts
 open import Core.PullbackPowers
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.FunctorialityPullbacks
+open import Core.FunctorialityPushouts
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
 
-open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
-private
-  @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
-module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²
-module I[x] = Lattice (Free-Lattice I I-distr)
 
-open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
-open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.DirectedGlueing Δ¹ I I-distr non-triv Δ¹-endos-mono
-open import Synthetic.Categories.HornGlueing Δ¹ I I-distr non-triv Δ¹-endos-mono {!!} {!!}
+open import Synthetic.Categories.HornGlueing
+  Δ¹ I I-distr non-triv Δ¹-endos-mono Δ¹-is-segal Δ²-is-coskeletal
 open import Synthetic.Categories.EquivCovariantFamilies Δ¹ I I-distr
 }
 }
@@ -373,7 +383,7 @@ module _ where
   SpaceΣ 𝓤 = Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)
 
   SpaceΣ-Path
-    : ∀ {@♭ 𝓤} (x y : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
+    : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤)
       → Type 𝓤
   SpaceΣ-Path (A , B , f) (X , Y , g)
     = Σ[ e ∶ A .Carrier ≃ X .Carrier ] Σ[ p ∶ B .Carrier ≃ Y .Carrier ]
@@ -412,6 +422,18 @@ module SpacePath
     SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
     SpaceΣ-IdS .Identity-system.IdS←Id-is-equiv x
       = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
+
+  SpaceΣ-Id→
+    : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤) → (p : SpaceΣ-Path x y) → x ＝ y
+  SpaceΣ-Id→ x y p = ext! p
+
+  opaque
+    ap-fst-SpaceΣ-Id
+      : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤) → (p : SpaceΣ-Path x y)
+          → ap fst (SpaceΣ-Id→ x y p) ＝ ext! (p .fst)
+    ap-fst-SpaceΣ-Id x y = IdSJ {a = x}
+      (λ (y , p) → ap fst (SpaceΣ-Id→ x y p) ＝ ext! (p .fst))
+      (ap (ap fst) ext-id₀ ∙ sym ext-id₀)
 }
 }
 
@@ -534,6 +556,15 @@ tr-𝓢-hom
     → Space.Carrier (F x) → Space.Carrier (F y)
 tr-𝓢-hom F = tr-cov-hom {P = Space.Carrier ∘ F} (UFib-is-fib F)
 
+opaque
+  tr-𝓢-hom-unique
+    : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (F : A → Space 𝓥) {x y : A} (f : Hom A x y)
+        {Ff : Space.Carrier (F x) → Space.Carrier (F y)}
+      → ∀ x → (Hom-over f x (Ff x))
+      → tr-𝓢-hom F f x ＝ Ff x
+  tr-𝓢-hom-unique F f {Ff} x
+    = tr-cov-hom-unique (Space.Carrier ∘ F) (UFib-is-fib F) f x (Ff x)
+
 }
 
 \p{Directed univalence then says that the induced map
@@ -624,27 +655,6 @@ module _
 \title{#{Δ²}-directed univalence}
 
 \agda{
-Space²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
-Space²Σ 𝓥
-  = Σ[ X Y Z ∶ Space 𝓥 ]
-    ( (Y .Space.Carrier → Z .Space.Carrier)
-    × (X .Space.Carrier → Y .Space.Carrier))
-
-SpaceΛ₁²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
-SpaceΛ₁²Σ 𝓥
-  = Σ[ X Y Y' Z ∶ Space 𝓥 ]
-    ( (Y .Space.Carrier ≃ Y' .Space.Carrier)
-    × (Y' .Space.Carrier → Z .Space.Carrier)
-    × (X .Space.Carrier → Y .Space.Carrier))
-
-SpaceΛ₁²Σ-decoh
-  : ∀ {@♭ 𝓤} → Space²Σ 𝓤 → SpaceΛ₁²Σ 𝓤
-SpaceΛ₁²Σ-decoh (A , B , C , f , g) = (A , B , B , C , id≃ , f , g)
-
-SpaceΛ₁²Σ-decoh-is-equiv
-  : ∀ {@♭ 𝓤} → is-equiv (SpaceΛ₁²Σ-decoh {𝓤})
-SpaceΛ₁²Σ-decoh-is-equiv = {!!}
-
 map-Σ-is-♭-equiv
   : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
       {@♭ X : A → Type 𝓦} {@♭ Y : A' → Type 𝓜}
@@ -675,28 +685,7 @@ is-♭-equiv-∘
     → is-equiv (♭-map f)
     → is-equiv (♭-map (g ∘ f))
 is-♭-equiv-∘ fe ge
-  = {!!}
-
-Cov-Δ²-bundle←Space
-  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} → (Γ → Space²Σ 𝓥) → Cov-Δ²-bundle Γ 𝓥
-Cov-Δ²-bundle←Space
-  = map-Σ
-      UFib-transport
-      (λ a
-       → map-Σ
-           UFib-transport
-           (λ b
-            → map-Σ
-                UFib-transport
-                (λ c → Σ-Π-swap _ _)
-            ∘ Σ-Π-swap _ _ )
-       ∘ Σ-Π-swap _ _)
-  ∘ Σ-Π-swap _ _
-
-
-
-tot-dua²→ : ∀ {@♭ 𝓥} → (Δ² → Space 𝓥) → Space²Σ 𝓥
-tot-dua²→ F = (F 0 , F 1 , F 2 , tr-𝓢-hom F Δ²-1≤2 , tr-𝓢-hom F Δ²-0≤1)
+  = is-equiv-∘~ (♭-ind (λ _ → refl)) fe ge
 
 module _
   (@♭ √ᵈ-is-prop
@@ -706,6 +695,31 @@ module _
   open SpacePath √ᵈ-is-prop
   open UIdS √ᵈ-is-prop
   open CovBundle √ᵈ-is-prop
+
+  Space²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
+  Space²Σ 𝓥
+    = Σ[ X Y Z ∶ Space 𝓥 ]
+      ( (Y .Space.Carrier → Z .Space.Carrier)
+      × (X .Space.Carrier → Y .Space.Carrier))
+
+  Cov-Δ²-bundle←Space
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} → (Γ → Space²Σ 𝓥) → Cov-Δ²-bundle Γ 𝓥
+  Cov-Δ²-bundle←Space
+    = map-Σ
+        UFib-transport
+        (λ a
+         → map-Σ
+             UFib-transport
+             (λ b
+              → map-Σ
+                  UFib-transport
+                  (λ c → Σ-Π-swap _ _)
+              ∘ Σ-Π-swap _ _ )
+         ∘ Σ-Π-swap _ _)
+    ∘ Σ-Π-swap _ _
+
+  tot-dua²→ : ∀ {@♭ 𝓥} → (Δ² → Space 𝓥) → Space²Σ 𝓥
+  tot-dua²→ F = (F 0 , F 1 , F 2 , tr-𝓢-hom F Δ²-1≤2 , tr-𝓢-hom F Δ²-0≤1)
 
   Cov-Δ²-bundle←Space-is-equiv
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
@@ -747,30 +761,90 @@ module _
       ae .fst .Arrow-Π.comm (mod♭ x) = refl
       ae .snd .fst = is-equiv-∘ UP-UFib (♭-map-is-equiv uncurry-is-equiv)
       ae .snd .snd = Cov-Δ²-bundle←Space-is-equiv
+}
 
-  horn-dua→ : ∀ {@♭ 𝓤} → (Λ[2,1] → Space 𝓤) → SpaceΛ₁²Σ 𝓤
-  horn-dua→ = map2 ∘ cocone-map _ pushout where
-    map2 : (Cocone (mk-span 𝟙 (λ _ → i1) (λ _ → i0)) (Space _)) → SpaceΛ₁²Σ _
-    map2 x
-      = ( x .Cocone.p 0 , x .Cocone.p 1 , x .Cocone.q 0 , x .Cocone.q 1
-        , tr≃ Space.Carrier (x .Cocone.filler tt)
-        , tr-𝓢 (x .Cocone.q)
-        , tr-𝓢 (x .Cocone.p))
+\agda{
+  SpaceΛ₁²Σ-cospan : ∀ (@♭ 𝓥) → Cospan (lsuc (𝓘 ⊔ 𝓥)) (lsuc (𝓘 ⊔ 𝓥)) (lsuc (𝓘 ⊔ 𝓥))
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Centre = Space 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Left = SpaceΣ 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.left = fst ∘ snd
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Right = SpaceΣ 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.right = fst
 
-  horn-dua : ∀ {@♭ 𝓤} → is-equiv (horn-dua→ {𝓤})
-  horn-dua = {!!}
+  Space²-cone : ∀ {@♭ 𝓤} → Cone (SpaceΛ₁²Σ-cospan 𝓤) (Space²Σ 𝓤)
+  Space²-cone .Cone.i (A , B , C , f , g) = (A , B , g)
+  Space²-cone .Cone.j (A , B , C , f , g) = (B , C , f)
+  Space²-cone .Cone.filler = ~refl
+
+  bot-sq
+    : ∀ {@♭ 𝓤} → Arrow-map (Cone.j Space²-cone) (Cospan.left (SpaceΛ₁²Σ-cospan 𝓤))
+  bot-sq {𝓤} = Arrow-map←Cone (Space²-cone {𝓤})
+
+  Space²-is-pullback : ∀ {@♭ 𝓥} → is-pullback (Space²-cone {𝓥})
+  Space²-is-pullback = is-equiv←qinv
+    ( (λ {((a , b , g) , (.b , c , f) , refl) → a , b , c , f , g})
+    , ~refl
+    , λ {(_ , _ , refl) → refl})
+
+  top-sq-is-cartesian
+    : ∀ {@♭ 𝓤} → is-cartesian (bot-sq {𝓤})
+  top-sq-is-cartesian = is-cartesian←is-pullback bot-sq (is-equiv←qinv
+    ( (λ {((b , c , g) , (a , .b , f) , refl) → a , b , c , g , f})
+    , ~refl
+    , λ {(_ , _ , refl) → refl}))
+
+  opaque
+    unfolding tr-cov-hom
+    Space²-cube
+      : ∀ (@♭ 𝓥)
+        → Cube
+            (precomp-square Λ[2,1]-Δ²-square (Space 𝓥))
+            (bot-sq {𝓥})
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.top = tot-dua²→
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.bot = tot-dua→
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.comm F = SpaceΣ-Id→ _ _
+      ( tr≃ (Space.Carrier ∘ F) Δ²-refl
+      , tr≃ (Space.Carrier ∘ F) Δ²-refl
+      , λ x
+        → tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢 (F ∘ δ₀²) x)
+        ＝⟨⟩
+          tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢-hom F (λhom δ₀²) x)
+        ＝⟨ tr-cov-hom-Idᵈ (Space.Carrier ∘ F) (UFib-is-fib F)
+              Δ²-refl Δ²-refl (λhom δ₀²) Δ²-1≤2
+              ( (λ _ → Δ²-refl)
+              , (mk-square (Δ²-is-set _ _ _ _)
+              , (mk-square (Δ²-is-set _ _ _ _)))) x ⟩
+          (tr-𝓢-hom F Δ²-1≤2 (tr (Space.Carrier ∘ F) Δ²-refl x))
+        ∎)
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.top = tot-dua→
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.bot = ev tt
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.comm = ~refl
+    Space²-cube 𝓥 .Cube.comm .fst = ~refl
+    Space²-cube 𝓥 .Cube.comm .snd .fst = ~refl
+    Space²-cube 𝓥 .Cube.comm .snd .snd a = ap (_∙ refl) (∙-reflr _
+      ∙ ap-fst-SpaceΣ-Id _ _ _
+      ∙ (ext! (tr≃ (Space.Carrier ∘ a) Δ²-refl)
+      ＝⟨ ap ext! (ext! (λ _ → tr∘ Space.Carrier a Δ²-refl)) ⟩
+        ext! (tr≃ Space.Carrier (ap a Δ²-refl))
+      ＝⟨ UFib-tr (ap a Δ²-refl) ⟩
+         ap a Δ²-refl
+      ＝⟨ ap (ap a) (Δ²-is-set _ _ _ _) ⟩
+         ap a (sym Δ²-refl)
+      ＝⟨ sym (happly (funext-redex) tt) ⟩
+         happly (funext→ (λ x → ap a (sym Δ²-refl))) tt ∎))
+
+    Space²-cube-is-equiv
+      : ∀ {@♭ 𝓥} → is-Cube-equiv (Space²-cube (𝓥 ⊔ 𝓘))
+    Space²-cube-is-equiv {𝓥} .fst = (tot-dua² {𝓥 ⊔ 𝓘} , tot-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘})
+    Space²-cube-is-equiv {𝓥} .snd = (tot-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘} , unit-ev-is-equiv)
 
   Space-is-segal
     : ∀ {@♭ 𝓤} → is-segal (Space (𝓤 ⊔ 𝓘))
-  Space-is-segal {𝓤} _
-    = 3-for-2~ (triangle h⁻¹)
-        horn-dua
-        (is-equiv-∘
-           SpaceΛ₁²Σ-decoh-is-equiv
-           (tot-dua² {𝓤})) where
-    triangle
-      : horn-dua→ ∘ precomp (Space (𝓤 ⊔ 𝓘)) Λ[2,1]-incl
-      ~ SpaceΛ₁²Σ-decoh ∘ tot-dua²→ {𝓤 ⊔ 𝓘}
-    triangle x = {!!}
+  Space-is-segal {𝓤}
+    = is-segal←is-cartesian
+        (front-cartesian←equiv-cube
+          (Space²-cube (𝓤 ⊔ 𝓘))
+          (Space²-cube-is-equiv {𝓤 ⊔ 𝓘})
+          top-sq-is-cartesian)
 }
 }

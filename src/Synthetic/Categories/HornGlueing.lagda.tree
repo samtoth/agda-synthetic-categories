@@ -44,6 +44,7 @@ open import Ergonomics.Auto
 open import Modalities.Instances.Truncation
 
 open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.Sharp
 
 open import Core.Arrows
 open import Core.ArrowEquiv
@@ -51,6 +52,7 @@ open import Core.ArrowEquiv
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Triangles Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I I-distr
@@ -211,11 +213,6 @@ tr²Σ' (F , Fcov)
     , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) δ₀²)
     , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) δ₂²))
 
-Δ²-point-incl : Fin 3 → Δ²
-Δ²-point-incl fzero = (i0 , i0)
-Δ²-point-incl (fsuc fzero) = (i1 , i0)
-Δ²-point-incl (fsuc (fsuc x)) = (i1 , i1)
-
 Δ¹-point-incl : Fin 2 → Δ¹
 Δ¹-point-incl fzero = i0
 Δ¹-point-incl (fsuc fzero) = i1
@@ -224,11 +221,6 @@ instance
   Number-Δ¹ : Number Δ¹
   Number-Δ¹ .Number.Constraint m = m <ℕ 2
   Number-Δ¹ .Number.fromNat n = Δ¹-point-incl (Fin←ℕ n 2 auto!)
-
-instance
-  Number-Δ² : Number Δ²
-  Number-Δ² .Number.Constraint m = m <ℕ 3
-  Number-Δ² .Number.fromNat n = Δ²-point-incl (Fin←ℕ n 3 auto!)
 
 Δ²-0≤1 : Hom Δ² 0 1
 Δ²-0≤1 .Homᵈ.hom i = (i , 0)
@@ -679,21 +671,32 @@ module _
   (@♭ crisp-cov-Nat-is-equiv
         : ∀ {@♭ 𝓤} (@♭ F G : Σ (B × Δ² → Type 𝓤) is-covariant)
             (@♭ α : ∀ i → F .fst i → G .fst i)
-          → @♭ (∀ x → is-equiv (α ((id ⊗ Δ²-point-incl) x)))
+          → @♭ (∀ (@♭ b : B) (@♭ x : Fin (suc (suc (suc zero)))) → is-equiv (♭-map (α (b , Δ²-point-incl x))))
           → is-fibrewise-equiv α)
   where
   open HornGluing {𝓤} {𝓥}
 
   Gl²←cov-fam-is-equiv
-    : ∀ (@♭ F : Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant) (b : B × Δ²)
-      → is-equiv (Gl²←cov-fam {𝓤} {𝓥} F b)
+    : ∀ (@♭ F : Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant)
+      → is-fibrewise-equiv (Gl²←cov-fam {𝓤} {𝓥} F)
   Gl²←cov-fam-is-equiv F = crisp-cov-Nat-is-equiv
     F
     (tr²Σ-inv {𝓤} {𝓥 ⊔ 𝓘}{B} (tr²Σ F))
     (Gl²←cov-fam F)
-    (λ { (b , fzero) → Gl²←cov-fam-is-equiv-at-0 F b
-       ; (b , fsuc fzero) → Gl²←cov-fam-is-equiv-at-1 F b
-       ; (b , fsuc (fsuc fzero)) → Gl²←cov-fam-is-equiv-at-2 F b})
+    (λ b → ♭Fin-ind₃ _
+      (♭-map-is-equiv (Gl²←cov-fam-is-equiv-at-0 F b))
+      (♭-map-is-equiv (Gl²←cov-fam-is-equiv-at-1 F b))
+      (♭-map-is-equiv (Gl²←cov-fam-is-equiv-at-2 F b)))
+    where
+
+    ♭Fin-ind₃
+      : ∀ {@♭ 𝓤} (@♭ P : (@♭ x : Fin 3) → Type 𝓤)
+        → @♭ (P 0) → @♭ (P 1) → @♭ P 2 → ∀ (@♭ x) → P x
+    ♭Fin-ind₃ P p0 p1 p2 x = (♭⊣ᵈ♯-transpose-bwd {B = ♭-ind P}
+      (λ { fzero .counit♯ → p0
+         ; (fsuc fzero) .counit♯ → p1
+         ; (fsuc (fsuc fzero)) .counit♯ → p2})
+      .counit♯) (mod♭ x)
 
   opaque
     tr²Σ-is-♭-equiv

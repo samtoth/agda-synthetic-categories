@@ -1,0 +1,148 @@
+\date{2025-03-01}
+\title{Univalence implies [function extensionality](Foundations.Funext)}
+\taxon{Module}
+\author{samueltoth}
+\import{stt-macros}
+
+\agda{
+module Foundations.FunextFromUnivalence where
+
+open import Foundations.Universes
+open import Foundations.Identity
+open import Foundations.Univalence
+open import Foundations.Equivalences
+open import Foundations.QuasiEquivalences
+open import Foundations.Functions
+open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.FibrewiseEquivalences
+open import Foundations.TotalEquiv
+open import Foundations.Singletons
+open import Foundations.SingletonFibres
+open import Foundations.EquivSingleton
+open import Foundations.Funext
+open import Foundations.Homotopy
+open import Foundations.EquivOfSingleton
+open import Foundations.TheoremOfChoice
+open import Foundations.SigmaProperties
+open import Foundations.TorsorialFamilies
+open import Foundations.WeakFunext
+}
+
+\p{
+In this module we show that univalence for a particular universe implies function
+extensionality in that universe.
+}
+
+
+\subtree[stt-000R]{
+\taxon{Lemma}
+\p{Given a univalent universe #{\UU} and types #{A,B,X : \UU}, for any
+equivalence #{e : A \simeq B} there exists an equivalence: }
+
+##{
+(X \to A) \simeq (X \to B)
+}
+
+\proof{
+\citet{4.9.1}{HoTT}
+
+\p{This lemma follows directly from function extensionality as shown in
+[\code{postcomp-≃}](stt-000O), but we can avoid this and show directly from
+univalence. Using the fact that assuming univalence, equivalences satisfy the
+J-elimination rule, we can assume #{e} is the identity equivalence, and then
+#{(X \to A) \simeq (X \to A)} is also just the identity equivalence.}
+
+\agda{
+postcomp-≃←univalence
+  : ∀ {𝓤 𝓥} (u : is-univalent 𝓤)
+      {A : Type 𝓤} {B : Type 𝓤} {X : Type 𝓥}
+    → (e : A ≃ B) → (X → A) ≃ (X → B)
+postcomp-≃←univalence {𝓤} uu {A} {B} {X} e
+  = mk≃
+      (e ._≃_.fwd ∘_)
+      (≃-ind (λ B' e' → is-equiv (e' ._≃_.fwd ∘_)) lem B e) where
+  open WithLocalUnivalence uu
+  lem : (B : Type 𝓤) (p : A ＝ B) → is-equiv (equiv←Id p ._≃_.fwd ∘_)
+  lem _ refl = id-is-equiv
+}
+}
+}
+
+\subtree[stt-000S]{
+\taxon{Corollary}
+
+\p{Given a family of singleton types #{P : A \to \UU}, the projection from the
+straightening is an equivalence. Then by [the above lemma](stt-000R), we have:
+#{(A \to \Sigma_{(x : A)}P(x)) \simeq (A \to A)}.}
+
+\proof{
+\citet{4.9.3}{HoTT}
+
+\p{The fibre of the projection #{\pi : \Sigma_{(x : A)}P(x) \to A} at some #{x :
+A} is equivalent to #{P(x)}. By assumption we have the each #{P(x)} is
+singleton, and therefore so is each fibre of #{\pi}, thus it is an
+equivalence. }
+
+\agda{
+HoTT4-9-3
+  : ∀ {𝓤} (_ : is-univalent 𝓤)
+      {A : Type 𝓤} {P : A → Type 𝓤}
+      (P-sing : ∀ a → is-singleton (P a))
+    → (A → Σ A P) ≃ (A → A)
+HoTT4-9-3 uu Ps = postcomp-≃←univalence uu (Σ-singleton Ps)
+}
+}
+}
+
+\subtree[stt-000T]{
+
+\taxon{Theorem}
+\title{Univalence implies [weak funext](tot-UF05)}
+
+\proof{
+
+\citet{4.9.4}{HoTT}
+
+\agda{
+module _
+  {𝓤} (uu : is-univalent 𝓤)
+  {A : Type 𝓤} {P : A → Type 𝓤}
+  (P-sing : ∀ a → is-singleton (P a)) where
+  private
+    α : (A → Σ A P) → A → A
+    α = HoTT4-9-3 uu P-sing ._≃_.fwd
+
+    α-is-eqv : is-equiv α
+    α-is-eqv = HoTT4-9-3 uu P-sing ._≃_.fwd-is-equiv
+
+  HoTT4-9-4 : ((a : A) → P a) ≃ fibre α id
+  HoTT4-9-4 = equiv←qequiv lem where
+    lem : ((a : A) → P a) ≊ fibre α id
+    lem ._≊_.fwd f = (λ a → (a , f a)) , refl
+    lem ._≊_.fwd-qinv .fst (f , p) a = tr P (happly p a) (snd (f a))
+    lem ._≊_.fwd-qinv .snd .fst f = refl
+    lem ._≊_.fwd-qinv .snd .snd a = is-prop←is-single
+      (has-singleton-fibres←is-equiv (α-is-eqv) id) _ a
+
+  weak-funext←univalence : is-singleton ((a : A) → P a)
+  weak-funext←univalence = is-single←equiv-to-single (HoTT4-9-4 e⁻¹) (has-singleton-fibres←is-equiv α-is-eqv id)
+}
+}
+}
+
+
+
+\subtree[stt-000V]{
+\taxon{Corollary}
+\title{Univalence implies function extensionality}
+
+\p{We have show that univalence gives weak function extensionality, and weak
+fun-ext gives full fun-ext, so as an easy corollary we have the univalence for a
+particular universe gives function extensionality for that universe}
+
+\agda{
+funext←univalence : ∀ {𝓤} → is-univalent 𝓤 → Funext 𝓤 𝓤
+funext←univalence uu = funext←weak-funext (weak-funext←univalence uu)
+}
+}

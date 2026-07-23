@@ -1,0 +1,135 @@
+\date{2025-05-13}
+\title{Transposing equalities along inverses}
+\taxon{Module}
+\import{stt-macros}
+
+
+\agda{
+module Foundations.TransposingEqualitiesInverses where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.EquivHomotopy
+open import Foundations.Functions
+open import Foundations.Sigma
+open import Foundations.Homotopy
+open import Foundations.IdentityEquiv
+open import Foundations.Identity
+open import Foundations.Funext
+}
+}
+
+
+\subtree[stt-00QO]{
+\date{2026-05-13}
+\author{fredrikbakke}
+\taxon{Proposition}
+\title{Transposing equalities along one-sided inverses}
+
+\p{
+Given two maps #{f : A \to B} and #{g : B \to A}, then the type of homotopies
+#{g \circ f \sim \id}, i.e., witnesses that #{g} is a [retraction](stt-000I) of #{f},
+is equivalent to the type of families of transposing maps
+#{(f(x) = y) \to (x = g(y))} for all #{x} and #{y}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) (g : B → A) where
+
+  eq-transpose←left-inverse
+    : g ∘ f ~ id
+      → (y : B) (x : A) → y ＝ f x → g y ＝ x
+  eq-transpose←left-inverse R y x p
+    = ap g p ∙ R x
+
+  left-inverse←eq-transpose
+    : ((y : B) (x : A) → y ＝ f x → g y ＝ x)
+      → g ∘ f ~ id
+  left-inverse←eq-transpose H x
+    = H (f x) x refl
+
+  transpose-eq←left-inverse
+    : g ∘ f ~ id
+    → (y : B) (x : A) → f x ＝ y → g y ＝ x
+  transpose-eq←left-inverse R y x p
+    = sym (ap g p) ∙ R x
+
+  transpose-eq←left-inverse'
+    : g ∘ f ~ id
+    → (y : B) (x : A) → y ＝ f x → x ＝ g y
+  transpose-eq←left-inverse' R y x p
+    = sym (R x) ∙ ap g (sym p)
+}
+
+\agda{
+module TransposingEqualitiesWithFunExt
+  (FE : Funext-global)
+  (open WithFunext-global FE)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) (g : B → A)
+  where
+
+  eq-transpose←left-inverse-is-equiv
+    : is-equiv (eq-transpose←left-inverse f g)
+  eq-transpose←left-inverse-is-equiv
+    = is-equiv←qinv qinv where
+    qinv : quasi-inv (eq-transpose←left-inverse f g)
+    qinv .fst = left-inverse←eq-transpose f g
+    qinv .snd .fst R = refl
+    qinv .snd .snd H
+      = funext→ λ y →
+        funext→ λ x →
+        funext→ λ where refl → refl
+
+  eq-transpose-left-inverse≃
+    : (g ∘ f ~ id) ≃ ((y : B) (x : A) → y ＝ f x → g y ＝ x)
+  eq-transpose-left-inverse≃
+    = mk≃
+        (eq-transpose←left-inverse f g)
+        (eq-transpose←left-inverse-is-equiv)
+}
+}
+
+\subtree[stt-00QV]{
+\title{Transposing equalities along equivalences}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-05-13}
+
+\p{
+Given an equivalence #{e : X \simeq Y}, then any equality #{e(x) = y} may be
+transposed to an equality #{x = e^{-1}(y)}, and this transposing map defines an
+equivalence #{(e(x) = y) \simeq (x = e^{-1}(y))}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (e : X ≃ Y) where
+
+  transpose-eq-equiv
+    : (y : Y) (x : X) → _≃_.fwd e x ＝ y → _≃_.bwd e y ＝ x
+  transpose-eq-equiv
+    = transpose-eq←left-inverse (_≃_.fwd e) (_≃_.bwd e) (_≃_.η e)
+
+  transpose-eq-equiv'
+    : (y : Y) (x : X) → _≃_.bwd e y ＝ x → _≃_.fwd e x ＝ y
+  transpose-eq-equiv' y x
+    = transpose-eq←left-inverse (_≃_.bwd e) (_≃_.fwd e) (_≃_.ε e) x y
+
+  transpose-eq-equiv-is-equiv
+    : (y : Y) (x : X)
+      → is-equiv (transpose-eq-equiv y x)
+  transpose-eq-equiv-is-equiv y x
+    = is-equiv←~⁻¹
+        (λ p → ap (_∙ _≃_.η e x) (ap-sym (_≃_.bwd e) p))
+        (_≃_.fwd-is-equiv
+          ( sym≃ ∙e ＝-equiv (e e⁻¹) ∙e ＝-preconcat-≃ (_≃_.η e x)))
+
+  transpose-eq-equiv≃
+    : (y : Y) (x : X) → (_≃_.fwd e x ＝ y) ≃ (_≃_.bwd e y ＝ x)
+  transpose-eq-equiv≃ y x
+    = mk≃ (transpose-eq-equiv y x) (transpose-eq-equiv-is-equiv y x)
+}
+}

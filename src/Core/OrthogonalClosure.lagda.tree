@@ -9,9 +9,12 @@
 
 module Core.OrthogonalClosure where
 
-open import Foundations.Prelude
-
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
 
 open import Core.Arrows
 open import Core.ArrowEquiv
@@ -22,6 +25,7 @@ open import Core.Cube
 open import Core.PullbackPowers
 open import Core.Postwhisker
 open import Core.CocartesianSquares
+open import Core.CartesianSquares
 open import Core.PushoutSums
 open import Core.Coslices
 open import Core.FunctorialityPushouts
@@ -29,6 +33,7 @@ open import Core.SpanMaps
 
 open notation
 open import Ergonomics.Notations.Orthogonality
+}
 }
 
 
@@ -98,6 +103,14 @@ orthogonal←base-change {X = X} {Y} f {A} {g = g} {h} F cart orth
        (postcomp-cartesian F cart)
        (postcomp-cartesian F cart)
        (is-cartesian←are-orthogonal orth))
+
+orthogonal-fam←base-change
+  : ∀ {𝓤 𝓥 𝓐 𝓑 𝓓}
+      {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+      {A : Type 𝓐} {B : Type 𝓑} (σ : A → B)
+      (G : B → Type 𝓓)
+    → are-orthogonal-fam f G → are-orthogonal-fam f (G ∘ σ)
+orthogonal-fam←base-change f σ G fG h = fG (σ ∘ h)
 }
 
 
@@ -136,7 +149,7 @@ right-orthogonal-iff←equiv
       {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
       {g : A → B} {h : C → D}
     → (F : Arrow-map g h) → is-Arrow-equiv F
-    → are-orthogonal f h ⇔ are-orthogonal f g
+    → are-orthogonal f h ↔ are-orthogonal f g
 right-orthogonal-iff←equiv f F Fe
   = (right-orthogonal←equiv f F Fe , right-orthogonal←equiv' f F Fe)
 
@@ -319,7 +332,7 @@ power-hom-cube←arrow-map f f' F g .Cube.comm .snd .fst = ~refl
 power-hom-cube←arrow-map f f' F g .Cube.comm .snd .snd k
   = ∙-reflr _ ∙ ∙-reflr _
   ∙ sym (commutes-postwhisker-funext {h = g} _)
-  ∙ ap funext→ (funext→ (◂∘ g k _ ~⁻¹))
+  ∙ ap funext→ (funext→ (◂∘ g k _ h⁻¹))
 
 left-orthogonal-retraction
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
@@ -346,7 +359,7 @@ left-orthogonal-retraction {A = A} {B} f f' F ret {C} {D} h f'h
     ,  λ a → sym
               (∙-assoc
                 (ap (_∘ Arrow-map.top F) (funext→ (a ◂ _)))
-                (funext→ ( a ∘ Arrow-map.bot (ret .fst) ◂ (Arrow-map.comm F ~⁻¹)))
+                (funext→ ((a ∘ Arrow-map.bot (ret .fst)) ◂ (Arrow-map.comm F h⁻¹)))
                 ((precomp D f ◂ ret-right .fst) a))
               ∙ ret-right .snd .snd a ∙ ∙-reflr _) where
     ret-left : Arrow-map-path
@@ -378,6 +391,18 @@ left-orthogonal-equiv f f' F Feq g fperp
         (front-cartesian←equiv-cube (power-hom-cube←arrow-map _ _ F g)
           (precomp-square-is-equiv F Feq , precomp-square-is-equiv F Feq)
           (transpose-is-cartesian _ (is-cartesian←are-orthogonal fperp))))
+
+left-orthogonal-fam←equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {X : Type 𝓦} {Y : Type 𝓜} (f' : X → Y)
+    → Arrow-equiv f f'
+    → {C : Type 𝓝} (D : C → Type 𝓛)
+    → are-orthogonal-fam f D → are-orthogonal-fam f' D
+left-orthogonal-fam←equiv f f' eq D fD
+  = are-orthogonal-fam←are-orthogonal-fst
+      (left-orthogonal-equiv
+        f f' (eq .fst) (eq .snd) (fst: D)
+        (are-orthogonal-fst←are-orthogonal-fam fD))
 
 is-anodyne←equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓧 𝓨} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
@@ -569,7 +594,7 @@ left-orthogonal-pushout-product' f h fh g
 
 \p{Consider spans #{A_i \xleftarrow{f_i} B \xrightarrow{g} C} for #{i \in \{1,2\}}.
 Given a coslice map #{F : f_0 \to_B f_1}, we have an action on pushouts
-#{A_0 +^B C \to A_1 +^B C}. If #{F \perp k}, then #{F +^B C \perp k}.}
+#{A_0 \amalg_B C \to A_1 \amalg_B C}. If #{F \perp k}, then #{F \amalg_B C \perp k}.}
 
 \proof{
 \p{We can arrange these maps into squares as follows:}
@@ -578,9 +603,9 @@ Given a coslice map #{F : f_0 \to_B f_1}, we have an action on pushouts
 \begin{tikzcd}
 	B && C \\
 	\\
-	{A_0} && {A_0+^BC} \\
+	{A_0} && {A_0\amalg_BC} \\
 	\\
-	{A_1} && {A_1+^B C}
+	{A_1} && {A_1\amalg_B C}
 	\arrow[from=1-1, to=1-3]
 	\arrow[from=1-1, to=3-1]
 	\arrow[from=1-3, to=3-3]
@@ -793,7 +818,7 @@ Pushout₁-left∘right
 Pushout₁-left∘right F G .fst = ~refl
 Pushout₁-left∘right F G .snd .fst = ~refl
 Pushout₁-left∘right F G .snd .snd .fst = ~refl
-Pushout₁-left∘right F G .snd .snd .snd .fst = ~∙-reflr _ ~⁻¹
+Pushout₁-left∘right F G .snd .snd .snd .fst = ∙h-reflr _ h⁻¹
 Pushout₁-left∘right F G .snd .snd .snd .snd a = ap (_∙ refl) (ap-id (snd G a))
 
 opaque
@@ -809,7 +834,7 @@ opaque
   left-orthogonal-pushout₁ F G k Fk Gk
     = left-orthogonal-homotopy k
         (Pushout-∘ (left-span-map F _) (right-span-map _ G)
-        ~∙ happly (ap Pushout₁ (Span-map-funext→ (Pushout₁-left∘right F G))))
+        ∙h happly (ap Pushout₁ (Span-map-funext→ (Pushout₁-left∘right F G))))
         (left-orthogonal-∘ _ _ k
             (left-orthogonal-pushout₁-left F _ k Fk)
             (left-orthogonal-pushout₁-right _ G k Gk))
@@ -889,7 +914,7 @@ module RightOrthogonalClassClosure
         {Z : Type 𝓜} {W : Type 𝓝}
         {g : X → Y} {h : Z → W}
       → (F : Arrow-map g h) → is-Arrow-equiv F
-      → ∈R h ⇔ ∈R g
+      → ∈R h ↔ ∈R g
   ∈R-iff←equiv F Fe
     = (∈R←equiv F Fe , ∈R←equiv' F Fe)
 

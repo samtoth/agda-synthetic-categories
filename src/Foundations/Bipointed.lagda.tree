@@ -1,0 +1,147 @@
+\date{2026-05-21}
+\title{Bipointed types}
+\taxon{Module}
+\author{fredrikbakke}
+\import{stt-macros}
+
+\agda{
+module Foundations.Bipointed where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Identity
+open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.Funext
+open import Foundations.Bool
+open import Foundations.Pointed
+}
+}
+
+\subtree[stt-00RH]{
+\date{2026-05-21}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Bipointed types}
+
+\p{
+A \em{bipointed type} is a type equipped with a distinguished "source" and "target"
+element.
+}
+
+\agda{
+record Type∗∗ (𝓤 : Level) : Type (lsuc 𝓤) where
+  constructor mk-type∗∗
+  field
+    Carrier : Type 𝓤
+    src : Carrier
+    tgt : Carrier
+
+open Type∗∗
+}
+}
+
+\subtree[stt-00RI]{
+\date{2026-05-21}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Bipointed maps}
+
+\p{
+A \em{bipointed map} preserves both distinguished points.
+}
+
+\agda{
+record map∗∗ {𝓤 𝓥 : Level} (A : Type∗∗ 𝓤) (B : Type∗∗ 𝓥) : Type (𝓤 ⊔ 𝓥) where
+  constructor mk-map∗∗
+  field
+    hom : Carrier A → Carrier B
+    pres-src : hom (src A) ＝ src B
+    pres-tgt : hom (tgt A) ＝ tgt B
+
+open map∗∗
+
+id∗∗ : {𝓤 : Level} (A : Type∗∗ 𝓤) → map∗∗ A A
+id∗∗ A = mk-map∗∗ id refl refl
+
+map∗∗-∘
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type∗∗ 𝓤} {B : Type∗∗ 𝓥} {C : Type∗∗ 𝓦}
+  → map∗∗ B C → map∗∗ A B → map∗∗ A C
+map∗∗-∘ F G .hom = map∗∗.hom F ∘ map∗∗.hom G
+map∗∗-∘ F G .pres-src = ap (map∗∗.hom F) (map∗∗.pres-src G) ∙ map∗∗.pres-src F
+map∗∗-∘ F G .pres-tgt = ap (map∗∗.hom F) (map∗∗.pres-tgt G) ∙ map∗∗.pres-tgt F
+}
+}
+
+\subtree[stt-00RK]{
+\date{2026-05-21}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{The source and target pointed types}
+
+\p{
+The source and target points of a bipointed type define two pointed types with
+the same underlying Carrier.
+}
+
+\agda{
+source∗ : {𝓤 : Level} → Type∗∗ 𝓤 → Type∗ 𝓤
+source∗ A = mk-type∗ (Carrier A) (src A)
+
+target∗ : {𝓤 : Level} → Type∗∗ 𝓤 → Type∗ 𝓤
+target∗ A = mk-type∗ (Carrier A) (tgt A)
+
+source-map∗
+  : {𝓤 𝓥 : Level} {A : Type∗∗ 𝓤} {B : Type∗∗ 𝓥}
+  → map∗∗ A B → map∗ (source∗ A) (source∗ B)
+source-map∗ F = mk-map∗ (map∗∗.hom F) (map∗∗.pres-src F)
+
+target-map∗
+  : {𝓤 𝓥 : Level} {A : Type∗∗ 𝓤} {B : Type∗∗ 𝓥}
+  → map∗∗ A B → map∗ (target∗ A) (target∗ B)
+target-map∗ F = mk-map∗ (map∗∗.hom F) (map∗∗.pres-tgt F)
+}
+}
+
+\subtree[stt-00RJ]{
+\date{2026-05-21}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Bipointed types as types in the coslice of #{\Bool}}
+
+\p{
+A bipointed type is equivalently a type equipped with a map from #{\Bool}.
+}
+
+\agda{
+Bool-coslice : (𝓤 : Level) → Type (lsuc 𝓤)
+Bool-coslice 𝓤 = Σ[ X ∶ Type 𝓤 ] (Bool → X)
+
+Bool-coslice←Type∗∗ : {𝓤 : Level} → Type∗∗ 𝓤 → Bool-coslice 𝓤
+Bool-coslice←Type∗∗ A = Carrier A , λ where
+  false → src A
+  true → tgt A
+
+Type∗∗←Bool-coslice : {𝓤 : Level} → Bool-coslice 𝓤 → Type∗∗ 𝓤
+Type∗∗←Bool-coslice (X , p) = mk-type∗∗ X (p false) (p true)
+
+Type∗∗≃Bool-coslice
+  : {𝓤 : Level} → Funextω 𝓤 → Type∗∗ 𝓤 ≃ Bool-coslice 𝓤
+Type∗∗≃Bool-coslice FE = mk≃ Bool-coslice←Type∗∗ (is-equiv←qinv qinv) where
+  open WithFunextω FE
+
+  qinv : quasi-inv Bool-coslice←Type∗∗
+  qinv .fst = Type∗∗←Bool-coslice
+  qinv .snd .fst = ~refl
+  qinv .snd .snd (X , p) = Σ-path→ (refl , funext→ λ where
+    false → refl
+    true → refl)
+}
+}

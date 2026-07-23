@@ -6,6 +6,10 @@
 module Modalities.Instances.Nullification where
 
 open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
 open import Axioms.FreeAlgebraicInjectives
 open import Foundations.Prelude
 open import Core.Arrows
@@ -17,6 +21,7 @@ open import Modalities.HigherModalities
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
+}
 }
 
 \subtree[stt-005G]{
@@ -41,7 +46,7 @@ module _
   where
 
   is-null : (A : I → Type 𝓤) → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  is-null A X = (i : I) → is-equiv (const X (A i))
+  is-null A X = (i : I) → is-equiv (const: X (A i))
 
   is-null-is-prop
     : {A : I → Type 𝓤}
@@ -52,7 +57,7 @@ module _
     : {A : I → Type 𝓤}
       {X : Type 𝓥} (_ : is-null A X) (i : I)
     → X ≃ (A i → X)
-  null≃ {A} {X} An i = mk≃ (const X (A i)) (An i)
+  null≃ {A} {X} An i = mk≃ (const: X (A i)) (An i)
 
   is-null-equiv
     : {A : I → Type 𝓤}
@@ -99,6 +104,15 @@ is-local←is-null
     → is-local (λ i → !: A i) X
 is-local←is-null eq i = 3-for-2' (point-is-equiv) (eq i)
 
+is-local-fst←is-null
+  : ∀ {𝓙 𝓤 𝓥} {X : Type 𝓤} {J : X → Type 𝓙} {A : Type 𝓥}
+  → is-null J A
+  → is-local (point (fst: J)) A
+is-local-fst←is-null {J = J} {A = A} A-null _
+  = 3-for-2
+      (curry-is-equiv)
+      (postcomp-Π-equiv λ {x} → A-null x)
+
 is-local-sing←is-null
   : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
       {A : I → Type 𝓤}
@@ -112,6 +126,14 @@ is-local-sing←is-null Bsing f null i
   = 3-for-2'
     (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bsing i)))
     (null i)
+
+is-localᴸ←is-null
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-null A X
+    → is-local (λ i → !ᴸ: 𝓦 (A i)) X
+is-localᴸ←is-null {A = A}
+  = is-local-sing←is-null (λ i → 𝟙ᴸ-is-singleton) (λ i → !ᴸ)
 
 is-null←is-local
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
@@ -133,6 +155,14 @@ is-null←is-local-sing Bs f loc i
   = is-equiv-∘
       (loc i)
       (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bs i)))
+
+is-null←is-localᴸ
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-local (λ i → !ᴸ: 𝓦 (A i)) X
+    → is-null A X
+is-null←is-localᴸ {A = A}
+  = is-null←is-local-sing (λ i → 𝟙ᴸ-is-singleton) (λ i → !ᴸ)
 
 Null≃!Local
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
@@ -293,7 +323,7 @@ choice](Foundations.TheoremOfChoice).}  }
           ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
         (P i → Σ X Y) ≃∎
 
-    eqv : is-equiv (const (Σ X Y) (P i))
+    eqv : is-equiv (const: (Σ X Y) (P i))
     eqv = I ._≃_.fwd-is-equiv
 
 prop-is-null∙
@@ -443,6 +473,76 @@ module _
 }
 }
 
+\subtree[stt-00U2]{
+\date{2026-04-08}
+\author{fredrikbakke}
+\title{Deformation cone argument for anodyne types}
+\taxon{Proposition}
+
+\p{
+Suppose a type #{X} admits a \em{deformation cone} parametrised by a type #{J} with
+endpoints #{j_0,j_1 : J}, meaning a map #{J \to X \to X} which at #{j_0} collapses
+everything to a cone point #{x_0 : X} and at #{j_1} is the identity function. Then
+every #{J}-null type is also #{X}-null.
+}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓥} {J : X → Type 𝓙} {A : Type 𝓤}
+  where
+
+  is-null-at-deformation-cone
+    : (x₀ : X)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ x₀)
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J A
+    → is-null (point X) A
+  is-null-at-deformation-cone x₀ H j0 j1 H0 H1 A-is-J-null
+    = is-null←is-local
+        (is-local-at-deformation-cone
+          (point x₀ , ~refl) H j0 j1 H0 H1 (is-local-fst←is-null A-is-J-null))
+}
+}
+
+\subtree[stt-00U1]{
+\date{2026-04-09}
+\author{fredrikbakke}
+\title{Deformation cone argument for equivalences}
+\taxon{Corollary}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓤} {J : X → Type 𝓙} {Y : Type 𝓥}
+  {f : X → Y}
+  where
+
+  is-equiv←null-deformation-cone
+    : (S@(s , _) : section f)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ s (f x))
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J X
+    → is-equiv f
+  is-equiv←null-deformation-cone s H j0 j1 H0 H1 X-is-J-null
+    = is-equiv←local-deformation-cone
+        (s)
+        (λ (x , t) → H x t)
+        (λ x → (x , j0 x))
+        (λ x → (x , j1 x))
+        (H0)
+        (H1)
+        (~refl)
+        (is-local-fst←is-null X-is-J-null)
+}
+}
+
 \subtree[stt-00L9]{
 \date{2026-03-31}
 \author{fredrikbakke}
@@ -551,7 +651,7 @@ Null-in-gSubU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-p
   is-in-SU-and-is-null-is-prop X
     = ×-is-prop (∈-is-prop SU X) (is-null-is-prop X)
 
-  qinv : quasi-inv (const U (P i))
+  qinv : quasi-inv (const: U (P i))
   qinv .fst f
     = ( Π (P i) (fst ∘ f)
       , SΠ i (λ a → snd (f a) .fst)

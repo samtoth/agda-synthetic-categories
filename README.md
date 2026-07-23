@@ -1,10 +1,12 @@
-# Agda Synthetic Categories
+<h1>
+  Agda Synthetic Categories
+  <img align="right" src="assets/logo-wide-transparent.svg" alt="The Agda-simplex logo" width="240">
+  <br clear="right">
+</h1>
 
 An agda development focussed on the development of ∞-category theory using simplicial
-type theory. Visit [the-forest](https://samtoth.github.io/agda-synthetic-categories)
-to browse the resource and find out more about the project. Benchmark history is
-published at
-[the benchmark page](https://samtoth.github.io/agda-synthetic-categories/benchmarks/).
+type theory. Visit [the forest](https://samtoth.github.io/agda-synthetic-categories)
+to browse the resource and find out more about the project.
 
 Have questions or just want to chat? Join our
 [Discord server](https://discord.gg/Jfxv4jPTva)!
@@ -48,3 +50,8 @@ I have been using the emacs mode by the Topos Institute at
 [github:ToposInstitute/forester.el](https://github.com/ToposInstitute/forester.el),
 which works well when editing trees, but there is currently no solution for working
 with literate agda in forests.
+
+### Benchmarking
+
+Benchmarking history is published at
+[the benchmarks page](https://samtoth.github.io/agda-synthetic-categories/benchmarks/).

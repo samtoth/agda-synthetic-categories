@@ -5,24 +5,30 @@
 
 \agda{
 module Foundations.BiinvertibleMaps where
+}
 
+\agda-imports{
+\agda{
 open import Foundations.Universes
 open import Foundations.Spans
 open import Foundations.Functions
 open import Foundations.FunctionInverses
 open import Foundations.Sigma
 open import Foundations.Identity
+open import Foundations.Pullbacks
 open import Foundations.Homotopy
 open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
+open import Foundations.EquivHomotopy
 open import Foundations.Singletons
 open import Foundations.SingletonClosure
 open import Foundations.FibrewiseEquivalences
 open import Foundations.PropExt
 open import Foundations.IsEquivIsProp
-import Foundations.CanonicalPullbacks as CP
+open import Foundations.CanonicalPullbacks
 
 import Foundations.Funext as FE
+}
 }
 
 \subtree[stt-00GX]{
@@ -56,6 +62,11 @@ is-biinv f = section f × retraction f
 
 biinv : ∀ {𝓤 𝓥} → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
 biinv A B = Σ (A → B) is-biinv
+
+is-biinv←~
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+    → (g ~ f) → is-biinv f → is-biinv g
+is-biinv←~ H (sec , ret) = (section←~ H sec , retraction←~ H ret)
 }
 }
 
@@ -74,7 +85,7 @@ qinv←is-biinv {f = f} ((g , ε) , (h , η)) = (g , ret , ε) where
   g~h b = sym (η (g b)) ∙ ap h (ε b)
 
   ret : retraction-witness f g
-  ret = g~h ▸ f ~∙ η
+  ret = g~h ▸ f ∙h η
 
 is-equiv←is-biinv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
@@ -87,7 +98,6 @@ is-biinv←is-equiv
 is-biinv←is-equiv e = is-equiv.section-fwd e , is-equiv.retraction-fwd e
 }
 
-
 \p{
 Under function extensionality, the predicate of being biinvertible is equivalent to
 being a [coherent equivalence](stt-001U), which is our preferred notion of
@@ -95,14 +105,14 @@ equivalence.
 }
 
 \agda{
-module WithFunext (FE : FE.Funext-global) where
+module BiinvWithFunext (FE : FE.Funext-global) where
 
   is-biinv-is-prop
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       → is-prop (is-biinv f)
   is-biinv-is-prop {f = f} = is-prop←is-single-if-inhabited λ b
-    → Σ-is-single (section-is-single←qinv FE (qinv←is-biinv b))
-                   (λ _ → retractions-is-singleton←qinv FE (qinv←is-biinv b))
+    → ×-is-single (section-is-single←qinv FE (qinv←is-biinv b))
+                  (retractions-is-singleton←qinv FE (qinv←is-biinv b))
 
   is-biinv≃is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
@@ -113,7 +123,7 @@ module WithFunext (FE : FE.Funext-global) where
   ≃-rep-biinv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       → (A ≃ B) ≃ biinv A B
-  ≃-rep-biinv = ≃-rep ∙≃ Σ-snd-≃ (λ f → is-biinv≃is-equiv {f = f} e⁻¹)
+  ≃-rep-biinv = ≃-rep ∙e Σ-snd-≃ (λ f → is-biinv≃is-equiv {f = f} e⁻¹)
 }
 }
 
@@ -145,7 +155,7 @@ respectively:
 }
 
 \agda{
-module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} where
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
   biinv-cone
     : Cone (mk-cospan (A → B) (fst: section) (fst: retraction)) (biinv A B)
@@ -155,21 +165,21 @@ module _ {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} where
               (~refl)
 
   biinv-is-pullback
-    : CP.is-pullback biinv-cone
+    : is-pullback biinv-cone
   biinv-is-pullback = mk-eqv (bwd , ret , sec) coh where
-    bwd : CP.Pullback (fst: section) (fst: retraction) → biinv A B
+    bwd : Pullback (fst: section) (fst: retraction) → biinv A B
     bwd ((f , s) , (.f , r) , refl) = (f , s , r)
-    ret : retraction-witness (CP.gap biinv-cone) bwd
+    ret : retraction-witness (gap biinv-cone) bwd
     ret (f , s , r) = refl
-    sec : section-witness (CP.gap biinv-cone) bwd
+    sec : section-witness (gap biinv-cone) bwd
     sec ((f , s) , (.f , r) , refl) = refl
     coh : qinv-coh (bwd , ret , sec)
     coh (f , s , r) = refl
 
   biinv≃pullback
     : biinv A B
-    ≃ CP.Pullback (fst: section) (fst: retraction)
+    ≃ Pullback (fst: section) (fst: retraction)
   biinv≃pullback
-    = mk≃ (CP.gap biinv-cone) (biinv-is-pullback)
+    = mk≃ (gap biinv-cone) (biinv-is-pullback)
 }
 }

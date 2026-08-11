@@ -15,7 +15,6 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Arrows
-open import Core.CartesianSquares
 open import Core.Coslices
 }
 }
@@ -305,123 +304,6 @@ precomp-square-is-equiv
     → is-Arrow-equiv (precomp-Arrow-map Q F)
 precomp-square-is-equiv F eq
   = (precomp-equiv (eq .snd) , precomp-equiv (eq .fst))
-}
-}
-
-\subtree[stt-00BQ]{
-\title{Arrow equivalences are cartesian squares}
-\taxon{Lemma}
-
-\agda{
-opaque
-  is-cartesian←is-equiv
-    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
-        {Y : Type 𝓜} {f : A → B} {g : X → Y}
-      → (F : Arrow-map f g)
-      → is-Arrow-equiv F → is-cartesian F
-  is-cartesian←is-equiv F@(mk-amap top bot p) (teq , beq) b
-    = is-equiv-∘
-        {f = total-map-fst top}
-        (total-is-equiv←fst-is-equiv teq)
-        (is-total-equiv←is-fibrewise-equiv
-          (λ a → is-equiv-∘
-                   {f = sym (p a) ∙_}
-                   (∙-is-equiv (sym (p a)))
-                   (is-embedding←is-equiv beq)))
-
-  inverse-is-cartesian←is-equiv
-    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-        {f : A → B} {g : X → Y} (F : Arrow-map f g)
-      → (Fe : is-Arrow-equiv F)
-      → is-cartesian (Arrow⁻¹←is-Arrow-equiv F Fe)
-  inverse-is-cartesian←is-equiv F Fe
-    = is-cartesian←is-equiv _ (Arrow⁻¹-is-equiv F Fe)
-}
-}
-
-\subtree[stt-00D7]{
-\title{Right cancelling a cartesian square by an arrow equivalence}
-\taxon{Lemma}
-
-\agda{
-right-cancel-cartesian
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
-      {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''}
-      {a : Arrow-map f' f''} {b : Arrow-map f f'}
-      {H : Arrow-map f f''}
-    → Arrow-map-path H (paste-squares a b)
-    → is-cartesian H
-    → is-Arrow-equiv b
-    → is-cartesian a
-right-cancel-cartesian {a = a} {b} {H} path Hc bc b'
-  = src-is-equiv←Arrow-equiv (hom , hom-eq) lem where
-  open Arrow-map
-  open is-equiv
-  lem : is-equiv (arrow-fibre a (b .bot (bwd (bc .snd) b')))
-  lem = 3-for-2~' {f = arrow-fibre a (b .bot (bwd (bc .snd) b'))}
-                  {g = arrow-fibre b (bwd (bc .snd) b')}
-                 (arrow-fibre-∘ a b (bwd (bc .snd) b'))
-                 (is-cartesian←is-equiv b bc (bwd (bc .snd) b'))
-                 (tr is-cartesian (Arrow-map-path→ path) Hc (bwd (bc .snd) b'))
-
-  hom : Arrow-map (arrow-fibre a b') (arrow-fibre a (b .bot (bwd (bc .snd) b')))
-  hom .top = total-map (λ x → _∙ sym (ε (bc .snd) b'))
-  hom .bot = total-map (λ x → _∙ ap (bot a) (sym (ε (bc .snd) b')))
-  hom .comm (x , refl)
-    = Σ-path→ (refl , ap (_∙ ap (bot a) _) (∙-reflr (sym (comm a x))))
-
-  hom-eq : is-Arrow-equiv hom
-  hom-eq .fst = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
-  hom-eq .snd = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
-}
-}
-
-\subtree[stt-00K5]{
-\title{Canonical cartesian square}
-
-\p{We encode the fact that for each map #{f : A \to B}, there are functors
-#{f^* : \Type_B \to \Type_A}. We also note that for each #{f}, there are
-cartesian maps of arrows from #{f^*(p)} to #{p}, the canonical pullback squares.}
-
-\agda{
-base-change-arrow
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
-    → (f : A → B) → (p : E → B) → (Pullback f p → A)
-base-change-arrow f p = pb.π₁
-
-base-change-arrow-map
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
-    → (f : A → B) → (p : E → B)
-    → Arrow-map (base-change-arrow f p) p
-base-change-arrow-map f p .Arrow-Π.top = pb.π₂
-base-change-arrow-map f p .Arrow-Π.bot = f
-base-change-arrow-map f p .Arrow-Π.comm = pb.filler
-
-base-change-arrow-map-is-cartesian
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦}
-    → (f : A → B) → (p : E → B)
-    → is-cartesian (base-change-arrow-map f p)
-base-change-arrow-map-is-cartesian f p
-  = is-cartesian←up-pullback _ pullback-has-up-pullback
-
-base-change-arrow-∘
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {E : Type 𝓜}
-      (g : B → C) (f : A → B) (p : E → C)
-    → Arrow-equiv
-        (base-change-arrow f (base-change-arrow g p))
-        (base-change-arrow (g ∘ f) p)
-base-change-arrow-∘ g f p = ( mk-amap (gap-map←square lem) id ~refl
-                         , is-pullback←is-cartesian lem lem-is-cart
-                         , id-is-equiv) where
-  lem : Arrow-map (base-change-arrow f (base-change-arrow g p)) p
-  lem = paste-squares (base-change-arrow-map g p)
-                      (base-change-arrow-map f (base-change-arrow g p))
-
-  lem-is-cart : is-cartesian lem
-  lem-is-cart = compose-cartesian
-                  (base-change-arrow-map-is-cartesian g p)
-                  (base-change-arrow-map-is-cartesian f (base-change-arrow g p))
 }
 }
 

@@ -1,0 +1,531 @@
+\title{The initial lifting property}
+\taxon{Module}
+\date{2026-08-04}
+\author{samueltoth}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.InitialLifting
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open import Axioms.FunExt
+open import Axioms.UF -- We should really extract out propext
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly  hiding (Δ²)
+
+private
+  Δ² = Poly.Δ² I
+
+open import Modalities.Instances.Truncation
+
+open import Core.CanonicalPushouts
+open import Core.PiSection
+open import Core.Slices
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.ArrowRetracts
+open import Core.CartesianSquares
+open import Core.LiftingSquares
+open import Core.PullbackPowers
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.Cube
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Initial Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.PushoutJoins Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.NaturalTransformations Δ¹ I
+}
+}
+
+\subtree[tot-0995]{
+\title{Dependent initial objects}
+
+\p{Consider the following square:}
+
+\quiver{
+\begin{tikzcd}
+	{E_{e/}} && E \\
+	\\
+	{B_{pe/}} && B
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["p", from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
+  relative-initial-square
+    : ∀ (e : E) → Arrow-map (postcompose-coslice (point e) p) p
+  relative-initial-square e .Arrow-Π.top = fst
+  relative-initial-square e .Arrow-Π.bot = fst
+  relative-initial-square e .Arrow-Π.comm = ~refl
+
+  is-relative-initial : E → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-relative-initial e = is-cartesian (relative-initial-square e)
+
+  fibre-initial-square←coslice-square
+    : ∀ e
+      → Cube
+          (coslice-square p {p = ¡} {q = point e} (¡ , (λ ())))
+          (relative-initial-square e)
+  fibre-initial-square←coslice-square e .Cube.left = id-square
+  fibre-initial-square←coslice-square e .Cube.right .Arrow-Π.top = fst
+  fibre-initial-square←coslice-square e .Cube.right .Arrow-Π.bot = fst
+  fibre-initial-square←coslice-square e .Cube.right .Arrow-Π.comm = ~refl
+  fibre-initial-square←coslice-square e .Cube.comm .fst = ~refl
+  fibre-initial-square←coslice-square e .Cube.comm .snd .fst = ~refl
+  fibre-initial-square←coslice-square e .Cube.comm .snd .snd _
+    = sym (∙-reflr _ ∙ Σ-path-ap-fst)
+
+  fibre-initial-square≃coslice-square
+    : ∀ e → is-Cube-equiv (fibre-initial-square←coslice-square e)
+  fibre-initial-square≃coslice-square e .fst
+    = id-square-is-equiv {f = postcompose-coslice (point e) p}
+  fibre-initial-square≃coslice-square e .snd .fst
+    = singleton-fst-is-equiv (λ _ → weak-funext λ ())
+  fibre-initial-square≃coslice-square e .snd .snd
+    = singleton-fst-is-equiv (λ _ → weak-funext λ ())
+}
+}
+
+\subtree[tot-FPIO]{
+\title{Relative initial objects over the unit type}
+\taxon{Lemma}
+
+\p{An object #{x : X} is #{! : X \to \unit}-initial iff it is initial in the normal
+sense.}
+
+\agda{
+opaque
+  is-initial←is-!-initial
+    : ∀ {𝓤} {X : Type 𝓤} (x : X) → is-relative-initial (!: X) x → is-initial x
+  is-initial←is-!-initial x p = is-initial←coslice-proj-is-equiv' x coslice-eqv where
+    coslice-eqv : is-equiv (λ (x : Coslice _ (point x)) → x .fst)
+    coslice-eqv
+      = top-is-equiv←is-cartesian _
+          (sing-!-is-equiv
+             (Σ-is-single 𝟙-is-singleton
+               (λ _ → weak-funext (λ _ → Hom𝟙-is-single)))) p
+
+  is-!-initial←is-initial
+    : ∀ {𝓤} {X : Type 𝓤} (x : X) → is-initial x → is-relative-initial (!: X) x
+  is-!-initial←is-initial x init
+    = is-cartesian←is-equiv (relative-initial-square ! x)
+        ( coslice-proj-is-equiv'←is-initial x init
+        , singleton-fst-is-equiv λ _ → weak-funext (λ _ → Hom𝟙-is-single))
+
+  is-initial←is-!-initial-is-equiv
+    : ∀ {𝓤} {X : Type 𝓤} (x : X) → is-equiv (is-initial←is-!-initial x)
+  is-initial←is-!-initial-is-equiv x
+    = is-equiv←inverse
+        is-cartesian-is-prop
+        (Π-is-prop (λ _ → is-single-is-prop))
+        (is-!-initial←is-initial x)
+}
+}
+
+\subtree[tot-LP28]{
+\taxon{Lemma}
+
+\p{In the situation of \ref{tot-0995}, if #{p(e)} is initial in #{B}, then #{e} is
+fibred initial for #{p} iff it is initial in #{E}.
+}
+}
+
+\subtree[tot-0DLS]{
+\title{relative initial objects over the base-change}
+\taxon{Lemma}
+
+\p{If #{q : E' \to A} is a base change of #{p : E \to B}, then an object #{e' : E'}
+is #{q}-initial just when its image in #{E} is #{p}-initial.}
+
+\agda{
+module _
+ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {E' : Type 𝓦} {E : Type 𝓜}
+ (q : E' → A) (p : E → B)
+ (F : Arrow-map q p)
+ (open Arrow-map F renaming (top to f; bot to σ))
+ (e' : E')
+ where
+
+  cube-relative-initial-square
+    : Cube (relative-initial-square q e') (relative-initial-square p (f e'))
+  cube-relative-initial-square .Cube.left = postcomp-coslice₁ (point e') q p F
+  cube-relative-initial-square .Cube.right = F
+  cube-relative-initial-square .Cube.comm .fst = ~refl
+  cube-relative-initial-square .Cube.comm .snd .fst = ~refl
+  cube-relative-initial-square .Cube.comm .snd .snd _
+    = ∙-reflr _ ∙ ∙-reflr _ ∙ Coslice-path-ap-fst _
+
+  base-change-is-relative-initial
+     : (Fc : is-cartesian F)
+     → is-relative-initial p (F .Arrow-map.top e')
+     → is-relative-initial q e'
+  base-change-is-relative-initial Fc
+    = front-cartesian←cartesian-cube
+        (relative-initial-square q e')
+        (relative-initial-square p (F .Arrow-Π.top e'))
+        cube-relative-initial-square
+        (postcomp-coslice₁-is-cartesian (point e') q p F Fc)
+        Fc
+}
+
+\p{In particular then, if an object #{e : E} is #{p : E \to B} initial, it is initial
+in the fibre #{E_{p(e)}}. (note that the converse is false in general)}
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) (e : E) where
+  opaque
+    is-fibrewise-initial←is-relative-initial
+      : ∀ b (Q : p e ＝ b)
+        → is-relative-initial p e → is-initial {A = fibre p b} (e , Q)
+    is-fibrewise-initial←is-relative-initial _ refl ri
+      = is-initial←is-!-initial (e , refl)
+          (base-change-is-relative-initial ! p
+            (fibre-square p (p e))
+            (e , refl)
+            (fibre-square-is-cartesian p (p e))
+            ri)
+}
+}
+
+\subtree[tot-06LC]{
+\taxon{Definition}
+\title{Dependent initial objects}
+
+\p{If #{E} is a type family over #{B}, then #{e : E(b)} for some #{b} is a dependent
+initial object if for any #{b'} and #{f : \Hom(b,b')} together with a #{e' : E(b')},
+the type of dependent morphisms #{\Hom_E^f(e,e')} is a singleton.}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) where
+
+  is-dependent-initial : ∀ {b : B} (e : E b) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-dependent-initial {b} e
+    = ∀ (b') (f : Hom B b b') (e' : E b') → is-singleton (Hom-over f e e')
+
+  is-initial←is-dependent-initial
+    : ∀ {b : B} (e : E b) → is-dependent-initial e → is-initial e
+  is-initial←is-dependent-initial e di e' = {!di _ (idH _) e' !}
+}
+}
+
+\subtree[tot-51LH]{
+\taxon{Lemma}
+
+\p{For a type family #{E : B \to \Type}, an object #{e : E(b)} is [dependent initial](tot-06LC)
+iff it is [fibred initial](tot-0995) for #{\Sigma_B E \to E}.}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) where
+
+  is-fst-relative-initial←is-dependent-initial
+    : ∀ {b} (e : E b) 
+      → is-dependent-initial E e
+      → is-relative-initial (fst: E) (b , e)
+  is-fst-relative-initial←is-dependent-initial {b} e dinit
+    = is-cartesian←is-pullback _
+        (is-equiv←has-singleton-fibres
+          (λ { ((.b' , f) , (b' , e') , refl)
+             → is-single←equiv-to-single
+                 (equiv←qequiv {!!}) -- Trivial on paper
+                 (dinit b' (f tt) e')}))
+}
+}
+
+\subtree[tot-0236]{
+\title{Initial lifts}
+\taxon{Definition}
+
+\p{We say that a map #{f} has a choice of initial lifts with
+respect to some other map if the type of [lifts]() has an initial
+object for each lifting problem. Note that under favourable conditions,
+the type of lifts is a [category]() and hence a choice of initial lifts
+is unique and we may speak about maps having the initial lifting \em{property}.}
+
+\agda{
+initial-section : ∀ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (p : Y → X) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+initial-section p
+  = Σ[ s ∶ section p ]
+     ∀ y → is-relative-initial p (s .fst y)
+
+initial-Π : ∀ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+initial-Π E
+  = Σ[ s ∶ Π _ E ] ∀ b → is-dependent-initial E (s b)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+  {A : Type 𝓦} {B : Type 𝓜} (g : A → B)
+  where
+
+  is-initial-lift : (l : Y → A) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  is-initial-lift = is-relative-initial ⟨ f , g ⟩
+
+  is-initial-orthogonal : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  is-initial-orthogonal = initial-section ⟨ f , g ⟩
+}
+}
+
+\subtree[tot-23QL]{
+\title{Initial sections are locally initial sections}
+\taxon{Lemma}
+
+\p{We say that a section #{s} of some map #{p : E \to B} is \em{fibrewise initial} if
+for each #{b} in #{B}, #{s(b)} is initial in the fibre of #{p} at #{b}.}
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+  is-locally-initial-section : section p → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-locally-initial-section (s , q) = ∀ b → is-initial {A = fibre p b} (s b , q b)
+
+  locally-initial-section : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  locally-initial-section = Σ _ is-locally-initial-section
+
+  locally←initial-section : initial-section p → locally-initial-section
+  locally←initial-section = total-map (λ s → postcomp-Π λ b
+    → is-fibrewise-initial←is-relative-initial p (s .fst b) b (s .snd b))
+}
+}
+
+\subtree[tot-410Y]{
+\taxon{Lemma}
+
+\p{A locally initial section is equivalent to a choice of initial section over each
+fibre.}
+
+\agda{
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+
+  section←local-sections
+    : (∀ b → section (!: fibre p b)) → section p
+  section←local-sections = section←Π-fibre ∘ postcomp-Π λ b → ev tt ∘ fst
+
+  opaque
+    section←local-sections-is-equiv
+      : is-equiv section←local-sections
+    section←local-sections-is-equiv
+      = is-equiv-∘
+          section←Π-fibre-is-equiv
+          (postcomp-Π-equiv
+            (is-equiv-∘
+              unit-ev-is-equiv
+              (singleton-fst-is-equiv (λ _ → single!))))
+
+  locally-initial-section←initial-sections-fibres
+    : (∀ b → initial-section (!: fibre p b)) → locally-initial-section p
+  locally-initial-section←initial-sections-fibres
+    = map-Σ section←local-sections
+        (λ s → postcomp-Π λ b → is-initial←is-!-initial (s b .fst tt) ∘ ev tt)
+    ∘ Σ-Π-swap _ _
+
+  opaque
+    locally-initial-sections←initial-sections-fibres-is-equiv
+      : is-equiv (locally-initial-section←initial-sections-fibres)
+    locally-initial-sections←initial-sections-fibres-is-equiv
+      = is-equiv-∘
+          (map-Σ-is-equiv
+            section←local-sections-is-equiv
+            (λ s → postcomp-Π-equiv
+              λ {b}
+                → is-equiv-∘
+                    {f = is-initial←is-!-initial (s b .fst tt)}
+                    {g = ev tt}
+                    (is-initial←is-!-initial-is-equiv (s b .fst tt))
+                    unit-ev-is-equiv))
+          Σ-Π-swap-is-equiv
+}
+}
+
+\subtree[tot-0EEE]{
+\title{Initial sections from fibrewise initial sections}
+\taxon{Theorem}
+
+\p{A slightly suprising result, observed recently by both [[bennolossin]] and
+[[robschellingerhout]] (in the concrete case of cocartesian fibrations) is that for
+an inner map #{p}, the converse to \ref{tot-23QL} holds. Intuitively, this is because
+a fibrewise initial section is not just a choice of initial object for each object in
+the base, but a \em{continuous} or \em{functorial} choice of such object. }
+
+\agda{
+initial-section←fibrewise-initial
+  : ∀ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) (Einner : is-inner-family E)
+    → (Σ[ s ∶ Π B E ] ∀ (x : B) → is-initial (s x))
+    → initial-Π E
+initial-section←fibrewise-initial E Ein = total-map f where
+  module _ (s : Π _ E) (sinit : ∀ b → is-initial (s b)) where
+
+    f : ∀ b → is-dependent-initial E (s b)
+    f b b' h e' = mk-singl cntr {!!} where
+      sb : E b
+      sb = s b
+
+      sb-init : is-initial sb
+      sb-init = sinit b
+
+      sb' : E b'
+      sb' = s b'
+
+      sb'-init : is-initial sb'
+      sb'-init = sinit b'
+
+      sh : Hom-over {B = E} h sb sb'
+      sh = ap-hom-over s h
+
+      s2 : Hom-over {B = E} (idH b') sb' e'
+      s2 = sb'-init e' .centre
+
+      cntr : Hom-over h sb e'
+      cntr = {!Compᵈ h id h (Hom2 h id h) sh s2!}
+
+      sinith : Hom-over {B = is-initial ∘ s} h sb-init sb'-init
+      sinith = ap-hom-over sinit h
+}
+}
+
+\subtree[tot-0241]{
+\title{Existance of initial sections are stable under base change}
+\taxon{Lemma}
+
+\agda{
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (E : B → Type 𝓦) (f : A → B) where
+
+  -- base-change-initial-Π : initial-Π E → initial-Π (E ∘ f)
+  -- base-change-initial-Π s .fst = s .fst ∘ f
+  -- base-change-initial-Π s .snd a a' h e'
+  --   = is-single←equiv-to-single
+  --       {!adjust-hom≃!}
+  --       (s .snd (f a) (f a') (ap-hom f h) e' )
+
+restrict-section
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {E : Type 𝓦} (p : E → B) (σ : A → B)
+    → section p → LiftMap p σ
+restrict-section p σ sec = (sec .fst ∘ σ , funext→ (sec .snd ▸ σ))
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {E' : Type 𝓦} {E : Type 𝓜}
+  (p : E' → A) (q : E → B)
+  (F : Arrow-map p q) (open Arrow-map F)
+  (Fc : is-cartesian F)
+  where
+
+  base-change-lift : LiftMap q bot → section p
+  base-change-lift x
+    = up-pullback.rec (up-pullback←is-cartesian F Fc ) cone
+    , happly (up-pullback.rec-β₁ (up-pullback←is-cartesian F Fc) {C' = cone})
+    where
+
+    cone : Cone (Cone←Arrow-map F .fst) A
+    cone = mk-cone id (x .fst) (happly (sym (x .snd)))
+  -- ^ This is an equiv
+
+  base-change-section : section q → section p
+  base-change-section = base-change-lift ∘ restrict-section q bot
+
+  opaque
+    top-base-change-section
+      : ∀ (s : section q) → top ∘ base-change-section s .fst ~ s .fst ∘ bot
+    top-base-change-section s a
+      = happly
+          (up-pullback.rec-β₂
+            (up-pullback←is-cartesian F Fc)
+              {C' = mk-cone id (s .fst ∘ bot)
+                      (happly (sym (funext→ ((s .snd ▸ bot)))) )}) a
+
+  base-change-initial-section : initial-section q → initial-section p
+  base-change-initial-section
+    = map-Σ
+        base-change-section
+        λ s → postcomp-Π
+         (λ a → base-change-is-relative-initial p q F (base-change-section s .fst a) Fc
+              ∘ tr (is-relative-initial q) (sym (top-base-change-section s a)))
+        ∘ precomp-Π _ bot
+}
+}
+
+
+\subtree[tot-P351]{
+\title{Initial sections of endpoint evaluation}
+\taxon{Theorem}
+
+\p{The map #{A^{\Delta^1} \to A} given by evaluation at #{0} has an initial section
+given by the constant map #{A \to A^{\Delta^1}} iff #{A} is a [left Segal](stt-00DA)
+type.}
+
+\proof{
+\p{Consider the following diagram:
+
+\quiver{
+\begin{tikzcd}
+	{{A^{\Delta^1}}_{\id_x/}} && {A^{\Delta^1}} \\
+	\\
+	{{A_{x/}}^{\Delta^1}} && {A^{\Delta^1}} \\
+	\\
+	{A_{x/}} && A
+	\arrow[from=1-1, to=1-3]
+	\arrow["\sim"', from=1-1, to=3-1]
+	\arrow["{(ev_0)_{\id_x/}}"', curve={height=24pt}, from=1-1, to=5-1]
+	\arrow[equals, from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+	\arrow["{{ev_0}}"', from=3-1, to=5-1]
+	\arrow["{ev_0}", from=3-3, to=5-3]
+	\arrow[from=5-1, to=5-3]
+\end{tikzcd}
+}
+
+The lower square is cartesian just when #{A_{x/} \to A} is a left fibration, and the
+total square is cartesian just when #{\id_x} is a #{ev_0}-initial object. Since the
+top square is an equivalence, the upper square is cartesian iff the total is.
+}
+
+\p{Finally by \ref{stt-00D9}, we see that each coslice projection is a left fibration
+iff the type is left Segal.}
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+  slice-Δ¹≃Δ¹-slice
+    : ∀ x
+      → Arrow-equiv
+          {A = Coslice (Δ¹ → A) (point (const x))} fst
+          (postcomp {A = Coslice _ (point x)} Δ¹ fst)
+  slice-Δ¹≃Δ¹-slice x .fst .Arrow-Π.top f i
+    = (f .fst i , λ tt → Nat←Hom (f .snd tt) i)
+  slice-Δ¹≃Δ¹-slice x .fst .Arrow-Π.bot = id
+  slice-Δ¹≃Δ¹-slice x .fst .Arrow-Π.comm = ~refl
+  slice-Δ¹≃Δ¹-slice x .snd .fst = -- is-equiv←~ H
+    (is-equiv-∘
+      (postcomp-equiv
+        (is-total-equiv←is-fibrewise-equiv (λ i → is-equiv⁻¹ unit-ev-is-equiv)))
+      (is-equiv-∘
+        (bwd-is-equiv (Σ-Π-swap≃ _ _))
+        (is-total-equiv←is-fibrewise-equiv λ i
+          → is-equiv-∘
+              (_≃_.fwd-is-equiv Nat≃Hom)
+              unit-ev-is-equiv))) where
+    f : (Coslice (Δ¹ → A) (point (const x))) → (Δ¹ → Coslice A (point x))
+    f = postcomp Δ¹ (total-map λ i → const)
+      ∘ _≃_.bwd (Σ-Π-swap≃ _ λ i a → Hom A x a)
+      ∘ total-map λ i → (Nat←Hom ∘ ev tt)
+
+    H : _ ~ f
+    H = ~refl
+  slice-Δ¹≃Δ¹-slice x .snd .snd = id-is-equiv
+}
+}

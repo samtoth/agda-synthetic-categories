@@ -56,7 +56,6 @@ open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
-open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
@@ -205,11 +204,16 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
     = ( is-covariant←has-unique-extensions
       , has-unique-extensions←is-covariant)
 
+  is-left-family↔is-covariant : is-left-family B ↔ is-covariant B
   is-left-family↔is-covariant
-    : is-left-family B ↔ is-covariant B
-  is-left-family↔is-covariant
-    =  are-orthogonal-fam↔has-unique-extensions
+    = are-orthogonal-fam↔has-unique-extensions
     ∙iff has-unique-extensions↔is-covariant
+
+  is-covariant←is-left-family : is-left-family B → is-covariant B
+  is-covariant←is-left-family = is-left-family↔is-covariant .fst
+
+  is-left-family←is-covariant : is-covariant B → is-left-family B
+  is-left-family←is-covariant = is-left-family↔is-covariant .snd
 }
 }
 
@@ -470,6 +474,128 @@ opaque
           ( tr-cov-hom cov g (tr-cov-hom cov f x')
           , Compᵈ apc P (is-inner-family←is-covariant cov) g f
                   (tr-cov-over cov g _) (tr-cov-over cov f _)))
+}
+}
+
+\subtree{
+\title{Unital transport criterion for covariant families}
+\date{2026-08-18}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+A type family #{B : A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f_* : B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such that
+#{\id_* = \id}.
+}
+
+\p{This result is due to [[robschellingerhout]].}
+
+\proof{
+TODO.
+}
+
+\agda{
+Covariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-transport {A = A} B = {x y : A} → Hom A x y → B x → B y
+
+Covariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-unital-transport {A = A} B
+  = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
+
+has-unital-transport-into-discrete-fibres
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+has-unital-transport-into-discrete-fibres {A = A} B
+  = Covariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x))
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  cov-unital-transport←is-covariant
+    : is-covariant B → Covariant-unital-transport B
+  cov-unital-transport←is-covariant B-is-cov
+    = (tr-cov-hom B-is-cov , (λ _ → tr-cov-idH B B-is-cov))
+
+  is-Δ¹-discrete-family←is-covariant
+    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
+  is-Δ¹-discrete-family←is-covariant B-is-cov x
+    = is-Δ¹-discrete←Id←Hom λ {a} {b} f
+    → sym (tr-cov-idH B B-is-cov a)
+    ∙ tr-cov-hom-unique B B-is-cov (idH x) a b f
+
+  is-left-family←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-left-family B
+  is-left-family←cov-unital-transport B-disc (ρ , ρ-id)
+    = is-equiv←qinv ∘ qinv
+    where
+
+    Hom-family-ap
+      : {x y i : Δ¹} (p : x ＝ y)
+      →  ap₂ (Hom Δ¹) p refl ＝ ap (λ j → Hom Δ¹ j i) p
+    Hom-family-ap refl = refl
+
+    slice-contraction
+      : (i : Δ¹) → Hom (Σ[ j ∶ Δ¹ ] Hom Δ¹ j i) (i0 , 0≤i i) (i , idH i)
+    slice-contraction i = Hom-Σ (0≤i i , tail) where
+      tail : Hom-over (0≤i i) (0≤i i) (idH i)
+      tail .Homᵈ.hom j
+        = mk-hom
+            (λ k → (j ∨ k) ∧ i)
+            (ap (_∧ i) 0-bottom)
+            (ap (_∧ i) 1-coinit ∙ ∧-comm ∙ 1-top)
+      tail .Homᵈ.hom0
+        = Idᶠ-right
+            (adjust-Idᵈ
+              (Hom-family-ap 0-init)
+              (Hom-extᵈ→ 0-init refl
+                ( (λ _ → ap (_∧ i) (∨-comm ∙ 0-bottom))
+                , mk-square prop!
+                , mk-square prop!)))
+      tail .Homᵈ.hom1
+        = Idᶠ-right
+          (adjust-Idᵈ
+            (Hom-family-ap (∧-comm ∙ 1-top))
+            (Hom-extᵈ→
+              (∧-comm ∙ 1-top)
+              (refl)
+              ( (λ _ → ap (_∧ i) (∨-comm ∙ 1-coinit) ∙ ∧-comm ∙ 1-top)
+              , mk-square prop!
+              , mk-square prop!)))
+
+    qinv : (a : Δ¹ → A) → quasi-inv (precomp-Π (B ∘ a) (point i0))
+    qinv a .fst x i = ρ (ap-hom a (0≤i i)) (x tt)
+    qinv a .snd .fst s
+      = funext→ λ i
+      → is-equiv.bwd
+          (is-Hom←Id-equiv←is-Δ¹-discrete (B-disc (a i)) _ _)
+          (adjust-hom
+            (refl)
+            (ρ-id (a i) (s i))
+            (ap-hom
+              (λ r → ρ (ap-hom a (r .snd)) (s (r .fst)))
+              (slice-contraction i)))
+    qinv a .snd .snd x
+      = funext→ λ _
+      → ap (λ h → ρ (ap-hom a h) (x tt)) 0≤i-at-0 ∙ ρ-id (a i0) (x tt)
+
+  is-covariant←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-covariant B
+  is-covariant←cov-unital-transport B-disc ρ
+    = is-covariant←is-left-family B (is-left-family←cov-unital-transport B-disc ρ)
+
+  is-covariant↔cov-unital-transport
+    : is-covariant B
+    ↔ (Covariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
+  is-covariant↔cov-unital-transport .fst B-is-cov
+    = ( cov-unital-transport←is-covariant B-is-cov
+      , is-Δ¹-discrete-family←is-covariant B-is-cov)
+  is-covariant↔cov-unital-transport .snd (ρ , B-disc)
+    = is-covariant←cov-unital-transport B-disc ρ
 }
 }
 

@@ -1,0 +1,348 @@
+\title{Semilattices are sets}
+\date{2026-08-26}
+\taxon{Module}
+\author{fredrikbakke}
+\meta{license}{GPL-3.0}
+
+\import{stt-macros}
+
+\p{
+We demonstrate that the algebraic structure of a semilattice is enough to
+conclude that the carrier is a set. Hence, in particular, any such structure is
+fully coherent.
+}
+
+\p{
+This result is due to
+[David Wärn](https://mathstodon.xyz/@dwarn/116091515645003634). The formalisation
+below follows
+[Tom de Jong's streamlined formalisation](https://martinescardo.github.io/TypeTopology/AlgebraicStructuresForcingSethood.Semilattices-streamlined.html)
+in the [TypeTopology library](TypeTopology), and is hence licensed under [[GPL-3.0]].
+}
+
+\agda{
+module Algebra.SemilatticesAreSets where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Instances.Truncation
+}
+}
+
+\subtree[fre-1001]{
+\title{The induced operation on identities}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+An idempotent binary operation induces an idempotent binary operation on every
+identity type. On loop spaces, the induced operation satisfies the interchange
+law with path composition.
+}
+
+\agda{
+rebase＝-ap₂-diagonal←idem
+  : ∀ {𝓤} {A : Type 𝓤} (_*_ : A → A → A)
+    (*-idem : (x : A) → x * x ＝ x) {a b : A} (p : a ＝ b)
+  → rebase＝ (*-idem a) (*-idem b) (ap₂ (_*_) p p) ＝ p
+rebase＝-ap₂-diagonal←idem _*_ *-idem refl = conjΩ-refl (*-idem _)
+
+module IdemBinOpΩ
+  {𝓤} {A : Type 𝓤}
+  (_*_ : A → A → A)
+  (*-idem : (x : A) → x * x ＝ x)
+  (x₀ : A)
+  where
+
+  ΩA : Type 𝓤
+  ΩA = x₀ ＝ x₀
+
+  _*Ω_ : ΩA → ΩA → ΩA
+  p *Ω q = conjΩ (*-idem x₀) (ap₂ (_*_) p q)
+
+  *Ω-idem : (p : ΩA) → p *Ω p ＝ p
+  *Ω-idem = rebase＝-ap₂-diagonal←idem (_*_) *-idem
+
+  *Ω-∙-interchange
+    : (p q ρ s : ΩA)
+    → (p *Ω q) ∙ (ρ *Ω s)
+    ＝ (p ∙ ρ) *Ω (q ∙ s)
+  *Ω-∙-interchange p q ρ s
+    = sym
+      ( conjΩ-∙ (*-idem x₀) (ap₂ (_*_) p q) (ap₂ (_*_) ρ s))
+      ∙ ap (conjΩ (*-idem x₀))
+      ( ap₂-∙-interchange _*_ p q ρ s)
+}
+}
+
+\subtree[fre-1002]{
+\title{The loop operation induced by a commutative idempotent operation}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+If the original idempotent operation is also commutative, then the induced operation
+on loops is commutative. The interchange law then gives that loop concatenation is
+commutative.
+}
+
+\agda{
+ap₂-*-comm
+  : ∀ {𝓤} {A : Type 𝓤}
+    (_*_ : A → A → A)
+    (*-comm : (x y : A) → x * y ＝ y * x)
+    {a a' b b' : A} (p : a ＝ a') (q : b ＝ b')
+  → ap₂ (_*_) p q
+  ＝ rebase＝ (*-comm b a) (*-comm b' a') (ap₂ (_*_) q p)
+ap₂-*-comm _*_ *-comm {a = a} {b = b} refl refl = sym (conjΩ-refl (*-comm b a))
+
+module CommIdemBinOpΩ
+  {𝓤} {A : Type 𝓤}
+  (_*_ : A → A → A)
+  (*-idem : (x : A) → x * x ＝ x)
+  (*-comm : (x y : A) → x * y ＝ y * x)
+  (x₀ : A)
+  (open IdemBinOpΩ _*_ *-idem x₀)
+  (let γ = conjΩ (*-idem x₀) (*-comm x₀ x₀))
+  where
+
+  *Ω-comm-up-to-conjugation
+    : (p q : ΩA)
+    → p *Ω q ＝ conjΩ γ (q *Ω p)
+  *Ω-comm-up-to-conjugation p q
+    = p *Ω q
+        ＝⟨ ap (conjΩ (*-idem x₀)) (ap₂-*-comm _*_ *-comm p q) ⟩
+      conjΩ (*-idem x₀) (conjΩ (*-comm x₀ x₀) (ap₂ (_*_) q p))
+        ＝⟨ conjΩ-conjΩ (*-idem x₀) (*-comm x₀ x₀) (ap₂ (_*_) q p) ⟩
+      conjΩ γ (q *Ω p) ∎
+
+  *Ω-conjugation-is-id
+    : (p : ΩA) → conjΩ γ p ＝ p
+  *Ω-conjugation-is-id p
+    = conjΩ γ p
+        ＝⟨ ap (conjΩ γ) (sym (*Ω-idem p)) ⟩
+      conjΩ γ (p *Ω p)
+        ＝⟨ sym (*Ω-comm-up-to-conjugation p p) ⟩
+      p *Ω p
+        ＝⟨ *Ω-idem p ⟩
+      p ∎
+
+  *Ω-comm : (p q : ΩA) → p *Ω q ＝ q *Ω p
+  *Ω-comm p q
+    = *Ω-comm-up-to-conjugation p q
+    ∙ *Ω-conjugation-is-id (q *Ω p)
+
+  *Ω-refl-decomposition
+    : (p : ΩA) → (p *Ω refl) ∙ (refl *Ω p) ＝ p
+  *Ω-refl-decomposition p
+    = (p *Ω refl) ∙ (refl *Ω p)
+        ＝⟨ *Ω-∙-interchange p refl refl p ⟩
+      (p ∙ refl) *Ω (refl ∙ p)
+        ＝⟨ ap₂ (_*Ω_) (∙-reflr p) (∙-refll p) ⟩
+      p *Ω p
+        ＝⟨ *Ω-idem p ⟩
+      p ∎
+
+  *Ω-refl-components-comm
+    : (p q : ΩA)
+    → (p *Ω refl) ∙ (refl *Ω q)
+    ＝ (refl *Ω q) ∙ (p *Ω refl)
+  *Ω-refl-components-comm p q
+    = (p *Ω refl) ∙ (refl *Ω q)
+        ＝⟨ *Ω-∙-interchange p refl refl q ⟩
+      (p ∙ refl) *Ω (refl ∙ q)
+        ＝⟨ ap₂ (_*Ω_) (∙-reflr p) (∙-refll q) ⟩
+      p *Ω q
+        ＝⟨ ap₂ (_*Ω_) (sym (∙-refll p)) (sym (∙-reflr q)) ⟩
+      (refl ∙ p) *Ω (q ∙ refl)
+        ＝⟨ sym (*Ω-∙-interchange refl q p refl) ⟩
+      (refl *Ω q) ∙ (p *Ω refl) ∎
+
+  *Ω-right-refl-square-root
+    : (p : ΩA) → p ＝ (p ∙ p) *Ω refl
+  *Ω-right-refl-square-root p
+    = p
+        ＝⟨ sym (*Ω-refl-decomposition p) ⟩
+      (p *Ω refl) ∙ (refl *Ω p)
+        ＝⟨ ap ((p *Ω refl) ∙_) (*Ω-comm refl p) ⟩
+      (p *Ω refl) ∙ (p *Ω refl)
+        ＝⟨ *Ω-∙-interchange p refl p refl ⟩
+      (p ∙ p) *Ω refl ∎
+
+  *Ω-left-refl-square-root
+    : (p : ΩA) → p ＝ refl *Ω (p ∙ p)
+  *Ω-left-refl-square-root p
+    = p
+        ＝⟨ sym (*Ω-refl-decomposition p) ⟩
+      (p *Ω refl) ∙ (refl *Ω p)
+        ＝⟨ ap (_∙ (refl *Ω p)) (*Ω-comm p refl) ⟩
+      (refl *Ω p) ∙ (refl *Ω p)
+        ＝⟨ *Ω-∙-interchange refl p refl p ⟩
+      refl *Ω (p ∙ p) ∎
+
+  ∙-comm
+    : (p q : ΩA) → p ∙ q ＝ q ∙ p
+  ∙-comm p q
+    = p ∙ q
+        ＝⟨ ap₂ (_∙_) (*Ω-right-refl-square-root p) (*Ω-left-refl-square-root q) ⟩
+      ((p ∙ p) *Ω refl) ∙ (refl *Ω (q ∙ q))
+        ＝⟨ *Ω-refl-components-comm (p ∙ p) (q ∙ q) ⟩
+      (refl *Ω (q ∙ q)) ∙ ((p ∙ p) *Ω refl)
+        ＝⟨ ap₂ (_∙_) (sym (*Ω-left-refl-square-root q))
+          (sym (*Ω-right-refl-square-root p)) ⟩
+      q ∙ p ∎
+
+}
+}
+
+\subtree[fre-1003]{
+\title{A general criterion for trivial loop spaces}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+Suppose #{f} and #{g} are endomaps on a loop space such that #{g \circ f} is the
+identity and #{g} preserves reflexivity. If an iterate of #{f} maps a loop #{p} to
+the trivial loop, then #{p} is trivial.
+}
+
+\agda{
+trivial-Ω-iterate'-criterion
+  : ∀ {𝓤} {A : Type 𝓤} (x₀ : A)
+    (f g : (x₀ ＝ x₀) → (x₀ ＝ x₀))
+  → ((p : x₀ ＝ x₀) → g (f p) ＝ p)
+  → refl ＝ g refl
+  → (n : ℕ) (p : x₀ ＝ x₀)
+  → refl ＝ iterate' f n p
+  → refl ＝ p
+trivial-Ω-iterate'-criterion x₀ f g gf g-refl 0 p e
+  = e
+trivial-Ω-iterate'-criterion x₀ f g gf g-refl (suc n) p e
+  = g-refl ∙ ap g (trivial-Ω-iterate'-criterion x₀ f g gf g-refl n (f p) e) ∙ gf p
+}
+}
+
+\subtree[fre-1004]{
+\title{Triviality of loop spaces of semilattices}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\agda{
+module AssocCommIdemBinOpΩ
+  {𝓤} {A : Type 𝓤}
+  (_*_ : A → A → A)
+  (*-idem : (x : A) → x * x ＝ x)
+  (*-comm : (x y : A) → x * y ＝ y * x)
+  (*-assoc : (x y z : A) → x * (y * z) ＝ (x * y) * z)
+  (x₀ : A)
+  (open IdemBinOpΩ _*_ *-idem x₀)
+  (open CommIdemBinOpΩ _*_ *-idem *-comm x₀)
+  (let ρ = _* x₀)
+  (let ρΩ = conjΩ (*-idem x₀) ∘ ap ρ)
+  where
+
+  ρ-idem : (x : A) → ρ (ρ x) ＝ ρ x
+  ρ-idem x = sym (*-assoc x x₀ x₀) ∙ ap (x *_) (*-idem x₀)
+
+  ρΩ-is-*Ω-refl : (p : ΩA) → ρΩ p ＝ p *Ω refl
+  ρΩ-is-*Ω-refl p = ap (conjΩ (*-idem x₀)) (sym (ap₂-right-refl _*_ p))
+
+  ρΩ-self-concat : (p : ΩA) → ρΩ p ∙ ρΩ p ＝ p
+  ρΩ-self-concat p
+    = ρΩ p ∙ ρΩ p
+        ＝⟨ ap₂ (_∙_) (ρΩ-is-*Ω-refl p) (ρΩ-is-*Ω-refl p) ⟩
+      (p *Ω refl) ∙ (p *Ω refl)
+        ＝⟨ ap ((p *Ω refl) ∙_) (*Ω-comm p refl) ⟩
+      (p *Ω refl) ∙ (refl *Ω p)
+        ＝⟨ *Ω-∙-interchange p refl refl p ⟩
+      (p ∙ refl) *Ω (refl ∙ p)
+        ＝⟨ ap₂ (_*Ω_) (∙-reflr p) (∙-refll p) ⟩
+      p *Ω p
+        ＝⟨ *Ω-idem p ⟩
+      p ∎
+
+  ρΩ-idem : (p : ΩA) → ρΩ (ρΩ p) ＝ ρΩ p
+  ρΩ-idem p
+    = let η² = ap ρ (*-idem x₀) ∙ *-idem x₀ in
+      ρΩ (ρΩ p)
+        ＝⟨ ap (conjΩ (*-idem x₀)) (ap-conjΩ ρ (*-idem x₀) (ap ρ p)) ⟩
+      conjΩ (*-idem x₀) (conjΩ (ap ρ (*-idem x₀)) (ap ρ (ap ρ p)))
+        ＝⟨ conjΩ-∘ (ap ρ (*-idem x₀)) (*-idem x₀) (ap ρ (ap ρ p)) ⟩
+      conjΩ η² (ap ρ (ap ρ p))
+        ＝⟨ ap (conjΩ η²) (sym (ap-∘ ρ ρ p)) ⟩
+      conjΩ η² (ap (ρ ∘ ρ) p)
+        ＝⟨ conjΩ-coh←∙-comm ∙-comm (ρ-idem x₀) η² (*-idem x₀)
+          (homotopy-conjΩ ρ-idem p) ⟩
+      ρΩ p ∎
+
+  ρΩ-concat-idem : (p : ΩA) → ρΩ p ∙ ρΩ p ＝ ρΩ p
+  ρΩ-concat-idem p
+    = ρΩ p ∙ ρΩ p
+        ＝⟨ ap₂ (_∙_) (sym (ρΩ-idem p)) (sym (ρΩ-idem p)) ⟩
+      ρΩ (ρΩ p) ∙ ρΩ (ρΩ p)
+        ＝⟨ ρΩ-self-concat (ρΩ p) ⟩
+      ρΩ p ∎
+
+  ρΩ-is-trivial : (p : ΩA) → ρΩ p ＝ refl
+  ρΩ-is-trivial p
+    = left-cancel-∙ (ρΩ p) (ρΩ-concat-idem p ∙ sym (∙-reflr (ρΩ p)))
+
+  Ω-is-trivial : (p : ΩA) → refl ＝ p
+  Ω-is-trivial p
+    = trivial-Ω-iterate'-criterion
+        x₀ ρΩ (λ q → q ∙ q) ρΩ-self-concat refl 1 p
+        (sym (ρΩ-is-trivial p))
+}
+}
+
+\subtree[fre-1005]{
+\title{Semilattices are sets}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+Any type equipped with an idempotent, commutative, and associative binary operation
+is a set.
+}
+
+\agda{
+module _
+  {𝓤} {A : Type 𝓤}
+  (_*_ : A → A → A)
+  (*-idem : (x : A) → x * x ＝ x)
+  (*-assoc : (x y z : A) → x * (y * z) ＝ (x * y) * z)
+  (*-comm : (x y : A) → x * y ＝ y * x)
+  where opaque
+
+  semilattice-carrier-is-set : is-set A
+  semilattice-carrier-is-set x .x p refl
+    = sym (AssocCommIdemBinOpΩ.Ω-is-trivial _*_ *-idem *-comm *-assoc x p)
+
+  semilattice-carrier-is-0-truncated : is-truncated 0 A
+  semilattice-carrier-is-0-truncated
+    = is-truncated←is-set semilattice-carrier-is-set
+}
+}
+
+\subtree[fre-1006]{
+\title{Generalisations of the theorem}
+\taxon{Remark}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+Using the [general criterion for trivial loop spaces](fre-1003), the main theorem of
+this file may be generalised to strictly weaker algebraic structures, such
+as idempotent, commutative binary operations whose right action is eventually
+idempotent, in the sense that #{ρ^{n+1}_{x_0} \sim ρ^{n}_{x_0}} for some #{n}
+that may depend on #{x_0}.
+}
+}

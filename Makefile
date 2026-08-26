@@ -28,9 +28,9 @@ help:
 	@echo "  make list-trees                         # List all of the trees in the forest"
 	@echo "  make assign-tree-ids-no-commit [AUTHOR=<author>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required) (UPSTREAM, default: upstream)"
 	@echo "  make assign-tree-ids           [AUTHOR=<author>] [UPSTREAM=<upstream>] # Run assign-tree-ids-no-commit and then commit the results"
-	@echo "  make clean-agda                         # Remove generated agda artifacts"
-	@echo "  make clean-forester                     # Remove generated forester artifacts"
-	@echo "  make clean                              # Remove all generated build artifacts"
+	@echo "  make clean-agda                         # Remove generated agda artefacts"
+	@echo "  make clean-forester                     # Remove generated forester artefacts"
+	@echo "  make clean                              # Remove all generated build artefacts"
 
 $(EVERYTHING_FILE): scripts/generateEverything.sh $(EVERYTHING_INPUTS)
 	@bash ./scripts/generateEverything.sh

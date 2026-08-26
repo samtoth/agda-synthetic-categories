@@ -51,6 +51,7 @@ prepare-agda-datadir:
 prepare-forest-assets:
 	@mkdir -p output/agda-synthetic-categories/assets
 	@cp assets/logo-wide-transparent.svg output/agda-synthetic-categories/assets/
+	@cp assets/ML_workshop_photo.JPG output/agda-synthetic-categories/assets/
 
 typecheck: $(EVERYTHING_FILE) prepare-agda-datadir
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib"

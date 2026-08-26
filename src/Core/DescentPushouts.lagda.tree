@@ -41,36 +41,39 @@ univalence, such identifications are the same as families of equivalences.
 \agda{
 module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} where
 
-  span←Type-cocone
+  cartesian-span-diagramᵈ←Type-cocone
     : Cocone S (Type 𝓛) → cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛
-  span←Type-cocone (mk-cocone P-left P-right H)
-    = mk-cartesian-span-diagramᵈ
-        P-left
-        P-right
-        (P-left ∘ Span.left S)
-        (λ _ → id≃)
-        (λ s → coe≃ (H s))
+  cartesian-span-diagramᵈ←Type-cocone (mk-cocone L R H)
+    = mk-cartesian-span-diagramᵈ L R (L ∘ Span.left S) (λ _ → id≃) (coe≃ ∘ H)
 
-  Π-swap-cartesian-spanᵈ
-    : (P-left : Span.Left S → Type 𝓛)
-      (P-right : Span.Right S → Type 𝓛)
-    → cartesian-spanᵈ S 𝓛 P-left P-right
-    ≃ ( (s : Span.Centre S)
-      → Σ[ P-centre ∶ Type 𝓛 ]
-          ( (P-centre ≃ P-left (Span.left S s))
-          × (P-centre ≃ P-right (Span.right S s))))
-  Π-swap-cartesian-spanᵈ P-left P-right
-    = mk≃
-      ( λ R s
-        → ( R .cartesian-spanᵈ.Centre s
-          , R .cartesian-spanᵈ.Left≃ s
-          , R .cartesian-spanᵈ.Right≃ s))
-      ( mk-eqv
-        ( ( λ R
-            → mk-cartesian-spanᵈ (fst ∘ R) (fst ∘ snd ∘ R) (snd ∘ snd ∘ R))
-          , ~refl
-          , ~refl)
-        (~refl))
+  module _ (L : Span.Left S → Type 𝓛) (R : Span.Right S → Type 𝓛) where
+
+    Π-swap-cartesian-spanᵈ-map
+      : cartesian-spanᵈ S 𝓛 L R
+      → (s : Span.Centre S)
+      → Σ[ C ∶ Type 𝓛 ] ((C ≃ L (Span.left S s)) × (C ≃ R (Span.right S s)))
+    Π-swap-cartesian-spanᵈ-map S s
+      = ( S .cartesian-spanᵈ.Centre s
+        , S .cartesian-spanᵈ.Left≃ s
+        , S .cartesian-spanᵈ.Right≃ s)
+
+    Π-swap-cartesian-spanᵈ-map-is-equiv
+      : is-equiv Π-swap-cartesian-spanᵈ-map
+    Π-swap-cartesian-spanᵈ-map-is-equiv
+      = mk-eqv
+          ( ( λ S → mk-cartesian-spanᵈ (fst ∘ S) (fst ∘ snd ∘ S) (snd ∘ snd ∘ S))
+            , ~refl
+            , ~refl)
+          (~refl)
+
+    Π-swap-cartesian-spanᵈ
+      : cartesian-spanᵈ S 𝓛 L R
+      ≃ ( (s : Span.Centre S)
+        → Σ[ C ∶ Type 𝓛 ] ( (C ≃ L (Span.left S s)) × (C ≃ R (Span.right S s))))
+    Π-swap-cartesian-spanᵈ
+      = mk≃
+          Π-swap-cartesian-spanᵈ-map
+          Π-swap-cartesian-spanᵈ-map-is-equiv
 
   Type-cocone←span
     : cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛 → Cocone S (Type 𝓛)
@@ -82,51 +85,50 @@ module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} where
 
   opaque
     Type-cocone←span-is-retraction
-      : Type-cocone←span ∘ span←Type-cocone ~ id
-    Type-cocone←span-is-retraction
-      (mk-cocone P-left P-right filler)
-      = ap (mk-cocone P-left P-right)
+      : Type-cocone←span ∘ cartesian-span-diagramᵈ←Type-cocone ~ id
+    Type-cocone←span-is-retraction (mk-cocone L R filler)
+      = ap (mk-cocone L R)
            (funext→ λ _ → ap ua (≃-path→ refl) ∙ ua-coe≃)
 
   opaque
-    span←Type-cocone-is-section
-      : span←Type-cocone ∘ Type-cocone←span ~ id
-    span←Type-cocone-is-section
-      (mk-cartesian-span-diagramᵈ P-left P-right P-centre e-left e-right)
+    cartesian-span-diagramᵈ←Type-cocone-is-section
+      : cartesian-span-diagramᵈ←Type-cocone ∘ Type-cocone←span ~ id
+    cartesian-span-diagramᵈ←Type-cocone-is-section
+      (mk-cartesian-span-diagramᵈ L R C e-left e-right)
       = ap
-        ( λ R
-          → mk-cartesian-span-diagramᵈ P-left P-right
-              (R .cartesian-spanᵈ.Centre)
-              (R .cartesian-spanᵈ.Left≃)
-              (R .cartesian-spanᵈ.Right≃))
+        ( λ S
+          → mk-cartesian-span-diagramᵈ L R
+              (S .cartesian-spanᵈ.Centre)
+              (S .cartesian-spanᵈ.Left≃)
+              (S .cartesian-spanᵈ.Right≃))
         ( unap-equiv
-          ( Π-swap-cartesian-spanᵈ P-left P-right ._≃_.fwd-is-equiv)
+          ( Π-swap-cartesian-spanᵈ L R ._≃_.fwd-is-equiv)
           ( funext→ λ s
             → equiv-J
-                ( λ P-left' e-left'
-                  → (e-right' : P-centre s ≃ P-right (Span.right S s))
+                ( λ L' e-left'
+                  → (e-right' : C s ≃ R (Span.right S s))
                   → Id
-                    ( Σ[ P-centre' ∶ Type 𝓛 ]
-                      ( (P-centre' ≃ P-left')
-                      × (P-centre' ≃ P-right (Span.right S s))))
-                    ( P-left' , id≃ , coe≃ (ua (e-left' e⁻¹ ∙e e-right')))
-                    ( P-centre s , e-left' , e-right'))
-                ( λ _
-                  → Σ-path→ (refl , ×-path→ (refl , coe≃-ua ∙ ≃-path→ refl)))
-                (P-left (Span.left S s))
+                    ( Σ[ C' ∶ Type 𝓛 ] ((C' ≃ L') × (C' ≃ R (Span.right S s))))
+                    ( L' , id≃ , coe≃ (ua (e-left' e⁻¹ ∙e e-right')))
+                    ( C s , e-left' , e-right'))
+                ( λ _ → Σ-path→ (refl , ×-path→ (refl , coe≃-ua ∙ ≃-path→ refl)))
+                (L (Span.left S s))
                 (e-left s)
                 (e-right s)))
 
-  span←Type-cocone-is-equiv
-    : is-equiv span←Type-cocone
-  span←Type-cocone-is-equiv
+  cartesian-span-diagramᵈ←Type-cocone-is-equiv
+    : is-equiv cartesian-span-diagramᵈ←Type-cocone
+  cartesian-span-diagramᵈ←Type-cocone-is-equiv
     = is-equiv←qinv
         ( Type-cocone←span
         , Type-cocone←span-is-retraction
-        , span←Type-cocone-is-section)
+        , cartesian-span-diagramᵈ←Type-cocone-is-section)
 
   Type-cocone≃span : Cocone S (Type 𝓛) ≃ cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛
-  Type-cocone≃span = mk≃ span←Type-cocone span←Type-cocone-is-equiv
+  Type-cocone≃span
+    = mk≃
+        cartesian-span-diagramᵈ←Type-cocone
+        cartesian-span-diagramᵈ←Type-cocone-is-equiv
 }
 }
 
@@ -153,7 +155,7 @@ module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛} (c : Co
 
   span←family-up-pushout
     : ∀ {𝓜} → (X → Type 𝓜) → cartesian-span-diagramᵈ S 𝓜 𝓜 𝓜
-  span←family-up-pushout = span←Type-cocone ∘ cocone-map S c
+  span←family-up-pushout = cartesian-span-diagramᵈ←Type-cocone ∘ cocone-map S c
 
 module _
   {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛}
@@ -163,7 +165,7 @@ module _
   descent-up-pushout
     : ∀ {𝓜} → is-equiv (span←family-up-pushout c {𝓜})
   descent-up-pushout
-    = is-equiv-∘ span←Type-cocone-is-equiv up-c
+    = is-equiv-∘ cartesian-span-diagramᵈ←Type-cocone-is-equiv up-c
 
   descent-up-pushout≃
     : ∀ {𝓜} → (X → Type 𝓜) ≃ cartesian-span-diagramᵈ S 𝓜 𝓜 𝓜

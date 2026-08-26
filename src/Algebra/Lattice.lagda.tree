@@ -17,6 +17,7 @@ open import Foundations.Prelude
 open import Foundations.Subtypes
 
 open import Algebra.Poset
+open import Algebra.SemilatticesAreSets
 
 open import Core.Coslices
 
@@ -33,6 +34,7 @@ open import Ergonomics.Extensionality
 \subtree[stt-009T]{
 \title{Lattices}
 \taxon{Definition}
+\contributor{fredrikbakke}
 \p{A lattice #{L} is an algebraic structure with a pair of commutative monoids
 #{\wedge,\vee}, satisfying absorption laws.  Equivalently this
 structure can be described by a poset, with operations taking binary meets
@@ -43,7 +45,6 @@ record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L)
                   (_∨_ : L → L → L) : Type 𝓤 where
   no-eta-equality
   field
-    carrier-is-0-truncated : is-truncated 0 L
     ∧-assoc : {x y z : L} → x ∧ (y ∧ z) ＝ (x ∧ y) ∧ z
     ∨-assoc : {x y z : L} → x ∨ (y ∨ z) ＝ (x ∨ y) ∨ z
     ∧-comm : {x y : L} → x ∧ y ＝ y ∧ x
@@ -53,12 +54,31 @@ record is-lattice {𝓤} {L : Type 𝓤} (0l 1l : L) (_∧_ : L → L → L)
     0-bottom : {x : L} → x ∨ 0l ＝ x
     1-top    : {x : L} → x ∧ 1l ＝ x
 
+  ∧-idem : {x : L} → x ∧ x ＝ x
+  ∧-idem {x}
+    = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
+      x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
+      x ∎
+
+  ∨-idem : {x : L} → x ∨ x ＝ x
+  ∨-idem {x}
+    = (x ∨ x)        ＝⟨ ap (x ∨_) (sym 1-top) ⟩
+      (x ∨ (x ∧ 1l)) ＝⟨ ∨-∧-abs ⟩
+      x ∎
+
+  carrier-is-set : is-set L
+  carrier-is-set
+    = semilattice-carrier-is-set _∧_
+      (λ x → ∧-idem)
+      (λ x y z → ∧-assoc)
+      (λ x y → ∧-comm)
+
+  carrier-is-0-truncated : is-truncated 0 L
+  carrier-is-0-truncated = is-truncated←is-set carrier-is-set
+
   instance
     Carrier-is-truncated : ∀ {k} → Is-truncated (𝕋←ℕ k) L
     Carrier-is-truncated = truncation-instance _ carrier-is-0-truncated
-
-  carrier-is-set : is-set L
-  carrier-is-set = is-set←is-truncated carrier-is-0-truncated
 
 record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   field
@@ -70,7 +90,7 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   infixr 35 _∨_
 
   _≤_ : L → L → Type ℓ
-  x ≤ y = x ∧ y ＝ x
+  x ≤ y = (x ∧ y ＝ x)
 
   open is-lattice str-is-lattice public
 
@@ -102,15 +122,6 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
   0-init' : ∀ {x} → x ∧ 0l ＝ 0l
   0-init' = ∧-comm ∙ 0-init
 
-  ∧-idem : ∀ {x : L} → x ∧ x ＝ x
-  ∧-idem {x} = x ∧ x             ＝⟨ ap (x ∧_) (sym ∨-∧-abs) ⟩
-               x ∧ (x ∨ (x ∧ x)) ＝⟨ ∧-∨-abs ⟩
-               x ∎
-
-  ∨-idem : ∀ {x : L} → x ∨ x ＝ x
-  ∨-idem {x} = (x ∨ x)        ＝⟨ ap (x ∨_) (sym 1-top) ⟩
-               (x ∨ (x ∧ 1l)) ＝⟨ ∨-∧-abs ⟩
-               x ∎
 
   ∨-∧-abs' : ∀ {a b} → (a ∨ b) ∧ b ＝ b
   ∨-∧-abs' = ap (_∧ _) ∨-comm ∙ ∧-comm ∙ ∧-∨-abs

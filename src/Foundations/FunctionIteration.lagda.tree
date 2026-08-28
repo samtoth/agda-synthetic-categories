@@ -1,0 +1,158 @@
+\title{Function iteration}
+\date{2026-08-25}
+\taxon{Module}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+\agda{
+module Foundations.FunctionIteration where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Nat
+open import Foundations.Identity
+open import Foundations.Functions
+open import Foundations.Homotopy
+}
+}
+
+\subtree[fre-6001]{
+\title{Iteration of endomaps}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-08-25}
+
+\p{
+There are two common recursive definitions of iteration of endomaps, corresponding to
+the two recursive equations #{f^{n+1} = f\circ f^n} and #{f^{n+1} = f^n \circ f}.
+}
+
+\agda{
+iterate : ∀ {𝓤} {X : Type 𝓤} → (X → X) → ℕ → X → X
+iterate f 0 x = x
+iterate f (suc n) x = f (iterate f n x)
+
+iterate' : ∀ {𝓤} {X : Type 𝓤} → (X → X) → ℕ → X → X
+iterate' f 0 x = x
+iterate' f (suc n) x = iterate' f n (f x)
+}
+}
+
+\subtree[fre-6002]{
+\title{Iteration respects commuting squares}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+A commuting square between two endomaps induces commuting squares between all
+their iterates.
+}
+
+\agda{
+naturality-iterate
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    (s : A → A) (t : B → B) {f : A → B}
+  → f ∘ s ~ t ∘ f
+  → (n : ℕ) → f ∘ iterate s n ~ iterate t n ∘ f
+naturality-iterate s t H 0 x
+  = refl
+naturality-iterate s t H (suc n) x
+  = H (iterate s n x) ∙ ap t (naturality-iterate s t H n x)
+}
+}
+
+\subtree[fre-6003]{
+\title{Reassociation of function iteration}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+The two definitions of iteration are pointwise equal.
+}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤}  (f : X → X) where
+
+  reassoc-iterate-suc
+    : (n : ℕ) → iterate f (suc n) ~ iterate f n ∘ f
+  reassoc-iterate-suc 0 x
+    = refl
+  reassoc-iterate-suc (suc n) x
+    = ap f (reassoc-iterate-suc n x)
+
+  reassoc-iterate
+    : (n : ℕ) → iterate f n ~ iterate' f n
+  reassoc-iterate 0 x
+    = refl
+  reassoc-iterate (suc n) x
+    = reassoc-iterate-suc n x
+    ∙ reassoc-iterate n (f x)
+}
+}
+
+\subtree[fre-6004]{
+\title{Arithmetic laws for function iteration}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-08-26}
+
+\p{
+Iteration turns addition into composition, multiplication into repeated
+iteration, and exponentiation into higher iteration.
+}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤}  (f : X → X) where
+
+  iterate-add
+    : (n m : ℕ) → iterate f (n +ℕ m) ~ iterate f n ∘ iterate f m
+  iterate-add n 0 x = refl
+  iterate-add n (suc m) x
+    = ap f (iterate-add n m x)
+    ∙ reassoc-iterate-suc f n (iterate f m x)
+
+  left-unit-law-iterate-add
+    : (n : ℕ) (x : X)
+    → iterate-add 0 n x ＝ ap (λ n' → iterate f n' x) (+ℕ-zero {n = n})
+  left-unit-law-iterate-add 0 x = refl
+  left-unit-law-iterate-add (suc n) x
+    = ∙-reflr _
+    ∙ ap (ap f) (left-unit-law-iterate-add n x)
+    ∙ sym (ap-∘ f (λ n → iterate f n x) (+ℕ-zero {n = n}))
+    ∙ ap-∘ (λ n → iterate f n x) suc (+ℕ-zero {n = n})
+
+  right-unit-law-iterate-add
+    : (k : ℕ) → iterate-add k 0 ~ ~refl
+  right-unit-law-iterate-add k x = refl
+
+  iterate-iterate
+    : (n m : ℕ) → iterate f n ∘ iterate f m ~ iterate f m ∘ iterate f n
+  iterate-iterate n m x
+    = sym (iterate-add n m x)
+    ∙ ap (λ n → iterate f n x) (+ℕ-comm {n = n} {m = m})
+    ∙ iterate-add m n x
+
+  iterate-mul
+    : (n m : ℕ) → iterate f (n *ℕ m) ~ iterate (iterate f n) m
+  iterate-mul n 0 x
+    = refl
+  iterate-mul n (suc m) x
+    = iterate-add n (n *ℕ m) x
+    ∙ ap (iterate f n) (iterate-mul n m x)
+
+iterate-exp
+  : ∀ {𝓤} {X : Type 𝓤}  (f : X → X) (n m : ℕ)
+    → iterate f (m ^ℕ n) ~ iterate (λ g → iterate g m) n f
+iterate-exp f 0 m x
+  = refl
+iterate-exp f (suc n) m x
+  = iterate-mul f m (m ^ℕ n) x
+  ∙ iterate-exp (iterate f m) n m x
+  ∙ ap (ev x) (sym (reassoc-iterate-suc (λ g → iterate g m) n f))
+}
+}

@@ -115,7 +115,7 @@ server:
 check-duplicate-trees:
 	@DIR="$(DUP_DIR)"; \
 	{ \
-		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR"; \
+		rg -n --no-heading --no-ignore-vcs -o --glob '*.tree' --glob '!**/autogen/*' 'subtree\[[0-9A-Za-z\-]*\]' "$$DIR" src/; \
 		find "$$DIR" -name '*.tree'; \
 	} | awk '\
 	/subtree\[/ { \

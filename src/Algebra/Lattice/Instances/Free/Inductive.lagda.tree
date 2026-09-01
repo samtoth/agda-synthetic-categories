@@ -10,6 +10,7 @@ open import Foundations.Prelude
 open import Axioms.UF
 
 open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Slice
 import Algebra.Lattice.Instances.Polynomial as Poly
 
 module Algebra.Lattice.Instances.Free.Inductive
@@ -25,6 +26,7 @@ open import Modalities.SeparatedTypes
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
+open import Ergonomics.Marker
 
 open Lattice L renaming (0l to i0; 1l to i1)
 open Poly
@@ -145,6 +147,16 @@ instance
 Δ-ext : ∀ {n} {p q : Δ^ n} → Δ-path p q → p ＝ q
 Δ-ext = ext!
 
+Δ-ext₁
+  : ∀ {n} {p p' : Δ^ n}
+    → {j j' : I}
+    → {l : j ≤ last-Δ p}
+    → {l' : j' ≤ last-Δ p'}
+    → p ＝ p'
+    → j ＝ j'
+    → (p :≥: j) ⦃ l ⦄ ＝ (p' :≥: j') ⦃ l' ⦄
+Δ-ext₁ p＝p' j＝j' = Δ-ext ((IdS←Id p＝p') :≥: j＝j')
+
 Δ-path-is-prop : ∀ {n} {a b : Δ^ n} → is-prop (Δ-path a b)
 Δ-path-is-prop · · = refl
 Δ-path-is-prop (p :≥: q) (r :≥: s)
@@ -223,7 +235,7 @@ instance
 \date{2026-06-09}
 \author{ecavallo}
 
-\p{The lattice structure on #{\II} induces a lattice structure on #{\Delta^n}.
+\p{The lattice structure on #{L} induces a lattice structure on #{\Delta^n}.
 The lattice operations on #{\Delta^n} are defined pointwise, using the fact that the
 lattice operations are monotone with respect to the order they induce.
 }
@@ -299,19 +311,30 @@ _Δ-∨_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∨ p') :≥: (j ∨ j')) �
   l .is-lattice.∧-∨-abs = Δ-ext Δ-∧-∨-abs-path
   l .is-lattice.0-bottom = Δ-ext Δ-0-bottom-path
   l .is-lattice.1-top = Δ-ext Δ-1-top-path
+
+Δ-diagonal-≤←≤-last
+  : {n : ℕ} {p : Δ^ n} {i : I}
+  → (let module Δ {n} = Lattice (Δ-Lattice n))
+  → ⦃ i ≤ last-Δ p ⦄ → Δ-diagonal i Δ.≤ p
+Δ-diagonal-≤←≤-last {n} {p} {i} ⦃ ineq ⦄ = Δ-ext (lemma p i ineq)
+  where
+  lemma
+    : ∀ {n} (p : Δ^ n) (i : I)
+      → i ≤ last-Δ p → Δ-path (Δ-diagonal i Δ-∧ p) (Δ-diagonal i)
+  lemma · i ineq = ·
+  lemma (p :≥: j) i ineq = lemma p i (≤-trans ineq auto!) :≥: ineq
 }
 }
 
 \subtree[stt-00UN]{
-\title{The #{n}-simplex is an #{I}-algebra}
+\title{The #{n}-simplex is an #{L}-algebra}
 \taxon{Theorem}
 \date{2026-06-25}
 \author{ecavallo}
 
-\p{The #{n}-ary diagonal map from the base lattice #{I} to the #{n}-simplex is a
-lattice homomorphism, making #{Δⁿ} into an #{I}-algebra.
-If #{I} is a distributive lattice, then #{Δⁿ} is a distributive #{I}-algebra.
-Because #{Δ¹} is equivalent to #{I}, it is also the initial #{I}-algebra.
+\p{The #{n}-ary diagonal map from the base lattice #{L} to the #{n}-simplex is a
+lattice homomorphism, making #{Δⁿ} into an #{L}-algebra.
+If #{L} is a distributive lattice, then #{Δⁿ} is a distributive #{L}-algebra.
 }
 
 \agda{
@@ -351,7 +374,11 @@ Because #{Δ¹} is equivalent to #{I}, it is also the initial #{I}-algebra.
   lemma {zero} · · · = ·
   lemma {suc n} (p :≥: j) (q :≥: k) (r :≥: l)
     = lemma p q r :≥: dI .is-distributive.distrib-∨-∧
+}
 
+\p{Because #{Δ¹} is equivalent to #{L}, it is also the initial #{L}-algebra.}
+
+\agda{
 Δ¹-Algebra-is-initial
   : ∀ {𝓤} {X : Type 𝓤} (AX : Algebra L X)
     → is-singleton (LatticeAlgHom (Δ-Algebra 1) AX)
@@ -361,5 +388,216 @@ Because #{Δ¹} is equivalent to #{I}, it is also the initial #{I}-algebra.
           (initial-Algebra-is-initial L (Δ-Algebra 1) .centre)
           (Δ¹-diagonal-is-equiv)) e⁻¹)
       (initial-Algebra-is-initial L AX)
+}
+
+\p{An #{L}-algebra homomorphism #{f \colon Δ^{n+1} \to M} into a distributive
+#{L}-algebra #{M} is determined by its value #{f(\top) ∈ M} at the final vertex
+together with its restriction to the first #{n} vertices of #{Δ^n}, which can be
+seen as an #{L}-algebra homomorphism #{f \colon Δ^n \to M_{/f(\top)}} into the
+[slice #{L}-algebra](stt-00UQ) at #{f(\top)}.
+}
+
+\agda{
+module _
+  {𝓤}
+  {B : Type 𝓤}
+  (M : Dist-Algebra L B)
+  (let module M = Algebra (M .fst))
+  (let module Md = is-distributive (M .snd))
+  (let module Δ {n} = Algebra (Δ-Algebra n))
+  where
+
+  opaque
+    Δ-slice-hom
+      : ∀ {n}
+        → (φ : LatticeAlgHom (Δ-Algebra (suc n)) (M .fst))
+        → Σ[ y ∶ B ] LatticeAlgHom (Δ-Algebra n) (Algebra-slice M y)
+    Δ-slice-hom ((φ , φ-ι) , φ-hom) .fst
+      = φ (Δ.1l :≥: i0)
+    Δ-slice-hom ((φ , φ-ι) , φ-hom) .snd .fst .fst p
+      = φ (p :≥: i0) , φ.pres-≤ ⦃ Δ-ext₁ Δ.1-top ∧-idem ⦄
+      where
+      module φ = is-lattice-hom (un-is-lattice-alg-hom φ-hom)
+    Δ-slice-hom ((φ , φ-ι) , φ-hom) .snd .fst .snd i
+      = subtype-path
+          ((φ ⌜ Δ.ι i :≥: i0 ⌝)
+             ＝⟨ ap! (Δ-ext₁ (sym Δ.1-top) (sym (∧-comm ∙ 0-init))) ⟩
+           (φ (Δ.ι i Δ.∧ (Δ.1l :≥: i0)))
+             ＝⟨ φ.pres-∧ ⟩
+           (⌜ φ (Δ.ι i) ⌝ M.∧ φ (Δ.1l :≥: i0))
+             ＝⟨ ap! (φ-ι i) ⟩
+           (M.ι i M.∧ φ (Δ.1l :≥: i0)) ∎)
+      where
+      open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {b} {φ (Δ.1l :≥: i0)}))
+      module φ = is-lattice-hom (un-is-lattice-alg-hom φ-hom)
+    Δ-slice-hom {n} Φ@((φ , φ-ι) , φ-hom) .snd .snd = mk-is-lattice-alg-hom l
+      where
+      open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {b} {φ (Δ.1l :≥: i0)}))
+      module φ = is-lattice-hom (un-is-lattice-alg-hom φ-hom)
+
+      l
+        : is-lattice-hom
+          (Δ-Lattice n)
+          (Lattice-slice M.str-Lattice (φ (Δ.1l :≥: i0)))
+          (Δ-slice-hom Φ .snd .fst .fst)
+      l .is-lattice-hom.pres-∨
+        = subtype-path (ap φ (Δ-ext (Δ-refl :≥: sym ∨-idem)) ∙ φ.pres-∨)
+      l .is-lattice-hom.pres-∧
+        = subtype-path (ap φ (Δ-ext (Δ-refl :≥: sym ∧-idem)) ∙ φ.pres-∧)
+      l .is-lattice-hom.pres-0
+        = subtype-path (ap φ (Δ-ext (Δ-refl :≥: refl)) ∙ φ.pres-0)
+      l .is-lattice-hom.pres-1
+        = subtype-path refl
+
+  opaque
+    Δ-unslice-hom
+      : ∀ {n}
+        → Σ[ y ∶ B ] LatticeAlgHom (Δ-Algebra n) (Algebra-slice M y)
+        → LatticeAlgHom (Δ-Algebra (suc n)) (M .fst)
+    Δ-unslice-hom (y , (φ , φ-ι) , φ-hom) .fst .fst (p :≥: j)
+      = φ p .fst M.∨ M.ι j
+    Δ-unslice-hom (y , (φ , φ-ι) , φ-hom) .fst .snd i
+      = ⌜ φ (Δ.ι i) ⌝ .fst M.∨ M.ι i
+          ＝⟨ ap! (φ-ι i) ⟩
+        ⌜ M.ι i M.∧ y ⌝ M.∨ M.ι i
+          ＝⟨ ap! M.∧-comm ∙ M.∧-∨-abs' ⟩
+        M.ι i ∎
+    Δ-unslice-hom {n} yφ@(y , (φ , φ-ι) , φ-hom) .snd
+      = mk-is-lattice-alg-hom l
+      where
+      module φ = is-lattice-hom (un-is-lattice-alg-hom φ-hom)
+      module ι = is-lattice-hom M.ι-alg
+
+      l
+        : is-lattice-hom
+            (Δ-Lattice (suc n))
+            M.str-Lattice
+            (Δ-unslice-hom yφ .fst .fst)
+      l .is-lattice-hom.pres-∨ {p :≥: j} {q :≥: k}
+        = φ (p Δ.∨ q) .fst M.∨ M.ι (j ∨ k)
+            ＝⟨ ap₂ M._∨_ (ap fst φ.pres-∨) ι.pres-∨ ⟩
+          (φ p .fst M.∨ φ q .fst) M.∨ (M.ι j M.∨ M.ι k)
+            ＝⟨ M.∨-∨-interchange ⟩
+          (φ p .fst M.∨ M.ι j) M.∨ (φ q .fst M.∨ M.ι k) ∎
+      l .is-lattice-hom.pres-∧ {p :≥: j} {q :≥: k}
+        = φ (p Δ.∧ q) .fst M.∨ M.ι (j ∧ k)
+            ＝⟨ ap₂ M._∨_ (ap fst φ.pres-∧) ι.pres-∧ ⟩
+          ⌜ φ p .fst M.∧ φ q .fst ⌝ M.∨ (M.ι j M.∧ M.ι k)
+            ＝⟨ ap! (sym (M.≤-max' p∧k≤p∧q)) ⟩
+          ((φ p .fst M.∧ φ q .fst) M.∨ (φ p .fst M.∧ M.ι k)) M.∨ (M.ι j M.∧ M.ι k)
+            ＝⟨ sym M.∨-assoc ⟩
+          (φ p .fst M.∧ φ q .fst) M.∨ ⌜ (φ p .fst M.∧ M.ι k) M.∨ (M.ι j M.∧ M.ι k) ⌝
+            ＝⟨ ap! (sym Md.distrib-∧-∨') ⟩
+          ⌜ φ p .fst M.∧ φ q .fst ⌝ M.∨ ((φ p .fst M.∨ M.ι j) M.∧ M.ι k)
+            ＝⟨ ap! (sym (Md.distrib-∧-∨' ∙ M.≤-max' j∧q≤p∧q)) ⟩
+          ((φ p .fst M.∨ M.ι j) M.∧ φ q .fst) M.∨ ((φ p .fst M.∨ M.ι j) M.∧ M.ι k)
+            ＝⟨ sym Md.distrib-∧-∨ ⟩
+          (φ p .fst M.∨ M.ι j) M.∧ (φ q .fst M.∨ M.ι k) ∎
+          where
+          p∧k≤p∧q : φ p .fst M.∧ M.ι k M.≤ φ p .fst M.∧ φ q .fst
+          p∧k≤p∧q =
+            M.≤-trans
+              (M.≤←＝
+                (⌜ φ p .fst ⌝ M.∧ M.ι k
+                  ＝⟨ ap! (sym (φ p .snd)) ⟩
+                 (φ p .fst M.∧ y) M.∧ M.ι k
+                  ＝⟨ sym M.∧-assoc ⟩
+                 φ p .fst M.∧ ⌜ y M.∧ M.ι k ⌝
+                  ＝⟨ ap! (M.∧-comm ∙ sym (ap fst (φ-ι k))) ⟩
+                 φ p .fst M.∧ φ (Δ.ι k) .fst ∎))
+              (M.≤-∧ ⦃ M.≤-refl ⦄ ⦃ ap fst (φ.pres-≤ ⦃ Δ-diagonal-≤←≤-last ⦄) ⦄)
+
+          j∧q≤p∧q : M.ι j M.∧ φ q .fst M.≤ φ p .fst M.∧ φ q .fst
+          j∧q≤p∧q =
+            M.≤-trans
+              (M.≤←＝
+                (M.ι j M.∧ ⌜ φ q .fst ⌝
+                  ＝⟨ ap! (sym (φ q .snd)) ⟩
+                M.ι j M.∧ (φ q .fst M.∧ y)
+                  ＝⟨ M.∧-comm ∙ sym M.∧-assoc ∙ M.∧-comm ⟩
+                ⌜ y M.∧ M.ι j ⌝ M.∧ φ q .fst
+                  ＝⟨ ap! (M.∧-comm ∙ sym (ap fst (φ-ι j))) ⟩
+                φ (Δ.ι j) .fst M.∧ φ q .fst ∎))
+              (M.≤-∧ ⦃ ap fst (φ.pres-≤ ⦃ Δ-diagonal-≤←≤-last ⦄) ⦄ ⦃ M.≤-refl ⦄)
+      l .is-lattice-hom.pres-0
+        = φ Δ.0l .fst M.∨ M.ι i0
+            ＝⟨ ap₂ M._∨_ (ap fst φ.pres-0) ι.pres-0 ∙ M.∨-idem ⟩
+          M.0l ∎
+      l .is-lattice-hom.pres-1
+        = φ Δ.1l .fst M.∨ ⌜ M.ι i1 ⌝
+            ＝⟨ ap! ι.pres-1 ∙ M.1-coinit ⟩
+          M.1l ∎
+
+  opaque
+    unfolding Δ-slice-hom Δ-unslice-hom
+
+    Δ-slice-unslice-hom
+      : ∀ {n}
+        → (yφ : Σ[ y ∶ B ] LatticeAlgHom (Δ-Algebra n) (Algebra-slice M y))
+        → Δ-slice-hom (Δ-unslice-hom yφ) ＝ yφ
+    Δ-slice-unslice-hom {n} yφ@(y , (φ , φ-ι) , φ-hom) =
+      Σ-path→ (fst＝ , snd＝)
+      where
+      module φ = is-lattice-hom (un-is-lattice-alg-hom φ-hom)
+      module ι = is-lattice-hom M.ι-alg
+
+      fst＝ : φ Δ-1 .fst M.∨ M.ι i0 ＝ y
+      fst＝
+        = φ Δ.1l .fst M.∨ ⌜ M.ι i0 ⌝
+            ＝⟨ ap! ι.pres-0 ∙ M.0-bottom ⟩
+          φ Δ.1l .fst
+            ＝⟨ ap fst φ.pres-1 ⟩
+          y ∎
+
+      snd＝
+        : Idᶠ
+            (LatticeAlgHom (Δ-Algebra n) ∘ Algebra-slice M)
+            fst＝
+            (Δ-slice-hom (Δ-unslice-hom yφ) .snd)
+            (yφ .snd)
+      snd＝
+        = LatticeAlgHom-Idᶠ~
+            fst＝
+            (λ xs →
+              subtype-Idᶠ
+                (λ b → mk-subtype (λ (b' : B) → M.≤-is-prop {b'} {b}))
+                fst＝
+                (Idᶠ-const
+                   (φ xs .fst M.∨ ⌜ M.ι i0 ⌝
+                     ＝⟨ ap! ι.pres-0 ∙ M.0-bottom ⟩
+                    φ xs .fst ∎)))
+
+    Δ-unslice-slice-hom
+      : ∀ {n}
+        → (φ : LatticeAlgHom (Δ-Algebra (suc n)) (M .fst))
+        → Δ-unslice-hom (Δ-slice-hom φ) ＝ φ
+    Δ-unslice-slice-hom {n} Φ@((φ , φ-ι) , φ-hom) =
+      ext! lemma
+      where
+      lemma
+        : (p : Δ^ (suc n))
+        → Δ-unslice-hom (Δ-slice-hom Φ) .fst .fst p ＝ φ p
+      lemma (p :≥: j) =
+        (φ (p :≥: i0) M.∨ ⌜ M.ι j ⌝)
+          ＝⟨ ap! (sym (φ-ι j)) ⟩
+        (φ (p :≥: i0) M.∨ φ (Δ.ι j))
+          ＝⟨ sym (un-is-lattice-alg-hom φ-hom .is-lattice-hom.pres-∨) ⟩
+        (φ ⌜ ((p Δ.∨ Δ.ι j) :≥: (i0 ∨ j)) ⦃ _ ⦄ ⌝)
+          ＝⟨ ap! (Δ-ext₁ (Δ.≤-max' Δ-diagonal-≤←≤-last) (∨-comm ∙ 0-bottom)) ⟩
+        (φ (p :≥: j)) ∎
+
+  Δ-slice-hom-is-equiv : ∀ {n} → is-equiv (Δ-slice-hom {n})
+  Δ-slice-hom-is-equiv = is-equiv←qinv e
+    where
+    e : quasi-inv Δ-slice-hom
+    e .fst = Δ-unslice-hom
+    e .snd .fst = Δ-unslice-slice-hom
+    e .snd .snd = Δ-slice-unslice-hom
+
+  Δ-slice-hom-equiv
+    : ∀ n
+      → LatticeAlgHom (Δ-Algebra (suc n)) (M .fst)
+      ≃ Σ[ y ∶ B ] LatticeAlgHom (Δ-Algebra n) (Algebra-slice M y)
+  Δ-slice-hom-equiv n = mk≃ Δ-slice-hom Δ-slice-hom-is-equiv
 }
 }

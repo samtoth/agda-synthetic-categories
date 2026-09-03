@@ -32,7 +32,6 @@ open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
-open import Modalities.Instances.Truncation
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
@@ -56,7 +55,6 @@ open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
-open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
@@ -106,6 +104,27 @@ is-covariant←is-covariant-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
     → is-covariant-hom B → is-covariant B
 is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
+}
+}
+
+\subtree[stt-00FU]{
+\title{Base change of covariant families}
+\taxon{Lemma}
+\author{samueltoth}
+
+\agda{
+covariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-covariant P → is-covariant (P ∘ f)
+covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
+
+is-covariant-is-Δ¹-relative
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
+is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
+  = covariant-base-change {P = P} f Pc
+is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
 }
 }
 
@@ -205,11 +224,16 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
     = ( is-covariant←has-unique-extensions
       , has-unique-extensions←is-covariant)
 
+  is-left-family↔is-covariant : is-left-family B ↔ is-covariant B
   is-left-family↔is-covariant
-    : is-left-family B ↔ is-covariant B
-  is-left-family↔is-covariant
-    =  are-orthogonal-fam↔has-unique-extensions
+    = are-orthogonal-fam↔has-unique-extensions
     ∙iff has-unique-extensions↔is-covariant
+
+  is-covariant←is-left-family : is-left-family B → is-covariant B
+  is-covariant←is-left-family = is-left-family↔is-covariant .fst
+
+  is-left-family←is-covariant : is-covariant B → is-left-family B
+  is-left-family←is-covariant = is-left-family↔is-covariant .snd
 }
 }
 
@@ -473,6 +497,148 @@ opaque
 }
 }
 
+\subtree[stt-00VJ]{
+\title{Unital transport criterion for covariant families}
+\date{2026-08-18}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+A type family #{B : A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f_* : B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such that
+#{\id_* \sim \id}.
+}
+
+\p{This result is due to [[robschellingerhout]].}
+
+\proof{
+\p{
+The forwards direction is obvious. For the backwards direction we show that the
+family is a left family by constructing an explicit inverse. I.e., we must construct
+a lift of the diagram
+\quiver{
+\begin{tikzcd}
+\{0\} && \Sigma_{(a:A)} B(a) \\
+\\
+\Delta^1 && A
+\arrow[from=1-1, to=1-3, "{(f(0),b)}"]
+\arrow[from=3-1, to=3-3, "f"]
+\arrow[from=1-1, to=3-1, hook]
+\arrow[from=1-3, to=3-3, "\pi"]
+\arrow[from=3-1, to=1-3, dashed, "f'"]
+\end{tikzcd}
+}
+and show that this gives an inverse to \code{precomp-Π (B ∘ f) (point i0)}.
+}
+
+\p{
+For each #{i : Δ¹}, let #{0\leq i : \Hom_{Δ¹}(0,i)} be the canonical morphism.
+Applying #{f} we get a morphism #{f(0\leq i) : \Hom_A(f(0),f(i))} along which we
+can transport #{b}, and get
+##{f'(i) \coloneqq \left(f(i), f(0\leq i)_*(b)\right).}
+This lies over #{f}, and its value at #{0} is #{(f(0),b)} by unitality.
+}
+
+\p{
+This construction is an inverse to restriction at #{0}. One inverse law follows
+immediately from unitality. For the other, the contraction of #{Δ¹_{/i}} from
+#{(0,0\leq i)} to #{(i,\id_i)} induces a morphism in #{B(f(i))} from the
+#{f(0\leq i)_*(s(0))} to #{f(\id_i)_*(s(i))}. Unitality gives
+#{f(\id_i)_*(s(i)) = s(i)}, and #{Δ¹}-discretenes gives the desired equality.
+}
+}
+
+\agda{
+Covariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-transport {A = A} B = {x y : A} → Hom A x y → B x → B y
+
+Covariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-unital-transport {A = A} B
+  = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  cov-unital-transport←is-covariant
+    : is-covariant B → Covariant-unital-transport B
+  cov-unital-transport←is-covariant B-is-cov
+    = (tr-cov-hom B-is-cov , (λ _ → tr-cov-idH B B-is-cov))
+
+  is-Δ¹-discrete-family←is-covariant
+    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
+  is-Δ¹-discrete-family←is-covariant B-is-cov x
+    = is-Δ¹-discrete←Id←Hom λ {a} {b} f
+    → sym (tr-cov-idH B B-is-cov a)
+    ∙ tr-cov-hom-unique B B-is-cov (idH x) a b f
+
+  is-left-family←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-left-family B
+  is-left-family←cov-unital-transport B-disc (ρ , ρ-id)
+    = is-equiv←qinv ∘ qinv where
+
+    slice-contraction
+      : (i : Δ¹) → Hom (Σ[ j ∶ Δ¹ ] Hom Δ¹ j i) (i0 , 0≤i i) (i , idH i)
+    slice-contraction i = Hom-Σ (0≤i i , tail) where
+      tail : Hom-over (0≤i i) (0≤i i) (idH i)
+      tail .Homᵈ.hom j
+        = mk-hom
+          (λ k → (j ∨ k) ∧ i)
+          (ap (_∧ i) 0-bottom)
+          (ap (_∧ i) 1-coinit ∙ 1-top')
+      tail .Homᵈ.hom0
+        = Idᶠ-right
+            (adjust-Idᵈ
+              (ap₂-right-refl (Hom Δ¹) 0-init)
+              (Hom-extᵈ→ 0-init refl
+                ((λ _ → ap (_∧ i) 0-bottom')
+                , mk-square prop!
+                , mk-square prop!)))
+      tail .Homᵈ.hom1
+        = Idᶠ-right
+            (adjust-Idᵈ
+              (ap₂-right-refl (Hom Δ¹) 1-top')
+              (Hom-extᵈ→ 1-top' refl
+                ( (λ _ → ap (_∧ i) 1-coinit' ∙ 1-top')
+                , mk-square prop!
+                , mk-square prop!)))
+
+    qinv : (f : Δ¹ → A) → quasi-inv (precomp-Π (B ∘ f) (point i0))
+    qinv f .fst x i = ρ (ap-hom f (0≤i i)) (x tt)
+    qinv f .snd .fst s
+      = funext→ λ i
+      → is-equiv.bwd
+          (is-Hom←Id-equiv←is-Δ¹-discrete (B-disc (f i)) _ _)
+          (adjust-hom
+            refl
+            (ρ-id (f i) (s i))
+            (ap-hom
+              (λ r → ρ (ap-hom f (r .snd)) (s (r .fst)))
+              (slice-contraction i)))
+    qinv f .snd .snd x
+      = funext→ λ _
+      → ap (λ h → ρ (ap-hom f h) (x tt)) 0≤i-at-0 ∙ ρ-id (f i0) (x tt)
+
+  is-covariant←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-covariant B
+  is-covariant←cov-unital-transport B-disc ρ
+    = is-covariant←is-left-family B (is-left-family←cov-unital-transport B-disc ρ)
+
+  is-covariant↔cov-unital-transport
+    : is-covariant B
+    ↔ (Covariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
+  is-covariant↔cov-unital-transport .fst B-is-cov
+    = ( cov-unital-transport←is-covariant B-is-cov
+      , is-Δ¹-discrete-family←is-covariant B-is-cov)
+  is-covariant↔cov-unital-transport .snd (ρ , B-disc)
+    = is-covariant←cov-unital-transport B-disc ρ
+}
+}
+
 \subtree[stt-00K3]{
 \title{Covariant transport along inequalities in #{Δ¹}}
 \taxon{Lemma}
@@ -482,7 +648,7 @@ consequently, for covariant families over #{\Delta^1}, we may coerce along
 #{i \le j}. Since #{i \le j} is a proposition, we have the coercing along
 #{i \le i} for any #{i} is the identity and coercing along #{0 \le 1} is the
 same as covariant transport over the canonical morphisms from #{0} to #{1} given
-by #{id : \Delta^1 \to \Delta^1}.}
+by #{\id : \Delta^1 \to \Delta^1}.}
 
 \agda{
 module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where

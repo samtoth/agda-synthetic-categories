@@ -36,6 +36,7 @@ open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
 }
 }
 
@@ -448,6 +449,151 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravarian
 }
 }
 
+\subtree[stt-00VL]{
+\title{Unital transport criterion for contravariant families}
+\date{2026-08-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{
+A type family #{B : A \to \UU} is contravariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f^* : B(y) \to B(x)}, for every #{f : \Hom_A(x,y)}, such
+that #{\id^* \sim \id}.
+}
+
+\p{This result is due to [[robschellingerhout]].}
+
+\proof{
+\p{
+The forwards direction is obvious. For the backwards direction we show that the
+family is a right family by constructing an explicit inverse. I.e., we must
+construct a lift of the diagram
+\quiver{
+\begin{tikzcd}
+\{1\} && \Sigma_{(a:A)} B(a) \\
+\\
+\Delta^1 && A
+\arrow[from=1-1, to=1-3, "{(f(1),b)}"]
+\arrow[from=3-1, to=3-3, "f"]
+\arrow[from=1-1, to=3-1, hook]
+\arrow[from=1-3, to=3-3, "\pi"]
+\arrow[from=3-1, to=1-3, dashed, "f'"]
+\end{tikzcd}
+}
+and show that this gives an inverse to \code{precomp-Π (B ∘ f) (point i1)}.
+}
+
+\p{
+For each #{i : Δ¹}, let #{i\leq 1 : \Hom_{Δ¹}(i,1)} be the canonical morphism.
+Applying #{f} we get a morphism #{f(i\leq 1) : \Hom_A(f(i),f(1))} along which we
+can transport #{b} backwards, and get
+##{f'(i) \coloneqq \left(f(i), f(i\leq 1)^*(b)\right).}
+This lies over #{f}, and its value at #{1} is #{(f(1),b)} by unitality.
+}
+
+\p{
+This construction is an inverse to restriction at #{1}. One inverse law follows
+immediately from unitality. For the other, the contraction of #{Δ¹_{i/}} from
+#{(i,\id_i)} to #{(1,i\leq 1)} induces a morphism in #{B(f(i))} from
+#{f(\id_i)^*(s(i))} to #{f(i\leq 1)^*(s(1))}. Unitality and
+#{Δ¹}-discreteness give the desired equality.
+}
+}
+
+\agda{
+Contravariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Contravariant-transport {A = A} B
+  = {x y : A} → Hom A x y → B y → B x
+
+Contravariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Contravariant-unital-transport {A = A} B
+  = Σ[ ρ ∶ Contravariant-transport B ] ((x : A) → ρ (idH x) ~ id)
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  contrav-unital-transport←is-contravariant
+    : is-contravariant B → Contravariant-unital-transport B
+  contrav-unital-transport←is-contravariant B-is-contrav
+    = (tr-contrav-hom B-is-contrav , (λ _ → tr-contrav-idH B B-is-contrav))
+
+  is-Δ¹-discrete-family←is-contravariant
+    : is-contravariant B → (x : A) → is-Δ¹-discrete (B x)
+  is-Δ¹-discrete-family←is-contravariant B-is-contrav x
+    = is-Δ¹-discrete←Id←Hom λ {a} {b} f
+    → sym (tr-contrav-hom-unique B B-is-contrav (idH x) a b f)
+    ∙ tr-contrav-idH B B-is-contrav b
+
+  is-right-family←contrav-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Contravariant-unital-transport B
+    → is-right-family B
+  is-right-family←contrav-unital-transport B-disc (ρ , ρ-id)
+    = is-equiv←qinv ∘ qinv where
+
+    coslice-contraction
+      : (i : Δ¹) → Hom (Σ[ j ∶ Δ¹ ] Hom Δ¹ i j) (i , idH i) (i1 , i≤1 i)
+    coslice-contraction i = Hom-Σ (i≤1 i , tail) where
+      tail : Hom-over (i≤1 i) (idH i) (i≤1 i)
+      tail .Homᵈ.hom j
+        = mk-hom
+          (λ k → (j ∧ k) ∨ i)
+          (ap (_∨ i) 0-init' ∙ 0-bottom')
+          (ap (_∨ i) 1-top)
+      tail .Homᵈ.hom0
+        = Idᶠ-right
+            (adjust-Idᵈ
+              (ap₂-left-refl (Hom Δ¹) 0-bottom')
+              (Hom-extᵈ→ refl 0-bottom'
+                ( (λ _ → ap (_∨ i) 0-init ∙ 0-bottom')
+                , mk-square prop!
+                , mk-square prop!)))
+      tail .Homᵈ.hom1
+        = Idᶠ-right
+            (adjust-Idᵈ
+              (ap₂-left-refl (Hom Δ¹) 1-coinit')
+              (Hom-extᵈ→ refl 1-coinit'
+                ( (λ _ → ap (_∨ i) 1-top')
+                , mk-square prop!
+                , mk-square prop!)))
+
+    qinv : (f : Δ¹ → A) → quasi-inv (precomp-Π (B ∘ f) (point i1))
+    qinv f .fst x i = ρ (ap-hom f (i≤1 i)) (x tt)
+    qinv f .snd .fst s
+      = funext→ λ i
+      → sym
+          (is-equiv.bwd
+            (is-Hom←Id-equiv←is-Δ¹-discrete (B-disc (f i)) _ _)
+            (adjust-hom
+              (ρ-id (f i) (s i))
+              refl
+              (ap-hom
+                (λ r → ρ (ap-hom f (r .snd)) (s (r .fst)))
+                (coslice-contraction i))))
+    qinv f .snd .snd x
+      = funext→ λ _
+      → ap (λ h → ρ (ap-hom f h) (x tt)) i≤1-at-1 ∙ ρ-id (f i1) (x tt)
+
+  is-contravariant←contrav-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Contravariant-unital-transport B
+    → is-contravariant B
+  is-contravariant←contrav-unital-transport B-disc ρ
+    = is-right-family↔is-contravariant B .fst
+        (is-right-family←contrav-unital-transport B-disc ρ)
+
+  is-contravariant↔contrav-unital-transport
+    : is-contravariant B
+    ↔ (Contravariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
+  is-contravariant↔contrav-unital-transport .fst B-is-contrav
+    = ( contrav-unital-transport←is-contravariant B-is-contrav
+      , is-Δ¹-discrete-family←is-contravariant B-is-contrav)
+  is-contravariant↔contrav-unital-transport .snd (ρ , B-disc)
+    = is-contravariant←contrav-unital-transport B-disc ρ
+}
+}
+
 \subtree[stt-00UC]{
 \title{Contravariant transport along inequalities in #{Δ¹}}
 \taxon{Lemma}
@@ -457,7 +603,7 @@ consequently, for contravariant families over #{\Delta^1}, we may coerce backwar
 along #{i \le j}. Since #{i \le j} is a proposition, we have the coercing along
 #{i \le i} for any #{i} is the identity and coercing along #{0 \le 1} is the
 same as contravariant transport over the canonical morphisms from #{0} to #{1} given
-by #{id : \Delta^1 \to \Delta^1}.}
+by #{\id : \Delta^1 \to \Delta^1}.}
 
 \agda{
 module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-contravariant B) where

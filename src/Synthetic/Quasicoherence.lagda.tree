@@ -27,6 +27,7 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Synthetic.Directedness Δ¹ I
+open import Synthetic.Triangles Δ¹ I
 
 open import Foundations.Prelude
 
@@ -36,6 +37,7 @@ open import Algebra.Lattice.Instances.Pointwise
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
+open import Ergonomics.Marker
 }
 }
 
@@ -192,26 +194,26 @@ I-is-quasicoherent
 Quasicoherence is very related to an axiom in synthetic domain theory known
 as Phoa's principle. This axiom states that every map
 #{\II \to \II} is monotone, of the form
-#{f(x) = (f(1) \wedge x) \vee f(0)}. We deduce this property from the axiom
+#{f(x) = f(0) \lor (f(1) \land x)}. We deduce this property from the axiom
 SQCP: that #{\II[x]} is quasicoherent.
 }
 
 \agda{
-is-generalised-phoa
+Phoa's-Generalised-Principle
   : ∀ {𝓤} {X : Type 𝓤} (A : Algebra I X)
     → Type (𝓤 ⊔ 𝓘)
-is-generalised-phoa {X = X} A
-  = (α : Δ¹ → X) (x : Δ¹) → α x ＝ (α i1 A.∧ A.ι x) A.∨ α i0
+Phoa's-Generalised-Principle {X = X} A
+  = (α : Δ¹ → X) (x : Δ¹) → α x ＝ α i0 A.∨ (α i1 A.∧ A.ι x)
   where module A = Algebra A
 
-is-generalised-phoa-is-prop
+Phoa's-Generalised-Principle-is-prop
   : ∀ {𝓤} {X : Type 𝓤} {A : Algebra I X}
-    → is-prop (is-generalised-phoa A)
-is-generalised-phoa-is-prop {A = A} = is-prop←is-truncated trunc!
+    → is-prop (Phoa's-Generalised-Principle A)
+Phoa's-Generalised-Principle-is-prop {A = A} = is-prop←is-truncated trunc!
   where open Algebra A
 
-phoas-principle : Type 𝓘
-phoas-principle = is-generalised-phoa (initial-Algebra I)
+Phoa's-Principle : Type 𝓘
+Phoa's-Principle = Phoa's-Generalised-Principle (initial-Algebra I)
 
 Δ¹≃SpecI[x] : Δ¹ ≃ Spec I[x]
 Δ¹≃SpecI[x]
@@ -225,21 +227,16 @@ module _ (H : SQCP) where
   I[x]≃Δ¹→Δ¹ : Δ² I ≃ (Δ¹ → Δ¹)
   I[x]≃Δ¹→Δ¹ = equiv←is-quasicoherent H ∙e precomp-≃ Δ¹≃SpecI[x]
 
-  phoas-principle←SQCP : phoas-principle
-  phoas-principle←SQCP α i
+  Phoa's-Principle←SQCP : Phoa's-Principle
+  Phoa's-Principle←SQCP α i
     = sym (happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i)
-      ∙ ap₂ _∨_
+    ∙ ∨-comm
+    ∙ ap₂ (_∨_)
+          ( sym (ap (_∨ α₀) 0-init' ∙  0-bottom')
+          ∙ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i0)
           (ap (_∧ i)
-            ( α₁
-                ＝⟨ sym (ap (_∨ α₀) 1-top ∙ ∨-comm ∙ ≤-max (coefs .Δ².mono)) ⟩
-              (α₁ ∧ i1) ∨ α₀
-                ＝⟨ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i1 ⟩
-              α i1 ∎))
-          ( α₀
-              ＝⟨ sym (ap (_∨ α₀) 0-init' ∙  0-bottom') ⟩
-            (α₁ ∧ i0) ∨ α₀
-              ＝⟨ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i0  ⟩
-            α i0 ∎)
+              ( sym (ap (_∨ α₀) 1-top ∙ ∨-comm ∙ ≤-max (coefs .Δ².mono))
+              ∙ happly (_≃_.ε I[x]≃Δ¹→Δ¹ α) i1))
     where
       coefs : Δ² I
       coefs = is-equiv.qinv H .fst (λ a → α (a .fst .fst (i1 , i0)))
@@ -247,10 +244,10 @@ module _ (H : SQCP) where
       α₁ = Δ².s coefs
       α₀ = Δ².t coefs
 
-module _ (H : phoas-principle) where
+module _ (H : Phoa's-Principle) where
 
-  SQCP←phoas-principle : SQCP
-  SQCP←phoas-principle = is-equiv←qinv qinv
+  SQCP←Phoa's-Principle : SQCP
+  SQCP←Phoa's-Principle = is-equiv←qinv qinv
     where
     α-of : Obs (Spec I[x]) → Δ¹ → Δ¹
     α-of x i = x (_≃_.fwd Δ¹≃SpecI[x] i)
@@ -258,8 +255,7 @@ module _ (H : phoas-principle) where
     mono-of : (x : Obs (Spec I[x])) → α-of x i0 ≤ α-of x i1
     mono-of x =
       ≤←∨
-        ( ∨-comm
-        ∙ sym (ap (_∨ (α-of x i0)) 1-top)
+        ( ap (α-of x i0 ∨_) (sym 1-top)
         ∙ sym (H (α-of x) i1))
 
     bwd : Obs (Spec I[x]) → Δ² I
@@ -286,6 +282,7 @@ module _ (H : phoas-principle) where
           εy : _≃_.fwd Δ¹≃SpecI[x] j ＝ y
           εy = _≃_.ε Δ¹≃SpecI[x] y
         in sym (ap (λ z → z .fst .fst (bwd x)) εy)
+         ∙ ∨-comm
          ∙ sym (H (α-of x) j)
          ∙ ap x εy
 }
@@ -301,23 +298,23 @@ module _ (H : phoas-principle) where
  We show that Phoa's principle implies that every endomap on #{Δ¹} is monotone,
  we call this [directedness](Synthetic.Directednes) of #{Δ¹}.
  This is a consequence of the fact that the monotone maps from #{Δ¹} to #{Δ¹}
- are precisely the maps of the form #{f(x) = (f(1) \wedge x) \vee f(0)},
+ are precisely the maps of the form #{f(x) = f(0) \lor (f(1) \land x)},
  and that these are all the maps from #{Δ¹} to #{Δ¹} by quasicoherence.
 }
 
 \agda{
-Δ¹-is-directed←phoa : phoas-principle → Δ¹-is-directed
+Δ¹-is-directed←phoa : Phoa's-Principle → Δ¹-is-directed
 Δ¹-is-directed←phoa phoa f {a} {b} x
   = f a ∧ f b
       ＝⟨ ap₂ _∧_ (phoa f a) (phoa f b) ⟩
-    ((f i1 ∧ a) ∨ f i0) ∧ ((f i1 ∧ b) ∨ f i0)
+    (f i0 ∨ (f i1 ∧ a)) ∧ (f i0 ∨ (f i1 ∧ b))
       ＝⟨ polynomials-are-monotone (f i1) (f i0) x ⟩
-    (f i1 ∧ a) ∨ f i0
+    f i0 ∨ (f i1 ∧ a)
       ＝⟨ sym (phoa f a) ⟩
     f a ∎
 
 Δ¹-is-directed←SQPC : SQCP → Δ¹-is-directed
-Δ¹-is-directed←SQPC = Δ¹-is-directed←phoa ∘ phoas-principle←SQCP
+Δ¹-is-directed←SQPC = Δ¹-is-directed←phoa ∘ Phoa's-Principle←SQCP
 }
 
 \p{
@@ -340,7 +337,7 @@ derive quasicoherence.
 
 \agda{
 phoa←Δ¹-is-directed
-  : Δ¹-is-directed → Δ²-classifies-Δ¹-monotones → phoas-principle
+  : Δ¹-is-directed → Δ²-classifies-Δ¹-monotones → Phoa's-Principle
 phoa←Δ¹-is-directed endos-monotone class α
   = happly (ap fst (sym compute))
   where
@@ -353,6 +350,52 @@ phoa←Δ¹-is-directed endos-monotone class α
 SQCP←Δ¹-is-directed
   : Δ¹-is-directed → Δ²-classifies-Δ¹-monotones → SQCP
 SQCP←Δ¹-is-directed endos-monotone class =
-  SQCP←phoas-principle (phoa←Δ¹-is-directed endos-monotone class)
+  SQCP←Phoa's-Principle (phoa←Δ¹-is-directed endos-monotone class)
+}
+}
+
+\subtree[fre-19C2]{
+\title{Phoa's principle for #{Δ²}}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-03}
+
+\agda{
+Phoa's-Principle-Δ² : Type 𝓘
+Phoa's-Principle-Δ²
+  = (α : Δ² I → Δ¹)
+  → (t : Δ² I)
+  → α t ＝ α 0 ∨ ((α 1 ∧ t .Δ².s) ∨ (α 2 ∧ t .Δ².t))
+}
+}
+
+\subtree[fre-3EB0]{
+\title{Phoa's principle implies Phoa's principle for #{Δ²}}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-03}
+
+\agda{
+abstract
+  phoas-Δ²-principle←phoas-principle : Phoa's-Principle → Phoa's-Principle-Δ²
+  phoas-Δ²-principle←phoas-principle phoa α ((j , i) ⦃ p ⦄)
+    = α ((j , i) ⦃ p ⦄)
+        ＝⟨ ap α (Δ²-ext (sym (≤-max' p) , refl)) ⟩
+      α ((j ∨ i , i) ⦃ ∨-≤-intror ≤-refl ⦄)
+        ＝⟨ phoa (λ k → α ((j ∨ k , k) ⦃ ∨-≤-intror ≤-refl ⦄)) i ⟩
+      α ((j ∨ i0 , i0) ⦃ ∨-≤-intror ≤-refl ⦄)
+      ∨ (α ((j ∨ i1 , i1) ⦃ ∨-≤-intror ≤-refl ⦄) ∧ i)
+        ＝⟨ ap₂ (_∨_)
+                (ap α (Δ²-ext (0-bottom , refl)))
+                (ap (_∧ i) (ap α (Δ²-ext (1-coinit , refl)))) ⟩
+      ⌜ α ((j , i0)) ⌝ ∨ (α 2 ∧ i)
+        ＝⟨ ap! (phoa (λ k → α ((k , i0))) j) ⟩
+      ⌜ α 0 ∨ (α 1 ∧ j) ⌝ ∨ (α 2 ∧ i)
+        ＝⟨ ap! (ap₂ (_∨_) (ap α Δ²-refl) (ap (_∧ j) (ap α Δ²-refl))) ∙ sym ∨-assoc ⟩
+      α 0 ∨ ((α 1 ∧ j) ∨ (α 2 ∧ i))
+        ∎
+
+phoas-Δ²-principle←SQCP : SQCP → Phoa's-Principle-Δ²
+phoas-Δ²-principle←SQCP = phoas-Δ²-principle←phoas-principle ∘ Phoa's-Principle←SQCP
 }
 }

@@ -1,11 +1,11 @@
 \title{Detecting equivalences between covariant type families}
 \taxon{Module}
 \author{samueltoth}
+\contributor{fredrikbakke}
 \import{stt-macros}
 
 \agda{
 open import Foundations.Universes
-open import Foundations.Nat
 open import Foundations.Unit
 open import Foundations.Empty
 open import Foundations.Identity
@@ -14,14 +14,13 @@ open import Foundations.Singletons
 
 open import Algebra.Lattice
 
+import Synthetic.Cubes
 open import Synthetic.Tiny
 
 open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.FlatDiscrete
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
-
-import Synthetic.Cubes
 
 module Synthetic.Categories.EquivCovariantFamilies
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
@@ -56,45 +55,94 @@ open import Synthetic.Categories.CovariantFamilies Δ¹ I
 }
 
 \subtree[stt-00V6]{
-\title{The point inclusion of #{0} into the #{n}-cube is left anodyne}
+\title{The point inclusion of #{0} into a cube is left anodyne}
 \taxon{Lemma}
+\author{fredrikbakke}
+\author{samueltoth}
+\date{2026-09-03}
 
 \agda{
-□-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
-□-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
-□-0-is-left-anodyne {suc zero} r 0r = 0r
-□-0-is-left-anodyne {suc (suc m)} r 0r
-  = left-orthogonal-equiv
-      (point □-0 ⊗ point i0) (point □-0) a ae r
-      (left-orthogonal-× (point □-0) (point i0) r
-        (□-0-is-left-anodyne {suc m} r 0r) 0r) where
-  a : Arrow-map (point □-0 ⊗ point i0) (point (□-0 , i0))
-  a .Arrow-Π.top = !
-  a .Arrow-Π.bot = id
-  a .Arrow-Π.comm = ~refl
+module _ {𝓤} {A : Type 𝓤}  where
 
-  ae : is-Arrow-equiv a
-  ae .fst = sing-!-is-equiv single!
-  ae .snd = id-is-equiv
+  cube-hom-from-0
+    : (f : A → Δ¹) → Hom (A → Δ¹) (const i0) f
+  cube-hom-from-0 f .Homᵈ.hom t a = t ∧ f a
+  cube-hom-from-0 f .Homᵈ.hom0 = funext→ (λ _ → 0-init)
+  cube-hom-from-0 f .Homᵈ.hom1 = funext→ (λ _ → 1-top')
+
+  cube-hom-from-0-at-0
+    : cube-hom-from-0 (const: Δ¹ A i0) ＝ idH (const i0)
+  cube-hom-from-0-at-0
+    = Hom-ext→ ((λ _ → funext→ λ _ → 0-init') , prop! , prop!)
+
+  ev-cube-0-is-equiv
+    : ∀ {𝓥} {P : (A → Δ¹) → Type 𝓥}
+      → is-covariant P
+      → is-equiv (evᵈ: P (const i0))
+  ev-cube-0-is-equiv {P = P} Pc
+    = is-equiv←qinv
+        ( (λ x f → tr-cov-hom Pc (cube-hom-from-0 f) x)
+        , (λ x → funext→ λ f
+          → tr-cov-hom-unique
+              P Pc (cube-hom-from-0 f) (x (const i0)) (x f)
+              (ap-hom-over x (cube-hom-from-0 f)))
+        , tr-cov-idH~ P Pc _ cube-hom-from-0-at-0)
+
+  cube-0-is-left-anodyne
+    : is-left-anodyne (point (const: Δ¹ A i0))
+  cube-0-is-left-anodyne r r-is-left
+    = are-orthogonal←are-orthogonal-fibre λ σ
+      → 3-for-2
+          (unit-ev-is-equiv)
+          (ev-cube-0-is-equiv
+            (is-covariant←is-left-family
+              (fibre r ∘ σ)
+              (orthogonal-fam←base-change
+                (point i0) σ (fibre r)
+                (are-orthogonal-fibre←are-orthogonal r-is-left))))
+}
+
+\p{As a special case, the point inclusion of #{0} into finite cube is left anodyne.}
+
+\agda{
+□-0-arrow-equiv
+  : {m : ℕ} → Arrow-equiv (point (const: Δ¹ (Fin m) i0)) (point (□-0 {m}))
+□-0-arrow-equiv {m} .fst .Arrow-Π.top = id
+□-0-arrow-equiv {m} .fst .Arrow-Π.bot = □←cube
+□-0-arrow-equiv {m} .fst .Arrow-Π.comm _ = □←cube-0
+□-0-arrow-equiv {m} .snd .fst = id-is-equiv
+□-0-arrow-equiv {m} .snd .snd = bwd-is-equiv (□≃cube m)
+
+□-0-is-left-anodyne : {m : ℕ} → is-left-anodyne (point (□-0 {m}))
+□-0-is-left-anodyne {m}
+  = is-anodyne←equiv
+      (point (const: Δ¹ (Fin m) i0))
+      (point (□-0 {m}))
+      (□-0-arrow-equiv)
+      (point i0)
+      (cube-0-is-left-anodyne {A = Fin m})
 }
 }
 
 \subtree[stt-00UT]{
 \taxon{Corollary}
+\contributor{fredrikbakke}
 
 \p{As a special case of \ref{stt-00V7}, we note the following.
-If [cubes separate](stt-00J7) and crisp elements of #{\Delta^1} are covered by the booleans,
+If all cubes #{I \to \Delta^1} [separate](stt-00J7), for all types #{I}, and
+crisp elements of #{\Delta^1} are covered by the booleans,
 then a crisp transformation between covariant crisp type families #{F, G} over
 #{B \times \Delta} is a fibrewise equivalence iff it is a flat equivalence at
 #{(b , 0)} and #{(b, 1)} for crisp elements #{b : B}.}
 
 \agda{
 module _
-  (@♭ cubes-separate : family-separates □^_)
+  (@♭ cubes-separate : large-family-separates (λ 𝓤 → Type 𝓤) (λ A → (A → Δ¹)))
   (@♭ ♭Δ¹-ind
     : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
       → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
   where
+
   ∂Δ¹-cov-Nat-is-equiv
     : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
         (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
@@ -102,10 +150,11 @@ module _
       → @♭ (∀ (@♭ b : B) (@♭ x : ∂Δ¹) → is-♭-equiv (α (b , ∂Δ¹-incl x)))
       → is-fibrewise-equiv α
   ∂Δ¹-cov-Nat-is-equiv F G α αeq
-    = is-fibrewise-equiv←anodyne-family-separates
+    = is-fibrewise-equiv←anodyne-large-family-separates
         (point i0)
-        □^_
-        (cubes-separate) □-0 □-0-is-left-anodyne
+        cubes-separate
+        (λ _ → const i0)
+        (λ _ → cube-0-is-left-anodyne)
         (F .fst , is-left-family←is-covariant (F .fst) (F .snd))
         (G .fst , is-left-family←is-covariant (G .fst) (G .snd))
         α
@@ -120,14 +169,15 @@ module _
 }
 
 \p{We may also consider the analogous result for the 2-simplex, but this time
-assuming that the 3 element type covers the crisp elements of #{Δ²} as well as cubes
-separate. Note that this assumption should follow from the covering of the 1-simplex,
+assuming that the 3 element type covers the crisp elements of #{Δ²} as well as all
+cubes separate. Note that the cobering assumption should follow
+from the covering of the 1-simplex,
 however this is yet to be formalised
 ([issue #258](https://github.com/samtoth/agda-synthetic-categories/issues/258)).}
 
 \agda{
 module _
-  (@♭ cubes-separate : family-separates □^_)
+  (@♭ cubes-separate : large-family-separates (λ 𝓤 → Type 𝓤) (λ A → A → Δ¹))
   (@♭ ♭Δ²-ind
     : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤) → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
     → (@♭ x : Δ²) → P x .fst)
@@ -140,10 +190,11 @@ module _
       → @♭ (∀ (@♭ b : B) (@♭ x : Fin 3) → is-♭-equiv (α (b , Δ²-point-incl x)))
       → is-fibrewise-equiv α
   points-Δ²-cov-Nat-is-equiv F G α αeq
-    = is-fibrewise-equiv←anodyne-family-separates
+    = is-fibrewise-equiv←anodyne-large-family-separates
         (point i0)
-        □^_
-        (cubes-separate) □-0 □-0-is-left-anodyne
+        cubes-separate
+        (λ _ → const i0)
+        (λ _ → cube-0-is-left-anodyne)
         (F .fst , is-left-family↔is-covariant (F .fst) .snd (F .snd))
         (G .fst , is-left-family↔is-covariant (G .fst) .snd (G .snd))
         α

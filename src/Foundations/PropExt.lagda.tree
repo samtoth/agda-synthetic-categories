@@ -4,30 +4,36 @@
 \taxon{Module}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Foundations.PropExt where
+}
 
+\agda-imports{
+\agda{
 open import Foundations.Universes
-open import Foundations.Singleton
+open import Foundations.Singletons
 open import Foundations.Sigma
 open import Foundations.SigmaProperties
 open import Foundations.Functions
 open import Foundations.Identity
-open import Foundations.QuasiIsomorphism
-open import Foundations.CoherentIsomorphism
-open import Foundations.EquivProp
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.IsEquivIsProp
 open import Foundations.FunExt
 open import Foundations.Univalence
 open import Foundations.3for2
-open import Foundations.FunextUnivalence
-open import Foundations.IdentitySystem
+open import Foundations.FunExtFromUnivalence
+open import Foundations.IdentitySystems
+open import Foundations.TorsorialTypeFamilies
 open import Foundations.EquivHomotopy
 open import Foundations.EquivSingleton
-open import Foundations.FibrewiseEquiv
+open import Foundations.FibrewiseEquivalences
 open import Foundations.SingletonProp
+open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.Bool
 }
-%```
+}
 
 \subtree[stt-007P]{
 \title{Weak propositional extensionality}
@@ -37,20 +43,21 @@ open import Foundations.SingletonProp
 #{P} and #{Q}, the projection from #{P \simeq Q} to #{P \iff Q}
 is an equivalence. Functional extensionality implies weak-PropExt}
 
-%```agda
 \agda{
-logical←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ⇔ B
+logical←equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A ≃ B → A ↔ B
 logical←equiv e = (fwd , bwd) where open _≃_ e
 
-is-equiv←inverse : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-                 → is-prop A → is-prop B → {f : A → B}
-                 → (g : B → A) → is-equiv f
+is-equiv←inverse
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-prop A → is-prop B → {f : A → B}
+    → (g : B → A) → is-equiv f
 is-equiv←inverse aprp bprp g
-  = is-equiv←qiso (g , (λ a → aprp _ _) , (λ _ → bprp _ _))
+  = is-equiv←qinv (g , (λ a → aprp _ _) , (λ _ → bprp _ _))
 
-equiv←logical : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      → is-prop A → is-prop B
-      → A ⇔ B → A ≃ B
+equiv←logical
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-prop A → is-prop B
+    → A ↔ B → A ≃ B
 equiv←logical aprp bprp (f , g) = mk≃ f (is-equiv←inverse aprp bprp g)
 
 weak-PropExt : (𝓤 𝓥 : Level) → Type (lsuc (𝓤 ⊔ 𝓥))
@@ -59,13 +66,12 @@ weak-PropExt 𝓤 𝓥 = ∀ {A : Type 𝓤} {B : Type 𝓥}
                      → is-equiv (logical←equiv {A = A} {B})
 
 weak-PropExt←FunExt : ∀ {𝓤 𝓥} → FunExt-global → weak-PropExt 𝓤 𝓥
-weak-PropExt←FunExt FE aprp bprp = is-equiv←qiso lem where
-  lem : quasi-iso logical←equiv
+weak-PropExt←FunExt FE aprp bprp = is-equiv←qinv lem where
+  lem : quasi-inv logical←equiv
   lem .fst = equiv←logical aprp bprp
   lem .snd .snd (f , g) = refl
   lem .snd .fst e = ≃-path→ FE refl
 }
-%```
 }
 
 \subtree[stt-007Q]{
@@ -88,51 +94,66 @@ but certain modules rely needlessly on global funext, which doesn't
 follow from univalence. I would like to do a big refactor of how
 axioms work which should address this.}
 
-%```agda
 \agda{
-logical←Id : ∀ {𝓤} {P Q : Type 𝓤}
-             → P ＝ Q → P ⇔ Q
+logical←Id
+  : ∀ {𝓤} {P Q : Type 𝓤}
+    → P ＝ Q → P ↔ Q
 logical←Id refl = (id , id)
 
 PropExt : (𝓤 : Level) → Type (lsuc 𝓤)
-PropExt 𝓤 = ∀ {P Q : Type 𝓤}
-             → is-prop P → is-prop Q
-             → is-equiv (logical←Id {𝓤} {P} {Q})
+PropExt 𝓤
+  = ∀ {P Q : Type 𝓤}
+    → is-prop P → is-prop Q
+    → is-equiv (logical←Id {𝓤} {P} {Q})
 
 PropExt←Univalence : ∀ {𝓤} → FunExt-global → is-univalent 𝓤 → PropExt 𝓤
-PropExt←Univalence {𝓤} FE uu pp qq = is-equiv~∘
-                                       (λ where refl → refl)
-                                       (weak-PropExt←FunExt FE pp qq)
-                                       uu
+PropExt←Univalence {𝓤} FE uu pp qq
+  = is-equiv-~∘
+      (λ where refl → refl)
+      (weak-PropExt←FunExt FE pp qq)
+      uu
 }
-%```
 }
 
 \subtree[stt-007R]{
 \title{Logical equivalence is an identity system for propositions}
 \taxon{Corollary}
 
-%```agda
 \agda{
-Prop : (𝓤 : Level) → Type (lsuc 𝓤)
-Prop 𝓤 = Σ[ A ∶ Type 𝓤 ] is-prop A
-
 module PropExt (FE : FunExt-global) (UA : Univalence) where
   Prop-IdS : ∀ {𝓤} → Identity-system (Prop 𝓤) 𝓤
-  Prop-IdS .Identity-system.IdS (P , _) (Q , _) = P ⇔ Q
+  Prop-IdS .Identity-system.IdS (P , _) (Q , _) = P ↔ Q
   Prop-IdS .Identity-system.IdS←Id refl = (id , id)
-  Prop-IdS .Identity-system.has-is-ids (A , ap)
+  Prop-IdS {𝓤} .Identity-system.IdS←Id-is-equiv (A , ap)
     = fundamental-Id _ lem _ where
-    lem : is-singleton (Σ (Σ (Type _) is-prop) ((A ⇔_) ∘ fst))
+    lem : is-torsorial (λ (B , _) → A ↔ B)
     lem = is-single←equiv-to-single
              ((  Σ-assoc
-              ∙≃ Σ-ap-≃ (λ
-                B → Σ-ap-≃ λ
-                 bp → mk≃ _ (PropExt←Univalence FE UA ap bp ) e⁻¹)
-              ∙≃ Σ-ap-≃ (λ a → ×-swap)
-              ∙≃  Σ-＝singl'
+              ∙e Σ-snd-≃ (λ
+                B → Σ-snd-≃ λ
+                 bp → mk≃ _ (PropExt←Univalence FE UA ap bp) e⁻¹)
+              ∙e Σ-snd-≃ (λ a → ×-swap)
+              ∙e Σ-＝singl'
              ) e⁻¹)
              (mk-singl ap (is-prop-is-prop FE ap))
 }
-%```
+}
+
+
+\subtree[stt-00N6]{
+\date{2026-04-24}
+\author{fredrikbakke}
+\title{Booleans as propositions}
+\taxon{Definition}
+
+\p{
+We define the canonical interpretation of booleans into propositions, sending
+#{\true} to the unit proposition and #{\false} to the empty proposition.
+}
+
+\agda{
+Prop←Bool : Bool → Prop lzero
+Prop←Bool true = (𝟙 , is-prop←is-single 𝟙-is-singleton)
+Prop←Bool false = (∅ , λ ())
+}
 }

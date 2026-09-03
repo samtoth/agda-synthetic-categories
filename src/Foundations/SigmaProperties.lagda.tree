@@ -3,164 +3,191 @@
 \taxon{Module}
 \import{stt-macros}
 
-% ```agda
 \agda{
 module Foundations.SigmaProperties where
+}
 
+\agda-imports{
+\agda{
 open import Foundations.Universes
 open import Foundations.Empty
 open import Foundations.Sigma
-open import Foundations.SigmaPath
+open import Foundations.SigmaIdentity
 open import Foundations.Identity
 open import Foundations.DependentIdentity
 open import Foundations.Functions
 open import Foundations.Unit
-open import Foundations.QuasiIsomorphism
-open import Foundations.CoherentIsomorphism
-open import Foundations.Singleton
-open import Foundations.EquivContrFibre
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.FibrewiseEquivalences
+open import Foundations.Singletons
+open import Foundations.SingletonFibres
 open import Foundations.EquivSingleton
 open import Foundations.Coproducts
 open import Foundations.Homotopy
 }
-% ```
+}
 
-% ```agda
 \agda{
-total-map-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} (f : A' → A)
-                → {B : A → Type 𝓦} → Σ A' (B ∘ f) → Σ A B
+total-map-fst
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} (f : A' → A)
+    → {B : A → Type 𝓦} → Σ A' (B ∘ f) → Σ A B
 total-map-fst f (a , b) = (f a , b)
 
 total-is-equiv←fst-is-equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
     {f : A' → A} → is-equiv f → is-equiv (total-map-fst f {B})
-total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qiso the-iso where
+total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qinv qusi where
   open is-equiv feq
 
   lem : ∀ {a} {b : (B ∘ f) a} →
       tr (B ∘ f) (η a) (tr B (sym (ε (f a))) b) ＝ b
-  lem {a} {b} = tr (B ∘ f ) (η a) _   ＝⟨ tr∘ B f (η a) ⟩
+  lem {a} {b} = tr (B ∘ f) (η a) _   ＝⟨ tr∘ B f (η a) ⟩
                 tr B (ap f (η a)) _   ＝⟨ ap (λ p → tr B p (tr B (sym (ε (f a))) b))
                                              (coherent a) ⟩
-                tr B (ε (f a)) _      ＝⟨ tr∙tr-sym' {P = B} (ε (f a)) b ⟩
+                tr B (ε (f a)) _      ＝⟨ tr∘tr-sym' {P = B} (ε (f a)) b ⟩
                 b ∎
 
-  the-iso : quasi-iso (total-map-fst f)
-  the-iso .fst (a , b) = (bwd a , tr B (sym (ε a)) b)
-  the-iso .snd .fst (a , b) = Σ-path→ (η a ,  lem)
-  the-iso .snd .snd (a , b) = Σ-path→ (ε a ,  tr∙tr-sym' (ε a) b)
+  qusi : quasi-inv (total-map-fst f)
+  qusi .fst (a , b) = (bwd a , tr B (sym (ε a)) b)
+  qusi .snd .fst (a , b) = Σ-path→ (η a ,  lem)
+  qusi .snd .snd (a , b) = Σ-path→ (ε a ,  tr∘tr-sym' (ε a) b)
 
-Σ-ap-≃-fst : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
-             → ((mk≃ f _) : A' ≃ A) → Σ A' (B ∘ f) ≃ Σ A B
-Σ-ap-≃-fst (mk≃ f feq)
+Σ-fst-≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+    → ((mk≃ f _) : A' ≃ A) → Σ A' (B ∘ f) ≃ Σ A B
+Σ-fst-≃ (mk≃ f feq)
   = mk≃ (total-map-fst f) (total-is-equiv←fst-is-equiv feq)
 
-Σ-ap-≃-fst-bwd : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
-                 → (e : A ≃ A') → Σ A' (B ∘ _≃_.bwd e) ≃ Σ A B
-Σ-ap-≃-fst-bwd (mk≃ _ e)
-  = mk≃ (total-map-fst (is-equiv.bwd e))
-        (total-is-equiv←fst-is-equiv (is-equiv⁻¹ e))
+Σ-fst-≃-bwd⁻¹
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+    → (e : A ≃ A') → Σ A B ≃ Σ A' (B ∘ _≃_.bwd e)
+Σ-fst-≃-bwd⁻¹ {B = B} (mk≃ f e)
+  = Σ-snd-≃ (λ a → tr≃ B (sym (is-equiv.η e a)))
+  ∙e Σ-fst-≃ {B = B ∘ is-equiv.bwd e} (mk≃ f e)
 
-Σ-assoc : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
-          → Σ (Σ A B) (λ x → C (fst x) (snd x)) ≃ Σ A λ a → Σ (B a) λ b → C a b
-Σ-assoc {A = A} {B} {C} = mk≃ fwd (mk-eqv qiso coh) where
+Σ-fst-≃-bwd
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {A' : Type 𝓥} {B : A → Type 𝓦}
+    → (e : A ≃ A') → Σ A' (B ∘ _≃_.bwd e) ≃ Σ A B
+Σ-fst-≃-bwd e = Σ-fst-≃-bwd⁻¹ e e⁻¹
+
+Σ-assoc
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : (a : A) → B a → Type 𝓦}
+    → Σ (Σ A B) (λ x → C (fst x) (snd x)) ≃ Σ A λ a → Σ (B a) λ b → C a b
+Σ-assoc {A = A} {B} {C} = mk≃ fwd (mk-eqv qinv coh) where
   fwd : Σ (Σ A B) (λ x → C (fst x) (snd x)) → Σ A (λ a → Σ (B a) (C a))
-  fwd ((a , b) , c) = a , (b , c)
+  fwd ((a , b) , c) = (a , (b , c))
 
-  qiso : quasi-iso fwd
-  qiso .fst (a , b , c) = (a , b) , c
-  qiso .snd .fst ((a , b) , c) = refl
-  qiso .snd .snd (a , b , c) = refl
+  qinv : quasi-inv fwd
+  qinv .fst (a , b , c) = (a , b) , c
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
-  coh : qiso-coh qiso
-  coh ((a , b) , c) = refl
+  coh : qinv-coh qinv
+  coh = ~refl
 
 Σ-𝟙 : ∀ {𝓤} {B : 𝟙 → Type 𝓤} → Σ 𝟙 B ≃ B tt
-Σ-𝟙 = mk≃ snd (mk-eqv qiso coh) where
-  qiso : quasi-iso snd
-  qiso .fst b = tt , b
-  qiso .snd .fst (tt , b) = refl
-  qiso .snd .snd _ = refl
+Σ-𝟙 = mk≃ snd (mk-eqv qinv coh) where
+  qinv : quasi-inv snd
+  qinv .fst = (_ ,_)
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
-  coh : qiso-coh qiso
-  coh (tt , b) = refl
+  coh : qinv-coh qinv
+  coh = ~refl
 
-Σ-singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
-          → is-singleton A
-          → (x : A) -- todo use @default to make it use singleton if not given
-          → Σ[ a ∶ A ] B a
-          ≃ B x
-Σ-singl {A = A} {B} sa x
-  = (Σ-ap-≃-fst-bwd (Foundations.EquivSingleton.singleton≃𝟙 sa)) e⁻¹
-  ∙≃ Σ-𝟙
-  ∙≃ coe≃ (ap B (sa .central x))
+Σ-singl
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-singleton A
+    → (x : A) -- todo use @default to make it use singleton if not given
+    → Σ[ a ∶ A ] B a
+    ≃ B x
+Σ-singl {A = A} {B} sa x = mk≃ fwd (is-equiv←qinv qinv) where
+  path-to-x : (a : A) → a ＝ x
+  path-to-x a = sym (sa .central a) ∙ sa .central x
+
+  fwd : Σ A B → B x
+  fwd (a , b) = tr B (path-to-x a) b
+
+  qinv : quasi-inv fwd
+  qinv .fst b = (x , b)
+  qinv .snd .fst (a , b)
+    = Σ-path→ (sym (path-to-x a) , tr∘tr-sym (path-to-x a) b)
+  qinv .snd .snd b
+    = sym (tr-refl (path-to-x x) b (∙-sym' (sa .central x)))
 
 
-Σ-＝singl : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
-        → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
-Σ-＝singl {A = A} {a'} {B} = mk≃ fwd (mk-eqv qiso coh) where
+Σ-＝singl
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a ＝ a' → Type 𝓥}
+    → Σ A (λ a → Σ (a ＝ a') λ p → B a p) ≃ B a' refl
+Σ-＝singl {A = A} {a'} {B} = mk≃ fwd (mk-eqv qinv coh) where
   fwd : Σ A (λ a → Σ (a ＝ a') (B a)) → B a' refl
   fwd (.a' , refl , ba) = ba
 
-  qiso : quasi-iso fwd
-  qiso .fst ba = a' , refl , ba
-  qiso .snd .fst (.a' , refl , ba) = refl
-  qiso .snd .snd _ = refl
+  qinv : quasi-inv fwd
+  qinv .fst ba = (a' , refl , ba)
+  qinv .snd .fst (.a' , refl , ba) = refl
+  qinv .snd .snd = ~refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh (.a' , refl , ba) = refl
 
-Σ-＝singl' : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a' ＝ a → Type 𝓥}
-        → Σ A (λ a → Σ (a' ＝ a) λ p → B a p) ≃ B a' refl
-Σ-＝singl' {A = A} {a'} {B} = mk≃ fwd (mk-eqv qiso coh) where
+
+Σ-＝singl'
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a' : A} {B : (a : A) → a' ＝ a → Type 𝓥}
+    → Σ A (λ a → Σ (a' ＝ a) λ p → B a p) ≃ B a' refl
+Σ-＝singl' {A = A} {a'} {B} = mk≃ fwd (mk-eqv qinv coh) where
   fwd : Σ A (λ a → Σ (a' ＝ a) (B a)) → B a' refl
   fwd (.a' , refl , ba) = ba
 
-  qiso : quasi-iso fwd
-  qiso .fst ba = a' , refl , ba
-  qiso .snd .fst (.a' , refl , ba) = refl
-  qiso .snd .snd _ = refl
+  qinv : quasi-inv fwd
+  qinv .fst ba = a' , refl , ba
+  qinv .snd .fst (.a' , refl , ba) = refl
+  qinv .snd .snd _ = refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh (.a' , refl , ba) = refl
 
-Σ-comm : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
-         → (Σ A λ a → Σ B (C a)) ≃ (Σ B λ b → Σ A λ a → C a b)
-Σ-comm {A = A} {B} {C} = mk≃ fwd (mk-eqv qiso coh) where
+
+Σ-comm
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
+    → (Σ A λ a → Σ B (C a)) ≃ (Σ B λ b → Σ A λ a → C a b)
+Σ-comm {A = A} {B} {C} = mk≃ fwd (mk-eqv qinv coh) where
   fwd : Σ A (λ a → Σ B (C a)) → Σ B (λ b → Σ A (λ a → C a b))
   fwd (a , b , c) = b , a , c
 
-  qiso : quasi-iso fwd
-  qiso .fst (b , a , c) = a , b , c
-  qiso .snd .fst _ = refl
-  qiso .snd .snd _ = refl
+  qinv : quasi-inv fwd
+  qinv .fst (b , a , c) = a , b , c
+  qinv .snd .fst _ = refl
+  qinv .snd .snd _ = refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh _ = refl
 
 ×-∅ : ∀ {𝓤} {A : Type 𝓤} → ∅ × A ≃ ∅
-×-∅ = mk≃ fst (mk-eqv qiso coh) where
-  qiso : quasi-iso fst
-  qiso .fst ()
-  qiso .snd .fst ()
-  qiso .snd .snd ()
+×-∅ = mk≃ fst (mk-eqv qinv coh) where
+  qinv : quasi-inv fst
+  qinv .fst ()
+  qinv .snd .fst ()
+  qinv .snd .snd ()
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh ()
 
 ×-swap→ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → A × B → B × A
 ×-swap→ (a , b) = b , a
 
-×-swap : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-         → (A × B) ≃ (B × A)
-×-swap {A = A} {B} = mk≃ ×-swap→ (mk-eqv qiso coh)  where
+×-swap
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (A × B) ≃ (B × A)
+×-swap {A = A} {B} = mk≃ ×-swap→ (mk-eqv qinv coh)  where
 
-  qiso : quasi-iso ×-swap→
-  qiso .fst (b , a) = (a , b)
-  qiso .snd .fst (a , b) = refl
-  qiso .snd .snd (b , a) = refl
+  qinv : quasi-inv ×-swap→
+  qinv .fst (b , a) = (a , b)
+  qinv .snd .fst (a , b) = refl
+  qinv .snd .snd (b , a) = refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh _ = refl
 
 ×-assoc
@@ -176,15 +203,15 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qiso the-iso where
                {f : A → B} {g : C → D}
              → is-equiv f → is-equiv g
              → is-equiv (f ⊗ g)
-×₁-is-equiv {A = A} {C = C} {f = f}{g} feq geq = mk-eqv qinv coh where
+×₁-is-equiv {A = A} {C = C} {f = f}{g} feq geq = mk-eqv qiso coh where
     open is-equiv
 
-    qinv : quasi-iso (f ⊗ g)
-    qinv .fst (b , d) = (bwd feq b , bwd geq d)
-    qinv .snd .fst (a , c) = ×-path→ ((η feq a) , (η geq c))
-    qinv .snd .snd (b , d) = ×-path→ ((ε feq b) , (ε geq d))
+    qiso : quasi-inv (f ⊗ g)
+    qiso .fst (b , d) = (bwd feq b , bwd geq d)
+    qiso .snd .fst (a , c) = ×-path→ ((η feq a) , (η geq c))
+    qiso .snd .snd (b , d) = ×-path→ ((ε feq b) , (ε geq d))
 
-    coh : qiso-coh qinv
+    coh : qinv-coh qiso
     coh (a , c)
       = ap-⊗-×-path (η feq a) (η geq c)
       ∙ ap ×-path→ (×-path→ ((coherent feq a) , (coherent geq c)))
@@ -195,9 +222,10 @@ _×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type �
       → A ≃ B → C ≃ D → (A × C) ≃ (B × D)
 (mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ (f ⊗ g) (×₁-is-equiv ef eg)
 
-Σ-tr : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
-         {a b : A} {p : a ＝ b} {b : B} {c : C a b}
-       → (tr (λ a → Σ B (C a)) p (b , c)) ＝ (b , tr (λ a → C a b) p c)
+Σ-tr
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
+      {a b : A} {p : a ＝ b} {b : B} {c : C a b}
+    → (tr (λ a → Σ B (C a)) p (b , c)) ＝ (b , tr (λ a → C a b) p c)
 Σ-tr {p = refl} = refl
 
 Σ-interchange : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : A → Type 𝓥} {C : A → Type 𝓦}
@@ -205,27 +233,26 @@ _×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type �
                   (Σ[ t@(a , b) ∶ Σ A B ] (Σ (C a) (D a b)))
                     ≃
                   (Σ[ t@(a , c) ∶ Σ A C ] (Σ[ b ∶ B a ] (D a b c)))
-Σ-interchange = mk≃ fwd (mk-eqv qiso coh) where
+Σ-interchange = mk≃ fwd (mk-eqv qinv coh) where
   fwd : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
         {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
       Σ (Σ A B) (λ t → Σ (C (t .fst)) (D (t .fst) (t .snd))) →
       Σ (Σ A C) (λ t → Σ (B (t .fst)) (λ b → D (t .fst) b (t .snd)))
   fwd ((a , b) , (c , d)) = (a , c) , (b , d)
 
-  qiso : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
+  qinv : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
         {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
-      quasi-iso
+      quasi-inv
         (fwd {A = A} {B} {C} {D})
-  qiso .fst ((a , c) , (b , d)) = ((a , b) , (c , d))
-  qiso .snd .fst ((_ , _) , (_ , _)) = refl
-  qiso .snd .snd ((_ , _) , (_ , _)) = refl
+  qinv .fst ((a , c) , (b , d)) = ((a , b) , (c , d))
+  qinv .snd .fst = ~refl
+  qinv .snd .snd = ~refl
 
   coh : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
         {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
-      qiso-coh (qiso {A = A} {B} {C} {D})
-  coh ((_ , _) , (_ , _)) = refl
+      qinv-coh (qinv {A = A} {B} {C} {D})
+  coh = ~refl
 }
-% ```
 
 \subtree[stt-002T]{
 \taxon{Theorem}
@@ -237,37 +264,37 @@ _×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type �
 \p{The fibre of the projection #{\pi : \Sigma_{(x : A)}P(x) \to A} at some #{x : A} is equivalent to #{P(x)}. By assumption
 we have the each #{P(x)} is singleton, and therefore so is each fibre of #{\pi}, thus it is an equivalence. }
 
-% ```agda
 \agda{
-fibre-straighten : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) →
-                   ∀ x → fibre (fst {B = P}) x ≃ P x
-fibre-straighten P x = mk≃ fwd (mk-eqv qiso coh) where
+fibre-straighten
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
+    → ∀ x → fibre (fst {B = P}) x ≃ P x
+fibre-straighten P x = mk≃ fwd (mk-eqv qinv coh) where
   fwd : fibre fst x → P x
   fwd ((a , p) , refl) = p
 
-  qiso : quasi-iso fwd
-  qiso .fst p = (x , p) , refl
-  qiso .snd .fst (_ , refl) = refl
-  qiso .snd .snd _ = refl
+  qinv : quasi-inv fwd
+  qinv .fst p = (x , p) , refl
+  qinv .snd .fst (_ , refl) = refl
+  qinv .snd .snd _ = refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh (_ , refl) = refl
 
-singleton-fst-is-equiv : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-              → (∀ x → is-singleton (P x))
-              → is-equiv (fst {B = P})
+singleton-fst-is-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (∀ x → is-singleton (P x))
+    → is-equiv (fst {B = P})
 singleton-fst-is-equiv {P = P} sngl
-  = is-equiv←is-contr-map λ
+  = is-equiv←has-singleton-fibres λ
       b → is-single←equiv-to-single (fibre-straighten P b e⁻¹) (sngl b)
 
-
-Σ-singleton : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-              → (∀ x → is-singleton (P x))
-              → Σ A P ≃ A
+Σ-singleton
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → (∀ x → is-singleton (P x))
+    → Σ A P ≃ A
 Σ-singleton {P = P} sngl
   = mk≃ fst (singleton-fst-is-equiv sngl)
 }
-% ```
 }
 }
 
@@ -278,22 +305,21 @@ singleton-fst-is-equiv {P = P} sngl
 \p{There is an equivalence #{\Sigma_{A + B} (Q[f,g]) \simeq
 \Sigma_A(Qf) + \Sigma_B(Qg)}}
 
-%```agda
 \agda{
-Σ-⊎≃ : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P  : A ⊎ B → Type 𝓦)
-      → (Σ _ (P ∘ inl)) ⊎ (Σ _ (P ∘ inr)) ≃ Σ (A ⊎ B) P
+Σ-⊎≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P  : A ⊎ B → Type 𝓦)
+    → (Σ A (P ∘ inl) ⊎ Σ B (P ∘ inr)) ≃ Σ (A ⊎ B) P
 Σ-⊎≃ P = mk≃ ⊎[ total-map-fst inl , total-map-fst inr ]
-            (mk-eqv qiso coh) where
-  qiso : quasi-iso ⊎[ total-map-fst inl , total-map-fst inr ]
-  qiso .fst (inl x , p) = inl (x , p)
-  qiso .fst (inr x , p) = inr (x , p)
-  qiso .snd .fst = ⊎-ind (~refl , ~refl)
-  qiso .snd .snd (inl x , p) = refl
-  qiso .snd .snd (inr x , p) = refl
+            (mk-eqv qinv coh) where
+  qinv : quasi-inv ⊎[ total-map-fst inl , total-map-fst inr ]
+  qinv .fst (inl x , p) = inl (x , p)
+  qinv .fst (inr x , p) = inr (x , p)
+  qinv .snd .fst = ⊎-ind (~refl , ~refl)
+  qinv .snd .snd (inl x , p) = refl
+  qinv .snd .snd (inr x , p) = refl
 
-  coh : qiso-coh qiso
+  coh : qinv-coh qinv
   coh (inl _) = refl
   coh (inr _) = refl
 }
-%```
 }

@@ -1,0 +1,306 @@
+\title{Connected types}
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Modalities.ConnectedTypes where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Axioms.UF using (global-funext ; funext→)
+open import Foundations.CompositionEquiv global-funext
+open import Modalities.Subuniverses using (SubU ; is-reflective)
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ModalEquivalences
+}
+}
+
+\subtree[stt-00MA]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Universal property of #{K}-connected types}
+
+\p{
+A type #{X} satisfies the universal property of #{K}-connected types when constant
+maps at #{X} into every #{K}-type are equivalences.
+}
+
+\p{We use the abbreviation \code{up} for "universal property".}
+
+\agda{
+up-connected
+  : ∀ {α 𝓤} → gSubU α → Type 𝓤 → Typeω
+up-connected K A
+  = {𝓥 : Level} {U : Type 𝓥}
+  → U ∈ gSubU.S K
+  → is-equiv (const: U A)
+}
+}
+
+\subtree[stt-00MB]{
+\date{2025-08-05}
+\author{samueltoth}
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Connected types}
+
+\p{
+A type is #{K}-\em{connected} at a reflective subuniverse if its reflection is
+contractible.
+}
+
+\agda{
+is-connected
+  : ∀ {α 𝓤} → gRSubU α → Type 𝓤 → Type 𝓤
+is-connected K A = is-singleton (gRSubU.○ K A)
+
+is-connected'
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} → is-reflective S → Type 𝓤 → Type 𝓤
+is-connected' {S = S} Sref A = is-singleton (is-reflective.○ Sref A)
+}
+}
+
+\subtree[stt-00TP]{
+\title{Connected types are stable under equivalence}
+\date{2026-05-13}
+\author{samueltoth}
+
+\agda{
+is-connected←equiv
+  : ∀ {α 𝓤 𝓥} (R : gRSubU α) {A : Type 𝓤} {B : Type 𝓥}
+    → A ≃ B → is-connected R A → is-connected R B
+is-connected←equiv K e
+  = is-single←equiv-to-single
+      (gReflectiveReasoning.○-≃ K e)
+}
+}
+
+\subtree[stt-00MM]{
+\date{2026-03-28}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Universal property of pointed connected types}
+
+\p{
+A pointed type satisfies the \em{Universal property of pointed #{K}-connected types}
+if for every type #{Y} in #{K} and any choice of basepoint #{y : Y}, the type of
+pointed maps into #{Y} is contractible.
+}
+
+\agda{
+up-connected∗
+  : ∀ {α 𝓤} → gSubU α → Type∗ 𝓤 → Typeω
+up-connected∗ K X∗
+  = {𝓥 : Level} {Y : Type 𝓥}
+  → Y ∈ gSubU.S K
+  → (y : Y)
+  → is-singleton (map∗ X∗ (mk-type∗ Y y))
+}
+}
+
+\subtree[stt-00MN]{
+\date{2026-03-28}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Pointed criterion for connected types}
+
+\p{
+Given a pointed type #{X}, then the pointed universal property of #{K}-connected
+types is equivalent to the universal property of #{K}-connected types.
+}
+
+\proof{
+\p{
+Fix a point #{x : X}. For any #{K}-type #{Y}, evaluation at #{x} fits into the
+triangle
+
+\quiver{
+\begin{tikzcd}
+  & (X \to Y) \\
+  Y && Y
+  \arrow[equals, from=2-1, to=2-3]
+  \arrow["\const", from=2-1, to=1-2]
+  \arrow["\ev_x", from=1-2, to=2-3]
+\end{tikzcd}
+}
+Hence by the 3-for-2 property of equivalences the constant map is an equivalence iff
+evaluation at #{x} is.
+}
+
+\agda{
+module _ {α 𝓤} (K : gSubU α) {A : Type 𝓤} (a : A) where
+
+  ev-is-equiv←up-connected
+    : up-connected K A
+    → {𝓥 : Level} {Y : Type 𝓥}
+    → Y ∈ gSubU.S K
+    → is-equiv (ev: Y a)
+  ev-is-equiv←up-connected conn U∈K
+    = 3-for-2' (conn U∈K) id-is-equiv
+
+  up-connected←ev-is-equiv
+    : ( {𝓥 : Level} {Y : Type 𝓥}
+    → Y ∈ gSubU.S K
+    → is-equiv (ev: Y a))
+    → up-connected K A
+  up-connected←ev-is-equiv ev-eq U∈K
+    = 3-for-2 (ev-eq U∈K) id-is-equiv
+}
+
+\p{
+Now the fibre of #{\mathrm{ev}_x} over a point #{y : Y} is exactly the type of
+pointed maps #{(X,x) \to_* (Y,y)}. Therefore evaluation at #{x} is an equivalence iff
+each such pointed mapping type is contractible. This is exactly the connectedness
+criterion for pointed types.
+}
+
+\agda{
+module _ {α 𝓤} (K : gSubU α) (X∗ : Type∗ 𝓤) where
+
+  up-connected∗←up-connected
+    : up-connected K (X∗ .Type∗.carrier)
+    → up-connected∗ K X∗
+  up-connected∗←up-connected conn U∈K y
+    = is-single←equiv-to-single
+        (map∗≃fibre-ev X∗ y e⁻¹)
+        (has-singleton-fibres←is-equiv
+          (ev-is-equiv←up-connected K (X∗ .Type∗.pt) conn U∈K)
+          (y))
+
+  up-connected←up-connected∗
+    : up-connected∗ K X∗
+    → up-connected K (X∗ .Type∗.carrier)
+  up-connected←up-connected∗ pconn
+    = up-connected←ev-is-equiv K (X∗ .Type∗.pt) λ U∈K
+      → is-equiv←has-singleton-fibres λ y
+        → is-single←equiv-to-single (map∗≃fibre-ev X∗ y) (pconn U∈K y)
+}
+}
+}
+
+\subtree[stt-00ML]{
+\title{#{K}-Connected #{K}-types are contractible}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-03-30}
+
+\agda{
+module _ {α 𝓤} (K : gSubU α) where
+
+  is-singleton←up-connected←in-SubU
+    : {A : Type 𝓤}
+    → up-connected K A
+    → A ∈ gSubU.S K
+    → is-singleton A
+  is-singleton←up-connected←in-SubU {A = A} conn A∈K
+    = mk-singl (is-equiv.bwd (conn A∈K) id) (happly (is-equiv.ε (conn A∈K) id))
+}
+}
+
+\subtree[stt-00MO]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Terminal projection characterisation of #{K}-connected types}
+
+\p{
+For a type #{A}, being #{K}-connected is equivalent to asking that
+the terminal projection #{!_A} is a #{K}-equivalence.
+}
+
+\agda{
+module _ {α 𝓤} (K : gSubU α) where
+
+  up-modal-equiv-!←connected
+    : (A : Type 𝓤)
+    → up-connected K A
+    → up-modal-equiv K (!: A)
+  up-modal-equiv-!←connected A const-eq U∈K
+    = is-equiv-precomp-!←const (const-eq U∈K)
+
+  up-connected←terminal-equiv
+    : (A : Type 𝓤)
+    → up-modal-equiv K (!: A)
+    → up-connected K A
+  up-connected←terminal-equiv A term-eq U∈K
+    = is-equiv-const←precomp-! (term-eq U∈K)
+}
+}
+
+\subtree[stt-00M4]{
+\date{2026-03-28}
+\author{fredrikbakke}
+\taxon{Corollary}
+\title{Pointed criterion via terminal projections}
+
+\p{
+Equivalently, the pointed criterion is the same as asking that the terminal
+projection of the underlying type be a #{K}-equivalence.
+}
+
+\agda{
+module _ {α 𝓤} (K : gSubU α) (X∗ : Type∗ 𝓤) where
+
+  up-modal-equiv-!←up-connected∗
+    : up-connected∗ K X∗
+    → up-modal-equiv K (!: X∗ .Type∗.carrier)
+  up-modal-equiv-!←up-connected∗ pconn
+    = up-modal-equiv-!←connected K (X∗ .Type∗.carrier)
+        (up-connected←up-connected∗ K X∗ pconn)
+
+  up-connected∗←up-modal-equiv-!
+    : up-modal-equiv K (!: X∗ .Type∗.carrier)
+    → up-connected∗ K X∗
+  up-connected∗←up-modal-equiv-! teq
+    = up-connected∗←up-connected K X∗
+        (up-connected←terminal-equiv K (X∗ .Type∗.carrier) teq)
+}
+}
+
+
+\subtree[stt-00MP]{
+\title{#{Σ}-closure of connected types}
+\author{samueltoth}
+\date{2026-03-30}
+\author{fredrikbakke}
+\taxon{Lemma}
+
+\agda{
+module _ {α} (K : gSubU α) where
+
+  Σ-up-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → up-connected K A
+      → ((a : A) → up-connected K (B a))
+      → up-connected K (Σ A B)
+  Σ-up-connected {A = A} {B} Ac Bc {U = U} U∈K
+    = is-equiv-∘
+        (uncurry-is-equiv)
+        (is-equiv-∘ (postcomp-Π-equiv λ {a} → Bc a U∈K) (Ac U∈K))
+
+module _ {α} (RS : gRSubU α) where
+
+  open gRSubU RS
+  open gReflectiveReasoning RS
+  open gReflectiveClosure RS
+
+  Σ-is-connected
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → is-connected RS A
+      → ((a : A) → is-connected RS (B a))
+      → is-connected RS (Σ A B)
+  Σ-is-connected {A = A} {B} Ac Bc
+    = is-single←equiv-to-single
+        ((○ (Σ A B)       ≃⟨ Σ○≃ RS B ⟩
+          ○ (Σ A (○ ∘ B)) ≃⟨ ○-≃ (Σ-singleton Bc) ⟩
+          ○ A             ≃∎) e⁻¹)
+        Ac
+}
+}

@@ -1,0 +1,435 @@
+\date{2025-12-12}
+\title{Homotopies of morphisms}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Homotopy
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Subuniverses
+open import Modalities.GlobalSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Core.Orthogonal
+open import Core.CanonicalPushouts
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.LiftingSquares
+open import Core.FlatteningPushouts
+open import Core.PiSection
+open import Core.CocartesianSquares
+open import Core.Postwhisker
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+}
+}
+
+\subtree[stt-00CH]{
+\title{Homotopies of synthetic morphisms}
+\taxon{Definition}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+We define \em{left} and \em{right homotopies} resp. #{f \lhtpy g} and
+#{f \rhtpy g} of synthetic morphisms via commuting triangles
+
+\quiver{
+\begin{tikzcd}
+  a && b \\
+  & a
+  \arrow[from=1-1, to=1-3, "f"]
+  \arrow[from=1-1, to=2-2, equals]
+  \arrow[from=2-2, to=1-3, "g"']
+\end{tikzcd}
+\quad\text{and}\quad
+\begin{tikzcd}
+  a && b \\
+  & b
+  \arrow[from=1-1, to=1-3, "f"]
+  \arrow[from=1-1, to=2-2, "g"']
+  \arrow[from=2-2, to=1-3, equals]
+\end{tikzcd}
+}
+}
+
+\agda{
+_~▵_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (f g : Hom A a b) → Type (𝓘 ⊔ 𝓤)
+f ~▵ g = Hom2 f (idH _) g
+
+_▵~_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (f g : Hom A a b) → Type (𝓘 ⊔ 𝓤)
+f ▵~ g = Hom2 (idH _) f g
+
+opaque
+  refl~▵ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (f : Hom A a b) → f ~▵ f
+  refl~▵ f
+    = ( f .Homᵈ.hom ∘ Poly.Δ².t
+      , pushout-rec-unique _ _
+          ( pushout-rec-unique _ _
+            (λ _ → f .Homᵈ.hom0)
+            (~refl)
+            λ _
+            → ∙-reflr _
+            ∙ ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².t) (pushout-rec _) Λ[2,1]-glue
+            ∙ ap (ap _) (pushout-rec-apβ _)
+            ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+            ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+            ∙ sym (∙-sym (f .Homᵈ.hom0)))
+          ~refl
+          (∙h-reflr _
+          ∙h ∂Δ¹-UP→
+            ( ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².t) (pushout-rec _) (glue ∂Δ¹-0)
+            ∙ ap (ap _) (pushout-rec-apβ _)
+            ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+            ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+            ∙ sym (∙-sym (f .Homᵈ.hom0))
+            , ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².t) (pushout-rec _) (glue ∂Δ¹-1)
+            ∙ ap (ap _) (pushout-rec-apβ _)
+            ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+            ∙ ap (ap _) (Δ²-ext-ap-t refl refl)
+            ∙ sym (∙-sym (f .Homᵈ.hom1)))))
+
+opaque
+  refl▵~ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (f : Hom A a b) → f ▵~ f
+  refl▵~ f
+    = ( f .Homᵈ.hom ∘ Poly.Δ².s
+      , pushout-rec-unique _ _
+          (pushout-rec-unique _ _
+            (~refl)
+            (λ _ → f .Homᵈ.hom1 ∙ refl)
+            ( λ _
+            → ap
+              (_∙ (f .Homᵈ.hom1 ∙ refl))
+              ( ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².s) (pushout-rec _) Λ[2,1]-glue
+              ∙ ap (ap _) (pushout-rec-apβ _)
+              ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+              ∙ ap (ap _) (Δ²-ext-ap-s refl refl)
+              ∙ ap-refl (f .Homᵈ.hom))))
+          (~refl)
+          (∙h-reflr _
+          ∙h ∂Δ¹-UP→
+            ( ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².s) (pushout-rec _) (glue ∂Δ¹-0)
+            ∙ ap (ap _) (pushout-rec-apβ _)
+            ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+            ∙ ap (ap _) (carrier-is-set _ _ _ _)
+            ∙ ap-refl (f .Homᵈ.hom)
+            ∙ sym (∙-sym (f .Homᵈ.hom0))
+            , ap-∘ (f .Homᵈ.hom ∘ Poly.Δ².s) (pushout-rec _) (glue ∂Δ¹-1)
+            ∙ ap (ap _) (pushout-rec-apβ _)
+            ∙ ap-∘ (f .Homᵈ.hom) _ Δ²-refl
+            ∙ ap (ap _) (carrier-is-set _ _ _ _)
+            ∙ ap-refl (f .Homᵈ.hom)
+            ∙ sym (∙-sym (f .Homᵈ.hom1))
+            ∙ sym (∙-assoc (f .Homᵈ.hom1) refl (sym (f .Homᵈ.hom1))))))
+
+~▵←＝ : ∀ {𝓤} {A : Type 𝓤} {a b : A} {f g : Hom A a b} → f ＝ g → f ~▵ g
+~▵←＝ {a = a} {_} {f} refl = refl~▵ f
+
+▵~←＝ : ∀ {𝓤} {A : Type 𝓤} {a b : A} {f g : Hom A a b} → f ＝ g → f ▵~ g
+▵~←＝ {a = a} {_} {f} refl = refl▵~ f
+}
+}
+
+\subtree[stt-00CI]{
+\title{Homotopies are an identity system for morphisms}
+\taxon{Theorem}
+
+\p{
+We show that when #{A} is a precategory, both left and right homotopies are
+torsorial, and thus form identity systems for morphisms in #{A}. As a
+consequence, left and right homotopy are equivalent.
+}
+
+\agda{
+opaque
+  ~▵-is-torsorial
+    : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-segal A
+      → ∀ (f : Hom A a b) → is-torsorial (f ~▵_)
+  ~▵-is-torsorial apc f
+    = is-single←equiv-to-single
+        (horn-extension≃composite f (idH _))
+        (segal-unique-composite apc f (idH _))
+
+  ▵~-is-torsorial
+    : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-segal A
+      → ∀ (f : Hom A a b) → is-torsorial (f ▵~_)
+  ▵~-is-torsorial apc f
+    = is-single←equiv-to-single
+        (horn-extension≃composite (idH _) f)
+        (segal-unique-composite apc (idH _) f)
+
+Hom-lhomotopy-IdS
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-segal A
+    → Identity-system (Hom A a b) (𝓤 ⊔ 𝓘)
+Hom-lhomotopy-IdS apc .Identity-system.IdS = _~▵_
+Hom-lhomotopy-IdS apc .Identity-system.IdS←Id = ~▵←＝
+Hom-lhomotopy-IdS apc .Identity-system.IdS←Id-is-equiv f
+  = fundamental-Id _ (~▵-is-torsorial apc f) _
+
+Hom-rhomotopy-IdS
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} → is-segal A
+    → Identity-system (Hom A a b) (𝓤 ⊔ 𝓘)
+Hom-rhomotopy-IdS apc .Identity-system.IdS = _▵~_
+Hom-rhomotopy-IdS apc .Identity-system.IdS←Id = ▵~←＝
+Hom-rhomotopy-IdS apc .Identity-system.IdS←Id-is-equiv f
+  = fundamental-Id _ (▵~-is-torsorial apc f) _
+
+_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (apc : is-segal A)
+    → is-equiv (λ (f : Hom A a b) → (f , f , refl~▵ f))
+_ = λ apc → is-equiv⁻¹ (singleton-fst-is-equiv
+                          (SingS-is-single ⦃ Hom-lhomotopy-IdS apc ⦄))
+
+_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (apc : is-segal A)
+    → is-equiv (λ (f : Hom A a b) → (f , f , refl▵~ f))
+_ = λ apc → is-equiv⁻¹ (singleton-fst-is-equiv
+                          (SingS-is-single ⦃ Hom-rhomotopy-IdS apc ⦄))
+
+~▵≃▵~
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} (apc : is-segal A)
+    {f g : Hom A a b} → (f ~▵ g) ≃ (f ▵~ g)
+~▵≃▵~ apc {f} {g}
+  = mk≃
+      (Identity-system.IdS←Id (Hom-rhomotopy-IdS apc)
+      ∘ Identity-system.Id←IdS (Hom-lhomotopy-IdS apc))
+      (is-equiv-∘
+        (Identity-system.IdS←Id-is-equiv (Hom-rhomotopy-IdS apc) f g)
+        (is-equiv⁻¹ (Identity-system.IdS←Id-is-equiv (Hom-lhomotopy-IdS apc) f g)))
+
+▵~≃~▵
+  : ∀ {𝓤} {A : Type 𝓤} {a b : A} (apc : is-segal A)
+    {f g : Hom A a b} → (f ▵~ g) ≃ (f ~▵ g)
+▵~≃~▵ apc = (~▵≃▵~ apc) e⁻¹
+}
+}
+
+\subtree[stt-00L6]{
+\title{Homotopies from morphisms over morphisms}
+\taxon{Construction}
+\date{2026-03-30}
+\author{fredrikbakke}
+
+\p{
+Given a morphism over #{g : \Hom_A(b,c)} from #{f : \Hom_A(a,b)} to #{h : \Hom_A(a,c)},
+we extract a diagonal morphism #{\delta : \Hom_A(a,c)} together with a composition
+triangle #{\delta = g \circ f} and a left homotopy #{h \lhtpy \delta}.
+}
+
+\p{
+In particular, when #{g} is an identity morphism, this gives a left + right homotopy
+decomposition of a morphism of morphisms: given two edges #{f\ h : \Hom_A(a,b)} and a
+morphism #{\alpha : \Hom_{\Hom_A(a,b)}(f,h)}, then #{h \lhtpy \delta} and
+#{f \rhtpy \delta}.
+}
+\agda{
+Hom2×~▵←Hom-over
+  : ∀ {𝓤} {A : Type 𝓤} {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+      {h : Hom A a c}
+    → Hom-over g f h
+    → Σ[ k ∶ Hom A a c ] (Hom2 g f k × (h ~▵ k))
+Hom2×~▵←Hom-over {A = A} {a = a} {c = c} (g@(mk-hom gh refl refl)) f {h} α
+  = (α▵ , Hom2←Hom-over , ~▵←Hom-over) where
+
+  α0~ : Hom-path (α .Homᵈ.hom i0) f
+  α0~ = IdS←Id ⦃ IdS-Hom ⦄ (α .Homᵈ.hom0)
+
+  α1~ : Hom-path (α .Homᵈ.hom i1) h
+  α1~ = IdS←Id ⦃ IdS-Hom ⦄ (α .Homᵈ.hom1)
+
+  α▵ : Hom A a c
+  α▵ .Homᵈ.hom i = α .Homᵈ.hom i .Homᵈ.hom i
+  α▵ .Homᵈ.hom0 = α0~ .fst i0 ∙ f .Homᵈ.hom0
+  α▵ .Homᵈ.hom1 = α1~ .fst i1 ∙ h .Homᵈ.hom1
+
+  right-square : Δ² → A
+  right-square p = α .Homᵈ.hom (p .Poly.Δ².t) .Homᵈ.hom (p .Poly.Δ².s)
+
+  left-square : Δ² → A
+  left-square p = α .Homᵈ.hom (p .Poly.Δ².s) .Homᵈ.hom (p .Poly.Δ².t)
+
+  right-proof-ap
+    : {i j : Δ¹} {p q : j ≤ i} → ap right-square Δ²-refl ＝ refl
+  right-proof-ap {i} {j} {p} {q}
+    = ap (ap right-square) (Δ²-is-set _ _ _ _)
+    ∙ sym (ap-∘ right-square (λ m → (i , j) ⦃ m ⦄) (carrier-is-set _ _ p q))
+    ∙ sym (∙-reflr _)
+    ∙ ∙-reflr (ap (λ m → right-square ((i , j) ⦃ m ⦄)) (carrier-is-set _ _ p q))
+    ∙ ap-const (carrier-is-set _ _ p q)
+
+  left-proof-ap
+    : {i j : Δ¹} {p q : j ≤ i} → ap left-square Δ²-refl ＝ refl
+  left-proof-ap {i} {j} {p} {q}
+    = ap (ap left-square) (Δ²-is-set _ _ _ _)
+    ∙ sym (ap-∘ left-square (λ m → (i , j) ⦃ m ⦄) (carrier-is-set _ _ p q))
+    ∙ sym (∙-reflr _)
+    ∙ ∙-reflr (ap (λ m → left-square ((i , j) ⦃ m ⦄)) (carrier-is-set _ _ p q))
+    ∙ ap-const (carrier-is-set _ _ p q)
+
+  right-horn~ : right-square ∘ Λ[2,1]-incl ~ make-horn g f
+  right-horn~
+    = pushout-rec-unique
+        (mk-cocone
+          (f .Homᵈ.hom)
+          (g .Homᵈ.hom)
+          (λ _ → f .Homᵈ.hom1 ∙ sym (g .Homᵈ.hom0)))
+        (right-square ∘ Λ[2,1]-incl)
+        (α0~ .fst)
+        (λ i → α .Homᵈ.hom i .Homᵈ.hom1)
+        ( λ _ →
+          ap (_∙ α .Homᵈ.hom i0 .Homᵈ.hom1)
+             ( ap-∘ right-square Λ[2,1]-incl Λ[2,1]-glue
+             ∙ ap (ap right-square) (pushout-rec-apβ {c = Λ[2,1]-Δ²-cocone} tt)
+             ∙ right-proof-ap)
+        ∙ sym (α0~ .snd .snd)
+        ∙ ap (α0~ .fst i1 ∙_) (sym (∙-reflr (f .Homᵈ.hom1))))
+
+  left-horn~ : left-square ∘ Λ[2,1]-incl ~ make-horn h (idH a)
+  left-horn~
+    = pushout-rec-unique
+        (mk-cocone (idH a .Homᵈ.hom) (h .Homᵈ.hom)
+          (λ _ → sym (h .Homᵈ.hom0)))
+        (left-square ∘ Λ[2,1]-incl)
+        (λ i → α .Homᵈ.hom i .Homᵈ.hom0)
+        (α1~ .fst)
+        λ _ →
+          ap (_∙ α1~ .fst i0)
+             (ap-∘ left-square Λ[2,1]-incl Λ[2,1]-glue
+             ∙ ap (ap left-square) (pushout-rec-apβ {c = Λ[2,1]-Δ²-cocone} tt)
+             ∙ left-proof-ap)
+          ∙ sym (∙-reflr _)
+          ∙ ap (α1~ .fst i0 ∙_) (sym (∙-sym (h .Homᵈ.hom0)))
+          ∙ sym (∙-assoc (α1~ .fst i0) (h .Homᵈ.hom0) (sym (h .Homᵈ.hom0)))
+          ∙ ap (_∙ sym (h .Homᵈ.hom0)) (α1~ .snd .fst)
+
+  right-bd : make-horn g f ∘ ∂Λ[2,1]-incl ~ α▵ .Homᵈ.hom ∘ ∂Δ¹-incl
+  right-bd ∂Δ¹-0 = f .Homᵈ.hom0 ∙ sym (α▵ .Homᵈ.hom0)
+  right-bd ∂Δ¹-1 = g .Homᵈ.hom1 ∙ sym (α▵ .Homᵈ.hom1)
+
+  left-bd : make-horn h (idH a) ∘ ∂Λ[2,1]-incl ~ α▵ .Homᵈ.hom ∘ ∂Δ¹-incl
+  left-bd ∂Δ¹-0 = idH a .Homᵈ.hom0 ∙ sym (α▵ .Homᵈ.hom0)
+  left-bd ∂Δ¹-1 = h .Homᵈ.hom1 ∙ sym (α▵ .Homᵈ.hom1)
+
+  right-make-∂Δ² : ∂Δ² → A
+  right-make-∂Δ² = pushout-rec (mk-cocone (make-horn g f) (α▵ .Homᵈ.hom) right-bd)
+
+  right-make-∂Δ²-path : right-make-∂Δ² ＝ make-∂Δ² g f α▵
+  right-make-∂Δ²-path = funext→
+    (pushout-rec-unique _ _ ~refl ~refl λ where
+      ∂Δ¹-0 → ∙-reflr _ ∙ pushout-rec-apβ ∂Δ¹-0
+      ∂Δ¹-1 → ∙-reflr _ ∙ pushout-rec-apβ ∂Δ¹-1)
+
+  left-make-∂Δ² : ∂Δ² → A
+  left-make-∂Δ²
+    = pushout-rec (mk-cocone (make-horn h (idH a)) (α▵ .Homᵈ.hom) left-bd)
+
+  left-make-∂Δ²-path : left-make-∂Δ² ＝ make-∂Δ² h (idH a) α▵
+  left-make-∂Δ²-path = funext→
+    (pushout-rec-unique _ _ ~refl ~refl λ where
+      ∂Δ¹-0 → ∙-reflr _ ∙ pushout-rec-apβ ∂Δ¹-0
+      ∂Δ¹-1 → ∙-reflr _ ∙ pushout-rec-apβ ∂Δ¹-1)
+
+  Hom2←Hom-over : Hom2 g f α▵
+  Hom2←Hom-over .fst = right-square
+  Hom2←Hom-over .snd
+    = pushout-rec-unique
+        (mk-cocone (make-horn g f) (α▵ .Homᵈ.hom) right-bd)
+        (right-square ∘ ∂Δ²-incl)
+        (right-horn~)
+        (~refl)
+        (λ where
+          ∂Δ¹-0
+            → ap (_∙ refl)
+                 ( ap-∘ right-square ∂Δ²-incl (glue ∂Δ¹-0)
+                 ∙ ap (ap right-square) (pushout-rec-apβ ∂Δ¹-0)
+                 ∙ right-proof-ap)
+            ∙ sym (∙-sym (α▵ .Homᵈ.hom0))
+            ∙ ∙-assoc (α0~ .fst i0) (f .Homᵈ.hom0) (sym (α▵ .Homᵈ.hom0))
+          ∂Δ¹-1
+            → ap (_∙ refl)
+                 ( ap-∘ right-square ∂Δ²-incl (glue ∂Δ¹-1)
+                 ∙ ap (ap right-square) (pushout-rec-apβ ∂Δ¹-1)
+                 ∙ right-proof-ap)
+            ∙ sym (∙-sym (α▵ .Homᵈ.hom1))
+            ∙ ap (_∙ sym (α▵ .Homᵈ.hom1)) (α1~ .snd .snd))
+      ∙h happly right-make-∂Δ²-path
+
+  ~▵←Hom-over : h ~▵ α▵
+  ~▵←Hom-over .fst = left-square
+  ~▵←Hom-over .snd
+    = pushout-rec-unique
+        (mk-cocone (make-horn h (idH a)) (α▵ .Homᵈ.hom) left-bd)
+        (left-square ∘ ∂Δ²-incl)
+        (left-horn~)
+        (~refl)
+        (λ where
+          ∂Δ¹-0
+            → ap (_∙ refl)
+                 ( ap-∘ left-square ∂Δ²-incl (glue ∂Δ¹-0)
+                 ∙ ap (ap left-square) (pushout-rec-apβ ∂Δ¹-0)
+                 ∙ left-proof-ap)
+            ∙ sym (∙-sym (α▵ .Homᵈ.hom0))
+            ∙ ap (_∙ sym (α▵ .Homᵈ.hom0)) (α0~ .snd .fst)
+          ∂Δ¹-1
+            → ap (_∙ refl)
+                 ( ap-∘ left-square ∂Δ²-incl (glue ∂Δ¹-1)
+                 ∙ ap (ap left-square) (pushout-rec-apβ ∂Δ¹-1)
+                 ∙ left-proof-ap)
+            ∙ sym (∙-sym (α▵ .Homᵈ.hom1))
+            ∙ ∙-assoc (α1~ .fst i1) (h .Homᵈ.hom1) (sym (α▵ .Homᵈ.hom1)))
+      ∙h happly left-make-∂Δ²-path
+
+diag-hom←Hom-over
+  : ∀ {𝓤} {A : Type 𝓤} {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+      {h : Hom A a c}
+    → Hom-over g f h
+    → Hom A a c
+diag-hom←Hom-over g f α = Hom2×~▵←Hom-over g f α .fst
+
+Hom2←Hom-over
+  : ∀ {𝓤} {A : Type 𝓤} {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+      {h : Hom A a c}
+    → (α : Hom-over g f h)
+    → Hom2 g f (diag-hom←Hom-over g f α)
+Hom2←Hom-over g f α = Hom2×~▵←Hom-over g f α .snd .fst
+
+~▵←Hom-over
+  : ∀ {𝓤} {A : Type 𝓤} {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+      {h : Hom A a c}
+    → (α : Hom-over g f h)
+    → h ~▵ diag-hom←Hom-over g f α
+~▵←Hom-over g f α = Hom2×~▵←Hom-over g f α .snd .snd
+}
+}

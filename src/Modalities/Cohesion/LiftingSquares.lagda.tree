@@ -1,0 +1,151 @@
+\title{Cohesive lifting properties}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-02-17}
+\import{stt-macros}
+
+
+\agda{
+module Modalities.Cohesion.LiftingSquares where
+
+open import Axioms.FunExt
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Truncated
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Core.PullbackPowers
+open import Core.Orthogonal
+}
+}
+
+\subtree[stt-00IY]{
+\title{The action of Flat on squares}
+\taxon{Construction}
+
+\p{Since #{\flat} is a functor, we have an action on commuting squares.}
+
+
+\agda{
+♭Square
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-map f g)
+    → Arrow-map (♭-map f) (♭-map g)
+♭Square F .Arrow-map.top = ♭-map (F .Arrow-map.top)
+♭Square F .Arrow-map.bot = ♭-map (F .Arrow-map.bot)
+♭Square F .Arrow-map.comm (mod♭ x) = ap♭ mod♭ (F .Arrow-map.comm x)
+}
+
+
+\p{In \ref{stt-0058}, we observed that the #{\flat} modality preserves pullbacks.
+We can express this property in terms of cartesian squares:}
+
+\agda{
+♭-is-cartesian
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-map f g)
+    → @♭ is-cartesian F
+    → is-cartesian (♭Square F)
+♭-is-cartesian F Fc
+  = is-cartesian←is-pullback
+      (♭Square F)
+      (is-equiv-~∘ {f = _≃_.bwd (♭-pb-repr3 _ _)}
+                  {g = ♭-pb' ∘ ♭-map (gap-map←square F)}
+        (λ where (mod♭ x) → pullback-path→
+                             ( refl
+                             , refl
+                             , strong-J♭
+                                  (λ _ p → mapply♭ (mod♭ p) ＝ ap♭ mod♭ p ∙ refl)
+                                  refl
+                                  (Arrow-map.comm F x)))
+        (bwd-is-equiv (♭-pb-repr3 _ _))
+        (is-equiv-∘ (bwd-is-equiv ♭-pres-pb)
+                    (♭-map-is-equiv (is-pullback←is-cartesian F Fc))))
+
+♭-square-is-equiv
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-map f g)
+    → @♭ is-Arrow-equiv F
+    → is-Arrow-equiv (♭Square F)
+♭-square-is-equiv F Fe .fst = ♭-map-is-equiv (Fe .fst)
+♭-square-is-equiv F Fe .snd = ♭-map-is-equiv (Fe .snd)
+
+♭-arrow-equiv
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+      (@♭ F : Arrow-equiv f g)
+    → Arrow-equiv (♭-map f) (♭-map g)
+♭-arrow-equiv F .fst = ♭Square (F .fst)
+♭-arrow-equiv F .snd = ♭-square-is-equiv (F .fst) (F .snd)
+}
+}
+
+\subtree[stt-00IX]{
+\taxon{Definition}
+\title{Cohesive orthogonality}
+
+\p{Crisp maps #{f} and #{g} are called crisply orthogonal iff the
+[crisp square](stt-00IY) of the [pullback power](stt-004D) is cartesian.
+(Note that this is not the same as #{\flat f} being orthogonal
+to #{\flat g}.)}
+
+\agda{
+are-♭-orthogonal
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} (@♭ f : A → B) (@♭ g : C → D)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+are-♭-orthogonal f g
+  = is-cartesian (♭Square (power-hom f g))
+
+is-♭-orthogonal-type
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      (@♭ f : A → B) (@♭ X : Type 𝓦)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+is-♭-orthogonal-type f X = is-equiv (♭-map (precomp X f))
+}
+
+\p{We also have that any crisp pair of maps are #{\flat}-orthogonal if they are
+orthogonal. The converse may not hold in general.}
+
+\agda{
+are-♭-orthogonal←are-orthogonal
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ D : Type 𝓜} {@♭ f : A → B} {@♭ g : C → D}
+    → @♭ are-orthogonal f g → are-♭-orthogonal f g
+are-♭-orthogonal←are-orthogonal fg
+  = ♭-is-cartesian _ (is-cartesian←are-orthogonal fg)
+}
+}
+
+\subtree[stt-00JW]{
+\title{Orthogonality at the terminal map}
+\taxon{Lemma}
+
+\p{We have #{f \perp X} iff #{f \perp !_X}}
+
+\agda{
+are-♭-orthogonal-!←is-orthogonal-type
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ X : Type 𝓦}
+    → is-♭-orthogonal-type f X → are-♭-orthogonal f (!: X)
+are-♭-orthogonal-!←is-orthogonal-type {f = f} {X} fo
+  = is-cartesian←is-equiv _
+      ( fo
+      , ♭-map-is-equiv
+          (is-equiv←single-to-prop
+            (is-singleton←is-truncated trunc!)
+            (is-prop←is-truncated trunc!)
+            _)
+      )
+}
+}

@@ -1,0 +1,185 @@
+\title{Slice lattices}
+\date{2026-06-10}
+\taxon{Module}
+\author{fredrikbakke}
+\import{stt-macros}
+
+\agda{
+module Algebra.Lattice.Instances.Slice where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Subtypes
+
+open import Algebra.Lattice
+open import Algebra.Poset
+
+open import Ergonomics.Marker
+}
+}
+
+\subtree[stt-00TE]{
+\title{Slice lattices}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-06-10}
+
+\p{
+Given a lattice #{L} and an element #{i \in L}, then we may form the
+\em{slice lattice} over #{i}, #{L_{/i}}.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} (L : Lattice A) (i : A) (let module L = Lattice L) where
+
+  module SliceLat where
+
+    Carrier : Type 𝓤
+    Carrier = Σ[ a ∶ A ] (a L.≤ i)
+
+    _∧_ : Carrier → Carrier → Carrier
+    (a , a≤i) ∧ (b , b≤i) = ((a L.∧ b) , L.∧-≤-eliml a≤i)
+
+    _∨_ : Carrier → Carrier → Carrier
+    (a , a≤i) ∨ (b , b≤i) = (a L.∨ b) , L.∨-UP (a≤i , b≤i)
+
+    0l : Carrier
+    0l = (L.0l , L.0-init)
+
+    1l : Carrier
+    1l = (i , L.≤-refl)
+
+  open SliceLat
+  open Subtype (mk-subtype (λ (a : A) → L.≤-is-prop {a} {i}))
+
+  slice-is-lattice : is-lattice 0l 1l _∧_ _∨_
+  slice-is-lattice .is-lattice.∧-assoc = subtype-path L.∧-assoc
+  slice-is-lattice .is-lattice.∨-assoc = subtype-path L.∨-assoc
+  slice-is-lattice .is-lattice.∧-comm = subtype-path L.∧-comm
+  slice-is-lattice .is-lattice.∨-comm = subtype-path L.∨-comm
+  slice-is-lattice .is-lattice.∨-∧-abs = subtype-path L.∨-∧-abs
+  slice-is-lattice .is-lattice.∧-∨-abs = subtype-path L.∧-∨-abs
+  slice-is-lattice .is-lattice.0-bottom = subtype-path L.0-bottom
+  slice-is-lattice .is-lattice.1-top {x , x≤i} = subtype-path x≤i
+
+  Lattice-slice : Lattice Carrier
+  Lattice-slice .Lattice.0l = 0l
+  Lattice-slice .Lattice.1l = 1l
+  Lattice-slice .Lattice._∧_ = _∧_
+  Lattice-slice .Lattice._∨_ = _∨_
+  Lattice-slice .Lattice.str-is-lattice = slice-is-lattice
+
+  Lattice-slice-is-distributive
+    : is-distributive L → is-distributive Lattice-slice
+  Lattice-slice-is-distributive distr .is-distributive.distrib-∨-∧
+    = subtype-path (is-distributive.distrib-∨-∧ distr)
+}
+}
+
+\subtree[stt-00UP]{
+\title{Slice lattice homomorphisms}
+\taxon{Definition}
+\author{ecavallo}
+\date{2026-06-25}
+
+\p{
+Given a lattice homomorphism #{f \colon L → M}, each #{i \in L} induces a
+lattice homomorphism #{f_{/i} \colon L_{/i} → M_{/f(i)}} between slice lattices.
+}
+
+\agda{
+module _
+  {𝓤 𝓤'} {A : Type 𝓤} {B : Type 𝓤'}
+  (L : Lattice A) (M : Lattice B) (f : A → B)
+  (f-hom : is-lattice-hom L M f) (i : A)
+  (let module M = Lattice M)
+  where
+
+  slice-lattice-hom : SliceLat.Carrier L i → SliceLat.Carrier M (f i)
+  slice-lattice-hom (a , a≤i) = (f a , is-lattice-hom.pres-≤ f-hom ⦃ a≤i ⦄)
+
+  open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {b} {f i}))
+
+  is-lattice-hom-slice
+    : is-lattice-hom (Lattice-slice L i) (Lattice-slice M (f i)) slice-lattice-hom
+  is-lattice-hom-slice .is-lattice-hom.pres-∨ =
+    subtype-path (f-hom .is-lattice-hom.pres-∨)
+  is-lattice-hom-slice .is-lattice-hom.pres-∧ =
+    subtype-path (f-hom .is-lattice-hom.pres-∧)
+  is-lattice-hom-slice .is-lattice-hom.pres-0 =
+    subtype-path (f-hom .is-lattice-hom.pres-0)
+  is-lattice-hom-slice .is-lattice-hom.pres-1 =
+    subtype-path refl
+}
+}
+
+\subtree[stt-00UQ]{
+\title{Slice algebras}
+\taxon{Definition}
+\author{ecavallo}
+\date{2026-06-25}
+
+\p{
+If #{L} is a lattice and #{ι \colon L → M} is a distributive #{L}-algebra, then
+for any #{i \in M} the slice lattice #{M_{/i}} also becomes a distributive
+#{L}-algebra when equipped with the homomomorphism #{ι ∧ i \colon L → M_{/i}}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {L : Lattice A} {B : Type 𝓥} (M : Dist-Algebra L B)
+  (i : B)
+  (let module L = Lattice L)
+  (let module M = Algebra (M .fst))
+  where
+
+  open Subtype (mk-subtype (λ (b : B) → M.≤-is-prop {b} {i}))
+
+  Algebra-slice : Algebra L (SliceLat.Carrier (M.str-Lattice) i)
+  Algebra-slice .Algebra.str-Lattice = Lattice-slice (M.str-Lattice) i
+  Algebra-slice .Algebra.ι a = (M.ι a M.∧ i) , M.∧-≤-elimr M.≤-refl
+  Algebra-slice .Algebra.ι-alg = l
+    where
+    l : is-lattice-hom _ _ _
+    l .is-lattice-hom.pres-∨ {x} {y} =
+      subtype-path
+        ((⌜ M.ι (x L.∨ y) ⌝ M.∧ i)
+           ＝⟨ ap! (M.ι-alg .is-lattice-hom.pres-∨) ⟩
+         ((M.ι x M.∨ M.ι y) M.∧ i)
+           ＝⟨ is-distributive.distrib-∧-∨' (M .snd) ⟩
+         (M.ι x M.∧ i M.∨ M.ι y M.∧ i) ∎)
+    l .is-lattice-hom.pres-∧ {x} {y} =
+      subtype-path
+        ((⌜ M.ι (x L.∧ y) ⌝ M.∧ i)
+           ＝⟨ ap! (M.ι-alg .is-lattice-hom.pres-∧) ⟩
+         ((M.ι x M.∧ M.ι y) M.∧ ⌜ i ⌝)
+           ＝⟨ ap! (sym M.∧-idem) ∙ M.∧-∧-interchange ⟩
+         ((M.ι x M.∧ i) M.∧ (M.ι y M.∧ i)) ∎)
+    l .is-lattice-hom.pres-0 =
+      subtype-path
+        ((⌜ M.ι L.0l ⌝ M.∧ i)
+           ＝⟨ ap! (M.ι-alg .is-lattice-hom.pres-0) ⟩
+         (M.0l M.∧ i)
+           ＝⟨ M.0-init ⟩
+         M.0l ∎)
+    l .is-lattice-hom.pres-1 =
+      subtype-path
+        ((⌜ M.ι L.1l ⌝ M.∧ i)
+           ＝⟨ ap! (M.ι-alg .is-lattice-hom.pres-1) ⟩
+         (M.1l M.∧ i)
+           ＝⟨ M.∧-comm ∙ M.1-top ⟩
+         i ∎)
+
+  Algebra-slice-is-distributive : is-distributive-algebra Algebra-slice
+  Algebra-slice-is-distributive .is-distributive.distrib-∨-∧ =
+    subtype-path (M .snd .is-distributive.distrib-∨-∧)
+
+  Dist-Algebra-slice : Dist-Algebra L (SliceLat.Carrier (M.str-Lattice) i)
+  Dist-Algebra-slice .fst = Algebra-slice
+  Dist-Algebra-slice .snd = Algebra-slice-is-distributive
+}
+}

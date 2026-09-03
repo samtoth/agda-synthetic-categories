@@ -1,0 +1,716 @@
+\title{The category of maps of types}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+module Core.Arrows where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Ergonomics.Representation
+open import Ergonomics.Marker
+open import Ergonomics.Extensionality
+
+open import Core.CanonicalPushouts
+}
+}
+
+\subtree[stt-0038]{
+\taxon{Definition}
+\title{Walking morphisms in #{\Type}}
+\date{2025-04-18}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+An \em{arrow} of types is the bundled data of a function of types. I.e., it is
+the data consisting of two types #{A}, #{B}, and a function between them
+#{f : A \to B}.
+}
+
+\agda{
+record Arrow 𝓤 𝓥 : Type (lsuc 𝓤 ⊔ lsuc 𝓥) where
+  constructor mk-arrow
+  no-eta-equality
+  field
+    {dom} : Type 𝓤
+    {cod} : Type 𝓥
+    f : dom → cod
+}
+}
+
+\subtree[stt-00EF]{
+\taxon{Definition}
+\date{2026-02-20}
+\title{Dependent morphisms of arrows}
+
+\p{
+Given an arrow #{f : A \to B}, a \em{dependent arrow} over #{f} is a family of arrows
+over its domain, #{g : (b : B) \to X(b) \to Y(b)}. Given such a dependent arrow, then a
+\em{dependent morphism of arrows} is a pair of dependent functions
+#{i : (b : B) \to Y(b)} and #{j : (a : A) \to X (f(a))} so that #{i \circ f \sim g \circ j}.
+}
+
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  record Arrow-Π : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) where
+    constructor mk-amap
+    field
+      top : (a : A) → X (f a)
+      bot : (b : B) → Y b
+      comm : precomp-Π Y f bot ~ postcomp-Π (λ a → g (f a)) top
+
+  unquoteDecl Arrow-Π-repr≊ Arrow-Π-repr≃
+    = make-record-repr Arrow-Π-repr≊ Arrow-Π-repr≃ (quote Arrow-Π)
+}
+}
+
+\subtree[stt-003U]{
+\taxon{Definition}
+\title{Morphisms of arrows}
+
+\p{
+Given a pair of arrows, we define a morphism between them to be a commutative square,
+that is, a pair of a maps and a homotopy witnessing that the square commutes.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {C : Type 𝓦} {D : Type 𝓛} (f' : C → D)
+  where
+
+  Arrow-map : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  Arrow-map = Arrow-Π f (λ _ → f')
+
+  Arrow-map-repr≊ : Arrow-map ≊ _
+  Arrow-map-repr≊ = Arrow-Π-repr≊ f (λ _ → f')
+
+  Arrow-map-repr≃ : Arrow-map ≃ _
+  Arrow-map-repr≃ = Arrow-Π-repr≃ f (λ _ → f')
+
+module Arrow-map = Arrow-Π
+}
+}
+
+\subtree[stt-00EG]{
+\taxon{Theorem}
+\date{2026-02-20}
+\title{The type of dependent morphisms of arrows as a pullback}
+\author{fredrikbakke}
+
+\p{The type #{\Hom^{\mathrm{d}}(f,g)} is the pullback of #{g \circ {-}} and
+#{{-} \circ f}.}
+
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  {f : A → B}
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  {g : (b : B) → X b → Y b}
+  where
+
+  Arrow-Π-cone
+    : Cone (mk-cospan ((a : A) → Y (f a))
+                      (precomp-Π Y f)
+                      (postcomp-Π (λ a → g (f a))))
+           (Arrow-Π f g)
+  Arrow-Π-cone .Cone.i p = Arrow-Π.bot p
+  Arrow-Π-cone .Cone.j p = Arrow-Π.top p
+  Arrow-Π-cone .Cone.filler p = funext→ (Arrow-Π.comm p)
+
+  Arrow-Π≃pullback-repr
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback-repr
+    = Arrow-Π f g
+        ≃⟨ Arrow-Π-repr≃ f g ⟩
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+      Σ[ b ∶ ((b : B) → Y b) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-comm ⟩
+      Σ[ b ∶ ((b : B) → Y b) ]
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-snd-≃ (λ _ → Σ-snd-≃ λ _ → (funext≃ e⁻¹)) ⟩
+      Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+        ≃∎
+
+  Arrow-Π≃pullback-repr~gap
+    : Arrow-Π≃pullback-repr ._≃_.fwd ~ gap Arrow-Π-cone
+  Arrow-Π≃pullback-repr~gap = ~refl
+
+  Arrow-Π-is-pullback : is-pullback Arrow-Π-cone
+  Arrow-Π-is-pullback
+    = is-equiv←~⁻¹
+        (Arrow-Π≃pullback-repr~gap)
+        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
+
+  Arrow-Π≃pullback
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback
+    = mk≃ (gap Arrow-Π-cone) (Arrow-Π-is-pullback)
+}
+}
+
+\subtree[stt-004H]{
+\taxon{Theorem}
+\date{2025-05-17}
+\title{The type of morphisms of arrows as a pullback}
+
+\p{The type #{\Hom(f,g)} is the pullback of #{g \circ {-}} and #{{-} \circ f}.}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {g : C → D} where
+
+  Arrow-map≃pullback' : Arrow-map f g ≃ Pullback (_∘ f) (g ∘_)
+  Arrow-map≃pullback' = Arrow-Π≃pullback {f = f} {g = λ _ → g}
+
+  Arrow-map≃pullback : Arrow-map f g ≃ Pullback (g ∘_) (_∘ f)
+  Arrow-map≃pullback = Arrow-map≃pullback' ∙e pullback-swap
+
+  pullback←arrow' : Arrow-map f g → Pullback (_∘ f) (g ∘_)
+  pullback←arrow' = Arrow-map≃pullback' ._≃_.fwd
+
+  pullback←arrow : Arrow-map f g → Pullback (g ∘_) (_∘ f)
+  pullback←arrow = Arrow-map≃pullback ._≃_.fwd
+
+  arrow←pullback' : Pullback (_∘ f) (g ∘_) → Arrow-map f g
+  arrow←pullback' = _≃_.bwd Arrow-map≃pullback'
+
+  arrow←pullback : Pullback (g ∘_) (_∘ f) → Arrow-map f g
+  arrow←pullback = _≃_.bwd Arrow-map≃pullback
+
+  arrow←pullback-is-equiv : is-equiv (arrow←pullback)
+  arrow←pullback-is-equiv
+    = is-equiv⁻¹ (_≃_.fwd-is-equiv Arrow-map≃pullback)
+}
+}
+
+\subtree[stt-004I]{
+\title{Characterising the paths of morphisms of arrows}
+\taxon{Theorem}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
+
+  Arrow-map-path : ∀ (G H : Arrow-map f f') → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
+    = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
+      (H ∙h (f' ◃h p) ~ q ▹h f ∙h H')
+
+  Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
+  Arrow-map-path-refl = ~refl , ~refl , ∙h-reflr _
+
+  Arrow-map-path-is-Rppred
+    : ∀ (G : Arrow-map f f')
+      → Reflexive-ppred _ G _
+  Arrow-map-path-is-Rppred G = (Arrow-map-path G) , Arrow-map-path-refl
+
+  Arrow-map-path←id : ∀ {G H : Arrow-map f f'} → (G ＝ H) → Arrow-map-path G H
+  Arrow-map-path←id refl = Arrow-map-path-refl
+
+  opaque
+    Arrow-map-path≃ : ∀ (G H : Arrow-map f f') → (G ＝ H) ≃ Arrow-map-path G H
+    Arrow-map-path≃ G@(mk-amap t b h) H
+      = mk≃ Arrow-map-path←id
+            (fundamental-Id
+              (Arrow-map-path G)
+              (is-single←equiv-to-single
+                (Σ-fst-≃ (Arrow-map-repr≃ _ _ e⁻¹))
+                (is-singleton-structure←parts (SingS-is-single t)
+                  (t , ~refl)
+                  (is-singleton-structure←parts (SingS-is-single b)
+                    (b , ~refl)
+                    (SingS-is-single λ a → h a ∙ refl))))
+              (λ _ → Arrow-map-path←id) H)
+
+    Arrow-map-path→
+      : ∀ {G H : Arrow-map f f'} → Arrow-map-path G H
+        → (G ＝ H)
+    Arrow-map-path→ = _≃_.bwd (Arrow-map-path≃ _ _)
+
+    Arrow-map-path→-refl
+      : ∀ {G : Arrow-map f f'}
+        → Arrow-map-path→ (Arrow-map-path-refl {G = G}) ＝ refl
+    Arrow-map-path→-refl
+      = unap-equiv (Arrow-map-path≃ _ _ ._≃_.fwd-is-equiv)
+                   (is-equiv.ε (Arrow-map-path≃ _ _ ._≃_.fwd-is-equiv) _)
+}
+}
+
+\subtree[stt-003X]{
+\taxon{Theorem}
+\title{Arrows and squares form a category}
+
+\agda{
+id-square
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → Arrow-map f f
+id-square = mk-amap id id ~refl
+
+infix 25 id-square:_
+id-square:_ : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → Arrow-map f f
+id-square: f = id-square
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+         {𝓤' 𝓥'} {A' : Type 𝓤'} {B' : Type 𝓥'} {f' : A' → B'}
+         {𝓤'' 𝓥''} {A'' : Type 𝓤''} {B'' : Type 𝓥''} {f'' : A'' → B''} where
+
+  paste-squares
+    : Arrow-map f' f''
+    → Arrow-map f f'
+    → Arrow-map f f''
+  paste-squares (mk-amap g' h' comm') (mk-amap g h comm)
+    = mk-amap (g' ∘ g) (h' ∘ h) (h' ◃h comm ∙h comm' ▹h g)
+}
+}
+
+\subtree[stt-00LU]{
+\title{Associativity and unit laws for pasting squares}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-04-05}
+
+\agda{
+paste-squares-assoc
+  : {𝓤1 𝓥1 𝓤2 𝓥2 𝓤3 𝓥3 𝓤4 𝓥4 : Level}
+    {A1 : Type 𝓤1} {B1 : Type 𝓥1} {f1 : A1 → B1}
+    {A2 : Type 𝓤2} {B2 : Type 𝓥2} {f2 : A2 → B2}
+    {A3 : Type 𝓤3} {B3 : Type 𝓥3} {f3 : A3 → B3}
+    {A4 : Type 𝓤4} {B4 : Type 𝓥4} {f4 : A4 → B4}
+  → (H : Arrow-map f3 f4)
+  → (G : Arrow-map f2 f3)
+  → (F : Arrow-map f1 f2)
+  → Arrow-map-path
+    (paste-squares H (paste-squares G F))
+    (paste-squares (paste-squares H G) F)
+paste-squares-assoc H G F .fst = ~refl
+paste-squares-assoc H G F .snd .fst = ~refl
+paste-squares-assoc H G F .snd .snd a
+  = let
+      p = Arrow-map.comm F a
+      q = Arrow-map.comm G (Arrow-map.top F a)
+      r = Arrow-map.comm H (Arrow-map.top G (Arrow-map.top F a))
+    in ∙-reflr _
+     ∙ ap (_∙ r) (ap-∙ (Arrow-map.bot H) (ap (Arrow-map.bot G) p) q)
+     ∙ ∙-assoc
+         (ap (Arrow-map.bot H) (ap (Arrow-map.bot G) p))
+         (ap (Arrow-map.bot H) q)
+         (r)
+     ∙ ap
+         (_∙ ap (Arrow-map.bot H) q ∙ r)
+         (sym (ap-∘ (Arrow-map.bot H) (Arrow-map.bot G) p))
+
+paste-squares-left-id
+  : {𝓤1 𝓥1 𝓤2 𝓥2 : Level}
+    {A1 : Type 𝓤1} {B1 : Type 𝓥1} {f : A1 → B1}
+    {A2 : Type 𝓤2} {B2 : Type 𝓥2} {g : A2 → B2}
+  → (F : Arrow-map f g)
+  → Arrow-map-path (paste-squares (id-square: g) F) F
+paste-squares-left-id F .fst = ~refl
+paste-squares-left-id F .snd .fst = ~refl
+paste-squares-left-id F .snd .snd a
+  = ∙-reflr _
+  ∙ ∙-reflr _
+  ∙ ap-id (Arrow-map.comm F a)
+
+paste-squares-right-id
+  : {𝓤1 𝓥1 𝓤2 𝓥2 : Level}
+    {A1 : Type 𝓤1} {B1 : Type 𝓥1} {f : A1 → B1}
+    {A2 : Type 𝓤2} {B2 : Type 𝓥2} {g : A2 → B2}
+  → (F : Arrow-map f g)
+  → Arrow-map-path (paste-squares F (id-square: f)) F
+paste-squares-right-id F .fst = ~refl
+paste-squares-right-id F .snd .fst = ~refl
+paste-squares-right-id F .snd .snd a = ∙-reflr _
+}
+}
+
+
+
+\subtree[stt-002Z]{
+\taxon{Theorem}
+\title{Arrow morphisms are squares}
+
+\p{We now have (at least) three things that can be called squares. We give functions
+to convert from arrow-map squares, to either cones over cospans or cocones over spans.}
+
+\agda{
+Cocone←Arrow-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+    → Arrow-map f f' → Σ[ S ∶  Span 𝓤 𝓥 𝓦 ] Cocone S D
+Cocone←Arrow-map {f = f} {f' = f'} (mk-amap g g' comm)
+  = (mk-span _ f g) , mk-cocone g' f' comm
+
+Arrow-map←Cocone
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Span 𝓤 𝓥 𝓦} {D : Type 𝓜}
+    → (C : Cocone S D)
+    → Arrow-map (Span.left S) (Cocone.q C)
+Arrow-map←Cocone {S = S} C = mk-amap S.right C.p C.filler where
+  module S = Span S
+  module C = Cocone C
+
+Cone←Arrow-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+    → Arrow-map f f' → Σ[ S ∶ Cospan 𝓛 𝓥 𝓦 ] Cone S A
+Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
+  = (mk-cospan _ bot f') , mk-cone f top comm
+}
+}
+
+\subtree[stt-004E]{
+\taxon{Definition}
+
+\title{(co)gap maps from squares}
+
+\agda{
+gap-map←square
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+    → (g : Arrow-map f f')
+    → A → Pullback (g .Arrow-map.bot) f'
+gap-map←square g = gap (Cone←Arrow-map g .snd)
+
+cogap-map←square
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D}
+    → (g : Arrow-map f f')
+    → Pushout f (g .Arrow-map.top) → D
+cogap-map←square g = cogap (Cocone←Arrow-map g .snd)
+}
+}
+
+
+\subtree[stt-003P]{
+\taxon{Definition}
+\title{Squares from pre/post-composition}
+
+\p{Given a square of the form:}
+
+\quiver{
+\begin{tikzcd}
+	A && C \\
+	\\
+	B && D
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{f'}", from=1-3, to=3-3]
+	\arrow["{g'}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{For all types #{Q}, we obtain squares:}
+
+\quiver{
+\begin{tikzcd}
+	{Q \to A} && {Q \to C} \\
+	\\
+	{Q \to B} && {Q \to D}
+	\arrow["{g \circ {-}}", from=1-1, to=1-3]
+	\arrow["{f \circ {-}}"', from=1-1, to=3-1]
+	\arrow["{f' \circ {-}}", from=1-3, to=3-3]
+	\arrow["{g' \circ {-}}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{and}
+
+\quiver{
+\begin{tikzcd}
+	{D \to Q} && {B \to Q} \\
+	\\
+	{C \to Q} && {A \to Q}
+	\arrow["{{-} \circ g'}", from=1-1, to=1-3]
+	\arrow["{{-} \circ f'}"', from=1-1, to=3-1]
+	\arrow["{{-} \circ f'}", from=1-3, to=3-3]
+	\arrow["{{-} \circ g}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+precomp-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+      (g : Arrow-map f f')
+    → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (precomp C f') (precomp C f)
+precomp-square (mk-amap top bot p) C
+ = mk-amap (_∘ bot) (_∘ top) λ f → funext→ (f ◃h (p h⁻¹))
+
+postcomp-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+      (g : Arrow-map f f')
+    → ∀ {𝓛} (C : Type 𝓛) → Arrow-map (postcomp C f) (postcomp C f')
+postcomp-square (mk-amap top bot p) C
+  = mk-amap (top ∘_) (bot ∘_) λ f → funext→ (p ▹h f)
+}
+}
+
+\remark{
+\p{Precomposing squares gives the result of applying the functor
+#{\Hom(Q,H)} to the square. It is a well known result that this functor preserves
+pullback Likewise, postcomposition is given by #{\Hom({-},Q)}, and this functor turns
+pushouts in to pullbacks.
+}
+}
+
+
+\subtree[stt-00SC]{
+\taxon{Construction}
+\title{Transposition of squares}
+
+\agda{
+transpose-square
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓜}
+      {f : A → B} {g : C → D}
+    → (F : Arrow-map f g)
+    → Arrow-map (F .Arrow-map.top) (F .Arrow-map.bot)
+transpose-square {f = f} {g = g} F
+  = mk-amap f g (F .Arrow-map.comm h⁻¹)
+
+transpose-square-involution
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : Type 𝓦} {D : Type 𝓜}
+      {f : A → B} {g : C → D}
+    → (F : Arrow-map f g)
+    → transpose-square (transpose-square F) ＝ F
+transpose-square-involution F@(mk-amap top bot comm)
+  = Arrow-map-path→ (~refl , ~refl , λ a → ∙-reflr _ ∙ sym-sym)
+}
+}
+
+
+\subtree[stt-00BR]{
+\title{Total squares}
+\taxon{Construction}
+
+\p{Given a family of squares, we can define the total square by taking the
+sum types and total maps between them.}
+
+\agda{
+total-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (total-map f) (total-map g)
+total-square F .Arrow-map.top = total-map (Arrow-map.top ∘ F)
+total-square F .Arrow-map.bot = total-map (Arrow-map.bot ∘ F)
+total-square F .Arrow-map.comm (i , a)
+  = Σ-path→ (refl , Arrow-map.comm (F i) a)
+}
+}
+
+\subtree[stt-00BY]{
+\title{Dependent precomposition square}
+\taxon{Construction}
+
+\p{Given a family of squares #{F_i : f_i \to g_i}, we can form the product square
+#{\Pi_i F_i : \Pi_i f_i \to \Pi_i g_i}}
+
+\agda{
+Π-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥} {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜} {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → Arrow-map (postcomp-Π f) (postcomp-Π g)
+Π-square F .Arrow-map.top h i = Arrow-map.top (F i) (h i)
+Π-square F .Arrow-map.bot h i = Arrow-map.bot (F i) (h i)
+Π-square F .Arrow-map.comm h  = funext→ (λ a → Arrow-map.comm (F a) (h a))
+}
+}
+
+\subtree[stt-00K7]{
+\title{Paths in maps of families}
+\taxon{Lemma}
+
+\agda{
+opaque
+  Fam-map-homotopy-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {F@(A , X) : Fam 𝓤 𝓥} {G@(B , Y) : Fam 𝓦 𝓜 }
+      → ∀ (a : Fam-map F G)
+      → is-torsorial (Fam-map-homotopy {F = F} {G} a)
+  Fam-map-homotopy-is-torsorial a
+    = is-singleton-structure←parts
+        (SingS-is-single (a .fst))
+        (_ , ~refl)
+        (is-single←equiv-to-single
+          (Σ-Π-swap≃ _ _)
+          (Π-is-single (λ x → SingS-is-single (a .snd x))))
+
+instance
+  Fam-map-IdS
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {F : Fam 𝓤 𝓥} {G : Fam 𝓦 𝓜}
+      → Identity-system (Fam-map F G) (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  Fam-map-IdS .Identity-system.IdS = Fam-map-homotopy
+  Fam-map-IdS .Identity-system.IdS←Id refl = Fam-map-refl~ _
+  Fam-map-IdS .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (Fam-map-homotopy-is-torsorial a) _
+}
+}
+
+\subtree[stt-00KQ]{
+\title{Straightening arrow maps}
+\taxon{Lemma}
+
+\p{We show that there is an equivalence between maps of arrows
+and maps of families.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+  where
+
+  arrow-fibre
+    : (gs : Arrow-map f g)
+    → (b : B)
+    → fibre f b → fibre g (gs .Arrow-map.bot b)
+  arrow-fibre (mk-amap f' g' hom) b (a , p) = (f' a , sym (hom a) ∙ ap g' p)
+
+  fam-map←arrow-map
+    : Arrow-map f g → Fam-map (fibre-fam f) (fibre-fam g)
+  fam-map←arrow-map F = (F .Arrow-map.bot , arrow-fibre F)
+
+  arrow-map←fam-map
+    : Fam-map (fibre-fam f) (fibre-fam g)
+    → Arrow-map f g
+  arrow-map←fam-map (b , t)
+    = mk-amap (λ a → t (f a) (a , refl) .fst) b
+              (λ a → sym (t (f a) (a , refl) .snd))
+
+  fam-map←arrow-map-is-equiv : is-equiv fam-map←arrow-map
+  fam-map←arrow-map-is-equiv
+    = is-equiv←qinv
+        ( arrow-map←fam-map
+        , (λ x → Arrow-map-path→ (~refl , ~refl ,
+                                 (  ∙h-reflr _
+                                 ∙h (ap sym ∘ ∙h-reflr _)
+                                 ∙h (λ _ → sym-sym))))
+        , section-fam-arr) where
+    section-fam-arr
+      : fam-map←arrow-map ∘ arrow-map←fam-map ~ id
+    section-fam-arr (b , t)
+      = Σ-path→ (refl ,
+          (funext→ (λ a → funext→
+            (λ where (x , refl) → Σ-path→ (refl , (∙-reflr _ ∙ sym-sym))))))
+}
+}
+
+\subtree[stt-00OB]{
+\title{Half-straightened arrow maps}
+\taxon{Definition}
+
+\p{Given a map #{f : A \to B}, and a type family #{P : C \to \Type}, we define the
+type of maps from #{f} to #{P}, which consists of the data:}
+
+\ul{
+\li{A map #{b : B \to A}}
+\li{A section #{t : \Pi_{a} P(b(f(a))) }}
+}
+
+\agda{
+record ArrFam-map
+         {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+         {C : Type 𝓦} (f : A → B)
+         (P : C → Type 𝓜) : Type (𝓜 ⊔ 𝓥 ⊔ 𝓤 ⊔ 𝓦) where
+  constructor mk-afmap
+  field
+    bot : B → C
+    top : ∀ a → P (bot (f a))
+
+unquoteDecl ArrFam-map-repr≊ ArrFam-map-repr≃
+  = make-record-repr ArrFam-map-repr≊ ArrFam-map-repr≃ (quote ArrFam-map)
+}
+}
+
+\subtree[stt-00OC]{
+\taxon{Lemma}
+
+\p{A [half-straightened](stt-00OB) map from a map #{f} to a type family #{P} is equivalent
+to an arrow map from #{f} to the unstraightening of #{P}.}
+
+\agda{
+unstr-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → ArrFam-map f P → Arrow-map f (fst: P)
+unstr-ArrFam {f = f} F .Arrow-Π.top a = (_ , F .ArrFam-map.top a)
+unstr-ArrFam F .Arrow-Π.bot = F .ArrFam-map.bot
+unstr-ArrFam F .Arrow-Π.comm = ~refl
+
+str-ArrFam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → Arrow-map f (fst: P) → ArrFam-map f P
+str-ArrFam F .ArrFam-map.bot = F .Arrow-map.bot
+str-ArrFam {P = P} F .ArrFam-map.top a
+  = tr P (sym (F .Arrow-map.comm a)) (F .Arrow-map.top a .snd)
+
+str-ArrFam-is-equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      {C : Type 𝓦} {P : C → Type 𝓜}
+    → is-equiv (str-ArrFam {f = f} {P = P})
+str-ArrFam-is-equiv = is-equiv←qinv
+  ( unstr-ArrFam
+  , (λ {(mk-amap top bot comm) → Arrow-map-path→
+            ((λ a → Σ-path→ ( comm a
+                            , tr∘tr-sym' (comm a) (top a .snd)))
+            , ~refl
+            , λ a → Σ-path-ap-fst)})
+  , ~refl)
+}
+}
+
+\subtree[stt-00RQ]{
+\title{The type of morphisms into a terminal projection is equivalent to the type of maps of domains}
+\taxon{Lemma}
+\date{2026-05-21}
+\author{fredrikbakke}
+
+\agda{
+arrow-map-to-top-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {f : A → B}
+    → is-equiv (λ (F : Arrow-map f (!: X)) → Arrow-map.top F)
+arrow-map-to-top-is-equiv =
+  is-equiv←qinv
+    ( (λ t → mk-amap t (λ _ → tt) ~refl)
+    , (λ (mk-amap t b H)
+       → Arrow-map-path→
+           ( ~refl
+           , (λ y → is-prop←is-single 𝟙-is-singleton _ _)
+           , (λ x → is-prop←is-single (＝-singleton←is-single 𝟙-is-singleton _ _) _ _)))
+    , ~refl)
+}
+}

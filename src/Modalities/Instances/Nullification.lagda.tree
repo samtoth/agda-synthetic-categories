@@ -2,27 +2,30 @@
 \taxon{Module}
 \import{stt-macros}
 
-%```agda
 \agda{
 module Modalities.Instances.Nullification where
 
-open import ufAxioms
-open import Axioms.FreeAlgInj
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Axioms.FreeAlgebraicInjectives
 open import Foundations.Prelude
 open import Foundations.SubtypeFamilies
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
-open import Core.Arrow
+open import Core.Arrows
 open import Core.ArrowEquiv
-open import Core.ArrowRetract
+open import Core.ArrowRetracts
 open import Core.CanonicalPushouts
 open import Modalities.Instances.Localisation
-open import Modalities.HigherModality
+open import Modalities.HigherModalities
 open import Modalities.Subuniverses
 open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 }
-%```
+}
 
 \subtree[stt-005G]{
 \date{2025-06-17}
@@ -40,24 +43,24 @@ We will also say a type #{B} is #{A}-\em{anodyne} if every type that is
 #{A}-null is #{B}-null.
 }
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 : Level} {I : Type 𝓘}
   where
 
   is-null : (A : I → Type 𝓤) → Type 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  is-null A X = (i : I) → is-equiv (const X (A i))
+  is-null A X = (i : I) → is-equiv (const: X (A i))
 
   is-null-is-prop
     : {A : I → Type 𝓤}
     → (X : Type 𝓥) → is-prop (is-null A X)
   is-null-is-prop X = Π-is-prop λ a → is-equiv-is-prop
 
-  null≃ : {A : I → Type 𝓤}
-          {X : Type 𝓥} (_ : is-null A X) (i : I)
-        → X ≃ (A i → X)
-  null≃ {A} {X} An i = mk≃ (const X (A i)) (An i)
+  null≃
+    : {A : I → Type 𝓤}
+      {X : Type 𝓥} (_ : is-null A X) (i : I)
+    → X ≃ (A i → X)
+  null≃ {A} {X} An i = mk≃ (const: X (A i)) (An i)
 
   is-null-equiv
     : {A : I → Type 𝓤}
@@ -65,22 +68,22 @@ module _
     → X ≃ Y
     → is-null A X
     → is-null A Y
-  is-null-equiv e anull i
-    = is-equiv←Arrow-equiv
-        {F = mk-amap fwd (postcomp _ fwd) ~refl}
-        (has-is-eqv , postcomp-equiv has-is-eqv)
-        (anull i) where
+  is-null-equiv e X-is-null i
+    = tgt-is-equiv←Arrow-equiv
+        ( mk-amap fwd (postcomp _ fwd) ~refl
+        , fwd-is-equiv
+        , postcomp-equiv fwd-is-equiv)
+        (X-is-null i) where
     open _≃_ e
 
 Null-SubU
   : ∀ {𝓘 𝓤} {I : Type 𝓘}
       (A : I → Type 𝓤)
-      𝓦
+    𝓦
     → SubU 𝓦 (𝓦 ⊔ 𝓘 ⊔ 𝓤)
 Null-SubU A 𝓦 .Subtype.family = is-null A
-Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
+Null-SubU A 𝓦 .Subtype.family-is-subtype = is-null-is-prop
 }
-%```
 }
 
 
@@ -96,31 +99,50 @@ Null-SubU A 𝓦 .Subtype.has-is-subtype = is-null-is-prop
 (1 \to X) \to (A_i \to X)} is an equivalence.}
 }
 
-%```agda
 \agda{
-is-local←is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
-                   → {X : Type 𝓥}
-                   → is-null A X
-                   → is-local (λ i → !: A i) X
+is-local←is-null
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-null A X
+    → is-local (λ i → !: A i) X
 is-local←is-null eq i = 3-for-2' (point-is-equiv) (eq i)
 
-is-local-sing←is-null : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
-                          {A : I → Type 𝓤}
-                          {B : I → Type 𝓥}
-                          (Bsing : ∀ i → is-singleton (B i))
-                          (f : ∀ i → A i → B i)
-                        → {X : Type 𝓦}
-                        → is-null A X
-                        → is-local f X
+is-local-fst←is-null
+  : ∀ {𝓙 𝓤 𝓥} {X : Type 𝓤} {J : X → Type 𝓙} {A : Type 𝓥}
+  → is-null J A
+  → is-local (point (fst: J)) A
+is-local-fst←is-null {J = J} {A = A} A-null _
+  = 3-for-2
+      (curry-is-equiv)
+      (postcomp-Π-equiv λ {x} → A-null x)
+
+is-local-sing←is-null
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      {B : I → Type 𝓥}
+      (Bsing : ∀ i → is-singleton (B i))
+      (f : ∀ i → A i → B i)
+    → {X : Type 𝓦}
+    → is-null A X
+    → is-local f X
 is-local-sing←is-null Bsing f null i
   = 3-for-2'
     (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bsing i)))
     (null i)
 
-is-null←is-local : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
-                   → {X : Type 𝓥}
-                   → is-local (λ i → !: A i) X
-                   → is-null A X
+is-localᴸ←is-null
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-null A X
+    → is-local (λ i → !ᴸ: 𝓦 (A i)) X
+is-localᴸ←is-null {A = A}
+  = is-local-sing←is-null (λ i → 𝟙ᴸ-is-singleton) (λ i → !ᴸ)
+
+is-null←is-local
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-local (λ i → !: A i) X
+    → is-null A X
 is-null←is-local eq i = is-equiv-∘ (eq i) point-is-equiv
 
 orthogonal-type-total-map-!←is-null
@@ -134,26 +156,34 @@ orthogonal-type-total-map-!←is-null {B = B}
   = orthogonal-type-total-map (λ a → !: B a)
   ∘ is-local←is-null
 
-is-null←is-local-sing : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
-                          {A : I → Type 𝓤}
-                          {B : I → Type 𝓥}
-                          (Bsing : ∀ i → is-singleton (B i))
-                          (f : ∀ i → A i → B i)
-                        → {X : Type 𝓦}
-                        → is-local f X
-                        → is-null A X
+is-null←is-local-sing
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+      {B : I → Type 𝓥}
+      (Bsing : ∀ i → is-singleton (B i))
+      (f : ∀ i → A i → B i)
+    → {X : Type 𝓦}
+    → is-local f X
+    → is-null A X
 is-null←is-local-sing Bs f loc i
   = is-equiv-∘
       (loc i)
       (is-equiv⁻¹ (sing-ev-is-equiv global-funext (Bs i)))
 
+is-null←is-localᴸ
+  : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤}
+    → {X : Type 𝓥}
+    → is-local (λ i → !ᴸ: 𝓦 (A i)) X
+    → is-null A X
+is-null←is-localᴸ {A = A}
+  = is-null←is-local-sing (λ i → 𝟙ᴸ-is-singleton) (λ i → !ᴸ)
+
 Null≃!Local
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {A : I → Type 𝓤}
-  → Subtype-equiv (Local-SubU (λ i → !: A i) 𝓥)
-                  (Null-SubU A 𝓥)
+    → Subtype-equiv (Local-SubU (λ i → !: A i) 𝓥)
+                    (Null-SubU A 𝓥)
 Null≃!Local A = (is-null←is-local , is-local←is-null)
 }
-%```
 }
 
 \subtree[fre-Q009]{
@@ -164,7 +194,6 @@ Null≃!Local A = (is-null←is-local , is-local←is-null)
 
 % TODO: diagram
 
-%```agda
 \agda{
 module _
   {𝓤 𝓥 𝓦 : Level}
@@ -204,7 +233,6 @@ module _
           (tgt⊥)
           (rep⊥))
 }
-%```
 }
 
 \subtree[stt-005K]{
@@ -222,27 +250,27 @@ has a section, then the precomposition by this
 map already has a retract, and so the type is not just
 algebraically #{A}-injective, but #{A}-null.}
 
-%```agda
 \agda{
-Null∙ : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
-         (A∙ : Π _ A) (X : Type 𝓥)
-       → Type 𝓥
-Null∙ A _ X = Free-inj
+Null∙
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
+      (A∙ : Π _ A) (X : Type 𝓥)
+    → Type 𝓥
+Null∙ A _ X = FreeInj
                (λ i → !: A i)
                 X
 
-Null∙-is-null : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘}
-                 {A : I → Type 𝓤} (A∙ : Π _ A)
-                 {X : Type 𝓥}
-               → is-null A (Null∙ A A∙ X)
+Null∙-is-null
+  : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘}
+      {A : I → Type 𝓤} (A∙ : Π _ A)
+      {X : Type 𝓥}
+    → is-null A (Null∙ A A∙ X)
 Null∙-is-null a = is-null←is-local I where
   I : is-local (λ _ → !) _
-  I i = is-equiv←qiso λ where
-    .fst → injector-Free-inj i .fst
-    .snd .fst α → funext→ (λ _ → Free-inj.is-ext (α ∘ !) (a i))
-    .snd .snd → injector-Free-inj i .snd
+  I i = is-equiv←qinv λ where
+    .fst → injector-FreeInj i .fst
+    .snd .fst α → funext→ (λ _ → FreeInj.is-ext (α ∘ !) (a i))
+    .snd .snd → injector-FreeInj i .snd
 }
-%```
 }
 
 \subtree[stt-0065]{
@@ -252,25 +280,26 @@ Null∙-is-null a = is-null←is-local I where
 \taxon{Corollary}
 
 
-%```agda
 \agda{
 module _ where
   open is-globally-reflective
   open is-global-reflector
 
-  Null-gSubU : ∀ {𝓘 𝓤} {I : Type 𝓘}
-               (A : I → Type 𝓤)
-              → gSubU (_⊔ (𝓘 ⊔ 𝓤))
+  Null-gSubU
+    : ∀ {𝓘 𝓤} {I : Type 𝓘}
+        (A : I → Type 𝓤)
+      → gSubU (_⊔ (𝓘 ⊔ 𝓤))
   Null-gSubU A .gSubU.S = Null-SubU A _
-  Null-gSubU A .gSubU.∈S←equiv e anull i
-    = is-equiv←Arrow-equiv
-        {F = mk-amap fwd (postcomp _ fwd) ~refl}
-        (has-is-eqv , postcomp-equiv has-is-eqv)
-        (anull i) where open _≃_ e
+  Null-gSubU A .gSubU.∈S←equiv e is-A-null i
+    = tgt-is-equiv←Arrow-equiv
+        ( mk-amap fwd (postcomp _ fwd) ~refl
+        , fwd-is-equiv
+        , postcomp-equiv fwd-is-equiv)
+        (is-A-null i) where open _≃_ e
 
   Null-globally-reflective
     : ∀ {𝓘 𝓤} {I : Type 𝓘} {A : I → Type 𝓤}
-    → is-globally-reflective (Null-gSubU A)
+      → is-globally-reflective (Null-gSubU A)
   Null-globally-reflective {A = A}
     = is-globally-reflective-subtype-equiv
         (Null≃!Local)
@@ -283,11 +312,11 @@ module _ where
           (a∙ : ∀ i → A i)
         → is-globally-reflective (Null-gSubU A)
     Null∙-global-reflectors a .○ = Null∙ _ a
-    Null∙-global-reflectors a .η = Free-inj.inc
-    Null∙-global-reflectors a .has-is-reflector
+    Null∙-global-reflectors a .η = FreeInj.inc
+    Null∙-global-reflectors a .η-is-reflector
       .○∈S = Null∙-is-null a
-    Null∙-global-reflectors a .has-is-reflector
-      .reflects cnull = Free-inj-reflects _ (is-local←is-null cnull)
+    Null∙-global-reflectors a .η-is-reflector
+      .reflects cnull = FreeInj-reflects _ (is-local←is-null cnull)
 
   Null∙-reflective
     : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
@@ -298,9 +327,9 @@ module _ where
 
   Null-gRSubU
     : ∀ {𝓘 𝓤} {I : Type 𝓘} (A : I → Type 𝓤)
-    → gRSubU (_⊔ (𝓘 ⊔ 𝓤))
+      → gRSubU (_⊔ (𝓘 ⊔ 𝓤))
   Null-gRSubU A .gRSubU.GS = Null-gSubU A
-  Null-gRSubU A .gRSubU.has-is-globally-reflective = Null-globally-reflective
+  Null-gRSubU A .gRSubU.GS-is-globally-reflective = Null-globally-reflective
 
   Null∙-gRSubU
     : ∀ {𝓘 𝓤} {I : Type 𝓘}
@@ -308,16 +337,15 @@ module _ where
         (a∙ : ∀ i → A i)
       → gRSubU (_⊔ (𝓘 ⊔ 𝓤))
   Null∙-gRSubU {A = A} a .gRSubU.GS = Null-gSubU A
-  Null∙-gRSubU a .gRSubU.has-is-globally-reflective = Null∙-global-reflectors a
+  Null∙-gRSubU a .gRSubU.GS-is-globally-reflective = Null∙-global-reflectors a
 }
-%```
 }
 
 \subtree[stt-006E]{
 \date{2025-06-25}
 \author{samueltoth}
 \taxon{Theorem}
-\title{Nullification is a #{\Sigma}-closed reflective subuniverse}
+\title{Nullification is a #{Σ}-closed reflective subuniverse}
 
 \p{Nullification is a #{\Sigma}-closed reflective subuniverse and so
 is also a higher modality.}
@@ -337,39 +365,40 @@ is also a higher modality.}
 #{A}-[null](stt-005G), and (3) is the [type theoretic theorem of
 choice](Foundations.TheoremOfChoice).}  }
 
-%```agda
 \agda{
-Σ-is-null : ∀ {𝓘 𝓤 𝓥 𝓦}
-              {I : Type 𝓘}
-              {P : I → Type 𝓤}
-              {X : Type 𝓥} {Y : X → Type 𝓦}
-            → is-null P X
-            → (∀ x → is-null P (Y x))
-            → is-null P (Σ X Y)
-Σ-is-null {P = P} {X = X} {Y} Xnull Ynull i
+Σ-is-null
+  : ∀ {𝓘 𝓤 𝓥 𝓦}
+      {I : Type 𝓘}
+      {P : I → Type 𝓤}
+      {X : Type 𝓥} {Y : X → Type 𝓦}
+    → is-null P X
+    → (∀ x → is-null P (Y x))
+    → is-null P (Σ X Y)
+Σ-is-null {P = P} {X = X} {Y} X-null Y-null i
   = eqv where
   opaque
     I : Σ X Y ≃ (P i → Σ X Y)
     I = Σ X Y
-          ≃⟨ Σ-ap-≃ (λ x → null≃ (Ynull x) i) ⟩
+          ≃⟨ Σ-snd-≃ (λ x → null≃ (Y-null x) i) ⟩
         Σ X (λ x → P i → Y x)
-          ≃⟨ Σ-ap-≃-fst {B = λ f → (a : P i) → Y (f a)} (null≃ Xnull i) ⟩
+          ≃⟨ Σ-fst-≃ {B = λ f → (a : P i) → Y (f a)} (null≃ X-null i) ⟩
         Σ (P i → X) (λ f → (a : P i) → Y (f a))
           ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
         (P i → Σ X Y) ≃∎
 
-    eqv : is-equiv (const (Σ X Y) (P i))
-    eqv = I ._≃_.has-is-eqv
+    eqv : is-equiv (const: (Σ X Y) (P i))
+    eqv = I ._≃_.fwd-is-equiv
 
 prop-is-null∙
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {P : I → Type 𝓤} {A : Type 𝓥}
     → (∀ i → P i) → is-prop A → is-null P A
 prop-is-null∙ p ap i
-  = is-equiv←inverse ap (Π-is-prop (λ _ → ap)) (ev (p i))
+  = is-equiv←inverse ap (→-is-prop ap) (ev (p i))
 
-Null-globally-Σ-closed : ∀ {𝓘 𝓤} {I : Type 𝓘}
-                   {P : I → Type 𝓤}
-                 → is-globally-Σ-closed (Null-gSubU P)
+Null-globally-Σ-closed
+  : ∀ {𝓘 𝓤} {I : Type 𝓘}
+      {P : I → Type 𝓤}
+    → is-globally-Σ-closed (Null-gSubU P)
 Null-globally-Σ-closed = Σ-is-null
 
 Null-gRSubU-Σ-closed
@@ -378,9 +407,10 @@ Null-gRSubU-Σ-closed
     → is-globally-Σ-closed (Null-gRSubU P .gRSubU.GS)
 Null-gRSubU-Σ-closed P = Null-globally-Σ-closed
 
-Null-Σ-closed : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
-                   {A : I → Type 𝓤}
-                 → is-Σ-closed (Null-SubU A 𝓦)
+Null-Σ-closed
+  : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
+      {A : I → Type 𝓤}
+    → is-Σ-closed (Null-SubU A 𝓦)
 Null-Σ-closed {A = A}
   = is-Σ-closed←globally (Null-gSubU A) Null-globally-Σ-closed
 
@@ -401,11 +431,13 @@ module _
     ( ∈S←equiv to is-null←equiv)
 
   open gReflectiveClosure (Null-gRSubU X) public using () renaming
-    ( ∈S←retract to is-null←retract
-    ; Π∈S to Π-is-null
+    ( Π∈S to Π-is-null
+    ; Πᵢ∈S to Πᵢ-is-null
+    ; →∈S to →-is-null
     ; ULift∈S to ULift-is-null
     ; 𝟙∈S to 𝟙-is-null
     ; ∈S←is-singleton to is-null←is-singleton
+    ; ∈S←retract to is-null←retract
     ; Pullback∈S to Pullback-is-null
     ; fibre∈S to fibre-is-null
     ; Ext∈S to Ext-is-null
@@ -427,7 +459,6 @@ module Null {𝓘 𝓤 : Level} {I : Type 𝓘} (A : I → Type 𝓤) where
   open gRSubU (Null-gRSubU A) public
   open gReflectiveClosure (Null-gRSubU A) public
 }
-%```
 }
 
 \subtree[stt-00GG]{
@@ -442,7 +473,6 @@ If each codomain #{B_i} is [contractible](stt-000F), then localisation at
 higher modality.
 }
 
-%```agda
 \agda{
 module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
          {A : I → Type 𝓤} {B : I → Type 𝓥}
@@ -452,11 +482,11 @@ module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
     : (f : (i : I) → A i → B i)
     → (∀ i → is-singleton (B i))
     → is-Σ-closed (Local-SubU f 𝓦)
-  Local-Σ-closed f sngl aloc bloc
+  Local-Σ-closed f sngl A-loc B-loc
     = is-local-sing←is-null sngl f
         (Null-Σ-closed
-          (is-null←is-local-sing sngl f aloc)
-          λ a → is-null←is-local-sing sngl f (bloc a))
+          (is-null←is-local-sing sngl f A-loc)
+          λ a → is-null←is-local-sing sngl f (B-loc a))
 
   Local-HigherModality
     : (f : (i : I) → A i → B i)
@@ -467,7 +497,6 @@ module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
         (Local-reflective f)
         (Local-Σ-closed f s)
 }
-%```
 }
 
 \subtree[stt-00GY]{
@@ -481,7 +510,6 @@ Given an #{A}-[null](stt-005G) type #{X}, then #{X} is null at any
 [retract](stt-00HE) of #{A}.
 }
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 𝓧 : Level} {I : Type 𝓘}
@@ -492,13 +520,13 @@ module _
 
   is-null-at-retract
     : ((i : I) → retract (A i) (B i)) → is-null B X → is-null A X
-  is-null-at-retract R Bnull i
+  is-null-at-retract R B-null i
     = is-equiv←incoherent-retraction-equiv
         (mk-amap id (precomp X (R i .snd .fst)) ~refl)
         (mk-amap id (precomp X (R i .fst)) ~refl
         , ~refl
         , λ h → funext→ λ a → ap h (R i .snd .snd a))
-        (Bnull i)
+        (B-null i)
 
   is-null-at-equiv
     : ((i : I) → A i ≃ B i) → is-null B X → is-null A X
@@ -508,7 +536,76 @@ module _
     : ((i : I) → B i ≃ A i) → is-null B X → is-null A X
   is-null-at-equiv⁻¹ e = is-null-at-equiv (λ i → (e i) e⁻¹)
 }
-%```
+}
+
+\subtree[stt-00U2]{
+\date{2026-04-08}
+\author{fredrikbakke}
+\title{Deformation cone argument for anodyne types}
+\taxon{Proposition}
+
+\p{
+Suppose a type #{X} admits a \em{deformation cone} parametrised by a type #{J} with
+endpoints #{j_0,j_1 : J}, meaning a map #{J \to X \to X} which at #{j_0} collapses
+everything to a cone point #{x_0 : X} and at #{j_1} is the identity function. Then
+every #{J}-null type is also #{X}-null.
+}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓥} {J : X → Type 𝓙} {A : Type 𝓤}
+  where
+
+  is-null-at-deformation-cone
+    : (x₀ : X)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ x₀)
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J A
+    → is-null (point X) A
+  is-null-at-deformation-cone x₀ H j0 j1 H0 H1 A-is-J-null
+    = is-null←is-local
+        (is-local-at-deformation-cone
+          (point x₀ , ~refl) H j0 j1 H0 H1 (is-local-fst←is-null A-is-J-null))
+}
+}
+
+\subtree[stt-00U1]{
+\date{2026-04-09}
+\author{fredrikbakke}
+\title{Deformation cone argument for equivalences}
+\taxon{Corollary}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓤} {J : X → Type 𝓙} {Y : Type 𝓥}
+  {f : X → Y}
+  where
+
+  is-equiv←null-deformation-cone
+    : (S@(s , _) : section f)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ s (f x))
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J X
+    → is-equiv f
+  is-equiv←null-deformation-cone s H j0 j1 H0 H1 X-is-J-null
+    = is-equiv←local-deformation-cone
+        (s)
+        (λ (x , t) → H x t)
+        (λ x → (x , j0 x))
+        (λ x → (x , j1 x))
+        (H0)
+        (H1)
+        (~refl)
+        (is-local-fst←is-null X-is-J-null)
+}
 }
 
 \subtree[stt-00L9]{
@@ -523,7 +620,6 @@ If a type is null at a family #{X}, and for each #{i} also null at a family
 #{\sum_{(x : X_i)} Y_{i,x}}.
 }
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
@@ -534,20 +630,19 @@ module _
     → is-null X A
     → ((i : I) → is-null (Y i) A)
     → is-null (λ i → Σ (X i) (Y i)) A
-  is-null-at-Σ {X = X} {Y = Y} Xnull Ynull i
+  is-null-at-Σ {X = X} {Y = Y} X-null Y-null i
     = 3-for-2
         (curry-is-equiv)
-        (is-equiv-∘ (postcomp-Π-equiv λ {x} → Ynull i x) (Xnull i))
+        (is-equiv-∘ (postcomp-Π-equiv λ {x} → Y-null i x) (X-null i))
 
   is-null-at-×
     : {X : I → Type 𝓤} {Y : I → Type 𝓥} {A : Type 𝓦}
     → is-null X A
     → is-null Y A
     → is-null (λ i → X i × Y i) A
-  is-null-at-× {X = X} {Y = Y} Xnull Ynull
-    = is-null-at-Σ Xnull (λ i _ → Ynull i)
+  is-null-at-× {X = X} {Y = Y} X-null Y-null
+    = is-null-at-Σ X-null (λ i _ → Y-null i)
 }
-%```
 }
 
 \subtree[stt-00LB]{
@@ -561,7 +656,6 @@ If a type is null at #{C} and local at #{f : A \to B}, then it is null at any
 pushout #{B \amalg_A C}.
 }
 
-%```agda
 \agda{
 module _
   {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
@@ -574,14 +668,13 @@ module _
     → is-null C X
     → is-local f X
     → is-null (λ i → (Pushout (f i) (g i))) X
-  is-null-at-pushout' {X = X} Cnull floc i
+  is-null-at-pushout' {X = X} C-null floc i
     = 3-for-2
         (is-equiv-∘
           (pullback-equiv₁ {f = precomp X (g i)} (floc i))
-          (is-equiv-∘ (precomp-cocone≃pb ._≃_.has-is-eqv) Pushout-is-pushoutω))
-        (Cnull i)
+          (is-equiv-∘ (precomp-cocone≃pb' ._≃_.fwd-is-equiv) Pushout-has-up-pushout))
+        (C-null i)
 }
-%```
 }
 
 \subtree[stt-00GD]{
@@ -596,7 +689,6 @@ Let #{P_i} be a family of propositions, and let #{\mathcal{S}} be a
 #{P_i}. Then the type of #{P}-null types in #{\mathcal{S}} is again #{P}-null.
 }
 
-%```agda
 \agda{
 Null-in-gSubU
   : {α : Level → Level} {𝓘 𝓤 : Level} {I : Type 𝓘}
@@ -611,11 +703,11 @@ Null-in-gSubU-is-null←is-prop
     {P : I → Type 𝓤} {S : gSubU α}
   → ((i : I) → is-prop (P i))
   → ( {𝓦 : Level} (i : I) {B : P i → Type 𝓦}
-      → (∀ a → (B a) ∈ gSubU.S S)
-      → (Π (P i) B) ∈ gSubU.S S)
+  → (∀ a → (B a) ∈ gSubU.S S)
+  → (Π (P i) B) ∈ gSubU.S S)
   → is-null P (Null-in-gSubU P S 𝓥)
 Null-in-gSubU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-prop-P SΠ i
-  = is-equiv←qiso qiso where
+  = is-equiv←qinv qinv where
   U = Null-in-gSubU P S 𝓥
   SU = gSubU.S S
 
@@ -624,20 +716,19 @@ Null-in-gSubU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-p
   is-in-SU-and-is-null-is-prop X
     = ×-is-prop (∈-is-prop SU X) (is-null-is-prop X)
 
-  qiso : quasi-iso (const U (P i))
-  qiso .fst f
+  qinv : quasi-inv (const: U (P i))
+  qinv .fst f
     = ( Π (P i) (fst ∘ f)
       , SΠ i (λ a → snd (f a) .fst)
       , Π-is-null P (λ a → snd (f a) .snd))
-  qiso .snd .fst (X , X∈S , Xnull)
-    = Σ-path→ (ua (null≃ Xnull i e⁻¹) , is-in-SU-and-is-null-is-prop _ _ _)
-  qiso .snd .snd f
+  qinv .snd .fst (X , X∈S , X-null)
+    = Σ-path→ (ua (null≃ X-null i e⁻¹) , is-in-SU-and-is-null-is-prop _ _ _)
+  qinv .snd .snd f
     = funext→ λ a → Σ-path→
       ( ua (mk≃ (ev a)
                 (sing-evᵈ-is-equiv global-funext (mk-singl a (is-prop-P i a))))
       , is-in-SU-and-is-null-is-prop _ _ _)
 }
-%```
 }
 
 \subtree[stt-00IS]{
@@ -650,7 +741,6 @@ Null-in-gSubU-is-null←is-prop {𝓤 = 𝓤} {𝓥 = 𝓥} {P = P} {S = S} is-p
 For a family of propositions #{P_i}, the type of #{P}-null types is itself #{P}-null.
 }
 
-%```agda
 \agda{
 Null-U
   : {𝓘 𝓤 : Level}
@@ -673,5 +763,4 @@ Null-U-is-null←is-prop {𝓥 = 𝓥} {P = P} is-prop-P
       (is-prop-P)
       (λ _ _ → tt)
 }
-%```
 }

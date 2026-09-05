@@ -86,20 +86,22 @@ module _
   Gl-0 : ∀ b → Gl F G α (b , i0) → F b
   Gl-0 b = fst ∘ ev refl ∘ snd
 
+  Gl-0≃ : ∀ b → Gl F G α (b , i0) ≃ F b
+  Gl-0≃ b
+    = Σ-snd-≃ (λ _ → sing-UP≃ global-funext (mk-singl refl (J-set! _ refl)))
+    ∙e total≃total-fibre _
+
   Gl-0-is-equiv : is-fibrewise-equiv Gl-0
-  Gl-0-is-equiv b
-    = is-equiv-∘
-        (total≃total-fibre _ ._≃_.fwd-is-equiv)
-        (is-total-equiv←is-fibrewise-equiv
-          (λ _
-           → sing-ev-is-equiv global-funext
-               (mk-singl refl (J-set! _ refl))))
+  Gl-0-is-equiv = _≃_.fwd-is-equiv ∘ Gl-0≃
 
   Gl-1 : ∀ b → Gl F G α (b , i1) → G b
   Gl-1 b = fst
 
+  Gl-1≃ : ∀ b → Gl F G α (b , i1) ≃ G b
+  Gl-1≃ b = Σ-singleton (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+
   Gl-1-is-equiv : is-fibrewise-equiv Gl-1
-  Gl-1-is-equiv b = singleton-fst-is-equiv (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+  Gl-1-is-equiv = _≃_.fwd-is-equiv ∘ Gl-1≃
 }
 
 \p{We may also define a map from
@@ -115,11 +117,8 @@ module _
   Gl-map b = total-map (λ a → precomp-Π _ (¡ ∘ 0≠1 ∘ sym))
 
   Gl-map-agrees : ∀ b → Arrow-equiv (Gl-map b) (α b)
-  Gl-map-agrees b .fst .Arrow-Π.top  = Gl-0 F G α b
-  Gl-map-agrees b .fst .Arrow-Π.bot  = Gl-1 F G α b
-  Gl-map-agrees b .fst .Arrow-Π.comm = sym ∘ snd ∘ ev refl ∘ snd
-  Gl-map-agrees b .snd .fst = Gl-0-is-equiv F G α b
-  Gl-map-agrees b .snd .snd = Gl-1-is-equiv F G α b
+  Gl-map-agrees b
+    = mk-arr-equiv (Gl-0≃ F G α b) (Gl-1≃ F G α b) (sym ∘ snd ∘ ev refl ∘ snd)
 }
 }
 
@@ -405,30 +404,11 @@ module _
           (tr-cov-hom {P = Gl X Y α ∘ (b ,_)}
             (Gl∘-is-covariant (b ,_) X Y α Xc Yc) 0≤1)
           (α b)
-  tr-Gl-0≤1H α Xc Yc b .fst .Arrow-Π.top = Gl-0 _ _ α b
-  tr-Gl-0≤1H α Xc Yc b .fst .Arrow-Π.bot = Gl-1 _ _ α b
-  tr-Gl-0≤1H α Xc Yc b .fst .Arrow-Π.comm  x
-    = ap fst (tr-hom-Gl α Xc Yc b x) ∙ sym (x .snd refl .snd)
-  tr-Gl-0≤1H α Xc Yc b .snd .fst = Gl-0-is-equiv _ _ α b
-  tr-Gl-0≤1H α Xc Yc b .snd .snd = Gl-1-is-equiv _ _ α b
-
-  tr-Gl-0≤1-map
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-        (Xc : is-covariant X) (Yc : is-covariant Y)
-        (b : B)
-      → Arrow-map
-          (tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_))
-          (α b)
-  tr-Gl-0≤1-map α Xc Yc b .Arrow-Π.top = Gl-0 _ _ α b
-  tr-Gl-0≤1-map α Xc Yc b .Arrow-Π.bot = Gl-1 _ _ α b
-  tr-Gl-0≤1-map α Xc Yc b .Arrow-Π.comm x@(y , p)
-    = (fst ∘ tr-cov {P = Gl _ _ α} (Gl-is-covariant _ _ α Xc Yc) (b ,_)) x
-    ＝⟨ ap fst (tr-Gl α Xc Yc b x) ⟩
-      x .fst
-    ＝⟨ sym (p refl .snd) ⟩
-      α b (p refl .fst)
-    ∎
+  tr-Gl-0≤1H α Xc Yc b
+    = mk-arr-equiv
+        (Gl-0≃ _ _ α b)
+        (Gl-1≃ _ _ α b)
+        λ x → ap fst (tr-hom-Gl α Xc Yc b x) ∙ sym (x .snd refl .snd)
 
   tr-Gl-0≤1
     : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
@@ -438,17 +418,25 @@ module _
       → Arrow-equiv
           (tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_))
           (α b)
-  tr-Gl-0≤1 α Xc Yc b .fst = tr-Gl-0≤1-map α Xc Yc b
-  tr-Gl-0≤1 α Xc Yc b .snd .fst = Gl-0-is-equiv _ _ α b
-  tr-Gl-0≤1 α Xc Yc b .snd .snd = Gl-1-is-equiv _ _ α b
+  tr-Gl-0≤1 α Xc Yc b
+    = mk-arr-equiv
+        (Gl-0≃ _ _ α b)
+        (Gl-1≃ _ _ α b)
+        (λ x@(y , p)
+         → (fst ∘ tr-cov {P = Gl _ _ α} (Gl-is-covariant _ _ α Xc Yc) (b ,_)) x
+         ＝⟨ ap fst (tr-Gl α Xc Yc b x) ⟩
+           x .fst
+         ＝⟨ sym (p refl .snd) ⟩
+           α b (p refl .fst)
+         ∎)
 
   total-tr-cov-section
     : ∀ (x : Cov-Δ¹-bundle (𝓘 ⊔ 𝓥) B)
       → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (total-tr-cov (total-tr-cov-inv x)) x
   total-tr-cov-section ((X , _) , (Y , _) , F) .fst b
-    = mk≃ (Gl-0 X Y F b) (Gl-0-is-equiv X Y F b)
+    = Gl-0≃ X Y F b
   total-tr-cov-section ((X , _) , (Y , _) , F) .snd .fst b
-    = mk≃ (Gl-1 X Y F b) (Gl-1-is-equiv X Y F b)
+    = Gl-1≃ X Y F b
   total-tr-cov-section ((X , Ac) , (Y , Bc) , F) .snd .snd b
     = tr-Gl-0≤1 {X} {Y} F Ac Bc b .fst .Arrow-map.comm
 }
@@ -505,11 +493,11 @@ module _
     : ∀ b → is-equiv (Gl←cov-fam (b , i0))
   Gl←cov-fam-is-equiv-at-0 b
     = 3-for-2
-        (Gl-0-is-equiv
-           (F ∘ (_, i0))
-           (F ∘ (_, i1))
-           (λ b → tr-cov {P = F} Fc (b ,_))
-           b)
+        (Gl-0≃
+          (F ∘ (_, i0))
+          (F ∘ (_, i1))
+          (λ b → tr-cov {P = F} Fc (b ,_))
+          b ._≃_.fwd-is-equiv)
         id-is-equiv
 
   Gl←cov-fam-is-equiv-at-1
@@ -517,11 +505,11 @@ module _
   Gl←cov-fam-is-equiv-at-1 b
     = 3-for-2~
         (tr-cov-idH~ (F ∘ (b ,_)) (Fbc b) (Δ¹-hom←≤ 1-top) (Δ¹-hom-≤-refl 1-top) h⁻¹)
-        (Gl-1-is-equiv
-           (F ∘ (_, i0))
-           (F ∘ (_, i1))
-           (λ b → tr-cov {P = F} Fc (b ,_))
-           b)
+        (Gl-1≃
+          (F ∘ (_, i0))
+          (F ∘ (_, i1))
+          (λ b → tr-cov {P = F} Fc (b ,_))
+          b ._≃_.fwd-is-equiv)
         id-is-equiv
 
 module _

@@ -4,7 +4,6 @@
 \taxon{Module}
 \import{stt-macros}
 
-
 \transclude{stt-00AB}
 
 \agda{
@@ -12,23 +11,36 @@ open import Foundations.Universes
 open import Foundations.Empty
 open import Foundations.Sigma
 open import Foundations.Singletons
+open import Foundations.Fin
 
 open import Algebra.Lattice
 
 open import Synthetic.Tiny
 import Synthetic.Directedness
 import Synthetic.Cubes
+import Synthetic.Categories.Precategories
+import Synthetic.Hom
+import Synthetic.Triangles
+
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
 
 open import Modalities.Cohesion.Continuity
 }
 
 \agda{
 module Synthetic.Categories.Spaces
-  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (open Synthetic.Directedness Δ¹ I)
   (open Synthetic.Cubes Δ¹ i0 i1)
-  (@♭ Δ¹-directed : Synthetic.Directedness.Δ¹-is-directed Δ¹ I)
+  (@♭ Δ¹-directed : Δ¹-is-directed)
+  (open Synthetic.Categories.Precategories Δ¹ I)
+  (open Synthetic.Hom Δ¹ i0 i1)
+  (open Synthetic.Triangles Δ¹ I)
+  (let @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I)
+  (let module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²)
+  (let module I[x] = Lattice (Free-Lattice I I-distr))
+
   (@♭ 0≠1 : i0 ≠ i1)
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
@@ -38,6 +50,15 @@ module Synthetic.Categories.Spaces
   (@♭ ♭Δ¹-ind
     : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
       → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
+  -- ♭Δ²-ind should follow from Δ¹
+  (@♭ ♭Δ²-ind
+    : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤)
+      → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
+      → (@♭ x : Δ²) → P x .fst)
+  -- The following two assumptions follow from quasicoherence, but this fact is not
+  -- yet formalised
+  (@♭ Δ¹-is-segal : is-segal Δ¹)
+  (@♭ Δ²-is-coskeletal : ∀ {i j : Δ²} → is-prop (Hom Δ² i j))
   where
 
 open import Axioms.UF
@@ -61,19 +82,25 @@ open import Ergonomics.Auto
 open import Ergonomics.Extensionality
 
 open import Core.Arrows
+open import Core.CartesianSquares
 open import Core.ArrowEquiv
+open import Core.Cube
+open import Core.CanonicalPushouts
 open import Core.PullbackPowers
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.FunctorialityPullbacks
+open import Core.FunctorialityPushouts
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
-open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I
 open import Synthetic.Categories.DirectedGlueing Δ¹ I 0≠1 Δ¹-directed
+open import Synthetic.Categories.HornGlueing
+  Δ¹ I I-distr 0≠1 Δ¹-directed Δ¹-is-segal Δ²-is-coskeletal
 open import Synthetic.Categories.EquivCovariantFamilies Δ¹ I
 }
 }
@@ -340,7 +367,7 @@ Cov-Nat-is-equiv {𝓤} f g α
                    (UFib-transport (uncurry (fst ∘ σ)) )
                    (UFib-transport (uncurry (fst ∘ snd ∘ σ)))
                    (uncurry (snd ∘ snd ∘ σ))
-                   (λ b i → ♭-map-is-equiv (x b i))
+                   (λ b i → is-♭-equiv←is-equiv (x b i))
                    (c , i)))))
          (f , g , α))
 }
@@ -357,7 +384,7 @@ module _ where
   SpaceΣ 𝓤 = Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)
 
   SpaceΣ-Path
-    : ∀ {@♭ 𝓤} (x y : (Σ[ A B ∶ Space 𝓤 ] (Carrier A → Carrier B)))
+    : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤)
       → Type 𝓤
   SpaceΣ-Path (A , B , f) (X , Y , g)
     = Σ[ e ∶ A .Carrier ≃ X .Carrier ] Σ[ p ∶ B .Carrier ≃ Y .Carrier ]
@@ -396,6 +423,18 @@ module SpacePath
     SpaceΣ-IdS .Identity-system.IdS←Id {a = A} refl = SpaceΣ-Path-refl A
     SpaceΣ-IdS .Identity-system.IdS←Id-is-equiv x
       = fundamental-Id _ (SpaceΣ-Path-is-torsorial x) _
+
+  SpaceΣ-Id→
+    : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤) → (p : SpaceΣ-Path x y) → x ＝ y
+  SpaceΣ-Id→ x y p = ext! p
+
+  opaque
+    ap-fst-SpaceΣ-Id
+      : ∀ {@♭ 𝓤} (x y : SpaceΣ 𝓤) → (p : SpaceΣ-Path x y)
+          → ap fst (SpaceΣ-Id→ x y p) ＝ ext! (p .fst)
+    ap-fst-SpaceΣ-Id x y = IdSJ {a = x}
+      (λ (y , p) → ap fst (SpaceΣ-Id→ x y p) ＝ ext! (p .fst))
+      (ap (ap fst) ext-Id₀ ∙ sym ext-Id₀)
 }
 }
 
@@ -403,7 +442,8 @@ module SpacePath
 \taxon{Lemma}
 
 \p{There is a map ##{(\Gamma \to \Sigma_{X, Y : \mathcal{S}} (X \to Y)) \to
-\Sigma_{X, Y : \textrm{LFib}_\Gamma} (X \to Y)} given by the fact #{\mathcal{S}
+\Sigma_{X, Y : \textrm{LFib}_\Gamma} (X \to Y)} (where the latter type is the type of
+[covariant #{Δ¹}-bundles]() over #{Γ}) given by the fact #{\mathcal{S}
 \to \UU} is a covariant type family. Because #{\mathcal{S}} is the universal such
 family, this map is a #{\flat}-equivalence.}
 
@@ -426,39 +466,18 @@ module CovBundle
     ∘ Σ-Π-swap _ _
 
   Cov-bundle←SpaceΣ-is-♭-equiv
-    : ∀ {@♭ 𝓥} → is-equiv (♭-map (Cov-bundle←SpaceΣ {𝓥}))
+    : ∀ {@♭ 𝓥} → is-♭-equiv (Cov-bundle←SpaceΣ {𝓥})
   Cov-bundle←SpaceΣ-is-♭-equiv {𝓥}
-    = src-is-equiv←Arrow-equiv
-        aeq
-        (map-Σ-is-equiv
+    = is-♭-equiv-∘
+        (map-Σ-is-♭-equiv _ _
           UP-UFib
-          (♭-ind
-            (λ x
-             → map-Σ-is-equiv
+          λ _
+           → is-♭-equiv-∘
+               (map-Σ-is-♭-equiv _ _
                  UP-UFib
-                 (♭-ind (λ _ → id-is-equiv)))))
-    where
-    open Space
-
-    bot-map≃
-      : ∀ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : X → X → Type 𝓥}
-        → ⟨♭| Σ₂ X Y ⟩ ≃ Σ[♭ a b ∶ X ] ⟨♭| Y a b ⟩
-    bot-map≃ = ♭-commΣ _ e⁻¹ ∙e Σ-snd-≃ (♭-ind λ _ → ♭-commΣ _ e⁻¹)
-
-    aeq
-      : Arrow-equiv
-          {X = Σ[♭ X Y ∶ (Γ → Space 𝓥)]
-                ⟨♭| fibrewise-map (Carrier ∘ X) (Carrier ∘ Y) ⟩}
-          {Y = Σ[♭ X Y ∶ (Σ (Γ → Type 𝓥) is-covariant) ]
-                 ⟨♭| fibrewise-map (fst X) (fst Y) ⟩}
-          (♭-map Cov-bundle←SpaceΣ)
-          (map-Σ (♭-map UFib-transport)
-                 (♭-ind (λ _ → map-Σ (♭-map UFib-transport) (♭-ind (λ _ → id)))))
-    aeq
-      = mk-arr-equiv
-          (♭≃ (Σ-→-swap≃ _ _ ∙e Σ-snd-≃ (λ _ → Σ-Π-swap≃ _ _)) ∙e bot-map≃)
-          (bot-map≃)
-          (λ where (mod♭ f) → refl)
+                 λ _ → is-♭-equiv←is-equiv id-is-equiv)
+               (is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _))))
+        (is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))
 }
 }
 
@@ -478,23 +497,34 @@ transport.}
 tr-𝓢 : ∀ {@♭ 𝓤} → (f : Δ¹ → Space 𝓤) → Space.Carrier (f i0) → Space.Carrier (f i1)
 tr-𝓢 = tr-cov {P = Space.Carrier} Space-π-is-covariant
 
+opaque
+  tr-𝓢-unique
+    : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤)
+        {F : Space.Carrier (f i0) → Space.Carrier (f i1)}
+      → ∀ x → (Homᵈ (Space.Carrier ∘ f) x (F x))
+      → tr-𝓢 f x ＝ F x
+  tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
+
 tr-𝓢-hom
-  : ∀ {@♭ 𝓤} {A B : Space 𝓤}
-    → Hom (Space 𝓤) A B → Space.Carrier A → Space.Carrier B
-tr-𝓢-hom = tr-cov-hom {P = Space.Carrier} Space-π-is-covariant
+  : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (F : A → Space 𝓥)
+      {x y} (f : Hom A x y)
+    → Space.Carrier (F x) → Space.Carrier (F y)
+tr-𝓢-hom F = tr-cov-hom {P = Space.Carrier ∘ F} (UFib-is-fib F)
 
 tr-𝓢-hom:
   : ∀ {@♭ 𝓤} (A B : Space 𝓤)
     → Hom (Space 𝓤) A B → (Space.Carrier A → Space.Carrier B)
-tr-𝓢-hom: A B = tr-𝓢-hom
+tr-𝓢-hom: A B = tr-𝓢-hom id
 {-# INLINE tr-𝓢-hom: #-}
 
-tr-𝓢-unique
-  : ∀ {@♭ 𝓤} (f : Δ¹ → Space 𝓤)
-      {F : Space.Carrier (f i0) → Space.Carrier (f i1)}
-    → ∀ x → (Homᵈ (Space.Carrier ∘ f) x (F x))
-    → tr-𝓢 f x ＝ F x
-tr-𝓢-unique f {F = F} x p = ap fst (Space-π-is-covariant f x .central (F x , p))
+opaque
+  tr-𝓢-hom-unique
+    : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} (F : A → Space 𝓥) {x y : A} (f : Hom A x y)
+        {Ff : Space.Carrier (F x) → Space.Carrier (F y)}
+      → ∀ x → (Hom-over f x (Ff x))
+      → tr-𝓢-hom F f x ＝ Ff x
+  tr-𝓢-hom-unique F f {Ff} x
+    = tr-cov-hom-unique (Space.Carrier ∘ F) (UFib-is-fib F) f x (Ff x)
 }
 
 \p{We then show that the induced map
@@ -505,12 +535,12 @@ is an equivalence.}
 \p{For concision, let #{M := \Sigma_{(X, Y : \mathcal{S})} X \to Y} and
 #{N := \Sigma_{X, Y : \textrm{LFib}_{\Gamma}} X \to Y}.
 By the fact that types separate, it is enough to show that the induced map
-#{\flat(\mathcal{S}^\Gamma) \to \flat(M^{\Gamma})} is an
+#{\flat(\mathcal{S}^{\Delta^1 \times \Gamma}) \to \flat(M^{\Gamma})} is an
 equivalence. We may construct a square:
 
 \quiver{
 \begin{tikzcd}[cramped]
-	{\flat(\mathcal{S}^\Gamma)} && {\flat(\textrm{LFib}_{\Delta^1 \times \Gamma})} \\
+	{\flat(\mathcal{S}^{\Delta^1 \times \Gamma})} && {\flat(\textrm{LFib}_{\Delta^1 \times \Gamma})} \\
 	\\
 	{\flat(M^\Gamma)} && {\flat(N)}
 	\arrow["\sim", from=1-1, to=1-3]
@@ -521,7 +551,7 @@ equivalence. We may construct a square:
 }
 
 where the top equivalence is given by the universal property of #{\mathcal{S}}, and
-the bottom by the equivalence constructed in \ref{stt-00UW}. Finally, the domain of
+the bottom by the equivalence constructed in \ref{stt-00UW}. Finally, the codomain of
 this arrow equivalence is itself an equivalence by \ref{stt-00V5}, where the inverse
 is given by constructing the [directed glueing family](stt-00UY).
 }
@@ -560,7 +590,7 @@ module _
              (total-tr-cov-is-♭-equiv {𝓥} {𝓤}
                (∂Δ¹-cov-Nat-is-equiv cubes-separate ♭Δ¹-ind))) where
     open Space
-    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where
+    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where opaque
 
       ammap
         : Arrow-map
@@ -568,21 +598,14 @@ module _
             (♭-map (total-tr-cov {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
       ammap .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
       ammap .Arrow-Π.bot = ♭-map Cov-bundle←SpaceΣ
-      ammap .Arrow-Π.comm (mod♭ f) = mapply♭ (mod♭ (ext! ⦃ cov-Δ¹-bundle-IdS ⦄
-        ( (λ _ → id≃)
-        , (λ _ → id≃)
-        , (λ _ → ~refl)
-        )))
+      ammap .Arrow-Π.comm (mod♭ f) = refl
 
       ammape
         : Arrow-equiv
             (♭-map (postcomp Γ (total-dua→ {𝓤 ⊔ 𝓘})))
             (♭-map (total-tr-cov  {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
       ammape .fst = ammap
-      ammape .snd .fst
-        = is-equiv-∘
-            (UIdS.UP-UFib √ᵈ-is-prop)
-            (♭-map-is-equiv uncurry-is-equiv)
+      ammape .snd .fst = is-equiv-∘ UP-UFib (is-♭-equiv←is-equiv uncurry-is-equiv)
       ammape .snd .snd = Cov-bundle←SpaceΣ-is-♭-equiv
 }
 
@@ -614,5 +637,230 @@ we immediately get that the canonical fibred map
             (total-dua {𝓤}))
           (A))
 }
+}
+}
+
+\subtree[tot-56BW]{
+\title{#{Δ²}-directed univalence}
+\taxon{Lemma}
+
+\p{Let #{\mathcal{S}_2} denote the type consisting of three spaces #{X, Y, Z},
+together with a pair of maps #{Y \to Z} and #{X \to Y}. The induced map
+#{\mathcal{S}^{\Delta^2} \to \mathcal{S}_2} given by covariant transport is an equivalence.}
+
+\proof{
+We use the fact that [types separate](stt-00NM) so that we may show that for any crisp type
+#{\Gamma}, the induced map #{\flat(\mathcal{S}^{\Delta^2 \times \Gamma}) \to \flat({\mathcal{S}_2}^{\Gamma})}
+is an equivalence. We construct a square as in \ref{stt-00AT} so that we may apply the
+[corresponding fact for \em{closed} left fibrations](tot-L034).
+}
+
+\agda{
+module _
+  (@♭ √ᵈ-is-prop
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (Δ¹ → Γ) → Type 𝓥)
+      → (∀ g → is-prop (A g)) → ∀ g → is-prop (√ᵈ A g))
+  where
+  open SpacePath √ᵈ-is-prop
+  open UIdS √ᵈ-is-prop
+  open CovBundle √ᵈ-is-prop
+
+  Space²Σ : ∀ (@♭ 𝓥) → Type (lsuc (𝓘 ⊔ 𝓥))
+  Space²Σ 𝓥
+    = Σ[ X Y Z ∶ Space 𝓥 ]
+      ( (Y .Space.Carrier → Z .Space.Carrier)
+      × (X .Space.Carrier → Y .Space.Carrier))
+
+  tot-dua²→ : ∀ {@♭ 𝓥} → (Δ² → Space 𝓥) → Space²Σ 𝓥
+  tot-dua²→ F = (F 0 , F 1 , F 2 , tr-𝓢-hom F Δ²-1≤2 , tr-𝓢-hom F Δ²-0≤1)
+
+  Cov-Δ²-bundle←Space
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} → (Γ → Space²Σ 𝓥) → Cov-Δ²-bundle Γ 𝓥
+  Cov-Δ²-bundle←Space
+    = map-Σ
+        UFib-transport
+        (λ a
+         → map-Σ
+             UFib-transport
+             (λ b
+              → map-Σ
+                  UFib-transport
+                  (λ c → Σ-Π-swap _ _)
+              ∘ Σ-Π-swap _ _ )
+         ∘ Σ-Π-swap _ _)
+    ∘ Σ-Π-swap _ _
+
+  Cov-Δ²-bundle←Space-is-♭-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+      → is-♭-equiv (Cov-Δ²-bundle←Space {𝓤} {𝓥} {Γ})
+  Cov-Δ²-bundle←Space-is-♭-equiv
+    = is-♭-equiv-∘
+       (map-Σ-is-♭-equiv _ _
+         UP-UFib
+         (λ _
+          → is-♭-equiv-∘
+              (map-Σ-is-♭-equiv _ _
+                UP-UFib
+                (λ _
+                 → is-♭-equiv-∘
+                     (map-Σ-is-♭-equiv _ _
+                        UP-UFib
+                        λ _ → is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)) )
+                     (is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))))
+              (is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))))
+       (is-♭-equiv←is-equiv (_≃_.fwd-is-equiv (Σ-Π-swap≃ _ _)))
+
+  tot-dua² : ∀ {@♭ 𝓤} → is-equiv (tot-dua²→ {𝓤 ⊔ 𝓘})
+  tot-dua² {𝓤}
+    = types-separate tot-dua²→
+        (λ {𝓥} {Γ}
+         → src-is-equiv←Arrow-equiv
+             ae
+             (total-tr²-cov-is-♭-equiv {𝓥}{𝓤}
+               (points-Δ²-cov-Nat-is-equiv cubes-separate ♭Δ²-ind))) where
+    open Space
+    module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where opaque
+
+      ae
+        : Arrow-equiv
+            (♭-map (postcomp Γ (tot-dua²→ {𝓤 ⊔ 𝓘})))
+            (♭-map (total-tr²-cov {𝓥} {𝓘 ⊔ 𝓤} {Γ}))
+      ae .fst .Arrow-Π.top = ♭-map UFib-transport ∘ ♭-map uncurry
+      ae .fst .Arrow-Π.bot = ♭-map Cov-Δ²-bundle←Space
+      ae .fst .Arrow-Π.comm (mod♭ x) = refl
+      ae .snd .fst = is-equiv-∘ UP-UFib (is-♭-equiv←is-equiv uncurry-is-equiv)
+      ae .snd .snd = Cov-Δ²-bundle←Space-is-♭-equiv
+}
+}
+
+
+\subtree[tot-YE55]{
+\title{Space is Segal}
+\taxon{Theorem}
+
+\scope{
+\put\transclude/toc{false}
+\subtree[tot-SYEC]{
+\taxon{Proof}
+\p{First note that the type #{\mathcal{S}_2 := \Sigma_{X,Y,Z \colon \mathcal{S}} (Y
+\to Z) \times (X \to Y)} is a pullback of #{\Sigma_{X,Y \colon \mathcal{S}} (X \to
+Y)} with #{\Sigma_{Y,Z \colon \mathcal{S}} (Y \to Z)}. Then we may construct a
+commuting cube as below where, by [directed univalence](stt-00AT) and
+[#{\Delta^2}-directed univalence](tot-56BW), the vertical maps are
+equivalences. \ref{tot-0781} tells us that #{\mathcal{S}} is Segal precisely when
+this top square is cartesian.}
+
+\quiver{
+\begin{tikzcd}
+	{{\mathcal{S}}^{\Delta^2}} &&& {{\mathcal{S}}^{\Delta^1}} && \\
+	\\
+	& {{\mathcal{S}}^{\Delta^1}} &&&& {{\mathcal{S}}} \\
+	{\mathcal{S}_2} &&& {\Sigma_{(X,Y \colon \mathcal{S})} X \to Y} \\
+	\\
+	& {\Sigma_{(X,Y \colon \mathcal{S})} X \to Y} &&&& {\mathcal{S}}
+	\arrow[from=1-1, to=1-4]
+	\arrow[from=1-1, to=3-2]
+	\arrow["\sim"', from=1-1, to=4-1]
+	\arrow[from=1-4, to=3-6]
+	\arrow["\sim"', from=1-4, to=4-4]
+	\arrow[from=3-2, to=3-6]
+	\arrow["\sim"', from=3-2, to=6-2]
+	\arrow[equals, from=3-6, to=6-6]
+	\arrow[from=4-1, to=4-4]
+	\arrow[from=4-1, to=6-2]
+	\arrow[from=4-4, to=6-6]
+	\arrow[""{name=0, anchor=center, inner sep=0}, from=6-2, to=6-6]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=45}, draw=none, from=4-1, to=0]
+\end{tikzcd}
+}
+}
+}
+
+\agda{
+  SpaceΛ₁²Σ-cospan : ∀ (@♭ 𝓥) → Cospan (lsuc (𝓘 ⊔ 𝓥)) (lsuc (𝓘 ⊔ 𝓥)) (lsuc (𝓘 ⊔ 𝓥))
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Centre = Space 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Left = SpaceΣ 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.left = fst ∘ snd
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.Right = SpaceΣ 𝓥
+  SpaceΛ₁²Σ-cospan 𝓥 .Cospan.right = fst
+
+  Space²-cone : ∀ {@♭ 𝓤} → Cone (SpaceΛ₁²Σ-cospan 𝓤) (Space²Σ 𝓤)
+  Space²-cone .Cone.i (A , B , C , f , g) = (A , B , g)
+  Space²-cone .Cone.j (A , B , C , f , g) = (B , C , f)
+  Space²-cone .Cone.filler = ~refl
+
+  private
+    bot-sq
+      : ∀ {@♭ 𝓤} → Arrow-map (Cone.j Space²-cone) (Cospan.left (SpaceΛ₁²Σ-cospan 𝓤))
+    bot-sq {𝓤} = Arrow-map←Cone (Space²-cone {𝓤})
+
+    bot-sq-is-cartesian
+      : ∀ {@♭ 𝓤} → is-cartesian (bot-sq {𝓤})
+    bot-sq-is-cartesian = is-cartesian←is-pullback bot-sq (is-equiv←qinv
+      ( (λ {((b , c , g) , (a , .b , f) , refl) → a , b , c , g , f})
+      , ~refl
+      , λ {(_ , _ , refl) → refl}))
+
+  Space²-is-pullback : ∀ {@♭ 𝓥} → is-pullback (Space²-cone {𝓥})
+  Space²-is-pullback = is-equiv←qinv
+    ( (λ {((a , b , g) , (.b , c , f) , refl) → a , b , c , f , g})
+    , ~refl
+    , λ {(_ , _ , refl) → refl})
+}
+
+\agda{
+  opaque
+    unfolding tr-cov-hom
+    Space²-cube
+      : ∀ (@♭ 𝓥)
+        → Cube
+            (precomp-square Λ[2,1]-Δ²-square (Space 𝓥))
+            (bot-sq {𝓥})
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.top = tot-dua²→
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.bot = total-dua→
+    Space²-cube 𝓥 .Cube.left .Arrow-Π.comm F = SpaceΣ-Id→ _ _
+      ( tr≃ (Space.Carrier ∘ F) Δ²-refl
+      , tr≃ (Space.Carrier ∘ F) Δ²-refl
+      , λ x
+        → tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢 (F ∘ δ₀²) x)
+        ＝⟨⟩
+          tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢-hom F (λhom δ₀²) x)
+        ＝⟨ tr-cov-hom-Idᵈ (Space.Carrier ∘ F) (UFib-is-fib F)
+              Δ²-refl Δ²-refl (λhom δ₀²) Δ²-1≤2
+              ( (λ _ → Δ²-refl)
+              , (mk-square (Δ²-is-set _ _ _ _)
+              , (mk-square (Δ²-is-set _ _ _ _)))) x ⟩
+          (tr-𝓢-hom F Δ²-1≤2 (tr (Space.Carrier ∘ F) Δ²-refl x))
+        ∎)
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.top = total-dua→
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.bot = ev tt
+    Space²-cube 𝓥 .Cube.right .Arrow-Π.comm = ~refl
+    Space²-cube 𝓥 .Cube.comm .fst = ~refl
+    Space²-cube 𝓥 .Cube.comm .snd .fst = ~refl
+    Space²-cube 𝓥 .Cube.comm .snd .snd a = ap (_∙ refl) (∙-reflr _
+      ∙ ap-fst-SpaceΣ-Id _ _ _
+      ∙ (ext! (tr≃ (Space.Carrier ∘ a) Δ²-refl)
+      ＝⟨ ap ext! (ext! (λ _ → tr∘ Space.Carrier a Δ²-refl)) ⟩
+        ext! (tr≃ Space.Carrier (ap a Δ²-refl))
+      ＝⟨ UFib-tr (ap a Δ²-refl) ⟩
+         ap a Δ²-refl
+      ＝⟨ ap (ap a) (Δ²-is-set _ _ _ _) ⟩
+         ap a (sym Δ²-refl)
+      ＝⟨ sym (happly (funext-redex) tt) ⟩
+         happly (funext→ (λ x → ap a (sym Δ²-refl))) tt ∎))
+
+    Space²-cube-is-equiv
+      : ∀ {@♭ 𝓥} → is-Cube-equiv (Space²-cube (𝓥 ⊔ 𝓘))
+    Space²-cube-is-equiv {𝓥} .fst = (tot-dua² {𝓥 ⊔ 𝓘} , total-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘})
+    Space²-cube-is-equiv {𝓥} .snd = (total-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘} , unit-ev-is-equiv)
+
+  Space-is-segal
+    : ∀ {@♭ 𝓤} → is-segal (Space (𝓤 ⊔ 𝓘))
+  Space-is-segal {𝓤}
+    = is-segal←is-cartesian
+        (front-cartesian←equiv-cube
+          (Space²-cube (𝓤 ⊔ 𝓘))
+          (Space²-cube-is-equiv {𝓤 ⊔ 𝓘})
+          bot-sq-is-cartesian)
 }
 }

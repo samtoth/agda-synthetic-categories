@@ -83,13 +83,25 @@ module _
   (α : ∀ b → F b → G b)
   where
 
+  Gl-0 : ∀ b → Gl F G α (b , i0) → F b
+  Gl-0 b = fst ∘ ev refl ∘ snd
+
   Gl-0≃ : ∀ b → Gl F G α (b , i0) ≃ F b
   Gl-0≃ b
     = Σ-snd-≃ (λ _ → sing-UP≃ global-funext (mk-singl refl (J-set! _ refl)))
     ∙e total≃total-fibre _
 
+  Gl-0-is-equiv : is-fibrewise-equiv Gl-0
+  Gl-0-is-equiv = _≃_.fwd-is-equiv ∘ Gl-0≃
+
+  Gl-1 : ∀ b → Gl F G α (b , i1) → G b
+  Gl-1 b = fst
+
   Gl-1≃ : ∀ b → Gl F G α (b , i1) ≃ G b
   Gl-1≃ b = Σ-singleton (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+
+  Gl-1-is-equiv : is-fibrewise-equiv Gl-1
+  Gl-1-is-equiv = _≃_.fwd-is-equiv ∘ Gl-1≃
 }
 
 \p{We may also define a map from
@@ -142,6 +154,16 @@ opaque
               fst
               (fibre-is-covariant _ _ Fc Gc α))
             snd))
+
+Gl∘-is-covariant
+  : ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} (f : A → B × Δ¹)
+      (F : B → Type 𝓥) (G : B → Type 𝓥)
+      (α : ∀ b → F b → G b)
+    → is-covariant F → is-covariant G
+    → is-covariant (Gl F G α ∘ f)
+Gl∘-is-covariant f F G α Fc Gc
+  = covariant-base-change {P = Gl F G α} f
+      (Gl-is-covariant F G α Fc Gc)
 }
 }
 
@@ -213,7 +235,7 @@ be the data consisting of:
 
 \ul{
 \li{A pair of covariant type families #{F} and #{G} over #{B}}
-\li{A fibrewise map #{\alpha_{(b,i)} : F(b,i) \to G(b,i)}}
+\li{A fibrewise map #{\alpha_{b} : F(b) \to G(b)}}
 }
 }
 
@@ -323,7 +345,10 @@ module _
 \title{Left inverse}
 \taxon{Lemma}
 
-\p{Under no assumptions, this map is a left inverse.}
+\p{Under no assumptions, this map is a left inverse. I.e for covariant type families
+#{X} and #{Y} with a fibrewise map #{\alpha} between them, there is an equivalence
+of families of arrows between transporting over the [glueing family](stt-00UY) of
+#{\alpha} and #{\alpha} itself.}
 
 \agda{
 module _
@@ -346,9 +371,64 @@ module _
       → tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_)
       ~ Gl-map α b
   tr-Gl α Xc Yc b x
-    = ap fst
-         (Gl-is-covariant _ _ α Xc Yc (b ,_) x
-           .central (Gl-map α b x , tr-Gl-hom α b x))
+    = tr-cov-unique
+        (Gl-is-covariant _ _ α Xc Yc)
+        (b ,_)
+        (Gl-map α b)
+        x
+        (tr-Gl-hom α b x)
+
+  tr-hom-Gl
+    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
+        (α : ∀ b → X b → Y b)
+        (Xc : is-covariant X) (Yc : is-covariant Y)
+      → ∀ b
+      → tr-cov-hom {P = Gl X Y α ∘ (b ,_)}
+          (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
+          0≤1
+      ~ Gl-map α b
+  tr-hom-Gl {X} {Y} α Xc Yc b x
+    = tr-cov-hom-unique (Gl X Y α ∘ (b ,_))
+        (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
+        0≤1
+        x
+        (Gl-map α b x)
+        (tr-Gl-hom α b x)
+
+  tr-Gl-0≤1H
+    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
+        (α : ∀ b → X b → Y b)
+        (Xc : is-covariant X) (Yc : is-covariant Y)
+        (b : B)
+      → Arrow-equiv
+          (tr-cov-hom {P = Gl X Y α ∘ (b ,_)}
+            (Gl∘-is-covariant (b ,_) X Y α Xc Yc) 0≤1)
+          (α b)
+  tr-Gl-0≤1H α Xc Yc b
+    = mk-arr-equiv
+        (Gl-0≃ _ _ α b)
+        (Gl-1≃ _ _ α b)
+        λ x → ap fst (tr-hom-Gl α Xc Yc b x) ∙ sym (x .snd refl .snd)
+
+  tr-Gl-0≤1
+    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
+        (α : ∀ b → X b → Y b)
+        (Xc : is-covariant X) (Yc : is-covariant Y)
+        (b : B)
+      → Arrow-equiv
+          (tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_))
+          (α b)
+  tr-Gl-0≤1 α Xc Yc b
+    = mk-arr-equiv
+        (Gl-0≃ _ _ α b)
+        (Gl-1≃ _ _ α b)
+        (λ x@(y , p)
+         → (fst ∘ tr-cov {P = Gl _ _ α} (Gl-is-covariant _ _ α Xc Yc) (b ,_)) x
+         ＝⟨ ap fst (tr-Gl α Xc Yc b x) ⟩
+           x .fst
+         ＝⟨ sym (p refl .snd) ⟩
+           α b (p refl .fst)
+         ∎)
 
   total-tr-cov-section
     : ∀ (x : Cov-Δ¹-bundle (𝓘 ⊔ 𝓥) B)
@@ -357,13 +437,8 @@ module _
     = Gl-0≃ X Y F b
   total-tr-cov-section ((X , _) , (Y , _) , F) .snd .fst b
     = Gl-1≃ X Y F b
-  total-tr-cov-section ((X , Ac) , (Y , Bc) , F) .snd .snd b x@(y , p)
-    = (fst ∘ tr-cov {P = Gl X Y F} (Gl-is-covariant X Y F Ac Bc) (b ,_)) x
-    ＝⟨ ap fst (tr-Gl F Ac Bc b x) ⟩
-      x .fst
-    ＝⟨ sym (p refl .snd) ⟩
-      F b (p refl .fst)
-    ∎
+  total-tr-cov-section ((X , Ac) , (Y , Bc) , F) .snd .snd b
+    = tr-Gl-0≤1 {X} {Y} F Ac Bc b .fst .Arrow-map.comm
 }
 }
 
@@ -442,7 +517,7 @@ module _
   (@♭ crisp-cov-Nat-is-equiv
     : ∀ {@♭ 𝓤} (@♭ F G : Σ (B × Δ¹ → Type 𝓤) is-covariant)
         (@♭ α : ∀ i → F .fst i → G .fst i)
-      → @♭ (∀ (@♭ b : B) (@♭ x) → is-equiv (♭-map (α (b , ∂Δ¹-incl x))))
+      → @♭ (∀ (@♭ b : B) (@♭ x) → is-♭-equiv (α (b , ∂Δ¹-incl x)))
       → is-fibrewise-equiv α)
   where
 
@@ -452,8 +527,8 @@ module _
   Gl←cov-fam-is-equiv FF@(F , Fc)
     = crisp-cov-Nat-is-equiv FF (total-tr-cov-inv {𝓤} {𝓥 ⊔ 𝓘} {B} (total-tr-cov FF))
         (Gl←cov-fam (F , Fc))
-        ( λ { b ∂Δ¹-1 → ♭-map-is-equiv (Gl←cov-fam-is-equiv-at-1 (F , Fc) b)
-            ; b ∂Δ¹-0 → ♭-map-is-equiv (Gl←cov-fam-is-equiv-at-0 (F , Fc) b) })
+        ( λ { b ∂Δ¹-1 → is-♭-equiv←is-equiv (Gl←cov-fam-is-equiv-at-1 (F , Fc) b)
+            ; b ∂Δ¹-0 → is-♭-equiv←is-equiv (Gl←cov-fam-is-equiv-at-0 (F , Fc) b) })
 
   total-tr-cov-retraction
     : ∀ (@♭ F : Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
@@ -467,7 +542,7 @@ module _
 \agda{
   opaque
     total-tr-cov-is-♭-equiv
-      : is-equiv (♭-map (total-tr-cov {𝓤} {𝓥 ⊔ 𝓘} {B}))
+      : is-♭-equiv (total-tr-cov {𝓤} {𝓥 ⊔ 𝓘} {B})
     total-tr-cov-is-♭-equiv = is-equiv←qinv
       ( ♭-map total-tr-cov-inv
       , ♭-ind (λ a → mapply♭ (mod♭ (ext! (λ b → total-tr-cov-retraction a b e⁻¹))))

@@ -82,16 +82,10 @@ hom-fam-is-cov↔is-left-fibration
     ↔ is-left-fibration {A = Coslice X (point x)} fst
 hom-fam-is-cov↔is-left-fibration {X = X} x
   = is-covariant↔is-left-fibration (λ a → Hom X x a)
-  ∙iff right-orthogonal-iff←equiv (λ _ → i0) amap amap-eq where
-  amap : Arrow-map (fst {B = λ c → (i : 𝟙) → Hom X x c})
+  ∙iff right-orthogonal-iff←is-Arrow-equiv (λ _ → i0) (eq .fst) (eq .snd) where
+  eq : Arrow-equiv (fst {B = λ c → (i : 𝟙) → Hom X x c})
                    (fst {B = λ a → Hom X x a})
-  amap .Arrow-map.top = total-map (λ a → ev tt)
-  amap .Arrow-map.bot = id
-  amap .Arrow-map.comm = ~refl
-
-  amap-eq : is-Arrow-equiv amap
-  amap-eq .fst = is-total-equiv←is-fibrewise-equiv (λ a → unit-ev-is-equiv)
-  amap-eq .snd = id-is-equiv
+  eq = mk-arr-equiv (Σ-snd-≃ λ _ → unit-UP≃) id≃ ~refl
 }
 }
 
@@ -129,46 +123,64 @@ the bottom via the universal property of the horn.}
 \closedScope{
 \subtree[stt-00DD]{
 \title{The bottom equivalence}
-\agda{
-char-coslice-lift
-  : ∀ {𝓤} {A : Type 𝓤} x
-    → Arrow-map (point i0) {C = Coslice A (point x)} (fst)
-    → Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (point x)
-char-coslice-lift x (mk-amap top bot comm)
-  = cogap (mk-cocone (top tt .snd tt .Homᵈ.hom)
-                     bot
-                     (λ c → top tt .snd tt .Homᵈ.hom1 ∙ sym (comm c)))
-  , λ _ → Homᵈ.hom0 (top tt .snd tt)
 
-opaque
-  char-coslice-lift-is-equiv
-    : ∀ {𝓤} {A : Type 𝓤} x
-      → is-equiv (char-coslice-lift {A = A} x)
-  char-coslice-lift-is-equiv x = is-equiv←qinv qinv where
-    qinv : quasi-inv (char-coslice-lift x)
-    qinv .fst (a , b) = mk-amap (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
-                                (a ∘ ι₂)
-                                (ap a ∘ sym ∘ glue)
-    qinv .snd .fst (mk-amap top bot comm)
-      = let pth = ( top tt .snd tt .Homᵈ.hom1
-                  , λ i → ( ~refl
-                          , Square-degen-vert _ _ refl
-                          , Square-flatten-hor refl))
-        in Arrow-map-path→
-          ( (λ a → Coslice-path→ pth)
-          , (~refl
-          , λ _ → ap (_∙ ap fst (Coslice-path→ pth))
-                    (ap-sym _ Λ[2,1]-glue ∙ ap sym (pushout-rec-apβ tt))
-                ∙ ap (sym (Homᵈ.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
-                     (Coslice-path-ap-fst pth)
-                ∙ ap (_∙ top tt .snd tt .Homᵈ.hom1) (∙-symsym _ (sym (comm tt)))
-                ∙ ∙.cancell _  (∙-sym' (Homᵈ.hom1 (top tt .snd tt)))
-                               {f = sym (sym (comm tt))}
-                ∙ sym-sym))
-    qinv .snd .snd (a , p)
-      = ext! ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
-                      (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
-             , ~refl)
+\agda{
+module _ {𝓤} {A : Type 𝓤} (x : A) where
+
+  char-coslice-lift
+    : Arrow-map (point i0) {C = Coslice A (point x)} (fst)
+    → Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (point x)
+  char-coslice-lift (mk-amap top bot comm)
+    = cogap
+        (mk-cocone
+          (top tt .snd tt .Homᵈ.hom)
+          (bot)
+          (λ c → top tt .snd tt .Homᵈ.hom1 ∙ sym (comm c)))
+    , (λ _ → Homᵈ.hom0 (top tt .snd tt))
+
+  opaque
+    char-coslice-lift-is-equiv
+      : is-equiv char-coslice-lift
+    char-coslice-lift-is-equiv = is-equiv←qinv qinv where
+      qinv : quasi-inv char-coslice-lift
+      qinv .fst (a , b)
+        = mk-amap
+            (λ _ → _ , (λ _ → mk-hom (a ∘ ι₁) (b tt) refl))
+            (a ∘ ι₂)
+            (ap a ∘ sym ∘ glue)
+      qinv .snd .fst (mk-amap top bot comm)
+        = let
+          pth
+            = ( top tt .snd tt .Homᵈ.hom1
+              , λ i
+                → ( ~refl
+                  , Square-degen-vert _ _ refl
+                  , Square-flatten-hor refl))
+          in Arrow-map-path→
+            ( (λ a → Coslice-path→ pth)
+            , (~refl
+            , λ _
+              → ap
+                  (_∙ ap fst (Coslice-path→ pth))
+                  (ap-sym _ Λ[2,1]-glue ∙ ap sym (pushout-rec-apβ tt))
+              ∙ ap
+                  (sym (Homᵈ.hom1 (top tt .snd tt) ∙ sym (comm tt)) ∙_)
+                  (Coslice-path-ap-fst pth)
+              ∙ ap (_∙ top tt .snd tt .Homᵈ.hom1) (∙-symsym _ (sym (comm tt)))
+              ∙ ∙.cancell _
+                  (∙-sym' (Homᵈ.hom1 (top tt .snd tt)))
+                  {f = sym (sym (comm tt))}
+              ∙ sym-sym))
+      qinv .snd .snd (a , p) = ext!
+        ( sym
+        ∘ pushout-rec-unique _ _ ~refl ~refl
+            (λ _ → ∙-reflr _ ∙ sym (ap sym (ap-sym a _) ∙ sym-sym))
+        , ~refl)
+
+  char-coslice-lift≃
+    : Arrow-map (point i0) {C = Coslice A (point x)} (fst)
+    ≃ Coslice-map {X = Λ[2,1]} (λ _ → ι₁ i0) (point x)
+  char-coslice-lift≃ = mk≃ char-coslice-lift char-coslice-lift-is-equiv
 }
 }
 }
@@ -179,21 +191,19 @@ coslice-is-left↔left-inner-coslice
     → is-left-fibration {A = Coslice A (point x)} fst
     ↔ (is-equiv (Coslice-map-precompose (point x) Λ[2,1]-incl◅∙))
 coslice-is-left↔left-inner-coslice x
-  = src↔tgt-is-equiv←Arrow-equiv (amap , amap-eq) module Cov-hom where
-  amap : Arrow-map (pullback-power (λ _ → i0) (λ r → fst r))
-                   (Coslice-map-precompose (λ _ → x) Λ[2,1]-incl◅∙)
-  amap .Arrow-map.top = join←coslice-map (λ _ → x)
-  amap .Arrow-map.bot = char-coslice-lift x
-  amap .Arrow-map.comm f = ext!
-    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
-          (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
-                              ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
-                              ∙ pushout-rec-apβ _))
-    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
-
-  amap-eq : is-Arrow-equiv amap
-  amap-eq .fst = join←coslice-map-is-equiv (λ _ → x)
-  amap-eq .snd = char-coslice-lift-is-equiv x
+  = src↔tgt-is-equiv←Arrow-equiv
+      (mk-arr-equiv
+        (join≃coslice-map (λ _ → x))
+        (char-coslice-lift≃ x)
+        (λ f → ext!
+          ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+            ( λ a
+              → ap
+                  (_∙ refl)
+                  ( ap-∘ _ _ (glue a)
+                  ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
+                  ∙ pushout-rec-apβ _))
+          , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)))
 
 hom-fam-is-cov↔is-left-segal
   : ∀ {𝓤} {A : Type 𝓤}

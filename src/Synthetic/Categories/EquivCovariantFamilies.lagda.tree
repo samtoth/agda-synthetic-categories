@@ -5,21 +5,7 @@
 
 \agda{
 open import Foundations.Universes
-open import Foundations.Nat
-open import Foundations.Unit
-open import Foundations.Empty
-open import Foundations.Identity
-open import Foundations.Sigma
-open import Foundations.Singletons
-
 open import Algebra.Lattice
-
-open import Synthetic.Tiny
-
-open import Modalities.Cohesion.Flat
-open import Modalities.Cohesion.FlatDiscrete
-open import Modalities.Cohesion.Connectivity
-open import Modalities.Cohesion.Continuity
 
 import Synthetic.Cubes
 
@@ -40,15 +26,24 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatDiscrete
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
 open import Modalities.Cohesion.FlatLex
 open import Modalities.Cohesion.LiftingSquares
 
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Truncation
+open import Modalities.ConnectedMaps
+
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.ArrowRetracts
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Triangles Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
@@ -73,6 +68,115 @@ open import Synthetic.Categories.CovariantFamilies Δ¹ I
 }
 }
 
+\agda{
+retract-sq
+  : Arrow-map (Δ²-point-incl) (∂Δ¹-incl ×₁ ∂Δ¹-incl)
+retract-sq .Arrow-Π.top fzero = (∂Δ¹-0 , ∂Δ¹-0)
+retract-sq .Arrow-Π.top (fsuc fzero) = (∂Δ¹-1 , ∂Δ¹-0)
+retract-sq .Arrow-Π.top (fsuc (fsuc fzero)) = (∂Δ¹-1 , ∂Δ¹-1)
+retract-sq .Arrow-Π.bot = Δ²-retract-Δ¹×Δ¹ .fst
+retract-sq .Arrow-Π.comm fzero = refl
+retract-sq .Arrow-Π.comm (fsuc fzero) = refl
+retract-sq .Arrow-Π.comm (fsuc (fsuc fzero)) = refl
+
+retract-sq-is-retr
+  : retraction-arrow-map retract-sq
+retract-sq-is-retr .fst .Arrow-Π.top (∂Δ¹-1 , ∂Δ¹-1) = 2
+retract-sq-is-retr .fst .Arrow-Π.top (∂Δ¹-1 , ∂Δ¹-0) = 1
+retract-sq-is-retr .fst .Arrow-Π.top (∂Δ¹-0 , ∂Δ¹-1) = 2
+retract-sq-is-retr .fst .Arrow-Π.top (∂Δ¹-0 , ∂Δ¹-0) = 0
+retract-sq-is-retr .fst .Arrow-Π.bot = Δ²-retract-Δ¹×Δ¹ .snd .fst
+retract-sq-is-retr .fst .Arrow-Π.comm (∂Δ¹-1 , ∂Δ¹-1) = Δ²-ext (1-coinit  , refl)
+retract-sq-is-retr .fst .Arrow-Π.comm (∂Δ¹-1 , ∂Δ¹-0) = Δ²-ext (1-coinit' , refl)
+retract-sq-is-retr .fst .Arrow-Π.comm (∂Δ¹-0 , ∂Δ¹-1) = Δ²-ext (1-coinit  , refl)
+retract-sq-is-retr .fst .Arrow-Π.comm (∂Δ¹-0 , ∂Δ¹-0) = Δ²-ext (0-bottom  , refl)
+retract-sq-is-retr .snd .fst fzero = refl
+retract-sq-is-retr .snd .fst (fsuc fzero) = refl
+retract-sq-is-retr .snd .fst (fsuc (fsuc fzero)) = refl
+retract-sq-is-retr .snd .snd .fst = Δ²-retract-Δ¹×Δ¹ .snd .snd
+retract-sq-is-retr .snd .snd .snd _ = Δ²-is-set _ _ _ _
+
+♭-retraction-witness
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ g : B → A}
+    → @♭ (retraction-witness g f)
+    → retraction-witness (♭-map g) (♭-map f)
+♭-retraction-witness ret (mod♭ x) = mapply♭ (mod♭ (ret x))
+
+♭-retraction-arrow-map
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+      {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜} {@♭ g : X → Y}
+      (@♭ F : Arrow-map f g)
+    → @♭ retraction-arrow-map F
+    → retraction-arrow-map (♭Square F)
+♭-retraction-arrow-map F (G , r) .fst = ♭Square G
+♭-retraction-arrow-map F (G , r) .snd .fst = ♭-retraction-witness (r .fst)
+♭-retraction-arrow-map F (G , r) .snd .snd .fst
+  = ♭-retraction-witness (r .snd .fst)
+♭-retraction-arrow-map F (G , r) .snd .snd .snd (mod♭ x)
+  = {!!} ∙ ap♭ (λ x → mapply♭ (mod♭ x)) (r .snd .snd x)
+
+is-♭-connected
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-♭-connected f = is-connected-map (Truncation-gRSubU -1) (♭-map f)
+
+is-♭-connected←retraction-arrow-map
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ C : Type 𝓦} {@♭ D : Type 𝓜}
+      {@♭ f : A → B} {@♭ g : C → D}
+    → (@♭ F : Arrow-map f g)
+    → @♭ retraction-arrow-map F
+    → is-♭-connected g
+    → is-♭-connected f
+is-♭-connected←retraction-arrow-map F Fr gc
+  = is-connected-map←up-connected-map _
+      (up-connected-map←retraction-arrow-map
+        (Truncation-gSubU -1)
+        (♭Square F)
+        (♭-retraction-arrow-map F Fr)
+        (up-connected-map←is-connected-map _ gc))
+  where
+  open gRSubUConnectedCharacterisation (Truncation-gRSubU -1)
+
+×₁-is-♭-connected
+  : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+      {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜} {@♭ g : X → Y}
+    → is-♭-connected f → is-♭-connected g
+    → is-♭-connected (f ×₁ g)
+×₁-is-♭-connected {f = f} {g = g} fc gc
+  = is-connected-map←is-arrow-equiv⁻¹
+      (Truncation-gRSubU -1) Truncation-Σ-closed
+      (♭-×₁ f g .fst) (♭-×₁ f g .snd)
+      (is-connected-map←up-connected-map (♭-map f ×₁ ♭-map g)
+        (×₁-up-connected-map (Truncation-gSubU -1)
+          (up-connected-map←is-connected-map (♭-map f) fc)
+          (up-connected-map←is-connected-map (♭-map g) gc)))
+  where
+  open gRSubUConnectedCharacterisation (Truncation-gRSubU -1)
+
+♭-up-connected-map
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B) → Typeω
+♭-up-connected-map {A = A} {B} f
+  = ∀ {𝓤} (P : @♭ B → Prop 𝓤)
+    → (∀ (@♭ x : A) → P (f x) .fst)
+    → (∀ (@♭ x : B) → P x .fst)
+
+♭-up-connected-map←up-♭-connected-map
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+    → up-connected-map (Truncation-gSubU -1) (♭-map f)
+    → ♭-up-connected-map f
+♭-up-connected-map←up-♭-connected-map up P pf x
+  = is-equiv.bwd
+      (up
+        {U = ♭-ind λ x → P x .fst}
+        (♭-ind λ x → is-truncated←is-prop ((P x) .snd)))
+        (♭-ind pf)
+        (mod♭ x)
+}
+
 \subtree[stt-00UT]{
 \taxon{Corollary}
 
@@ -85,9 +189,8 @@ then a crisp transformation between covariant crisp type families #{F, G} over
 \agda{
 module _
   (@♭ cubes-separate : family-separates □^_)
-  (@♭ ♭Δ¹-ind
-    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
-      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
+  (@♭ ∂Δ¹-♭-connected : is-♭-connected ∂Δ¹-incl)
+  (open gRSubUConnectedCharacterisation (Truncation-gRSubU -1))
   where
   ∂Δ¹-cov-Nat-is-equiv
     : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
@@ -104,12 +207,12 @@ module _
         (G .fst , is-left-family←is-covariant (G .fst) (G .snd))
         α
         (λ {(b , i)
-         → ♭Δ¹-ind
-             (λ x
-              → ( is-♭-equiv (α (b , x)))
-                , is-equiv-is-prop)
-             (αeq b ∂Δ¹-0 )
-             (αeq b ∂Δ¹-1)
+         → ♭-up-connected-map←up-♭-connected-map
+             (up-connected-map←is-connected-map _ ∂Δ¹-♭-connected)
+             ((λ x
+               → ( is-♭-equiv (α (b , x)))
+                 , is-equiv-is-prop))
+             (αeq b)
              i})
 }
 
@@ -122,9 +225,13 @@ however this is yet to be formalised
 \agda{
 module _
   (@♭ cubes-separate : family-separates □^_)
-  (@♭ ♭Δ²-ind
-    : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤) → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
-    → (@♭ x : Δ²) → P x .fst)
+  (@♭ ∂Δ¹-♭-connected : is-♭-connected ∂Δ¹-incl)
+  (let @♭ Δ²-points-♭-connected
+            = is-♭-connected←retraction-arrow-map
+                retract-sq
+                retract-sq-is-retr
+                (×₁-is-♭-connected ∂Δ¹-♭-connected ∂Δ¹-♭-connected))
+  (open gRSubUConnectedCharacterisation (Truncation-gRSubU -1))
   where
 
   points-Δ²-cov-Nat-is-equiv
@@ -142,6 +249,10 @@ module _
         (G .fst , is-left-family↔is-covariant (G .fst) .snd (G .snd))
         α
         (λ {(b , i)
-         → ♭Δ²-ind (λ x → ( is-♭-equiv (α (b , x)) , is-equiv-is-prop)) (αeq b) i})
+         → ♭-up-connected-map←up-♭-connected-map
+             (up-connected-map←is-connected-map _ Δ²-points-♭-connected)
+             (λ x → (is-♭-equiv (α (b , x)) , is-equiv-is-prop))
+             (αeq b)
+             i})
 }
 }

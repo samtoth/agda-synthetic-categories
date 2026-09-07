@@ -21,7 +21,7 @@ open import Modalities.Cohesion.FlatDiscrete
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
 
-module Synthetic.Categories.EquivCovariantFamilies
+module Synthetic.Categories.DetectingEquivalencesCovariantFamilies
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
   (open Lattice I renaming (0l to i0; 1l to i1))
   where
@@ -52,54 +52,6 @@ open import Synthetic.Triangles Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.Initial Δ¹ I
-}
-}
-
-\subtree[stt-00V6]{
-\title{The point inclusion of an initial object is left anodyne}
-\taxon{Theorem}
-\author{fredrikbakke}
-\author{samueltoth}
-\date{2026-09-03}
-
-\p{
-The point inclusions of [initial objects](stt-00FO) are left anodyne.
-}
-
-\agda{
-module _
-  {𝓤} {A : Type 𝓤} (a : A) (h : (b : A) → Hom A a b) (ha : h a ＝ idH a)
-  where
-
-  ev-point-is-equiv
-    : ∀ {𝓥} {P : A → Type 𝓥}
-      → is-covariant P
-      → is-equiv (evᵈ: P a)
-  ev-point-is-equiv {P = P} Pc
-    = is-equiv←qinv
-        ( (λ x b → tr-cov-hom Pc (h b) x)
-        , (λ x → funext→ λ b
-          → tr-cov-hom-unique P Pc (h b) (x a) (x b) (ap-hom-over x (h b)))
-        , tr-cov-idH~ P Pc _ ha)
-
-  point-is-left-anodyne
-    : is-left-anodyne (point a)
-  point-is-left-anodyne r r-is-left
-    = are-orthogonal←are-orthogonal-fibre λ σ
-      → 3-for-2
-          (unit-ev-is-equiv)
-          (ev-point-is-equiv
-            (is-covariant←is-left-family
-              (fibre r ∘ σ)
-              (orthogonal-fam←base-change
-                (point i0) σ (fibre r)
-                (are-orthogonal-fibre←are-orthogonal r-is-left))))
-
-initial-is-left-anodyne
-  : ∀ {𝓤} {A : Type 𝓤} {a : A}
-    → is-initial a → is-left-anodyne (point a)
-initial-is-left-anodyne {a = a} ai
-  = point-is-left-anodyne a (λ b → ai b .centre) (ai a .central (idH a))
 }
 }
 
@@ -139,13 +91,13 @@ module _ {𝓤} {A : Type 𝓤} where
       → is-covariant P
       → is-equiv (evᵈ: P (const i0))
   ev-cube-0-is-equiv {P = P} Pc
-    = ev-point-is-equiv (const i0)
+    = ev-init-covariant-is-equiv'
         cube-hom-from-0 cube-hom-from-0-at-0 Pc
 
   cube-0-is-left-anodyne
     : is-left-anodyne (point (const: Δ¹ A i0))
   cube-0-is-left-anodyne
-    = point-is-left-anodyne (const i0)
+    = point-init-is-left-anodyne'
         cube-hom-from-0 cube-hom-from-0-at-0
 }
 
@@ -157,19 +109,52 @@ As a special case, the point inclusion of #{0} into a finite cube is left anodyn
 □-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
 □-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
 □-0-is-left-anodyne {suc zero} r 0r = 0r
-□-0-is-left-anodyne {suc (suc m)} r 0r
-  = left-orthogonal-equiv
-      (point □-0 ×₁ point i0) (point □-0) a ae r
-      (left-orthogonal-× (point □-0) (point i0) r
-        (□-0-is-left-anodyne {suc m} r 0r) 0r) where
-  a : Arrow-map (point □-0 ×₁ point i0) (point (□-0 , i0))
-  a .Arrow-Π.top = !
-  a .Arrow-Π.bot = id
-  a .Arrow-Π.comm = ~refl
+□-0-is-left-anodyne {suc (suc m)}
+  = is-anodyne←equiv
+      (point □-0 ×₁ point i0) (point □-0)
+      (mk-arr-equiv (mk≃ ! (sing-!-is-equiv single!)) id≃ ~refl)
+      (point i0)
+      (λ r 0r
+       → left-orthogonal-× (point □-0) (point i0) r (□-0-is-left-anodyne {suc m} r 0r) 0r)
+}
+}
 
-  ae : is-Arrow-equiv a
-  ae .fst = sing-!-is-equiv single!
-  ae .snd = id-is-equiv
+\subtree[fre-1272]{
+\title{Separation by cubes and types with initial objects}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\p{
+If types with initial objects separate then cubes separate, and if cubes separate
+then finite cubes separate.
+}
+
+\agda{
+cubes-separate←finite-cubes-separate
+  : family-separates □^_
+  → large-family-separates (λ 𝓤 → Type 𝓤) (λ A → A → Δ¹)
+cubes-separate←finite-cubes-separate sep fa fe eq
+  = sep fa fe (λ { {n} →
+      tgt-is-equiv←Arrow-equiv
+        (♭-arrow-equiv
+          (mk-arr-equiv (precomp-≃ (□≃cube n)) (precomp-≃ (□≃cube n)) ~refl))
+        (eq {i = Fin n})})
+
+types-with-initial-object-separate←cubes-separate
+  : @♭ is-segal Δ¹
+  → large-family-separates (λ 𝓤 → Type 𝓤) (λ A → A → Δ¹)
+  → large-family-separates (λ 𝓤 → Type-With-Initial-Obj 𝓤) fst
+types-with-initial-object-separate←cubes-separate Δ¹-is-segal sep fa fe eq
+  = sep fa fe
+      (λ { {i = A} → eq {i = (A → Δ¹) , const i0 , cube-0-is-initial Δ¹-is-segal} })
+
+types-with-initial-object-separate←finite-cubes-separate
+  : @♭ is-segal Δ¹
+  → family-separates □^_
+  → large-family-separates (λ 𝓤 → Type-With-Initial-Obj 𝓤) fst
+types-with-initial-object-separate←finite-cubes-separate Δ¹-is-segal sep
+  = types-with-initial-object-separate←cubes-separate Δ¹-is-segal
+      (cubes-separate←finite-cubes-separate sep)
 }
 }
 
@@ -204,7 +189,7 @@ module _
         (point i0)
         types-with-initial-object-separate
         (λ A → A .snd .fst)
-        (λ A → initial-is-left-anodyne (A .snd .snd))
+        (λ A → point-init-is-left-anodyne (A .snd .snd))
         (F .fst , is-left-family←is-covariant (F .fst) (F .snd))
         (G .fst , is-left-family←is-covariant (G .fst) (G .snd))
         α
@@ -243,7 +228,7 @@ module _
         (point i0)
         types-with-initial-object-separate
         (λ A → A .snd .fst)
-        (λ A → initial-is-left-anodyne (A .snd .snd))
+        (λ A → point-init-is-left-anodyne (A .snd .snd))
         (F .fst , is-left-family↔is-covariant (F .fst) .snd (F .snd))
         (G .fst , is-left-family↔is-covariant (G .fst) .snd (G .snd))
         α

@@ -1,8 +1,29 @@
 \date{2026-03-12}
 \title{Quasicoherent Algebras}
 \author{markwilliams}
+\contributor{samueltoth}
 \taxon{Module}
 \import{stt-macros}
+
+\subtree[tot-7AUI]{
+\taxon{Idea}
+
+\p{
+A remarkable property of the distributive lattice in simplicial type theory
+is that it satisfies a strong algebraic duality principle, known as
+\strong{Blechschmidt duality}. This tells us that all functions between types
+that are algebraic subsets of #{\II^n} are actually given by polynomials.
+}
+
+\p{
+Formally an algebraic subset is specified by an algebra #{\II \to A}.
+The algebraic subset is then defined as
+#{\Spec(A) := \Hom_{\II\textrm{-}\Alg}(A, \II)}.
+The functor #{\Spec} is right adjoint to a functor #{\Obs}
+giving the algebra of observations on a set #{X}, where an observation is a
+map #{X \to \II}.
+}
+}
 
 \agda{
 open import Foundations.Universes
@@ -32,71 +53,78 @@ open import Foundations.Prelude
 
 open import Core.Coslices
 
+open import Algebra.Lattice.Instances.Slice
 open import Algebra.Lattice.Instances.Pointwise
+open import Synthetic.Hom Δ¹ i0 i1
 
 open import Ergonomics.Auto
 open import Ergonomics.Extensionality
 }
 }
 
-\subtree[stt-00TA]{
-\taxon{Definition}
-\title{Quasicoherent Algebras}
+\subtree[tot-555A]{
+\taxon{Construction}
+\title{The spectrum of an #{\II}-algebra}
 
-\p{
-A remarkable property of the distributive lattice in simplicial type theory
-is that it satisfies a strong algebraic duality principle, known as
-\strong{Blechschmidt duality}. This tells us that all functions between types
-that are algebraic subsets of #{\II^n} are actually given by polynomials.
-}
+\p{The spectrum of an #{\II}-algebra #{A} is defined to be the set:
+##{\Spec(A) := \Hom_{\II\textrm{-}\Alg}(A, \II)}
 
-\p{
-Formally an algebraic subset is specified by an algebra #{\II \to A}.
-The algebraic subset is then defined as
-#{\Spec(A) := \Hom_{\II\textrm{-}\Alg}(A, \II)}.
-The functor #{\Spec} is right adjoint to a functor #{\Obs}
-giving the algebra of observations on a set #{X}, where an observation is a
-map #{X \to \II}.
-}
-
-\p{
-We will call an algebra \strong{quasicoherent} if the counit of this
-adjunction #{A \to \Obs(\Spec(A))} is an equivalence of
-algebras.
+This defines a contravariant functor #{\Spec : \Set \to \II-\Alg^{op}}.
 }
 
 \agda{
 Spec : ∀ {𝓤} {X : Type 𝓤} → (A : Algebra I X) → Type (𝓘 ⊔ 𝓤)
 Spec {X = X} A = LatticeAlgHom A (initial-Algebra I)
 
-Spec-map
+Spec₁
   : ∀ {𝓤 𝓥}
       {X : Type 𝓤} {Y : Type 𝓥}
       {A : Algebra I X} {B : Algebra I Y}
     → LatticeAlgHom A B
     → Spec B → Spec A
-Spec-map f g = LatticeAlgHom-∘ g f
+Spec₁ f g = LatticeAlgHom-∘ g f
+}
+}
 
+\subtree[tot-2S7C]{
+\title{Observational algebras}
+\taxon{Construction}
+
+\p{Given a type #{X}, the observations of #{X} are just said to be the maps
+#{X \to \II}, equipped with a [pointwise algebra structure](stt-00AE).}
+
+\agda{
 Obs : {𝓤 : Level} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
 Obs X = (X → Δ¹)
 
 ObsAlg : {𝓤 : Level} (X : Type 𝓤) → Algebra I (Obs X)
 ObsAlg X = Pointwise-Algebra X λ _ → initial-Algebra _
 
-Obs-map
+Obs₁
   : ∀ {𝓤 𝓥}
       {X : Type 𝓤} {Y : Type 𝓥}
       (f : X → Y)
     → LatticeAlgHom (ObsAlg Y) (ObsAlg X)
-Obs-map f .fst .fst p = p ∘ f
-Obs-map f .fst .snd x = refl
-Obs-map {X = X} {Y} f .snd = mk-is-lattice-alg-hom
+Obs₁ f .fst .fst p = p ∘ f
+Obs₁ f .fst .snd x = refl
+Obs₁ {X = X} {Y} f .snd = mk-is-lattice-alg-hom
   λ where
     .is-lattice-hom.pres-∨ → refl
     .is-lattice-hom.pres-∧ → refl
     .is-lattice-hom.pres-0 → refl
     .is-lattice-hom.pres-1 → refl
+}
+}
 
+\subtree[tot-AYCE]{
+\taxon{Lemma}
+\title{The #{\Obs} #{\Spec} adjunction}
+
+\p{The functor #{\Spec} is right adjoint to #{\Obs}. This is a contravariant
+adjunction between #{\Set} and #{\II\mathrm{-}\Alg^{op}}. Both unit and counit}
+
+
+\agda{
 obs-spec-ε : {𝓤 : Level} {X : Type 𝓤}  → X → Spec (ObsAlg X)
 obs-spec-ε x .fst .fst f =  f x
 obs-spec-ε x .fst .snd = λ a → refl
@@ -124,53 +152,79 @@ obs-spec-η A .snd = mk-is-lattice-alg-hom
   where
     open is-lattice-hom
 
-obs-spec-adjunction
+obs⊣spec
   : ∀ {𝓤 𝓥} {U : Type 𝓤}
       (A : Algebra I U) (X : Type 𝓥)
     → (X → Spec A) ≃ LatticeAlgHom A (ObsAlg X)
-obs-spec-adjunction A X
+obs⊣spec A X
   = mk≃ fwd (is-equiv←qinv qinv)
     where
       fwd : (X → Spec A) → LatticeAlgHom A (ObsAlg X)
-      fwd f = LatticeAlgHom-∘ (Obs-map f) (obs-spec-η A)
+      fwd f = LatticeAlgHom-∘ (Obs₁ f) (obs-spec-η A)
 
       bwd : LatticeAlgHom A (ObsAlg X) → (X → Spec A)
-      bwd f =  Spec-map f ∘ obs-spec-ε
+      bwd f = Spec₁ f ∘ obs-spec-ε
 
       qinv : quasi-inv fwd
       qinv .fst = bwd
       qinv .snd .fst f = ext! λ x u → refl
       qinv .snd .snd f = ext! λ a → refl
+}
+}
 
-is-quasicoherent : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓤 ⊔ 𝓘)
-is-quasicoherent A = is-LatticeAlgHom-equiv (obs-spec-η A)
+\subtree[stt-00TA]{
+\title{Spatial algebras}
+\taxon{Definition}
 
-equiv←is-quasicoherent
+\p{
+We will call an algebra \strong{spatial} if the counit of the
+[#{\Obs \dashv \Spec} adjunction](tot-AYCE) #{A \to \Obs(\Spec(A))} is
+an equivalence of algebras.
+}
+
+\agda{
+is-spatial : {𝓤 : Level} {X : Type 𝓤} (A : Algebra I X) → Type (𝓤 ⊔ 𝓘)
+is-spatial A = is-LatticeAlgHom-equiv (obs-spec-η A)
+
+equiv←is-spatial
   : ∀ {𝓤} {X : Type 𝓤} {A : Algebra I X}
-    → is-quasicoherent A
+    → is-spatial A
     → X ≃ Obs (Spec A)
-equiv←is-quasicoherent {A = A} qc  = mk≃ (obs-spec-η A .fst .fst) qc
+equiv←is-spatial {A = A} qc = mk≃ (obs-spec-η A .fst .fst) qc
+}
 
-Spec-map-is-equiv←quasicoherent
+\p{By the general theory of fixed points of adjunctions, if #{A} is some spatial algebra,
+then for any other algebra #{B}, the map #{\Spec : \II-\Alg(B,A) \to (A \to B)} is
+an equivalence.}
+
+\agda{
+Spec-map-is-equiv←is-spatial
   : ∀ {𝓤} {X : Type 𝓤}
-      (A : Algebra I X) (_ : is-quasicoherent A) (B : Algebra I X)
-    → is-equiv (Spec-map {A = B} {A})
-Spec-map-is-equiv←quasicoherent A qc B = is-equiv←qinv qinv
+      (A : Algebra I X) (_ : is-spatial A) (B : Algebra I X)
+    → is-equiv (Spec₁ {A = B} {A})
+Spec-map-is-equiv←is-spatial A qc B = is-equiv←qinv qinv
   where
-    qinv : quasi-inv (Spec-map {A = B} {A})
+    qinv : quasi-inv (Spec₁ {A = B} {A})
     qinv .fst f =
       LatticeAlgHom-∘
         (LatticeAlgHom-∘
           (is-LatticeAlgHom-equiv-bwd {f = obs-spec-η A} qc)
-          (Obs-map f))
+          (Obs₁ f))
         (obs-spec-η B)
     qinv .snd .fst ((f , _) , _) = ext! λ a → is-equiv.η qc (f a)
     qinv .snd .snd ϕ
       = funext→ λ f → ext! λ x →
           happly (is-equiv.ε qc (λ a → ϕ a .fst .fst x)) f
+}
+}
 
-I-is-quasicoherent : is-quasicoherent (initial-Algebra I)
-I-is-quasicoherent
+\subtree[tot-67XY]{
+\title{The initial #{\II}-algebra is [spatial](stt-00TA)}
+\taxon{Example}
+
+\agda{
+I-is-spatial : is-spatial (initial-Algebra I)
+I-is-spatial
   = is-equiv←~
       (λ a → funext→ λ ((f , coslice) , _) → coslice a)
       (_≃_.fwd-is-equiv H)
@@ -178,6 +232,52 @@ I-is-quasicoherent
     H : Δ¹ ≃ Obs (Spec (initial-Algebra I))
     H =  unit-UP≃ e⁻¹
       ∙e precomp-≃ (singleton≃𝟙 (initial-Algebra-is-initial _ _))
+}
+}
+
+\subtree[tot-0L51]{
+\title{Sober sets}
+\taxon{Definition}
+
+\p{We call a set \strong{sober} if it is a fixed point of the [#{\Obs \dashv \Spec}
+adjunction](tot-AYCE). I.e. if the unit map #{X \to \Spec(\Obs(X))} is an equivalence.}
+
+\agda{
+is-sober : ∀ {𝓤} (X : Type 𝓤) → Type (𝓘 ⊔ 𝓤)
+is-sober X = is-equiv (obs-spec-ε {X = X})
+
+equiv←is-sober : ∀ {𝓤} {X : Type 𝓤} → is-sober X → X ≃ Spec (ObsAlg X)
+equiv←is-sober s = mk≃ obs-spec-ε s
+}
+}
+
+\subtree[tot-0PSL]{
+\title{The quasicoherence principle}
+\taxon{Definition}
+
+\p{
+A remarkable property of the distributive lattice in simplicial type theory
+is that it satisfies a strong algebraic duality principle, known as
+\strong{Kock-Blechschmidt duality}. This tells us that all functions between types
+that are algebraic subsets of #{\II^n} are actually given by polynomials.
+}
+
+\p{Blechschmidt's original statement of the quasicoherence princiapl says that any
+finity presented #{\II}-algebra is spatial. We follow the philosophy and terminology
+of \citek{TODO} and define a variety of different kinds of quasicoherence axioms.}
+
+\ol{
+\li{(SQCI): The slice algebra #{\II_{/i}} is spatial for any #{i}}
+\li{(SQCP): The polynomial algebra #{\II[x]} is spatial}
+\li{(SQCF): Any finitely presented #{\II}-algebra is spatial}
+}
+
+\agda{
+SQCI : Type 𝓘
+SQCI = ∀ i → is-spatial (Algebra-slice (initial-Algebra I , I-distr) i)
+
+SQCP : Type 𝓘
+SQCP = is-spatial I[x]
 }
 }
 
@@ -193,7 +293,7 @@ Quasicoherence is very related to an axiom in synthetic domain theory known
 as Phoa's principle. This axiom states that every map
 #{\II \to \II} is monotone, of the form
 #{f(x) = (f(1) \wedge x) \vee f(0)}. We deduce this property from the axiom
-SQCP: that #{\II[x]} is quasicoherent.
+SQCP: that #{\II[x]} is spatial.
 }
 
 \agda{
@@ -217,13 +317,10 @@ phoas-principle = is-generalised-phoa (initial-Algebra I)
 Δ¹≃SpecI[x]
   = mk≃ _ (Free-Algebra-is-free-algebra I I-distr (initial-Algebra I) I-distr)
 
-SQCP : Type 𝓘
-SQCP = is-quasicoherent I[x]
-
 module _ (H : SQCP) where
 
   I[x]≃Δ¹→Δ¹ : Δ² I ≃ (Δ¹ → Δ¹)
-  I[x]≃Δ¹→Δ¹ = equiv←is-quasicoherent H ∙e precomp-≃ Δ¹≃SpecI[x]
+  I[x]≃Δ¹→Δ¹ = equiv←is-spatial H ∙e precomp-≃ Δ¹≃SpecI[x]
 
   phoas-principle←SQCP : phoas-principle
   phoas-principle←SQCP α i

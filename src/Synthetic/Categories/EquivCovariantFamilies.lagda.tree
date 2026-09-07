@@ -14,7 +14,6 @@ open import Foundations.Singletons
 
 open import Algebra.Lattice
 
-import Synthetic.Cubes
 open import Synthetic.Tiny
 
 open import Modalities.Cohesion.Flat
@@ -25,7 +24,6 @@ open import Modalities.Cohesion.Continuity
 module Synthetic.Categories.EquivCovariantFamilies
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
   (open Lattice I renaming (0l to i0; 1l to i1))
-  (open Synthetic.Cubes Δ¹ i0 i1)
   where
 
 import Algebra.Lattice.Instances.Polynomial as Poly
@@ -47,22 +45,77 @@ open import Core.ArrowEquiv
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 
+open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.Initial Δ¹ I
 }
 }
 
 \subtree[stt-00V6]{
-\title{The point inclusion of #{0} into a cube is left anodyne}
-\taxon{Lemma}
+\title{The point inclusion of an initial object is left anodyne}
+\taxon{Theorem}
 \author{fredrikbakke}
 \author{samueltoth}
 \date{2026-09-03}
 
+\p{
+The point inclusions [initial objects](stt-00FO) are left anodyne.
+}
+
 \agda{
-module _ {𝓤} {A : Type 𝓤}  where
+module _
+  {𝓤} {A : Type 𝓤} (a : A) (h : (b : A) → Hom A a b) (ha : h a ＝ idH a)
+  where
+
+  ev-point-is-equiv
+    : ∀ {𝓥} {P : A → Type 𝓥}
+      → is-covariant P
+      → is-equiv (evᵈ: P a)
+  ev-point-is-equiv {P = P} Pc
+    = is-equiv←qinv
+        ( (λ x b → tr-cov-hom Pc (h b) x)
+        , (λ x → funext→ λ b
+          → tr-cov-hom-unique P Pc (h b) (x a) (x b) (ap-hom-over x (h b)))
+        , tr-cov-idH~ P Pc _ ha)
+
+  point-is-left-anodyne
+    : is-left-anodyne (point a)
+  point-is-left-anodyne r r-is-left
+    = are-orthogonal←are-orthogonal-fibre λ σ
+      → 3-for-2
+          (unit-ev-is-equiv)
+          (ev-point-is-equiv
+            (is-covariant←is-left-family
+              (fibre r ∘ σ)
+              (orthogonal-fam←base-change
+                (point i0) σ (fibre r)
+                (are-orthogonal-fibre←are-orthogonal r-is-left))))
+
+initial-is-left-anodyne
+  : ∀ {𝓤} {A : Type 𝓤} {a : A}
+    → is-initial a → is-left-anodyne (point a)
+initial-is-left-anodyne {a = a} ai
+  = point-is-left-anodyne a (λ b → ai b .centre) (ai a .central (idH a))
+}
+}
+
+\subtree[fre-1271]{
+\title{The point inclusion of #{0} into a cube is left anodyne}
+\taxon{Corollary}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+For a cube #{A \to Δ¹}, the lattice meet gives the chosen arrows from #{0}, showing
+that it is an initial object. Consequently, its point inclusion is left anodyne.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
 
   cube-hom-from-0
     : (f : A → Δ¹) → Hom (A → Δ¹) (const i0) f
@@ -75,34 +128,30 @@ module _ {𝓤} {A : Type 𝓤}  where
   cube-hom-from-0-at-0
     = Hom-ext→ ((λ _ → funext→ λ _ → 0-init') , prop! , prop!)
 
+  cube-0-is-initial
+    : is-segal Δ¹ → is-initial (const: Δ¹ A i0)
+  cube-0-is-initial Δ¹-is-segal
+    = is-initial←hom-section (→-is-segal Δ¹-is-segal)
+        cube-hom-from-0 cube-hom-from-0-at-0
+
   ev-cube-0-is-equiv
     : ∀ {𝓥} {P : (A → Δ¹) → Type 𝓥}
       → is-covariant P
       → is-equiv (evᵈ: P (const i0))
   ev-cube-0-is-equiv {P = P} Pc
-    = is-equiv←qinv
-        ( (λ x f → tr-cov-hom Pc (cube-hom-from-0 f) x)
-        , (λ x → funext→ λ f
-          → tr-cov-hom-unique
-              P Pc (cube-hom-from-0 f) (x (const i0)) (x f)
-              (ap-hom-over x (cube-hom-from-0 f)))
-        , tr-cov-idH~ P Pc _ cube-hom-from-0-at-0)
+    = ev-point-is-equiv (const i0)
+        cube-hom-from-0 cube-hom-from-0-at-0 Pc
 
   cube-0-is-left-anodyne
     : is-left-anodyne (point (const: Δ¹ A i0))
-  cube-0-is-left-anodyne r r-is-left
-    = are-orthogonal←are-orthogonal-fibre λ σ
-      → 3-for-2
-          (unit-ev-is-equiv)
-          (ev-cube-0-is-equiv
-            (is-covariant←is-left-family
-              (fibre r ∘ σ)
-              (orthogonal-fam←base-change
-                (point i0) σ (fibre r)
-                (are-orthogonal-fibre←are-orthogonal r-is-left))))
+  cube-0-is-left-anodyne
+    = point-is-left-anodyne (const i0)
+        cube-hom-from-0 cube-hom-from-0-at-0
 }
 
-\p{As a special case, the point inclusion of #{0} into finite cube is left anodyne.}
+\p{
+As a special case, the point inclusion of #{0} into a finite cube is left anodyne.
+}
 
 \agda{
 □-0-is-left-anodyne : ∀ {m : ℕ} → is-left-anodyne (point (□-0 {m}))
@@ -129,14 +178,16 @@ module _ {𝓤} {A : Type 𝓤}  where
 \contributor{fredrikbakke}
 
 \p{As a special case of \ref{stt-00V7}, we note the following.
-If [cubes separate](stt-00J7) and crisp elements of #{\Delta^1} are covered by the booleans,
+If types equipped with an [initial object](stt-00FO) [separate](stt-00J7)
+and crisp elements of #{\Delta^1} are covered by the booleans,
 then a crisp transformation between covariant crisp type families #{F, G} over
 #{B \times \Delta} is a fibrewise equivalence iff it is a flat equivalence at
 #{(b , 0)} and #{(b, 1)} for crisp elements #{b : B}.}
 
 \agda{
 module _
-  (@♭ cubes-separate : large-family-separates (λ 𝓤 → Type 𝓤) (λ A → (A → Δ¹)))
+  (@♭ types-with-initial-object-separate
+    : large-family-separates (λ 𝓤 → Type-With-Initial-Obj 𝓤) fst)
   (@♭ ♭Δ¹-ind
     : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
       → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
@@ -151,17 +202,15 @@ module _
   ∂Δ¹-cov-Nat-is-equiv F G α αeq
     = is-fibrewise-equiv←anodyne-large-family-separates
         (point i0)
-        cubes-separate
-        (λ _ → const i0)
-        (λ _ → cube-0-is-left-anodyne)
+        types-with-initial-object-separate
+        (λ A → A .snd .fst)
+        (λ A → initial-is-left-anodyne (A .snd .snd))
         (F .fst , is-left-family←is-covariant (F .fst) (F .snd))
         (G .fst , is-left-family←is-covariant (G .fst) (G .snd))
         α
         (λ {(b , i)
          → ♭Δ¹-ind
-             (λ x
-              → ( is-♭-equiv (α (b , x)))
-                , is-equiv-is-prop)
+             (λ x → is-♭-equiv (α (b , x)) , is-equiv-is-prop)
              (αeq b ∂Δ¹-0 )
              (αeq b ∂Δ¹-1)
              i})
@@ -169,13 +218,15 @@ module _
 
 \p{We may also consider the analogous result for the 2-simplex, but this time
 assuming that the 3 element type covers the crisp elements of #{Δ²} as well as that
-cubes separate. Note that this assumption should follow from the covering of the 1-simplex,
+types equipped with an initial object separate. The covering assumption should
+follow from the covering of the 1-simplex,
 however this is yet to be formalised
 ([issue #258](https://github.com/samtoth/agda-synthetic-categories/issues/258)).}
 
 \agda{
 module _
-  (@♭ cubes-separate : large-family-separates (λ 𝓤 → Type 𝓤) (λ A → (A → Δ¹)))
+  (@♭ types-with-initial-object-separate
+    : large-family-separates (λ 𝓤 → Type-With-Initial-Obj 𝓤) fst)
   (@♭ ♭Δ²-ind
     : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤) → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
     → (@♭ x : Δ²) → P x .fst)
@@ -190,9 +241,9 @@ module _
   points-Δ²-cov-Nat-is-equiv F G α αeq
     = is-fibrewise-equiv←anodyne-large-family-separates
         (point i0)
-        cubes-separate
-        (λ _ → const i0)
-        (λ _ → cube-0-is-left-anodyne)
+        types-with-initial-object-separate
+        (λ A → A .snd .fst)
+        (λ A → initial-is-left-anodyne (A .snd .snd))
         (F .fst , is-left-family↔is-covariant (F .fst) .snd (F .snd))
         (G .fst , is-left-family↔is-covariant (G .fst) .snd (G .snd))
         α

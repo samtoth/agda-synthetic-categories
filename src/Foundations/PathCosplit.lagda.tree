@@ -1,0 +1,189 @@
+\title{Path-cosplit maps}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-09-08}
+\import{stt-macros}
+
+\agda{
+module Foundations.PathCosplit where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.Equivalences
+open import Foundations.Retracts
+open import Foundations.TruncationLevels
+open import Foundations.Truncated
+}
+}
+
+\subtree[bak-4FCC]{
+\title{Path-cosplit maps}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{
+A map #{f \colon A \to B} is \emph{#{0}-cosplit} if it has a retraction and,
+inductively, it is \emph{#{k+1}-cosplit} if the induced action on paths is
+#{k}-cosplit.
+}
+
+\agda{
+is-path-cosplit
+  : ∀ {𝓤 𝓥} → 𝕋
+    → {A : Type 𝓤} {B : Type 𝓥}
+    → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-path-cosplit -2𝕋 f
+  = retraction f
+is-path-cosplit (suc-𝕋 k) {A = A} f
+  = (x y : A) → is-path-cosplit k (ap f {x} {y})
+
+path-cosplit-map : ∀ {𝓤 𝓥} → 𝕋 → Type 𝓤 → Type 𝓥 → Type (𝓤 ⊔ 𝓥)
+path-cosplit-map k A B = Σ (A → B) (is-path-cosplit k)
+}
+}
+
+\subtree[bak-3643]{
+\title{The universe of path-cosplittings of a type}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\agda{
+PathCosplittings
+  : ∀ {𝓤} 𝓥 → 𝕋 → Type 𝓤 → Type (𝓤 ⊔ lsuc 𝓥)
+PathCosplittings 𝓤 k A
+  = Σ[ B ∶ Type 𝓤 ] path-cosplit-map k B A
+}
+}
+
+\subtree[bak-BE8E]{
+\title{#{k}-Cosplit maps are #{k+1}-cosplit}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+is-succ-path-cosplit
+  : ∀ {𝓤 𝓥} (k : 𝕋) {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-path-cosplit k f → is-path-cosplit (suc-𝕋 k) f
+is-succ-path-cosplit -2𝕋 H x y
+  = ap-retraction H
+is-succ-path-cosplit (suc-𝕋 k) H x y
+  = is-succ-path-cosplit k (H x y)
+}
+}
+
+\subtree[bak-729A]{
+\title{Maps with retractions are path-cosplit}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+retraction-is-path-cosplit
+  : ∀ {𝓤 𝓥} (k : 𝕋) {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → retraction f → is-path-cosplit k f
+retraction-is-path-cosplit -2𝕋 H = H
+retraction-is-path-cosplit (suc-𝕋 k) H
+  = is-succ-path-cosplit k
+    (retraction-is-path-cosplit k H)
+
+path-cosplit-map←retract
+  : ∀ {𝓤 𝓥} (k : 𝕋) {A : Type 𝓤} {B : Type 𝓥}
+    → retract A B → path-cosplit-map k A B
+path-cosplit-map←retract k R
+  = (R .fst , retraction-is-path-cosplit k (R .snd))
+
+path-cosplit-map←equiv
+  : ∀ {𝓤 𝓥} (k : 𝕋) {A : Type 𝓤} {B : Type 𝓥}
+    → A ≃ B → path-cosplit-map k A B
+path-cosplit-map←equiv k e
+  = path-cosplit-map←retract k (retract←equiv e)
+
+id-is-path-cosplit
+  : ∀ {𝓤} (k : 𝕋) {A : Type 𝓤} → is-path-cosplit k (id: A)
+id-is-path-cosplit k
+  = retraction-is-path-cosplit k (id , ~refl)
+}
+}
+
+\subtree[bak-612A]{
+\title{Truncated types are closed under path-cosplittings}
+\taxon{Proposition}
+\author{fredrikbakke}
+
+\remark{
+This is also a generalisation of the fact that a type that injects into a set is a
+set.
+}
+
+\agda{
+is-truncated←is-path-cosplit
+  : ∀ {𝓤 𝓥} (k : 𝕋) {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → is-path-cosplit k f → is-truncated k B → is-truncated k A
+is-truncated←is-path-cosplit -2𝕋 {f = f} H
+  = is-truncated←retract (f , H)
+is-truncated←is-path-cosplit (suc-𝕋 k) {f = f} H tr x y
+  = is-truncated←is-path-cosplit k (H x y) (tr (f x) (f y))
+}
+}
+
+\subtree[bak-A20E]{
+\title{Path-cosplit maps in commuting triangles}
+\taxon{Proposition}
+\author{fredrikbakke}
+
+\p{
+Given a commuting triangle #{j \circ f \sim g}, then if #{g} is path-cosplit, so is
+#{f}.
+}
+
+\agda{
+is-path-cosplit←triangle
+  : ∀ {𝓤 𝓥 𝓦} (k : 𝕋)
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : A → B} {g : A → C} (j : B → C)
+    → j ∘ f ~ g → is-path-cosplit k g → is-path-cosplit k f
+is-path-cosplit←triangle -2𝕋 j H (r , R)
+  = (r ∘ j , λ a → ap r (H a) ∙ R a)
+is-path-cosplit←triangle (suc-𝕋 k) {f = f} {g} j H G x y
+  = is-path-cosplit←triangle k
+      (λ q → sym (H x) ∙ ap j q ∙ H y)
+      ( λ p
+        → ap (λ q → sym (H x) ∙ q ∙ H y) (sym (ap-∘ j f p))
+        ∙ sym (left-transpose-∙ (H x) _ _ (homotopy-natural H p)))
+      (G x y)
+}
+}
+
+\subtree[bak-0DD3]{
+\title{Composition and cancellation of path-cosplit maps}
+\taxon{Corollary}
+\author{fredrikbakke}
+
+\agda{
+is-path-cosplit-∘
+  : ∀ {𝓤 𝓥 𝓦} {k : 𝕋}
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → C} {g : A → B}
+    → is-path-cosplit k f
+    → is-path-cosplit k g
+    → is-path-cosplit k (f ∘ g)
+is-path-cosplit-∘ {k = -2𝕋} = retraction-∘
+is-path-cosplit-∘ {k = suc-𝕋 k} {f = f} {g} F G x y
+  = is-path-cosplit←triangle k id (ap-∘ f g)
+      (is-path-cosplit-∘ (F (g x) (g y)) (G x y))
+
+is-path-cosplit-left-cancel
+  : ∀ {𝓤 𝓥 𝓦} {k : 𝕋}
+      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {f : B → C} {g : A → B}
+    → is-path-cosplit k (f ∘ g) → is-path-cosplit k g
+is-path-cosplit-left-cancel {k = k} {f = f}
+  = is-path-cosplit←triangle k f ~refl
+}
+}

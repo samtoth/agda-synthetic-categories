@@ -5,6 +5,8 @@
 \import{stt-macros}
 
 \agda{
+{-# OPTIONS --lossy-unification #-}
+
 module Foundations.SplitReflections where
 }
 
@@ -27,6 +29,17 @@ open import Foundations.IdempotentMaps
 open import Foundations.Subuniverses
 open import Foundations.Currying
 open import Foundations.CompositionEquiv
+open import Foundations.ExtensionsMaps
+open import Foundations.Singletons
+open import Foundations.EquivSingleton
+open import Foundations.SingletonFibres
+open import Foundations.FibrewiseEquivalences
+open import Foundations.Embeddings
+open import Foundations.IdentityEquiv
+open import Foundations.TheoremOfChoice
+open import Foundations.TotalEquiv
+open import Foundations.Univalence
+import Foundations.IsEquivIsProp
 }
 }
 
@@ -34,6 +47,7 @@ open import Foundations.CompositionEquiv
 \title{The split reflection property}
 \taxon{Definition}
 \author{fredrikbakke}
+\date{2026-09-08}
 
 \p{
 Given a global subuniverse #{\mathcal{𝒦}}, a \em{split reflection} of a type
@@ -68,6 +82,11 @@ module _ {α} (𝒦 : gSubU α) (open gSubU 𝒦) where
         : ∀ {𝓦} {B : Type 𝓦}
         → (h : B ∈ S) (R : retract B A)
         → elim h R ∘ η ~ R .snd .fst
+
+    elim'
+      : KA → (R : Retracts 𝓤 A)
+      → carrier-Retracts R ∈ S → carrier-Retracts R
+    elim' x R h = elim h (R .snd) x
 
     preserves-retract
       : ∀ {𝓦} {B : Type 𝓦}
@@ -129,10 +148,216 @@ module _ {𝓤 𝓥} (𝒦 : SubU 𝓤 𝓥) (open Subtype 𝒦) where
 }
 }
 
+\subtree[bak-C236]{
+\title{Morphisms of split reflections}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+Let #{A} be a type and #{\mathcal{K}} be a subuniverse. Given two split
+reflections of #{A} in #{\mathcal{K}},
+#{\eta \colon A \to X} and #{\eta' \colon A \to X'}, write {\varepsilon_{(-)}} and
+{\varepsilon_{(-)}'} for their respective eliminators, and {\beta_{(-)}} and
+{\beta_{(-)}'} for their computation laws. A \em{morphism} of split reflections
+from #{X} to #{X'} consists of
+
+\ul{
+\li{A map #{f \colon X \to X'}.}
+\li{A witness #{H} that following triangle commutes
+\quiver{
+\begin{tikzcd}[column sep=small]
+& A \\
+X && X'
+\arrow["\eta"', from=1-2, to=2-1]
+\arrow["\eta'", from=1-2, to=2-3]
+\arrow["f", from=2-1, to=2-3]
+\end{tikzcd}
+}
+}
+\li{
+For each #{\mathcal{K}}-valued retract #{R} with domain #{B}, a witness #{Q_R} that
+the following triangle commutes
+\quiver{
+\begin{tikzcd}[column sep=small]
+X && X' \\
+& B
+\arrow["\varepsilon_R"', from=1-1, to=2-2]
+\arrow["\varepsilon_R'", from=1-1, to=2-2]
+\arrow["f", from=1-1, to=1-3]
+\end{tikzcd}
+}
+}
+\li{
+For each #{\mathcal{K}}-valued retract #{R} with underlying retraction #{r_R}, a
+a coherence between the computation laws
+\quiver{
+\begin{tikzcd}
+\varepsilon'_R \circ f \circ \eta & \varepsilon'_R \eta' \\
+ \varepsilon_R \circ \eta  & r_R
+\arrow["\varepsilon'_R H", equals, from=1-1, to=1-2]
+\arrow["\beta_R"', equals, from=2-1, to=2-2]
+\arrow["Q_R \eta"', equals, from=1-1, to=2-1]
+\arrow["\beta'_R", equals, from=1-2, to=2-2]
+\end{tikzcd}
+}
+}
+}
+}
+
+\agda{
+module _
+  {α} (𝒦 : gSubU α) (open gSubU 𝒦)
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦}
+  {η : A → X} {η' : A → Y}
+  (open is-global-split-reflection)
+  where
+
+  split-reflection-map
+    : is-global-split-reflection 𝒦 η
+    → is-global-split-reflection 𝒦 η'
+    → Type (lsuc 𝓤 ⊔ α 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  split-reflection-map KX KY
+    = Σ[ f ∶ Ext η η' ]
+      ( (R : Retracts 𝓤 A) (h : carrier-Retracts R ∈ S)
+      → Ext-htpy
+          ( elim KY h (R .snd) ∘ f .fst
+          , elim KY h (R .snd) ◃h f .snd ∙h elim-β KY h (R .snd))
+          ( elim KX h (R .snd) , elim-β KX h (R .snd)))
+}
+}
+
+\subtree[bak-9239]{
+\title{Universal split reflections}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+A split reflection is \em{universal} if it is terminal among split reflections.
+}
+
+\agda{
+is-universal-split-reflection
+  : ∀ {α} (𝒦 : gSubU α) {𝓤 𝓥} {A : Type 𝓤} {KA : Type 𝓥}
+    {η : A → KA} → is-global-split-reflection 𝒦 η → Typeω
+is-universal-split-reflection 𝒦 {A = A} K
+  = ∀ {𝓦} {KA : Type 𝓦} {η : A → KA}
+    → (U : is-global-split-reflection 𝒦 η)
+    → is-singleton (split-reflection-map 𝒦 U K)
+}
+}
+
+\subtree[bak-D682]{
+\title{The split reflection is universal if the elimination principle is an equivalence}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+module _
+  (FE : FunExt-global)
+  (open WithFunExt-global FE)
+  (open ExtWithFunExt FE)
+  {α} (𝒦 : gSubU α) (open gSubU 𝒦)
+  {𝓤 𝓥} {A : Type 𝓤} {KA : Type 𝓥} {η : A → KA}
+  (K : is-global-split-reflection 𝒦 η)
+  (open Foundations.IsEquivIsProp FE)
+  (open is-global-split-reflection)
+  where
+
+  Ext≃retract-extensions
+    : is-equiv (elim' K)
+    → ∀ {𝓦} {X : Type 𝓦} (ηL : A → X)
+    → Ext ηL η
+    ≃ ((R : Σ[ R ∶ Retracts 𝓤 A ] (carrier-Retracts R ∈ S))
+      → Ext ηL (R .fst .snd .snd .fst))
+  Ext≃retract-extensions H ηL
+    = Σ-≃
+        (postcomp-≃ FE (mk≃ (elim' K) H ∙e uncurry≃) ∙e flip≃)
+        (λ f
+         → Π-fam-≃ (λ a → ap-Π-equiv FE
+            (embedding←equiv (mk≃ (elim' K) H ∙e uncurry≃)))
+          ∙e flip≃
+          ∙e Π-fam-≃ (λ (R , h) → Π-fam-≃ (λ a
+              → ＝-preconcat-≃ (elim-β K h (R .snd) a))))
+    ∙e (Σ-Π-swap≃ _ _ e⁻¹)
+
+  universal-split-reflection←elim-is-equiv
+    : is-equiv (elim' K)
+    → is-universal-split-reflection 𝒦 K
+  universal-split-reflection←elim-is-equiv H {η = ηL} U
+    = is-single←equiv-to-single
+        (Σ-snd-≃ (λ F
+          → funext≃
+          ∙e curry≃
+          ∙e Π-fam-≃ (λ R → Π-fam-≃ (λ h → Id≃Ext-htpy _ _))))
+        (has-singleton-fibres←is-equiv
+          (Ext≃retract-extensions H ηL ._≃_.fwd-is-equiv)
+          (λ (R , h) → (elim U h (R .snd) , elim-β U h (R .snd))))
+}
+}
+
+\subtree[bak-E5EE]{
+\title{The non-parametric split reflection}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+We record the non-parametric split reflection to demonstrate that our
+construction is entirely predicative.
+}
+
+\agda{
+module SmallSplitReflection
+  (FE : FunExt-global)
+  (open SplitRetractWithFunExt FE)
+  {𝓤} (𝒦 : SubU 𝓤 𝓤)
+  (∈𝒦←equiv : is-equiv-closed 𝒦)
+  (A : Type 𝓤)
+  (open SmallRetractsWithFunExt FE A)
+  where
+
+  type : Type 𝓤
+  type
+    = (B : Small-retracts)
+    → carrier-Small-retract B ∈ 𝒦
+    → carrier-Small-retract B
+
+  η : A → type
+  η a B h = retract-Retracts (retract-Small-retract B) .snd .fst a
+
+  ∈S : is-Π-closed 𝒦 → type ∈ 𝒦
+  ∈S Π∈𝒦 = Π∈𝒦 (λ B → Π∈𝒦 id)
+
+  elim : {B : Type 𝓤} → B ∈ 𝒦 → retract B A → type → B
+  elim h R x
+    = _≃_.fwd
+        (split-retract-equiv R)
+        (x (small-retracts←retract R)
+           (∈𝒦←equiv (split-retract-equiv R e⁻¹) h))
+
+  elim-β
+    : {B : Type 𝓤} (h : B ∈ 𝒦) (R : retract B A)
+    → elim h R ∘ η ~ R .snd .fst
+  elim-β h R a = R .snd .snd (R .snd .fst a)
+
+  η-is-split-reflection : is-Π-closed 𝒦 → is-split-reflection 𝒦 η
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.∈S = ∈S Π∈𝒦
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim = elim
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim-β = elim-β
+
+  reflection : is-Π-closed 𝒦 → split-reflection 𝒦 A
+  reflection Π∈𝒦 = (type , η , η-is-split-reflection Π∈𝒦)
+}
+}
+
 \subtree[bak-E633]{
 \title{The split reflection}
 \taxon{Construction}
 \author{fredrikbakke}
+\date{2026-09-08}
 
 \p{
 Given a type #{A \in \UU}, the split reflection may be constructed as the type of
@@ -190,57 +415,38 @@ module SplitReflection
   η-is-split-reflection Π∈𝒦 .is-global-split-reflection.elim = elim
   η-is-split-reflection Π∈𝒦 .is-global-split-reflection.elim-β = elim-β
 }
-}
 
-\subtree[bak-E5EE]{
-\title{The non-parametric split reflection}
-\taxon{Construction}
+\subtree[bak-6466]{
+\title{Universality of the split reflection}
+\taxon{Theorem}
 \author{fredrikbakke}
+\date{2026-09-08}
 
-\p{
-We record the non-parametric split reflection to demonstrate that our
-construction is entirely predicative.
-}
+\p{The split reflection produced by the splitting construction is universal.}
 
 \agda{
-module SmallSplitReflection
-  (FE : FunExt-global)
-  (open SplitRetractWithFunExt FE)
-  {𝓤} (𝒦 : SubU 𝓤 𝓤)
-  (∈𝒦←equiv : is-equiv-closed 𝒦)
-  (A : Type 𝓤)
-  (open SmallRetractsWithFunExt FE A)
-  where
+  module _
+    (UA : Univalence)
+    (open RetractsQIdempotentsWithFunExtUnivalence FE UA {A = A})
+    (open is-global-split-reflection)
+    (Π∈𝒦 : is-globally-Π-closed 𝒦)
+    where
 
-  type : Type 𝓤
-  type
-    = (B : Small-retracts)
-    → carrier-Small-retract B ∈ 𝒦
-    → carrier-Small-retract B
+    elim-is-equiv
+      : is-equiv (elim' (η-is-split-reflection Π∈𝒦))
+    elim-is-equiv
+      = is-equiv-∘
+          ( Foundations.IsEquivIsProp.Π-is-equiv FE (λ R →
+            ( precomp-≃ FE (≃∈S←equiv (split-retract-equiv (R .snd) e⁻¹))
+            ∙e postcomp-≃ FE (split-retract-equiv (R .snd))) ._≃_.fwd-is-equiv))
+          ( precomp-Π-is-equiv FE small-retracts←retract-is-equiv)
 
-  η : A → type
-  η a B h = retract-Retracts (retract-Small-retract B) .snd .fst a
-
-  ∈S : is-Π-closed 𝒦 → type ∈ 𝒦
-  ∈S Π∈𝒦 = Π∈𝒦 (λ B → Π∈𝒦 id)
-
-  elim : {B : Type 𝓤} → B ∈ 𝒦 → retract B A → type → B
-  elim h R x
-    = _≃_.fwd
-        (split-retract-equiv R)
-        (x (small-retracts←retract R)
-           (∈𝒦←equiv (split-retract-equiv R e⁻¹) h))
-
-  elim-β : {B : Type 𝓤} (h : B ∈ 𝒦) (R : retract B A)
-    → elim h R ∘ η ~ R .snd .fst
-  elim-β h R a = R .snd .snd (R .snd .fst a)
-
-  η-is-split-reflection : is-Π-closed 𝒦 → is-split-reflection 𝒦 η
-  η-is-split-reflection Π∈𝒦 .is-split-reflection.∈S = ∈S Π∈𝒦
-  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim = elim
-  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim-β = elim-β
-
-  reflection : is-Π-closed 𝒦 → split-reflection 𝒦 A
-  reflection Π∈𝒦 = (type , η , η-is-split-reflection Π∈𝒦)
+    is-universal
+      : is-universal-split-reflection 𝒦 (η-is-split-reflection Π∈𝒦)
+    is-universal
+      = universal-split-reflection←elim-is-equiv FE 𝒦
+          (η-is-split-reflection Π∈𝒦)
+          (elim-is-equiv)
+}
 }
 }

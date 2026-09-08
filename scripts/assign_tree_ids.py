@@ -83,7 +83,9 @@ for d in DIRS:
     tree_files.extend(d.rglob("*.tree"))
 
 prefix_file_re = re.compile(rf"{PREFIX}-(\w{{4}})\.tree$")
-prefix_files = [(p, m.group(1)) for p in tree_files if (m := prefix_file_re.search(p.name))]
+prefix_files = [
+    (p, m.group(1)) for p in tree_files if (m := prefix_file_re.search(p.name))
+]
 
 prefix_files.sort(key=lambda x: int(x[1], 36))
 

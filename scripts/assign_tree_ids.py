@@ -87,7 +87,9 @@ for tid in prefix_trees:
 # ----------------------------
 tree_files = []
 for d in DIRS:
-    tree_files.extend(d.rglob(f"*{EXT}"))
+    tree_files.extend(
+        p for p in d.rglob(f"*{EXT}") if "autogen" not in p.absolute().parts
+    )
 
 prefix_file_re = re.compile(rf"{PREFIX}-(\w{{4}})\{EXT}$")
 prefix_files = [

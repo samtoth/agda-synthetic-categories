@@ -26,8 +26,8 @@ help:
 	@echo "  make python-server [PORT=<port>]        # Alias for make serve"
 	@echo "  make check-duplicate-tree-ids [DIR=<dir>]  # Find duplicate subtree references (default: trees)"
 	@echo "  make list-trees                         # List all of the trees in the forest"
-	@echo "  make assign-tree-ids-no-commit [AUTHOR=<author>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (AUTHOR=... required) (UPSTREAM, default: upstream)"
-	@echo "  make assign-tree-ids           [AUTHOR=<author>] [UPSTREAM=<upstream>] # Run assign-tree-ids-no-commit and then commit the results"
+	@echo "  make assign-tree-ids-no-commit [PREFIX=<prefix>] [UPSTREAM=<upstream>] # Assign tree ids to non-canonically-ID'd trees (PREFIX=... required) (UPSTREAM, default: upstream)"
+	@echo "  make assign-tree-ids           [PREFIX=<prefixr>] [UPSTREAM=<upstream>] # Run assign-tree-ids-no-commit and then commit the results"
 	@echo "  make clean-agda                         # Remove generated agda artefacts"
 	@echo "  make clean-forester                     # Remove generated forester artefacts"
 	@echo "  make clean                              # Remove all generated build artefacts"
@@ -160,19 +160,19 @@ check-sync-main:
 	fi
 
 assign-tree-ids-dry:
-	@if [ -z "$(AUTHOR)" ]; then \
-	   echo "Requires AUTHOR=..."; \
+	@if [ -z "$(PREFIX)" ]; then \
+	   echo "Requires PREFIX=..."; \
 	   exit 1; \
 	else \
 	   echo "Dry running the renamer:"; \
-	   python3 scripts/assign_tree_ids.py -n $(AUTHOR) src/ trees/  ; \
+	   python3 scripts/assign_tree_ids.py -n $(PREFIX) src/ trees/  ; \
 	fi
 
 confirm-assign-tree-ids:
 	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
 
 assign-tree-ids-no-commit: check-duplicate-tree-ids check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
-	python3 scripts/assign_tree_ids.py $(AUTHOR) src/ trees/
+	python3 scripts/assign_tree_ids.py $(PREFIX) src/ trees/
 
 
 assign-tree-ids: assign-tree-ids-no-commit

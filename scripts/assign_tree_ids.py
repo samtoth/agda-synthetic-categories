@@ -127,10 +127,10 @@ else:
 # Rename files
 # ----------------------------
 
+file_renames = []
 if prefix_files:
     print("\nRenaming files:")
 
-    file_renames = []
     for path, num in prefix_files:
         new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
         print(f" {path} → {new_path}")

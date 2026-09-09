@@ -36,6 +36,9 @@ parser.add_argument(
     help="Show what would change, but do not modify anything",
 )
 parser.add_argument("--gap", type=int, default=50, help="Number of new tree IDs needed")
+parser.add_argument(
+    "--confirm", action="store_true", help="Ask for confirmation after previewing changes"
+)
 
 args = parser.parse_args()
 
@@ -62,6 +65,10 @@ prefix_re = re.compile(rf"{PREFIX}-(\w{{4}})$", re.IGNORECASE)
 prefix_trees = [
     prefix_re.search(tree).group(1) for tree in all_trees if prefix_re.search(tree)
 ]
+
+if not prefix_trees:
+    print(f"There are no trees with the prefix '{PREFIX}'.")
+    sys.exit(0)
 
 prefix_trees.sort(key=lambda x: int(x, 36))
 
@@ -99,13 +106,13 @@ print("\nUpdating references in files:\n")
 # subtree_re = re.compile(rf"(\\subtree\[)({PREFIX}-\w{{4}})(\])", re.IGNORECASE)
 link_re = re.compile(rf"({PREFIX}-\w{{4}})", re.IGNORECASE)
 
+reference_updates = []
 for tree in tree_files:
     text = tree.read_text(encoding="utf-8")
     updated = link_re.sub(lambda m: rename_map.get(m.group(1)), text)
     if updated != text:
         print(f"Updating references in {tree}")
-        if not DRY_RUN:
-            tree.write_text(updated, encoding="utf-8")
+        reference_updates.append((tree, updated))
 
 
 # ----------------------------
@@ -114,8 +121,22 @@ for tree in tree_files:
 
 print("\nRenaming files:\n")
 
+file_renames = []
 for path, num in prefix_files:
     new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}.tree")
     print(f"Renaming {path} → {new_path}")
-    if not DRY_RUN:
+    file_renames.append((path, new_path))
+
+if args.confirm:
+    try:
+        answer = input("Confirm changes? [y/N] ")
+    except EOFError:
+        sys.exit(1)
+    if answer != "y":
+        sys.exit(1)
+
+if not DRY_RUN:
+    for tree, updated in reference_updates:
+        tree.write_text(updated, encoding="utf-8")
+    for path, new_path in file_renames:
         path.rename(new_path)

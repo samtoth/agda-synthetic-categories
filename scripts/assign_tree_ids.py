@@ -37,7 +37,9 @@ parser.add_argument(
 )
 parser.add_argument("--gap", type=int, default=50, help="Number of new tree IDs needed")
 parser.add_argument(
-    "--confirm", action="store_true", help="Ask for confirmation after previewing changes"
+    "--confirm",
+    action="store_true",
+    help="Ask for confirmation after previewing changes",
 )
 
 args = parser.parse_args()
@@ -115,40 +117,39 @@ for tree in tree_files:
         reference_updates.append((tree, updated))
 
 if reference_updates:
-  print("\nUpdating references in files:")
-  for (tree , update) in reference_updates:
-      print(f" {tree}")
+    print("\nUpdating references in files:")
+    for tree, update in reference_updates:
+        print(f" {tree}")
 else:
-  print("\nNo references in files to update.")
+    print("\nNo references in files to update.")
 
 # ----------------------------
 # Rename files
 # ----------------------------
 
 if prefix_files:
-  print("\nRenaming files:")
+    print("\nRenaming files:")
 
-  file_renames = []
-  for path, num in prefix_files:
-      new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
-      print(f" {path} → {new_path}")
-      file_renames.append((path, new_path))
+    file_renames = []
+    for path, num in prefix_files:
+        new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
+        print(f" {path} → {new_path}")
+        file_renames.append((path, new_path))
 else:
-  print("\nNo files to rename.")
+    print("\nNo files to rename.")
 
 print()
 
 if not DRY_RUN:
+    if args.confirm:
+        try:
+            answer = input("Confirm changes? [y/N] ")
+        except EOFError:
+            sys.exit(1)
+        if answer != "y":
+            sys.exit(1)
 
-  if args.confirm:
-      try:
-          answer = input("Confirm changes? [y/N] ")
-      except EOFError:
-          sys.exit(1)
-      if answer != "y":
-          sys.exit(1)
-
-  for tree, updated in reference_updates:
-      tree.write_text(updated, encoding="utf-8")
-  for path, new_path in file_renames:
-      path.rename(new_path)
+    for tree, updated in reference_updates:
+        tree.write_text(updated, encoding="utf-8")
+    for path, new_path in file_renames:
+        path.rename(new_path)

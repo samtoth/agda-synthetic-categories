@@ -72,14 +72,14 @@ if not prefix_trees:
 
 prefix_trees.sort(key=lambda x: int(x, 36))
 
-print("\nBuilding a remapping: \n")
+print("\nBuilding a remapping:")
 
 for tid in prefix_trees:
     new_num = int_to_base36(next_val)
     old_key = f"{PREFIX}-{tid}"
     new_key = f"{CANON}-{new_num}"
     rename_map[old_key] = new_key
-    print(f"{old_key} → {new_key}")
+    print(f" {old_key} → {new_key}")
     next_val += 1
 
 # ----------------------------
@@ -101,7 +101,6 @@ prefix_files.sort(key=lambda x: int(x[1], 36))
 # Update references in files
 # ----------------------------
 
-print("\nUpdating references in files:\n")
 
 # subtree_re = re.compile(rf"(\\subtree\[)({PREFIX}-\w{{4}})(\])", re.IGNORECASE)
 link_re = re.compile(rf"({PREFIX}-\w{{4}})", re.IGNORECASE)
@@ -111,21 +110,31 @@ for tree in tree_files:
     text = tree.read_text(encoding="utf-8")
     updated = link_re.sub(lambda m: rename_map.get(m.group(1)), text)
     if updated != text:
-        print(f"Updating references in {tree}")
         reference_updates.append((tree, updated))
 
+if reference_updates:
+  print("\nUpdating references in files:")
+  for (tree , update) in reference_updates:
+      print(f" {tree}")
+else:
+  print("\nNo references in files to update.")
 
 # ----------------------------
 # Rename files
 # ----------------------------
 
-print("\nRenaming files:\n")
+if prefix_files:
+  print("\nRenaming files:")
 
-file_renames = []
-for path, num in prefix_files:
-    new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
-    print(f"Renaming {path} → {new_path}")
-    file_renames.append((path, new_path))
+  file_renames = []
+  for path, num in prefix_files:
+      new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
+      print(f" {path} → {new_path}")
+      file_renames.append((path, new_path))
+else:
+  print("\nNo files to rename.")
+
+print()
 
 if not DRY_RUN:
 

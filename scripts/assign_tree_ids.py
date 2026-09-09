@@ -127,16 +127,17 @@ for path, num in prefix_files:
     print(f"Renaming {path} → {new_path}")
     file_renames.append((path, new_path))
 
-if args.confirm:
-    try:
-        answer = input("Confirm changes? [y/N] ")
-    except EOFError:
-        sys.exit(1)
-    if answer != "y":
-        sys.exit(1)
-
 if not DRY_RUN:
-    for tree, updated in reference_updates:
-        tree.write_text(updated, encoding="utf-8")
-    for path, new_path in file_renames:
-        path.rename(new_path)
+
+  if args.confirm:
+      try:
+          answer = input("Confirm changes? [y/N] ")
+      except EOFError:
+          sys.exit(1)
+      if answer != "y":
+          sys.exit(1)
+
+  for tree, updated in reference_updates:
+      tree.write_text(updated, encoding="utf-8")
+  for path, new_path in file_renames:
+      path.rename(new_path)

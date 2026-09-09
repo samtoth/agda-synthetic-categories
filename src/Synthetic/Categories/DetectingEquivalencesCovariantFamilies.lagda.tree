@@ -1,0 +1,239 @@
+\title{Detecting equivalences between covariant type families}
+\taxon{Module}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.Identity
+open import Foundations.Sigma
+open import Foundations.Singletons
+
+open import Algebra.Lattice
+
+open import Synthetic.Tiny
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatDiscrete
+open import Modalities.Cohesion.Connectivity
+open import Modalities.Cohesion.Continuity
+
+module Synthetic.Categories.DetectingEquivalencesCovariantFamilies
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
+  (open Lattice I renaming (0l to i0; 1l to i1))
+  where
+
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (Δ²)
+private Δ² = Poly.Δ² I
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.LiftingSquares
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.Initial Δ¹ I
+}
+}
+
+\subtree[fre-1271]{
+\title{The point inclusion of #{0} into a cube is left anodyne}
+\taxon{Proposition}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+For a cube #{A \to Δ¹}, the lattice meet gives that #{0} is an initial object.
+Consequently, its point inclusion is left anodyne.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  cube-hom-from-0
+    : (f : A → Δ¹) → Hom (A → Δ¹) (const i0) f
+  cube-hom-from-0 f .Homᵈ.hom t a = t ∧ f a
+  cube-hom-from-0 f .Homᵈ.hom0 = funext→ (λ _ → 0-init)
+  cube-hom-from-0 f .Homᵈ.hom1 = funext→ (λ _ → 1-top')
+
+  cube-hom-from-0-at-0
+    : cube-hom-from-0 (const: Δ¹ A i0) ＝ idH (const i0)
+  cube-hom-from-0-at-0
+    = Hom-ext→ ((λ _ → funext→ λ _ → 0-init') , prop! , prop!)
+
+  cube-0-is-initial
+    : is-segal Δ¹ → is-initial (const: Δ¹ A i0)
+  cube-0-is-initial Δ¹-is-segal
+    = is-initial←hom-section (→-is-segal Δ¹-is-segal)
+        cube-hom-from-0 cube-hom-from-0-at-0
+
+  ev-cube-0-covariant-is-equiv
+    : ∀ {𝓥} {P : (A → Δ¹) → Type 𝓥}
+      → is-covariant P
+      → is-equiv (evᵈ: P (const i0))
+  ev-cube-0-covariant-is-equiv {P = P} Pc
+    = ev-init-covariant-is-equiv'
+        cube-hom-from-0 cube-hom-from-0-at-0 Pc
+
+  cube-0-is-left-anodyne
+    : is-left-anodyne (point (const: Δ¹ A i0))
+  cube-0-is-left-anodyne
+    = point-init-is-left-anodyne'
+        cube-hom-from-0 cube-hom-from-0-at-0
+}
+
+\p{
+As a special case, the point inclusion of #{0} into a finite cube is left anodyne.
+However, the proof below is a direct inductive proof.
+}
+
+\agda{
+□-0-is-left-anodyne : {m : ℕ} → is-left-anodyne (point (□-0 {m}))
+□-0-is-left-anodyne {zero} r _ = equiv⊥ lift-is-equiv r
+□-0-is-left-anodyne {suc zero} r 0r = 0r
+□-0-is-left-anodyne {suc (suc m)}
+  = is-anodyne←equiv
+      (point □-0 ×₁ point i0) (point □-0)
+      (mk-arr-equiv (sing≃𝟙 single!) id≃ ~refl)
+      (point i0)
+      (λ r 0r
+       → left-orthogonal-× (point □-0) (point i0) r
+          (□-0-is-left-anodyne {suc m} r 0r)
+          0r)
+}
+}
+
+\subtree[fre-1272]{
+\title{Separation by cubes and types with initial objects}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\p{
+If types with initial objects separate then cubes separate, and if cubes separate
+then finite cubes separate.
+}
+
+\agda{
+cubes-separate←finite-cubes-separate
+  : family-separates □^_
+  → large-family-separates (λ 𝓤 → Type 𝓤) (λ A → A → Δ¹)
+cubes-separate←finite-cubes-separate sep fa fe eq
+  = sep fa fe (λ { {n} →
+      tgt-is-equiv←Arrow-equiv
+        (♭-arrow-equiv
+          (mk-arr-equiv (precomp-≃ (□≃cube n)) (precomp-≃ (□≃cube n)) ~refl))
+        (eq {i = Fin n})})
+
+types-with-initial-object-separate'←cubes-separate
+  : large-family-separates (λ 𝓤 → Type 𝓤) (λ A → A → Δ¹)
+  → large-family-separates (λ 𝓤 → Type-With-Initial-Obj' 𝓤) fst
+types-with-initial-object-separate'←cubes-separate sep fa fe eq
+  = sep fa fe
+      (λ { {i = A} → eq {i = (A → Δ¹) , const i0 , cube-hom-from-0 , cube-hom-from-0-at-0} })
+
+types-with-initial-object-separate'←finite-cubes-separate
+  : family-separates □^_
+  → large-family-separates (λ 𝓤 → Type-With-Initial-Obj' 𝓤) fst
+types-with-initial-object-separate'←finite-cubes-separate sep
+  = types-with-initial-object-separate'←cubes-separate
+      (cubes-separate←finite-cubes-separate sep)
+}
+}
+
+\subtree[stt-00UT]{
+\taxon{Corollary}
+\contributor{fredrikbakke}
+
+\p{As a special case of \ref{stt-00V7}, we note the following.
+If types equipped with an [initial object](stt-00FO) [separate](stt-00J7)
+and crisp elements of #{\Delta^1} are covered by the booleans,
+then a crisp transformation between covariant crisp type families #{F, G} over
+#{B \times \Delta} is a fibrewise equivalence iff it is a flat equivalence at
+#{(b , 0)} and #{(b, 1)} for crisp elements #{b : B}.}
+
+\agda{
+module _
+  (@♭ types-with-initial-object-separate'
+    : large-family-separates (λ 𝓤 → Type-With-Initial-Obj' 𝓤) fst)
+  (@♭ ♭Δ¹-ind
+    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
+      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
+  where
+
+  ∂Δ¹-cov-Nat-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
+        (@♭ F G : Σ (B × Δ¹ → Type 𝓥) is-covariant)
+        (@♭ α : fibrewise-map (F .fst) (G .fst))
+      → @♭ (∀ (@♭ b : B) (@♭ x : ∂Δ¹) → is-♭-equiv (α (b , ∂Δ¹-incl x)))
+      → is-fibrewise-equiv α
+  ∂Δ¹-cov-Nat-is-equiv F G α αeq
+    = is-fibrewise-equiv←anodyne-large-family-separates
+        (point i0)
+        types-with-initial-object-separate'
+        (λ A → A .snd .fst)
+        (λ A → point-init-is-left-anodyne' (A .snd .snd .fst) (A .snd .snd .snd))
+        (F .fst , is-left-family←is-covariant (F .fst) (F .snd))
+        (G .fst , is-left-family←is-covariant (G .fst) (G .snd))
+        α
+        (λ {(b , i)
+         → ♭Δ¹-ind
+             (λ x → is-♭-equiv (α (b , x)) , is-equiv-is-prop)
+             (αeq b ∂Δ¹-0 )
+             (αeq b ∂Δ¹-1)
+             i})
+}
+
+\p{We may also consider the analogous result for the 2-simplex, but this time
+assuming that the 3 element type covers the crisp elements of #{Δ²} as well as that
+types equipped with an initial object separate. Note that the covering assumption
+should follow from the covering of the 1-simplex, however this is yet to be
+formalised
+([issue #258](https://github.com/samtoth/agda-synthetic-categories/issues/258)).}
+
+\agda{
+module _
+  (@♭ types-with-initial-object-separate'
+    : large-family-separates (λ 𝓤 → Type-With-Initial-Obj' 𝓤) fst)
+  (@♭ ♭Δ²-ind
+    : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤) → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
+    → (@♭ x : Δ²) → P x .fst)
+  where
+
+  points-Δ²-cov-Nat-is-equiv
+    : ∀ {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
+        (@♭ F G : Σ (B × Δ² → Type 𝓥) is-covariant)
+        (@♭ α : fibrewise-map (F .fst) (G .fst))
+      → @♭ (∀ (@♭ b : B) (@♭ x : Fin 3) → is-♭-equiv (α (b , Δ²-point-incl x)))
+      → is-fibrewise-equiv α
+  points-Δ²-cov-Nat-is-equiv F G α αeq
+    = is-fibrewise-equiv←anodyne-large-family-separates
+        (point i0)
+        types-with-initial-object-separate'
+        (λ A → A .snd .fst)
+        (λ A → point-init-is-left-anodyne' (A .snd .snd .fst) (A .snd .snd .snd))
+        (F .fst , is-left-family↔is-covariant (F .fst) .snd (F .snd))
+        (G .fst , is-left-family↔is-covariant (G .fst) .snd (G .snd))
+        α
+        (λ {(b , i)
+           → ♭Δ²-ind (λ x → (is-♭-equiv (α (b , x)) , is-equiv-is-prop)) (αeq b) i})
+}
+}

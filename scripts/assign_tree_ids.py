@@ -27,7 +27,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "dirs", nargs="+", help="Directories to scan recursively for .tree files"
+    "dirs", nargs="+", help=f"Directories to scan recursively for {EXT} files"
 )
 parser.add_argument(
     "-n",
@@ -87,9 +87,9 @@ for tid in prefix_trees:
 # ----------------------------
 tree_files = []
 for d in DIRS:
-    tree_files.extend(d.rglob("*.tree"))
+    tree_files.extend(d.rglob(f"*{EXT}"))
 
-prefix_file_re = re.compile(rf"{PREFIX}-(\w{{4}})\.tree$")
+prefix_file_re = re.compile(rf"{PREFIX}-(\w{{4}})\{EXT}$")
 prefix_files = [
     (p, m.group(1)) for p in tree_files if (m := prefix_file_re.search(p.name))
 ]
@@ -123,7 +123,7 @@ print("\nRenaming files:\n")
 
 file_renames = []
 for path, num in prefix_files:
-    new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}.tree")
+    new_path = path.with_name(f"{rename_map[f'{PREFIX}-{num}']}{EXT}")
     print(f"Renaming {path} → {new_path}")
     file_renames.append((path, new_path))
 

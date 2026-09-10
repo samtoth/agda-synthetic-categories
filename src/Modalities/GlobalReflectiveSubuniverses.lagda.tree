@@ -33,16 +33,18 @@ open import Ergonomics.Universal
 
 \p{
 For a particular type #{A : \UU}, we say that #{(\bigcirc A, \eta : A \to \bigcirc A)}
-is a \em{global reflector} for #{A} when postcomposition
+is a \em{global reflector} for #{A} when precomposition
 by #{\eta} at modal types (of any universe) is an equivalence. This
 equivalence gives us a recursion principle for #{\bigcirc A}.
 }
 
 
 \agda{
-record is-global-reflector {α} (GS : gSubU α)
-         {𝓤} (A : Type 𝓤)
-         (○A : Type 𝓤) (η : A → ○A) : Typeω where
+record is-global-reflector
+  {α} (GS : gSubU α)
+  {𝓤} (A : Type 𝓤)
+  (○A : Type 𝓤) (η : A → ○A) : Typeω
+  where
   constructor mk-grfltor
   no-eta-equality
   open gSubU GS
@@ -105,14 +107,44 @@ Reflector←gReflector G
       (G .gReflector.η)
       (is-reflector←global (G .gReflector.η-is-global-reflector))
 
-module gReflectorMap
-    {α 𝓤 𝓥} {GS : gSubU α}
-    {A : Type 𝓤} {B : Type 𝓥}
-    (RA : gReflector GS A)
-    (RB : gReflector GS B) where
+}
 
-  module A = gReflector RA
-  module B = gReflector RB
+\p{
+Closure under retracts and dependent products only requires a reflection of the
+retract or product being constructed.
+}
+
+\agda{
+module gReflectorClosure {α} {GS : gSubU α} (open gSubU GS) where
+
+
+  ∈S←retract
+    : ∀ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥}
+      → gReflector GS X → retract X Y → Y ∈ S → X ∈ S
+  ∈S←retract RX (s , r , rs) Y∈S
+    = in-SubU←η-retraction (Reflector←gReflector RX)
+        (r ∘ ○-rec Y∈S s , r ◃h ○-rec-β Y∈S s ∙h rs)
+    where open gReflector RX
+
+  Π∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → gReflector GS (Π A B)
+      → ((a : A) → B a ∈ S)
+      → Π A B ∈ S
+  Π∈S RΠ B∈S
+    = in-SubU←η-retraction (Reflector←gReflector RΠ)
+        ( (λ u a → ○-rec (B∈S a) (ev a) u)
+        , (λ f → funext→ λ a → ○-rec-β (B∈S a) (ev a) f))
+    where open gReflector RΠ
+
+module gReflectorMap
+  {α 𝓤 𝓥} {GS : gSubU α}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (RA : gReflector GS A)
+  (RB : gReflector GS B)
+  (let module A = gReflector RA)
+  (let module B = gReflector RB)
+  where
 
   ○₁ : (A → B) → A.○ → B.○
   ○₁ f = A.○-rec B.○∈S (B.η ∘ f)
@@ -153,8 +185,6 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   reflector : ∀ {𝓤} (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η
                   (is-reflector←global η-is-reflector)
-
-
 
 is-reflective←global
   : ∀ {α} {GS : gSubU α} → is-globally-reflective GS
@@ -214,8 +244,7 @@ We formalise that [reflective subuniverses](stt-00IF) are closed under
 }
 
 \agda{
-module gReflectiveClosure {α} (RS : gRSubU α) where
-  open gRSubU RS
+module gReflectiveClosure {α} (RS : gRSubU α) (open gRSubU RS) where
 
   ∈S←retract
     : ∀ {𝓦 𝓧}
@@ -223,19 +252,14 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       → retract X Y
       → Y ∈ S
       → X ∈ S
-  ∈S←retract {X = X} {Y = Y} (s , r , rs) Y-loc
-    = in-SubU←η-retraction (reflector X) (r ∘ ○-rec Y-loc s , ret) where
-      ret : (r ∘ ○-rec Y-loc s) ∘ η {A = X} ~ id
-      ret = r ◃h ○-rec-β Y-loc s ∙h rs
+  ∈S←retract {X = X}
+    = gReflectorClosure.∈S←retract (gReflector←gRSubU RS X)
 
   Π∈S
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → (∀ a → B a ∈ S)
       → Π A B ∈ S
-  Π∈S b = in-SubU←η-retraction (reflector _) ret where
-    ret : retraction η
-    ret .fst lab a = ○-rec (b a) (ev a) lab
-    ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
+  Π∈S = gReflectorClosure.Π∈S (gReflector←gRSubU RS _)
 
   Πᵢ∈S
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
@@ -258,10 +282,8 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
   𝟙∈S = in-SubU←η-retraction (reflector _) (! , ~refl)
 
   ∈S←is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → A ∈ S
-  ∈S←is-singleton sing = in-SubU←η-retraction
-                           (reflector _)
-                           (retraction←singleton-dom sing η)
-
+  ∈S←is-singleton sing
+    = in-SubU←η-retraction (reflector _) (retraction←singleton-dom sing η)
 
   ○-is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → is-singleton (○ A)
   ○-is-singleton {A = A} = is-singleton←Reflector (reflector A)
@@ -271,7 +293,7 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
     → X ∈ S
     → ∀ {x y : X}
     → (x ＝ y) ∈ S
-  ＝∈S loc = ＝-is-modal (is-reflective←gRSubU RS) loc
+  ＝∈S a = ＝-is-modal (is-reflective←gRSubU RS) a
 
   ~∈S
     : {𝓤 𝓥 : Level}
@@ -279,8 +301,7 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       {f g : Π A B}
     → ((a : A) → B a ∈ S)
     → (f ~ g) ∈ S
-  ~∈S B-loc
-    = Π∈S (λ a → ＝∈S (B-loc a))
+  ~∈S B-loc = Π∈S (λ a → ＝∈S (B-loc a))
 }
 }
 
@@ -320,7 +341,8 @@ then so is #{S}.
     → Q ∈ S
     → Pullback g h ∈ S
   Pullback∈S {X = X} {Y = Y} {Q = Q} g h X-loc Y-loc Q-loc
-    = in-SubU←η-retraction (reflector (Pullback g h)) ret where
+    = in-SubU←η-retraction (reflector (Pullback g h)) ret
+    where
     u = η {A = Pullback g h}
 
     S' : Cospan _ _ _
@@ -589,9 +611,21 @@ that #{\textsf{Retracts}_{\UU}(A)}
 \taxon{Construction}
 \title{The functorial action of reflective subuniverses}
 
+\p{Bind is given by recursion into the reflected codomain, so it does not
+require closure under dependent sums.}
+
 \agda{
 module gReflectiveReasoning {α} (RS : gRSubU α) where
   open gRSubU RS
+
+  infixl 10 _>>=_
+  _>>=_
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → ○ A → (A → ○ B) → ○ B
+  ma >>= f = ○-rec ○∈S f ma
+
+  return : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
+  return = η
 
   ○₁
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -693,10 +727,7 @@ module _ {α} (RS : gRSubU α) where
   open gReflectiveClosure RS
 
   ○𝟙-is-single : is-singleton (○ 𝟙)
-  ○𝟙-is-single
-    = is-single←equiv-to-single
-        (mk≃ (η {A = 𝟙}) (η-is-equiv←in-SubU (reflector 𝟙) 𝟙∈S))
-        𝟙-is-singleton
+  ○𝟙-is-single = ○-is-singleton 𝟙-is-singleton
 }
 }
 
@@ -756,13 +787,7 @@ equivalence.
               (postcomp-Π-equiv (reflects Ys))
               (is-equiv-∘
                 curry-is-equiv
-                (reflects Ys))) where
-        fact : precomp Y Σ○-η
-             ~ uncurry
-             ∘ postcomp-Π (λ a → precomp Y η)
-             ∘ curry
-             ∘ precomp Y η
-        fact = ~refl
+                (reflects Ys)))
 
       Σ○-is-global-reflector
         : is-global-reflector GS (Σ A P) (○ (Σ A (○ ∘ P))) (Σ○-η)
@@ -805,12 +830,13 @@ funext), thus we can apply the inverse map to get a homotopy #{\pi
 
 
 \agda{
-module gRSubUInduction {α}
-        (RS : gRSubU α)
-        (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
-  open gRSubU RS
-  open gReflectiveReasoning RS
-  open gReflectiveClosure RS
+module gRSubUInduction
+  {α} (RS : gRSubU α)
+  (SΣ : is-globally-Σ-closed (RS .gRSubU.GS))
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (open gReflectiveClosure RS)
+  where
 
   opaque
     ind
@@ -831,7 +857,8 @@ module gRSubUInduction {α}
           (P∈S : ∀ a → P a ∈ S)
         → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
     ind-β {A = A} {P} PS f a
-      = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
+      = let open ind PS f in
+        tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
            ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
         tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
           ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
@@ -839,7 +866,7 @@ module gRSubUInduction {α}
           ＝⟨ apᶠ snd (○-rec-β _ f'' a) ⟩
         snd (f'' a)
           ＝⟨⟩
-        f a ∎       where open ind PS f
+        f a ∎
 
   ind-qinv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
@@ -879,19 +906,6 @@ module gRSubUInduction {α}
     → (∀ {x y} → Id Y x y ∈ S)
     → fibre g y ∈ S
   local-fibre∈S g y X-loc Ylocloc
-    = ∈S←equiv
-        (pullback-point≃fibre g y)
-        (local-Pullback∈S (point y) g 𝟙∈S X-loc Ylocloc)
-
-  infixl 10 _>>=_
-  _>>=_
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      → ○ A → (A → ○ B) → ○ B
-  ma >>= f = ind (λ _ → ○∈S) f ma
-
-  return : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
-  return = η
-
-  open Universal
+    = SΣ X-loc (λ _ → Ylocloc)
 }
 }

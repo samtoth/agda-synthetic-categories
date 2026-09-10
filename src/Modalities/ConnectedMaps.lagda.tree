@@ -537,36 +537,23 @@ module gReflectorConnectedMaps
     {α 𝓤 𝓥} {GS : gSubU α}
     {A : Type 𝓤} {B : Type 𝓥}
     (f : A → B)
-    (R𝟙 : gReflector GS 𝟙)
-    (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
     (Rf : (b : B) → gReflector GS (fibre f b)) where
-  module One = gReflector R𝟙
 
-  reflected-fibres-singleton
-    : Type (𝓤 ⊔ 𝓥)
+  reflected-fibres-singleton : Type (𝓤 ⊔ 𝓥)
   reflected-fibres-singleton = ∀ b → is-singleton (gReflector.○ (Rf b))
 
   reflected-fibres-singleton←up-connected-!-fibre
-    : up-connected-!-fibre GS f
-    → (b : B) → is-singleton (gReflector.○ (Rf b))
+    : up-connected-!-fibre GS f → reflected-fibres-singleton
   reflected-fibres-singleton←up-connected-!-fibre fibterm b
-    = is-single←equiv-to-single
-        (mk≃ (gReflectorMap.○₁ (Rf b) R𝟙 (!: fibre f b))
-          (gReflectorModalEquivalences.is-modal-equiv-reflectors←up-modal-equiv
-            (Rf b) R𝟙 (!: fibre f b) (fibterm b))
-          e⁻¹)
-        ○𝟙-singleton
+    = gReflectorConnectedTypes.reflected-type-singleton←up-connected (Rf b)
+        (up-connected←terminal-equiv GS (fibre f b) (fibterm b))
 
   up-connected-!-fibre←reflected-fibres-singleton
-    : ((b : B) → is-singleton (gReflector.○ (Rf b)))
-    → up-connected-!-fibre GS f
+    : reflected-fibres-singleton → up-connected-!-fibre GS f
   up-connected-!-fibre←reflected-fibres-singleton sing b
-    = gReflectorModalEquivalences.up-modal-equiv←is-modal-equiv-reflectors
-        (Rf b) R𝟙 (!: fibre f b)
-        (is-equiv←single-to-prop
-          (sing b)
-          (is-prop←is-single ○𝟙-singleton)
-          (gReflectorMap.○₁ (Rf b) R𝟙 (!: fibre f b)))
+    = up-modal-equiv-!←connected GS (fibre f b)
+        (gReflectorConnectedTypes.up-connected←reflected-type-singleton (Rf b) (sing b))
+
 }
 }
 
@@ -691,56 +678,23 @@ module gReflectorFibres
     (f : A → B)
     (Rf : (b : B) → gReflector GS (fibre f b)) where
 
-  η-fibre-section
-    : Π A (λ a → gReflector.○ (Rf (f a)))
-  η-fibre-section a = gReflector.η (Rf (f a)) (a , refl)
-
-  fibre-local-centre←over
-    : (b : B)
-    → null-homotopy
-        (precomp-Π-over-fibres (λ b → gReflector.○ (Rf b)) f η-fibre-section b)
-    → Σ[ u ∶ gReflector.○ (Rf b) ]
-        ((x : fibre f b) → u ＝ gReflector.η (Rf b) x)
-  fibre-local-centre←over b (u , H)
-    = u , λ where (a , refl) → H (a , refl)
-
   reflected-fibre-singleton←local-centre
     : {b : B}
-    → Σ[ u ∶ gReflector.○ (Rf b) ]
-        ((x : fibre f b) → u ＝ gReflector.η (Rf b) x)
+    → null-homotopy (gReflector.η (Rf b))
     → is-singleton (gReflector.○ (Rf b))
-  reflected-fibre-singleton←local-centre {b} (u , H)
-    = mk-singl u (happly p) where
-    module Fb = gReflector (Rf b)
-
-    p : const: Fb.○ Fb.○ u ＝ id
-    p = unap
-          (is-embedding←is-equiv (Fb.reflects Fb.○∈S))
-          (funext→ H)
-
-  fibre-precomp-Π-η-fibre≃Π-local-centre-over
-    : fibre (precomp-Π (λ b → gReflector.○ (Rf b)) f) η-fibre-section
-    ≃ ((b : B)
-      → null-homotopy
-          (precomp-Π-over-fibres (λ b → gReflector.○ (Rf b)) f
-            η-fibre-section b))
-  fibre-precomp-Π-η-fibre≃Π-local-centre-over
-    = fibre-precomp-Π-null-homotopy≃
-        (λ b → gReflector.○ (Rf b)) f η-fibre-section
+  reflected-fibre-singleton←local-centre {b}
+    = gReflectorConnectedTypes.reflected-type-singleton←null-homotopy-unit (Rf b)
 
   merely-fibre-local-centre←surjective-precomp-Π
     : (∀ {𝓚} {U : B → Type 𝓚}
     → ((b : B) → U b ∈ gSubU.S GS)
     → is-surjective (precomp-Π U f))
-    → ((b : B)
-    → ║ Σ[ u ∶ gReflector.○ (Rf b) ]
-        ((x : fibre f b) → u ＝ gReflector.η (Rf b) x) ║)
-  merely-fibre-local-centre←surjective-precomp-Π surj b
-    = Trunc.○-rec Trunc.○∈S
-        (Trunc.η ∘ fibre-local-centre←over b ∘ ev b)
-        (Trunc.○-rec Trunc.○∈S
-          (Trunc.η ∘ fibre-precomp-Π-η-fibre≃Π-local-centre-over ._≃_.fwd)
-          (surj (λ b → gReflector.○∈S (Rf b)) η-fibre-section))
+    → (b : B) → ║ null-homotopy (gReflector.η (Rf b)) ║
+  merely-fibre-local-centre←surjective-precomp-Π surj
+    = merely-null-homotopy-fibres←surjective-precomp-Π f
+        (λ b → gReflector.η (Rf b))
+        (surj (λ b → gReflector.○∈S (Rf b)))
+
 }
 }
 
@@ -755,10 +709,8 @@ module gReflectorConnectedCharacterisation
     {α 𝓤 𝓥} {GS : gSubU α}
     {A : Type 𝓤} {B : Type 𝓥}
     (f : A → B)
-    (R𝟙 : gReflector GS 𝟙)
-    (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
     (Rf : (b : B) → gReflector GS (fibre f b)) where
-  open gReflectorConnectedMaps f R𝟙 ○𝟙-singleton Rf
+  open gReflectorConnectedMaps f Rf
   open gReflectorFibres f Rf
 
   reflected-fibres-singleton←merely-local-centre
@@ -816,8 +768,6 @@ module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
     module Ch = gReflectorConnectedCharacterisation
       f
-      (gReflector←gRSubU RS 𝟙)
-      (○𝟙-is-single RS)
       (λ b → gReflector←gRSubU RS (fibre f b))
     open Ch
     module LC = gReflectorFibres f (λ b → gReflector←gRSubU RS (fibre f b))
@@ -825,10 +775,9 @@ module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
     up-connected-fibres←is-connected-map
       : is-connected-map RS f
       → up-connected-fibres GS f
-    up-connected-fibres←is-connected-map fconn b U∈S
-      = (is-equiv-∘
-          (reflects U∈S)
-          (sing-const-is-equiv global-funext (fconn b)))
+    up-connected-fibres←is-connected-map fconn b
+      = gReflectorConnectedTypes.up-connected←reflected-type-singleton
+          (gReflector←gRSubU RS (fibre f b)) (fconn b)
 
     up-connected-!-fibre←is-connected-map
       : is-connected-map RS f
@@ -840,12 +789,9 @@ module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
     is-connected-map←up-connected-!-fibre
       : up-connected-!-fibre GS f
       → is-connected-map RS f
-    is-connected-map←up-connected-!-fibre fibterm b
-      = is-single←equiv-to-single
-          (mk≃ (○₁ (!: fibre f b))
-            (is-modal-equiv←up-modal-equiv RS (fibterm b))
-            e⁻¹)
-          (○𝟙-is-single RS)
+    is-connected-map←up-connected-!-fibre
+      = gReflectorConnectedMaps.reflected-fibres-singleton←up-connected-!-fibre
+          f (λ b → gReflector←gRSubU RS (fibre f b))
 
     is-connected-map←up-connected-map
       : up-connected-map GS f

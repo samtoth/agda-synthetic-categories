@@ -120,7 +120,8 @@ is-connected-map' {B = B} rfl f = (b : B) → is-connected' rfl (fibre f b)
   = mk-singl
       (ind {P = λ x → ○ (fibre η x)}
            (λ _ → ○∈S) (λ a → η (a , refl)) x)
-      (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y) where
+      (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y)
+  where
   open gRSubU RS
   open gReflectiveClosure RS
   open gRSubUInduction RS GΣ
@@ -158,10 +159,7 @@ up-connected-map-right-cancel K f g fconn gfconn U∈K
 }
 
 \agda{
-module _ {α} (RS : gRSubU α)
-         where
-  open gRSubU RS
-  open gReflectiveClosure RS
+module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveClosure RS) where
 
   is-connected-map'-~
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B} → f ~ g
@@ -171,15 +169,10 @@ module _ {α} (RS : gRSubU α)
   is-connected-map←is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       → is-equiv f → is-connected-map RS f
-  is-connected-map←is-equiv feq b = ○-is-singleton (has-singleton-fibres←is-equiv feq b)
+  is-connected-map←is-equiv feq b
+    = ○-is-singleton (has-singleton-fibres←is-equiv feq b)
 
-
-module _ {α} (RS : gRSubU α)
-         (SΣ : is-globally-Σ-closed (gRSubU.GS RS))
-         where
-  open gRSubU RS
-  open gReflectiveReasoning RS
-  open gRSubUInduction RS SΣ
+module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveReasoning RS) where
 
   is-connected-map↔∘
     : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : B → C}
@@ -194,7 +187,7 @@ module _ {α} (RS : gRSubU α)
     eqv z
       = ○ (fibre (f ∘ g) z) ≃⟨ ○-≃ (fibre-∘ z) ⟩
         ○ (Σ (fibre f z) (λ x → fibre g (fst x)))
-                            ≃⟨ mk≃ _ (Σ○-is-equiv RS _) ⟩
+                            ≃⟨ Σ○≃ RS _ ⟩
         ○ (Σ (fibre f z) (λ x → ○ (fibre g (fst x))))
                             ≃⟨ ○-≃ (Σ-singleton (λ x → gconn (fst x))) ⟩
         ○ (fibre f z)       ≃∎
@@ -385,8 +378,16 @@ up-modal-equiv←up-connected-map
     → up-modal-equiv K f
 up-modal-equiv←up-connected-map K f fconn U∈K = fconn (λ _ → U∈K)
 
-module gRSubUConnectedModalEquivalences {α} (RS : gRSubU α) where
-  open gRSubU RS
+module gRSubUConnectedModalEquivalences {α} (RS : gRSubU α) (open gRSubU RS) where
+
+  is-modal-equiv←up-connected-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        (f : A → B)
+      → up-connected-map GS f
+      → is-modal-equiv RS f
+  is-modal-equiv←up-connected-map f fconn
+    = is-modal-equiv←up-modal-equiv RS
+        (up-modal-equiv←up-connected-map GS f fconn)
 }
 }
 
@@ -397,10 +398,7 @@ module gRSubUConnectedModalEquivalences {α} (RS : gRSubU α) where
 \p{Any map which is both modal and connected is an equivalence.}
 
 \agda{
-module _ {α} (RS : gRSubU α) where
-
-  open gRSubU RS
-  open gReflectiveClosure RS
+module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveClosure RS) where
 
   is-equiv←is-modal←is-connected
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
@@ -634,13 +632,13 @@ Given a #{\Sigma}-closed reflective global subuniverse #{K} and a #{K}-reflector
 }
 
 \agda{
-module gRSubUReflectorConnected {α}
-    (RS : gRSubU α)
-    (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
-  open gRSubU RS
-  open gReflectiveClosure RS
-  open gReflectiveReasoning RS
-  open gRSubUInduction RS SΣ
+module gRSubUReflectorConnected
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  (open gReflectiveReasoning RS)
+  (open gRSubUInduction RS SΣ)
+  where
 
   η-up-connected-map
     : ∀ {𝓤} {A : Type 𝓤}
@@ -653,28 +651,11 @@ module gRSubUReflectorConnected {α}
         (f : A → B)
       → up-modal-equiv GS f
       → up-connected-map GS (η {A = B} ∘ f)
-  η∘-connected-map←up-modal-equiv {A = A} {B = B} f feq {U = U} U∈S
-    = is-equiv←~⁻¹ (λ h → funext→ λ a → (apᶠ h (○₁-β f a))) eqv where
+  η∘-connected-map←up-modal-equiv f feq
+    = up-connected-map-∘~ GS η (○₁ f) (○₁-β f h⁻¹)
+        η-up-connected-map
+        (λ _ → precomp-Π-is-equiv (is-modal-equiv←up-modal-equiv RS feq))
 
-    eqv
-      : is-equiv
-          ( postcomp-Π (λ a → tr U (○₁-β f a))
-          ∘ precomp-Π (U ∘ ○₁ f) η ∘ precomp-Π U (○₁ f))
-    eqv
-      = is-equiv-∘
-          (postcomp-Π-equiv λ {a} → coe-is-equiv (ap U (○₁-β f a)))
-          (is-equiv-∘
-            (η-up-connected-map (U∈S ∘ ○₁ f))
-            (precomp-Π-is-equiv (is-modal-equiv←up-modal-equiv RS feq)))
-
-  is-modal-equiv←up-connected-map
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-        (f : A → B)
-      → up-connected-map GS f
-      → is-modal-equiv RS f
-  is-modal-equiv←up-connected-map f fconn
-    = is-modal-equiv←up-modal-equiv RS
-        (up-modal-equiv←up-connected-map GS f fconn)
 }
 }
 
@@ -686,10 +667,11 @@ module gRSubUReflectorConnected {α}
 
 \agda{
 module gReflectorFibres
-    {α 𝓤 𝓥} {GS : gSubU α}
-    {A : Type 𝓤} {B : Type 𝓥}
-    (f : A → B)
-    (Rf : (b : B) → gReflector GS (fibre f b)) where
+  {α 𝓤 𝓥} {GS : gSubU α}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B)
+  (Rf : (b : B) → gReflector GS (fibre f b))
+  where
 
   η-fibre-section
     : Π A (λ a → gReflector.○ (Rf (f a)))
@@ -752,14 +734,16 @@ module gReflectorFibres
 
 \agda{
 module gReflectorConnectedCharacterisation
-    {α 𝓤 𝓥} {GS : gSubU α}
-    {A : Type 𝓤} {B : Type 𝓥}
-    (f : A → B)
-    (R𝟙 : gReflector GS 𝟙)
-    (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
-    (Rf : (b : B) → gReflector GS (fibre f b)) where
-  open gReflectorConnectedMaps f R𝟙 ○𝟙-singleton Rf
-  open gReflectorFibres f Rf
+  {α 𝓤 𝓥} {GS : gSubU α}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B)
+  (R𝟙 : gReflector GS 𝟙)
+  (○𝟙-singleton : is-singleton (gReflector.○ R𝟙))
+  (Rf : (b : B) → gReflector GS (fibre f b))
+  (open gReflectorConnectedMaps f R𝟙 ○𝟙-singleton Rf)
+  (open gReflectorFibres f Rf)
+  where
+
 
   reflected-fibres-singleton←merely-local-centre
     : ((b : B)
@@ -808,10 +792,12 @@ module gReflectorConnectedCharacterisation
 \title{Equivalent conditions for connected maps in reflective global subuniverses}
 
 \agda{
-module gRSubUConnectedCharacterisation {α} (RS : gRSubU α) where
-  open gRSubU RS
-  open gReflectiveReasoning RS
-  open gReflectiveClosure RS
+module gRSubUConnectedCharacterisation
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (open gReflectiveClosure RS)
+  where
 
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) where
     module Ch = gReflectorConnectedCharacterisation

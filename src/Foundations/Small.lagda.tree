@@ -25,6 +25,10 @@ open import Foundations.FibrewiseEquivalences
 open import Foundations.TotalEquiv
 open import Foundations.Straightening
 open import Foundations.IdentitySystems
+open import Foundations.FunExt
+open import Foundations.IdempotentMaps
+open import Foundations.Retracts
+import Foundations.IsEquivIsProp
 }
 }
 
@@ -271,5 +275,139 @@ is-small-domain←small-map {f = f} Bsmall fsmall
   = is-small←equiv
       (total≃total-fibre f)
       (Σ-is-small Bsmall fsmall)
+}
+}
+
+\subtree[stt-00HR]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Small types are closed under dependent products}
+
+\agda{
+module SmallWithFunExt
+  (FE : FunExt-global)
+  (open WithFunExt-global FE)
+  (open Foundations.IsEquivIsProp FE)
+  where
+
+  Π-is-small
+    : ∀ {𝓤 𝓤' 𝓥 𝓥'}
+        {A : Type 𝓤} {B : A → Type 𝓥}
+      → is-small 𝓤' A
+      → ((a : A) → is-small 𝓥' (B a))
+      → is-small (𝓤' ⊔ 𝓥') (Π A B)
+  Π-is-small {B = B} (A' , e) H
+    = ( Π A' (λ a' → fst (H (_≃_.bwd e a')))
+      , precomp-Π-≃ FE B (e e⁻¹)
+      ∙e Π-fam-≃ (λ a' → snd (H (_≃_.bwd e a'))))
+}
+}
+
+\subtree[stt-00HW]{
+\date{2026-03-13}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Small types are closed under retracts}
+
+\p{
+Given a [small](stt-00HN) type #{A}, then any [retract](stt-00HE) of #{A} is again
+small.
+}
+
+\p{
+This appears as \citet{Thm 2.13}{dJE23}, and is a consequence of the
+[splitting construction on quasiidempotent maps](stt-00HC).
+}
+
+\agda{
+  Splitting-type-is-small
+    : ∀ {𝓤 𝓥} {X : Type 𝓤}
+        (f : X → X)
+      → is-small 𝓥 X
+      → is-small 𝓥 (Splitting.type f)
+  Splitting-type-is-small {X = X} f Xsmall
+    = Σ-is-small
+        (Π-is-small self-is-small (λ _ → Xsmall))
+        (λ a → Π-is-small self-is-small
+          (λ n → ＝-is-small Xsmall (a n) (f (a (suc n)))))
+
+  is-small←retract
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B
+      → is-small 𝓦 B
+      → is-small 𝓦 A
+  is-small←retract R Bsmall
+    = is-small←equiv
+        (SplitRetractWithFunExt.split-retract-equiv FE R)
+        (Splitting-type-is-small (fst (qidempotent-map←retract R)) Bsmall)
+
+  is-n-locally-small←retract
+    : ∀ {𝓤 𝓥 𝓦} (n : ℕ)
+        {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B
+      → is-n-locally-small n 𝓦 B
+      → is-n-locally-small n 𝓦 A
+  is-n-locally-small←retract zero R H
+    = is-small←retract R H
+  is-n-locally-small←retract (suc n) R H x y
+    = is-n-locally-small←retract n
+        (retract-＝ R)
+        (H (R .fst x) (R .fst y))
+
+  is-locally-small←retract
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B
+      → is-locally-small 𝓦 B
+      → is-locally-small 𝓦 A
+  is-locally-small←retract = is-n-locally-small←retract 1
+}
+}
+
+\subtree[bak-31CF]{
+\title{Smallness of the type of quasiidempotent maps}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\agda{
+  module _ {𝓤 𝓥} {A : Type 𝓤} where
+
+    preidempotence-is-small
+      : (f : A → A)
+      → is-small 𝓥 A
+      → is-small 𝓥 (preidempotence f)
+    preidempotence-is-small f Asmall
+      = Π-is-small Asmall (λ a → ＝-is-small Asmall (f (f a)) (f a))
+
+    qcoh-preidempotence-is-small
+      : (f : A → A)
+        (I : preidempotence f)
+      → is-small 𝓥 A
+      → is-small 𝓥 (qcoh-preidempotence f I)
+    qcoh-preidempotence-is-small f I Asmall
+      = Π-is-small Asmall
+          (λ a → ＝-is-small
+            (＝-is-small Asmall (f (f (f a))) (f (f a)))
+            (ap f (I a))
+            (I (f a)))
+
+    qidempotence-is-small
+      : (f : A → A)
+      → is-small 𝓥 A
+      → is-small 𝓥 (qidempotence f)
+    qidempotence-is-small f Asmall
+      = Σ-is-small
+          (preidempotence-is-small f Asmall)
+          (λ I → qcoh-preidempotence-is-small f I Asmall)
+
+    qidempotent-map-is-small
+      : is-small 𝓥 A
+      → is-small 𝓥 (qidempotent-map A)
+    qidempotent-map-is-small Asmall
+      = Σ-is-small
+          (Π-is-small Asmall (λ _ → Asmall))
+          (λ f → qidempotence-is-small f Asmall)
 }
 }

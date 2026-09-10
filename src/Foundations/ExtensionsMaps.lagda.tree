@@ -26,6 +26,12 @@ open import Foundations.Singletons
 open import Foundations.EmptyUP
 open import Foundations.FunExt
 open import Foundations.SingletonClosure
+open import Foundations.CompositionEquiv
+open import Foundations.Currying
+open import Foundations.IsEquivIsProp
+open import Foundations.TheoremOfChoice
+open import Foundations.TotalEquiv
+open import Foundations.TorsorialTypeFamilies
 }
 }
 
@@ -75,6 +81,68 @@ Ext-∅ FE = mk≃ fst (singleton-fst-is-equiv λ x → Π-is-single FE λ ())
 }
 }
 
+\subtree[bak-8F2E]{
+\title{Homotopies of extensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+  {i : A → B} {p : A → X}
+  where
+
+  Ext-htpy : Ext i p → Ext i p → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Ext-htpy F G
+    = Σ[ H ∶ F .fst ~ G .fst ] (F .snd ~ H ▹h i ∙h G .snd)
+
+  refl-Ext-htpy : (F : Ext i p) → Ext-htpy F F
+  refl-Ext-htpy F = (~refl , ~refl)
+
+  Ext-htpy←Id : {F G : Ext i p} → F ＝ G → Ext-htpy F G
+  Ext-htpy←Id {F = F} refl = refl-Ext-htpy F
+}
+}
+
+\agda{
+module ExtWithFunExt (FE : FunExt-global) (open WithFunExt-global FE) where
+}
+
+\subtree[bak-024A]{
+\title{Characterising equality of extensions}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+    {i : A → B} {p : A → X}
+    where
+
+    Ext-htpy-is-torsorial
+      : (F : Ext i p) → is-torsorial (Ext-htpy F)
+    Ext-htpy-is-torsorial F
+      = is-singleton-structure←parts
+          (htpy-is-torsorial FE (F .fst))
+          (_ , ~refl)
+          (htpy-is-torsorial FE (F .snd))
+
+    Ext-htpy←Id-is-equiv
+      : (F G : Ext i p) → is-equiv (Ext-htpy←Id {F = F} {G})
+    Ext-htpy←Id-is-equiv F
+      = fundamental-Id
+          (Ext-htpy F) (Ext-htpy-is-torsorial F) (λ _ → Ext-htpy←Id)
+
+    Id≃Ext-htpy : (F G : Ext i p) → (F ＝ G) ≃ Ext-htpy F G
+    Id≃Ext-htpy F G = mk≃ Ext-htpy←Id (Ext-htpy←Id-is-equiv F G)
+
+    Id←Ext-htpy : {F G : Ext i p} → Ext-htpy F G → F ＝ G
+    Id←Ext-htpy {F} {G} = _≃_.bwd (Id≃Ext-htpy F G)
+}
+}
+
 \subtree[stt-00CM]{
 \title{Composition of extension}
 \taxon{Lemma}
@@ -104,22 +172,64 @@ along #{j}.
 \p{By contracting singletons.}
 }
 
+
 \agda{
-Ext-compose
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-    → FunExt-global
-    → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X)
-    → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
-Ext-compose {B = B} {C = C} FE j i {X} p
-  = Ext (j ∘ i) p
-      ≃⟨ Σ-snd-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙e Σ-assoc)) ⟩
-    Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-      ≃⟨ Σ-comm ⟩
-    Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-      ≃⟨ Σ-snd-≃ (λ f → Σ-assoc e⁻¹ ∙e ×-swap) ⟩
-    Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
-      ≃⟨ Σ-assoc e⁻¹ ⟩
-    (Σ[ f ∶ Ext i p ] Ext j (f .fst))
-      ≃∎
+  Ext-compose≃
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X)
+      → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
+  Ext-compose≃ {B = B} {C = C} j i {X} p
+    = Ext (j ∘ i) p
+        ≃⟨ Σ-snd-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙e Σ-assoc)) ⟩
+      Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+        ≃⟨ Σ-comm ⟩
+      Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+        ≃⟨ Σ-snd-≃ (λ f → Σ-assoc e⁻¹ ∙e ×-swap) ⟩
+      Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
+        ≃⟨ Σ-assoc e⁻¹ ⟩
+      (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+        ≃∎
+}
+}
+
+
+\subtree[bak-FFC4]{
+\title{Extensions into dependent products are dependent products of extensions}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓣 𝓩} {A : Type 𝓤} {X : Type 𝓥}
+    {I : Type 𝓣} {B : I → Type 𝓩}
+    (i : A → X) (j : A → Π I B)
+    where
+
+    Ext-Π-≃ : Ext i j ≃ ((t : I) → Ext i (λ a → j a t))
+    Ext-Π-≃
+      = Σ-≃ flip≃ (λ f → Π-fam-≃ FE (λ a → funext≃) ∙e flip≃)
+      ∙e (Σ-Π-swap≃ _ _ e⁻¹)
+}
+}
+
+\subtree[bak-0851]{
+\title{Equivalences of extension types from equivalences of types}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  Ext-codomain-≃
+    : ∀ {𝓤 𝓥 𝓦 𝓩}
+        {A : Type 𝓤} {X : Type 𝓥}
+        {Y : Type 𝓦} {Z : Type 𝓩}
+      → (i : A → X) (j : A → Y) (k : A → Z)
+      → (e : Y ≃ Z) → e ._≃_.fwd ∘ j ~ k
+      → Ext i j ≃ Ext i k
+  Ext-codomain-≃ i j k e H
+    = Σ-≃
+        (postcomp-≃ FE e)
+        (λ f → Π-fam-≃ FE (λ a → ＝-equiv e ∙e ＝-preconcat-≃ (H a)))
 }
 }

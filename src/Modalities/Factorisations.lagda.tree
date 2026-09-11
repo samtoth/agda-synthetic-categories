@@ -20,8 +20,10 @@ open import Ergonomics.Extensionality
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.ArrowRetracts
 open import Core.LiftingSquares
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 
 open import Modalities.WideSubcategoriesTypes
 }
@@ -86,8 +88,8 @@ gFactorisation γ LL RR {𝓤} {𝓥}
 }
 }
 
-\subtree[stt-00YP]{
-\title{Equivalences of factorisations}
+\subtree[bak-6399]{
+\title{Morphisms of factorisations}
 \taxon{Definition}
 \author{fredrikbakke}
 \date{2026-09-11}
@@ -106,14 +108,14 @@ A && B && A && B\nsp{,}
 \arrow[from=1-6, to=2-7]
 \end{tikzcd}
 }
-then an \em{equivalence} of factorisations is an equivalence of images
-#{e \colon X \simeq Y} such that the obvious simplex is coherent:
+then a \em{morphism} between them is a function between their images
+#{e \colon X \to Y} such that the obvious simplex is coherent:
 
 \quiver{
 \begin{tikzcd}[column sep=small]
 & X &&& Y \\
 A &&&&& B\nsp{.}
-\arrow["e", from=1-2, to=1-5, "\sim"']
+\arrow["e", from=1-2, to=1-5]
 \arrow["f", from=2-1, to=2-6]
 \arrow[from=2-1, to=1-5]
 \arrow[from=1-5, to=2-6]
@@ -131,28 +133,68 @@ module _
   {f : A → B}
   where
 
-  coherence-Factorisation-equiv
+  coherence-Factorisation-map
     : (F G : Factorisation 𝓘 LL RR f)
-    → (e : Factorisation.Im F ≃ Factorisation.Im G)
-    → e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G
-    → Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd
+    → (h : Factorisation.Im F → Factorisation.Im G)
+    → h ∘ Factorisation.l F ~ Factorisation.l G
+    → Factorisation.r F ~ Factorisation.r G ∘ h
     → Type (𝓤 ⊔ 𝓥)
-  coherence-Factorisation-equiv F G e L R
+  coherence-Factorisation-map F G h L R
     = R ▹h Factorisation.l F
     ∙h Factorisation.r G ◃h L
     ∙h Factorisation.comm G
     ~ Factorisation.comm F
+
+  Factorisation-map : (F G : Factorisation 𝓘 LL RR f) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+  Factorisation-map F G
+    = Σ[ h ∶ (Factorisation.Im F → Factorisation.Im G) ]
+      Σ[ L ∶ h ∘ Factorisation.l F ~ Factorisation.l G ]
+      Σ[ R ∶ Factorisation.r F ~ Factorisation.r G ∘ h ]
+        coherence-Factorisation-map F G h L R
+
+  Factorisation-id-map : {F : Factorisation 𝓘 LL RR f} → Factorisation-map F F
+  Factorisation-id-map = (id , ~refl , ~refl , ~refl)
+}
+}
+
+\subtree[stt-00YP]{
+\title{Equivalences of factorisations}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+An \em{equivalence} of factorisations is a [morphism](bak-6399) such that the
+underlying map in images is an equivalence of types.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  {LL : {I : Type 𝓘} → Subtype (A → I) 𝓛}
+  {RR : {I : Type 𝓘} → Subtype (I → B) 𝓡}
+  {f : A → B}
+  where
 
   Factorisation-equiv : (F G : Factorisation 𝓘 LL RR f) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
   Factorisation-equiv F G
     = Σ[ e ∶ Factorisation.Im F ≃ Factorisation.Im G ]
       Σ[ L ∶ e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G ]
       Σ[ R ∶ Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd ]
-       ( coherence-Factorisation-equiv F G e L R)
+        coherence-Factorisation-map F G (e ._≃_.fwd) L R
 
   Factorisation-id-equiv
     : {F : Factorisation 𝓘 LL RR f} → Factorisation-equiv F F
   Factorisation-id-equiv = (id≃ , ~refl , ~refl , ~refl)
+
+  Factorisation-map←equiv
+    : {F G : Factorisation 𝓘 LL RR f} → Factorisation-equiv F G → Factorisation-map F G
+  Factorisation-map←equiv (e , L , R , C) = (e ._≃_.fwd , L , R , C)
+
+  Factorisation-equiv←map
+    : {F G : Factorisation 𝓘 LL RR f} (m : Factorisation-map F G)
+    → is-equiv (m .fst) → Factorisation-equiv F G
+  Factorisation-equiv←map (h , L , R , C) e = (mk≃ h e , L , R , C)
 }
 }
 
@@ -161,6 +203,8 @@ module _
 \taxon{Theorem}
 \author{fredrikbakke}
 \date{2026-09-11}
+
+\p{Equivalences of factorisations characterise equality.}
 
 \agda{
   Factorisation-equiv←id
@@ -201,6 +245,75 @@ module _
     Factorisation-equiv→id
       : {F G : Factorisation 𝓘 LL RR f} → Factorisation-equiv F G → F ＝ G
     Factorisation-equiv→id = _≃_.bwd (Factorisation-equiv≃ _ _)
+}
+}
+
+
+\subtree[bak-0598]{
+\title{Comparing factorisations via lifting}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given two factorisations of a map #{f \colon A \to B},
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+& X &&&& Y \\
+A && B && A && B\nsp{,}
+\arrow["f", from=2-1, to=2-3]
+\arrow["f", from=2-5, to=2-7]
+\arrow[from=2-1, to=1-2, "l"]
+\arrow[from=1-2, to=2-3, "r"]
+\arrow[from=2-5, to=1-6, "l'"]
+\arrow[from=1-6, to=2-7, "r'"]
+\end{tikzcd}
+}
+
+then we may form a morphism of arrows from #{l} to #{r'} via the following pasting
+
+\quiver{
+\begin{tikzcd}
+A && Y \\
+\\
+X && B\nsp{.}
+\arrow["l"', from=1-1, to=3-1]
+\arrow["r'", from=1-3, to=3-3]
+\arrow["l'", from=1-1, to=1-3]
+\arrow["r"', from=3-1, to=3-3]
+\arrow["f" description, from=1-1, to=3-3]
+\end{tikzcd}
+}
+If this square has a lifting #{\ell \colon X \to Y}, then that is a morphism of
+factorisations.
+}
+
+\agda{
+  module _
+    (F G : Factorisation 𝓘 LL RR f)
+    (let module F = Factorisation F)
+    (let module G = Factorisation G)
+    where
+
+    factorisation-comparison-square : Arrow-map F.l G.r
+    factorisation-comparison-square = mk-amap G.l F.r (F.comm ∙h (G.comm h⁻¹))
+
+    module _
+      (t : Lift factorisation-comparison-square)
+      (let module t = Lift t)
+      where
+
+      coherence-Factorisation-map←lift
+        : coherence-Factorisation-map F G t.lift t.L (t.K h⁻¹)
+      coherence-Factorisation-map←lift
+        = (∙h-assoc (t.K h⁻¹ ▹h F.l) (G.r ◃h t.L) G.comm h⁻¹)
+        ∙h right-transpose-∙h⁻¹ {R = G.comm}
+          (left-transpose-∙h {P = t.K ▹h F.l} (t.pastes h⁻¹) h⁻¹)
+
+      Factorisation-map←lift : Factorisation-map F G
+      Factorisation-map←lift
+        = (t.lift , t.L , t.K h⁻¹ , coherence-Factorisation-map←lift)
 }
 }
 

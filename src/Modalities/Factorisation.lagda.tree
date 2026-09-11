@@ -2,7 +2,7 @@
 \author{samueltoth}
 \taxon{Module}
 \import{stt-macros}
-\title{Orthogonal Factorisation Systems}
+\title{Orthogonal factorisation systems}
 
 \agda{
 module Modalities.Factorisation where
@@ -13,6 +13,12 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+
+open import Core.Arrows
+open import Core.LiftingSquares
+open import Core.Orthogonal
 }
 }
 
@@ -44,8 +50,11 @@ record WideSubcatType 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
 \taxon{Definition}
 
 \agda{
-record Factorisation {𝓤 𝓥} (LL RR : WideSubcatType 𝓤 𝓥)
-                     {A B : Type 𝓤} (f : A → B) : Type (lsuc 𝓤 ⊔ 𝓥) where
+record Factorisation
+    {𝓤 𝓥} (LL RR : WideSubcatType 𝓤 𝓥)
+    {A B : Type 𝓤} (f : A → B) : Type (lsuc 𝓤 ⊔ 𝓥)
+  where
+  constructor mk-factorisation
   open WideSubcatType LL renaming (K to L) using ()
   open WideSubcatType RR renaming (K to R) using ()
   field
@@ -56,11 +65,106 @@ record Factorisation {𝓤 𝓥} (LL RR : WideSubcatType 𝓤 𝓥)
     r∈R : r ∈ R
 
     comm : r ∘ l ＝ f
+
+unquoteDecl Factorisation-repr≊ Factorisation-repr≃
+  = make-record-repr Factorisation-repr≊ Factorisation-repr≃ (quote Factorisation)
+}
+}
+
+\subtree[bak-516F]{
+\title{Equivalences of factorisations}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥} {LL RR : WideSubcatType 𝓤 𝓥}
+  {A B : Type 𝓤} {f : A → B}
+  where
+
+  coherence-Factorisation-equiv
+    : (F G : Factorisation LL RR f)
+    → (e : Factorisation.Im F ≃ Factorisation.Im G)
+    → e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G
+    → Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd
+    → Type 𝓤
+  coherence-Factorisation-equiv F G e L R
+    = R ▹h Factorisation.l F
+    ∙h Factorisation.r G ◃h L
+    ∙h happly (Factorisation.comm G)
+    ~ happly (Factorisation.comm F)
+
+  Factorisation-equiv : (F G : Factorisation LL RR f) → Type 𝓤
+  Factorisation-equiv F G
+    = Σ[ e ∶ Factorisation.Im F ≃ Factorisation.Im G ]
+      Σ[ L ∶ e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G ]
+      Σ[ R ∶ Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd ]
+       ( coherence-Factorisation-equiv F G e L R)
+
+  Factorisation-id-equiv
+    : {F : Factorisation LL RR f} → Factorisation-equiv F F
+  Factorisation-id-equiv = (id≃ , ~refl , ~refl , ~refl)
+}
+}
+
+\subtree[bak-5466]{
+\title{Characterising equality of factorisations}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥} {LL RR : WideSubcatType 𝓤 𝓥}
+  {A B : Type 𝓤} {f : A → B}
+  where
+
+  Factorisation-equiv←id
+    : {F G : Factorisation LL RR f} → F ＝ G → Factorisation-equiv F G
+  Factorisation-equiv←id {F} refl = Factorisation-id-equiv {F = F}
+
+  opaque
+    Factorisation-equiv-is-torsorial
+      : (F : Factorisation LL RR f) → is-torsorial (Factorisation-equiv F)
+    Factorisation-equiv-is-torsorial
+      (mk-factorisation I l r lL rR H)
+      = is-single←equiv-to-single
+          (Σ-fst-≃ (Factorisation-repr≃ e⁻¹))
+          (is-singleton-structure←parts
+            (equiv-is-torsorial I) (I , id≃)
+            (is-singleton-structure←parts
+              (SingS-is-single l) (l , ~refl)
+              (is-singleton-structure←parts
+                (SingS-is-single r) (r , ~refl)
+                (is-single←equiv⁻¹
+                  (Σ-fst-≃-bwd⁻¹
+                    ( Σ-singl (mk-singl lL (∈-is-prop (WideSubcatType.K LL) _ _)) lL
+                    ∙e Σ-singl (mk-singl rR (∈-is-prop (WideSubcatType.K RR) _ _)) rR)
+                  ∙e Σ-fst-≃ funext≃)
+                  (SingS-is-single' (happly H))))))
+
+    Factorisation-equiv←id-is-equiv
+      : (F G : Factorisation LL RR f)
+      → is-equiv (Factorisation-equiv←id {F = F} {G = G})
+    Factorisation-equiv←id-is-equiv F G
+      = fundamental-Id _
+          (Factorisation-equiv-is-torsorial F)
+          (λ _ → Factorisation-equiv←id) G
+
+    Factorisation-equiv≃
+      : (F G : Factorisation LL RR f) → (F ＝ G) ≃ Factorisation-equiv F G
+    Factorisation-equiv≃ F G
+      = mk≃ Factorisation-equiv←id (Factorisation-equiv←id-is-equiv F G)
+
+    Factorisation-equiv→id
+      : {F G : Factorisation LL RR f} → Factorisation-equiv F G → F ＝ G
+    Factorisation-equiv→id = _≃_.bwd (Factorisation-equiv≃ _ _)
 }
 }
 
 \subtree[stt-004V]{
-\title{Orthogonal Factorisation System}
+\title{Orthogonal factorisation systems}
 \contributor{fredrikbakke}
 \taxon{Definition}
 
@@ -69,13 +173,17 @@ record OFS 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
   field
     Ll Rr : WideSubcatType 𝓤 𝓥
   open WideSubcatType Ll public using () renaming
-    ( K to L; ≃∈K to ≃∈L; id∈K to id∈L; _∘∈K_ to _L∘_)
+    ( K to L; ≃∈K to ≃∈L; id∈K to id∈L; _∘∈K_ to _∘∈L_)
   open WideSubcatType Rr public using () renaming
-    ( K to R; ≃∈K to ≃∈R; id∈K to id∈R; _∘∈K_ to _R∘_)
+    ( K to R; ≃∈K to ≃∈R; id∈K to id∈R; _∘∈K_ to _∘∈R_)
 
   field
-    factorisation
+    factorisation-is-singleton
       : {A B : Type 𝓤} (f : A → B)
       → is-singleton (Factorisation Ll Rr f)
+
+  factorisation
+    : {A B : Type 𝓤} (f : A → B) → Factorisation Ll Rr f
+  factorisation f = factorisation-is-singleton f .centre
 }
 }

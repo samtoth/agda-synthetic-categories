@@ -19,6 +19,7 @@ open import Ergonomics.Representation
 open import Ergonomics.Extensionality
 
 open import Core.Arrows
+open import Core.ArrowEquiv
 open import Core.LiftingSquares
 open import Core.Orthogonal
 }
@@ -31,7 +32,8 @@ open import Core.Orthogonal
 
 \p{
 We define the type of wide subcategories of #{\UU} - that is - subtypes
-of all arrows which are closed under composition and that contains equivalences.}
+of all arrows which are closed under composition and that contains the equivalences.
+}
 
 \agda{
 record WideSubcatType 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
@@ -44,11 +46,58 @@ record WideSubcatType 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
 
   id∈K : ∀ {A : Type 𝓤} → (id: A) ∈ K
   id∈K = ≃∈K id≃
+
+  stable-equiv
+    : {A B X Y : Type 𝓤} {f : A → B} {g : X → Y}
+    → Arrow-equiv f g → g ∈ K → f ∈ K
+  stable-equiv {f = f} (mk-amap top bot H , teq , beq) gK
+    = tr (_∈ K)
+        (funext→ (is-equiv.bwd beq ◃h (H h⁻¹) ∙h is-equiv.η beq ▹h f))
+        (≃∈K ((mk≃ bot beq) e⁻¹) ∘∈K (gK ∘∈K ≃∈K (mk≃ top teq)))
+}
+}
+
+\subtree[bak-8353]{
+\title{Global wide subcategories of types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+We define global wide subcategories of types - that is - subtypes
+of all arrows at each universe level, which are closed under composition and that
+contains the equivalences.
+}
+
+\agda{
+record gWideSubcatType (β : Level → Level → Level) : Typeω where
+  field
+    K : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → Subtype (A → B) (β 𝓤 𝓥)
+    ≃∈K
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        → (e : A ≃ B) → e ._≃_.fwd ∈ K
+    _∘∈K_
+      : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+          {g : B → C} {f : A → B}
+        → g ∈ K → f ∈ K → g ∘ f ∈ K
+
+  id∈K : ∀ {𝓤} {A : Type 𝓤} → (id: A) ∈ K
+  id∈K = ≃∈K id≃
+
+  stable-equiv
+    : ∀ {𝓤 𝓥 𝓦 𝓜}
+        {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → Arrow-equiv f g → g ∈ K → f ∈ K
+  stable-equiv {f = f} (mk-amap top bot H , teq , beq) gK
+    = tr (_∈ K)
+        (funext→ (is-equiv.bwd beq ◃h (H h⁻¹) ∙h is-equiv.η beq ▹h f))
+        (≃∈K ((mk≃ bot beq) e⁻¹) ∘∈K (gK ∘∈K ≃∈K (mk≃ top teq)))
 }
 }
 
 \subtree[stt-004X]{
-\title{Factorisations}
+\title{Factorisations into wide subcategories of types}
 \taxon{Definition}
 
 \agda{
@@ -70,6 +119,34 @@ record Factorisation
 
 unquoteDecl Factorisation-repr≊ Factorisation-repr≃
   = make-record-repr Factorisation-repr≊ Factorisation-repr≃ (quote Factorisation)
+}
+}
+
+\subtree[bak-7532]{
+\title{Factorisations into global wide subcategories of types}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\agda{
+record gFactorisation
+    {α β  : Level → Level → Level} (γ : Level → Level → Level)
+    (LL : gWideSubcatType α) (RR : gWideSubcatType β)
+    {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    : Type (𝓤 ⊔ 𝓥 ⊔ lsuc (γ 𝓤 𝓥) ⊔ α 𝓤 (γ 𝓤 𝓥) ⊔ β (γ 𝓤 𝓥) 𝓥)
+  where
+  constructor mk-gfactorisation
+  open gWideSubcatType LL renaming (K to L) using ()
+  open gWideSubcatType RR renaming (K to R) using ()
+  field
+    Im : Type (γ 𝓤 𝓥)
+    l : A → Im
+    r : Im → B
+    l∈L : l ∈ L
+    r∈R : r ∈ R
+    comm : r ∘ l ＝ f
+
+unquoteDecl gFactorisation-repr≊ gFactorisation-repr≃
+  = make-record-repr gFactorisation-repr≊ gFactorisation-repr≃ (quote gFactorisation)
 }
 }
 
@@ -129,8 +206,7 @@ module _
   opaque
     Factorisation-equiv-is-torsorial
       : (F : Factorisation LL RR f) → is-torsorial (Factorisation-equiv F)
-    Factorisation-equiv-is-torsorial
-      (mk-factorisation I l r lL rR H)
+    Factorisation-equiv-is-torsorial (mk-factorisation I l r lL rR H)
       = is-single←equiv-to-single
           (Σ-fst-≃ (Factorisation-repr≃ e⁻¹))
           (is-singleton-structure←parts

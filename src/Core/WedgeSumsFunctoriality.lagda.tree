@@ -126,3 +126,97 @@ module _ {𝓤 𝓥 𝓦 𝓣} {A : Type∗ 𝓤} {B : Type∗ 𝓥} {A' : Type�
             (id⊥ (!: X)))
 }
 }
+
+\subtree[stt-00YC]{
+\title{Retracts into dependent sums induce retracts of wedges}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-07}
+
+\p{
+Let #{B} be a family over #{X}, with a section #{b_0(x) : B(x)}.
+Suppose #{A} is a retract of #{\sum_{x:X} B(x)}, whose inclusion sends #{a_0}
+to #{(x_0,b_0(x_0))} and whose retraction sends every #{(x,b_0(x))} to #{a_0}.
+Then #{A \vee C} is a retract of #{\sum_{x:X} (B(x) \vee C)}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓧} {A : Type 𝓤} {X : Type 𝓧} {B : X → Type 𝓥} {C : Type 𝓦}
+  (a₀ : A) (b₀ : (x : X) → B x) (c₀ : C) (x₀ : X)
+  where
+
+  Wedge-retract-of-Σ
+    : (R : retract A (Σ X B))
+    → R .fst a₀ ＝ (x₀ , b₀ x₀)
+    → ((x : X) → R .snd .fst (x , b₀ x) ＝ a₀)
+    → retract (Wedge a₀ c₀) (Σ X (λ x → Wedge (b₀ x) c₀))
+  Wedge-retract-of-Σ (s , r , ret) s-point r-point
+    = (wedge-section , retract-map , retr)
+    where
+    q = ap r s-point ∙ r-point x₀
+
+    r-point' : (x : X) → r (x , b₀ x) ＝ a₀
+    r-point' x = r-point x ∙ sym q ∙ ret a₀
+
+    pointed-coherence : ap r s-point ∙ r-point' x₀ ＝ ret a₀
+    pointed-coherence
+      = sym (∙-assoc (ap r s-point) (r-point x₀) (sym q ∙ ret a₀))
+      ∙ sym∙ q (ret a₀)
+
+    left : Σ X B → Σ X (λ x → Wedge (b₀ x) c₀)
+    left (x , b) = x , ι₁ b
+
+    wedge-section : Wedge a₀ c₀ → Σ X (λ x → Wedge (b₀ x) c₀)
+    wedge-section = cogap (mk-cocone
+      (left ∘ s) (λ c → x₀ , ι₂ c)
+      (λ _ → ap left s-point ∙ ap (x₀ ,_) Wedge-glue))
+
+    retract-map : Σ X (λ x → Wedge (b₀ x) c₀) → Wedge a₀ c₀
+    retract-map = uncurry (λ x → cogap (mk-cocone
+      (λ b → ι₁ (r (x , b))) ι₂
+      (λ _ → ap ι₁ (r-point' x) ∙ Wedge-glue)))
+
+    glue-coherence
+      : ap (retract-map ∘ wedge-section) Wedge-glue ＝ ap ι₁ (ret a₀) ∙ Wedge-glue
+    glue-coherence
+      = ap-∘ retract-map wedge-section Wedge-glue
+      ∙ ap (ap retract-map) (pushout-rec-apβ tt)
+      ∙ ap-∙ retract-map (ap left s-point) (ap (x₀ ,_) Wedge-glue)
+      ∙ ap₂ _∙_
+          (sym (ap-∘ retract-map left s-point) ∙ ap-∘ ι₁ r s-point)
+          (sym (ap-∘ retract-map (x₀ ,_) Wedge-glue) ∙ pushout-rec-apβ tt)
+      ∙ sym (∙-assoc (ap ι₁ (ap r s-point)) (ap ι₁ (r-point' x₀)) Wedge-glue)
+      ∙ ap (_∙ Wedge-glue)
+          (sym (ap-∙ ι₁ (ap r s-point) (r-point' x₀)) ∙ ap (ap ι₁) pointed-coherence)
+
+    retr : retract-map ∘ wedge-section ~ id
+    retr = pushout-ind _ (mk-coconeᵈ (λ a → ap ι₁ (ret a)) ~refl
+      (λ _ → Idᵈ-func←Square Wedge-glue _ _
+        (mk-square
+          (∙-reflr _
+          ∙ glue-coherence
+          ∙ ap (ap ι₁ (ret a₀) ∙_) (sym (ap-id Wedge-glue))))))
+}
+}
+
+\subtree[stt-00YD]{
+\title{Retracts into products induce retracts of wedges}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-09-07}
+
+\p{This is a special case of [[stt-00YC]].}
+
+\agda{
+Wedge-retract-of-product
+  : ∀ {𝓤 𝓥 𝓦 𝓧} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {X : Type 𝓧}
+      (a₀ : A) (b₀ : B) (c₀ : C) (x₀ : X)
+      (R : retract A (X × B))
+    → R .fst a₀ ＝ (x₀ , b₀)
+    → ((x : X) → R .snd .fst (x , b₀) ＝ a₀)
+    → retract (Wedge a₀ c₀) (X × Wedge b₀ c₀)
+Wedge-retract-of-product a₀ b₀ c₀ x₀
+  = Wedge-retract-of-Σ a₀ (λ _ → b₀) c₀ x₀
+}
+}

@@ -180,10 +180,10 @@ assign-tree-ids-no-commit: check-duplicate-tree-ids check-sync-main
 
 
 assign-tree-ids: assign-tree-ids-no-commit
-	# Commit if there are
-	# - unstaged changes to tracked files
-	# - staged changes, or
-	# - untracked files, excluding gitignored files
+	@# Commit if there are
+	@# - unstaged changes to tracked files
+	@# - staged changes, or
+	@# - untracked files, excluding gitignored files
 	@if ! git diff --quiet || \
 	   ! git diff --cached --quiet || \
 	   [ -n "$$(git ls-files --others --exclude-standard)" ]; then \

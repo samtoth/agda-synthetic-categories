@@ -1,5 +1,7 @@
 \date{2025-06-04}
+\date{2026-09-11}
 \author{samueltoth}
+\author{fredrikbakke}
 \taxon{Module}
 \import{stt-macros}
 \title{Orthogonal factorisation systems}
@@ -17,10 +19,150 @@ open import Ergonomics.Representation
 open import Ergonomics.Extensionality
 
 open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.ArrowRetracts
+open import Core.CartesianSquares
+open import Core.Cube
+open import Core.PullbackPowers
 open import Modalities.Factorisations
 open import Modalities.WideSubcategoriesTypes
 open import Core.LiftingSquares
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
+}
+}
+
+\subtree[bak-9502]{
+\title{Unique factorisations give unique lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given composition closed function classes #{\mathcal{L}} and #{\mathcal{R}}, then if
+every map factors uniquely as a map in #{\mathcal{L}} followed by a map in
+#{\mathcal{R}}, then maps in #{\mathcal{L}} uniquely lift against maps in
+#{\mathcal{R}}.
+}
+
+\p{This appears as Lemma~1.44 in Rijke–Shulman–Spitters~\citek{RSS20}}
+
+\agda{
+module UniqueFactorisation→Lifting
+  {𝓤 𝓥 𝓘 𝓛 𝓡}
+  (L : {A : Type 𝓤} {I : Type 𝓘} → Subtype (A → I) 𝓛)
+  (R : {I : Type 𝓘} {B : Type 𝓥} → Subtype (I → B) 𝓡)
+  (unique-factorisations
+    : {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → is-singleton (Factorisation 𝓘 L R f))
+  {A B : Type 𝓤} {X Y : Type 𝓥} {l : A → B} {r : X → Y}
+  (∘l∈L : {I : Type 𝓘} {c : B → I} → c ∈ L → c ∘ l ∈ L)
+  (r∘∈R : {I : Type 𝓘} {b : I → X} → b ∈ R → r ∘ b ∈ R)
+  where
+
+  precompose-left-factor
+    : (Σ[ I ∶ Type 𝓘 ] Σ[ c ∶ (B → I) ] (c ∈ L))
+    → (Σ[ I ∶ Type 𝓘 ] Σ[ a ∶ (A → I) ] (a ∈ L))
+  precompose-left-factor (I , c , cL) = (I , c ∘ l , ∘l∈L cL)
+
+  postcompose-right-factor
+    : {C : Type 𝓤} (F : Σ[ I ∶ Type 𝓘 ] Σ[ a ∶ (C → I) ] (a ∈ L))
+    → (Σ[ b ∶ (F .fst → X) ] (b ∈ R))
+    → (Σ[ d ∶ (F .fst → Y) ] (d ∈ R))
+  postcompose-right-factor F (b , bR) = (r ∘ b , r∘∈R bR)
+
+  composition-equiv
+    : (C : Type 𝓤)
+    → Arrow-equiv (total-map (postcompose-right-factor {C})) (postcomp C r)
+  composition-equiv C = mk-arr-equiv
+    (Σ-assoc ∙e compose-Factors'≃←unique-factorisations unique-factorisations)
+    (Σ-assoc ∙e compose-Factors'≃←unique-factorisations unique-factorisations)
+    ~refl
+
+  composition-cube
+    : Cube
+        (reindex-total-map-square precompose-left-factor postcompose-right-factor)
+        (power-hom l r)
+  composition-cube .Cube.left = composition-equiv B .fst
+  composition-cube .Cube.right = composition-equiv A .fst
+  composition-cube .Cube.comm = (~refl , ~refl , ~refl)
+
+  composition-cube-is-equiv : is-Cube-equiv composition-cube
+  composition-cube-is-equiv
+    = (composition-equiv B .snd , composition-equiv A .snd)
+
+  orthogonality : are-orthogonal l r
+  orthogonality = are-orthogonal←is-cartesian
+    (back-cartesian←equiv-cube
+      (composition-cube)
+      (composition-cube-is-equiv)
+      (reindex-total-map-square-is-cartesian
+        (precompose-left-factor)
+        (postcompose-right-factor)))
+
+  unique-lifts←unique-factorisations : admit-unique-lifts l r
+  unique-lifts←unique-factorisations
+    = unique-lifts←are-orthogonal orthogonality
+}
+}
+
+\subtree[bak-4180]{
+\title{Unique lifts give uniqueness of factorisations}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+
+\p{
+Given function classes #{\mathcal{L}} and #{\mathcal{R}} such that
+maps in #{\mathcal{L}} uniquely lift against maps in #{\mathcal{R}}, then
+(#{\mathcal{L},\mathcal{R}})-factorisations, when they exist, are unique.
+}
+
+\agda{
+module UniqueLifting→Factorisation
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  (L : {I : Type 𝓘} → Subtype (A → I) 𝓛)
+  (R : {I : Type 𝓘} → Subtype (I → B) 𝓡)
+  (unique-lifts
+    : {I J : Type 𝓘} {l : A → I} {r : J → B}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r)
+  (open FactorisationLifting L R (λ lL rR S → unique-lifts lL rR S .centre))
+  {f : A → B}
+  where
+
+  orthogonality
+    : {I J : Type 𝓘} {l : A → I} {r : J → B}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = are-orthogonal←unique-lifts (unique-lifts lL rR)
+
+  module _
+    (F G : Factorisation 𝓘 L R f)
+    (let module F = Factorisation F)
+    (let module G = Factorisation G)
+    where
+
+    factorisation-comparison-equiv : Factorisation-equiv F G
+    factorisation-comparison-equiv = Factorisation-equiv←map {F = F} {G = G}
+      (factorisation-comparison-map F G)
+      (is-equiv-lift
+        (factorisation-comparison-lift F G)
+        (orthogonality F.l∈L F.r∈R)
+        (orthogonality G.l∈L F.r∈R)
+        (orthogonality F.l∈L G.r∈R)
+        (orthogonality G.l∈L G.r∈R))
+
+  factorisation-is-prop←unique-lifts : is-prop (Factorisation 𝓘 L R f)
+  factorisation-is-prop←unique-lifts F G
+    = Factorisation-equiv→id (factorisation-comparison-equiv F G)
+
+  unique-factorisation←unique-lifts
+    : Factorisation 𝓘 L R f → is-singleton (Factorisation 𝓘 L R f)
+  unique-factorisation←unique-lifts F
+    = mk-singl F (factorisation-is-prop←unique-lifts F)
+
+open UniqueLifting→Factorisation public using
+  (factorisation-is-prop←unique-lifts; unique-factorisation←unique-lifts)
 }
 }
 

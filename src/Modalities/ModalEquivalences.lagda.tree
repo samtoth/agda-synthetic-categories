@@ -113,40 +113,29 @@ then so is #{f}.
 }
 
 \agda{
-up-modal-equiv←incoherent-retraction-arrow-map
+up-modal-equiv←Arrow-incoherent-retract
   : ∀ {α 𝓤 𝓥 𝓦 𝓛}
       (K : gSubU α)
       {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
-      (F : Arrow-map f g)
-    → incoherent-retraction-arrow-map F
+    → Arrow-incoherent-retract f g
     → up-modal-equiv K g
     → up-modal-equiv K f
-up-modal-equiv←incoherent-retraction-arrow-map K {f = f} {g = g} F R ge U∈K
-  = is-equiv←incoherent-retraction-equiv
-      (precomp-square (R .fst) _)
-      precomp-incoh
+up-modal-equiv←Arrow-incoherent-retract K R ge U∈K
+  = is-equiv←Arrow-incoherent-retract
+      (precomp-Arrow-incoherent-retract R _)
       (ge U∈K)
-  where
-  precomp-incoh
-    : incoherent-retraction-arrow-map (precomp-square (R .fst) _)
-  precomp-incoh
-    = precomp-square F _
-    , ( (λ a → ap (a ∘_) (funext→ (R .snd .snd)))
-      , (λ a → ap (a ∘_) (funext→ (R .snd .fst))))
 
-up-modal-equiv←retraction-arrow-map
+up-modal-equiv←Arrow-retract
   : ∀ {α 𝓤 𝓥 𝓦 𝓛}
       (K : gSubU α)
       {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
       {X : Type 𝓦} {Y : Type 𝓛} {g : X → Y}
-      (F : Arrow-map f g)
-    → retraction-arrow-map F
+    → Arrow-retract f g
     → up-modal-equiv K g
     → up-modal-equiv K f
-up-modal-equiv←retraction-arrow-map K F R
-  = up-modal-equiv←incoherent-retraction-arrow-map K F
-      (R .fst , (R .snd .fst , R .snd .snd .fst))
+up-modal-equiv←Arrow-retract K R
+  = up-modal-equiv←Arrow-incoherent-retract K (incoherent←Arrow-retract R)
 }
 }
 
@@ -189,18 +178,27 @@ a #{K}-equivalence if its reflection is an equivalence.
 
 \agda{
 module gReflectorModalEquivalences
-    {α 𝓤 𝓥} {GS : gSubU α}
-    {A : Type 𝓤} {B : Type 𝓥}
-    (RA : gReflector GS A)
-    (RB : gReflector GS B) where
-  open gSubU GS
-  module A = gReflector RA
-  module B = gReflector RB
-  module F = gReflectorMap RA RB
+  {α 𝓤 𝓥} {GS : gSubU α}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (RA : gReflector GS A)
+  (RB : gReflector GS B)
+  (open gSubU GS)
+  (let module A = gReflector RA)
+  (let module B = gReflector RB)
+  (let module F = gReflectorMap RA RB)
+  where
 
   is-modal-equiv-reflectors
     : (A → B) → Type (𝓤 ⊔ 𝓥)
   is-modal-equiv-reflectors f = is-equiv (F.○₁ f)
+
+  precomp-○₁-arrow-equiv
+    : (f : A → B) → ∀ {𝓚} {U : Type 𝓚}
+    → U ∈ S → Arrow-equiv (precomp U (F.○₁ f)) (precomp U f)
+  precomp-○₁-arrow-equiv f {U = U} U∈S
+    = ( mk-amap (precomp U B.η) (precomp U A.η)
+          (λ h → funext→ λ a → ap h (F.○₁-β f a))
+      , B.reflects U∈S , A.reflects U∈S)
 
   precomp-○₁-is-equiv←up-modal-equiv
     : (f : A → B)
@@ -208,15 +206,8 @@ module gReflectorModalEquivalences
     → ∀ {𝓚} {U : Type 𝓚}
     → U ∈ S
     → is-equiv (precomp U (F.○₁ f))
-  precomp-○₁-is-equiv←up-modal-equiv f feq {U = U} U∈S
-    = 3-for-2
-        (A.reflects U∈S)
-        (is-equiv-~∘ comm (feq U∈S) (B.reflects U∈S))
-    where
-    comm
-      : precomp U A.η ∘ precomp U (F.○₁ f)
-      ~ precomp U f ∘ precomp U B.η
-    comm h = funext→ λ a → ap h (F.○₁-β f a)
+  precomp-○₁-is-equiv←up-modal-equiv f feq U∈S
+    = src-is-equiv←Arrow-equiv (precomp-○₁-arrow-equiv f U∈S) (feq U∈S)
 
   is-modal-equiv-reflectors←up-modal-equiv
     : (f : A → B)
@@ -231,18 +222,8 @@ module gReflectorModalEquivalences
     : (f : A → B)
     → is-modal-equiv-reflectors f
     → up-modal-equiv GS f
-  up-modal-equiv←is-modal-equiv-reflectors f feq {U = U} U∈S
-    = 3-for-2' (B.reflects U∈S)
-        (is-equiv←~⁻¹
-          {f = precomp U A.η ∘ precomp U (F.○₁ f)}
-          {g = precomp U f ∘ precomp U B.η}
-          comm
-          (is-equiv-∘ (A.reflects U∈S) (precomp-equiv feq)))
-    where
-    comm
-      : precomp U A.η ∘ precomp U (F.○₁ f)
-      ~ precomp U f ∘ precomp U B.η
-    comm h = funext→ λ a → ap h (F.○₁-β f a)
+  up-modal-equiv←is-modal-equiv-reflectors f feq U∈S
+    = tgt-is-equiv←Arrow-equiv (precomp-○₁-arrow-equiv f U∈S) (precomp-equiv feq)
 
 module _ {α} (RS : gRSubU α) where
 

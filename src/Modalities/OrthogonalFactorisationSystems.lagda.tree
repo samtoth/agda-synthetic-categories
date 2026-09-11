@@ -112,11 +112,10 @@ module UniqueFactorisation→Lifting
 \author{fredrikbakke}
 \date{2026-09-11}
 
-
 \p{
 Given function classes #{\mathcal{L}} and #{\mathcal{R}} such that
 maps in #{\mathcal{L}} uniquely lift against maps in #{\mathcal{R}}, then
-(#{\mathcal{L},\mathcal{R}})-factorisations, when they exist, are unique.
+#{(\mathcal{L},\mathcal{R})}-factorisations are unique, when they exist.
 }
 
 \agda{
@@ -163,6 +162,65 @@ module UniqueLifting→Factorisation
 
 open UniqueLifting→Factorisation public using
   (factorisation-is-prop←unique-lifts; unique-factorisation←unique-lifts)
+}
+}
+
+\subtree[bak-8418]{
+\title{Pairs of orthogonal classes are wide and have at most one factorisation}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+#{
+Let #{\mathcal{L}} and #{\mathcal{R}} be function classes such that
+#{\mathcal{L} = {}^{\perp}\mathcal{R}} and #{\mathcal{R} = \mathcal{L}^{\perp}},
+then both  #{\mathcal{L}} and #{\mathcal{R}} are wide subcategories of types, and
+#{(\mathcal{L},\mathcal{R})}-factorisations are unique, when they exist.
+}
+
+\agda{
+module OrthogonalClasses {𝓤 𝓛 𝓡}
+  (L : {A B : Type 𝓤} → Subtype (A → B) 𝓛)
+  (R : {A B : Type 𝓤} → Subtype (A → B) 𝓡)
+  (L-is-⊥R : {A B : Type 𝓤} {f : A → B} → (f ∈ L) ↔ (f ∈ left-orthogonal-class R))
+  (R-is-L⊥ : {A B : Type 𝓤} {f : A → B} → (f ∈ R) ↔ (f ∈ right-orthogonal-class L))
+  where
+
+  orthogonality
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = L-is-⊥R .fst lL rR
+
+  unique-lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r
+  unique-lifts lL rR = unique-lifts←are-orthogonal (orthogonality lL rR)
+
+  Ll : WideSubcatType 𝓤 𝓛
+  Ll .WideSubcatType.K = L
+  Ll .WideSubcatType.≃∈K e
+    = L-is-⊥R .snd (λ {g = r} _ → equiv⊥ (e ._≃_.fwd-is-equiv) r)
+  Ll .WideSubcatType._∘∈K_ {g = g} {f = f} gL fL
+    = L-is-⊥R .snd (λ {g = r} rR
+        → left-orthogonal-∘ g f r (orthogonality gL rR) (orthogonality fL rR))
+
+  Rr : WideSubcatType 𝓤 𝓡
+  Rr .WideSubcatType.K = R
+  Rr .WideSubcatType.≃∈K e
+    = R-is-L⊥ .snd (λ {f = l} _
+        → right-orthogonal←is-equiv l (e ._≃_.fwd-is-equiv))
+  Rr .WideSubcatType._∘∈K_ gR fR
+    = R-is-L⊥ .snd (λ {f = l} lL
+        → right-orthogonal-∘ l (orthogonality lL gR) (orthogonality lL fR))
+
+  factorisation-is-prop
+    : {A B : Type 𝓤} (f : A → B) → is-prop (Factorisation 𝓤 L R f)
+  factorisation-is-prop f = factorisation-is-prop←unique-lifts L R unique-lifts
+
+  unique-factorisations
+    : {A B : Type 𝓤} {f : A → B}
+    → Factorisation 𝓤 L R f → is-singleton (Factorisation 𝓤 L R f)
+  unique-factorisations F = mk-singl F (factorisation-is-prop _ F)
 }
 }
 

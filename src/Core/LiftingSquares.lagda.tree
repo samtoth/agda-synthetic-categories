@@ -7,13 +7,16 @@
 
 \agda{
 module Core.LiftingSquares where
+
+open import Axioms.UF
 }
 
 \agda-imports{
 \agda{
-open import Foundations.Prelude
 open import Core.Arrows
+open import Foundations.Prelude
 open import Ergonomics.Representation
+open import Ergonomics.Extensionality
 }
 }
 
@@ -26,17 +29,15 @@ such that both triangles commute \em{and} that the pasting
 of the triangles gives the full square.}
 
 \agda{
-module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-         {C : Type 𝓦} {D : Type 𝓜} {f : A → B}
-         {f' : C → D} (G : Arrow-map f f') where
-  private
-    g = G .Arrow-map.top
-    g' = G .Arrow-map.bot
-    H = G .Arrow-map.comm
-
-    sq : Arrow-map f f'
-    sq = mk-amap g g' H
-
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  (G : Arrow-map f f')
+  (let g = G .Arrow-map.top)
+  (let g' = G .Arrow-map.bot)
+  (let H = G .Arrow-map.comm)
+  where
 
   record Lift : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜) where
     constructor mk-lift
@@ -55,11 +56,113 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
 \title{Unique lifts of squares}
 \taxon{Definition}
 
-\p{We say a square has unique lifts if it's type of lifts
-is singleton.}
+\p{We say a square has unique lifts if it's type of lifts is a singleton.}
 
 \agda{
   unique-lifts : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
   unique-lifts = is-singleton Lift
+}
+}
+
+\subtree[bak-4859]{
+\title{The lifting square induced by a diagonal}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {D : Type 𝓜} {f : A → B} {g : C → D}
+  where
+
+  diagonal-square : (B → C) → Arrow-map f g
+  diagonal-square d = mk-amap (d ∘ f) (g ∘ d) ~refl
+
+  diagonal-lift : (d : B → C) → Lift (diagonal-square d)
+  diagonal-lift d = mk-lift d ~refl ~refl ~refl
+
+  diagonal-square-htpy
+    : {d e : B → C} → d ~ e
+    → Arrow-map-path (diagonal-square d) (diagonal-square e)
+  diagonal-square-htpy H
+    = (H ▹h f , g ◃h H , (∙h-reflr (g ◃h H ▹h f) h⁻¹))
+}
+}
+
+\subtree[bak-2211]{
+\title{Homotopies of lifts of squares}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+  {G : Arrow-map f g}
+  where
+
+  Lift-htpy-boundary
+    : (s : Lift G)
+    → Arrow-map-path (diagonal-square (Lift.lift s)) G
+  Lift-htpy-boundary s = (Lift.L s , Lift.K s , Lift.pastes s)
+
+  coherence-Lift-htpy
+    : (s t : Lift G)
+    → Lift.lift s ~ Lift.lift t
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  coherence-Lift-htpy s t H
+    = Arrow-map-path²
+        (Lift-htpy-boundary s)
+        (concat-Arrow-map-path (diagonal-square-htpy H) (Lift-htpy-boundary t))
+
+  Lift-htpy : (s t : Lift G) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  Lift-htpy s t
+    = Σ[ H ∶ Lift.lift s ~ Lift.lift t ] coherence-Lift-htpy s t H
+}
+}
+
+\subtree[bak-5794]{
+\title{Characterising equality of lifts of a square}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+  Lift-htpy-refl : {s : Lift G} → Lift-htpy s s
+  Lift-htpy-refl {s}
+    = ( ~refl
+      , Arrow-map-path²←id
+          ( sym (concat-Arrow-map-path-left-unit (Lift-htpy-boundary s))))
+
+  Lift-htpy←id : {s t : Lift G} → s ＝ t → Lift-htpy s t
+  Lift-htpy←id refl = Lift-htpy-refl
+
+  opaque
+    Lift-htpy-is-torsorial : (s : Lift G) → is-torsorial (Lift-htpy s)
+    Lift-htpy-is-torsorial s
+      = is-single←equiv-to-single
+          (Σ-fst-≃ (Lift-repr≃ G e⁻¹))
+          (is-singleton-structure←parts
+            (SingS-is-single (Lift.lift s)) (Lift.lift s , ~refl)
+            (is-single←equiv-to-single
+              (Σ-snd-≃ (λ p
+                → tr≃
+                    (Arrow-map-path² (Lift-htpy-boundary s))
+                    (concat-Arrow-map-path-left-unit p)) e⁻¹)
+              (Arrow-map-path²-is-torsorial (Lift-htpy-boundary s))))
+
+    Lift-htpy←id-is-equiv
+      : (s t : Lift G) → is-equiv (Lift-htpy←id {s = s} {t = t})
+    Lift-htpy←id-is-equiv s
+      = fundamental-Id (Lift-htpy s) (Lift-htpy-is-torsorial s) (λ _ → Lift-htpy←id)
+
+    Lift-htpy≃ : (s t : Lift G) → (s ＝ t) ≃ Lift-htpy s t
+    Lift-htpy≃ s t = mk≃ Lift-htpy←id (Lift-htpy←id-is-equiv s t)
+
+    Lift-htpy→ : {s t : Lift G} → Lift-htpy s t → s ＝ t
+    Lift-htpy→ = _≃_.bwd (Lift-htpy≃ _ _)
 }
 }

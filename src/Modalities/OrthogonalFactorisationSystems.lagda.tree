@@ -169,6 +169,7 @@ open UniqueLifting→Factorisation public using
 \title{Pairs of orthogonal classes are wide and have at most one factorisation}
 \taxon{Theorem}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-09-11}
 
 #{
@@ -233,6 +234,7 @@ module OrthogonalClasses {𝓤 𝓛 𝓡}
 record OFS 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
   field
     Ll Rr : WideSubcatType 𝓤 𝓥
+
   open WideSubcatType Ll public using () renaming
     ( K to L; ≃∈K to ≃∈L; id∈K to id∈L; _∘∈K_ to _∘∈L_
     ; stable-equiv to ∈L←Arrow-equiv)
@@ -241,13 +243,101 @@ record OFS 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
     ; stable-equiv to ∈R←Arrow-equiv)
 
   field
-    factorisation-is-singleton
+    unique-factorisations
       : {A B : Type 𝓤} (f : A → B)
       → is-singleton (Factorisation 𝓤 L R f)
 
   factorisation
     : {A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f
-  factorisation f = factorisation-is-singleton f .centre
+  factorisation f = unique-factorisations f .centre
+
+  orthogonality
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = UniqueFactorisation→Lifting.orthogonality
+    L R unique-factorisations (λ cL → cL ∘∈L lL) (λ bR → rR ∘∈R bR)
+
+  unique-lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r
+  unique-lifts lL rR
+    = unique-lifts←are-orthogonal (orthogonality lL rR)
+
+  lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → (S : Arrow-map l r) → Lift S
+  lifts lL rR S = unique-lifts lL rR S .centre
+
+  is-equiv←∈L∩R : {A B : Type 𝓤} {f : A → B} → f ∈ L → f ∈ R → is-equiv f
+  is-equiv←∈L∩R fL fR = is-equiv←self-lift (lifts fL fR id-square)
+
+  module _ {A B : Type 𝓤} where
+    open FactorisationLifting {𝓘 = 𝓤} {A = A} {B = B} L R lifts public
+
+  module _
+    {A B : Type 𝓤} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
+
+    left-retract←factorisation : f ∈ L → Arrow-retract f F.l
+    left-retract←factorisation fL
+      = left-retract←lift←factorisation F
+          ( lifts fL F.r∈R (left-square←factorisation F))
+
+    right-retract←factorisation : f ∈ R → Arrow-retract f F.r
+    right-retract←factorisation fR
+      = right-retract←lift←factorisation F
+          ( lifts F.l∈L fR (right-square←factorisation F))
+}
+}
+
+\subtree[bak-0879]{
+\title{The classes of an orthogonal factorisation system determine each other}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+The left and right classes of an orthogonal factorisation system, #{\mathcal{L}} and
+#{\mathcal{R}}, satisfy #{\mathcal{L} = {}^{\perp}\mathcal{R}} and
+#{\mathcal{R} = \mathcal{L}^{\perp}}.
+}
+
+\agda{
+  module _
+    {A B : Type 𝓤} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
+
+    ∈L←left-orthogonal : f ∈ left-orthogonal-class R → f ∈ L
+    ∈L←left-orthogonal orth
+      = ∈L←Arrow-equiv
+          ( inv-Arrow-equiv
+            ( equiv-left←orthogonal-right←factorisation F
+              ( orthogonality F.l∈L F.r∈R)
+              ( orth F.r∈R)))
+          ( F.l∈L)
+
+    ∈R←right-orthogonal : f ∈ right-orthogonal-class L → f ∈ R
+    ∈R←right-orthogonal orth
+      = ∈R←Arrow-equiv
+          ( equiv-right←orthogonal-left←factorisation F
+            ( orthogonality F.l∈L F.r∈R)
+            ( orth F.l∈L))
+          ( F.r∈R)
+
+    ∈L↔left-orthogonal : (f ∈ L) ↔ (f ∈ left-orthogonal-class R)
+    ∈L↔left-orthogonal = ((λ lL rR → orthogonality lL rR) , ∈L←left-orthogonal)
+
+    ∈R↔right-orthogonal : (f ∈ R) ↔ (f ∈ right-orthogonal-class L)
+    ∈R↔right-orthogonal = ((λ rR lL → orthogonality lL rR) , ∈R←right-orthogonal)
+}
+
+\agda{
+unquoteDecl OFS-repr≊ OFS-repr≃
+  = make-record-repr OFS-repr≊ OFS-repr≃ (quote OFS)
 }
 }
 
@@ -270,13 +360,160 @@ record gOFS (α β γ : Level → Level → Level) : Typeω where
     ; stable-equiv to ∈R←Arrow-equiv)
 
   field
-    factorisation-is-singleton
+    unique-factorisations
       : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
         → is-singleton (gFactorisation γ Ll Rr f)
 
   factorisation
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
       → gFactorisation γ Ll Rr f
-  factorisation f = factorisation-is-singleton f .centre
+  factorisation f = unique-factorisations f .centre
+
+  module _
+    {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+    {l : A → B} {r : X → Y}
+    (let l↑ = ULift-map {𝓦 = 𝓤 ⊔ 𝓥} l; r↑ = ULift-map {𝓦 = 𝓦 ⊔ 𝓜} r)
+    (let eL : Arrow-equiv l↑ l; eL = mk-arr-equiv unlift≃ unlift≃ ~refl)
+    (let eR : Arrow-equiv r↑ r; eR = mk-arr-equiv unlift≃ unlift≃ ~refl)
+    where
+
+    orthogonality : l ∈ L → r ∈ R → are-orthogonal l r
+    orthogonality lL rR
+      = left-orthogonal←Arrow-equiv l↑ l eL r
+          (target-right-orthogonal←Arrow-equiv l↑ eR
+            (UniqueFactorisation→Lifting.orthogonality
+              {𝓤 = 𝓤 ⊔ 𝓥} {𝓥 = 𝓦 ⊔ 𝓜} {𝓘 = γ (𝓤 ⊔ 𝓥) (𝓦 ⊔ 𝓜)}
+              L R unique-factorisations
+              (λ cL → cL ∘∈L ∈L←Arrow-equiv eL lL)
+              (λ bR → ∈R←Arrow-equiv eR rR ∘∈R bR)))
+
+    unique-lifts : l ∈ L → r ∈ R → admit-unique-lifts l r
+    unique-lifts lL rR
+      = unique-lifts←are-orthogonal (orthogonality lL rR)
+
+  lifts
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+      {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → (S : Arrow-map l r) → Lift S
+  lifts lL rR S = unique-lifts lL rR S .centre
+
+  is-equiv←∈L∩R
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    → f ∈ L → f ∈ R → is-equiv f
+  is-equiv←∈L∩R fL fR = is-equiv←self-lift (lifts fL fR id-square)
+
+  module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
+    open FactorisationLifting {𝓘 = γ 𝓤 𝓥} {A = A} {B = B} L R lifts public
+
+  module _
+    {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
+
+    left-retract←factorisation : f ∈ L → Arrow-retract f F.l
+    left-retract←factorisation fL
+      = left-retract←lift←factorisation F
+          ( lifts fL F.r∈R (left-square←factorisation F))
+
+    right-retract←factorisation : f ∈ R → Arrow-retract f F.r
+    right-retract←factorisation fR
+      = right-retract←lift←factorisation F
+          ( lifts F.l∈L fR (right-square←factorisation F))
+}
+}
+
+\subtree[bak-6972]{
+\title{The classes of a global orthogonal factorisation system determine each other}
+\taxon{Theorem}
+\author{fredrikbakke}
+
+\agda{
+  module _
+    {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
+
+    ∈L←left-orthogonal
+      : (∀ {𝓦 𝓜} → f ∈ left-orthogonal-class {𝓦 = 𝓦} {𝓜} R) → f ∈ L
+    ∈L←left-orthogonal orth
+      = ∈L←Arrow-equiv
+          ( inv-Arrow-equiv
+            ( equiv-left←orthogonal-right←factorisation F
+              ( orthogonality F.l∈L F.r∈R)
+              ( orth F.r∈R)))
+          ( F.l∈L)
+
+    ∈R←right-orthogonal
+      : (∀ {𝓦 𝓜} → f ∈ right-orthogonal-class {𝓦 = 𝓦} {𝓜} L) → f ∈ R
+    ∈R←right-orthogonal orth
+      = ∈R←Arrow-equiv
+          ( equiv-right←orthogonal-left←factorisation F
+            ( orthogonality F.l∈L F.r∈R)
+            ( orth F.l∈L))
+          ( F.r∈R)
+}
+}
+
+\subtree[bak-8502]{
+\title{Constructing orthogonal factorisation systems from unique lifts}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _
+  {𝓤 𝓥} (Ll Rr : WideSubcatType 𝓤 𝓥)
+  (let L = WideSubcatType.K Ll)
+  (let R = WideSubcatType.K Rr)
+  where
+
+  OFS←unique-lifts
+    : ({A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f)
+    → ( {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+      → l ∈ L → r ∈ R → admit-unique-lifts l r)
+    → OFS 𝓤 𝓥
+  OFS←unique-lifts factor lifting .OFS.Ll = Ll
+  OFS←unique-lifts factor lifting .OFS.Rr = Rr
+  OFS←unique-lifts factor lifting .OFS.unique-factorisations f
+    = unique-factorisation←unique-lifts L R lifting (factor f)
+
+module _
+  {α β γ} (Ll : gWideSubcatType α) (Rr : gWideSubcatType β)
+  (let module LL = gWideSubcatType Ll)
+  (let module RR = gWideSubcatType Rr)
+  where
+
+  gOFS←unique-lifts
+    : (∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) → gFactorisation γ Ll Rr f)
+    → (∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {l : A → B} {r : X → Y}
+        → l ∈ LL.K → r ∈ RR.K → admit-unique-lifts l r)
+    → gOFS α β γ
+  gOFS←unique-lifts factor lifting .gOFS.Ll = Ll
+  gOFS←unique-lifts factor lifting .gOFS.Rr = Rr
+  gOFS←unique-lifts factor lifting .gOFS.unique-factorisations f
+    = unique-factorisation←unique-lifts LL.K RR.K lifting (factor f)
+}
+}
+
+\subtree[bak-9527]{
+\title{Constructing an orthogonal factorisation from mutual orthogonal classes and factorisations}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _
+  {𝓤 𝓥}
+  (L R : {A B : Type 𝓤} → Subtype (A → B) 𝓥)
+  (L-is-⊥R : {A B : Type 𝓤} {f : A → B} → (f ∈ L) ↔ (f ∈ left-orthogonal-class R))
+  (R-is-L⊥ : {A B : Type 𝓤} {f : A → B} → (f ∈ R) ↔ (f ∈ right-orthogonal-class L))
+  (let module C = OrthogonalClasses L R L-is-⊥R R-is-L⊥)
+  where
+
+  OFS←orthogonal-classes
+    : ({A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f) → OFS 𝓤 𝓥
+  OFS←orthogonal-classes factor
+    = OFS←unique-lifts C.Ll C.Rr factor C.unique-lifts
 }
 }

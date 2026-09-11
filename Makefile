@@ -149,14 +149,14 @@ list-trees:
 	 ./scripts/list-trees $(DUP_DIR)
 
 check-sync-main:
+	@if [ -n "$$(git status --porcelain)" ]; then \
+	  echo "Repository is currently in a dirty state."; \
+	  exit 1; \
+	fi
 	@git fetch
 	@if !(git rev-list --left-right --count $(UPSTREAM)/main...HEAD | head -c 1 | grep -q "^0$$") then \
-	    echo "You are out of sync with main, please merge upstream/main into your branch "; \
+	    echo "You are out of sync with main, please merge upstream/main into your branch."; \
 	    exit 1; \
-	fi
-	@if [ -n "$(git status --porcelain)" ]; then \
-	  echo "Repository is currently in a dirty state"; \
-	  exit 1; \
 	fi
 
 assign-tree-ids-dry:
@@ -165,19 +165,30 @@ assign-tree-ids-dry:
 	   exit 1; \
 	else \
 	   echo "Dry running the renamer:"; \
-	   python3 scripts/assign_tree_ids.py -n $(PREFIX) src/ trees/  ; \
+	   python3 scripts/assign_tree_ids.py -n $(ASSIGN_TREE_IDS_FLAGS) $(PREFIX) src/ trees/  ; \
 	fi
 
 confirm-assign-tree-ids:
-	@echo -n "Confirm changes? [y/N] " && read answer && [ $${answer:-N} = y ]
+	@$(MAKE) --no-print-directory assign-tree-ids-dry ASSIGN_TREE_IDS_FLAGS=--confirm
 
-assign-tree-ids-no-commit: check-duplicate-tree-ids check-sync-main assign-tree-ids-dry confirm-assign-tree-ids
-	python3 scripts/assign_tree_ids.py $(PREFIX) src/ trees/
+assign-tree-ids-no-commit: check-duplicate-tree-ids check-sync-main
+	@if [ -z "$(PREFIX)" ]; then \
+	   echo "Requires PREFIX=..."; \
+	   exit 1; \
+	fi
+	@python3 scripts/assign_tree_ids.py --confirm $(PREFIX) src/ trees/
 
 
 assign-tree-ids: assign-tree-ids-no-commit
-	git add .
-	git commit -m "Re-ID trees"
+	@# Commit if there are
+	@# - unstaged changes to tracked files
+	@# - staged changes, or
+	@# - untracked files, excluding gitignored files
+	@if ! git diff --quiet || \
+	   ! git diff --cached --quiet || \
+	   [ -n "$$(git ls-files --others --exclude-standard)" ]; then \
+	   git add . && git commit -m "Re-ID trees"; \
+	fi
 
 check-forest-no-typecheck: sync-forest-src
 	@mkdir -p "$(HTML_DIR)"

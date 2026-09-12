@@ -14,7 +14,6 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 open import Foundations.SingletonClosure
-open import Core.SurjectiveMaps
 open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ConnectedTypes
@@ -29,6 +28,7 @@ open import Core.OrthogonalClosure
 open import Core.ArrowEquiv
 open import Core.CocartesianSquares
 open import Core.PullbackPowers
+open import Core.SurjectiveMaps
 open import Ergonomics.Notations.Orthogonality
 open notation
 }
@@ -57,6 +57,13 @@ up-connected-map K f
   = ∀ {𝓚} {U : _ → Type 𝓚}
   → (∀ b → U b ∈ gSubU.S K)
   → is-equiv (precomp-Π U f)
+
+up-connected-map'
+  : ∀ {𝓤 𝓜} (S : SubU 𝓤 𝓜) {A B : Type 𝓤}
+    → (A → B) → Type (lsuc 𝓤 ⊔ 𝓜)
+up-connected-map' {𝓤} S {B = B} f
+  = {P : B → Type 𝓤}
+  → ((b : B) → P b ∈ S) → is-equiv (precomp-Π P f)
 
 up-connected-!-fibre
   : ∀ {α 𝓤 𝓥} (K : gSubU α)
@@ -110,20 +117,25 @@ is-connected-map' {B = B} rfl f = (b : B) → is-connected' rfl (fibre f b)
 \author{samueltoth}
 
 \agda{
+module _
+  {𝓤 𝓜} {S : SubU 𝓤 𝓜}
+  (RS : is-reflective S) (SΣ : is-Σ-closed S)
+  (open is-reflective RS)
+  (open ModalInduction RS SΣ)
+  where
+
+  η-is-connected'
+    : {A : Type 𝓤} → is-connected-map' RS (η: A)
+  η-is-connected' x = mk-singl
+    (ind {P = λ x → ○ (fibre η x)} (λ _ → ○∈S) (λ a → η (a , refl)) x)
+    (ind (λ _ → ＝-is-modal RS ○∈S) (λ where (a , refl) → ind-β _ _ a))
+
 η-is-connected
   : ∀ {α} (RS : gRSubU α)
     → is-globally-Σ-closed (gRSubU.GS RS)
     → ∀ {𝓤} {A : Type 𝓤}
     → is-connected-map RS (gRSubU.η RS {A = A})
-η-is-connected RS GΣ {_} {A} x
-  = mk-singl
-      (ind {P = λ x → ○ (fibre η x)}
-           (λ _ → ○∈S) (λ a → η (a , refl)) x)
-      (ind (λ _ → ＝∈S ○∈S) λ where (y , refl) → ind-β _ _ y)
-  where
-  open gRSubU RS
-  open gReflectiveClosure RS
-  open gRSubUInduction RS GΣ
+η-is-connected RS GΣ = η-is-connected' (is-reflective←gRSubU RS) GΣ
 }
 }
 
@@ -158,6 +170,16 @@ up-connected-map-right-cancel K f g fconn gfconn U∈K
 }
 
 \agda{
+module _
+  {𝓤 𝓥 𝓜} {S : SubU (𝓤 ⊔ 𝓥) 𝓜} (RS : is-reflective S)
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  is-connected-map'←is-equiv : is-equiv f → is-connected-map' RS f
+  is-connected-map'←is-equiv fe b
+    = is-singleton←Reflector (is-reflective.reflector RS (fibre f b))
+        (has-singleton-fibres←is-equiv fe b)
+
 module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveClosure RS) where
 
   is-connected-map'-~
@@ -753,9 +775,32 @@ module gReflectorConnectedCharacterisation
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Corollary}
-\title{Equivalent conditions for connected maps in reflective global subuniverses}
+\title{Equivalent conditions for connected maps in reflective subuniverses}
 
 \agda{
+module _
+  {𝓤 𝓜} {S : SubU 𝓤 𝓜} (RS : is-reflective S)
+  (open is-reflective RS)
+  {A B : Type 𝓤} (f : A → B)
+  where
+
+  up-connected-map'←is-connected-map'
+    : is-connected-map' RS f → up-connected-map' S f
+  up-connected-map'←is-connected-map' fc {P} ps
+    = src-is-equiv←Arrow-equiv (precomp-Π-fibre-const-Arrow-equiv P f)
+        (postcomp-Π-equiv λ {b}
+          → is-equiv-∘ (reflects (ps b)) (sing-const-is-equiv global-funext (fc b)))
+
+  is-connected-map'←up-connected-map'
+    : up-connected-map' S f → is-connected-map' RS f
+  is-connected-map'←up-connected-map' fc b
+    = let
+        ext = fc {P = ○ ∘ fibre f} (λ _ → ○∈S)
+        d = is-equiv.bwd ext (λ a → η (a , refl))
+        H = happly (is-equiv.ε ext (λ a → η (a , refl)))
+      in
+      mk-singl (d b) (∈S▸η.bwd ○∈S (λ { (a , refl) → H a }))
+
 module gRSubUConnectedCharacterisation
   {α} (RS : gRSubU α)
   (open gRSubU RS)
@@ -819,6 +864,40 @@ module gRSubUConnectedCharacterisation
         (f)
         (up-connected-map←is-connected-map f fconn)
         (g)
+
+module _
+  {𝓤 𝓜} {S : SubU 𝓤 𝓜} (RS : is-reflective S)
+  where
+
+  connected⊥modal'
+    : {A B X Y : Type 𝓤} {f : A → B} {g : X → Y}
+    → is-connected-map' RS f → is-modal-map' S g → are-orthogonal f g
+  connected⊥modal' {f = f} fc gm
+    = are-orthogonal←are-orthogonal-fibre λ h
+      → up-connected-map'←is-connected-map' RS f fc (gm ∘ h)
+}
+}
+
+\subtree[stt-00ZN]{
+\title{Connected maps with respect to small reflective subuniverses compose}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+% TODO(Fredrik): this one is put awkwardly because things aren't organised well atm
+
+\agda{
+module _ {𝓤 𝓜} {S : SubU 𝓤 𝓜} (RS : is-reflective S)
+  where
+
+  is-connected-map'-∘
+    : {A B C : Type 𝓤} {f : A → B} {g : B → C}
+    → is-connected-map' RS f → is-connected-map' RS g → is-connected-map' RS (g ∘ f)
+  is-connected-map'-∘ {f = f} {g} fc gc
+    = is-connected-map'←up-connected-map' RS (g ∘ f) (λ ps
+      → is-equiv-∘
+          (up-connected-map'←is-connected-map' RS f fc (ps ∘ g))
+          (up-connected-map'←is-connected-map' RS g gc ps))
 }
 }
 

@@ -159,6 +159,109 @@ module _
 }
 }
 
+\subtree[bak-C1C8]{
+\title{The gap map of the modal naturality square is a modal equivalence}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Lemma}
+
+\proof{
+\p{
+Given a map #{f \colon A \to B}, we have the pullback factorisation of the
+[naturality square](stt-00JI)
+
+\quiver{
+\begin{tikzcd}
+A && {\bigcirc A} \\
+& B \times_{\bigcirc B} {\bigcirc A} \\
+B && {\bigcirc B}\nsp{.}
+\arrow["{\eta_A}", from=1-1, to=1-3]
+\arrow["f"', from=1-1, to=3-1]
+\arrow["{\bigcirc f}", from=1-3, to=3-3]
+\arrow["{\eta_B}"', from=3-1, to=3-3]
+\arrow["\mathrm{gap}", from=1-1, to=2-2]
+\arrow["\lrcorner" very near start, phantom, from=2-2, to=3-3]
+\arrow["\pi_2", from=2-2, to=3-1]
+\end{tikzcd}
+}
+
+For a #{Σ}-closed reflective subuniverse, the second projection of the pullback  is
+connected since it is a pullback of #{\eta_B}. Moreover #{\eta_A} is also a modal
+equivalence, so by left cancellation of modal equivalences #{\mathrm{gap}} is one
+too.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (SΣ : is-globally-Σ-closed GS)
+  where
+
+  η-gap-is-modal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → is-modal-equiv RS (gap-map←square (η-square RS f))
+  η-gap-is-modal-equiv f
+    = is-modal-equiv-left-cancel RS
+        (is-modal-equiv←is-connected-map RS pb.π₂
+          (π₂-is-connected-map RS η (○₁ f) (η-is-connected RS SΣ)))
+        (η-is-modal-equiv RS)
+}
+}
+
+\subtree[bak-30AA]{
+\title{Étale maps are precisely the right orthogonal maps to modal equivalences}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, a map is étale if and only if it is
+right orthogonal to every modal equivalence.
+}
+
+% TODO: proof
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  where
+
+  is-étale-map←right-orthogonal
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → ( ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+          → is-modal-equiv RS g → are-orthogonal g f)
+      → is-étale-map RS f
+  is-étale-map←right-orthogonal {f = f} orth
+    = is-cartesian←is-pullback (η-square RS f)
+        (is-equiv←self-orthogonal
+          (right-orthogonal-left-cancel (gap-map←square (η-square RS f))
+            (orthogonal←base-change _
+              (base-change-arrow-map η (○₁ f))
+              (base-change-arrow-map-is-cartesian η (○₁ f))
+              (modal-equiv⊥map-between-modal-types RS gap-equiv ○∈S ○∈S))
+            (orth gap-equiv)))
+    where
+    open gReflectiveReasoning RS
+    gap-equiv = η-gap-is-modal-equiv RS SΣ f
+
+  is-étale-map-∘
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-étale-map RS f → is-étale-map RS g → is-étale-map RS (g ∘ f)
+  is-étale-map-∘ fe ge
+    = is-étale-map←right-orthogonal λ {g = h} he
+    → right-orthogonal-∘ h
+      ( modal-equiv⊥etale RS he ge)
+      ( modal-equiv⊥etale RS he fe)
+}
+}
+
 \subtree[bak-F224]{
 \title{Factoring the modal naturality square}
 \author{fredrikbakke}
@@ -215,7 +318,9 @@ B && {\bigcirc B}\nsp{,}
 \end{tikzcd}
 }
 and modal equivalences are left orthogonal to maps between modal types, and hence
-#{r} is right orthogonal to all modal equivalences.
+#{r} is right orthogonal to all modal equivalences. For a #{Σ}-closed reflective
+subuniverse, the [characterisation above](bak-30AA) therefore shows that #{r} is
+étale.
 }
 
 \agda{
@@ -241,10 +346,8 @@ module ModalNaturalityFactorisation
   module _ (SΣ : is-globally-Σ-closed GS) where
 
     π-is-connected : is-connected-map RS π
-    π-is-connected x
-      = is-single←equiv⁻¹
-          (○-≃ (fib-π₂ η (○₁ f) x))
-          (unit-is-connected-map' (is-reflective←gRSubU RS) SΣ (○₁ f x))
+    π-is-connected
+      = π₂-is-connected-map RS η (○₁ f) (η-is-connected RS SΣ)
 
     π-is-modal-equiv : is-modal-equiv RS π
     π-is-modal-equiv
@@ -252,7 +355,7 @@ module ModalNaturalityFactorisation
 
     l-is-modal-equiv : is-modal-equiv RS l
     l-is-modal-equiv
-      = is-modal-equiv-left-cancel RS π-is-modal-equiv (η-is-modal-equiv RS)
+      = η-gap-is-modal-equiv RS SΣ f
 
   modal-equiv⊥r
     : ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
@@ -262,53 +365,17 @@ module ModalNaturalityFactorisation
         (base-change-arrow-map η (○₁ f))
         (base-change-arrow-map-is-cartesian η (○₁ f))
         (modal-equiv⊥map-between-modal-types RS ge ○∈S ○∈S)
-}
-}
 
-\subtree[bak-30AA]{
-\title{Étale maps are precisely the right orthogonal maps to modal equivalences}
-\author{fredrikbakke}
-\date{2026-09-12}
-\taxon{Theorem}
+  module _ (SΣ : is-globally-Σ-closed GS) where
 
-% TODO: explain
+    r-is-étale : is-étale-map RS r
+    r-is-étale = is-étale-map←right-orthogonal RS SΣ modal-equiv⊥r
 
-\agda{
-module _
-  {α} (RS : gRSubU α)
-  (open gRSubU RS)
-  (SΣ : is-globally-Σ-closed GS)
-  where
-
-  is-étale-map←right-orthogonal
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      → ( ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-          → is-modal-equiv RS g → are-orthogonal g f)
-      → is-étale-map RS f
-  is-étale-map←right-orthogonal {f = f} orth
-    = is-cartesian←is-pullback
-        (η-square RS f)
-        (is-equiv←self-orthogonal
-          (right-orthogonal-left-cancel l
-            (modal-equiv⊥r (l-is-modal-equiv SΣ))
-            (orth (l-is-modal-equiv SΣ))))
-    where open ModalNaturalityFactorisation RS f
-
-  is-étale-map-∘
-    : ∀ {𝓤 𝓥 𝓦}
-        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-        {f : A → B} {g : B → C}
-      → is-étale-map RS f → is-étale-map RS g → is-étale-map RS (g ∘ f)
-  is-étale-map-∘ fe ge
-    = is-étale-map←right-orthogonal λ {g = h} he
-    → right-orthogonal-∘ h (modal-equiv⊥etale RS he ge) (modal-equiv⊥etale RS he fe)
-
-  module _
-    {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-    (open ModalNaturalityFactorisation RS f)
-    where
-
-    right-factor-is-étale : is-étale-map RS r
-    right-factor-is-étale = is-étale-map←right-orthogonal modal-equiv⊥r
+right-factor-is-étale
+  : ∀ {α} (RS : gRSubU α)
+    → is-globally-Σ-closed (gRSubU.GS RS)
+    → ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → is-étale-map RS (ModalNaturalityFactorisation.r RS f)
+right-factor-is-étale RS SΣ f = ModalNaturalityFactorisation.r-is-étale RS f SΣ
 }
 }

@@ -189,11 +189,7 @@ up-pullback←is-cartesian
     → up-pullback s c
 up-pullback←is-cartesian {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
   = up-pullback←is-pullback cone (is-equiv←on-fibres slice-map slice-equiv) where
-  cospan = Cone←Arrow-map G .fst
   cone = Cone←Arrow-map G .snd
-
-  g : A → C
-  g = G .Arrow-map.top
 
   g' : B → D
   g' = G .Arrow-map.bot
@@ -215,7 +211,6 @@ up-pullback←is-cartesian {A = A} {B} {f = f} {C} {D} {f' = f'} G pbsq
                            (fib-π₁ g' f' b ._≃_.fwd-is-equiv)
                            (pbsq b)
 
-
 is-cartesian←up-pullback
   : ∀ {𝓤 𝓥 𝓦 𝓜}
       {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
@@ -233,7 +228,6 @@ is-cartesian←up-pullback {f = f} {f' = f'} g pb b
   open Arrow-map g
   open pb
 
-  cospan = Cone←Arrow-map g .fst
   cone = Cone←Arrow-map g .snd
 
   gap-is-equiv : is-equiv (gap (mk-cone f top comm))
@@ -248,23 +242,37 @@ is-cartesian←up-pullback {f = f} {f' = f'} g pb b
     ~ fib-π₁ bot f' b ._≃_.fwd ∘ Slice-fibre slice-map b
   lem (a , refl) = Σ-path→ (refl , ∙-reflr _)
 
-is-cartesian←is-pullback
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
-    → (F : Arrow-map f g)
-    → is-pullback (Cone←Arrow-map F .snd)
-    → is-cartesian F
-is-cartesian←is-pullback F gap
-  = is-cartesian←up-pullback F (up-pullback←is-pullback _ gap)
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+  (F : Arrow-map f g)
+  where
 
-is-pullback←is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
-    → (F : Arrow-map f g)
-    → is-cartesian F
-    → is-pullback (Cone←Arrow-map F .snd)
-is-pullback←is-cartesian F c
-  = is-pullback←up-pullback _ (up-pullback←is-cartesian F c)
+  is-cartesian←is-pullback : is-pullback (Cone←Arrow-map F .snd) → is-cartesian F
+  is-cartesian←is-pullback gap
+    = is-cartesian←up-pullback F (up-pullback←is-pullback _ gap)
+
+  is-pullback←is-cartesian : is-cartesian F → is-pullback (Cone←Arrow-map F .snd)
+  is-pullback←is-cartesian c
+    = is-pullback←up-pullback _ (up-pullback←is-cartesian F c)
+
+module _
+  {𝓤 𝓥 𝓦 𝓧}
+  {S : Cospan 𝓤 𝓥 𝓦}
+  {X : Type 𝓧}
+  (C : Cone S X)
+  where
+
+  is-cartesian←cone-is-pullback : is-pullback C → is-cartesian (Arrow-map←Cone C)
+  is-cartesian←cone-is-pullback pb
+    = is-cartesian←up-pullback (Arrow-map←Cone C)
+        (up-pullback←is-pullback (Cone←Arrow-map (Arrow-map←Cone C) .snd)
+          (3-for-2~
+            {f = pullback-swap ._≃_.fwd}
+            (λ _ → pullback-path→ (refl , refl , (sym-sym ∙ sym (∙-reflr _))))
+            (pullback-swap ._≃_.fwd-is-equiv)
+            pb))
+
 }
 }
 }
@@ -320,12 +328,10 @@ postcomp-cone≃pb
 postcomp-cone≃pb {f = f} {g = g} {D = D}
   =  Cone (mk-cospan _ f g) D
   ≃⟨ cone-repr≃ (mk-cospan _ f g) ⟩
-      Σ[ f' ∶ (D → _) ] Σ[ g' ∶ (D → _) ]
-          (postcomp D f f' ~ postcomp D g g')
+      Σ[ f' ∶ (D → _) ] Σ[ g' ∶ (D → _) ] (postcomp D f f' ~ postcomp D g g')
   ≃⟨ Σ-snd-≃ (λ f' → Σ-snd-≃ (λ g' → funext≃ e⁻¹)) ⟩
       Pullback (postcomp D f) (postcomp D g)
   ≃∎
-
 
 postcomp-cartesian
   : ∀ {𝓤 𝓥 𝓦 𝓜}
@@ -334,18 +340,14 @@ postcomp-cartesian
       (g : Arrow-map f f')
     → is-cartesian g
     → ∀ {𝓛} {C : Type 𝓛}
-    → is-cartesian
-      (postcomp-square g C)
+    → is-cartesian (postcomp-square g C)
 postcomp-cartesian {A = A} {f = f} {f' = f'} G@(mk-amap g g' H) eq {_} {C}
   = is-cartesian←up-pullback _
       (up-pullback←is-pullback
         (cn∘ C)
         (3-for-2
-          {f = _≃_.bwd (postcomp-cone≃pb)}
-          {g = gap (cn∘ C)}
           (is-equiv⁻¹ (_≃_.fwd-is-equiv postcomp-cone≃pb))
-          (is-equiv←~ map-hom
-            (cn-is-pb .up-pullback.cone-map-is-equiv C)))) where
+          (is-equiv←~ map-hom (cn-is-pb .up-pullback.cone-map-is-equiv C)))) where
   cs : Cospan _ _ _
   cs = Cone←Arrow-map G .fst
 
@@ -402,12 +404,12 @@ fibre-square-is-cartesian f b = is-cartesian←is-pullback _ eq where
 
 \agda{
 opaque
-  is-cartesian←is-equiv
+  is-cartesian←is-Arrow-equiv
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
         {Y : Type 𝓜} {f : A → B} {g : X → Y}
       → (F : Arrow-map f g)
       → is-Arrow-equiv F → is-cartesian F
-  is-cartesian←is-equiv F@(mk-amap top bot p) (teq , beq) b
+  is-cartesian←is-Arrow-equiv F@(mk-amap top bot p) (teq , beq) b
     = is-equiv-∘
         {f = total-map-fst top}
         (total-is-equiv←fst-is-equiv teq)
@@ -417,13 +419,13 @@ opaque
                    (∙-is-equiv (sym (p a)))
                    (is-embedding←is-equiv beq)))
 
-  inverse-is-cartesian←is-equiv
+  inverse-is-cartesian←is-Arrow-equiv
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
         {f : A → B} {g : X → Y} (F : Arrow-map f g)
       → (Fe : is-Arrow-equiv F)
       → is-cartesian (Arrow⁻¹←is-Arrow-equiv F Fe)
-  inverse-is-cartesian←is-equiv F Fe
-    = is-cartesian←is-equiv _ (Arrow⁻¹-is-equiv F Fe)
+  inverse-is-cartesian←is-Arrow-equiv F Fe
+    = is-cartesian←is-Arrow-equiv _ (Arrow⁻¹-is-equiv F Fe)
 }
 
 \p{When the bottom map is already an equivalence, the converse also holds:
@@ -445,7 +447,7 @@ module _
 
   top-is-equiv↔is-cartesian : is-cartesian F ↔ is-equiv top
   top-is-equiv↔is-cartesian .fst = top-is-equiv←is-cartesian
-  top-is-equiv↔is-cartesian .snd teq = is-cartesian←is-equiv F (teq , beq)
+  top-is-equiv↔is-cartesian .snd teq = is-cartesian←is-Arrow-equiv F (teq , beq)
 }
 }
 
@@ -466,8 +468,8 @@ is-cartesian←dom+cod-is-equiv F feq geq a
       (is-prop←is-single (has-singleton-fibres←is-equiv geq _))
       _
 }
-
 }
+
 
 \subtree[stt-00SA]{
 \title{Straightening cartesian arrow maps}
@@ -621,25 +623,26 @@ right-cancel-cartesian
     → is-Arrow-equiv b
     → is-cartesian a
 right-cancel-cartesian {a = a} {b} {H} path Hc bc b'
-  = src-is-equiv←Arrow-equiv (hom , hom-eq) lem where
+  = src-is-equiv←Arrow-equiv hom lem where
   open Arrow-map
   open is-equiv
   lem : is-equiv (arrow-fibre a (b .bot (bwd (bc .snd) b')))
-  lem = 3-for-2~' {f = arrow-fibre a (b .bot (bwd (bc .snd) b'))}
-                  {g = arrow-fibre b (bwd (bc .snd) b')}
-                 (arrow-fibre-∘ a b (bwd (bc .snd) b'))
-                 (is-cartesian←is-equiv b bc (bwd (bc .snd) b'))
-                 (tr is-cartesian (Arrow-map-path→ path) Hc (bwd (bc .snd) b'))
+  lem
+    = 3-for-2~'
+        {f = arrow-fibre a (b .bot (bwd (bc .snd) b'))}
+        {g = arrow-fibre b (bwd (bc .snd) b')}
+        (arrow-fibre-∘ a b (bwd (bc .snd) b'))
+        (is-cartesian←is-Arrow-equiv b bc (bwd (bc .snd) b'))
+        (tr is-cartesian (Arrow-map-path→ path) Hc (bwd (bc .snd) b'))
 
-  hom : Arrow-map (arrow-fibre a b') (arrow-fibre a (b .bot (bwd (bc .snd) b')))
-  hom .top = total-map (λ x → _∙ sym (ε (bc .snd) b'))
-  hom .bot = total-map (λ x → _∙ ap (bot a) (sym (ε (bc .snd) b')))
-  hom .comm (x , refl)
-    = Σ-path→ (refl , ap (_∙ ap (bot a) _) (∙-reflr (sym (comm a x))))
-
-  hom-eq : is-Arrow-equiv hom
-  hom-eq .fst = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
-  hom-eq .snd = is-total-equiv←is-fibrewise-equiv λ _ → ∙-is-equiv' _
+  hom : Arrow-equiv (arrow-fibre a b') (arrow-fibre a (b .bot (bwd (bc .snd) b')))
+  hom
+    = mk-arr-equiv
+        (Σ-snd-≃ λ _ → ＝-preconcat-≃ (sym (ε (bc .snd) b')))
+        (Σ-snd-≃ λ _ → ＝-preconcat-≃ (ap (bot a) (sym (ε (bc .snd) b'))))
+        (λ where
+          (x , refl) →
+            Σ-path→ (refl , ap (_∙ ap (bot a) _) (∙-reflr (sym (comm a x)))))
 }
 }
 
@@ -714,4 +717,35 @@ module _
   is-cartesian←~ : is-cartesian F → is-cartesian F'
   is-cartesian←~ Fc b = tgt-is-equiv←Arrow-equiv (arrow-fibre-≃←~ b) (Fc b)
 
+}
+
+\subtree[tot-V642]{
+\author{fredrikbakke}
+\taxon{Lemma}
+
+\agda{
+point-base-change-Arrow-equiv
+  : ∀ {𝓤 𝓥 𝓦}
+      {X : Type 𝓤} {B : Type 𝓥} {A : Type 𝓦}
+      {h : X → B}
+    → (p : A)
+    → (F : Arrow-map h (point p))
+    → is-cartesian F
+    → Arrow-equiv h (arrow←Fam (B , λ b → Arrow-map.bot F b ＝ p))
+point-base-change-Arrow-equiv {B = B} {h = h} p F cart
+  = concat-Arrow-equiv-≃ᶠ
+      (fibre-fam h)
+      (B , λ b → Arrow-map.bot F b ＝ p)
+      (total-fibre-Arrow-equiv h)
+      fam-eq where
+  open Arrow-map F
+
+  fam-eq : fibre-fam h ≃ᶠ (B , λ b → bot b ＝ p)
+  fam-eq .fst = id≃
+  fam-eq .snd b
+    = mk≃ (arrow-fibre F b) (cart b)
+    ∙e fibre-point≃ p (bot b)
+    ∙e sym≃
+
+}
 }

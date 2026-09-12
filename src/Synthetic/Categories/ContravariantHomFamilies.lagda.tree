@@ -1,4 +1,4 @@
-\title{Contravariant Hom families}
+\title{Contravariant Hom-families}
 \taxon{Module}
 \date{2026-05-06}
 \import{stt-macros}
@@ -24,12 +24,10 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
-open import Modalities.Instances.Truncation
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
@@ -54,6 +52,7 @@ open Core.Orthogonal.notation
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
@@ -81,22 +80,14 @@ hom-fam-is-contrav↔is-right-fibration
     ↔ is-right-fibration {A = Slice X (point x)} fst
 hom-fam-is-contrav↔is-right-fibration {X = X} x
   = is-contravariant↔is-right-fibration (λ a → Hom X a x)
-  ∙iff right-orthogonal-iff←equiv (λ _ → i1) amap amap-eq where
-  amap : Arrow-map (fst {B = λ a → (i : 𝟙) → Hom X a x})
-                   (fst {B = λ a → Hom X a x})
-  amap .Arrow-map.top = total-map (λ a → ev tt)
-  amap .Arrow-map.bot = id
-  amap .Arrow-map.comm = ~refl
-
-  amap-eq : is-Arrow-equiv amap
-  amap-eq .fst = is-total-equiv←is-fibrewise-equiv (λ a → unit-ev-is-equiv)
-  amap-eq .snd = id-is-equiv
+  ∙iff right-orthogonal-iff←Arrow-equiv (λ _ → i1)
+        (mk-arr-equiv (Σ-snd-≃ λ _ → unit-UP≃) id≃ ~refl)
 }
 }
 
 \subtree[stt-00O0]{
 \taxon{Theorem}
-\title{Contravariance of representable families}
+\title{Contravariance of representable families over right Segal types}
 
 \p{We show that a type #{A} is [right Segal](stt-00O3) iff the family
 #{\Hom(-,x)} is contravariant for each #{x}.}
@@ -161,6 +152,12 @@ opaque
     qinv .snd .snd (f , p) = ext!
       ( (sym ∘ pushout-rec-unique _ _ ~refl ~refl ~refl)
       , ~refl)
+
+char-slice-lift≃
+  : ∀ {𝓤} {A : Type 𝓤} x
+    → Arrow-map (point i1) {C = Slice A (point x)} fst
+    ≃ Coslice-map {X = Λ[2,1]} (λ _ → ι₂ i1) (point x)
+char-slice-lift≃ x = mk≃ (char-slice-lift x) (char-slice-lift-is-equiv x)
 }
 }
 }
@@ -171,23 +168,18 @@ slice-is-right↔right-inner-coslice
     → is-right-fibration {A = Slice A (point x)} fst
     ↔ (is-equiv (Coslice-map-precompose (point x) Λ[2,1]-incl▻∙))
 slice-is-right↔right-inner-coslice x
-  = src↔tgt-is-equiv←Arrow-equiv (amap , amap-eq) module Cov-hom where
-  amap : Arrow-map (pullback-power (λ _ → i1) (λ r → fst r))
-                   (Coslice-map-precompose (λ _ → x) Λ[2,1]-incl▻∙)
-  amap .Arrow-map.top = join←slice-map (λ _ → x)
-  amap .Arrow-map.bot = char-slice-lift x
-  amap .Arrow-map.comm f = ext!
-    ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
+  = src↔tgt-is-equiv←Arrow-equiv
+      (mk-arr-equiv
+        (join≃slice-map (λ _ → x))
+        (char-slice-lift≃ x)
+        (λ f → ext!
+          ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
               (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
                                   ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
                                   ∙ ap-sym (pushout-rec _) (glue _)
                                   ∙ ap sym (pushout-rec-apβ _))
                     ∙ ∙-reflr _)
-    , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)
-
-  amap-eq : is-Arrow-equiv amap
-  amap-eq .fst = join←slice-map-is-equiv (λ _ → x)
-  amap-eq .snd = char-slice-lift-is-equiv x
+          , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)))
 
 hom-fam-is-contrav↔is-right-segal
   : ∀ {𝓤} {A : Type 𝓤}
@@ -200,10 +192,45 @@ hom-fam-is-contrav↔is-right-segal {𝓤} {A}
   ∙iff logical←equiv (precomp-Π-≃ _ unit-UP≃)
   ∙iff (coslice-orthogonality (Λ[2,1]-incl▻∙) iff⁻¹)
   ∙iff logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
+}
+}
 
+\subtree[stt-00VM]{
+\title{Contravariance of representable families}
+\date{2026-08-19}
+\author{fredrikbakke}
+\taxon{Theorem}
+
+\p{The proof is due to [[robschellingerhout]].}
+
+\proof{
+We already know that the homs of Segal types are #{Δ¹}-discrete, and precomposition
+is a unital transport operation so by the [unital transport criterion](stt-00VL) we
+are done.
+}
+
+\agda{
 hom-fam-contrav
-  : {𝓤 : Level} {A : Type 𝓤}
-  → is-right-segal A → (x : A) → is-contravariant (λ a → Hom A a x)
-hom-fam-contrav = hom-fam-is-contrav↔is-right-segal .snd
+  : ∀ {𝓤} {A : Type 𝓤} → is-segal A → (z : A) → is-contravariant (λ a → Hom A a z)
+hom-fam-contrav 𝐴 z
+  = is-contravariant←contrav-unital-transport
+      (λ _ → Hom-is-Δ¹-discrete←is-segal 𝐴)
+      (precomp-hom 𝐴 z , (λ _ → ∘=←Hom2 𝐴 ∘ refl~▵))
+}
+}
+
+\subtree[stt-00VQ]{
+\title{Segal types are right Segal}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-08-19}
+
+\agda{
+is-right-segal←is-segal : ∀ {𝓤} {A : Type 𝓤} → is-segal A → is-right-segal A
+is-right-segal←is-segal 𝐴
+  = hom-fam-is-contrav↔is-right-segal .fst (hom-fam-contrav 𝐴)
+
+is-segal↔is-right-segal : ∀ {𝓤} {A : Type 𝓤} → is-segal A ↔ is-right-segal A
+is-segal↔is-right-segal = (is-right-segal←is-segal , is-segal←is-right-segal)
 }
 }

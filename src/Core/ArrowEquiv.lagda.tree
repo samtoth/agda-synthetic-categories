@@ -13,6 +13,7 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+open import Foundations.UnitUP
 
 open import Core.Arrows
 open import Core.Coslices
@@ -22,6 +23,7 @@ open import Core.Coslices
 \subtree[stt-004R]{
 \taxon{Definition}
 \title{Arrow equivalences}
+\contributor{fredrikbakke}
 
 \p{A pair of arrows #{A \xrightarrow{f} B} and #{X \xrightarrow{g} Y} are said
 to be equivalent if there exists an [arrow map](stt-003U) where both horizontal
@@ -70,6 +72,19 @@ Arrow-equiv
     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
 Arrow-equiv f g = Σ[ F ∶ Arrow-map f g ] is-Arrow-equiv F
 
+mk-arr-equiv
+  : ∀ {𝒰 𝒱 𝒲 𝒳}
+      {A : Type 𝒰} {B : Type 𝒱} {X : Type 𝒲} {Y : Type 𝒳}
+      {f : A → B} {g : X → Y}
+    → (top : A ≃ X)
+    → (bot : B ≃ Y)
+    → bot ._≃_.fwd ∘ f ~ g ∘ top ._≃_.fwd
+    → Arrow-equiv f g
+mk-arr-equiv top bot comm
+  = ( mk-amap (top ._≃_.fwd) (bot ._≃_.fwd) comm
+    , top ._≃_.fwd-is-equiv
+    , bot ._≃_.fwd-is-equiv)
+
 Arrow⁻¹←is-Arrow-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
       {Y : Type 𝓜} {f : A → B} {g : X → Y}
@@ -82,9 +97,9 @@ Arrow⁻¹←is-Arrow-equiv {f = f} {g} (mk-amap top bot comm) (teq , beq)
   module bot = is-equiv beq
 
   K : bot ∘ bot.bwd ∘ g ∘ top ~ bot ∘ f ∘ top.bwd ∘ top
-  K =   bot.ε ▸ g ▸ top
+  K =   bot.ε ▹h g ▹h top
      ∙h (comm h⁻¹)
-     ∙h (bot ◂ f ◂ top.η h⁻¹)
+     ∙h (bot ◃h f ◃h top.η h⁻¹)
 
   H : (bot.bwd ∘ g) ~ (f ∘ top.bwd)
   H = beq ◂e⁻¹ K ▸e⁻¹ teq
@@ -104,30 +119,20 @@ Arrow⁻¹-is-equiv F (teq , beq) = (is-equiv⁻¹ teq  , is-equiv⁻¹ beq)
 \author{fredrikbakke}
 
 \agda{
+id-Arrow-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → Arrow-equiv f f
+id-Arrow-equiv f = (id-square , id-square-is-equiv {f = f})
+
+
 Arrow-equiv←≃ᶠ
   : {𝓤1 𝓤2 𝓥1 𝓥2 : Level}
     (F : Fam 𝓤1 𝓤2)
     (G : Fam 𝓥1 𝓥2)
   → F ≃ᶠ G → Arrow-equiv (arrow←Fam F) (arrow←Fam G)
 Arrow-equiv←≃ᶠ (A , B) (X , Y) (e , ef)
-  = mk-amap top bot ~refl
-  , top-is-equiv
-  , bot-is-equiv
-  where
-  top : Σ A B → Σ X Y
-  top = total-map-fst (e ._≃_.fwd) ∘ total-map (λ a → ef a ._≃_.fwd)
-
-  bot : A → X
-  bot = e ._≃_.fwd
-
-  top-is-equiv : is-equiv top
-  top-is-equiv
-    = is-equiv-∘
-        (total-is-equiv←fst-is-equiv (e ._≃_.fwd-is-equiv))
-        (is-total-equiv←is-fibrewise-equiv (λ a → ef a ._≃_.fwd-is-equiv))
-
-  bot-is-equiv : is-equiv bot
-  bot-is-equiv = e ._≃_.fwd-is-equiv
+  = mk-arr-equiv (Σ-≃ e ef) e ~refl
 
 concat-Arrow-equiv
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓠 𝓡}
@@ -171,8 +176,84 @@ inv-Arrow-equiv
 inv-Arrow-equiv (p , peq)
   = Arrow⁻¹←is-Arrow-equiv p peq
   , Arrow⁻¹-is-equiv p peq
+
+total-fibre-Arrow-equiv
+  : ∀ {𝓤 𝓥}
+      {A : Type 𝓤}
+      {B : Type 𝓥}
+    → (f : A → B)
+    → Arrow-equiv f (arrow←Fam (fibre-fam f))
+total-fibre-Arrow-equiv f
+  = mk-arr-equiv (total≃total-fibre f e⁻¹) id≃ ~refl
+
+Arrow-equiv←fibre-fam≃ᶠ
+  : ∀ {𝓤 𝓥 𝓦 𝓜}
+      {A : Type 𝓤} {B : Type 𝓥}
+      {X : Type 𝓦} {Y : Type 𝓜}
+      {f : A → B} {g : X → Y}
+    → fibre-fam f ≃ᶠ fibre-fam g
+    → Arrow-equiv f g
+Arrow-equiv←fibre-fam≃ᶠ {f = f} {g = g} e
+  = concat-Arrow-equiv
+      (concat-Arrow-equiv-≃ᶠ
+        (fibre-fam f)
+        (fibre-fam g)
+        (total-fibre-Arrow-equiv f)
+        (e))
+      (inv-Arrow-equiv (total-fibre-Arrow-equiv g))
+
+fibrewise-Arrow-equiv←total-square
+  : ∀ {𝓘 𝓤 𝓥 𝓦 𝓜} {I : Type 𝓘}
+      {A : I → Type 𝓤} {B : I → Type 𝓥}
+      {f : (i : I) → A i → B i}
+      {C : I → Type 𝓦} {D : I → Type 𝓜}
+      {g : (i : I) → C i → D i}
+    → (F : (i : I) → Arrow-map (f i) (g i))
+    → is-Arrow-equiv (total-square F)
+    → (i : I) → Arrow-equiv (f i) (g i)
+fibrewise-Arrow-equiv←total-square F eq i
+  = F i
+  , is-fibrewise-equiv←is-total-equiv (eq .fst) i
+  , is-fibrewise-equiv←is-total-equiv (eq .snd) i
+
+Arrow-equiv←~
+  : ∀ {𝓤 𝓥}
+      {A : Type 𝓤} {B : Type 𝓥}
+      {f g : A → B}
+    → f ~ g
+    → Arrow-equiv f g
+Arrow-equiv←~ H = (mk-amap id id H , id-is-equiv , id-is-equiv)
 }
 }
+
+\subtree[stt-00WZ]{
+\title{Equational reasoning notation for arrow equivalences}
+
+\agda{
+≃Arr⟨⟩-syntax
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+      {X : Type 𝓝} {Y : Type 𝓛} {h : X → Y}
+    → Arrow-equiv g h → Arrow-equiv f g → Arrow-equiv f h
+≃Arr⟨⟩-syntax A g f = concat-Arrow-equiv f g
+
+_≃Arr⟨⟩_
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+    → Arrow-equiv f g → Arrow-equiv f g
+f ≃Arr⟨⟩ f≃g = f≃g
+
+_≃Arr∎
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (f : A → B) → Arrow-equiv f f
+f ≃Arr∎ = id-Arrow-equiv f
+
+infixr 0 ≃Arr⟨⟩-syntax _≃Arr⟨⟩_
+infix  1 _≃Arr∎
+
+syntax ≃Arr⟨⟩-syntax f q p = f ≃Arr⟨ p ⟩ q
+}
+}
+
 
 \subtree[stt-004S]{
 \taxon{Theorem}
@@ -234,15 +315,15 @@ section←Arrow-equiv {f = f} {g} {F = F} eq (secf , p) .fst
   module top = is-equiv (eq .fst)
   module bot = is-equiv (eq .snd)
 section←Arrow-equiv {f = f} {g} {F} eq (secf , p) .snd
-  =  H ▸ top ▸ secf ▸ bot.bwd
-  ∙h bot ◂ f ◂ top.η ▸ secf ▸ bot.bwd
-  ∙h bot ◂ p ▸ bot.bwd
+  =  H ▹h top ▹h secf ▹h bot.bwd
+  ∙h bot ◃h f ◃h top.η ▹h secf ▹h bot.bwd
+  ∙h bot ◃h p ▹h bot.bwd
   ∙h bot.ε where
   open Arrow-map F
   module top = is-equiv (eq .fst)
   module bot = is-equiv (eq .snd)
   H : g ~ bot ∘ f ∘ top.bwd
-  H = ((g ◂ top.ε) h⁻¹) ∙h (comm h⁻¹ ▸ top.bwd)
+  H = ((g ◃h top.ε) h⁻¹) ∙h (comm h⁻¹ ▹h top.bwd)
 
 section←Arrow-equiv⁻¹
   : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
@@ -250,9 +331,10 @@ section←Arrow-equiv⁻¹
       {F : Arrow-map f g}
     → is-Arrow-equiv F
     → section g → section f
-section←Arrow-equiv⁻¹ {f = f} {g} {F} EF sec = section←Arrow-equiv {f = g} {f}
-                                               {Arrow⁻¹←is-Arrow-equiv F EF}
-                                               (Arrow⁻¹-is-equiv F EF) sec
+section←Arrow-equiv⁻¹ {f = f} {g} {F} EF sec
+  = section←Arrow-equiv {f = g} {f}
+      {Arrow⁻¹←is-Arrow-equiv F EF}
+      (Arrow⁻¹-is-equiv F EF) sec
 }
 }
 
@@ -269,7 +351,7 @@ postcomp-Arrow-map
     → (Q : Type 𝓠)
     → Arrow-map f g
     → Arrow-map (postcomp Q f) (postcomp Q g)
-postcomp-Arrow-map Q F = mk-amap (top ∘_) (bot ∘_) (funext→ ∘ (comm ▸_)) where
+postcomp-Arrow-map Q F = mk-amap (top ∘_) (bot ∘_) (funext→ ∘ (comm ▹h_)) where
   open Arrow-map F
 
 
@@ -291,7 +373,7 @@ precomp-Arrow-map
     → (Q : Type 𝓠)
     → Arrow-map f g
     → Arrow-map (precomp Q g) (precomp Q f)
-precomp-Arrow-map Q F = mk-amap (_∘ bot) (_∘ top) (funext→ ∘ (_◂ (comm h⁻¹))) where
+precomp-Arrow-map Q F = mk-amap (_∘ bot) (_∘ top) (funext→ ∘ (_◃h (comm h⁻¹))) where
   open Arrow-map F
 
 precomp-square-is-equiv
@@ -307,6 +389,7 @@ precomp-square-is-equiv F eq
 }
 }
 
+
 \subtree[stt-00L0]{
 \title{Arrow maps over the unit type}
 
@@ -320,6 +403,11 @@ precomp-square-is-equiv F eq
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → is-equiv f → is-Arrow-equiv (!-map f)
 !-map-is-equiv fe = (fe , id-is-equiv)
+
+!-Arrow-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → A ≃ B → Arrow-equiv (!: A) (!: B)
+!-Arrow-equiv e = (!-map (e ._≃_.fwd) , !-map-is-equiv (e ._≃_.fwd-is-equiv))
 }
 }
 
@@ -343,25 +431,13 @@ module _
   (f : A → B)
   where
 
-  precomp-Π-straighten-Arrow-map
-    : Arrow-map (precomp-Π U f) (precomp-Π (fibre (fst {B = U})) f)
-  precomp-Π-straighten-Arrow-map .Arrow-map.top
-    = postcomp-Π (λ b → (fibre-straighten U b e⁻¹) ._≃_.fwd)
-  precomp-Π-straighten-Arrow-map .Arrow-map.bot
-    = postcomp-Π (λ a → (fibre-straighten U (f a) e⁻¹) ._≃_.fwd)
-  precomp-Π-straighten-Arrow-map .Arrow-map.comm _ = refl
-
-  precomp-Π-straighten-is-Arrow-equiv
-    : is-Arrow-equiv precomp-Π-straighten-Arrow-map
-  precomp-Π-straighten-is-Arrow-equiv
-    = ( postcomp-Π-equiv (λ {b} → (fibre-straighten U b e⁻¹) ._≃_.fwd-is-equiv)
-      , postcomp-Π-equiv (λ {a} → (fibre-straighten U (f a) e⁻¹) ._≃_.fwd-is-equiv))
-
   precomp-Π-straighten-Arrow-equiv
     : Arrow-equiv (precomp-Π U f) (precomp-Π (fibre (fst {B = U})) f)
   precomp-Π-straighten-Arrow-equiv
-    = precomp-Π-straighten-Arrow-map
-    , precomp-Π-straighten-is-Arrow-equiv
+    = mk-arr-equiv
+        (postcomp-Π-≃ (λ b → fibre-straighten U b e⁻¹))
+        (postcomp-Π-≃ (λ a → fibre-straighten U (f a) e⁻¹))
+        (λ _ → refl)
 }
 }
 
@@ -385,27 +461,13 @@ module _
   (f : A → B)
   where
 
-  precomp-Π-fibre-const-Arrow-map
-    : Arrow-map
-        (precomp-Π U f)
-        (postcomp-Π (λ b → const: (U b) (fibre f b)))
-  precomp-Π-fibre-const-Arrow-map .Arrow-map.top = id
-  precomp-Π-fibre-const-Arrow-map .Arrow-map.bot = precomp-Π-over-fibres U f
-  precomp-Π-fibre-const-Arrow-map .Arrow-map.comm h
-    = funext→ λ b → funext→ λ (a , p) → apᶠ h p
-
-  precomp-Π-fibre-const-is-Arrow-equiv
-    : is-Arrow-equiv precomp-Π-fibre-const-Arrow-map
-  precomp-Π-fibre-const-is-Arrow-equiv
-    = (id-is-equiv , precomp-Π-over-fibres-is-equiv U f)
-
   precomp-Π-fibre-const-Arrow-equiv
     : Arrow-equiv
         (precomp-Π U f)
         (postcomp-Π (λ b → const: (U b) (fibre f b)))
   precomp-Π-fibre-const-Arrow-equiv
-    = precomp-Π-fibre-const-Arrow-map
-    , precomp-Π-fibre-const-is-Arrow-equiv
+    = mk-arr-equiv id≃ (precomp-Π-over-fibres≃ U f)
+        (λ h → funext→ λ b → funext→ λ (a , p) → apᶠ h p)
 }
 }
 
@@ -442,10 +504,7 @@ module _
       → Arrow-equiv
           (postcomp X (total-map α))
           (total-map {A = X → A} (postcomp-Π ∘ (α ∘_)))
-  postcomp-total-map-Arrow-equiv X .fst .Arrow-Π.top = Σ-Π-swap (λ _ → A) (λ _ → F)
-  postcomp-total-map-Arrow-equiv X .fst .Arrow-Π.bot = Σ-Π-swap (λ _ → A) (λ _ → G)
-  postcomp-total-map-Arrow-equiv X .fst .Arrow-Π.comm = ~refl
-  postcomp-total-map-Arrow-equiv X .snd .fst = Σ-Π-swap-is-equiv
-  postcomp-total-map-Arrow-equiv X .snd .snd = Σ-Π-swap-is-equiv
+  postcomp-total-map-Arrow-equiv X
+    = mk-arr-equiv (Σ-→-swap≃ A F) (Σ-→-swap≃ A G) ~refl
 }
 }

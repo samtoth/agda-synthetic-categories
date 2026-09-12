@@ -1,0 +1,414 @@
+\date{2026-08-30}
+\title{Truncated types}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Foundations.Truncated where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Nat
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.Equivalences
+open import Foundations.Embeddings
+open import Foundations.EquivSingleton
+open import Foundations.Singletons
+open import Foundations.SingletonClosure
+open import Foundations.PropClosure
+open import Foundations.UniverseLifts
+open import Foundations.Unit
+open import Foundations.Empty
+open import Foundations.TruncationLevels
+open import Foundations.FunExt
+open import Foundations.Currying
+open import Foundations.Retracts
+open import Foundations.CanonicalEqualisers
+open import Foundations.CanonicalPullbacks
+import Foundations.SingletonProp
+}
+}
+
+\subtree[stt-006P]{
+\date{2025-06-27}
+\author{samueltoth}
+\taxon{Definition}
+\title{#{n}-truncated types}
+
+\p{A type is \em{#{-2}-truncated} if it is a singleton, and it is
+\em{#{\suc n}-truncated} if all of its identity types are #{n}-truncated.}
+
+\agda{
+is-truncated : ∀ {𝓤} (n : 𝕋) (A : Type 𝓤) → Type 𝓤
+is-truncated {𝓤} -2𝕋 A = is-singleton A
+is-truncated (suc-𝕋 n) A = ∀ (x y : A) → is-truncated n (x ＝ y)
+}
+}
+
+\remark{Truncation levels are indexed from #{-2}. Thus
+#{-2}-truncated types are singletons, #{-1}-truncated types are
+propositions, and #{0}-truncated types are [sets](Foundations.Sets).}
+
+\subtree{
+\title{The lowest truncation levels}
+\taxon{Theorem}
+
+\agda{
+opaque
+  is-singleton←is-truncated
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-truncated -2𝕋 A
+      → is-singleton A
+  is-singleton←is-truncated {A = A} trunc = trunc
+
+  is-prop←is-truncated
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-truncated -1𝕋 A
+      → is-prop A
+  is-prop←is-truncated {A = A} tr x y
+    = is-singleton.centre (tr x y)
+
+  is-truncated←is-prop
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-prop A
+      → is-truncated -1𝕋 A
+  is-truncated←is-prop {A = A}
+    = ＝-is-single←is-prop
+}
+}
+
+\subtree[stt-0075]{
+\date{2025-06-27}
+\author{samueltoth}
+\title{Lifting truncation levels}
+\taxon{Theorem}
+
+\p{An #{n}-truncated type is #{n+k}-truncated for any #{k : ℕ}.}
+
+\agda{
+opaque
+  suc-is-truncated
+    : ∀ {𝓤} {A : Type 𝓤} (n : 𝕋)
+      → is-truncated n A
+      → is-truncated (suc-𝕋 n) A
+  suc-is-truncated -2𝕋
+    = is-truncated←is-prop
+    ∘ is-prop←is-single
+    ∘ is-singleton←is-truncated
+  suc-is-truncated (suc-𝕋 n) tr x y
+    = suc-is-truncated n (tr x y)
+
++-is-truncated
+  : ∀ {𝓤} {A : Type 𝓤}
+      (n : 𝕋) (k : ℕ)
+    → is-truncated n A
+    → is-truncated (sucit-𝕋 n k) A
++-is-truncated n zero = id
++-is-truncated n (suc k) tr
+  = suc-is-truncated (sucit-𝕋 n k) (+-is-truncated n k tr)
+
+opaque
+  is-truncated←is-single
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-singleton A
+      → {n : 𝕋} → is-truncated n A
+  is-truncated←is-single s { -2𝕋} = s
+  is-truncated←is-single s {suc-𝕋 n} x y
+    = is-truncated←is-single (＝-singleton←is-single s x y) {n}
+
+  is-suc-truncated←is-prop
+    : ∀ {𝓤} {A : Type 𝓤} → is-prop A → (n : 𝕋) → is-truncated (suc-𝕋 n) A
+  is-suc-truncated←is-prop ap n x y
+    = is-truncated←is-single (＝-is-single←is-prop ap _ _) {n}
+}
+}
+
+\subtree[stt-00WK]{
+\date{2026-08-30}
+\author{fredrikbakke}
+\title{Closure properties of truncated types}
+\taxon{Theorem}
+
+\p{Truncated types are closed under equivalences}
+
+\agda{
+opaque
+  is-truncated←retract
+    : ∀ {𝓤 𝓥} {n : 𝕋}
+        {A : Type 𝓤} {B : Type 𝓥}
+      → retract A B
+      → is-truncated n B
+      → is-truncated n A
+  is-truncated←retract {n = -2𝕋} (i , r , H)
+    = is-single←retraction-single i (r , H)
+  is-truncated←retract {n = suc-𝕋 n} R tr x y
+    = is-truncated←retract {n = n} (retract-＝ R) (tr (R .fst x) (R .fst y))
+
+  is-truncated←equiv
+    : ∀ {𝓤 𝓥} {n : 𝕋} {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B
+      → is-truncated n A
+      → is-truncated n B
+  is-truncated←equiv eq
+    = is-truncated←retract (retract←equiv (eq e⁻¹))
+
+  Σ-is-truncated
+    : ∀ {𝓤 𝓥} {n : 𝕋} {A : Type 𝓤} {B : A → Type 𝓥}
+      → is-truncated n A
+      → ((a : A) → is-truncated n (B a))
+      → is-truncated n (Σ A B)
+  Σ-is-truncated {n = -2𝕋} Atr Btr
+    = Σ-is-single Atr Btr
+  Σ-is-truncated {n = suc-𝕋 n} {B = B} Atr Btr (a , b) (a' , b')
+    = is-truncated←equiv {n = n} Σ-path
+        (Σ-is-truncated (Atr a a') (λ where refl → Btr a b b'))
+
+  ULift-is-truncated
+    : ∀ {𝓤 𝓥} {n : 𝕋} {A : Type 𝓤}
+      → is-truncated n A
+      → is-truncated n (ULift 𝓥 A)
+  ULift-is-truncated {𝓥 = 𝓥} tr
+    = is-truncated←equiv (lift≃ {𝓥 = 𝓥}) tr
+
+  𝟙-is-truncated : {n : 𝕋} → is-truncated n 𝟙
+  𝟙-is-truncated = is-truncated←is-single 𝟙-is-singleton
+
+  ∅-is-suc-truncated : {n : 𝕋} → is-truncated (suc-𝕋 n) ∅
+  ∅-is-suc-truncated ()
+
+  ＝-is-truncated
+    : ∀ {𝓤} {n : 𝕋} {A : Type 𝓤}
+      → is-truncated n A
+      → {x y : A} → is-truncated n (x ＝ y)
+  ＝-is-truncated {n = n} Atr = suc-is-truncated n Atr _ _
+
+×-is-truncated
+  : ∀ {𝓤 𝓥} {n : 𝕋}
+      {A : Type 𝓤} {B : Type 𝓥}
+    → is-truncated n A
+    → is-truncated n B
+    → is-truncated n (A × B)
+×-is-truncated Atr Btr = Σ-is-truncated Atr (λ _ → Btr)
+
+Pullback-is-truncated'
+  : ∀ {𝓦 𝓧 𝓨} {n : 𝕋}
+      {X : Type 𝓦} {Y : Type 𝓧} {Q : Type 𝓨}
+      (g : X → Q) (h : Y → Q)
+    → is-truncated n X
+    → is-truncated n Y
+    → is-truncated (suc-𝕋 n) Q
+    → is-truncated n (Pullback g h)
+Pullback-is-truncated' g h Xtr Ytr Qtr
+  = Σ-is-truncated Xtr (λ _ → Σ-is-truncated Ytr (λ _ → Qtr (g _) (h _)))
+
+Pullback-is-truncated
+  : ∀ {𝓦 𝓧 𝓨} {n : 𝕋}
+      {X : Type 𝓦} {Y : Type 𝓧} {Q : Type 𝓨}
+      (g : X → Q) (h : Y → Q)
+    → is-truncated n X
+    → is-truncated n Y
+    → is-truncated n Q
+    → is-truncated n (Pullback g h)
+Pullback-is-truncated g h Xtr Ytr Qtr
+  = Pullback-is-truncated' g h Xtr Ytr (suc-is-truncated _ Qtr)
+
+fibre-is-truncated'
+  : ∀ {𝓦 𝓧} {n : 𝕋}
+      {X : Type 𝓦} {Y : Type 𝓧}
+      (g : X → Y) (y : Y)
+    → is-truncated n X
+    → is-truncated (suc-𝕋 n) Y
+    → is-truncated n (fibre g y)
+fibre-is-truncated' g y Xtr Ytr
+  = is-truncated←equiv (pullback-point≃fibre g y)
+      (Pullback-is-truncated' (point y) g 𝟙-is-truncated Xtr Ytr)
+
+fibre-is-truncated
+  : ∀ {𝓦 𝓧} {n : 𝕋}
+      {X : Type 𝓦} {Y : Type 𝓧}
+      (g : X → Y) (y : Y)
+    → is-truncated n X
+    → is-truncated n Y
+    → is-truncated n (fibre g y)
+fibre-is-truncated g y Xtr Ytr
+  = fibre-is-truncated' g y Xtr (suc-is-truncated _ Ytr)
+
+Equaliser-is-truncated
+  : ∀ {𝓤 𝓥} {n : 𝕋}
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f g : A → B)
+    → is-truncated n A
+    → is-truncated n B
+    → is-truncated n (Equaliser f g)
+Equaliser-is-truncated f g Atr Btr
+  = Σ-is-truncated Atr λ a → ＝-is-truncated Btr
+}
+}
+
+\subtree{
+\title{Closure properties assuming function extensionality}
+\taxon{Theorem}
+
+\agda{
+module TruncatedWithFunExt (global-funext : FunExt-global) where
+  open WithFunExt-global global-funext
+  open Foundations.SingletonProp global-funext
+
+  opaque
+    Π-is-truncated
+      : ∀ {𝓤 𝓥} {n : 𝕋}
+          {A : Type 𝓤} {B : A → Type 𝓥}
+        → (∀ a → is-truncated n (B a))
+        → is-truncated n (Π A B)
+    Π-is-truncated {n = -2𝕋} Btr
+      = Π-is-single global-funext Btr
+    Π-is-truncated {n = suc-𝕋 n} Btr f g
+      = is-truncated←equiv {n = n} (funext≃ e⁻¹)
+          (Π-is-truncated λ a → Btr a (f a) (g a))
+
+  Πᵢ-is-truncated
+    : ∀ {𝓤 𝓥} {n : 𝕋}
+        {A : Type 𝓤} {B : A → Type 𝓥}
+      → (∀ {a} → is-truncated n (B a))
+      → is-truncated n (∀ {a} → B a)
+  Πᵢ-is-truncated Btr
+    = is-truncated←equiv Π-implicit≃ (Π-is-truncated λ a → Btr {a})
+
+  ~-is-truncated
+    : ∀ {𝓤 𝓥} {n : 𝕋}
+        {A : Type 𝓤} {B : A → Type 𝓥}
+        {f g : Π A B}
+      → ((a : A) → is-truncated n (B a))
+      → is-truncated n (f ~ g)
+  ~-is-truncated Btr = Π-is-truncated λ a → ＝-is-truncated (Btr a)
+
+  opaque
+    is-truncated-is-prop
+      : ∀ {𝓤} (n : 𝕋) (A : Type 𝓤)
+        → is-prop (is-truncated n A)
+    is-truncated-is-prop -2𝕋 A
+      = is-single-is-prop
+    is-truncated-is-prop (suc-𝕋 n) A
+      = Π-is-prop global-funext λ x
+      → Π-is-prop global-funext λ y
+      → is-truncated-is-prop n (x ＝ y)
+}
+}
+
+\subtree[stt-00S7]{
+\title{The universe of #{n}-truncated types}
+\taxon{Definition}
+
+\agda{
+Trunc-U : ∀ n 𝓤 → Type (lsuc 𝓤)
+Trunc-U n 𝓤 = Σ (Type 𝓤) (is-truncated n)
+
+Prop-U : ∀ 𝓤 → Type (lsuc 𝓤)
+Prop-U = Trunc-U -1𝕋
+
+TULift : ∀ {𝓤} n 𝓥 → Trunc-U n 𝓤 → Trunc-U n (𝓤 ⊔ 𝓥)
+TULift n 𝓥 (t , p) = (ULift 𝓥 t , ULift-is-truncated p)
+}
+}
+
+\subtree[stt-0073]{
+\date{2025-06-29}
+\author{samueltoth}
+\title{Instance resolution for truncated types}
+
+\p{We follow the approach taken in
+\citet{1lab}{1Lab.HLevel.Closure}, and define instances uniformly for
+all truncation levels.}
+
+\agda{
+record Is-truncated {𝓤} n (A : Type 𝓤) : Type 𝓤 where
+  constructor mk-trunc
+  no-eta-equality
+  field
+    carrier-is-truncated : is-truncated n A
+
+open Is-truncated
+
+truncation-instance
+  : ∀ {𝓤} {A : Type 𝓤} n
+    → is-truncated n A
+    → ∀ {k}
+    → Is-truncated (itsuc-𝕋 k n) A
+truncation-instance {A = A} n trunc {k} .carrier-is-truncated
+  = tr (λ n → is-truncated n _) (sym (itsuc=sucit-𝕋 {k})) (+-is-truncated n k trunc)
+
+instance
+  Truncated-Id
+    : ∀ {𝓤} {n : 𝕋} {A : Type 𝓤}
+        ⦃ _ : Is-truncated (suc-𝕋 n) A ⦄
+      → {x y : A} → Is-truncated n (x ＝ y)
+  Truncated-Id {n = n} ⦃ t ⦄ {x} {y} .carrier-is-truncated = a where
+    opaque
+      a : is-truncated n (x ＝ y)
+      a = t .carrier-is-truncated x y
+
+  Truncated-ULift
+    : ∀ {𝓤 𝓥} {n : 𝕋} {A : Type 𝓤}
+        ⦃ _ : Is-truncated n A ⦄
+      → Is-truncated n (ULift 𝓥 A)
+  Truncated-ULift ⦃ t ⦄ .carrier-is-truncated
+    = ULift-is-truncated (t .carrier-is-truncated)
+
+  Truncated-𝟙 : {n : 𝕋} → Is-truncated n 𝟙
+  Truncated-𝟙 .carrier-is-truncated = 𝟙-is-truncated
+
+  Truncated-∅ : {n : 𝕋} → Is-truncated (suc-𝕋 n) ∅
+  Truncated-∅ .carrier-is-truncated = ∅-is-suc-truncated
+
+  Truncated-Σ
+    : ∀ {𝓤 𝓥} {n : 𝕋} {A : Type 𝓤} {B : A → Type 𝓥}
+        ⦃ _ : Is-truncated n A ⦄ ⦃ _ : {a : A} → Is-truncated n (B a) ⦄
+      → Is-truncated n (Σ A B)
+  Truncated-Σ ⦃ a ⦄ ⦃ b ⦄ .carrier-is-truncated
+    = Σ-is-truncated (a .carrier-is-truncated) (λ _ → b .carrier-is-truncated)
+
+module InstancesWithFunExt (global-funext : FunExt-global) where
+  open TruncatedWithFunExt global-funext
+
+  instance
+    Truncated-Π
+      : ∀ {𝓤 𝓥} {n : 𝕋}
+          {A : Type 𝓤} {B : A → Type 𝓥}
+          ⦃ _ : {a : A} → Is-truncated n (B a) ⦄
+        → Is-truncated n (Π A B)
+    Truncated-Π ⦃ t ⦄ .carrier-is-truncated
+      = Π-is-truncated λ _ → t .carrier-is-truncated
+
+    Truncated-Πᵢ
+      : ∀ {𝓤 𝓥} {n : 𝕋}
+          {A : Type 𝓤} {B : A → Type 𝓥}
+          ⦃ _ : {a : A} → Is-truncated n (B a) ⦄
+        → Is-truncated n (∀ {a} → B a)
+    Truncated-Πᵢ ⦃ t ⦄ .carrier-is-truncated
+      = Πᵢ-is-truncated (t .carrier-is-truncated)
+
+trunc!
+  : ∀ {𝓤} {n : 𝕋} {A : Type 𝓤}
+    → ⦃ _ : Is-truncated n A ⦄ → is-truncated n A
+trunc! ⦃ t ⦄ = t .carrier-is-truncated
+
+prop!
+  : ∀ {𝓤} {A : Type 𝓤}
+    → ⦃ _ : Is-truncated -1𝕋 A ⦄
+    → {x y : A} → x ＝ y
+prop! = is-prop←is-truncated trunc! _ _
+
+single!
+  : ∀ {𝓤} {A : Type 𝓤}
+    → ⦃ _ : Is-truncated -2𝕋 A ⦄ → is-singleton A
+single! = is-singleton←is-truncated trunc!
+}
+}

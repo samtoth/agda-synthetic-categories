@@ -1,0 +1,221 @@
+\date{2026-05-19}
+\title{Descent for pushouts}
+\taxon{Module}
+\author{fredrikbakke}
+
+\import{stt-macros}
+
+\agda{
+module Core.DescentPushouts where
+
+open import Foundations.Prelude
+open import Axioms.UF
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CartesianDisplayedSpans
+}
+
+\subtree[stt-00WE]{
+\title{Cartesian displayed span diagrams classify cocones into the universe}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\p{
+For any span #{S}, the type of cocones from #{S} into the universe
+#{\UU} is equivalent to the type of #{\UU}-small cartesian displayed span
+diagrams over #{S}.
+}
+
+\proof{
+\p{
+Let #{A \xleftarrow{f} X \xrightarrow{g} B} be our span. A cocone into #{\UU}
+consists of families #{L : A \to \UU} and #{R : B \to \UU} together with an
+identification #{L \circ f = R \circ g}. We may expand this data with the
+"redundant", i.e. contractible, information of a middle factoring point. I.e., we
+factor the identification #{L \circ f = R \circ g} by a family #{C} over #{X},
+yielding identifications #{C = L \circ f} and #{C = R \circ g}. Finally, by
+univalence, such identifications are the same as families of equivalences.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} where
+
+  cartesian-span-diagramᵈ←Type-cocone
+    : Cocone S (Type 𝓛) → cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛
+  cartesian-span-diagramᵈ←Type-cocone (mk-cocone L R H)
+    = mk-cartesian-span-diagramᵈ L R (L ∘ Span.left S) (λ _ → id≃) (coe≃ ∘ H)
+
+  module _ (L : Span.Left S → Type 𝓛) (R : Span.Right S → Type 𝓛) where
+
+    Π-swap-cartesian-spanᵈ-map
+      : cartesian-spanᵈ S 𝓛 L R
+      → (s : Span.Centre S)
+      → Σ[ C ∶ Type 𝓛 ] ((C ≃ L (Span.left S s)) × (C ≃ R (Span.right S s)))
+    Π-swap-cartesian-spanᵈ-map S s
+      = ( S .cartesian-spanᵈ.Centre s
+        , S .cartesian-spanᵈ.Left≃ s
+        , S .cartesian-spanᵈ.Right≃ s)
+
+    Π-swap-cartesian-spanᵈ-map-is-equiv
+      : is-equiv Π-swap-cartesian-spanᵈ-map
+    Π-swap-cartesian-spanᵈ-map-is-equiv
+      = mk-eqv
+          ( ( λ S → mk-cartesian-spanᵈ (fst ∘ S) (fst ∘ snd ∘ S) (snd ∘ snd ∘ S))
+            , ~refl
+            , ~refl)
+          (~refl)
+
+    Π-swap-cartesian-spanᵈ
+      : cartesian-spanᵈ S 𝓛 L R
+      ≃ ( (s : Span.Centre S)
+        → Σ[ C ∶ Type 𝓛 ] ( (C ≃ L (Span.left S s)) × (C ≃ R (Span.right S s))))
+    Π-swap-cartesian-spanᵈ
+      = mk≃
+          Π-swap-cartesian-spanᵈ-map
+          Π-swap-cartesian-spanᵈ-map-is-equiv
+
+  Type-cocone←span
+    : cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛 → Cocone S (Type 𝓛)
+  Type-cocone←span P
+    = mk-cocone
+        (P .cartesian-span-diagramᵈ.Left)
+        (P .cartesian-span-diagramᵈ.Right)
+        (ua ∘ cartesian-span-diagramᵈ.Left≃Right P)
+
+  opaque
+    Type-cocone←span-is-retraction
+      : Type-cocone←span ∘ cartesian-span-diagramᵈ←Type-cocone ~ id
+    Type-cocone←span-is-retraction (mk-cocone L R filler)
+      = ap (mk-cocone L R) (funext→ λ _ → ap ua (≃-path→ refl) ∙ ua-coe≃)
+
+  opaque
+    cartesian-span-diagramᵈ←Type-cocone-is-section
+      : cartesian-span-diagramᵈ←Type-cocone ∘ Type-cocone←span ~ id
+    cartesian-span-diagramᵈ←Type-cocone-is-section
+      (mk-cartesian-span-diagramᵈ L R C e-left e-right)
+      = ap
+        (λ S
+         → mk-cartesian-span-diagramᵈ L R
+            (S .cartesian-spanᵈ.Centre)
+            (S .cartesian-spanᵈ.Left≃)
+            (S .cartesian-spanᵈ.Right≃))
+        (unap-equiv
+          (Π-swap-cartesian-spanᵈ L R ._≃_.fwd-is-equiv)
+          (funext→ λ s
+           → equiv-J
+              (λ L' e-left'
+               → (e-right' : C s ≃ R (Span.right S s))
+               → Id
+                  (Σ[ C' ∶ Type 𝓛 ] ((C' ≃ L') × (C' ≃ R (Span.right S s))))
+                  (L' , id≃ , coe≃ (ua (e-left' e⁻¹ ∙e e-right')))
+                  (C s , e-left' , e-right'))
+              (λ _ → Σ-path→ (refl , ×-path→ (refl , coe≃-ua ∙ ≃-path→ refl)))
+              (L (Span.left S s))
+              (e-left s)
+              (e-right s)))
+
+  cartesian-span-diagramᵈ←Type-cocone-is-equiv
+    : is-equiv cartesian-span-diagramᵈ←Type-cocone
+  cartesian-span-diagramᵈ←Type-cocone-is-equiv
+    = is-equiv←qinv
+        ( Type-cocone←span
+        , Type-cocone←span-is-retraction
+        , cartesian-span-diagramᵈ←Type-cocone-is-section)
+
+  Type-cocone≃span : Cocone S (Type 𝓛) ≃ cartesian-span-diagramᵈ S 𝓛 𝓛 𝓛
+  Type-cocone≃span
+    = mk≃
+        cartesian-span-diagramᵈ←Type-cocone
+        cartesian-span-diagramᵈ←Type-cocone-is-equiv
+}
+}
+
+\subtree[stt-00WF]{
+\title{Descent for pushouts}
+\taxon{Theorem}
+\author{fredrikbakke}
+
+\p{
+Families over pushouts are equivalent to cartesian displayed span diagrams over their
+pushout spans.
+}
+
+\proof{
+\p{
+By the universal property of pushouts, a family over a pushout is the same as a
+cocone with target #{\UU}, and by the [preceding lemma](stt-00WE) cocones into the
+universe are cartesian displayed span diagrams over the pushout span.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛} (c : Cocone S X) where
+
+  spanᵈ←family-cocone
+    : ∀ {𝓜} → (X → Type 𝓜) → cartesian-span-diagramᵈ S 𝓜 𝓜 𝓜
+  spanᵈ←family-cocone = cartesian-span-diagramᵈ←Type-cocone ∘ cocone-map S c
+
+module _
+  {𝓤 𝓥 𝓦 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓛}
+  {c : Cocone S X} (up-c : up-pushout S c)
+  where
+
+  descent-up-pushout
+    : ∀ {𝓜} → is-equiv (spanᵈ←family-cocone c {𝓜})
+  descent-up-pushout
+    = is-equiv-∘ cartesian-span-diagramᵈ←Type-cocone-is-equiv up-c
+
+  descent-up-pushout≃
+    : ∀ {𝓜} → (X → Type 𝓜) ≃ cartesian-span-diagramᵈ S 𝓜 𝓜 𝓜
+  descent-up-pushout≃
+    = mk≃ (spanᵈ←family-cocone c) (descent-up-pushout)
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛 𝓜} {S : Span 𝓤 𝓥 𝓦}
+  {X : Type 𝓛} {c : Cocone S X} (up-c : up-pushout S c)
+  (P : cartesian-span-diagramᵈ S 𝓜 𝓜 𝓜)
+  (open cartesian-span-diagramᵈ)
+  where
+
+  uniqueness-descent-up-pushout
+    : is-singleton (fibre (spanᵈ←family-cocone c) P)
+  uniqueness-descent-up-pushout
+    = has-singleton-fibres←is-equiv (descent-up-pushout up-c) P
+
+  family-descent-up-pushout : X → Type 𝓜
+  family-descent-up-pushout
+    = uniqueness-descent-up-pushout .centre .fst
+
+  compute-family-descent-up-pushout
+    : spanᵈ←family-cocone c family-descent-up-pushout ＝ P
+  compute-family-descent-up-pushout
+    = uniqueness-descent-up-pushout .centre .snd
+
+  compute-left-descent-up-pushout
+    : (a : Span.Left S)
+    → family-descent-up-pushout (Cocone.p c a)
+    ≃ P .Left a
+  compute-left-descent-up-pushout
+    = coe≃
+    ∘ happly (ap cartesian-span-diagramᵈ.Left compute-family-descent-up-pushout)
+
+  compute-right-descent-up-pushout
+    : (b : Span.Right S)
+    → family-descent-up-pushout (Cocone.q c b)
+    ≃ P .Right b
+  compute-right-descent-up-pushout
+    = coe≃
+    ∘ happly (ap cartesian-span-diagramᵈ.Right compute-family-descent-up-pushout)
+
+  compute-centre-descent-up-pushout
+    : (s : Span.Centre S)
+    → family-descent-up-pushout (Cocone.p c (Span.left S s))
+    ≃ P .Centre s
+  compute-centre-descent-up-pushout
+    = coe≃
+    ∘ happly (ap cartesian-span-diagramᵈ.Centre compute-family-descent-up-pushout)
+}
+}

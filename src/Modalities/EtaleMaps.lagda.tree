@@ -16,6 +16,7 @@ open import Foundations.Prelude
 open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
+open import Core.Cube
 open import Core.DescentSurjectiveMaps
 open import Core.SurjectiveMaps
 open import Core.Orthogonal
@@ -152,6 +153,7 @@ B && {\bigcirc B}\nsp{.}
 \arrow["\mathrm{gap}", from=1-1, to=2-2]
 \arrow["\lrcorner" very near start, phantom, from=2-2, to=3-3]
 \arrow["\pi_2", from=2-2, to=3-1]
+\arrow[from=2-2, to=1-3]
 \end{tikzcd}
 }
 
@@ -415,7 +417,7 @@ B && {\bigcirc B}\nsp{,}
 \arrow["r"', from=1-1, to=3-1]
 \arrow["\bigcirc f", from=1-3, to=3-3]
 \arrow["\eta"', from=3-1, to=3-3]
-\arrow["?", from=1-1, to=1-3]
+\arrow[from=1-1, to=1-3]
 \arrow["\lrcorner" very near start, from=1-1, to=3-3, phantom]
 \end{tikzcd}
 }
@@ -479,5 +481,151 @@ right-factor-is-étale
     → ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
     → is-étale-map RS (ModalNaturalityFactorisation.r RS f)
 right-factor-is-étale RS SΣ f = ModalNaturalityFactorisation.r-is-étale RS f SΣ
+}
+}
+
+\subtree[bak-264E]{
+\title{Squares of modal equivalences and étale maps}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+Consider a commuting square
+
+\quiver{
+\begin{tikzcd}
+A && C \\
+\\
+B && D
+\arrow["u", from=1-1, to=1-3]
+\arrow["f"', from=1-1, to=3-1]
+\arrow["g", from=1-3, to=3-3]
+\arrow["v"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+whose vertical maps #{f} and #{g} are modal equivalences and whose bottom map
+#{v} is étale. Then the square is cartesian if and only if #{u} is étale.
+In particular, every étale morphism of modal equivalences is cartesian.
+}
+
+\p{This is Proposition 6.5 and Proposition 7.3 in \citek{CR21}.}
+
+\proof{
+\p{
+Consider the [naturality cube](bak-434D),
+
+\quiver{
+\begin{tikzcd}
+A && C \\
+& B && D \\
+\bigcirc A && \bigcirc C \\
+&\bigcirc B && \bigcirc D
+\arrow["u", from=1-1, to=1-3]
+\arrow["v" near start, from=2-2, to=2-4]
+\arrow["f", from=1-1, to=2-2]
+\arrow["g", from=1-3, to=2-4]
+\arrow["\bigcirc u" near end, from=3-1, to=3-3]
+\arrow["\bigcirc v", from=4-2, to=4-4]
+\arrow["\bigcirc f", "\sim"' sloped, from=3-1, to=4-2]
+\arrow["\bigcirc g", "\sim"' sloped, from=3-3, to=4-4]
+\arrow[from=1-1, to=3-1]
+\arrow[from=1-3, to=3-3]
+\arrow[from=2-2, to=4-4, phantom, "\lrcorner" very near start]
+\arrow[from=2-2, to=4-2, crossing over]
+\arrow[from=2-4, to=4-4, crossing over]
+\end{tikzcd}
+}
+
+The naturality square of #{v} is cartesian, and the reflected square is cartesian
+because #{\bigcirc f} and #{\bigcirc g} are equivalences. This gives us that the
+naturality square of #{u} is cartesian iff the original square is cartesian.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+  {f : A → B} {g : C → D}
+  (F : Arrow-map f g)
+  (fe : is-modal-equiv RS f) (ge : is-modal-equiv RS g)
+  where
+
+  is-cartesian←modal-equiv-étale
+    : is-étale-map RS (F .Arrow-map.top)
+    → is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F
+  is-cartesian←modal-equiv-étale te be
+    = untranspose-is-cartesian F
+        (front-cartesian←cartesian-cube
+          (transpose-square F) (○-square RS (transpose-square F))
+          (η-cube RS (transpose-square F)) te be
+          (is-cartesian←is-Arrow-equiv _ (fe , ge)))
+
+  is-étale-map-top←is-cartesian
+    : is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F → is-étale-map RS (F .Arrow-map.top)
+  is-étale-map-top←is-cartesian be cart
+    = 3-for-2-cartesian
+        {a = ○-square RS (transpose-square F)}
+        (Arrow-map-path←id
+          (sym (Arrow-map-path→ (η-cube RS (transpose-square F) .Cube.comm))))
+        (compose-cartesian be (transpose-is-cartesian F cart))
+        (is-cartesian←is-Arrow-equiv (○-square RS (transpose-square F)) (fe , ge))
+
+  is-cartesian↔is-étale-map-top
+    : is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F ↔ is-étale-map RS (F .Arrow-map.top)
+  is-cartesian↔is-étale-map-top be
+    = (is-étale-map-top←is-cartesian be , λ te → is-cartesian←modal-equiv-étale te be)
+}
+
+\subtree[bak-7FF5]{
+\title{A converse for surjections}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+In the [square above](bak-264E), suppose that #{u} and #{v} are étale,
+#{g} is a modal equivalence, and #{\eta_C \colon C \to \bigcirc C} is surjective.
+Then the square is cartesian if and only if #{f} is a modal equivalence.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+  {f : A → B} {g : C → D}
+  (F : Arrow-map f g)
+  (ηs : is-surjective (η: C))
+  (te : is-étale-map RS (F .Arrow-map.top))
+  (be : is-étale-map RS (F .Arrow-map.bot))
+  (ge : is-modal-equiv RS g)
+  where
+
+  is-modal-equiv-left←is-cartesian←η-surj
+    : is-cartesian F → is-modal-equiv RS f
+  is-modal-equiv-left←is-cartesian←η-surj cart
+    = top-is-equiv←is-cartesian
+        (○-square RS (transpose-square F))
+        (descent-is-surjective
+          (○-square RS (transpose-square F)) (η-square RS (F .Arrow-map.top)) ηs te
+          (tr is-cartesian
+            (sym (Arrow-map-path→ (η-cube RS (transpose-square F) .Cube.comm)))
+            (compose-cartesian be (transpose-is-cartesian F cart))))
+        (ge)
+
+  is-cartesian↔is-modal-equiv-left←η-surj
+    : is-cartesian F ↔ is-modal-equiv RS f
+  is-cartesian↔is-modal-equiv-left←η-surj
+    = ( is-modal-equiv-left←is-cartesian←η-surj
+      , λ fe → is-cartesian←modal-equiv-étale RS F fe ge te be)
+}
 }
 }

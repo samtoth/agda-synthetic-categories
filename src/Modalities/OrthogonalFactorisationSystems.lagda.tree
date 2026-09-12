@@ -1,5 +1,7 @@
 \date{2025-06-04}
+\date{2026-09-11}
 \author{samueltoth}
+\author{fredrikbakke}
 \taxon{Module}
 \import{stt-macros}
 \title{Orthogonal factorisation systems}
@@ -17,10 +19,209 @@ open import Ergonomics.Representation
 open import Ergonomics.Extensionality
 
 open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.ArrowRetracts
+open import Core.CartesianSquares
+open import Core.Cube
+open import Core.PullbackPowers
 open import Modalities.Factorisations
 open import Modalities.WideSubcategoriesTypes
 open import Core.LiftingSquares
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
+}
+}
+
+\subtree[bak-9502]{
+\title{Unique factorisations give unique lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given composition closed function classes #{\mathcal{L}} and #{\mathcal{R}}, then if
+every map factors uniquely as a map in #{\mathcal{L}} followed by a map in
+#{\mathcal{R}}, then maps in #{\mathcal{L}} uniquely lift against maps in
+#{\mathcal{R}}.
+}
+
+\p{This appears as Lemma~1.44 in Rijke–Shulman–Spitters~\citek{RSS20}}
+
+\agda{
+module UniqueFactorisation→Lifting
+  {𝓤 𝓥 𝓘 𝓛 𝓡}
+  (L : {A : Type 𝓤} {I : Type 𝓘} → Subtype (A → I) 𝓛)
+  (R : {I : Type 𝓘} {B : Type 𝓥} → Subtype (I → B) 𝓡)
+  (unique-factorisations
+    : {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → is-singleton (Factorisation 𝓘 L R f))
+  {A B : Type 𝓤} {X Y : Type 𝓥} {l : A → B} {r : X → Y}
+  (∘l∈L : {I : Type 𝓘} {c : B → I} → c ∈ L → c ∘ l ∈ L)
+  (r∘∈R : {I : Type 𝓘} {b : I → X} → b ∈ R → r ∘ b ∈ R)
+  where
+
+  precompose-left-factor
+    : (Σ[ I ∶ Type 𝓘 ] Σ[ c ∶ (B → I) ] (c ∈ L))
+    → (Σ[ I ∶ Type 𝓘 ] Σ[ a ∶ (A → I) ] (a ∈ L))
+  precompose-left-factor (I , c , cL) = (I , c ∘ l , ∘l∈L cL)
+
+  postcompose-right-factor
+    : {C : Type 𝓤} (F : Σ[ I ∶ Type 𝓘 ] Σ[ a ∶ (C → I) ] (a ∈ L))
+    → (Σ[ b ∶ (F .fst → X) ] (b ∈ R))
+    → (Σ[ d ∶ (F .fst → Y) ] (d ∈ R))
+  postcompose-right-factor F (b , bR) = (r ∘ b , r∘∈R bR)
+
+  composition-equiv
+    : (C : Type 𝓤)
+    → Arrow-equiv (total-map (postcompose-right-factor {C})) (postcomp C r)
+  composition-equiv C = mk-arr-equiv
+    (Σ-assoc ∙e compose-Factors'≃←unique-factorisations unique-factorisations)
+    (Σ-assoc ∙e compose-Factors'≃←unique-factorisations unique-factorisations)
+    ~refl
+
+  composition-cube
+    : Cube
+        (reindex-total-map-square precompose-left-factor postcompose-right-factor)
+        (power-hom l r)
+  composition-cube .Cube.left = composition-equiv B .fst
+  composition-cube .Cube.right = composition-equiv A .fst
+  composition-cube .Cube.comm = (~refl , ~refl , ~refl)
+
+  composition-cube-is-equiv : is-Cube-equiv composition-cube
+  composition-cube-is-equiv
+    = (composition-equiv B .snd , composition-equiv A .snd)
+
+  orthogonality : are-orthogonal l r
+  orthogonality = are-orthogonal←is-cartesian
+    (back-cartesian←equiv-cube
+      (composition-cube)
+      (composition-cube-is-equiv)
+      (reindex-total-map-square-is-cartesian
+        (precompose-left-factor)
+        (postcompose-right-factor)))
+
+  unique-lifts←unique-factorisations : admit-unique-lifts l r
+  unique-lifts←unique-factorisations
+    = unique-lifts←are-orthogonal orthogonality
+}
+}
+
+\subtree[bak-4180]{
+\title{Unique lifts give uniqueness of factorisations}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given function classes #{\mathcal{L}} and #{\mathcal{R}} such that
+maps in #{\mathcal{L}} uniquely lift against maps in #{\mathcal{R}}, then
+#{(\mathcal{L},\mathcal{R})}-factorisations are unique, when they exist.
+}
+
+\agda{
+module UniqueLifting→Factorisation
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  (L : {I : Type 𝓘} → Subtype (A → I) 𝓛)
+  (R : {I : Type 𝓘} → Subtype (I → B) 𝓡)
+  (unique-lifts
+    : {I J : Type 𝓘} {l : A → I} {r : J → B}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r)
+  (open FactorisationLifting L R (λ lL rR S → unique-lifts lL rR S .centre))
+  {f : A → B}
+  where
+
+  orthogonality
+    : {I J : Type 𝓘} {l : A → I} {r : J → B}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = are-orthogonal←unique-lifts (unique-lifts lL rR)
+
+  module _
+    (F G : Factorisation 𝓘 L R f)
+    (let module F = Factorisation F)
+    (let module G = Factorisation G)
+    where
+
+    factorisation-comparison-equiv : Factorisation-equiv F G
+    factorisation-comparison-equiv = Factorisation-equiv←map {F = F} {G = G}
+      (factorisation-comparison-map F G)
+      (is-equiv-lift
+        (factorisation-comparison-lift F G)
+        (orthogonality F.l∈L F.r∈R)
+        (orthogonality G.l∈L F.r∈R)
+        (orthogonality F.l∈L G.r∈R)
+        (orthogonality G.l∈L G.r∈R))
+
+  factorisation-is-prop←unique-lifts : is-prop (Factorisation 𝓘 L R f)
+  factorisation-is-prop←unique-lifts F G
+    = Factorisation-equiv→id (factorisation-comparison-equiv F G)
+
+  unique-factorisation←unique-lifts
+    : Factorisation 𝓘 L R f → is-singleton (Factorisation 𝓘 L R f)
+  unique-factorisation←unique-lifts F
+    = mk-singl F (factorisation-is-prop←unique-lifts F)
+
+open UniqueLifting→Factorisation public using
+  (factorisation-is-prop←unique-lifts; unique-factorisation←unique-lifts)
+}
+}
+
+\subtree[bak-8418]{
+\title{Pairs of orthogonal classes are wide and have at most one factorisation}
+\taxon{Theorem}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-09-11}
+
+#{
+Let #{\mathcal{L}} and #{\mathcal{R}} be function classes such that
+#{\mathcal{L} = {}^{\perp}\mathcal{R}} and #{\mathcal{R} = \mathcal{L}^{\perp}},
+then both  #{\mathcal{L}} and #{\mathcal{R}} are wide subcategories of types, and
+#{(\mathcal{L},\mathcal{R})}-factorisations are unique, when they exist.
+}
+
+\agda{
+module OrthogonalClasses {𝓤 𝓛 𝓡}
+  (L : {A B : Type 𝓤} → Subtype (A → B) 𝓛)
+  (R : {A B : Type 𝓤} → Subtype (A → B) 𝓡)
+  (L-is-⊥R : {A B : Type 𝓤} {f : A → B} → (f ∈ L) ↔ (f ∈ left-orthogonal-class R))
+  (R-is-L⊥ : {A B : Type 𝓤} {f : A → B} → (f ∈ R) ↔ (f ∈ right-orthogonal-class L))
+  where
+
+  orthogonality
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = L-is-⊥R .fst lL rR
+
+  unique-lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r
+  unique-lifts lL rR = unique-lifts←are-orthogonal (orthogonality lL rR)
+
+  Ll : WideSubcatType 𝓤 𝓛
+  Ll .WideSubcatType.K = L
+  Ll .WideSubcatType.≃∈K e
+    = L-is-⊥R .snd (λ {g = r} _ → equiv⊥ (e ._≃_.fwd-is-equiv) r)
+  Ll .WideSubcatType._∘∈K_ {g = g} {f = f} gL fL
+    = L-is-⊥R .snd (λ {g = r} rR
+        → left-orthogonal-∘ g f r (orthogonality gL rR) (orthogonality fL rR))
+
+  Rr : WideSubcatType 𝓤 𝓡
+  Rr .WideSubcatType.K = R
+  Rr .WideSubcatType.≃∈K e
+    = R-is-L⊥ .snd (λ {f = l} _
+        → right-orthogonal←is-equiv l (e ._≃_.fwd-is-equiv))
+  Rr .WideSubcatType._∘∈K_ gR fR
+    = R-is-L⊥ .snd (λ {f = l} lL
+        → right-orthogonal-∘ l (orthogonality lL gR) (orthogonality lL fR))
+
+  factorisation-is-prop
+    : {A B : Type 𝓤} (f : A → B) → is-prop (Factorisation 𝓤 L R f)
+  factorisation-is-prop f = factorisation-is-prop←unique-lifts L R unique-lifts
+
+  unique-factorisations
+    : {A B : Type 𝓤} {f : A → B}
+    → Factorisation 𝓤 L R f → is-singleton (Factorisation 𝓤 L R f)
+  unique-factorisations F = mk-singl F (factorisation-is-prop _ F)
 }
 }
 
@@ -33,6 +234,7 @@ open import Core.Orthogonal
 record OFS 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
   field
     Ll Rr : WideSubcatType 𝓤 𝓥
+
   open WideSubcatType Ll public using () renaming
     ( K to L; ≃∈K to ≃∈L; id∈K to id∈L; _∘∈K_ to _∘∈L_
     ; stable-equiv to ∈L←Arrow-equiv)
@@ -41,42 +243,298 @@ record OFS 𝓤 𝓥 : Type (lsuc (𝓤 ⊔ 𝓥)) where
     ; stable-equiv to ∈R←Arrow-equiv)
 
   field
-    factorisation-is-singleton
+    unique-factorisations
       : {A B : Type 𝓤} (f : A → B)
       → is-singleton (Factorisation 𝓤 L R f)
 
   factorisation
     : {A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f
-  factorisation f = factorisation-is-singleton f .centre
+  factorisation f = unique-factorisations f .centre
+
+  orthogonality
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → are-orthogonal l r
+  orthogonality lL rR = UniqueFactorisation→Lifting.orthogonality
+    L R unique-factorisations (λ cL → cL ∘∈L lL) (λ bR → rR ∘∈R bR)
+
+  unique-lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → admit-unique-lifts l r
+  unique-lifts lL rR
+    = unique-lifts←are-orthogonal (orthogonality lL rR)
+
+  lifts
+    : {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+    → l ∈ L → r ∈ R → (S : Arrow-map l r) → Lift S
+  lifts lL rR S = unique-lifts lL rR S .centre
+
+  is-equiv←∈L∩R : {A B : Type 𝓤} {f : A → B} → f ∈ L → f ∈ R → is-equiv f
+  is-equiv←∈L∩R fL fR = is-equiv←self-lift (lifts fL fR id-square)
+
+  module _ {A B : Type 𝓤} where
+    open FactorisationLifting {𝓘 = 𝓤} {A = A} {B = B} L R lifts public
+
+  module _
+    {A B : Type 𝓤} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
+
+    left-retract←factorisation : f ∈ L → Arrow-retract f F.l
+    left-retract←factorisation fL
+      = left-retract←lift←factorisation F
+          ( lifts fL F.r∈R (left-square←factorisation F))
+
+    right-retract←factorisation : f ∈ R → Arrow-retract f F.r
+    right-retract←factorisation fR
+      = right-retract←lift←factorisation F
+          ( lifts F.l∈L fR (right-square←factorisation F))
 }
 }
 
-\subtree[stt-00YK]{
-\title{Global orthogonal factorisation systems}
-\taxon{Definition}
+\subtree[bak-0879]{
+\title{The classes of an orthogonal factorisation system determine each other}
+\taxon{Lemma}
 \author{fredrikbakke}
 \date{2026-09-11}
 
+\p{
+The left and right classes of an orthogonal factorisation system, #{\mathcal{L}} and
+#{\mathcal{R}}, satisfy #{\mathcal{L} = {}^{\perp}\mathcal{R}} and
+#{\mathcal{R} = \mathcal{L}^{\perp}}.
+}
+
 \agda{
-record gOFS (α β γ : Level → Level → Level) : Typeω where
-  field
-    Ll : gWideSubcatType α
-    Rr : gWideSubcatType β
-  open gWideSubcatType Ll public using () renaming
-    ( K to L; ≃∈K to ≃∈L; id∈K to id∈L; _∘∈K_ to _∘∈L_
-    ; stable-equiv to ∈L←Arrow-equiv)
-  open gWideSubcatType Rr public using () renaming
-    ( K to R; ≃∈K to ≃∈R; id∈K to id∈R; _∘∈K_ to _∘∈R_
-    ; stable-equiv to ∈R←Arrow-equiv)
+  module _
+    {A B : Type 𝓤} {f : A → B}
+    (let F = factorisation f)
+    (let module F = Factorisation F)
+    where
 
-  field
-    factorisation-is-singleton
-      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-        → is-singleton (gFactorisation γ Ll Rr f)
+    ∈L←left-orthogonal : f ∈ left-orthogonal-class R → f ∈ L
+    ∈L←left-orthogonal orth
+      = ∈L←Arrow-equiv
+          ( inv-Arrow-equiv
+            ( equiv-left←orthogonal-right←factorisation F
+              ( orthogonality F.l∈L F.r∈R)
+              ( orth F.r∈R)))
+          ( F.l∈L)
 
-  factorisation
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-      → gFactorisation γ Ll Rr f
-  factorisation f = factorisation-is-singleton f .centre
+    ∈R←right-orthogonal : f ∈ right-orthogonal-class L → f ∈ R
+    ∈R←right-orthogonal orth
+      = ∈R←Arrow-equiv
+          ( equiv-right←orthogonal-left←factorisation F
+            ( orthogonality F.l∈L F.r∈R)
+            ( orth F.l∈L))
+          ( F.r∈R)
+
+    ∈L↔left-orthogonal : (f ∈ L) ↔ (f ∈ left-orthogonal-class R)
+    ∈L↔left-orthogonal = ((λ lL rR → orthogonality lL rR) , ∈L←left-orthogonal)
+
+    ∈R↔right-orthogonal : (f ∈ R) ↔ (f ∈ right-orthogonal-class L)
+    ∈R↔right-orthogonal = ((λ rR lL → orthogonality lL rR) , ∈R←right-orthogonal)
+}
+
+\agda{
+unquoteDecl OFS-repr≊ OFS-repr≃
+  = make-record-repr OFS-repr≊ OFS-repr≃ (quote OFS)
+}
+}
+
+\subtree[bak-7203]{
+\title{Orthogonal factorisation systems are determined by either class}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given two orthogonal factorisation systems, then the following are equivalent
+statements:
+
+\ol{
+\li{The orthogonal factorisation systems are equal.}
+\li{The left classes are equal.}
+\li{The right classes are equal.}
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {𝑂 𝑃 : OFS 𝓤 𝓥}
+  (let module 𝑂 = OFS 𝑂)
+  (let module 𝑃 = OFS 𝑃)
+  where
+
+  OFS-eq←classes
+    : ({A B : Type 𝓤} → 𝑂.L {A} {B} ＝ 𝑃.L {A} {B})
+    → ({A B : Type 𝓤} → 𝑂.R {A} {B} ＝ 𝑃.R {A} {B})
+    → 𝑂 ＝ 𝑃
+  OFS-eq←classes p q
+    = ap
+        ( _≃_.bwd OFS-repr≃ ∘ _≃_.fwd Σ-assoc)
+        ( Σ-path→
+          ( ×-path→ (WideSubcatType-eq-class→eq p
+          , WideSubcatType-eq-class→eq q)
+          , ext! (λ {A} {B} f → is-single-is-prop _ _)))
+
+  OFS-left-class-eq↔right-class-eq
+    : ({A B : Type 𝓤} → 𝑂.L {A} {B} ＝ 𝑃.L {A} {B})
+    ↔ ({A B : Type 𝓤} → 𝑂.R {A} {B} ＝ 𝑃.R {A} {B})
+  OFS-left-class-eq↔right-class-eq .fst p
+    = Subtype-equiv→eq global-funext UA (λ r →
+        𝑂.∈R↔right-orthogonal
+        ∙iff logical←Id
+              (ap ((r ∈_) ∘ right-orthogonal-class) (ext! (λ {X} {Y} → p {X} {Y})))
+        ∙iff (𝑃.∈R↔right-orthogonal iff⁻¹))
+  OFS-left-class-eq↔right-class-eq .snd p
+    = Subtype-equiv→eq global-funext UA (λ l →
+        𝑂.∈L↔left-orthogonal
+        ∙iff logical←Id
+              (ap ((l ∈_) ∘ left-orthogonal-class) (ext! (λ {X} {Y} → p {X} {Y})))
+        ∙iff (𝑃.∈L↔left-orthogonal iff⁻¹))
+
+  OFS-eq↔left-class-eq
+    : (𝑂 ＝ 𝑃) ↔ ({A B : Type 𝓤} → 𝑂.L {A} {B} ＝ 𝑃.L {A} {B})
+  OFS-eq↔left-class-eq .fst p = ap (λ Q → OFS.L Q) p
+  OFS-eq↔left-class-eq .snd p
+    = OFS-eq←classes p (OFS-left-class-eq↔right-class-eq .fst p)
+
+  OFS-eq↔right-class-eq
+    : (𝑂 ＝ 𝑃) ↔ ({A B : Type 𝓤} → 𝑂.R {A} {B} ＝ 𝑃.R {A} {B})
+  OFS-eq↔right-class-eq
+    = OFS-eq↔left-class-eq ∙iff OFS-left-class-eq↔right-class-eq
+}
+}
+
+\subtree[bak-8612]{
+\title{Constructing orthogonal factorisation systems from unique lifts}
+\taxon{Construction}
+\author{fredrikbakke}
+
+\agda{
+module _
+  {𝓤 𝓥} (Ll Rr : WideSubcatType 𝓤 𝓥)
+  (let L = WideSubcatType.K Ll)
+  (let R = WideSubcatType.K Rr)
+  where
+
+  OFS←unique-lifts
+    : ({A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f)
+    → ( {A B X Y : Type 𝓤} {l : A → B} {r : X → Y}
+      → l ∈ L → r ∈ R → admit-unique-lifts l r)
+    → OFS 𝓤 𝓥
+  OFS←unique-lifts factor lifting .OFS.Ll = Ll
+  OFS←unique-lifts factor lifting .OFS.Rr = Rr
+  OFS←unique-lifts factor lifting .OFS.unique-factorisations f
+    = unique-factorisation←unique-lifts L R lifting (factor f)
+}
+}
+
+\subtree[bak-2955]{
+\title{Orthogonal factorisation ststems generated by a family of maps}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given a family of maps #{K_i : D_i \to E_i}, the pair
+#{({}^{\perp}(K^{\perp}),K^{\perp})} defines an orthogonal factorisation system.
+The factorisations can be constructed as in \citet{2.41}{RSS20}. We leave this for
+future work.
+}
+
+\agda{
+module GeneratedOFS
+  {𝓤 𝓚} {I : Type 𝓚} {D E : I → Type 𝓤}
+  (K : (i : I) → D i → E i)
+  where
+
+  R : {A B : Type 𝓤} → Subtype (A → B) (𝓤 ⊔ 𝓚)
+  R .Subtype.family r = (i : I) → are-orthogonal (K i) r
+  R .Subtype.family-is-subtype r = Π-is-prop (λ _ → is-equiv-is-prop)
+
+  L : {A B : Type 𝓤} → Subtype (A → B) (lsuc 𝓤 ⊔ 𝓚)
+  L = left-orthogonal-class R
+
+  K∈L : (i : I) → K i ∈ L
+  K∈L i rR = rR i
+
+  L-is-⊥R
+    : {A B : Type 𝓤} {f : A → B}
+    → (f ∈ L) ↔ (f ∈ left-orthogonal-class R)
+  L-is-⊥R = (id , id)
+
+  R-is-L⊥
+    : {A B : Type 𝓤} {f : A → B}
+    → (f ∈ R) ↔ (f ∈ right-orthogonal-class L)
+  R-is-L⊥ .fst rR lL = lL rR
+  R-is-L⊥ .snd rL i = rL (K∈L i)
+
+  open OrthogonalClasses L R L-is-⊥R R-is-L⊥ public
+
+  OFS←factorisations
+    : ({A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f)
+    → OFS 𝓤 (lsuc 𝓤 ⊔ 𝓚)
+  OFS←factorisations factor
+    = OFS←unique-lifts Ll
+        (ULift-WideSubcatType (lsuc 𝓤) Rr)
+        (λ f → let module F = Factorisation (factor f) in
+          mk-factorisation F.Im F.l F.l∈L F.r (mk-lift F.r∈R) F.comm)
+        (λ lL rR → unique-lifts lL (unlift rR))
+}
+}
+
+\subtree[bak-2456]{
+\title{Orthogonal classes cogenerated by a family of maps}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given a family of maps #{K_i : D_i \to E_i},  if the pair
+#{({}^{\perp}(K^{\perp}),K^{\perp})} admits factorisations, then it defines an
+orthogonal factorisation system.
+}
+
+\agda{
+module CogeneratedOFS
+  {𝓤 𝓘}
+  {I : Type 𝓘} {D E : I → Type 𝓤}
+  (K : (i : I) → D i → E i)
+  where
+
+  L : {A B : Type 𝓤} → Subtype (A → B) (𝓤 ⊔ 𝓘)
+  L .Subtype.family l = (i : I) → are-orthogonal l (K i)
+  L .Subtype.family-is-subtype l = Π-is-prop (λ _ → is-equiv-is-prop)
+
+  R : {A B : Type 𝓤} → Subtype (A → B) (lsuc 𝓤 ⊔ 𝓘)
+  R = right-orthogonal-class L
+
+  K∈R : (i : I) → K i ∈ R
+  K∈R i lL = lL i
+
+  L-is-⊥R
+    : {A B : Type 𝓤} {f : A → B}
+    → (f ∈ L) ↔ (f ∈ left-orthogonal-class R)
+  L-is-⊥R .fst lL rR = rR lL
+  L-is-⊥R .snd lR i = lR (K∈R i)
+
+  R-is-L⊥
+    : {A B : Type 𝓤} {f : A → B}
+    → (f ∈ R) ↔ (f ∈ right-orthogonal-class L)
+  R-is-L⊥ = (id , id)
+
+  open OrthogonalClasses L R L-is-⊥R R-is-L⊥ public
+
+  OFS←factorisations
+    : ({A B : Type 𝓤} (f : A → B) → Factorisation 𝓤 L R f)
+    → OFS 𝓤 (lsuc 𝓤 ⊔ 𝓘)
+  OFS←factorisations factor
+    = OFS←unique-lifts
+        (ULift-WideSubcatType (lsuc 𝓤) Ll)
+        (Rr)
+        (λ f → let module F = Factorisation (factor f) in
+          mk-factorisation F.Im F.l (mk-lift F.l∈L) F.r F.r∈R F.comm)
+        (λ lL rR → unique-lifts (unlift lL) rR)
 }
 }

@@ -1,0 +1,205 @@
+\title{Descent along étale maps}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Module}
+\import{stt-macros}
+
+\p{We prove modal descent, following Cherubini–Rijke \citek{CR21}.}
+
+\agda{
+module Modalities.GlobalReflectiveSubuniverses.DescentEtale where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ConnectedMaps
+open import Modalities.EtaleMaps
+}
+}
+
+\subtree[bak-D69E]{
+\title{Modal descent data for a type family}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Definition}
+
+\p{
+\em{Modal descent data} for a type family #{P : B \to \UU} consists of a family of
+modal types #{Q : \bigcirc B \to \UU}, together with equivalences
+#{P(b) \simeq Q(\eta(b))}.
+}
+
+\agda{
+module _ {α} (RS : gRSubU α) (open gRSubU RS) where
+
+  modal-family-subtype
+    : ∀ {𝓤} (B : Type 𝓤) (𝓥 : Level) → Subtype (B → Type 𝓥) (𝓤 ⊔ α 𝓥)
+  modal-family-subtype B 𝓥 .Subtype.family P = ∀ b → P b ∈ S
+  modal-family-subtype B 𝓥 .Subtype.family-is-subtype P
+    = Π-is-prop (λ b → ∈-is-prop S (P b))
+
+  Modal-family-descent
+    : ∀ {𝓤 𝓥} {B : Type 𝓤} → (B → Type 𝓥) → Type (𝓤 ⊔ lsuc 𝓥 ⊔ α 𝓥)
+  Modal-family-descent {𝓥 = 𝓥} {B} P
+    = Σ[ Q ∶ (○ B → Type 𝓥) ] (((z : ○ B) → Q z ∈ S) × ((b : B) → P b ≃ Q (η b)))
+
+  module _ {𝓤 𝓥} {B : Type 𝓤} where
+
+    restrict-modal-family
+      : Subtype.Σ̃ (modal-family-subtype (○ B) 𝓥) → (B → Type 𝓥)
+    restrict-modal-family (Q , _) = Q ∘ η
+
+    fibre-restrict-modal-family≃descent
+      : (P : B → Type 𝓥)
+      → fibre restrict-modal-family P ≃ Modal-family-descent P
+    fibre-restrict-modal-family≃descent P
+      = Σ-snd-≃ (λ Q → funext≃ ∙e postcomp-Π-≃ (λ b → sym≃ ∙e ua≃ e⁻¹)) ∙e Σ-assoc
+}
+}
+
+\subtree[bak-2E0B]{
+\title{Modal descent data are unique}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+Given a type family #{P : B \to \UU}, then modal descent data for #{P} in a
+#{Σ}-closed reflective subuniverse, when it exists, is unique.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveClosure RS)
+  (SΣ : is-globally-Σ-closed GS)
+  where
+
+  module _ {𝓤 𝓥} {B : Type 𝓤} where
+
+    modal-family-path≃
+      : (P Q : Subtype.Σ̃ (modal-family-subtype RS (○ B) 𝓥))
+      → (P ＝ Q) ≃ ((z : ○ B) → P .fst z ≃ Q .fst z)
+    modal-family-path≃ P Q
+      = mk≃ (ap fst) (Subtype.Σ̃-π-is-embedding (modal-family-subtype RS (○ B) 𝓥))
+      ∙e funext≃ ∙e postcomp-Π-≃ (λ z → ua≃ e⁻¹)
+
+    restrict-modal-family-path-square
+      : (P Q : Subtype.Σ̃ (modal-family-subtype RS (○ B) 𝓥))
+      → Arrow-equiv
+          (ap (restrict-modal-family RS) {P} {Q})
+          (precomp-Π (λ z → P .fst z ≃ Q .fst z) η)
+    restrict-modal-family-path-square P Q
+      = mk-arr-equiv
+          (modal-family-path≃ P Q)
+          (funext≃ ∙e postcomp-Π-≃ (λ b → ua≃ e⁻¹))
+          (λ where refl → refl)
+
+    restrict-modal-family-is-embedding
+      : is-embedding (restrict-modal-family RS {𝓥 = 𝓥} {B = B})
+    restrict-modal-family-is-embedding {P} {Q}
+      = src-is-equiv←Arrow-equiv
+          (restrict-modal-family-path-square P Q)
+          (gRSubUReflectorConnected.η-up-connected-map RS SΣ
+            (λ z → ≃∈S (P .snd z) (Q .snd z)))
+
+    Modal-family-descent-is-prop
+      : (P : B → Type 𝓥) → is-prop (Modal-family-descent RS P)
+    Modal-family-descent-is-prop P
+      = is-prop←equiv-to-prop
+          (fibre-restrict-modal-family≃descent RS P)
+          (is-prop-map←is-embedding restrict-modal-family-is-embedding P)
+}
+}
+
+\subtree[bak-7E5F]{
+\title{The fibre family of an étale map descends}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Construction}
+
+\p{
+Given an étale map #{f \colon A \to B}, then its fibre family descends to
+#{z \mapsto \fibre{\bigcirc f}{z}}. This family is clearly modally valued, and the
+comparison on fibres is an equivalence by the definition of being étale.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (open gReflectiveClosure RS)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  modal-fibre-descent←is-étale-map
+    : is-étale-map RS f → Modal-family-descent RS (fibre f)
+  modal-fibre-descent←is-étale-map fe
+    = ( fibre (○₁ f)
+      , (λ z → fibre∈S (○₁ f) z ○∈S ○∈S)
+      , (λ b → mk≃ (η-fibre-map RS f b) (fe b)))
+}
+}
+
+\subtree[bak-C152]{
+\title{Étale maps are precisely the maps whose fibre families descend}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, the fibre family of #{f : A \to B}
+admits modal descent if and only if #{f} is étale.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  is-étale-map←modal-fibre-family
+    : ∀ {𝓦} (Q : ○ B → Type 𝓦)
+      → (∀ z → Q z ∈ S)
+      → (∀ b → fibre f b ≃ Q (η b))
+      → is-étale-map RS f
+  is-étale-map←modal-fibre-family Q qm e
+    = is-étale-map←right-orthogonal RS SΣ λ {g = g} ge
+      → are-orthogonal←are-orthogonal-fibre
+          (are-orthogonal-fam←equiv (λ b → e b e⁻¹)
+            (orthogonal-fam←base-change g η Q
+              (are-orthogonal-fam←are-orthogonal-fst
+                (modal-equiv⊥map-between-modal-types RS ge (SΣ ○∈S qm) ○∈S))))
+
+  is-étale-map←modal-fibre-descent
+    : Modal-family-descent RS (fibre f) → is-étale-map RS f
+  is-étale-map←modal-fibre-descent (Q , qm , e)
+    = is-étale-map←modal-fibre-family Q qm e
+
+  is-étale-map≃modal-fibre-descent
+    : is-étale-map RS f ≃ Modal-family-descent RS (fibre f)
+  is-étale-map≃modal-fibre-descent
+    = equiv←logical is-cartesian-is-prop
+        (Modal-family-descent-is-prop RS SΣ (fibre f))
+        (modal-fibre-descent←is-étale-map RS , is-étale-map←modal-fibre-descent)
+
+  unique-modal-fibre-descent
+    : is-étale-map RS f → is-singleton (Modal-family-descent RS (fibre f))
+  unique-modal-fibre-descent fe
+    = mk-singl (modal-fibre-descent←is-étale-map RS fe)
+        (Modal-family-descent-is-prop RS SΣ (fibre f) _)
+}
+}

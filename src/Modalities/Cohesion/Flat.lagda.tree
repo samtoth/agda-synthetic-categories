@@ -6,6 +6,8 @@
 
 \agda{
 module Modalities.Cohesion.Flat where
+
+open import Axioms.FunExt
 }
 
 \agda-imports{
@@ -40,6 +42,20 @@ data ⟨♭|_⟩ {@♭ 𝓤} (@♭ A : Type 𝓤) : Type 𝓤 where
     → ((@♭ x : A) → B (mod♭ x))
     → (x : ⟨♭| A ⟩) → B x
 ♭-ind = ♭-ind: _
+
+♭-ind-is-equiv
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → is-equiv (♭-ind {B = B})
+♭-ind-is-equiv
+  = is-equiv←qinv
+      ( (λ f x → f (mod♭ x))
+      , ~refl
+      , λ g → funext→ (♭-ind (λ _ → refl)))
+
+♭-ind≃
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → ((@♭ x : A) → B (mod♭ x)) ≃ Π ⟨♭| A ⟩ B
+♭-ind≃ = mk≃ ♭-ind ♭-ind-is-equiv
 
 ♭-rec
   : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : Type 𝓥}
@@ -305,9 +321,17 @@ is-♭-equiv-∘ fe ge
 \title{Flat preserves retracts}
 \taxon{Lemma}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-04-29}
 
 \agda{
+♭-retraction-witness
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ g : B → A}
+    → @♭ (retraction-witness g f)
+    → retraction-witness (♭-map g) (♭-map f)
+♭-retraction-witness ret (mod♭ x) = mapply♭ (mod♭ (ret x))
+
 ♭-retract
   : ∀ {@♭ 𝓤 𝓥}
       {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -316,7 +340,7 @@ is-♭-equiv-∘ fe ge
 ♭-retract (i , r , H)
   = ♭-map i
   , ♭-map r
-  , λ where (mod♭ a) → ap♭ mod♭ (H a)
+  , ♭-retraction-witness H
 }
 }
 
@@ -503,6 +527,27 @@ module _
         ♭-Σ₁
         (map-Σ-is-equiv fe (♭-ind ge))
 }
+
+\p{We also provide a non-dependent version of this lemma.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
+  {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜}
+  (@♭ f : A → A') (@♭ g : X → Y)
+  where
+
+  ♭-×₁ : Arrow-equiv (♭-map (f ×₁ g)) (♭-map f ×₁ ♭-map g)
+  ♭-×₁ = mk-arr-equiv
+    ♭-pres-× ♭-pres-× (♭-ind (λ x → refl))
+
+  ×₁-is-♭-equiv
+     : is-♭-equiv f
+     → is-♭-equiv g
+     → is-♭-equiv (f ×₁ g)
+  ×₁-is-♭-equiv fe ge
+    = src-is-equiv←Arrow-equiv ♭-×₁ (×₁-is-equiv fe ge)
+}
 }
 
 \subtree[stt-00P0]{
@@ -565,5 +610,52 @@ module _
       : is-equiv (total-map (♭ᶠ-map f))
       → is-♭-equiv (total-map f)
     ♭-map-total-is-equiv = tgt-is-equiv←Arrow-equiv (♭-map-total-Arrow-equiv)
+}
+}
+
+\subtree[tot-06AY]{
+\title{Dependent #{♭} precomposition}
+\taxon{Construction}
+\date{2026-09-11}
+
+\p{We may define a crisp precomposition map which takes a crisply-indexed family of
+types #{U : (b :^\flat B) \to \UU} and a crisp map #{f :^\flat A \to B} and defines
+a canonical map
+
+##{(\Pi_{(b :^\flat B)} F(b)) \to (\Pi_{(a :^\flat A)} F(f(a)))}
+
+by precomposition.
+}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭ : ((@♭ b : B) → U b) → (@♭ a : A) → U (f a)
+  precomp-Π♭ g x = g (f x)
+}
+
+\p{This is equivalent as a map to precomposing the induced family
+#{\hat{U} : \flat B \to \UU} by #{\flat f : \flat A \to \flat B}.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭≃
+    : Arrow-equiv (precomp-Π♭ U f) (precomp-Π (♭-ind U) (♭-map f))
+  precomp-Π♭≃ = mk-arr-equiv ♭-ind≃ ♭-ind≃ λ g → funext→ (♭-ind λ _ → refl)
+
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : ⟨♭| B ⟩ → Type 𝓦) (@♭ f : A → B)
+  where
+  precomp-Π♭≃'
+    : Arrow-equiv (precomp-Π♭ (λ x → U (mod♭ x)) f) (precomp-Π U (♭-map f))
+  precomp-Π♭≃' = mk-arr-equiv ♭-ind≃ ♭-ind≃ (λ g → funext→ (♭-ind λ _ → refl))
 }
 }

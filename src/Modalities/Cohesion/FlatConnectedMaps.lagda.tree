@@ -1,0 +1,181 @@
+\title{#{♭}-connected maps}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-09-10}
+\import{stt-macros}
+
+\agda{
+module Modalities.Cohesion.FlatConnectedMaps where
+
+open import Axioms.FunExt
+open import Axioms.CanonicalPushouts
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Arrows
+open import Core.ArrowRetracts
+open import Core.ArrowEquiv
+
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ConnectedMaps
+open import Modalities.Instances.Truncation
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.LiftingSquares
+}
+}
+
+\subtree[tot-2417]{
+\title{The universal property of #{\flat}-connected maps}
+\taxon{Definition}
+
+\p{
+For a [global subuniverse](stt-007A) #{\mathcal{K}}, we say that a map #{f} has the universal
+property of #{\flat}-#{\mathcal{K}}-connected maps if for each #{\mathcal{K}} valued
+type family #{F}, the cannoncial map
+#{(\Pi_{(b :^\flat B)} F(b)) \to (\Pi_{(a :^\flat A)} F(f(a)))} is an equivalence.
+}
+
+\agda{
+up-♭-connected-map
+  : ∀ {α} {@♭ 𝓤 𝓥} (K : gSubU α)
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      (@♭ f : A → B)
+    → Typeω
+up-♭-connected-map K f
+  = ∀ {𝓚} {U : @♭ _ → Type 𝓚}
+    → (∀ (@♭ b : _) → U b ∈ gSubU.S K)
+    → is-equiv (precomp-Π♭ U f)
+}
+}
+
+\subtree[tot-0L55]{
+\taxon{Lemma}
+
+\p{A map #{f} has the universal property of #{\flat}-connected maps iff the map #{♭ f}
+has the [universal property of connected maps](stt-00MQ).}
+
+\proof{
+There is an equivalence of arrows between
+#{(\Pi_{(b :^\flat B)} F(b)) \to (\Pi_{(a :^\flat A)} F(f(a)))}
+and
+#{(\Pi_{(b : ♭ B)} \hat{F}(b)) \to (\Pi_{(a : ♭ A)} \hat{F}(♭f(a)))}
+}
+
+\agda{
+module
+  _
+  {α} {@♭ 𝓤 𝓥} (K : gSubU α)
+  {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  {@♭ f : A → B}
+  where
+
+  up-connected-♭-map←up-♭-connected-map
+    : up-♭-connected-map K f → up-connected-map K (♭-map f)
+  up-connected-♭-map←up-♭-connected-map fc {U = U} UK
+    = tgt-is-equiv←Arrow-equiv (precomp-Π♭≃' U f)
+        (fc {U = λ x → U (mod♭ x)} (λ x → UK (mod♭ x)))
+
+  up-♭-connected-map←up-connected-♭-map
+    : up-connected-map K (♭-map f) → up-♭-connected-map K f
+  up-♭-connected-map←up-connected-♭-map fc {U = U} UK
+    = src-is-equiv←Arrow-equiv (precomp-Π♭≃ U f) (fc (♭-ind UK))
+}
+}
+
+\subtree[tot-0PSI]{
+\title{#{♭}-connected maps}
+\taxon{Definition}
+
+\p{For a particular [global reflective subuniverse](stt-007B), a crisp map #{f} is
+\strong{#{\flat}-connected} if #{\flat f} is [connected](stt-00MC).}
+
+\agda{
+is-♭-connected
+  : ∀ {α : Level → Level} {@♭ 𝓤 𝓥} (K : gRSubU α)
+      {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      (@♭ f : A → B)
+    → Type (𝓤 ⊔ 𝓥)
+is-♭-connected K f = is-connected-map K (♭-map f)
+}
+}
+
+
+\subtree[tot-02LA]{
+\title{Flat connected maps are closed under the same operations as connected
+maps}
+\taxon{Corollary}
+
+\agda{
+module _ {α} (𝒦 : gRSubU α) (let 𝒦r = 𝒦 .gRSubU.GS) where
+  is-♭-connected←retraction-arrow-map
+    : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+        {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+        {@♭ C : Type 𝓦} {@♭ D : Type 𝓜}
+        {@♭ f : A → B} {@♭ g : C → D}
+      → (@♭ F : Arrow-retract f g)
+      → is-♭-connected 𝒦 g
+      → is-♭-connected 𝒦 f
+  is-♭-connected←retraction-arrow-map Fr gc
+    = is-connected-map←up-connected-map _
+        (up-connected-map←Arrow-retract
+          𝒦r
+          (♭-Arrow-retract Fr)
+          (up-connected-map←is-connected-map _ gc))
+    where
+    open gRSubUConnectedCharacterisation 𝒦
+
+  ×₁-is-♭-connected
+    : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+        {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+        {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜} {@♭ g : X → Y}
+      → is-♭-connected 𝒦 f
+      → is-♭-connected 𝒦 g
+      → is-♭-connected 𝒦 (f ×₁ g)
+  ×₁-is-♭-connected {f = f} {g = g} fc gc
+    = is-connected-map←up-connected-map _
+        (src-has-up-connected-map←Arrow-equiv
+          𝒦r
+          (♭-×₁ f g)
+          (×₁-up-connected-map 𝒦r
+              (up-connected-map←is-connected-map (♭-map f) fc)
+              (up-connected-map←is-connected-map (♭-map g) gc)))
+    where
+    open gRSubUConnectedCharacterisation 𝒦
+}
+}
+
+\subtree[tot-006A]{
+\taxon{Definition}
+\title{#{♭}-Surjections}
+
+\p{We give a bespoke definition for the universal property of #{\flat}-connected maps
+with respect to the [-1 truncation modality](Foundations.Truncated). In other words,
+these maps are the #{\flat}-surjections.}
+
+\agda{
+up-♭-surjection
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B) → Typeω
+up-♭-surjection {A = A} {B} f
+  = ∀ {𝓤} (P : @♭ B → Prop 𝓤)
+    → (∀ (@♭ x : A) → P (f x) .fst)
+    → (∀ (@♭ x : B) → P x .fst)
+
+up-♭-surjection←up-♭-connected-map
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+    → up-connected-map (Truncation-gSubU -1) (♭-map f)
+    → up-♭-surjection f
+up-♭-surjection←up-♭-connected-map up P pf x
+  = is-equiv.bwd
+      (up
+        {U = ♭-ind λ x → P x .fst}
+        (♭-ind λ x → is-truncated←is-prop ((P x) .snd)))
+        (♭-ind pf)
+        (mod♭ x)
+}
+}

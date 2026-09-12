@@ -1,0 +1,133 @@
+\title{The connected-modal factorisation system of #{Σ}-closed reflective subuniverses}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+\date{2026-09-12}
+
+\agda{
+module Modalities.ReflectiveSubuniverses.ConnectedModalFactorisationSystem where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Modalities.HigherModalities
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.ConnectedMaps
+open import Modalities.ModalMaps
+open import Modalities.Factorisations
+open import Modalities.WideSubcategoriesTypes
+open import Modalities.OrthogonalFactorisationSystems
+}
+}
+
+\subtree[bak-8952]{
+\title{Connected-modal factorisations}
+\author{fredrikbakke}
+\taxon{Construction}
+\date{2026-09-12}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, factor #{f \colon A\to B} through
+#{\Sigma_{(b:B)}\bigcirc\fibre{f}{b}}. The projection map
+#{\Sigma_{(b:B)}\bigcirc\fibre{f}{b} \to B} is modal, and the inclusion
+#{A \to \Sigma_{(b:B)}\bigcirc\fibre{f}{b}}
+is connected because its fibres are equivalent to the fibres of the reflections,
+which are connected by #{Σ}-closure.
+}
+
+\agda{
+module ConnectedModalFactorisation
+  {𝓤 𝓥 𝓜} {S : SubU (𝓤 ⊔ 𝓥) 𝓜}
+  (RS : is-reflective S) (open is-reflective RS)
+  (SΣ : is-Σ-closed S)
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  where
+
+  Im : Type (𝓤 ⊔ 𝓥)
+  Im = Σ B (○ ∘ fibre f)
+
+  l : A → Im
+  l a = (f a , η (a , refl))
+
+  r : Im → B
+  r = fst
+
+  l-is-connected : is-connected-map' RS l
+  l-is-connected x
+    = tr
+        (is-singleton ∘ ○)
+        (ua (fibre-total-map-refl-fibre f (λ _ → η) x e⁻¹))
+        (η-is-connected' RS SΣ (snd x))
+
+  r-is-modal : is-modal-map' S r
+  r-is-modal b = tr (_∈ S) (ua (fibre-straighten (○ ∘ fibre f) b e⁻¹)) ○∈S
+}
+}
+
+\subtree[bak-8785]{
+\title{The connected-modal orthogonal factorisation system}
+\author{fredrikbakke}
+\taxon{Construction}
+\date{2026-09-12}
+
+\agda{
+module ConnectedModalOFS
+  {𝓤 𝓜} {S : SubU 𝓤 𝓜}
+  (RS : is-reflective S)
+  (open is-reflective RS)
+  (SΣ : is-Σ-closed S)
+  where
+
+  Ll : WideSubcatType 𝓤 (𝓤 ⊔ 𝓜)
+  Ll .WideSubcatType.K
+    = ULift-subtype 𝓜 (mk-subtype {family = is-connected-map' RS}
+        (λ _ → Π-is-prop (λ _ → is-single-is-prop)))
+  Ll .WideSubcatType.≃∈K e = mk-lift
+    (is-connected-map'←is-equiv RS (e ._≃_.fwd-is-equiv))
+  Ll .WideSubcatType._∘∈K_ gc fc
+    = mk-lift (is-connected-map'-∘ RS (unlift fc) (unlift gc))
+
+  Rr : WideSubcatType 𝓤 (𝓤 ⊔ 𝓜)
+  Rr .WideSubcatType.K .Subtype.family = is-modal-map' S
+  Rr .WideSubcatType.K .Subtype.family-is-subtype _ = Π-is-prop (λ _ → ∈-is-prop S _)
+  Rr .WideSubcatType.≃∈K e = is-modal-map'←is-equiv RS (e ._≃_.fwd-is-equiv)
+  Rr .WideSubcatType._∘∈K_ gm fm = is-modal-map'-∘ {S = S} SΣ fm gm
+
+  module _
+    {A B : Type 𝓤} (f : A → B)
+    (open ConnectedModalFactorisation RS SΣ f)
+    where
+
+    factorisation
+      : Factorisation 𝓤 (WideSubcatType.K Ll) (WideSubcatType.K Rr) f
+    factorisation = mk-factorisation Im l
+      (mk-lift l-is-connected) r r-is-modal ~refl
+
+  ofs : OFS 𝓤 (𝓤 ⊔ 𝓜)
+  ofs
+    = OFS←unique-lifts Ll Rr factorisation
+        (λ fc → unique-lifts←are-orthogonal ∘ connected⊥modal' RS (unlift fc))
+
+open ConnectedModalOFS public using () renaming
+  ( ofs to OFS←Σ-closed-reflective-subuniverse)
+}
+}
+
+\subtree[bak-8622]{
+\title{Higher modalities define factorisation systems}
+\author{fredrikbakke}
+\taxon{Corollary}
+\date{2026-09-12}
+
+\agda{
+OFS←higher-modality : ∀ {𝓤} → HigherModality 𝓤 → OFS 𝓤 𝓤
+OFS←higher-modality M
+  = let open HigherModalityReflectiveSubuniverse M in
+    OFS←Σ-closed-reflective-subuniverse modal-reflective modal-Σ-closed
+}
+}

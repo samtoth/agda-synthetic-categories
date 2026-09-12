@@ -20,8 +20,10 @@ open import Ergonomics.Extensionality
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.ArrowRetracts
 open import Core.LiftingSquares
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 
 open import Modalities.WideSubcategoriesTypes
 }
@@ -31,6 +33,23 @@ open import Modalities.WideSubcategoriesTypes
 \title{Factorisations}
 \taxon{Definition}
 \contributor{fredikbakke}
+
+\p{
+A \em{factorisation} of a map #{f \colon A \to B} into two function classes
+#{\mathcal{L}} and  #{\mathcal{R}} is an \em{image} type #{X} together with a
+function #{l \colon A \to X} in #{\mathcal{L}}  and a function #{r \colon X \to B} in
+#{\mathcal{R}} such that the following triangle commutes
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+& X \\
+A && B \nsp{.}
+\arrow["f", from=2-1, to=2-3]
+\arrow["l", from=2-1, to=1-2]
+\arrow["r", from=1-2, to=2-3]
+\end{tikzcd}
+}
+}
 
 \agda{
 record Factorisation
@@ -43,11 +62,10 @@ record Factorisation
   field
     Im : Type 𝓘
     l : A → Im
-    r : Im → B
     l∈L : l ∈ LL
+    r : Im → B
     r∈R : r ∈ RR
-
-    comm : r ∘ l ＝ f
+    comm : r ∘ l ~ f
 
 unquoteDecl Factorisation-repr≊ Factorisation-repr≃
   = make-record-repr Factorisation-repr≊ Factorisation-repr≃ (quote Factorisation)
@@ -70,8 +88,8 @@ gFactorisation γ LL RR {𝓤} {𝓥}
 }
 }
 
-\subtree[stt-00YP]{
-\title{Equivalences of factorisations}
+\subtree[stt-00ZT]{
+\title{Morphisms of factorisations}
 \taxon{Definition}
 \author{fredrikbakke}
 \date{2026-09-11}
@@ -90,14 +108,14 @@ A && B && A && B\nsp{,}
 \arrow[from=1-6, to=2-7]
 \end{tikzcd}
 }
-then an \em{equivalence} of factorisations is an equivalence of images
-#{e \colon X \simeq Y} such that the obvious simplex is coherent:
+then a \em{morphism} between them is a function between their images
+#{e \colon X \to Y} such that the obvious simplex is coherent:
 
 \quiver{
 \begin{tikzcd}[column sep=small]
 & X &&& Y \\
 A &&&&& B\nsp{.}
-\arrow["e", from=1-2, to=1-5, "\sim"']
+\arrow["e", from=1-2, to=1-5]
 \arrow["f", from=2-1, to=2-6]
 \arrow[from=2-1, to=1-5]
 \arrow[from=1-5, to=2-6]
@@ -115,28 +133,68 @@ module _
   {f : A → B}
   where
 
-  coherence-Factorisation-equiv
+  coherence-Factorisation-map
     : (F G : Factorisation 𝓘 LL RR f)
-    → (e : Factorisation.Im F ≃ Factorisation.Im G)
-    → e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G
-    → Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd
+    → (h : Factorisation.Im F → Factorisation.Im G)
+    → h ∘ Factorisation.l F ~ Factorisation.l G
+    → Factorisation.r F ~ Factorisation.r G ∘ h
     → Type (𝓤 ⊔ 𝓥)
-  coherence-Factorisation-equiv F G e L R
+  coherence-Factorisation-map F G h L R
     = R ▹h Factorisation.l F
     ∙h Factorisation.r G ◃h L
-    ∙h happly (Factorisation.comm G)
-    ~ happly (Factorisation.comm F)
+    ∙h Factorisation.comm G
+    ~ Factorisation.comm F
+
+  Factorisation-map : (F G : Factorisation 𝓘 LL RR f) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+  Factorisation-map F G
+    = Σ[ h ∶ (Factorisation.Im F → Factorisation.Im G) ]
+      Σ[ L ∶ h ∘ Factorisation.l F ~ Factorisation.l G ]
+      Σ[ R ∶ Factorisation.r F ~ Factorisation.r G ∘ h ]
+        coherence-Factorisation-map F G h L R
+
+  Factorisation-id-map : {F : Factorisation 𝓘 LL RR f} → Factorisation-map F F
+  Factorisation-id-map = (id , ~refl , ~refl , ~refl)
+}
+}
+
+\subtree[stt-00YP]{
+\title{Equivalences of factorisations}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+An \em{equivalence} of factorisations is a [morphism](stt-00ZT) such that the
+underlying map in images is an equivalence of types.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  {LL : {I : Type 𝓘} → Subtype (A → I) 𝓛}
+  {RR : {I : Type 𝓘} → Subtype (I → B) 𝓡}
+  {f : A → B}
+  where
 
   Factorisation-equiv : (F G : Factorisation 𝓘 LL RR f) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
   Factorisation-equiv F G
     = Σ[ e ∶ Factorisation.Im F ≃ Factorisation.Im G ]
       Σ[ L ∶ e ._≃_.fwd ∘ Factorisation.l F ~ Factorisation.l G ]
       Σ[ R ∶ Factorisation.r F ~ Factorisation.r G ∘ e ._≃_.fwd ]
-       ( coherence-Factorisation-equiv F G e L R)
+        coherence-Factorisation-map F G (e ._≃_.fwd) L R
 
   Factorisation-id-equiv
     : {F : Factorisation 𝓘 LL RR f} → Factorisation-equiv F F
   Factorisation-id-equiv = (id≃ , ~refl , ~refl , ~refl)
+
+  Factorisation-map←equiv
+    : {F G : Factorisation 𝓘 LL RR f} → Factorisation-equiv F G → Factorisation-map F G
+  Factorisation-map←equiv (e , L , R , C) = (e ._≃_.fwd , L , R , C)
+
+  Factorisation-equiv←map
+    : {F G : Factorisation 𝓘 LL RR f} (m : Factorisation-map F G)
+    → is-equiv (m .fst) → Factorisation-equiv F G
+  Factorisation-equiv←map (h , L , R , C) e = (mk≃ h e , L , R , C)
 }
 }
 
@@ -146,6 +204,8 @@ module _
 \author{fredrikbakke}
 \date{2026-09-11}
 
+\p{Equivalences of factorisations characterise equality.}
+
 \agda{
   Factorisation-equiv←id
     : {F G : Factorisation 𝓘 LL RR f} → F ＝ G → Factorisation-equiv F G
@@ -154,21 +214,20 @@ module _
   opaque
     Factorisation-equiv-is-torsorial
       : (F : Factorisation 𝓘 LL RR f) → is-torsorial (Factorisation-equiv F)
-    Factorisation-equiv-is-torsorial (mk-factorisation I l r lL rR H)
+    Factorisation-equiv-is-torsorial (mk-factorisation I l lL r rR H)
       = is-single←equiv-to-single
           (Σ-fst-≃ (Factorisation-repr≃ e⁻¹))
           (is-singleton-structure←parts
             (equiv-is-torsorial I) (I , id≃)
             (is-singleton-structure←parts
               (SingS-is-single l) (l , ~refl)
-              (is-singleton-structure←parts
-                (SingS-is-single r) (r , ~refl)
-                (is-single←equiv⁻¹
-                  (Σ-fst-≃-bwd⁻¹
-                    ( Σ-singl (mk-singl lL (∈-is-prop LL _ _)) lL
-                    ∙e Σ-singl (mk-singl rR (∈-is-prop RR _ _)) rR)
-                  ∙e Σ-fst-≃ funext≃)
-                  (SingS-is-single' (happly H))))))
+              (is-single←equiv⁻¹
+                (Σ-fst-≃-bwd⁻¹ (Σ-singl (mk-singl lL (∈-is-prop LL _ _)) lL))
+                (is-singleton-structure←parts
+                  (SingS-is-single r) (r , ~refl)
+                  (is-single←equiv⁻¹
+                    (Σ-fst-≃-bwd⁻¹ (Σ-singl (mk-singl rR (∈-is-prop RR _ _)) rR))
+                    (SingS-is-single' H))))))
 
     Factorisation-equiv←id-is-equiv
       : (F G : Factorisation 𝓘 LL RR f)
@@ -186,5 +245,346 @@ module _
     Factorisation-equiv→id
       : {F G : Factorisation 𝓘 LL RR f} → Factorisation-equiv F G → F ＝ G
     Factorisation-equiv→id = _≃_.bwd (Factorisation-equiv≃ _ _)
+}
+}
+
+
+\subtree[stt-00ZR]{
+\title{Comparing factorisations via lifting}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given two factorisations of a map #{f \colon A \to B},
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+& X &&&& Y \\
+A && B && A && B\nsp{,}
+\arrow["f", from=2-1, to=2-3]
+\arrow["f", from=2-5, to=2-7]
+\arrow[from=2-1, to=1-2, "l"]
+\arrow[from=1-2, to=2-3, "r"]
+\arrow[from=2-5, to=1-6, "l'"]
+\arrow[from=1-6, to=2-7, "r'"]
+\end{tikzcd}
+}
+
+then we may form a morphism of arrows from #{l} to #{r'} via the following pasting
+
+\quiver{
+\begin{tikzcd}
+A && Y \\
+\\
+X && B\nsp{.}
+\arrow["l"', from=1-1, to=3-1]
+\arrow["r'", from=1-3, to=3-3]
+\arrow["l'", from=1-1, to=1-3]
+\arrow["r"', from=3-1, to=3-3]
+\arrow["f" description, from=1-1, to=3-3]
+\end{tikzcd}
+}
+A lifting of this square #{\ell \colon X \to Y} gives rise to a morphism of
+factorisations.
+}
+
+\agda{
+  module _
+    (F G : Factorisation 𝓘 LL RR f)
+    (let module F = Factorisation F)
+    (let module G = Factorisation G)
+    where
+
+    factorisation-comparison-square : Arrow-map F.l G.r
+    factorisation-comparison-square = mk-amap G.l F.r (F.comm ∙h (G.comm h⁻¹))
+
+    module _
+      (t : Lift factorisation-comparison-square)
+      (let module t = Lift t)
+      where
+
+      coherence-Factorisation-map←lift
+        : coherence-Factorisation-map F G t.lift t.L (t.K h⁻¹)
+      coherence-Factorisation-map←lift
+        = (∙h-assoc (t.K h⁻¹ ▹h F.l) (G.r ◃h t.L) G.comm h⁻¹)
+        ∙h right-transpose-∙h⁻¹ {R = G.comm}
+          (left-transpose-∙h {P = t.K ▹h F.l} (t.pastes h⁻¹) h⁻¹)
+
+      Factorisation-map←lift : Factorisation-map F G
+      Factorisation-map←lift
+        = (t.lift , t.L , t.K h⁻¹ , coherence-Factorisation-map←lift)
+}
+
+\p{
+If every morphism of arrows from the left class to the right class lifts, then
+there's always a morphism between any two given factorisations.
+}
+
+\agda{
+module FactorisationLifting
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  (L : {I : Type 𝓘} → Subtype (A → I) 𝓛)
+  (R : {I : Type 𝓘} → Subtype (I → B) 𝓡)
+  (lifts
+    : {I J : Type 𝓘} {l : A → I} {r : J → B}
+    → l ∈ L → r ∈ R → (S : Arrow-map l r) → Lift S)
+  where
+
+  factorisation-comparison-lift
+    : {f : A → B} (F G : Factorisation 𝓘 L R f)
+    → Lift (factorisation-comparison-square F G)
+  factorisation-comparison-lift F G
+    = lifts
+        (Factorisation.l∈L F)
+        (Factorisation.r∈R G)
+        (factorisation-comparison-square F G)
+
+  factorisation-comparison-map
+    : {f : A → B} (F G : Factorisation 𝓘 L R f) → Factorisation-map F G
+  factorisation-comparison-map F G
+    = Factorisation-map←lift F G (factorisation-comparison-lift F G)
+}
+}
+
+\subtree[stt-00ZS]{
+\title{Factorisations are fibres of composition}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+% TODO(Fredrik): FactorsBetween is just a working name
+
+\agda{
+module _
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  {L : {I : Type 𝓘} → Subtype (A → I) 𝓛}
+  {R : {I : Type 𝓘} → Subtype (I → B) 𝓡}
+  where
+
+  FactorsBetween : Type (𝓤 ⊔ 𝓥 ⊔ lsuc 𝓘 ⊔ 𝓛 ⊔ 𝓡)
+  FactorsBetween
+    = Σ[ I ∶ Type 𝓘 ] (Σ[ a ∶ (A → I) ] (a ∈ L) × Σ[ b ∶ (I → B) ] (b ∈ R))
+
+  FactorsBetween-map : FactorsBetween → (A → B)
+  FactorsBetween-map (I , (a , aL) , b , bR) = (b ∘ a)
+
+  htpy-fibre≃FactorsBetween-map
+    : (f : A → B)
+    → (Σ[ F ∶ FactorsBetween ] (FactorsBetween-map F ~ f)) ≃ Factorisation 𝓘 L R f
+  htpy-fibre≃FactorsBetween-map f
+    = Σ-assoc ∙e Σ-snd-≃ (λ _
+    → Σ-assoc ∙e Σ-assoc ∙e Σ-snd-≃ (λ _ → Σ-snd-≃ (λ _ → Σ-assoc)))
+    ∙e (Factorisation-repr≃ e⁻¹)
+
+  fibre≃FactorsBetween-map
+    : (f : A → B)
+    → fibre FactorsBetween-map f ≃ Factorisation 𝓘 L R f
+  fibre≃FactorsBetween-map f
+    = Σ-snd-≃ (λ _ → funext≃) ∙e htpy-fibre≃FactorsBetween-map f
+
+  FactorsBetween-map-is-equiv←unique-factorisations
+    : ((f : A → B) → is-singleton (Factorisation 𝓘 L R f))
+    → is-equiv FactorsBetween-map
+  FactorsBetween-map-is-equiv←unique-factorisations H
+    = is-equiv←has-singleton-fibres λ f
+    → is-single←equiv⁻¹ (fibre≃FactorsBetween-map f) (H f)
+
+  FactorsBetween≃map←unique-factorisations
+    : ((f : A → B) → is-singleton (Factorisation 𝓘 L R f))
+    → FactorsBetween ≃ (A → B)
+  FactorsBetween≃map←unique-factorisations H
+    = mk≃ FactorsBetween-map (FactorsBetween-map-is-equiv←unique-factorisations H)
+}
+}
+
+\subtree[stt-00ZW]{
+\title{Consequences of orthogonality in a factorisation}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Assume given a factorisation
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+& X \\
+A && B \nsp{,}
+\arrow["f", from=2-1, to=2-3]
+\arrow["l", from=2-1, to=1-2]
+\arrow["r", from=1-2, to=2-3]
+\end{tikzcd}
+}
+
+where #{l \perp r}. Then if #{f \perp r} we have that #{r} is an equivalence, and
+if #{l \perp f} we have that #{l} is an equivalence.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  {L : {I : Type 𝓘} → Subtype (A → I) 𝓛}
+  {R : {I : Type 𝓘} → Subtype (I → B) 𝓡}
+  {f : A → B}
+  (F : Factorisation 𝓘 L R f)
+  (let module F = Factorisation F)
+  (lr : are-orthogonal F.l F.r)
+  where
+
+  right-is-equiv←orthogonal-right←factorisation
+    : are-orthogonal f F.r → is-equiv F.r
+  right-is-equiv←orthogonal-right←factorisation fr
+    = is-equiv←self-orthogonal
+      (left-orthogonal-right-cancel lr
+        (left-orthogonal-homotopy F.r (F.comm h⁻¹) fr))
+
+  left-is-equiv←orthogonal-left←factorisation
+    : are-orthogonal F.l f → is-equiv F.l
+  left-is-equiv←orthogonal-left←factorisation lf
+    = is-equiv←self-orthogonal
+        (right-orthogonal-left-cancel~ F.l (F.comm h⁻¹) lr lf)
+
+  equiv-left←orthogonal-right←factorisation
+    : are-orthogonal f F.r → Arrow-equiv F.l f
+  equiv-left←orthogonal-right←factorisation fr
+    = mk-arr-equiv
+        id≃
+        (mk≃ F.r (right-is-equiv←orthogonal-right←factorisation fr))
+        F.comm
+
+  equiv-right←orthogonal-left←factorisation
+    : are-orthogonal F.l f → Arrow-equiv f F.r
+  equiv-right←orthogonal-left←factorisation lf
+    = mk-arr-equiv
+        (mk≃ F.l (left-is-equiv←orthogonal-left←factorisation lf))
+        id≃
+        (F.comm h⁻¹)
+}
+}
+
+\subtree[stt-00ZU]{
+\title{The retract argument}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Any factorisation
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+& X \\
+A && B \nsp{,}
+\arrow["f", from=2-1, to=2-3]
+\arrow["l", from=2-1, to=1-2]
+\arrow["r", from=1-2, to=2-3]
+\end{tikzcd}
+}
+
+gives rise to two morphisms of arrows
+
+\quiver{
+\begin{tikzcd}
+A && X \\
+\\
+B && B
+\arrow["f"', from=1-1, to=3-1]
+\arrow["r", from=1-3, to=3-3]
+\arrow[equals, from=3-1, to=3-3]
+\arrow["l", from=1-1, to=1-3]
+\end{tikzcd}
+\quad\text{and}\quad
+\begin{tikzcd}
+A && A \\
+\\
+X && B\nsp{.}
+\arrow[equals, from=1-1, to=1-3]
+\arrow["f", from=1-3, to=3-3]
+\arrow["r"', from=3-1, to=3-3]
+\arrow["l"', from=1-1, to=3-1]
+\end{tikzcd}
+}
+
+Given a lifting of the left square, then we can display #{f} as a retract of #{l}.
+Dually, given a lifting of the the right square, then we can display #{f} as a
+retract of #{r}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓘 𝓛 𝓡} {A : Type 𝓤} {B : Type 𝓥}
+  {L : {I : Type 𝓘} → Subtype (A → I) 𝓛}
+  {R : {I : Type 𝓘} → Subtype (I → B) 𝓡}
+  {f : A → B}
+  (F : Factorisation 𝓘 L R f)
+  (let module F = Factorisation F)
+  where
+
+  left-square←factorisation : Arrow-map f F.r
+  left-square←factorisation = mk-amap F.l id (F.comm h⁻¹)
+
+  right-square←factorisation : Arrow-map F.l f
+  right-square←factorisation = mk-amap id F.r F.comm
+
+  left-incoherent-retract←incoherent-lift←factorisation
+    : (s : B → F.Im)
+    → s ∘ f ~ F.l
+    → F.r ∘ s ~ id
+    → Arrow-incoherent-retract f F.l
+  left-incoherent-retract←incoherent-lift←factorisation s H K
+    = mk-arr-incoherent-retract (id , id , ~refl) (s , F.r , K) H F.comm
+
+  right-incoherent-retract←incoherent-lift←factorisation
+    : (s : F.Im → A)
+    → s ∘ F.l ~ id
+    → f ∘ s ~ F.r
+    → Arrow-incoherent-retract f F.r
+  right-incoherent-retract←incoherent-lift←factorisation s H K
+    = mk-arr-incoherent-retract (F.l , s , H) (id , id , ~refl) (F.comm h⁻¹) (K h⁻¹)
+
+  module _
+    (s : Lift left-square←factorisation)
+    (let module s = Lift s)
+    where
+
+    coherence-left-retract←lift←factorisation
+      : F.r ◃h s.L ∙h F.comm ∙h f ◃h ~refl ~ s.K ▹h f
+    coherence-left-retract←lift←factorisation
+      = ((F.r ◃h s.L) ◂h ∙h-reflr F.comm)
+      ∙h (s.pastes ▸h F.comm)
+      ∙h ∙h-assoc (s.K ▹h f) (F.comm h⁻¹) F.comm
+      ∙h ((s.K ▹h f) ◂h ∙h-sym' F.comm)
+      ∙h ∙h-reflr (s.K ▹h f)
+
+    left-retract←lift←factorisation : Arrow-retract f F.l
+    left-retract←lift←factorisation
+      = mk-Arrow-retract←incoherent
+          (left-incoherent-retract←incoherent-lift←factorisation s.lift s.L s.K)
+          (coherence-left-retract←lift←factorisation)
+
+  module _
+    (s : Lift right-square←factorisation)
+    (let module s = Lift s)
+    where
+
+    coherence-right-retract←lift←factorisation
+      : id ◃h (F.comm h⁻¹) ∙h (s.K h⁻¹ ▹h F.l) ∙h f ◃h s.L ~ ~refl
+    coherence-right-retract←lift←factorisation
+      =  ( id◃h (F.comm h⁻¹) ▸h ((s.K h⁻¹ ▹h F.l) ∙h f ◃h s.L))
+      ∙h ( (F.comm h⁻¹) ◂h ((s.K h⁻¹ ▹h F.l) ◂h s.pastes))
+      ∙h ( (F.comm h⁻¹)
+         ◂h ∙h-cancel-left
+              {H = s.K h⁻¹ ▹h F.l}
+              {K = s.K ▹h F.l}
+              (∙h-sym' (s.K ▹h F.l))
+              (F.comm))
+      ∙h ∙h-sym' F.comm
+
+    right-retract←lift←factorisation : Arrow-retract f F.r
+    right-retract←lift←factorisation
+      = mk-Arrow-retract←incoherent
+          (right-incoherent-retract←incoherent-lift←factorisation s.lift s.L s.K)
+          (coherence-right-retract←lift←factorisation)
 }
 }

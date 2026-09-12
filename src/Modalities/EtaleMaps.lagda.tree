@@ -16,6 +16,8 @@ open import Foundations.Prelude
 open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
+open import Core.DescentSurjectiveMaps
+open import Core.SurjectiveMaps
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.PullbackPowers
@@ -286,29 +288,81 @@ module _
 \author{fredrikbakke}
 \date{2026-09-12}
 
-% TODO: cancellation
+\proof{
+\p{Follows immediately from the pasting and cancellation property of pullbacks.}
+}
 
 \agda{
-module _
-  {α} (RS : gRSubU α)
-  (open gRSubU RS)
-  (SΣ : is-globally-Σ-closed GS)
-  where
+module _ {α} (RS : gRSubU α) where
 
   is-étale-map-∘
     : ∀ {𝓤 𝓥 𝓦}
         {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
         {f : A → B} {g : B → C}
       → is-étale-map RS f → is-étale-map RS g → is-étale-map RS (g ∘ f)
-  is-étale-map-∘ fe ge
-    = is-étale-map←right-orthogonal RS SΣ λ {g = h} he
-    → right-orthogonal-∘ h
-      ( modal-equiv⊥etale RS he ge)
-      ( modal-equiv⊥etale RS he fe)
+  is-étale-map-∘ {f = f} {g} fe ge
+    = untranspose-is-cartesian (η-square RS (g ∘ f))
+        (tr is-cartesian (sym (Arrow-map-path→ (η-square'-∘ RS g f)))
+          (compose-cartesian
+            (transpose-is-cartesian (η-square RS g) ge)
+            (transpose-is-cartesian (η-square RS f) fe)))
+
+  is-étale-map-left-cancel
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-étale-map RS g → is-étale-map RS (g ∘ f) → is-étale-map RS f
+  is-étale-map-left-cancel {f = f} {g} ge gfe
+    = untranspose-is-cartesian (η-square RS f)
+        (3-for-2-cartesian (η-square'-∘ RS g f)
+          (transpose-is-cartesian (η-square RS (g ∘ f)) gfe)
+          (transpose-is-cartesian (η-square RS g) ge))
 }
 }
 
+\subtree[bak-8C31]{
+\title{Right cancellation of étale maps with surjective reflections}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-12}
 
+\p{
+Suppose #{f} and #{g \circ f} are étale. If #{\bigcirc f} is
+surjective, then #{g} is étale by
+[descent for surjections](Core.DescentSurjectiveMaps).
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  where
+
+  is-étale-map-right-cancel←○₁-surj
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-surjective (○₁ f)
+      → is-étale-map RS f → is-étale-map RS (g ∘ f) → is-étale-map RS g
+  is-étale-map-right-cancel←○₁-surj {f = f} {g} fs fe gfe
+    = untranspose-is-cartesian (η-square RS g)
+        (descent-is-surjective (η-square' RS g) (η-square' RS f) fs
+          (transpose-is-cartesian (η-square RS f) fe)
+          (tr is-cartesian (Arrow-map-path→ (η-square'-∘ RS g f))
+            (transpose-is-cartesian (η-square RS (g ∘ f)) gfe)))
+
+  is-étale-map-right-cancel←surj
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-surjective (η: B) → is-surjective f
+      → is-étale-map RS f → is-étale-map RS (g ∘ f) → is-étale-map RS g
+  is-étale-map-right-cancel←surj {f = f} ηs fs
+    = is-étale-map-right-cancel←○₁-surj
+        (is-surjective-3-for-2~' (○₁-β f h⁻¹) (is-surjective-∘ ηs fs))
+}
+}
 
 \subtree[bak-F224]{
 \title{Factoring the modal naturality square}

@@ -28,13 +28,11 @@ open import Foundations.Prelude
 
 open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
 open import Modalities.SeparatedTypes
-open import Modalities.Instances.Truncation
 
 open import Core.CanonicalPushouts
 open import Core.Orthogonal
@@ -135,6 +133,9 @@ ret-Δ-n+2 (x , (i , j)) = ((Δ←□ x i :≥: i) ⦃ Δ←□-≤ x i ⦄ :≥
 
 is-ret-Δ-□ : ∀ {n} → ret-Δ-n+2 {n} ∘ include-Δ-n+2 ~ id
 is-ret-Δ-□ (p :≥: i :≥: j) = Δ-ext (□←Δ-ret p i :≥: refl :≥: refl)
+
+Δ-□-retract : ∀ {n} → retract (Δ^ (n +ℕ 2)) (□^ n × Δ²)
+Δ-□-retract = (include-Δ-n+2 , ret-Δ-n+2 , is-ret-Δ-□)
 }
 }
 
@@ -198,50 +199,29 @@ opaque
   fat-spine-lifts
     : ∀ {n} → is-inner-anodyne (spine-incl-factor-1 (suc n))
   fat-spine-lifts {n} f finn
-    = left-orthogonal-retraction
-        (spine-incl-factor-1 (suc n)) _
-        (amap2 n) (amap2-ret n)
+    = left-orthogonal←Arrow-retract (amap2-Arrow-retract n)
         f (incl-mid-inner-anodyne f finn) where
     incl-mid : ∀ n → □^ n × Λ[2,1] → □^ n × Δ²
-    incl-mid n = (□^ n) 1⊗ Λ[2,1]-incl
+    incl-mid n = (□^ n) 1×₁ Λ[2,1]-incl
 
     incl-mid-inner-anodyne : ∀ {n} → is-inner-anodyne (incl-mid n)
     incl-mid-inner-anodyne k = left-orthogonal-× id Λ[2,1]-incl k (id⊥ k)
 
-    amap2 : ∀ n → Arrow-map (spine-incl-factor-1 (suc n)) (incl-mid n)
-    amap2 n .Arrow-map.top = cogap
-      (mk-cocone
-        (λ where (x :≥: i) → (□←Δ x , ι₁ i))
-        (λ i → □←Δ Δ-1 , ι₂ i)
-        λ a → ×-path→ (refl , Λ[2,1]-glue))
-    amap2 n .Arrow-map.bot = include-Δ-n+2
-    amap2 n .Arrow-map.comm = pushout-ind _
-      (mk-coconeᵈ
-        (λ where (x :≥: j) → refl)
-        ~refl
-        λ _ → is-set←is-truncated
-                (×-is-truncated (□-is-truncated carrier-is-0-truncated) Δ²-is-0-truncated)
-                _ _ _ _)
-
-    amap2-ret : ∀ n → retraction-arrow-map (amap2 n)
-    amap2-ret n .fst .Arrow-map.top = uncurry (λ x → cogap
-      (mk-cocone
-        (λ i → ι₁ ((Δ←□ x i :≥: i) ⦃ Δ←□-≤ x i ⦄))
-        (λ i → ι₂ i)
-        λ _ → ap ι₁ (Δ-ext (Δ←□-1 x refl :≥: refl)) ∙ Wedge-glue))
-    amap2-ret n .fst .Arrow-map.bot = ret-Δ-n+2
-    amap2-ret n .fst .Arrow-map.comm = uncurry (λ x → pushout-ind _
-      (mk-coconeᵈ
-        ~refl
-        (λ i → Δ-ext (Δ←□-1 x refl :≥: refl :≥: refl))
-        λ _ → Δ-is-set _ _ _ _))
-    amap2-ret n .snd .fst = pushout-ind _
-      (mk-coconeᵈ
-        (λ where (l :≥: j) → ap ι₁ (Δ-ext (□←Δ-ret l j :≥: refl)))
-        ~refl
-        λ _ → prop!)
-    amap2-ret n .snd .snd .fst = is-ret-Δ-□
-    amap2-ret n .snd .snd .snd x = prop!
+    amap2-Arrow-retract
+      : ∀ n → Arrow-retract (spine-incl-factor-1 (suc n)) (incl-mid n)
+    amap2-Arrow-retract n
+      = mk-arr-retract
+          (Wedge-retract-of-product (Δ-1 {n = suc n}) i1 i0 (□←Δ Δ-1)
+            ( (λ where (x :≥: i) → □←Δ x , i)
+            , (λ where (x , i) → (Δ←□ x i :≥: i) ⦃ Δ←□-≤ x i ⦄)
+            , (λ where (x :≥: i) → Δ-ext (□←Δ-ret x i :≥: refl)))
+            refl (λ x → Δ-ext (Δ←□-1 x refl :≥: refl)))
+          (Δ-□-retract)
+          (pushout-ind _ (mk-coconeᵈ (λ where (x :≥: j) → refl) ~refl
+            (λ _ → ×-is-set (□-is-set carrier-is-set) Δ²-is-set _ _ _ _)))
+          (uncurry λ x → pushout-ind _
+            (mk-coconeᵈ ~refl (λ i → Δ-ext (Δ←□-1 x refl :≥: refl :≥: refl)) (λ _ → prop!)))
+          (λ _ → prop!)
 }
 }
 
@@ -273,11 +253,9 @@ inner  anodyne by the [previous lemma](stt-00RW) we are done.
 opaque
   Spine-lifting : ∀ n → is-inner-anodyne (Spine-incl {suc (suc n)})
   Spine-lifting 0
-    = left-orthogonal-equiv
+    = left-orthogonal←Arrow-equiv
        Λ[2,1]-incl Spine-incl
-       (mk-amap id (λ where (i , j) → · :≥: i :≥: j)
-         (pushout-ind _ (mk-coconeᵈ ~refl ~refl (λ _ → prop!))))
-       (id-is-equiv , Δ←Δ²-is-equiv)
+       (mk-arr-equiv id≃ Δ²≃Δ^2 (pushout-ind _ (mk-coconeᵈ ~refl ~refl (λ _ → prop!))))
   Spine-lifting (suc n)
     = is-anodyne-homotopy
         {f = spine-incl-factor-1 (n +ℕ 2) ∘ spine-incl-factor-2 (n +ℕ 2)}

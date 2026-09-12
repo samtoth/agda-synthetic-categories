@@ -1,0 +1,276 @@
+\date{2026-08-30}
+\title{Sets}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Foundations.Sets where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.Singletons
+open import Foundations.Empty
+open import Foundations.Coproducts
+open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.Equivalences
+open import Foundations.EquivSingleton
+open import Foundations.FunExt
+open import Foundations.PropClosure
+open import Foundations.TruncationLevels
+open import Foundations.Truncated
+open import Foundations.TorsorialTypeFamilies
+open import Foundations.SingletonProp
+}
+}
+
+\subtree[stt-006T]{
+\title{Sets}
+\taxon{Definition}
+\date{2025-06-27}
+\author{samueltoth}
+
+\p{
+A type is a \em{set} if each of its identity types is a [proposition](stt-0009).
+Equivalently, a set is a #{0}-[truncated type](stt-006P).
+}
+
+\agda{
+is-set : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+is-set A = (x y : A) → is-prop (x ＝ y)
+
+opaque
+  is-truncated←is-set
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-set A
+      → is-truncated 0𝕋 A
+  is-truncated←is-set A-is-set x y = is-truncated←is-prop (A-is-set x y)
+
+  is-set←is-truncated
+    : ∀ {𝓤} {A : Type 𝓤}
+      → is-truncated 0𝕋 A
+      → is-set A
+  is-set←is-truncated tr x y = is-prop←is-truncated (tr x y)
+
+J-set
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a : A}
+    → is-set A
+    → (P : a ＝ a → Type 𝓥)
+    → P refl
+    → ∀ p → P p
+J-set A-is-set P pr p = tr P (A-is-set _ _ refl p) pr
+
+Set-U : ∀ 𝓤 → Type (lsuc 𝓤)
+Set-U = Trunc-U 0𝕋
+}
+}
+
+\subtree[stt-00NK]{
+\date{2026-04-24}
+\author{fredrikbakke}
+\title{If a reflexive binary relation maps into the identity types then the type is a set}
+\taxon{Theorem}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤}
+  {R : A → A → Type 𝓥}
+  (R-is-prop : (x y : A) → is-prop (R x y))
+  (r : (x : A) → R x x)
+  (decode : {x y : A} → R x y → x ＝ y)
+  where
+
+  is-torsorial←prop-in-Id : (x : A) → is-torsorial (R x)
+  is-torsorial←prop-in-Id x .centre
+    = (x , r x)
+  is-torsorial←prop-in-Id x .central (y , ρ)
+    = Σ-path→ (decode ρ , R-is-prop x y _ ρ)
+
+  is-set←prop-in-Id : is-set A
+  is-set←prop-in-Id x y
+    = is-prop←equiv-to-prop
+        (fundamental-Id≃ (R x) (r x) (is-torsorial←prop-in-Id x) y e⁻¹)
+        (R-is-prop x y)
+}
+}
+
+\subtree[stt-00WJ]{
+\title{Types with collapsible equality are sets}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-08-30}
+
+\agda{
+is-set←collapsible-Id
+  : ∀ {𝓤} {A : Type 𝓤}
+      (f : {x y : A} → x ＝ y → x ＝ y)
+    → ({x y : A} (p q : x ＝ y) → f p ＝ f q)
+    → is-set A
+is-set←collapsible-Id f f-wconstant x y p q
+  = sym (g-id p) ∙ g-wconstant p q ∙ g-id q
+  where
+    g : x ＝ y → x ＝ y
+    g r = sym (f refl) ∙ f r
+
+    g-id : (r : x ＝ y) → g r ＝ r
+    g-id refl = ∙-sym' (f refl)
+
+    g-wconstant : (r s : x ＝ y) → g r ＝ g s
+    g-wconstant r s = ap (sym (f refl) ∙_) (f-wconstant r s)
+}
+}
+
+\subtree[stt-00WQ]{
+\title{Types with decidable equality are sets}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-08-30}
+
+\p{This result is commonly known as Hedberg's theorem.}
+
+\agda{
+is-set←decidable-Id
+  : ∀ {𝓤} {A : Type 𝓤}
+    → ((x y : A) → (x ＝ y) ⊎ ¬ (x ＝ y))
+    → is-set A
+is-set←decidable-Id {A = A} Id-decidable
+  = is-set←collapsible-Id
+      ( λ {x} {y} → ⊎[ (λ p _ → p) , (λ x≠y → ¡ ∘ x≠y) ] (Id-decidable x y))
+      ( λ {x} {y}
+        → ⊎-ind
+            { C = λ d
+                → (p q : x ＝ y)
+                → ⊎[ (λ r _ → r) , (λ x≠y → ¡ ∘ x≠y) ] d p
+                ＝ ⊎[ (λ r _ → r) , (λ x≠y → ¡ ∘ x≠y) ] d q}
+            ((λ _ _ _ → refl) , (λ x≠y p _ → ¡ (x≠y p)))
+            (Id-decidable x y))
+}
+}
+
+\subtree[stt-00WR]{
+\date{2026-08-30}
+\author{fredrikbakke}
+\title{Closure properties of sets}
+\taxon{Theorem}
+
+\p{
+Sets are closed under dependent sums, cartesian products, forming identity types,
+dependent products, and function types.
+}
+
+\agda{
+Σ-is-set
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → is-set A
+    → (∀ a → is-set (B a))
+    → is-set (Σ A B)
+Σ-is-set A-is-set B-is-set
+  = is-set←is-truncated
+      (Σ-is-truncated
+        (is-truncated←is-set A-is-set)
+        (is-truncated←is-set ∘ B-is-set))
+
+×-is-set
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-set A
+    → is-set B
+    → is-set (A × B)
+×-is-set A-is-set B-is-set
+  = is-set←is-truncated
+      (×-is-truncated
+        (is-truncated←is-set A-is-set)
+        (is-truncated←is-set B-is-set))
+
+is-set←is-prop
+  : ∀ {𝓤} {A : Type 𝓤} → is-prop A → is-set A
+is-set←is-prop A-prop x y
+  = is-prop←is-single (＝-is-single←is-prop A-prop x y)
+
+＝-is-set
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-set A
+    → {x y : A} → is-set (x ＝ y)
+＝-is-set A-is-set = is-set←is-prop (A-is-set _ _)
+}
+
+\agda{
+module SetsWithFunExt (global-funext : FunExt-global) where
+  open TruncatedWithFunExt global-funext
+
+  Π-is-set
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → (∀ a → is-set (B a))
+      → is-set (Π A B)
+  Π-is-set B-is-set
+    = is-set←is-truncated
+        (Π-is-truncated (λ a → is-truncated←is-set (B-is-set a)))
+
+  Πᵢ-is-set
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → (∀ {a} → is-set (B a))
+      → is-set (∀ {a} → B a)
+  Πᵢ-is-set B-is-set
+    = is-set←is-truncated (Πᵢ-is-truncated (is-truncated←is-set B-is-set))
+
+  →-is-set
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → (is-set B) → is-set (A → B)
+  →-is-set B-is-set = Π-is-set (λ _ → B-is-set)
+}
+}
+
+\subtree[stt-00WI]{
+\title{Types with double negation stable equality are sets}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-08-30}
+
+\agda{
+  is-set←¬¬-stable-Id
+    : ∀ {𝓤} {A : Type 𝓤}
+      → ((x y : A) → ¬¬ (x ＝ y) → x ＝ y)
+      → is-set A
+  is-set←¬¬-stable-Id Id-stable
+    = is-set←prop-in-Id
+        (λ _ _ → ¬-is-prop global-funext)
+        (λ _ nr → nr refl)
+        (λ {x} {y} → Id-stable x y)
+}
+}
+
+\subtree[stt-00WS]{
+\title{Being a set is a proposition}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-01}
+
+\agda{
+  is-set-is-prop
+    : ∀ {𝓤} (A : Type 𝓤)
+      → is-prop (is-set A)
+  is-set-is-prop A
+    = Π-is-prop global-funext λ x
+    → Π-is-prop global-funext λ y
+    → is-prop-is-prop global-funext
+}
+}
+
+\subtree{
+\date{2025-06-29}
+\title{Instance resolution for sets}
+\author{samueltoth}
+
+\agda{
+J-set!
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {a : A} ⦃ _ : Is-truncated 0𝕋 A ⦄
+    → (P : a ＝ a → Type 𝓥)
+    → P refl
+    → ∀ p → P p
+J-set! P pr p = tr P (is-set←is-truncated trunc! _ _ refl p) pr
+}
+}

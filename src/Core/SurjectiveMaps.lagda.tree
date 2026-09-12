@@ -20,9 +20,11 @@ open import Foundations.Identity
 open import Foundations.Homotopy
 open import Foundations.Singletons
 open import Foundations.Equivalences
+open import Foundations.FibrewiseEquivalences
 open import Foundations.SingletonFibres
 open import Foundations.Embeddings
 open import Foundations.PropMapEmbedding
+open import Foundations.Truncated
 open import Modalities.Instances.Truncation
 }
 }
@@ -43,6 +45,93 @@ is-surjective
   : {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
   → (f : A → B) → Type (𝓤 ⊔ 𝓥)
 is-surjective {B = B} f = (b : B) → ║ fibre f b ║
+}
+}
+
+\subtree[stt-00YY]{
+\title{Propositional induction for surjections}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\p{
+Given a surjection #{f \colon A \to B} and a predicate on #{P}, then to prove
+#{\forall b . P(b)} it suffices to prove #{\forall a . P(f(a))}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+  {f : A → B} (f-is-surjective : is-surjective f)
+  (P : B → Type 𝓦) (P-is-prop : (b : B) → is-prop (P b))
+  where
+
+  ind-is-surjective : ((a : A) → P (f a)) → (b : B) → P b
+  ind-is-surjective s b
+    = Trunc.○-rec
+        (is-truncated←is-prop (P-is-prop b))
+        (λ (a , p) → tr P p (s a))
+        (f-is-surjective b)
+
+  precomp-Π-Prop-is-equiv←is-surjective : is-equiv (precomp-Π P f)
+  precomp-Π-Prop-is-equiv←is-surjective
+    = is-equiv←inverse
+        (Π-is-prop P-is-prop)
+        (Π-is-prop (P-is-prop ∘ f))
+        (ind-is-surjective)
+}
+}
+
+\subtree[stt-00YW]{
+\title{Fibrewise equivalences are detected on restrictions along surjections}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\p{
+Given a surjection #{f \colon A \to B}, and a family of maps
+#{g : \Pi_{(b : B)}(P(b) \to Q(b))}, then to show #{g} is a family of equivalences
+it suffices to show that its restriction along #{f} is.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+  {f : A → B} (f-is-surjective : is-surjective f)
+  {P : B → Type 𝓦} {Q : B → Type 𝓛}
+  (g : (b : B) → P b → Q b)
+  where
+
+  is-fibrewise-equiv←surjective-restrict
+    : is-fibrewise-equiv (g ∘ f) → is-fibrewise-equiv g
+  is-fibrewise-equiv←surjective-restrict
+    = ind-is-surjective f-is-surjective (is-equiv ∘ g) (λ _ → is-equiv-is-prop)
+}
+}
+
+\subtree[stt-00XZ]{
+\title{Surjective dependent precomposition gives fibrewise null-homotopies}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\p{
+Let #{f : A \to B} be such that precomposition at #{U : B \to \Type} is surjective,
+and let #{\eta : \Pi_{(b : B)} \fibre{f}{b} \to U(b)}, then each #{\eta(b)} is
+merely null-homotopic.
+}
+
+\agda{
+mere-null-homotopy-fibres←surjective-precomp-Π
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+    (f : A → B) {U : B → Type 𝓦}
+    (η : (b : B) → fibre f b → U b)
+  → is-surjective (precomp-Π U f)
+  → (b : B) → ║ null-homotopy (η b) ║
+mere-null-homotopy-fibres←surjective-precomp-Π f η surj b
+  = Trunc.○-rec Trunc.○∈S
+      (λ (s , H) → Trunc.η (s b , λ where (a , refl) → happly H a))
+      (surj (λ a → η (f a) (a , refl)))
 }
 }
 

@@ -217,10 +217,19 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
          {𝓦 𝓛} {C : Type 𝓦} {D : Type 𝓛} {f' : C → D} where
 
+  coherence-Arrow-map-path
+    : (G H : Arrow-map f f')
+    → Arrow-map.top G ~ Arrow-map.top H
+    → Arrow-map.bot G ~ Arrow-map.bot H
+    → Type (𝓤 ⊔ 𝓛)
+  coherence-Arrow-map-path (mk-amap t b H) (mk-amap t' b' H') p q
+    = H ∙h (f' ◃h p) ~ q ▹h f ∙h H'
+
   Arrow-map-path : ∀ (G H : Arrow-map f f') → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  Arrow-map-path (mk-amap t b H) (mk-amap t' b' H')
-    = Σ[ p ∶ t ~ t' ] Σ[ q ∶ b ~ b' ]
-      (H ∙h (f' ◃h p) ~ q ▹h f ∙h H')
+  Arrow-map-path G H
+    = Σ[ p ∶ Arrow-map.top G ~ Arrow-map.top H ]
+      Σ[ q ∶ Arrow-map.bot G ~ Arrow-map.bot H ]
+      coherence-Arrow-map-path G H p q
 
   Arrow-map-path-refl : {G : Arrow-map f f'} → Arrow-map-path G G
   Arrow-map-path-refl = ~refl , ~refl , ∙h-reflr _
@@ -259,6 +268,114 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     Arrow-map-path→-refl
       = unap-equiv (Arrow-map-path≃ _ _ ._≃_.fwd-is-equiv)
                    (is-equiv.ε (Arrow-map-path≃ _ _ ._≃_.fwd-is-equiv) _)
+}
+}
+
+\subtree[stt-00YN]{
+\title{Characterising second-order equality of morphisms of arrows}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {X : Type 𝓦} {Y : Type 𝓜} {f : A → B} {g : X → Y}
+  {S T : Arrow-map f g}
+  (let H = Arrow-map.comm S)
+  (let K = Arrow-map.comm T)
+  where
+
+  coherence-Arrow-map-path²
+    : (p q : Arrow-map-path S T)
+    → p .fst ~ q .fst
+    → p .snd .fst ~ q .snd .fst
+    → Type (𝓤 ⊔ 𝓜)
+  coherence-Arrow-map-path² (p , q , C) (p' , q' , C') P Q
+    = C ∙h ((Q ∘ f) ▸h K) ~ (H ◂h (g ⟩◃h⟨ P)) ∙h C'
+
+  Arrow-map-path²
+    : (p q : Arrow-map-path S T) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  Arrow-map-path² p q
+    = Σ[ P ∶ p .fst ~ q .fst ]
+      Σ[ Q ∶ p .snd .fst ~ q .snd .fst ]
+       ( coherence-Arrow-map-path² p q P Q)
+
+  Arrow-map-path²-refl
+    : {p : Arrow-map-path S T} → Arrow-map-path² p p
+  Arrow-map-path²-refl = ~refl , ~refl , ∙h-reflr _
+
+  Arrow-map-path²←id
+    : {p q : Arrow-map-path S T} → p ＝ q → Arrow-map-path² p q
+  Arrow-map-path²←id refl = Arrow-map-path²-refl
+
+  opaque
+    Arrow-map-path²-is-torsorial
+      : (p : Arrow-map-path S T) → is-torsorial (Arrow-map-path² p)
+    Arrow-map-path²-is-torsorial (p , q , C)
+      = is-singleton-structure←parts (SingS-is-single p) (p , ~refl)
+          (is-singleton-structure←parts (SingS-is-single q) (q , ~refl)
+            (SingS-is-single (C ∙h ~refl)))
+
+    Arrow-map-path²←id-is-equiv
+      : (p q : Arrow-map-path S T)
+      → is-equiv (Arrow-map-path²←id {p = p} {q = q})
+    Arrow-map-path²←id-is-equiv p q
+      = fundamental-Id (Arrow-map-path² p)
+          (Arrow-map-path²-is-torsorial p) (λ _ → Arrow-map-path²←id) q
+
+    Arrow-map-path²≃
+      : (p q : Arrow-map-path S T) → (p ＝ q) ≃ Arrow-map-path² p q
+    Arrow-map-path²≃ p q
+      = mk≃ Arrow-map-path²←id (Arrow-map-path²←id-is-equiv p q)
+}
+}
+
+\subtree[stt-00YT]{
+\title{Concatenation of homotopies of morphisms of arrows}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+  where
+
+  coherence-concat-Arrow-map-path
+    : {S T U : Arrow-map f g}
+    → (p : Arrow-map-path S T) (q : Arrow-map-path T U)
+    → coherence-Arrow-map-path S U (p .fst ∙h q .fst) (p .snd .fst ∙h q .snd .fst)
+  coherence-concat-Arrow-map-path {S} {T} {U} (p , q , C) (p' , q' , C')
+    = (Arrow-map.comm S ◂h ◃h∙ g p p')
+    ∙h (∙h-assoc (Arrow-map.comm S) (g ◃h p) (g ◃h p') h⁻¹)
+    ∙h (C ▸h (g ◃h p'))
+    ∙h (∙h-assoc (q ▹h f) (Arrow-map.comm T) (g ◃h p'))
+    ∙h ((q ▹h f) ◂h C')
+    ∙h (∙h-assoc (q ▹h f) (q' ▹h f) (Arrow-map.comm U) h⁻¹)
+
+  concat-Arrow-map-path
+    : {S T U : Arrow-map f g}
+    → Arrow-map-path S T → Arrow-map-path T U → Arrow-map-path S U
+  concat-Arrow-map-path p q
+    = p .fst ∙h q .fst
+    , p .snd .fst ∙h q .snd .fst
+    , coherence-concat-Arrow-map-path p q
+
+  concat-Arrow-map-path-left-unit
+    : {S T : Arrow-map f g} (p : Arrow-map-path S T)
+    → concat-Arrow-map-path Arrow-map-path-refl p ＝ p
+  concat-Arrow-map-path-left-unit {S} (p , q , C)
+    = ap
+      ( λ D → (p , q , D))
+      ( funext→
+        ( ∙h-cancel-left
+            ( ∙h-assoc-refl-middle (Arrow-map.comm S) (g ◃h p))
+            ( (~refl ◂h C) ∙h ~refl)
+        ∙h ∙h-reflr (~refl ◂h C)
+        ∙h ~refl◂h C))
 }
 }
 
@@ -381,6 +498,14 @@ Cone←Arrow-map
     → Arrow-map f f' → Σ[ S ∶ Cospan 𝓛 𝓥 𝓦 ] Cone S A
 Cone←Arrow-map {f = f} {f' = f'} (mk-amap top bot comm)
   = (mk-cospan _ bot f') , mk-cone f top comm
+
+Arrow-map←Cone
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {S : Cospan 𝓤 𝓥 𝓦} {D : Type 𝓜}
+    → (C : Cone S D)
+    → Arrow-map (Cone.j C) (Cospan.left S)
+Arrow-map←Cone {S = S} C = mk-amap C.i S.right (C.filler h⁻¹) where
+  module S = Cospan S
+  module C = Cone C
 }
 }
 
@@ -642,9 +767,10 @@ type of maps from #{f} to #{P}, which consists of the data:}
 
 \agda{
 record ArrFam-map
-         {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-         {C : Type 𝓦} (f : A → B)
-         (P : C → Type 𝓜) : Type (𝓜 ⊔ 𝓥 ⊔ 𝓤 ⊔ 𝓦) where
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} (f : A → B)
+  (P : C → Type 𝓜) : Type (𝓜 ⊔ 𝓥 ⊔ 𝓤 ⊔ 𝓦)
+  where
   constructor mk-afmap
   field
     bot : B → C

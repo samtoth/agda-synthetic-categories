@@ -27,12 +27,10 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
-open import Modalities.Instances.Truncation
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
@@ -108,27 +106,6 @@ is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
 }
 }
 
-\subtree[stt-00FU]{
-\title{Base change of covariant families}
-\taxon{Lemma}
-\author{samueltoth}
-
-\agda{
-covariant-base-change
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
-    → (f : A → B)
-    → is-covariant P → is-covariant (P ∘ f)
-covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
-
-is-covariant-is-Δ¹-relative
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
-is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
-  = covariant-base-change {P = P} f Pc
-is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
-}
-}
-
 \subtree[stt-00O8]{
 \title{Covariant type families admit directed transport}
 \taxon{Lemma}
@@ -145,6 +122,15 @@ tr-cov-filler
     → ∀ p → Homᵈ (P ∘ h) p (tr-cov {P = P} Pc h p)
 tr-cov-filler cov h = snd ∘ centre ∘ cov h
 
+tr-cov-unique
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+      (Pc : is-covariant P) (h : Δ¹ → A)
+      (f : P (h i0) → P (h i1))
+    → ∀ p
+    → Homᵈ (P ∘ h) p (f p)
+    → tr-cov {P = P} Pc h p ＝ f p
+tr-cov-unique Pc h f p x = ap fst (central (Pc h p) (f p , x))
+
 opaque
   tr-cov-hom
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
@@ -157,6 +143,24 @@ opaque
       → (cov : is-covariant P)
       → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
   tr-cov-over cov h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
+
+  tr-cov-hom-unique
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
+        {x y} (f : Hom A x y) x' y'
+      → (Hom-over f x' y') → tr-cov-hom {P = P} cov f x' ＝ y'
+  tr-cov-hom-unique P Pc f x' y' p
+    = ap fst
+        (central
+          (is-covariant-hom←is-covariant _ Pc f x')
+          (y' , p))
+
+  tr-cov-equal-hom
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+        (Pc : is-covariant P)
+        {x y} (h h' : Hom A x y)
+        (H : h ＝ h')
+      → tr-cov-hom {P = P} Pc h ~ tr-cov-hom {P = P} Pc h'
+  tr-cov-equal-hom Pc h .h refl = ~refl
 }
 }
 
@@ -292,21 +296,14 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
       → Arrow-equiv
           (postcompose-coslice (point e) p)
           (arrow-fibre (transpose-square (power-hom (point i0) p)) (point e))
-  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.top
-    = total-map (λ a → ap point) ∘ Coslice-object-repr≃ e ._≃_.fwd
-  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.bot
-    = total-map (λ a → ap point) ∘ Coslice-object-repr≃ (p e) ._≃_.fwd
-  arrow-fibre-left-fibration-is-coslice-map e .fst .Arrow-Π.comm (e' , f)
-    = fibre-path→ (refl , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (f tt)))
-                        ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (f tt)))
-  arrow-fibre-left-fibration-is-coslice-map e .snd = (lemma e , lemma (p e)) where
-    lemma
-      : ∀ {𝓤} {A : Type 𝓤} (x : A)
-        → is-equiv (total-map (λ _ → ap point) ∘ Coslice-object-repr≃ x ._≃_.fwd)
-    lemma x
-      = is-equiv-∘
-          (is-total-equiv←is-fibrewise-equiv λ a → is-embedding←is-equiv point-is-equiv)
-          (Coslice-object-repr≃ x ._≃_.fwd-is-equiv )
+  arrow-fibre-left-fibration-is-coslice-map e
+    = mk-arr-equiv
+        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
+        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
+        (λ x → fibre-path→
+          ( refl
+          , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (x .snd tt)))
+          ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (x .snd tt))))
 
   coslice-map-is-equiv←is-left-fibration
     : is-left-fibration p → (∀ e → is-equiv (postcompose-coslice (point e) p))
@@ -353,9 +350,7 @@ is-inner←is-left-fibration
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → is-left-fibration f → is-inner f
 is-inner←is-left-fibration {f = f} lf
-  = left-orthogonal-retraction
-      Λ[2,1]-incl (pushout-product (point i1) (point i0))
-      Λ[2,1]↪□-section Λ[2,1]↪□-ret _
+  = left-orthogonal←Arrow-retract Λ[2,1]↪□-Arrow-retract _
       (left-orthogonal-pushout-product' (point i0) f lf (point i1))
 }
 }
@@ -443,12 +438,6 @@ Hom-cov'≃
     → (tr-cov-hom {P = P} cov f x' ＝ y') ≃ (Hom-over f x' y')
 Hom-cov'≃  P Pc f x' y'
   = mk≃ (Hom-cov' P Pc f x' y') (Hom-cov'-is-equiv P Pc f x' y')
-
-tr-cov-hom-unique
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
-      {x y} (f : Hom A x y) x' y'
-    → (Hom-over f x' y') → tr-cov-hom {P = P} cov f x' ＝ y'
-tr-cov-hom-unique P Pc f x' y' = _≃_.bwd (Hom-cov'≃ P Pc f x' y')
 }
 }
 
@@ -463,10 +452,11 @@ in the sense that #{P(\id) \sim \id} and
 #{P(f \circ g) \sim P(f) \circ P(g)}.}
 
 \agda{
-tr-cov-id
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
-    → tr-cov {P = P} cov (λ _ → x) ~ id
-tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x'))
+opaque
+  tr-cov-id
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+      → tr-cov {P = P} cov (λ _ → x) ~ id
+  tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x'))
 
 opaque
   unfolding tr-cov-hom
@@ -679,26 +669,115 @@ module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where
 \citet{Proposition 8.17}{RS17}
 
 \agda{
-opaque
-  unfolding tr-cov-hom
-  tr-cov-naturality
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
-        (Fc : is-covariant F)
-        (Gc : is-covariant G)
-        (α : ∀ a → F a → G a)
-        {x y} (f : Hom A x y)
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+  (Fc : is-covariant F)
+  (Gc : is-covariant G)
+  (α : ∀ a → F a → G a)
+  where
+
+  tr-cov-hom-naturality
+    : ∀ {x y} (f : Hom A x y)
       → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
-  tr-cov-naturality Fc Gc α f x'
-    = ap fst
-        (is-covariant-hom←is-covariant _ Gc f (α _ x') .central
-          ( α _ (tr-cov-hom Fc f x')
-          , filler f x')) where
+  tr-cov-hom-naturality f x'
+    = tr-cov-hom-unique G Gc f
+        (α _ x')
+        (α _ (tr-cov-hom Fc f x'))
+        (filler f x') where
     filler
       : ∀ {x y} (f : Hom _ x y) x'
         → Hom-over f (α x x') (α y (tr-cov-hom Fc f x'))
-    filler (mk-hom f refl refl) x'
-      = mk-hom (λ i → α (f i) ((Fc f x') .centre .snd .Homᵈ.hom i))
-               (ap (α (f i0)) ((Fc f x') .centre .snd .Homᵈ.hom0))
-               (ap (α (f i1)) ((Fc f x') .centre .snd .Homᵈ.hom1))
+    filler {x}{y} hh@(mk-hom h refl refl) x'
+      = apᵈ-hom (λ {i} → α (h i)) (tr-cov-over Fc hh x')
+
+  adjust-tr-cov-hom
+    : is-fibrewise-equiv α
+    → ∀ {x}{y} (f : Hom A x y)
+    → Arrow-equiv (tr-cov-hom {P = F} Fc f) (tr-cov-hom {P = G} Gc f)
+  adjust-tr-cov-hom e f .fst .Arrow-Π.top = α _
+  adjust-tr-cov-hom e f .fst .Arrow-Π.bot = α _
+  adjust-tr-cov-hom e f .fst .Arrow-Π.comm = tr-cov-hom-naturality f h⁻¹
+  adjust-tr-cov-hom e f .snd .fst = e _
+  adjust-tr-cov-hom e f .snd .snd = e _
+
+  opaque
+    tr-cov-naturality
+      : ∀ (f : Δ¹ → A)
+        → tr-cov {P = G} Gc f ∘ α (f i0) ~ α (f i1) ∘ tr-cov {P = F} Fc f
+    tr-cov-naturality f x'
+      = ap fst (central (Gc f (α (f i0) x'))
+           ( (α (f i1) (tr-cov {P = F} Fc f x'))
+           , apᵈ-hom (λ {i} → α (f i)) (tr-cov-filler {P = F} Fc f x')))
+
+  adjust-tr-cov
+    : is-fibrewise-equiv α
+    → (f : Δ¹ → A)
+    → Arrow-equiv (tr-cov {P = F} Fc f) (tr-cov {P = G} Gc f)
+  adjust-tr-cov e f .fst .Arrow-Π.top = α (f i0)
+  adjust-tr-cov e f .fst .Arrow-Π.bot = α (f i1)
+  adjust-tr-cov e f .fst .Arrow-Π.comm = tr-cov-naturality f h⁻¹
+  adjust-tr-cov e f .snd .fst = e (f i0)
+  adjust-tr-cov e f .snd .snd = e (f i1)
+}
+}
+
+\agda{
+opaque
+  tr-cov-hom-Idᵈ
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (F : A → Type 𝓥) (Fc : is-covariant F)
+        {x y x' y' : A} (p : x ＝ x') (q : y ＝ y')
+        (f : Hom A x y) (g : Hom A x' y')
+        (P : Hom-pathᵈ p q f g)
+      → tr F q ∘ tr-cov-hom {P = F} Fc f
+      ~ tr-cov-hom {P = F} Fc g ∘ tr F p
+  tr-cov-hom-Idᵈ F Fc refl refl f g H
+    = IdSJ ⦃ Hom-IdSᵈ ⦄
+        (λ (g , _) → tr-cov-hom {P = F} Fc f ~ tr-cov-hom {P = F} Fc g)
+        ~refl H
+}
+
+\subtree[stt-00FU]{
+\title{Base change of covariant families}
+\taxon{Lemma}
+\author{samueltoth}
+
+\agda{
+covariant-base-change
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
+    → (f : A → B)
+    → is-covariant P → is-covariant (P ∘ f)
+covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
+
+is-covariant-is-Δ¹-relative
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
+is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
+  = covariant-base-change {P = P} f Pc
+is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
+}
+}
+
+\subtree[stt-00WY]{
+\title{Transporting over a base changed covariant family}
+\taxon{Lemma}
+
+\agda{
+tr-cov-ap-hom
+  : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+      (F : Y → Type 𝓦) (Fc : is-covariant F)
+      (Ffc : is-covariant (F ∘ f))
+      (h : covariant-base-change {P = F} f Fc ＝ Ffc)
+      {a b : X}
+      (h : Hom X a b)
+      (g : Hom Y (f a) (f b))
+      (p : g ＝ ap-hom f h)
+    → tr-cov-hom {P = F} Fc g
+    ~ tr-cov-hom {P = F ∘ f} Ffc h
+tr-cov-ap-hom f F Fc Ffc refl h _ refl x = tr-cov-hom-unique F Fc (ap-hom f h) x
+  (tr-cov-hom (covariant-base-change {P = F} f Fc) h x)
+  (adjust-homᵈ (F ∘ f ∘ h .Homᵈ.hom)
+    (ap (λ p → coe p x) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom0))))
+    (ap (λ p → coe p _) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom1))))
+    (tr-cov-over (covariant-base-change {P = F} f Fc) h x) )
 }
 }

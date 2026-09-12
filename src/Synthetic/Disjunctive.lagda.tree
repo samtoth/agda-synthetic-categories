@@ -21,8 +21,7 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
@@ -97,6 +96,8 @@ open gSubU Disjunctive-gSubU public using () renaming
   ( ∈S←equiv to is-disjunctive←equiv)
 open gReflectiveClosure Disjunctive-gRSubU public using () renaming
   ( Π∈S to Π-is-disjunctive
+  ; Πᵢ∈S to Πᵢ-is-disjunctive
+  ; →∈S to →-is-disjunctive
   ; ULift∈S to ULift-is-disjunctive
   ; 𝟙∈S to 𝟙-is-disjunctive
   ; ∈S←is-singleton to is-disjunctive←is-singleton
@@ -123,6 +124,7 @@ open gRSubUHomClosure Disjunctive-gRSubU public using () renaming
 Σ-is-disjunctive = Null-globally-Σ-closed
 
 module Disj where
+  open gReflectiveReasoning Disjunctive-gRSubU public
   open gRSubUInduction Disjunctive-gRSubU Σ-is-disjunctive public
   open gRSubU Disjunctive-gRSubU public
   open gReflectiveClosure Disjunctive-gRSubU public
@@ -262,24 +264,15 @@ into #{∨²}.
 }
 
 \agda{
-disj-is-upper-located
+is-upper-located←is-disjunctive
   : ∀ {𝓤} {A : Type 𝓤} → is-disjunctive A → is-upper-located A
-disj-is-upper-located {_} {A} disj tt
-  = is-orthogonal↔orthogonal-! .fst
-      (left-orthogonal-equiv _ _ amap amap-is-eqv !
-        (left-orthogonal-Σ _ !
-          (is-orthogonal↔orthogonal-! .snd
-          ∘ (is-local←is-null disj)))) where
-
-  amap : Arrow-map (total-map (λ _ → !)) Λ[2,2]-incl
-  amap .Arrow-map.top = Λ[2,2]←Λ[2,2]'
-  amap .Arrow-map.bot = fst
-  amap .Arrow-map.comm (((i , j) , p) , d)
-    = Σ-path→ (refl , carrier-is-set _ _ _ _)
-
-  amap-is-eqv : is-Arrow-equiv amap
-  amap-is-eqv .fst = Λ[2,2]←Λ[2,2]'-is-equiv
-  amap-is-eqv .snd = singleton-fst-is-equiv (λ _ → 𝟙-is-singleton)
+is-upper-located←is-disjunctive {_} {A} disj tt
+  = orthogonal-type←Arrow-equiv
+      (mk-arr-equiv
+        (Λ[2,2]'≃Λ[2,2])
+        (Σ-singleton (λ _ → 𝟙-is-singleton))
+        (λ (((i , j) , p) , d) → Σ-path→ (refl , carrier-is-set _ _ _ _)))
+      (orthogonal-type-total-map-!←is-null disj)
 }
 }
 
@@ -303,7 +296,7 @@ such that #{(i ∨ j) = 1}.
 
 \agda{
 disj←simp-over-∨²
-  : (x : ∨²) → fam-is-simplicial (fst x) → fam-is-disjunctive x
+  : (x : ∨²) → fam-is-simplicial (x .fst) → fam-is-disjunctive x
 disj←simp-over-∨² ((i , j) , p)
   = *-prop-rec
       (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
@@ -311,7 +304,7 @@ disj←simp-over-∨² ((i , j) , p)
       (λ ji → ι₁ (sym (≤-max ji) ∙ sym ∨-comm ∙ p))
 
 disj→simp-over-∨²
-  : (x : ∨²) → fam-is-disjunctive x → fam-is-simplicial (fst x)
+  : (x : ∨²) → fam-is-disjunctive x → fam-is-simplicial (x .fst)
 disj→simp-over-∨² ((i , j) , _)
   = *-prop-rec
       (*-is-prop ≤-is-prop ≤-is-prop)
@@ -326,31 +319,18 @@ disj←simp-over-∨²-is-equiv x@((i , j) , _)
       (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
       (disj→simp-over-∨² x)
 
+simp-over-∨²≃disj : (x : ∨²) → fam-is-simplicial (x .fst) ≃ fam-is-disjunctive x
+simp-over-∨²≃disj x = mk≃ (disj←simp-over-∨² x) (disj←simp-over-∨²-is-equiv x)
+
 simp-is-disjunctive
   : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-disjunctive A
-simp-is-disjunctive {_} {A} simp
+simp-is-disjunctive simp
   = is-null←is-local
-      (is-local-equiv amap amap-is-eqv
-        (is-local←is-null simp-over-∨²)) where
-
-  simp-over-∨² : is-null (fam-is-simplicial ∘ fst) A
-  simp-over-∨² x = simp (fst x)
-
-  amap
-    : (x : ∨²)
-    → Arrow-map
-        (!: fam-is-simplicial (fst x))
-        (!: fam-is-disjunctive x)
-  amap x .Arrow-map.top = disj←simp-over-∨² x
-  amap x .Arrow-map.bot = id
-  amap x .Arrow-map.comm = ~refl
-
-  amap-is-eqv : ∀ x → is-Arrow-equiv (amap x)
-  amap-is-eqv x .fst = disj←simp-over-∨²-is-equiv x
-  amap-is-eqv x .snd = id-is-equiv
+      (is-target-local←Arrow-equiv
+        (!-Arrow-equiv ∘ simp-over-∨²≃disj)
+        (is-local←is-null (simp ∘ fst)))
 }
 }
-
 
 \subtree[stt-00DX]{
 \title{Simplicial types are upper located}
@@ -359,7 +339,7 @@ simp-is-disjunctive {_} {A} simp
 \agda{
 simp-is-upper-located
   : ∀ {𝓤} {A : Type 𝓤} → is-simplicial A → is-upper-located A
-simp-is-upper-located = disj-is-upper-located ∘ simp-is-disjunctive
+simp-is-upper-located = is-upper-located←is-disjunctive ∘ simp-is-disjunctive
 }
 }
 

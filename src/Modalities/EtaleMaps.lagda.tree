@@ -88,6 +88,12 @@ A && {\bigcirc A} \\
 }
 then #{f} is étale iff the top horizontal family of maps is a family of equivalences.
 }
+
+\p{
+For a #{Σ}-closed reflective subuniverse, this is also equivalent to the fibre
+family of #{f} [descending uniquely](bak-C152) to a family of modal types over
+#{\bigcirc B}.
+}
 }
 
 \subtree[bak-9E83]{
@@ -160,8 +166,8 @@ module _
 \taxon{Construction}
 
 \p{
-Given a #{Σ}-closed reflective subuniverse, then any map #{f \colon A \to B} factors
-via #{B \times_{\bigcirc B} {\bigcirc A}}
+Given a reflective subuniverse, any map #{f \colon A \to B} factors
+via #{B \times_{\bigcirc B} {\bigcirc A}}:
 
 \quiver{
 \begin{tikzcd}[column sep=small]
@@ -173,13 +179,50 @@ A && B \nsp{.} \\
 \end{tikzcd}
 }
 }
+\p{
+The map #{l} factors the unit map:
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+A && \bigcirc A\nsp{.} \\
+& {B \times_{\bigcirc B} {\bigcirc A}}
+\arrow["\eta", from=1-1, to=1-3]
+\arrow["l"', from=1-1, to=2-2]
+\arrow["\pi"', from=2-2, to=1-3]
+\end{tikzcd}
+}
+
+The unit map is always a modal equivalence. Moreover, the fibre of #{\pi} at
+#{y : \bigcirc A} may be computed as #{\fibre{\eta}{\bigcirc f (y)}}, and for
+#{Σ}-closed reflective subuniverses the units are connected, and hence so is #{\pi}.
+Thus, by the left cancellation property of modal equivalences (which connected maps
+don't satisfy in general), #{l} is a modal equivalence.
+}
+
+\p{
+The map #{r} is a base change of #{\bigcirc f}
+
+\quiver{
+\begin{tikzcd}
+{B \times_{\bigcirc B} {\bigcirc A}} && {\bigcirc A} \\
+\\
+B && {\bigcirc B}\nsp{,}
+\arrow["r"', from=1-1, to=3-1]
+\arrow["\bigcirc f", from=1-3, to=3-3]
+\arrow["\eta"', from=3-1, to=3-3]
+\arrow["?", from=1-1, to=1-3]
+\arrow["\lrcorner" very near start, from=1-1, to=3-3, phantom]
+\end{tikzcd}
+}
+and modal equivalences are left orthogonal to maps between modal types, and hence
+#{r} is right orthogonal to all modal equivalences.
+}
 
 \agda{
 module ModalNaturalityFactorisation
   {α} (RS : gRSubU α)
   (open gRSubU RS)
   (open gReflectiveReasoning RS)
-  (SΣ : is-globally-Σ-closed GS)
   {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
   where
 
@@ -192,29 +235,31 @@ module ModalNaturalityFactorisation
   r : Im → B
   r = pb.π₁
 
-  p : Im → ○ A
-  p = pb.π₂
+  π : Im → ○ A
+  π = pb.π₂
 
-  p-is-connected : is-connected-map RS p
-  p-is-connected x
-    = is-single←equiv⁻¹
-        (○-≃ (fib-π₂ η (○₁ f) x))
-        (unit-is-connected-map' (is-reflective←gRSubU RS) SΣ (○₁ f x))
+  module _ (SΣ : is-globally-Σ-closed GS) where
 
-  p-is-modal-equiv : is-modal-equiv RS p
-  p-is-modal-equiv
-    = is-modal-equiv←is-connected-map RS p p-is-connected
+    π-is-connected : is-connected-map RS π
+    π-is-connected x
+      = is-single←equiv⁻¹
+          (○-≃ (fib-π₂ η (○₁ f) x))
+          (unit-is-connected-map' (is-reflective←gRSubU RS) SΣ (○₁ f x))
 
-  l-is-modal-equiv : is-modal-equiv RS l
-  l-is-modal-equiv
-    = is-modal-equiv-left-cancel RS p-is-modal-equiv
-        (η-is-modal-equiv RS)
+    π-is-modal-equiv : is-modal-equiv RS π
+    π-is-modal-equiv
+      = is-modal-equiv←is-connected-map RS π π-is-connected
+
+    l-is-modal-equiv : is-modal-equiv RS l
+    l-is-modal-equiv
+      = is-modal-equiv-left-cancel RS π-is-modal-equiv (η-is-modal-equiv RS)
 
   modal-equiv⊥r
     : ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
       → is-modal-equiv RS g → are-orthogonal g r
   modal-equiv⊥r {g = g} ge
-    = orthogonal←base-change g (base-change-arrow-map η (○₁ f))
+    = orthogonal←base-change g
+        (base-change-arrow-map η (○₁ f))
         (base-change-arrow-map-is-cartesian η (○₁ f))
         (modal-equiv⊥map-between-modal-types RS ge ○∈S ○∈S)
 }
@@ -241,23 +286,26 @@ module _
           → is-modal-equiv RS g → are-orthogonal g f)
       → is-étale-map RS f
   is-étale-map←right-orthogonal {f = f} orth
-    = is-cartesian←is-pullback (η-square RS f)
+    = is-cartesian←is-pullback
+        (η-square RS f)
         (is-equiv←self-orthogonal
           (right-orthogonal-left-cancel l
-            (modal-equiv⊥r l-is-modal-equiv)
-            (orth l-is-modal-equiv)))
-    where open ModalNaturalityFactorisation RS SΣ f
+            (modal-equiv⊥r (l-is-modal-equiv SΣ))
+            (orth (l-is-modal-equiv SΣ))))
+    where open ModalNaturalityFactorisation RS f
 
   is-étale-map-∘
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
         {f : A → B} {g : B → C}
       → is-étale-map RS f → is-étale-map RS g → is-étale-map RS (g ∘ f)
-  is-étale-map-∘ fe ge = is-étale-map←right-orthogonal λ {g = h} he
+  is-étale-map-∘ fe ge
+    = is-étale-map←right-orthogonal λ {g = h} he
     → right-orthogonal-∘ h (modal-equiv⊥etale RS he ge) (modal-equiv⊥etale RS he fe)
 
   module _
     {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-    (open ModalNaturalityFactorisation RS SΣ f)
+    (open ModalNaturalityFactorisation RS f)
     where
 
     right-factor-is-étale : is-étale-map RS r

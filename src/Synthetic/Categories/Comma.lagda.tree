@@ -40,6 +40,7 @@ open import Core.ExtPullbacks
 open import Core.PiSection
 open import Core.FunctorialityPullbacks
 open import Core.Slices
+open import Core.Coslices
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
@@ -273,12 +274,12 @@ opaque
         (SingS-is-single ⦃ IdS-Π ⦃ Hom-IdSᵈ ⦄ ⦄ _)
 
 instance
-  Coslice-IdS
+  Coslice-type-IdS
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
       → Identity-system (Coslice C F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  Coslice-IdS .Identity-system.IdS = Coslice-path
-  Coslice-IdS .Identity-system.IdS←Id refl = Coslice-path-refl _
-  Coslice-IdS .Identity-system.IdS←Id-is-equiv a
+  Coslice-type-IdS .Identity-system.IdS = Coslice-path
+  Coslice-type-IdS .Identity-system.IdS←Id refl = Coslice-path-refl _
+  Coslice-type-IdS .Identity-system.IdS←Id-is-equiv a
     = fundamental-Id _ (Coslice-path-is-torsorial a) _
 
 opaque
@@ -286,20 +287,20 @@ opaque
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
       → {x y : Coslice C F}
       → Coslice-path x y → x ＝ y
-  Coslice-path→ = Id←IdS ⦃ Coslice-IdS ⦄
+  Coslice-path→ = Id←IdS ⦃ Coslice-type-IdS ⦄
 
   Coslice-path-is-equiv
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
       → {x y : Coslice C F}
       → is-equiv (Coslice-path→ {x = x} {y})
   Coslice-path-is-equiv
-    = is-equiv⁻¹ (Coslice-IdS .Identity-system.IdS←Id-is-equiv _ _)
+    = is-equiv⁻¹ (Coslice-type-IdS .Identity-system.IdS←Id-is-equiv _ _)
 
   Coslice-path-ap-fst
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : Coslice C F}
       → (p : Coslice-path a b) → ap fst (Coslice-path→ p) ＝ fst p
   Coslice-path-ap-fst
-    = IdSJ ⦃ Coslice-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
+    = IdSJ ⦃ Coslice-type-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
            (ap (ap fst) (Id←IdS←Id refl))
 }
 
@@ -506,6 +507,16 @@ postcompose-coslice
     → Coslice A p → Coslice B (f ∘ p)
 postcompose-coslice p f (a , h) = (f a , ap-hom f ∘ h)
 
+postcompose-coslice'
+  : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {B : Type 𝓥} {K : Type 𝓚}
+      {p : K → A} {q : K → B}
+    → Coslice-map p q
+    → Coslice A p → Coslice B q
+postcompose-coslice' (f , H)
+  = map-Σ
+      f
+      (λ a → postcomp-Π (λ i → adjust-hom (H i) refl ∘ ap-hom f))
+
 slice-map-slice
   : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
       {K : Type 𝓚} (p : K → A)
@@ -552,6 +563,29 @@ adjust-coslice-~
   : ∀ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} {p q : K → A}
     → p ~ q → Coslice A p → Coslice A q
 adjust-coslice-~ H = total-map λ a → postcomp-Π (λ i → adjust-hom (H i) refl)
+
+Coslice-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
+      {K : Type 𝓚}
+      {p : K → A} {q : K → B} {r : K → A'} {s : K → B'}
+      (f : Coslice-map p q) (g : Coslice-map r s)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓚)
+Coslice-arrow-map {p = p} {q} {r} {s} f g
+  = Σ[ t ∶ Coslice-map p r ] Σ[ b ∶ Coslice-map q s ]
+      Coslice-map-path (Coslice-map-∘ _ _ _ g t) (Coslice-map-∘ _ _ _ b f)
+
+postcomp-coslice₁'
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
+      {K : Type 𝓚}
+      {p : K → A} {q : K → B} {r : K → A'} {s : K → B'}
+      (f : Coslice-map p q) (g : Coslice-map r s)
+    → Coslice-arrow-map f g
+    → Arrow-map (postcompose-coslice' f) (postcompose-coslice' g)
+postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.top = postcompose-coslice' t
+postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.bot = postcompose-coslice' b
+postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.comm x = Coslice-path→
+  ( sym (coh .fst (x .fst))
+  , λ i → ?)
 
 postcomp-coslice₁
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}

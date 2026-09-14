@@ -6,6 +6,8 @@
 
 \agda{
 module Modalities.Cohesion.Flat where
+
+open import Axioms.FunExt
 }
 
 \agda-imports{
@@ -40,6 +42,20 @@ data ⟨♭|_⟩ {@♭ 𝓤} (@♭ A : Type 𝓤) : Type 𝓤 where
     → ((@♭ x : A) → B (mod♭ x))
     → (x : ⟨♭| A ⟩) → B x
 ♭-ind = ♭-ind: _
+
+♭-ind-is-equiv
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → is-equiv (♭-ind {B = B})
+♭-ind-is-equiv
+  = is-equiv←qinv
+      ( (λ f x → f (mod♭ x))
+      , ~refl
+      , λ g → funext→ (♭-ind (λ _ → refl)))
+
+♭-ind≃
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → ((@♭ x : A) → B (mod♭ x)) ≃ Π ⟨♭| A ⟩ B
+♭-ind≃ = mk≃ ♭-ind ♭-ind-is-equiv
 
 ♭-rec
   : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : Type 𝓥}
@@ -248,18 +264,32 @@ _ = ♭-rec (ap♭ mod♭)
 }
 }
 
+\subtree[stt-00X7]{
+\taxon{Definition}
+\title{#{♭}-Equivalences}
+
+\p{We call a map #{f} a \em{#{\flat}-equivalence} if #{\flat f} is an equivalence.}
+
+\agda{
+is-♭-equiv
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → (@♭ f : A → B) → Type (𝓤 ⊔ 𝓥)
+is-♭-equiv f = is-equiv (♭-map f)
+}
+}
+
 \subtree[stt-00JR]{
 \taxon{Lemma}
-\title{Flat preserves equivalences}
+\title{Equivalences are #{♭}-Equivalences}
 
-\p{Equivalences #{f : A \toeq B} induce equivalences
+\p{An equivalence #{f : A \toeq B} induces an equivalence
 #{\flat f : \modflat{A} \toeq \modflat{B}}.}
 
 \agda{
-♭-map-is-equiv
+is-♭-equiv←is-equiv
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
-    → @♭ is-equiv f → is-equiv (♭-map f)
-♭-map-is-equiv fe = is-equiv←qinv
+    → @♭ is-equiv f → is-♭-equiv f
+is-♭-equiv←is-equiv fe = is-equiv←qinv
   ( ♭-map (bwd fe)
   , (λ where (mod♭ x) → ap♭ mod♭ (η fe x))
   , (λ where (mod♭ x) → ap♭ mod♭ (ε fe x)))
@@ -267,7 +297,23 @@ _ = ♭-rec (ap♭ mod♭)
 
 ♭≃ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ e : A ≃ B)
      → ⟨♭| A ⟩ ≃ ⟨♭| B ⟩
-♭≃ e = mk≃ (♭-map (e ._≃_.fwd)) (♭-map-is-equiv (e ._≃_.fwd-is-equiv))
+♭≃ e = mk≃ (♭-map (e ._≃_.fwd)) (is-♭-equiv←is-equiv (e ._≃_.fwd-is-equiv))
+}
+}
+
+\subtree[stt-00XI]{
+\taxon{Lemma}
+\title{#{♭}-Equivalences are closed under composition.}
+
+\agda{
+is-♭-equiv-∘
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+      {@♭ g : B → C} {@♭ f : A → B}
+    → is-♭-equiv g
+    → is-♭-equiv f
+    → is-♭-equiv (g ∘ f)
+is-♭-equiv-∘ fe ge
+  = is-equiv-~∘ (♭-∘ _ _) fe ge
 }
 }
 
@@ -275,9 +321,17 @@ _ = ♭-rec (ap♭ mod♭)
 \title{Flat preserves retracts}
 \taxon{Lemma}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-04-29}
 
 \agda{
+♭-retraction-witness
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ g : B → A}
+    → @♭ (retraction-witness g f)
+    → retraction-witness (♭-map g) (♭-map f)
+♭-retraction-witness ret (mod♭ x) = mapply♭ (mod♭ (ret x))
+
 ♭-retract
   : ∀ {@♭ 𝓤 𝓥}
       {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -286,7 +340,7 @@ _ = ♭-rec (ap♭ mod♭)
 ♭-retract (i , r , H)
   = ♭-map i
   , ♭-map r
-  , λ where (mod♭ a) → ap♭ mod♭ (H a)
+  , ♭-retraction-witness H
 }
 }
 
@@ -380,6 +434,32 @@ snd♭ = snd
 ε♭ᶠ-is-fibrewise-equiv bd (mod♭ a) = bd a
 }
 
+\p{
+We also introduce Agda syntax for the shorthand style #{\Sigma_{x,y : A} B(x)} for
+multivariable dependent flat-sums.
+}
+
+\agda{
+module _ {@♭ 𝓤 𝓥} where
+
+  Σ♭₂ : (@♭ A : Type 𝓤) (B : @♭ A → @♭ A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+  Σ♭₂ A B = Σ♭ A (λ x → Σ♭ A (B x))
+
+  Σ♭₃ : (@♭ A : Type 𝓤) (B : @♭ A → @♭ A → @♭ A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+  Σ♭₃ A B = Σ♭ A (λ x → Σ♭₂ A (B x))
+
+  Σ♭₄ : (@♭ A : Type 𝓤) (B : @♭ A → @♭ A → @♭ A → @♭ A → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
+  Σ♭₄ A B = Σ♭ A (λ x → Σ♭₃ A (B x))
+
+  {-# INLINE Σ♭₂ #-}
+  {-# INLINE Σ♭₃ #-}
+  {-# INLINE Σ♭₄ #-}
+
+  syntax Σ♭₂ A (λ x y → B) = Σ[♭ x y ∶ A ] B
+  syntax Σ♭₃ A (λ x y z → B) = Σ[♭ x y z ∶ A ] B
+  syntax Σ♭₄ A (λ x y z w → B) = Σ[♭ x y z w ∶ A ] B
+}
+
 \p{We now show #{\flat} commutes with #{\Sigma} in the sense that
 #{\Sigma_{a :^\flat A} \modflat{B(a)}} is equivalent to
 #{\modflat{\Sigma_{a : A}B(a)}}}
@@ -405,6 +485,68 @@ snd♭ = snd
 ♭-commΣ P ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst (mod♭ a , mod♭ b) = refl
 ♭-commΣ P ._≃_.fwd-is-equiv .is-equiv.qinv .snd .snd (mod♭ (a , b)) = refl
 ♭-commΣ P ._≃_.fwd-is-equiv .is-equiv.coherent (mod♭ a , mod♭ b) = refl
+}
+}
+
+\subtree[stt-00X2]{
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-06-26}
+
+\p{For a map of of families #{(f,g) : \Fam((A,X), (B,Y))}, there is an equivalence
+of maps between #{\flat(\Sigma_f g)} and #{\Sigma_{\flat f} \flat g}.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
+  {@♭ X : A → Type 𝓦} {@♭ Y : A' → Type 𝓜}
+  (@♭ f : A → A') (@♭ g : ∀ a → X a → Y (f a))
+  where
+
+  ♭-Σ₁
+    : Arrow-equiv
+        (♭-map (map-Σ {Y = Y} f g))
+        (map-Σ {X = ♭ᶠ X} {Y = ♭ᶠ Y} (♭-map f) (♭-ind λ a → ♭-map (g a)))
+  ♭-Σ₁ .fst .Arrow-Π.top = ♭-Σ' _
+  ♭-Σ₁ .fst .Arrow-Π.bot = ♭-Σ' _
+  ♭-Σ₁ .fst .Arrow-Π.comm (mod♭ a) = refl
+  ♭-Σ₁ .snd .fst = bwd-is-equiv (♭-commΣ _)
+  ♭-Σ₁ .snd .snd = bwd-is-equiv (♭-commΣ _)
+}
+
+\p{Consequently, #{\Sigma_f g} is a #{\flat}-equivalence when #{f} is a
+#{\flat}-equivalence and #{g} is a fibrewise #{\flat}-equivalence.}
+
+\agda{
+  map-Σ-is-♭-equiv
+    : is-♭-equiv f
+    → (∀ (@♭ a) → is-♭-equiv (g a))
+    → is-♭-equiv (map-Σ {Y = Y} f g)
+  map-Σ-is-♭-equiv fe ge
+    = src-is-equiv←Arrow-equiv
+        ♭-Σ₁
+        (map-Σ-is-equiv fe (♭-ind ge))
+}
+
+\p{We also provide a non-dependent version of this lemma.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
+  {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜}
+  (@♭ f : A → A') (@♭ g : X → Y)
+  where
+
+  ♭-×₁ : Arrow-equiv (♭-map (f ×₁ g)) (♭-map f ×₁ ♭-map g)
+  ♭-×₁ = mk-arr-equiv
+    ♭-pres-× ♭-pres-× (♭-ind (λ x → refl))
+
+  ×₁-is-♭-equiv
+     : is-♭-equiv f
+     → is-♭-equiv g
+     → is-♭-equiv (f ×₁ g)
+  ×₁-is-♭-equiv fe ge
+    = src-is-equiv←Arrow-equiv ♭-×₁ (×₁-is-equiv fe ge)
 }
 }
 
@@ -460,16 +602,61 @@ module _
   where
 
   ♭-map-total-Arrow-equiv : Arrow-equiv (total-map (♭ᶠ-map f)) (♭-map (total-map f))
-  ♭-map-total-Arrow-equiv .fst .Arrow-Π.top = ♭-Σ _
-  ♭-map-total-Arrow-equiv .fst .Arrow-Π.bot = ♭-Σ _
-  ♭-map-total-Arrow-equiv .fst .Arrow-Π.comm (mod♭ a , mod♭ b) = refl
-  ♭-map-total-Arrow-equiv .snd .fst = ♭-commΣ _ ._≃_.fwd-is-equiv
-  ♭-map-total-Arrow-equiv .snd .snd = ♭-commΣ _ ._≃_.fwd-is-equiv
+  ♭-map-total-Arrow-equiv
+    = mk-arr-equiv (♭-commΣ _) (♭-commΣ _) (λ where (mod♭ a , mod♭ b) → refl)
 
   opaque
     ♭-map-total-is-equiv
       : is-equiv (total-map (♭ᶠ-map f))
-      → is-equiv (♭-map (total-map f))
+      → is-♭-equiv (total-map f)
     ♭-map-total-is-equiv = tgt-is-equiv←Arrow-equiv (♭-map-total-Arrow-equiv)
+}
+}
+
+\subtree[stt-00ZZ]{
+\title{Dependent #{♭} precomposition}
+\taxon{Construction}
+\date{2026-09-11}
+\author{samueltoth}
+
+\p{We may define a crisp precomposition map which takes a crisply-indexed family of
+types #{U \colon (b :^\flat B) \to \UU} and a crisp map #{f \colon^\flat A \to B} and defines
+a canonical map
+
+##{(\Pi_{(b \colon^\flat B)} F(b)) \to (\Pi_{(a \colon^\flat A)} F(f(a)))}
+
+by precomposition.
+}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭ : ((@♭ b : B) → U b) → (@♭ a : A) → U (f a)
+  precomp-Π♭ g x = g (f x)
+}
+
+\p{This is equivalent as a map to precomposing the induced family
+#{\hat{U} : \flat B \to \UU} by #{\flat f : \flat A \to \flat B}.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭≃
+    : Arrow-equiv (precomp-Π♭ U f) (precomp-Π (♭-ind U) (♭-map f))
+  precomp-Π♭≃ = mk-arr-equiv ♭-ind≃ ♭-ind≃ λ g → funext→ (♭-ind λ _ → refl)
+
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : ⟨♭| B ⟩ → Type 𝓦) (@♭ f : A → B)
+  where
+  precomp-Π♭≃'
+    : Arrow-equiv (precomp-Π♭ (λ x → U (mod♭ x)) f) (precomp-Π U (♭-map f))
+  precomp-Π♭≃' = mk-arr-equiv ♭-ind≃ ♭-ind≃ (λ g → funext→ (♭-ind λ _ → refl))
 }
 }

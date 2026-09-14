@@ -8,7 +8,7 @@
 \agda{
 open import Foundations.FunExt
 
-module Foundations.NullHomotopy (FE : FunExt-global) where
+module Foundations.NullHomotopy where
 }
 
 \agda-imports{
@@ -16,7 +16,6 @@ module Foundations.NullHomotopy (FE : FunExt-global) where
 open import Foundations.Universes
 open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
-open import Foundations.CompositionEquiv FE
 open import Foundations.Functions
 open import Foundations.Homotopy
 open import Foundations.Sigma
@@ -30,10 +29,6 @@ open import Foundations.Identity
 open import Foundations.IdentityEquiv
 open import Foundations.DependentIdentity
 open import Foundations.Straightening
-open import Foundations.CompositionFibres FE
-open import Foundations.IsEquivIsProp FE
-
-open WithFunExt-global FE
 }
 }
 
@@ -55,48 +50,6 @@ module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
 
   null-homotopy : (A → B) → Type (𝓤1 ⊔ 𝓤2)
   null-homotopy f = Σ[ b ∶ B ] (fam-null-homotopy f b)
-
-  null-homotopy-path-Idᶠ≃pointwise
-    : {f : A → B}
-      {c l : B}
-      (h : fam-null-homotopy f c)
-      (r : fam-null-homotopy f l)
-      (t : c ＝ l)
-    → Idᶠ (fam-null-homotopy f) t h r ≃ ((a : A) → t ∙ r a ＝ h a)
-  null-homotopy-path-Idᶠ≃pointwise {f = f} h r t
-    = Idᶠ (fam-null-homotopy f) t h r
-        ≃⟨ ＝-postconcat-≃
-            ( J (λ l' t' → (λ a → sym t' ∙ h a) ＝ tr (fam-null-homotopy f) t' h)
-                (refl)
-                (t)) ⟩
-      ((λ a → sym t ∙ h a) ＝ r)
-        ≃⟨ funext≃ ⟩
-      ((a : A) → sym t ∙ h a ＝ r a)
-        ≃⟨ Π-fam-≃
-              (λ a
-              → J
-                  (λ l' t' → (r' : l' ＝ f a)
-                    → (sym t' ∙ h a ＝ r') ≃ (t' ∙ r' ＝ h a))
-                  (λ _ → sym≃)
-                  t
-                  (r a)) ⟩
-      ((a : A) → t ∙ r a ＝ h a)
-        ≃∎
-
-  null-homotopy-path≃
-    : {f : A → B}
-      {c l : B}
-      (h : const: B A c ~ f)
-      (r : const: B A l ~ f)
-    → ((c , h) ＝ (l , r))
-    ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
-  null-homotopy-path≃ {f = f} {c} {l} h r
-    = ((c , h) ＝ (l , r))
-        ≃⟨ Σ-path e⁻¹ ⟩
-      (Σ[ t ∶ c ＝ l ] Idᶠ (fam-null-homotopy f) t h r)
-        ≃⟨ Σ-snd-≃ (null-homotopy-path-Idᶠ≃pointwise h r) ⟩
-      (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
-        ≃∎
 }
 }
 
@@ -105,34 +58,23 @@ module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
 \taxon{Proposition}
 
 \p{
-If #{f : A \to B} is null-homotopic, then for any #{x,y : A}, the induced map on paths
-#{\ap f : (x = y) \to (f(x) = f(y))} is null-homotopic.
+If #{f : A \to B} is null-homotopic, then for any #{x,y : A}, the induced map on
+identifications #{\ap f : (x = y) \to (f(x) = f(y))} is null-homotopic.
 }
 
 \agda{
 ap-null-homotopy
-  : ∀ {𝓤 𝓥}
-      {A : Type 𝓤}
-      {B : Type 𝓥}
-      {f : A → B}
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → null-homotopy f
-    → (x y : A)
-    → null-homotopy (ap f {x} {y})
+    → (x y : A) → null-homotopy (ap f {x} {y})
 ap-null-homotopy {f = f} (b , h) x y
-  = sym (h x) ∙ h y
-  , J (λ y p → sym (h x) ∙ h y ＝ ap f p) (∙-sym' (h x))
+  = (sym (h x) ∙ h y , (λ where refl → ∙-sym' (h x)))
 }
 }
 
-\subtree[stt-00F5]{
-\title{A null-homotopy presentation of domains of maps}
-\taxon{Construction}
-
-\p{
-Given a map #{g : X \to Y} and any type #{A}, then #{X} is equivalent to the data
-consisting of a point #{y : Y}, a map #{j : A \to \fibre{g}{y}}, and a null-homotopy of #{j}.
-##{X \;\simeq\; \Sigma_{(y : Y)}\Sigma_{(j : A \to \fibre{g}{y})}\nullhtpy(j)}
-}
+\subtree{
+\title{The type of fibrewise pointed maps}
+\taxon{Definition}
 
 \agda{
 module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X → Y) where
@@ -147,20 +89,96 @@ module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X
 
   domain←fibre-pointed-total : fibre-pointed-total → X
   domain←fibre-pointed-total (_ , _ , y , _) = fst y
+}
+}
 
-  domain←fibre-pointed-total-qinv : quasi-inv domain←fibre-pointed-total
-  domain←fibre-pointed-total-qinv .fst = fibre-pointed-total←domain
-  domain←fibre-pointed-total-qinv .snd .fst (.(g x) , j , (x , refl) , H)
-    = funext-rec
-        (λ H' → fibre-pointed-total←domain x ＝ (g x , j , (x , refl) , H'))
-        (λ where refl → refl)
-        H
-  domain←fibre-pointed-total-qinv .snd .snd x = refl
+\p{The remainder of the results assume function extensionality.}
 
-  fibre-pointed-total≃domain : fibre-pointed-total ≃ X
-  fibre-pointed-total≃domain
-    = mk≃ domain←fibre-pointed-total
-          (is-equiv←qinv domain←fibre-pointed-total-qinv)
+\agda{
+module NullHomotopyWithFunExt (FE : FunExt-global) where
+  open WithFunExt-global FE
+  open import Foundations.CompositionEquiv FE
+  open import Foundations.CompositionFibres FE
+  open import Foundations.IsEquivIsProp FE
+}
+
+\subtree{
+\title{Identifications of null-homotopies}
+\taxon{Lemma}
+
+\agda{
+  module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
+
+    null-homotopy-path-Idᶠ≃pointwise
+      : {f : A → B}
+        {c l : B}
+        (h : fam-null-homotopy f c)
+        (r : fam-null-homotopy f l)
+        (t : c ＝ l)
+      → Idᶠ (fam-null-homotopy f) t h r ≃ ((a : A) → t ∙ r a ＝ h a)
+    null-homotopy-path-Idᶠ≃pointwise {f = f} h r t
+      = Idᶠ (fam-null-homotopy f) t h r
+          ≃⟨ ＝-postconcat-≃
+              ( J (λ l' t' → (λ a → sym t' ∙ h a) ＝ tr (fam-null-homotopy f) t' h)
+                  (refl)
+                  (t)) ⟩
+        ((λ a → sym t ∙ h a) ＝ r)
+          ≃⟨ funext≃ ⟩
+        ((a : A) → sym t ∙ h a ＝ r a)
+          ≃⟨ Π-fam-≃
+                (λ a
+                → J
+                    (λ l' t' → (r' : l' ＝ f a)
+                      → (sym t' ∙ h a ＝ r') ≃ (t' ∙ r' ＝ h a))
+                    (λ _ → sym≃)
+                    t
+                    (r a)) ⟩
+        ((a : A) → t ∙ r a ＝ h a)
+          ≃∎
+
+    null-homotopy-path≃
+      : {f : A → B}
+        {c l : B}
+        (h : const: B A c ~ f)
+        (r : const: B A l ~ f)
+      → ((c , h) ＝ (l , r))
+      ≃ (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
+    null-homotopy-path≃ {f = f} {c} {l} h r
+      = ((c , h) ＝ (l , r))
+          ≃⟨ Σ-path e⁻¹ ⟩
+        (Σ[ t ∶ c ＝ l ] Idᶠ (fam-null-homotopy f) t h r)
+          ≃⟨ Σ-snd-≃ (null-homotopy-path-Idᶠ≃pointwise h r) ⟩
+        (Σ[ t ∶ c ＝ l ] ((a : A) → t ∙ r a ＝ h a))
+          ≃∎
+}
+}
+
+\subtree[stt-00F5]{
+\title{A null-homotopy presentation of domains of maps}
+\taxon{Construction}
+
+\p{
+Given a map #{g : X \to Y} and any type #{A}, then #{X} is equivalent to the data
+consisting of a point #{y : Y}, a map #{j : A \to \fibre{g}{y}}, and a null-homotopy of #{j}.
+##{X \;\simeq\; \Sigma_{(y : Y)}\Sigma_{(j : A \to \fibre{g}{y})}\nullhtpy(j)}
+}
+
+\agda{
+  module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X → Y) where
+
+    domain←fibre-pointed-total-qinv : quasi-inv (domain←fibre-pointed-total A g)
+    domain←fibre-pointed-total-qinv .fst = fibre-pointed-total←domain A g
+    domain←fibre-pointed-total-qinv .snd .fst (.(g x) , j , (x , refl) , H)
+      = funext-rec
+          (λ H' → fibre-pointed-total←domain A g x ＝ (g x , j , (x , refl) , H'))
+          (λ where refl → refl)
+          H
+    domain←fibre-pointed-total-qinv .snd .snd x = refl
+
+    fibre-pointed-total≃domain : fibre-pointed-total A g ≃ X
+    fibre-pointed-total≃domain
+      = mk≃ (domain←fibre-pointed-total A g)
+            (is-equiv←qinv domain←fibre-pointed-total-qinv)
 }
 }
 
@@ -169,21 +187,22 @@ module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X
 \taxon{Proposition}
 
 \agda{
-module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
-         (e : A ≃ B) (j : A → C) where
+  module _
+    {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3} (e : A ≃ B) (j : A → C)
+    where
 
-  homotopy-const-postcomp-≃
-    : (y : C)
-    → (const: C A y ~ j)
-    ≃ (const: C B y ~ ((precomp-≃ (e e⁻¹)) ._≃_.fwd j))
-  homotopy-const-postcomp-≃ y
-    = precomp-Π-≃ (λ a → y ＝ j a) (e e⁻¹)
+    homotopy-const-postcomp-≃
+      : (y : C)
+      → (const: C A y ~ j)
+      ≃ (const: C B y ~ ((precomp-≃ (e e⁻¹)) ._≃_.fwd j))
+    homotopy-const-postcomp-≃ y
+      = precomp-Π-≃ (λ a → y ＝ j a) (e e⁻¹)
 
-  null-homotopy-postcomp-≃
-    : null-homotopy j
-    ≃ null-homotopy ((precomp-≃ (e e⁻¹)) ._≃_.fwd j)
-  null-homotopy-postcomp-≃
-    = Σ-snd-≃ homotopy-const-postcomp-≃
+    null-homotopy-postcomp-≃
+      : null-homotopy j
+      ≃ null-homotopy ((precomp-≃ (e e⁻¹)) ._≃_.fwd j)
+    null-homotopy-postcomp-≃
+      = Σ-snd-≃ homotopy-const-postcomp-≃
 }
 }
 
@@ -194,12 +213,12 @@ module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
 \title{Fibres of constant maps are null-homotopies}
 
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (h : A → B) where
+  module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (h : A → B) where
 
-  fibre-const≃null-homotopy
-    : fibre (const: B A) h ≃ null-homotopy h
-  fibre-const≃null-homotopy
-    = Σ-snd-≃ (λ _ → funext≃)
+    fibre-const≃null-homotopy
+      : fibre (const: B A) h ≃ null-homotopy h
+    fibre-const≃null-homotopy
+      = Σ-snd-≃ (λ _ → funext≃)
 }
 }
 
@@ -210,49 +229,49 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (h : A → B) where
 \title{Fibres of dependent precomposition via fibrewise null-homotopies}
 
 \agda{
-module _
-  {𝓤 𝓥 𝓦}
-  {A : Type 𝓤} {B : Type 𝓥}
-  (U : B → Type 𝓦)
-  (f : A → B)
-  (h : Π A (U ∘ f))
-  where
+  module _
+    {𝓤 𝓥 𝓦}
+    {A : Type 𝓤} {B : Type 𝓥}
+    (U : B → Type 𝓦)
+    (f : A → B)
+    (h : Π A (U ∘ f))
+    where
 
-  Ext-precomp-Π-null-homotopy≃
-    : Extᵈ f U h
-    ≃ Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b))
-  Ext-precomp-Π-null-homotopy≃
-    = Extᵈ f U h
-        ≃⟨ Σ-snd-≃
-            (λ g
-            → Π-fam-≃
-                (λ a
-                → mk≃
-                    (λ q → q ∙ tr-refl {P = U} refl (h a) refl)
-                    (∙-is-equiv' (tr-refl {P = U} refl (h a) refl)))
-            ∙e ((precomp-Π-≃
-                  (λ z → g (z .fst) ＝ precomp-Π-over-fibres U f h (z .fst) (z .snd))
-                  ((total≃total-fibre f) e⁻¹)) e⁻¹)
-            ∙e curry≃) ⟩
-      (Σ[ g ∶ Π B U ]
-        ((b : B) → (x : fibre f b) → g b ＝ precomp-Π-over-fibres U f h b x))
-        ≃⟨ (Σ-Π-swap≃
-              U
-              (λ b g → (x : fibre f b) → g ＝ precomp-Π-over-fibres U f h b x)) e⁻¹ ⟩
-      (Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b)))
-        ≃∎
+    Ext-precomp-Π-null-homotopy≃
+      : Extᵈ f U h
+      ≃ Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b))
+    Ext-precomp-Π-null-homotopy≃
+      = Extᵈ f U h
+          ≃⟨ Σ-snd-≃
+              (λ g
+              → Π-fam-≃
+                  (λ a
+                  → mk≃
+                      (λ q → q ∙ tr-refl {P = U} refl (h a) refl)
+                      (∙-is-equiv' (tr-refl {P = U} refl (h a) refl)))
+              ∙e ((precomp-Π-≃
+                    (λ z → g (z .fst) ＝ precomp-Π-over-fibres U f h (z .fst) (z .snd))
+                    ((total≃total-fibre f) e⁻¹)) e⁻¹)
+              ∙e curry≃) ⟩
+        (Σ[ g ∶ Π B U ]
+          ((b : B) → (x : fibre f b) → g b ＝ precomp-Π-over-fibres U f h b x))
+          ≃⟨ (Σ-Π-swap≃
+                U
+                (λ b g → (x : fibre f b) → g ＝ precomp-Π-over-fibres U f h b x)) e⁻¹ ⟩
+        (Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b)))
+          ≃∎
 
-  fibre-precomp-Π-null-homotopy≃
-    : fibre (precomp-Π U f) h
-    ≃ Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b))
-  fibre-precomp-Π-null-homotopy≃
-    = Σ-snd-≃ (λ _ → funext≃)
-    ∙e Ext-precomp-Π-null-homotopy≃
+    fibre-precomp-Π-null-homotopy≃
+      : fibre (precomp-Π U f) h
+      ≃ Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b))
+    fibre-precomp-Π-null-homotopy≃
+      = Σ-snd-≃ (λ _ → funext≃)
+      ∙e Ext-precomp-Π-null-homotopy≃
 
-  fibre-precomp-Π≃Ext : fibre (precomp-Π U f) h ≃ Extᵈ f U h
-  fibre-precomp-Π≃Ext
-    = fibre-precomp-Π-null-homotopy≃
-    ∙e Ext-precomp-Π-null-homotopy≃ e⁻¹
+    fibre-precomp-Π≃Ext : fibre (precomp-Π U f) h ≃ Extᵈ f U h
+    fibre-precomp-Π≃Ext
+      = fibre-precomp-Π-null-homotopy≃
+      ∙e Ext-precomp-Π-null-homotopy≃ e⁻¹
 }
 }
 
@@ -261,19 +280,20 @@ module _
 \taxon{Proposition}
 
 \agda{
-module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
-         (e : B ≃ C) (j : A → B) where
+  module _
+    {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3} (e : B ≃ C) (j : A → B)
+    where
 
-  null-homotopy-map-codomain-≃
-    : null-homotopy j
-    ≃ null-homotopy (e ._≃_.fwd ∘ j)
-  null-homotopy-map-codomain-≃
-    = null-homotopy j
-        ≃⟨ Σ-snd-≃ (λ y → Π-fam-≃ (λ a → ＝-equiv e)) ⟩
-      (Σ[ y ∶ B ] ((a : A) → e ._≃_.fwd y ＝ e ._≃_.fwd (j a)))
-        ≃⟨ Σ-fst-≃ e ⟩
-      null-homotopy (e ._≃_.fwd ∘ j)
-        ≃∎
+    null-homotopy-map-codomain-≃
+      : null-homotopy j
+      ≃ null-homotopy (e ._≃_.fwd ∘ j)
+    null-homotopy-map-codomain-≃
+      = null-homotopy j
+          ≃⟨ Σ-snd-≃ (λ y → Π-fam-≃ (λ a → ＝-equiv e)) ⟩
+        (Σ[ y ∶ B ] ((a : A) → e ._≃_.fwd y ＝ e ._≃_.fwd (j a)))
+          ≃⟨ Σ-fst-≃ e ⟩
+        null-homotopy (e ._≃_.fwd ∘ j)
+          ≃∎
 }
 }
 
@@ -282,25 +302,23 @@ module _ {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3}
 \taxon{Proposition}
 
 \agda{
-module _ {𝓤1 𝓤2 𝓤3}
-         {A : Type 𝓤1}
-         {X : Type 𝓤2}
-         {Y : X → Type 𝓤3}
-         (f : (x : X) → A → Y x) where
+  module _
+    {𝓤1 𝓤2 𝓤3}
+    {A : Type 𝓤1} {X : Type 𝓤2} {Y : X → Type 𝓤3}
+    (f : (x : X) → A → Y x)
+    where
 
-  null-homotopy-curry≃
-    : ((x : X) → null-homotopy (f x))
-    ≃ null-homotopy (λ a x → f x a)
-  null-homotopy-curry≃
-    = ((x : X) → null-homotopy (f x))
-        ≃⟨ Σ-Π-swap≃
-              (λ x → Y x)
-              (λ x y → (a : A) → y ＝ f x a) ⟩
-      (Σ[ y ∶ ((x : X) → Y x) ] ((x : X) → (a : A) → y x ＝ f x a))
-        ≃⟨ Σ-snd-≃ (λ _ → flip≃) ⟩
-      (Σ[ y ∶ ((x : X) → Y x) ] ((a : A) (x : X) → y x ＝ f x a))
-        ≃⟨ Σ-snd-≃ (λ _ → Π-fam-≃ (λ _ → funext≃ e⁻¹)) ⟩
-      null-homotopy (λ a x → f x a)
-        ≃∎
+    null-homotopy-curry≃
+      : ((x : X) → null-homotopy (f x))
+      ≃ null-homotopy (λ a x → f x a)
+    null-homotopy-curry≃
+      = ((x : X) → null-homotopy (f x))
+          ≃⟨ Σ-Π-swap≃ Y (λ x y → (a : A) → y ＝ f x a) ⟩
+        (Σ[ y ∶ ((x : X) → Y x) ] ((x : X) → (a : A) → y x ＝ f x a))
+          ≃⟨ Σ-snd-≃ (λ _ → flip≃) ⟩
+        (Σ[ y ∶ ((x : X) → Y x) ] ((a : A) (x : X) → y x ＝ f x a))
+          ≃⟨ Σ-snd-≃ (λ _ → Π-fam-≃ (λ _ → funext≃ e⁻¹)) ⟩
+        null-homotopy (λ a x → f x a)
+          ≃∎
 }
 }

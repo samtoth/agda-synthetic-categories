@@ -23,14 +23,14 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
-open import Modalities.Instances.Truncation
 open import Modalities.ModalMaps
 
+open import Core.Arrows
+open import Core.CartesianSquares
 open import Core.Joins
 open import Core.CanonicalPushouts
 open import Core.FlatteningPushouts
@@ -96,6 +96,8 @@ open gSubU Segal-gSubU public using () renaming
   ( ∈S←equiv to is-segal←equiv)
 open gReflectiveClosure Segal-gRSubU public using () renaming
   ( Π∈S to Π-is-segal
+  ; Πᵢ∈S to Πᵢ-is-segal
+  ; →∈S to →-is-segal
   ; ULift∈S to ULift-is-segal
   ; 𝟙∈S to 𝟙-is-segal
   ; ∈S←is-singleton to is-segal←is-singleton
@@ -120,8 +122,74 @@ open gRSubUHomClosure Segal-gRSubU public using () renaming
 
 module Segal where
   open gRSubU Segal-gRSubU public
+  open gReflectiveReasoning Segal-gRSubU public
   open gReflectiveClosure Segal-gRSubU public
   open gRSubUHomClosure Segal-gRSubU public
+}
+
+\subtree[stt-00WX]{
+\taxon{Lemma}
+\author{samueltoth}
+
+\p{A type is Segal if the following square is cartesian
+
+\quiver{
+\begin{tikzcd}
+	{A^{\Delta^2}} && {A^{\Delta^1}} \\
+	\\
+	{A^{\Delta^1}} && A
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+}
+
+\proof{
+By \ref{stt-00X6}
+}
+
+\agda{
+is-segal←is-cartesian
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-cartesian (precomp-square Λ[2,1]-Δ²-square A)
+    → is-segal A
+is-segal←is-cartesian c tt
+  = is-orthogonal-cogap←precomp-cartesian
+      Λ[2,1]-span Λ[2,1]-Δ²-cocone _
+      (is-pullback←is-cartesian _ c)
+
+is-cartesian←is-segal
+  : ∀ {𝓤} {A : Type 𝓤}
+    → is-segal A
+    → is-cartesian (precomp-square Λ[2,1]-Δ²-square A)
+is-cartesian←is-segal as
+  = is-cartesian←is-pullback _
+      (precomp-cartesian←is-orthogonal-cogap
+        Λ[2,1]-span Λ[2,1]-Δ²-cocone _
+        (as tt))
+}
+}
+
+\subtree[stt-00TZ]{
+\title{The inner horn inclusion is anodyne at the inclusion of the inner horn into endomaps on #{\Delta^1}}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-04-08}
+
+\agda{
+is-segal←is-Δ¹-endo←Λ[2,1]-local
+  : {𝓤 : Level} {A : Type 𝓤}
+  → is-local (point Δ¹-endo←Λ[2,1]) A
+  → is-segal A
+is-segal←is-Δ¹-endo←Λ[2,1]-local orth tt
+  = orthogonal-type←orthogonal-!
+      (left-orthogonal←Arrow-retract
+        Δ¹-endo←Λ[2,1]-Arrow-retract
+        !
+        (orthogonal-!←orthogonal-type (orth tt)))
+}
 }
 
 \agda{
@@ -197,6 +265,8 @@ open gSubU Precat-gSubU public using () renaming
   ( ∈S←equiv to is-precategory←equiv)
 open gReflectiveClosure Precat-gRSubU public using () renaming
   ( Π∈S to Π-is-precategory
+  ; Πᵢ∈S to Πᵢ-is-precategory
+  ; →∈S to →-is-precategory
   ; ULift∈S to ULift-is-precategory
   ; 𝟙∈S to 𝟙-is-precategory
   ; ∈S←is-singleton to is-precategory←is-singleton
@@ -221,6 +291,7 @@ open gRSubUHomClosure Precat-gRSubU public using () renaming
 
 module Precat where
   open gRSubU Precat-gRSubU public
+  open gReflectiveReasoning Precat-gRSubU public
   open gReflectiveClosure Precat-gRSubU public
   open gRSubUHomClosure Precat-gRSubU public
 
@@ -235,9 +306,9 @@ is-precategory←is-segal←is-simplicial
     → is-segal A
     → is-simplicial A
     → is-precategory A
-is-precategory←is-segal←is-simplicial apc simp
+is-precategory←is-segal←is-simplicial 𝐴 simp
   = is-local-⨄₁ᶠ←is-local
-      (apc)
+      (𝐴)
       (is-local-sing←is-null (λ _ → 𝟙ᴸ-is-singleton) (λ _ → !ᴸ) simp)
 
 is-segal←is-precategory
@@ -269,7 +340,7 @@ is-local-fam-is-simplicial≃is-simplicial {A = A}
 is-triangulated←is-precategory
   : ∀ {𝓤} {A : Type 𝓤} → is-precategory A → is-triangulated A
 is-triangulated←is-precategory pcat
-  = simp-is-triangulated (is-simplicial←is-precategory pcat)
+  = is-triangulated←is-simplicial (is-simplicial←is-precategory pcat)
 
 Precategory-U : (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
 Precategory-U 𝓤 = Σ[ A ∶ Type (𝓘 ⊔ 𝓤) ] is-precategory A
@@ -295,7 +366,7 @@ Precategory-U-is-simplicial {𝓤}
 \title{Inner families}
 \taxon{Definition}
 
-\p{ A family #{P : A \to \UU} is an inner family if it's unstraightening is
+\p{ A family #{P : A \to \UU} is an inner family if its unstraightening is
 an inner fibration. The total type of an inner family over a Segal type is
 itself Segal.}
 
@@ -307,12 +378,29 @@ opaque
   Σ-is-segal
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → is-segal A → is-inner-family B → is-segal (Σ A B)
-  Σ-is-segal apc bin tt
-    = is-orthogonal↔orthogonal-! .fst
+  Σ-is-segal 𝐴 bin tt
+    = orthogonal-type←orthogonal-!
         (right-orthogonal-∘
           Λ[2,1]-incl
-          (is-orthogonal↔orthogonal-! .snd (apc tt))
+          (orthogonal-!←orthogonal-type (𝐴 tt))
           bin)
+
+＝-is-inner-family
+  : ∀ {𝓤} {A : Type 𝓤}
+  → is-segal A
+  → is-inner-family (λ (x , y) → x ＝ y)
+＝-is-inner-family 𝐴
+  = are-orthogonal-fst←are-orthogonal-fam
+      (＝-family-is-orthogonal←orthogonal-type Λ[2,1]-incl (𝐴 tt))
+
+~-is-inner-family
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+  → is-segal A
+  → (f g : B → A)
+  → is-inner-family (λ b → f b ＝ g b)
+~-is-inner-family 𝐴 f g
+  = are-orthogonal-fst←are-orthogonal-fam
+      (~-family-is-orthogonal←orthogonal-type Λ[2,1]-incl (𝐴 tt) f g)
 }
 }
 
@@ -371,7 +459,7 @@ ext-Λ[2,1] {A = A} fg
           (is-equiv-∘
             (is-total-equiv←is-fibrewise-equiv
               (λ a → is-equiv-∘ (∂Δ¹-UP ._≃_.fwd-is-equiv)
-                                (⊗-is-equiv sym-is-equiv sym-is-equiv)))
+                                (×₁-is-equiv sym-is-equiv sym-is-equiv)))
             (Homᵈ-repr≃ ._≃_.fwd-is-equiv)))
 
   map1-is-equiv : is-equiv map1
@@ -440,7 +528,7 @@ ext-mk-horn-compute-diagonal
   : ∀ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y)
     → Homᵈ.hom ∘ is-equiv.bwd (ext-mk-horn-is-equiv f g) ~ precomp A ι₂ ∘ fst
 ext-mk-horn-compute-diagonal f g
-  = (Homᵈ.hom ◂ is-equiv.η (ext-mk-horn-is-equiv f g))
+  = (Homᵈ.hom ◃h is-equiv.η (ext-mk-horn-is-equiv f g))
     ▸e⁻¹ (ext-mk-horn-is-equiv f g)
 
 opaque
@@ -452,7 +540,7 @@ opaque
     = total-map-fst (is-equiv.bwd (ext-mk-horn-is-equiv f g))
     ∘ total-map (λ a → tr (Ext ∂Δ²-incl)
                           (sym (ap fst (is-equiv.ε (ext-mk-horn-is-equiv f g) a))))
-    ∘ Ext-compose global-funext ∂Δ²-incl ∂Δ²←Λ[2,1] (make-horn f g) ._≃_.fwd
+    ∘ Ext-compose≃ ∂Δ²-incl ∂Δ²←Λ[2,1] (make-horn f g) ._≃_.fwd
     ∘ total-map (λ _ → happly)
 
   composite←horn-extension-is-equiv
@@ -466,7 +554,7 @@ opaque
            tr-is-equiv {B = Ext ∂Δ²-incl}
              (sym (ap fst (is-equiv.ε (ext-mk-horn-is-equiv f g) a)))))
          (is-equiv-∘
-           (Ext-compose global-funext _ _ (make-horn f g) ._≃_.fwd-is-equiv)
+           (Ext-compose≃ _ _ (make-horn f g) ._≃_.fwd-is-equiv)
            (is-total-equiv←is-fibrewise-equiv (λ _ → funext≃ ._≃_.fwd-is-equiv))))
 
   composite←horn-extension-diagonal
@@ -475,6 +563,15 @@ opaque
       ~ precomp A Δ²-diagonal ∘ fst
   composite←horn-extension-diagonal f g x
     = ext-mk-horn-compute-diagonal f g _
+
+horn-extension≃composite :
+  ∀ {𝓤} {A : Type 𝓤} {x y z : A} (f : Hom A y z) (g : Hom A x y)
+  → Σ[ H ∶ (Δ² → A)] (H ∘ Λ[2,1]-incl ＝ make-horn f g)
+  ≃ Σ[ h ∶ Hom A x z ] (Hom2 f g h)
+horn-extension≃composite f g ._≃_.fwd
+  = composite←horn-extension f g
+horn-extension≃composite f g ._≃_.fwd-is-equiv
+  = composite←horn-extension-is-equiv f g
 
 infix 15 _∘[_]_
 
@@ -499,7 +596,7 @@ opaque
       → is-prop (Σ (Hom A x z) (Hom2 f g))
   composite-is-prop 𝐴 f g
     = is-prop←equiv-to-prop
-        (mk≃ _ (composite←horn-extension-is-equiv f g))
+        (horn-extension≃composite f g)
         (is-prop←is-single (segal-unique-composite 𝐴 f g))
 
   unique-composite
@@ -508,10 +605,9 @@ opaque
       → (h : Hom A x z) → Hom2 f g h → h ＝ (f ∘[ 𝐴 ] g)
   unique-composite 𝐴 f g h K
     = sym (ap fst
-             ((is-single←equiv-to-single
-                (mk≃ (composite←horn-extension f g)
-                     (composite←horn-extension-is-equiv f g))
-                (segal-unique-composite 𝐴 f g)) .central (h , K)))
+             (is-single←equiv-to-single
+                (horn-extension≃composite f g)
+                (segal-unique-composite 𝐴 f g) .central (h , K)))
 
 module _ {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A) where
 
@@ -558,7 +654,6 @@ module _
 
   Hom2←∘= : (f ∘[ 𝐴 ] g ＝ h) → Hom2 f g h
   Hom2←∘= = _≃_.bwd Hom2≃∘=
-
 }
 }
 

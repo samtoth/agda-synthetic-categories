@@ -19,9 +19,8 @@ open import Ergonomics.Extensionality
 
 open import Modalities.Cohesion.Flat
 
-open import Modalities.Subuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.HigherModalities
-open import Modalities.GlobalSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ModalMaps
 open import Modalities.ModalEquivalences
@@ -30,7 +29,6 @@ open import Modalities.Lex
 
 open import Core.Arrows
 open import Core.ArrowEquiv
-
 }
 }
 
@@ -204,6 +202,8 @@ open gSubU ♯-gSubU public using () renaming
   ( ∈S←equiv to is-♯-codiscrete←equiv)
 open gReflectiveClosure ♯-gRSubU public using () renaming
   ( Π∈S to Π-is-♯-codiscrete
+  ; Πᵢ∈S to Πᵢ-is-♯-codiscrete
+  ; →∈S to →-is-♯-codiscrete
   ; ULift∈S to ULift-is-♯-codiscrete
   ; 𝟙∈S to 𝟙-is-♯-codiscrete
   ; ∈S←is-singleton to is-♯-codiscrete←is-singleton
@@ -286,7 +286,7 @@ opaque
   ＝♯-is-torsorial
     : ∀ {𝓤 𝓥} {@♯ A : Type 𝓤} ⦃ @♯ _ : Identity-system A 𝓥 ⦄
       → (a : ⟨♯| A ⟩)
-      → is-singleton (Σ[ b ∶ ⟨♯| A ⟩ ] ⟨♯| IdS (a .counit♯) (b .counit♯) ⟩)
+      → is-torsorial (λ b → ⟨♯| IdS (a .counit♯) (b .counit♯) ⟩)
   ＝♯-is-torsorial a
     = is-single←equiv-to-single
         ♯-pres-Σ
@@ -319,15 +319,39 @@ module ♯Lex where
 }
 }
 
+\subtree[stt-00U6]{
+\title{Sharp preserves propositions}
+\author{emilyriehl}
+\taxon{Lemma}
+
+\p{The modality #{\sharp} preserves propositions.}
+
+\agda{
+♯-is-prop : ∀ {𝓤} {@♯ A : Type 𝓤} → @♯ is-prop A → is-prop ⟨♯| A ⟩
+♯-is-prop f x y = modext♯ (mod♯ (f (x .counit♯) (y .counit♯)))
+}
+}
+
 \subtree[stt-00JK]{
 \title{Sharp is right adjoint to flat}
 \taxon{Lemma}
 
 
 \agda{
-♭⊣♯-transpose : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} →
-            ⟨♯| (⟨♭| A ⟩ → B) ⟩ → (A → ⟨♯| B ⟩)
-♭⊣♯-transpose f a .counit♯ = f .counit♯ (mod♭ a)
+♭⊣ᵈ♯-transpose
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+  → ⟨♯| ((a' : ⟨♭| A ⟩) → B (ε♭ a')) ⟩ → ((a : A) → ⟨♯| B a ⟩)
+♭⊣ᵈ♯-transpose f a .counit♯ = f .counit♯ (mod♭ a)
+
+♭⊣ᵈ♯-transpose-bwd
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {@♯ B : ⟨♭| A ⟩ → Type 𝓥}
+  → ((a : A) → ⟨♯| B (mod♭ a) ⟩) → ⟨♯| ((a♭ : ⟨♭| A ⟩) → B a♭) ⟩
+♭⊣ᵈ♯-transpose-bwd f .counit♯ (mod♭ a) = f a .counit♯
+
+♭⊣♯-transpose
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+  → ⟨♯| (⟨♭| A ⟩ → B) ⟩ → (A → ⟨♯| B ⟩)
+♭⊣♯-transpose = ♭⊣ᵈ♯-transpose
 
 ♭⊣♯-transpose-is-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → is-equiv (♭⊣♯-transpose {A = A} {B = B})
@@ -348,14 +372,22 @@ global-transpose
     → ⟨♭| (⟨♭| A ⟩ → B)⟩ → ⟨♭| (A → ⟨♯| B ⟩)⟩
 global-transpose (mod♭ f) = mod♭ (λ x → mod♯ (f (mod♭ x)))
 
+transpose-♭←♯ : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → ⟨♭| (A → ⟨♯| B ⟩)⟩ → ⟨♭| (⟨♭| A ⟩ → B)⟩
+transpose-♭←♯ = ♭-rec (λ f → mod♭ (♭-rec λ x → (f x) .counit♯))
+
 global-transpose-is-equiv
   : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
     → is-equiv (global-transpose {A = A} {B})
 global-transpose-is-equiv = is-equiv←qinv
-  ( ♭-rec (λ f → mod♭ (♭-rec λ x → (f x) .counit♯))
+  ( transpose-♭←♯
   , ♭-ind (λ x → mapply♭ (mod♭ (funext→ (♭-ind (λ _ → refl)))))
-  , ♭-ind λ f → refl
-  )
+  , ♭-ind λ f → refl)
+
+global-transpose≃
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+    → ⟨♭| (⟨♭| A ⟩ → B)⟩ ≃ ⟨♭| (A → ⟨♯| B ⟩)⟩
+global-transpose≃ = mk≃ global-transpose global-transpose-is-equiv
 }
 }
 
@@ -371,7 +403,7 @@ is-♯-codiscrete-map
 is-♯-codiscrete-map f = is-modal-map' ♯-SubU f
 }
 
-\p{A map is #{\sharp}-connected if all of it's fibres are #{\sharp}-connected.}
+\p{A map is #{\sharp}-connected if all of its fibres are #{\sharp}-connected.}
 
 \agda{
 is-♯-connected-map
@@ -399,12 +431,14 @@ is-modal-equiv←is-♯-equiv {f = f}
   = is-equiv←~⁻¹
       {f = ♯-map f}
       {g = ♯.○₁ f}
-      (λ x → modext♯ (λ where .counit♯ → help {f = f} x))
+      (λ x → modext♯ (λ where .counit♯ → helper {f = f} x))
   where
-  help : ∀ {@♭ 𝓤} {@♭ 𝓥} {@♭ A : Set 𝓤} {@♭ B : Set 𝓥} {@♭ f : A → B}
-         (@♭ x : ⟨♯| A ⟩) → f (x .counit♯)
-         ＝ ♯.○₁ f x .counit♯
-  help {f = f} (mod♯ x)
+  helper
+    : ∀ {@♭ 𝓤} {@♭ 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+        (@♭ x : ⟨♯| A ⟩)
+      → f (x .counit♯)
+      ＝ ♯.○₁ f x .counit♯
+  helper {f = f} (mod♯ x)
     = ap♭ counit♯ (sym (♯.○₁-β f x))
 }
 
@@ -414,13 +448,12 @@ is-modal-equiv←is-♯-equiv {f = f}
 ε-is-♯-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♯-equiv (ε♭: A)
 ε-is-♯-equiv = is-equiv←qinv
   ( (λ x → mod♯ (mod♭ (x .counit♯)))
-  , (λ x → modext♯ (mod♯ (help x)))
+  , (λ x → modext♯ (mod♯ (helper x)))
   , ~refl) where
-  help
-    : ∀ {@♭ 𝓤} {@♭ A : Set 𝓤} (@♭ x : ⟨♯| ⟨♭| A ⟩ ⟩)
+  helper
+    : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ x : ⟨♯| ⟨♭| A ⟩ ⟩)
       → mod♭ (♯-map ε♭ x .counit♯) ＝ x .counit♯
-  help (mod♯ (mod♭ x)) = refl
-
+  helper (mod♯ (mod♭ x)) = refl
 }
 }
 

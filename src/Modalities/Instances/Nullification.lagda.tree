@@ -12,14 +12,15 @@ open import Axioms.UF
 \agda{
 open import Axioms.FreeAlgebraicInjectives
 open import Foundations.Prelude
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
 open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.ArrowRetracts
 open import Core.CanonicalPushouts
 open import Modalities.Instances.Localisation
 open import Modalities.HigherModalities
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 }
 }
@@ -67,11 +68,8 @@ module _
     → is-null A Y
   is-null-equiv e X-is-null i
     = tgt-is-equiv←Arrow-equiv
-        ( mk-amap fwd (postcomp _ fwd) ~refl
-        , fwd-is-equiv
-        , postcomp-equiv fwd-is-equiv)
-        (X-is-null i) where
-    open _≃_ e
+        (mk-arr-equiv e (postcomp-≃ e) ~refl)
+        (X-is-null i)
 
 Null-SubU
   : ∀ {𝓘 𝓤} {I : Type 𝓘}
@@ -104,6 +102,15 @@ is-local←is-null
     → is-local (λ i → !: A i) X
 is-local←is-null eq i = 3-for-2' (point-is-equiv) (eq i)
 
+is-local-fst←is-null
+  : ∀ {𝓙 𝓤 𝓥} {X : Type 𝓤} {J : X → Type 𝓙} {A : Type 𝓥}
+  → is-null J A
+  → is-local (point (fst: J)) A
+is-local-fst←is-null {J = J} {A = A} A-null _
+  = 3-for-2
+      (curry-is-equiv)
+      (postcomp-Π-equiv λ {x} → A-null x)
+
 is-local-sing←is-null
   : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
       {A : I → Type 𝓤}
@@ -132,6 +139,17 @@ is-null←is-local
     → is-local (λ i → !: A i) X
     → is-null A X
 is-null←is-local eq i = is-equiv-∘ (eq i) point-is-equiv
+
+orthogonal-type-total-map-!←is-null
+  : {𝓤 𝓥 𝓦 : Level}
+    {A : Type 𝓤}
+    {B : A → Type 𝓥}
+    {X : Type 𝓦}
+  → is-null B X
+  → orthogonal-type (total-map (λ a → !: B a)) X
+orthogonal-type-total-map-!←is-null {B = B}
+  = orthogonal-type-total-map (λ a → !: B a)
+  ∘ is-local←is-null
 
 is-null←is-local-sing
   : ∀ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘}
@@ -220,10 +238,8 @@ module _ where
   Null-gSubU A .gSubU.S = Null-SubU A _
   Null-gSubU A .gSubU.∈S←equiv e is-A-null i
     = tgt-is-equiv←Arrow-equiv
-        ( mk-amap fwd (postcomp _ fwd) ~refl
-        , fwd-is-equiv
-        , postcomp-equiv fwd-is-equiv)
-        (is-A-null i) where open _≃_ e
+        (mk-arr-equiv e (postcomp-≃ e) ~refl)
+        (is-A-null i)
 
   Null-globally-reflective
     : ∀ {𝓘 𝓤} {I : Type 𝓘} {A : I → Type 𝓤}
@@ -311,7 +327,7 @@ choice](Foundations.TheoremOfChoice).}  }
         Σ X (λ x → P i → Y x)
           ≃⟨ Σ-fst-≃ {B = λ f → (a : P i) → Y (f a)} (null≃ X-null i) ⟩
         Σ (P i → X) (λ f → (a : P i) → Y (f a))
-          ≃⟨ Σ-Π-swap≃ (λ _ → X) (λ _ → Y) e⁻¹ ⟩
+          ≃⟨ Σ-→-swap≃ X Y e⁻¹ ⟩
         (P i → Σ X Y) ≃∎
 
     eqv : is-equiv (const: (Σ X Y) (P i))
@@ -321,7 +337,7 @@ prop-is-null∙
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} {P : I → Type 𝓤} {A : Type 𝓥}
     → (∀ i → P i) → is-prop A → is-null P A
 prop-is-null∙ p ap i
-  = is-equiv←inverse ap (Π-is-prop (λ _ → ap)) (ev (p i))
+  = is-equiv←inverse ap (→-is-prop ap) (ev (p i))
 
 Null-globally-Σ-closed
   : ∀ {𝓘 𝓤} {I : Type 𝓘}
@@ -359,11 +375,13 @@ module _
     ( ∈S←equiv to is-null←equiv)
 
   open gReflectiveClosure (Null-gRSubU X) public using () renaming
-    ( ∈S←retract to is-null←retract
-    ; Π∈S to Π-is-null
+    ( Π∈S to Π-is-null
+    ; Πᵢ∈S to Πᵢ-is-null
+    ; →∈S to →-is-null
     ; ULift∈S to ULift-is-null
     ; 𝟙∈S to 𝟙-is-null
     ; ∈S←is-singleton to is-null←is-singleton
+    ; ∈S←retract to is-null←retract
     ; Pullback∈S to Pullback-is-null
     ; fibre∈S to fibre-is-null
     ; Ext∈S to Ext-is-null
@@ -381,6 +399,7 @@ module _
     ; Retracts∈S to Retracts-is-null)
 
 module Null {𝓘 𝓤 : Level} {I : Type 𝓘} (A : I → Type 𝓤) where
+  open gReflectiveReasoning (Null-gRSubU A) public
   open gRSubUInduction (Null-gRSubU A) (Null-gRSubU-Σ-closed A) public
   open gRSubU (Null-gRSubU A) public
   open gReflectiveClosure (Null-gRSubU A) public
@@ -444,14 +463,20 @@ module _
   {X : Type 𝓧}
   where
 
+  const-Arrow-incoherent-retract←retract
+    : (i : I) → retract (A i) (B i)
+    → Arrow-incoherent-retract (const: X (A i)) (const: X (B i))
+  const-Arrow-incoherent-retract←retract i R
+    = ( mk-amap id (precomp X (R .snd .fst)) ~refl
+      , mk-amap id (precomp X (R .fst)) ~refl
+      , ~refl
+      , λ h → funext→ λ a → ap h (R .snd .snd a))
+
   is-null-at-retract
     : ((i : I) → retract (A i) (B i)) → is-null B X → is-null A X
   is-null-at-retract R B-null i
-    = is-equiv←incoherent-retraction-equiv
-        (mk-amap id (precomp X (R i .snd .fst)) ~refl)
-        (mk-amap id (precomp X (R i .fst)) ~refl
-        , ~refl
-        , λ h → funext→ λ a → ap h (R i .snd .snd a))
+    = is-equiv←Arrow-incoherent-retract
+        (const-Arrow-incoherent-retract←retract i (R i))
         (B-null i)
 
   is-null-at-equiv
@@ -461,6 +486,76 @@ module _
   is-null-at-equiv⁻¹
     : ((i : I) → B i ≃ A i) → is-null B X → is-null A X
   is-null-at-equiv⁻¹ e = is-null-at-equiv (λ i → (e i) e⁻¹)
+}
+}
+
+\subtree[stt-00U2]{
+\date{2026-04-08}
+\author{fredrikbakke}
+\title{Deformation cone argument for anodyne types}
+\taxon{Proposition}
+
+\p{
+Suppose a type #{X} admits a \em{deformation cone} parametrised by a type #{J} with
+endpoints #{j_0,j_1 : J}, meaning a map #{J \to X \to X} which at #{j_0} collapses
+everything to a cone point #{x_0 : X} and at #{j_1} is the identity function. Then
+every #{J}-null type is also #{X}-null.
+}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓥} {J : X → Type 𝓙} {A : Type 𝓤}
+  where
+
+  is-null-at-deformation-cone
+    : (x₀ : X)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ x₀)
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J A
+    → is-null (point X) A
+  is-null-at-deformation-cone x₀ H j0 j1 H0 H1 A-is-J-null
+    = is-null←is-local
+        (is-local-at-deformation-cone
+          (point x₀ , ~refl) H j0 j1 H0 H1 (is-local-fst←is-null A-is-J-null))
+}
+}
+
+\subtree[stt-00U1]{
+\date{2026-04-09}
+\author{fredrikbakke}
+\title{Deformation cone argument for equivalences}
+\taxon{Corollary}
+
+\agda{
+module _
+  {𝓙 𝓤 𝓥 : Level}
+  {X : Type 𝓤} {J : X → Type 𝓙} {Y : Type 𝓥}
+  {f : X → Y}
+  where
+
+  is-equiv←null-deformation-cone
+    : (S@(s , _) : section f)
+    → (H : (x : X) → J x → X)
+    → (j0 : (x : X) → J x)
+    → (j1 : (x : X) → J x)
+    → ((x : X) → H x (j0 x) ＝ s (f x))
+    → ((x : X) → H x (j1 x) ＝ x)
+    → is-null J X
+    → is-equiv f
+  is-equiv←null-deformation-cone s H j0 j1 H0 H1 X-is-J-null
+    = is-equiv←local-deformation-cone
+        (s)
+        (λ (x , t) → H x t)
+        (λ x → (x , j0 x))
+        (λ x → (x , j1 x))
+        (H0)
+        (H1)
+        (~refl)
+        (is-local-fst←is-null X-is-J-null)
 }
 }
 

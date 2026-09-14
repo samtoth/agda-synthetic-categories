@@ -1,0 +1,146 @@
+\date{2026-05-29}
+\title{Weak function extensionality}
+\taxon{Module}
+
+\import{stt-macros}
+
+\p{We investigate seemingly weaker forms of the [function
+extensionality](Foundations.FunExt) axiom, and show that they are in fact
+equivalent.}
+
+\agda{
+module Foundations.WeakFunExt where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Sigma
+open import Foundations.EquivSingleton
+open import Foundations.Functions
+open import Foundations.Currying
+open import Foundations.Equivalences
+open import Foundations.Identity
+open import Foundations.TheoremOfChoice
+open import Foundations.Singletons
+open import Foundations.Homotopy
+open import Foundations.TorsorialTypeFamilies
+open import Foundations.FunExt
+}
+}
+
+\subtree[stt-00VF]{
+\title{Weak function extensionality}
+\taxon{Definition}
+
+\p{The weak function extensionality axiom says that for any family of types #{B},
+#{\Pi_A B} is [a singleton](stt-0006) if #{B_a} is a singleton for each #{a}.}
+
+\agda{
+Weak-funext : ∀ 𝓤 𝓥 → Type (lsuc (𝓤 ⊔ 𝓥))
+Weak-funext 𝓤 𝓥
+  = ∀ {A : Type 𝓤} {B : A → Type 𝓥}
+    → (∀ a → is-singleton (B a))
+    → is-singleton ((a : A) → B a)
+
+Weak-funextω : ∀ 𝓤 → Typeω
+Weak-funextω 𝓤
+  = ∀ {𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → (∀ a → is-singleton (B a))
+    → is-singleton ((a : A) → B a)
+}
+}
+
+\subtree[stt-00VB]{
+\title{Weak funext for implicit #{Π} types}
+
+\agda{
+Πᵢ-is-single←weak-funext
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → Weak-funext 𝓤 𝓥
+    → ({a : A} → is-singleton (B a)) → is-singleton ({a : A} → B a)
+Πᵢ-is-single←weak-funext wfe sa
+  = is-single←equiv-to-single Π-implicit≃ (wfe (λ _ → sa))
+}
+}
+
+\subtree[stt-00VA]{
+\taxon{Lemma}
+\author{samueltoth}
+\title{Weak funext from funext}
+
+\agda{
+weak-funext←funext
+  : ∀ {𝓤 𝓥} → FunExt 𝓤 𝓥 → Weak-funext 𝓤 𝓥
+weak-funext←funext fe sb
+  = mk-singl (centre ∘ sb) (λ x → WithFunExt.funext→ fe (λ a → sb a .central (x a)))
+}
+}
+
+\subtree[stt-000U]{
+\taxon{Theorem}
+\title{Weak funext gives full funext}
+\author{samueltoth}
+
+\proof{
+\p{Since \code{happly} is a family of functions #{f = g \to f \sim g} we may use the
+[fundamental theorem of identity types](stt-00NR) so that it suffices to show #{(f
+\sim {-})} is [torsorial](stt-00V8). Then by the [type theoretic theorem of already
+chosen](stt-00KJ), the type #{\Sigma_f f \sim g} is equivalent to #{\Pi_{a} \Sigma_b
+(f(a) = b)}. This is now of a form where we can apply the \em{weak} function
+extensionality axiom since #{\Sigma_b (f(a) = b)} is a singleton.}
+}
+
+\agda{
+funext←weak-funext : ∀ {𝓤 𝓥} → Weak-funext 𝓤 𝓥 → FunExt 𝓤 𝓥
+funext←weak-funext wfe {A = A} {B} {f} {g}
+  = fundamental-Id _ I (λ _ → happly) g where
+  I : is-torsorial (f ~_)
+  I = is-single←equiv-to-single
+        (Σ-Π-swap≃ _ λ x bx → f x ＝ bx)
+        (wfe λ _ → Sing-is-singleton)
+}
+}
+
+\subtree[stt-00VC]{
+\title{Naïve function extensionality}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\p{The naïve function extensionality axiom says that for any pair of
+[dependent functions](Foundations.Functions) #{f, g : \Pi_A B}, we have
+a map #{f \sim g \to f = g}.}
+
+\agda{
+Naive-funext : (𝓤 𝓥 : Level) → Type (lsuc (𝓤 ⊔ 𝓥))
+Naive-funext 𝓤 𝓥
+  = {A : Type 𝓤} {B : A → Type 𝓥}
+    {f g : (a : A) → B a}
+  → ((a : A) → f a ＝ g a)
+  → f ＝ g
+}
+}
+
+\subtree[stt-00VH]{
+\taxon{Theorem}
+\title{Function extensionality from naïve function extensionality}
+\author{fredrikbakke}
+\date{2026-05-29}
+
+\p{
+Having a function #{(f \sim g) \to (f = g)} for all #{f} and #{g} implies that
+singletons are closed under dependent products, which in turn implies function
+extensionality.
+}
+
+\agda{
+weak-funext←naive-funext
+  :  ∀ {𝓤 𝓥} → Naive-funext 𝓤 𝓥 → Weak-funext 𝓤 𝓥
+weak-funext←naive-funext ext s
+  = mk-singl (λ a → s a .centre) (λ f → ext (λ a → s a .central (f a)))
+
+funext←naive-funext
+  : ∀ {𝓤 𝓥} → Naive-funext 𝓤 𝓥 → FunExt 𝓤 𝓥
+funext←naive-funext ext = funext←weak-funext (weak-funext←naive-funext ext)
+}
+}

@@ -185,64 +185,71 @@ are in particular cartesian squares, this result follows trivially from
 \ref{stt-00B3}.}
 
 \agda{
-is-Cube-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
-      {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
-      {F : Arrow-map f g}
-      {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
-      {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
-      {G : Arrow-map h k}
-    → Cube F G → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
-is-Cube-equiv α = is-Arrow-equiv left × is-Arrow-equiv right where
-  open Cube α
-
 module _
   {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
-  {A : Type 𝓤} {B : Type 𝓥}
-  {C : Type 𝓦} {D : Type 𝓧}
-  {X : Type 𝓛} {Y : Type 𝓜}
-  {Z : Type 𝓝} {W : Type 𝓞}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓧} {g : C → D}
+  {X : Type 𝓛} {Y : Type 𝓜} {h  : X → Y}
+  {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W}
   where
+
+  is-Cube-equiv
+    : {F : Arrow-map f g}
+      {G : Arrow-map h k}
+    → Cube F G → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
+  is-Cube-equiv α = is-Arrow-equiv left × is-Arrow-equiv right where
+    open Cube α
+
+  Cube-equiv
+    : Arrow-map f g
+    → Arrow-map h k
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓧 ⊔ 𝓛 ⊔ 𝓜 ⊔ 𝓝 ⊔ 𝓞)
+  Cube-equiv F G = Σ[ α ∶ Cube F G ] is-Cube-equiv α
+
+  mk-cube-equiv
+    : {F : Arrow-map f g}
+      {G : Arrow-map h k}
+    → (left : Arrow-equiv f h) (right : Arrow-equiv g k)
+    → Arrow-map-path (paste-squares G (left .fst)) (paste-squares (right .fst) F)
+    → Cube-equiv F G
+  mk-cube-equiv left right comm
+    = (mk-cube (left .fst) (right .fst) comm , left .snd , right .snd)
 
   opaque
     front-cartesian←equiv-cube
-      : {f : A → B} {g : C → D} {F : Arrow-map f g}
-        {h : X → Y} {k : Z → W} {G : Arrow-map h k}
-      → (α : Cube F G)
-      → is-Cube-equiv α
+      : {F : Arrow-map f g}
+        {G : Arrow-map h k}
+      → Cube-equiv F G
       → is-cartesian G
       → is-cartesian F
-    front-cartesian←equiv-cube {F = F} {G = G} α (le , re)
+    front-cartesian←equiv-cube {F} {G} (α , le , re)
       = front-cartesian←cartesian-cube
           F G α
           (is-cartesian←is-Arrow-equiv _ le)
           (is-cartesian←is-Arrow-equiv _ re)
 
     back-cartesian←equiv-cube
-      : {f : A → B} {g : C → D} {F : Arrow-map f g}
-        {h : X → Y} {k : Z → W} {G : Arrow-map h k}
-      → (α : Cube F G)
-      → is-Cube-equiv α
+      : {F : Arrow-map f g}
+        {G : Arrow-map h k}
+      → Cube-equiv F G
       → is-cartesian F
       → is-cartesian G
-    back-cartesian←equiv-cube {F = F} {G = G} α αe cart
+    back-cartesian←equiv-cube (α , αe) cart
       = right-cancel-cartesian
-          {a = G} {left} {paste-squares right F}
           (Arrow-map-path←id (sym (Arrow-map-path→ comm)))
           (compose-cartesian (is-cartesian←is-Arrow-equiv right (αe .snd)) cart)
-          (αe .fst)   where
+          (αe .fst)
+      where
       open Cube α
 
     front↔back-cartesian←equiv-cube
-      : {f : A → B} {g : C → D} {F : Arrow-map f g}
-        {h : X → Y} {k : Z → W} {G : Arrow-map h k}
-      → (α : Cube F G)
-      → is-Cube-equiv α
+      : {F : Arrow-map f g}
+        {G : Arrow-map h k}
+      → Cube-equiv F G
       → is-cartesian F
       ↔ is-cartesian G
-    front↔back-cartesian←equiv-cube α eq
-      = (back-cartesian←equiv-cube α eq , front-cartesian←equiv-cube α eq)
+    front↔back-cartesian←equiv-cube α
+      = (back-cartesian←equiv-cube α , front-cartesian←equiv-cube α)
 }
 
 \agda{
@@ -258,39 +265,30 @@ module _
 
   opaque
     back-cartesian←equiv-transpose-cube
-      : (α : Cube (transpose-square F) (transpose-square G))
-      → is-Cube-equiv α
+      : Cube-equiv (transpose-square F) (transpose-square G)
       → is-cartesian F
       → is-cartesian G
-    back-cartesian←equiv-transpose-cube α eq Fcart
+    back-cartesian←equiv-transpose-cube α Fcart
       = untranspose-is-cartesian G
-          (back-cartesian←equiv-cube
-            {F = transpose-square F}
-            {G = transpose-square G}
-            α eq
+          (back-cartesian←equiv-cube α
             (transpose-is-cartesian F Fcart))
 
     front-cartesian←equiv-transpose-cube
-      : (α : Cube (transpose-square F) (transpose-square G))
-      → is-Cube-equiv α
+      : Cube-equiv (transpose-square F) (transpose-square G)
       → is-cartesian G
       → is-cartesian F
-    front-cartesian←equiv-transpose-cube α eq Gcart
+    front-cartesian←equiv-transpose-cube α Gcart
       = untranspose-is-cartesian F
-          (front-cartesian←equiv-cube
-            {F = transpose-square F}
-            {G = transpose-square G}
-            α eq
+          (front-cartesian←equiv-cube α
             (transpose-is-cartesian G Gcart))
 
     front↔back-cartesian←equiv-transpose-cube
-      : (α : Cube (transpose-square F) (transpose-square G))
-      → is-Cube-equiv α
+      : Cube-equiv (transpose-square F) (transpose-square G)
       → is-cartesian F
       ↔ is-cartesian G
-    front↔back-cartesian←equiv-transpose-cube α eq
-      = ( back-cartesian←equiv-transpose-cube α eq
-        , front-cartesian←equiv-transpose-cube α eq)
+    front↔back-cartesian←equiv-transpose-cube α
+      = ( back-cartesian←equiv-transpose-cube α
+        , front-cartesian←equiv-transpose-cube α)
 }
 }
 

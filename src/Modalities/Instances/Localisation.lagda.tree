@@ -27,8 +27,7 @@ open import Core.ArrowEquiv
 open import Core.Postwhisker
 open import Ergonomics.Notations.Orthogonality
 open import Modalities.HigherModalities
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ModalMaps
 
@@ -107,20 +106,30 @@ module _
 types are #{g}-local.}
 
 \agda{
-is-local-equiv
-  : ∀ {𝓘 𝓤 𝓤' 𝓥 𝓥' 𝓦} {I : Type 𝓘}
-      {A : I → Type 𝓤} {A' : I → Type 𝓤'}
-      {B : I → Type 𝓥} {B' : I → Type 𝓥'}
-      {f : (i : I) → A i → B i}
-      {f' : (i : I) → A' i → B' i}
-      (F : ∀ i → Arrow-map (f i) (f' i))
-    → (∀ i → is-Arrow-equiv (F i))
+module _
+  {𝓘 𝓤 𝓤' 𝓥 𝓥' 𝓦} {I : Type 𝓘}
+  {A : I → Type 𝓤} {A' : I → Type 𝓤'}
+  {B : I → Type 𝓥} {B' : I → Type 𝓥'}
+  {f : (i : I) → A i → B i}
+  {f' : (i : I) → A' i → B' i}
+  where
+
+  is-target-local←is-Arrow-equiv
+    : (F : (i : I) → Arrow-map (f i) (f' i))
+    → ((i : I) → is-Arrow-equiv (F i))
     → {X : Type 𝓦}
     → is-local f X → is-local f' X
-is-local-equiv F eq loc i
-  = src-is-equiv←Arrow-equiv
-      (precomp-Arrow-map _ (F i) , precomp-square-is-equiv (F i) (eq i))
-      (loc i)
+  is-target-local←is-Arrow-equiv F eq loc i
+    = src-is-equiv←Arrow-equiv
+        (precomp-Arrow-map _ (F i) , precomp-square-is-equiv (F i) (eq i))
+        (loc i)
+
+  is-target-local←Arrow-equiv
+    : ((i : I) → Arrow-equiv (f i) (f' i))
+    → {X : Type 𝓦}
+    → is-local f X → is-local f' X
+  is-target-local←Arrow-equiv e
+    = is-target-local←is-Arrow-equiv (λ i → e i .fst) (λ i → e i .snd)
 }
 }
 
@@ -142,8 +151,8 @@ is-local←sec←sec-∇
     → (∀ i → section (precomp X (∇ (f i))))
     → is-local f X
 is-local←sec←sec-∇ sec sec∇ i
-  = is-equiv←is-pathsplit
-      (is-pathsplit←sec-diag
+  = is-equiv←is-path-split
+      (is-path-split←sec-diag
         (sec i)
         (sec←sec-Coslice-equiv'
           (Δ←∇ _ _)
@@ -162,8 +171,8 @@ sec∇←is-local loc i
   = sec←sec-Coslice-equiv
       (Δ←∇ _ _)
       (Δ←∇-is-equiv)
-      (sec-diag←is-pathsplit
-        (is-pathsplit←is-equiv (loc i)))
+      (sec-diag←is-path-split
+        (is-path-split←is-equiv (loc i)))
 }
 }
 
@@ -210,7 +219,7 @@ module _ {𝓘 𝓤 𝓥 𝓦 : Level} {I : Type 𝓘}
   Loc-is-local {X} {f}
     =  is-local←sec←sec-∇
          (λ i → sec-3-for-2 {f = precomp _ unlift} {precomp _ (f i)}
-                             (precomp-equiv (is-equiv⁻¹ lift-is-equiv))
+                             (precomp-equiv (is-equiv⁻¹ mk-lift-is-equiv))
                              (injector-FreeInj (inl i)))
          (λ i → injector-FreeInj (inr i))
 }
@@ -245,7 +254,7 @@ postcomp-inj X {Y} = precomp Y FreeInj.inc
 }
 \proof{
 
-\p{To prove this, we use [pathsplit](stt-005Q) as our notion of
+\p{To prove this, we use [path-split](stt-005Q) as our notion of
    equivalence.  So we have to give a section to #{({-} \circ \eta)} and
    to #{\rm{ap}_{{-} \circ \eta}^{g,h}} for any pair of maps #{g, h :
    \mathcal{J}_f(X) \to Y}.  }
@@ -260,7 +269,7 @@ FreeInj-reflects
     → is-local f Y
     → is-equiv (postcomp-inj {f = f} X {Y})
 FreeInj-reflects {I = I} {A} {B} {f} X {Y} Y-loc
-  = is-equiv←is-pathsplit ps where
+  = is-equiv←is-path-split ps where
   module Y {i} = is-equiv (Y-loc i)
 }
 
@@ -410,7 +419,7 @@ h(x)}, which we do again by induction on #{x} with the motive #{x
                  (sym (happly (Y▸.ε (lem g h _ f' K)) a)))
     secAp g h .snd K = refl
 
-  ps : is-pathsplit (postcomp-inj X)
+  ps : is-path-split (postcomp-inj X)
   ps .fst = sec-postcomp-inj
   ps .snd g h = section←Arrow-equiv⁻¹ {F = prewhisker←ap-compose _ _ _}
                                       prewhisker-funext(secAp g h)
@@ -673,7 +682,7 @@ module _
   Local-global-reflectors .η-is-reflector .○∈S = Loc-is-local
   Local-global-reflectors .η-is-reflector .reflects cloc
     = FreeInj-reflects _ λ where
-       (inl i) → is-equiv-∘ (precomp-equiv (is-equiv⁻¹ lift-is-equiv))
+       (inl i) → is-equiv-∘ (precomp-equiv (is-equiv⁻¹ mk-lift-is-equiv))
                              (cloc i)
        (inr i) → is-local∇←is-local (f i) (cloc i)
 
@@ -715,6 +724,7 @@ module _
 
   module Local where
     open gRSubU Local-gRSubU public
+    open gReflectiveReasoning Local-gRSubU public
     open gReflectiveClosure Local-gRSubU public
 }
 }

@@ -11,12 +11,14 @@ DUP_DIR ?= ./trees/
 AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
-.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-tree-ids list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean
+.PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest nix-build watch-agda check-port watch-forest server serve python-server check-duplicate-tree-ids list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean
 
 help:
 	@echo "Available targets:"
 	@echo "  make build-forest"
 	@echo "    # Generate Everything.agda + Agda/Forester trees/html"
+	@echo "  make nix-build"
+	@echo "    # Nix-oriented full site build used by default.nix"
 	@echo "  make sync-forest-src"
 	@echo "    # Copy source .lagda.tree files into trees/stt/autogen without highlighting and links"
 	@echo "  make typecheck"
@@ -96,6 +98,16 @@ sync-forest-src:
 build-forest: $(EVERYTHING_FILE) prepare-agda-datadir prepare-forest-assets
 	@mkdir -p "$(AGDA_DATADIR)" "$(AGDA_DATADIR)/lib" "$(AUTOGEN_DIR)" "$(HTML_DIR)"
 	@Agda_datadir="./$(AGDA_DATADIR)" agda-forester --forest -o"$(AUTOGEN_DIR)" --fhtml-dir="$(HTML_DIR)" --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks "$(EVERYTHING_FILE)" -j
+
+nix-build:
+	@$(MAKE) --no-print-directory build-forest HTML_DIR=output/html
+	@$(MAKE) --no-print-directory check-forest-no-typecheck HTML_DIR=output/html
+	@if [ -f ./output/agda-synthetic-categories/Agda.css ]; then \
+		cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css || \
+			echo "Warning: failed to copy Agda.css into output/html; continuing." >&2; \
+	else \
+		echo "Warning: ./output/agda-synthetic-categories/Agda.css not found; skipping copy." >&2; \
+	fi
 
 watch-agda:
 	@$(MAKE) --no-print-directory build-forest

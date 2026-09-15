@@ -19,6 +19,7 @@ open import Modalities.ModalMaps
 open import Core.Arrows
 open import Core.ArrowRetracts
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 open import Core.ArrowEquiv
 }
 }
@@ -29,7 +30,7 @@ open import Core.ArrowEquiv
 \author{fredrikbakke}
 
 \p{
-Given a global subuniverse #{K} and a map #{f : A \to B}, then #{f} is a
+Given a global subuniverse #{K} and a map #{f \colon A \to B}, then #{f} is a
 #{K}-\em{equivalence} if for every type #{U} in #{K},
 the precomposition map #{U^f} is an equivalence.
 }
@@ -53,7 +54,32 @@ is-modal-equiv K f = is-equiv (gReflectiveReasoning.○₁ K f)
 }
 }
 
-\subtree{
+\subtree[bak-B6D3]{
+\title{Modal equivalences are closed under homotopies}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-15}
+
+\p{If #{f \sim g} and #{f} is a #{K}-equivalence, then so is #{g}.}
+
+\agda{
+up-modal-equiv-homotopy
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+    → f ~ g → up-modal-equiv K f → up-modal-equiv K g
+up-modal-equiv-homotopy K H fe U∈K
+  = orthogonal-type-homotopy H (fe U∈K)
+
+module _ {α} (RS : gRSubU α) where
+
+  is-modal-equiv-homotopy
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      → f ~ g → is-modal-equiv RS f → is-modal-equiv RS g
+  is-modal-equiv-homotopy = funext-rec _ (λ where refl → id)
+}
+}
+
+\subtree[bak-2CB7]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -66,42 +92,96 @@ third.
 }
 
 \agda{
-up-modal-equiv-∘
-  : ∀ {α 𝓤 𝓥 𝓦}
-      (K : gSubU α)
-      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      (f : A → B) (g : B → C)
-    → up-modal-equiv K f
-    → up-modal-equiv K g
-    → up-modal-equiv K (g ∘ f)
-up-modal-equiv-∘ K f g fe ge U∈K
-  = is-equiv-∘ (fe U∈K) (ge U∈K)
+module _
+  {α 𝓤 𝓥 𝓦} (K : gSubU α)
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : A → B} {g : B → C}
+  where
 
-up-modal-equiv-right-cancel
-  : ∀ {α 𝓤 𝓥 𝓦}
-      (K : gSubU α)
-      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      (f : A → B) (g : B → C)
-    → up-modal-equiv K f
-    → up-modal-equiv K (g ∘ f)
+  up-modal-equiv-∘
+    : up-modal-equiv K f
     → up-modal-equiv K g
-up-modal-equiv-right-cancel K f g fe gfe U∈K
-  = 3-for-2 (fe U∈K) (gfe U∈K)
+    → up-modal-equiv K (g ∘ f)
+  up-modal-equiv-∘ fe ge U∈K
+    = is-equiv-∘ (fe U∈K) (ge U∈K)
 
-up-modal-equiv-left-cancel
-  : ∀ {α 𝓤 𝓥 𝓦}
-      (K : gSubU α)
-      {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      (f : A → B) (g : B → C)
+  up-modal-equiv-right-cancel
+    : up-modal-equiv K f
+    → up-modal-equiv K (g ∘ f)
     → up-modal-equiv K g
+  up-modal-equiv-right-cancel fe gfe U∈K
+    = 3-for-2 (fe U∈K) (gfe U∈K)
+
+  up-modal-equiv-left-cancel
+    : up-modal-equiv K g
     → up-modal-equiv K (g ∘ f)
     → up-modal-equiv K f
-up-modal-equiv-left-cancel K f g ge gfe U∈K
-  = 3-for-2' (ge U∈K) (gfe U∈K)
+  up-modal-equiv-left-cancel ge gfe U∈K
+    = 3-for-2' (ge U∈K) (gfe U∈K)
+
+  up-modal-equiv-∘~
+    : {h : A → C} → h ~ g ∘ f
+    → up-modal-equiv K f
+    → up-modal-equiv K g
+    → up-modal-equiv K h
+  up-modal-equiv-∘~ H fe ge
+    = up-modal-equiv-homotopy K (H h⁻¹) (up-modal-equiv-∘ fe ge)
+
+  up-modal-equiv-left-cancel~
+    : {h : A → C} → h ~ g ∘ f
+    → up-modal-equiv K g
+    → up-modal-equiv K h
+    → up-modal-equiv K f
+  up-modal-equiv-left-cancel~ H ge he
+    = up-modal-equiv-left-cancel ge (up-modal-equiv-homotopy K H he)
+
+  up-modal-equiv-right-cancel~
+    : {h : A → C} → h ~ g ∘ f
+    → up-modal-equiv K f
+    → up-modal-equiv K h
+    → up-modal-equiv K g
+  up-modal-equiv-right-cancel~ H fe he
+    = up-modal-equiv-right-cancel fe (up-modal-equiv-homotopy K H he)
+
+module _
+  {α 𝓤 𝓥 𝓦} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveReasoning RS)
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : A → B} {g : B → C}
+  where
+
+  is-modal-equiv-∘
+    : is-modal-equiv RS f → is-modal-equiv RS g → is-modal-equiv RS (g ∘ f)
+  is-modal-equiv-∘ fe ge = is-equiv-~∘ (○₁-∘ g f) ge fe
+
+  is-modal-equiv-left-cancel
+    : is-modal-equiv RS g → is-modal-equiv RS (g ∘ f) → is-modal-equiv RS f
+  is-modal-equiv-left-cancel = 3-for-2~ (○₁-∘ g f)
+
+  is-modal-equiv-right-cancel
+    : is-modal-equiv RS f → is-modal-equiv RS (g ∘ f) → is-modal-equiv RS g
+  is-modal-equiv-right-cancel = 3-for-2~' (○₁-∘ g f)
+
+  is-modal-equiv-∘~
+    : {h : A → C} → h ~ g ∘ f
+    → is-modal-equiv RS f → is-modal-equiv RS g → is-modal-equiv RS h
+  is-modal-equiv-∘~ H fe ge
+    = is-modal-equiv-homotopy RS (H h⁻¹) (is-modal-equiv-∘ fe ge)
+
+  is-modal-equiv-left-cancel~
+    : {h : A → C} → h ~ g ∘ f
+    → is-modal-equiv RS g → is-modal-equiv RS h → is-modal-equiv RS f
+  is-modal-equiv-left-cancel~ H ge he
+    = is-modal-equiv-left-cancel ge (is-modal-equiv-homotopy RS H he)
+
+  is-modal-equiv-right-cancel~
+    : {h : A → C} → h ~ g ∘ f
+    → is-modal-equiv RS f → is-modal-equiv RS h → is-modal-equiv RS g
+  is-modal-equiv-right-cancel~ H fe he
+    = is-modal-equiv-right-cancel fe (is-modal-equiv-homotopy RS H he)
 }
 }
 
-\subtree{
+\subtree[bak-155F]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -138,7 +218,7 @@ module _
 }
 }
 
-\subtree{
+\subtree[bak-56F4]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \taxon{Lemma}
@@ -163,7 +243,8 @@ is-equiv←up-modal-equiv-domain-codomain K f A∈K B∈K feq
 }
 }
 
-\subtree{
+
+\subtree[bak-D842]{
 \date{2026-03-19}
 \author{fredrikbakke}
 \contributor{samueltoth}
@@ -171,8 +252,8 @@ is-equiv←up-modal-equiv-domain-codomain K f A∈K B∈K feq
 \title{Modal equivalences, given reflections of domains}
 
 \p{
-If #{f : A \to B} is a map between types with #{K}-reflections, then we say #{f} is
-a #{K}-equivalence if its reflection is an equivalence.
+If #{f \colon A \to B} is a map between types with #{K}-reflections, then we say #{f}
+is a #{K}-equivalence if its reflection is an equivalence.
 }
 
 \agda{
@@ -254,43 +335,18 @@ module _ {α} (RS : gRSubU α) where
 \author{fredrikbakke}
 \date{2026-09-12}
 
-\p{
-Modal equivalences contain equivalences and modal units, and are closed under
-3-for-2.
-}
+\p{The modal equivalences contain equivalences and modal units.}
 
 \agda{
-module _
-  {α} (RS : gRSubU α)
-  (open gRSubU RS)
-  (open gReflectiveReasoning RS)
-  where
+module _ {α} (RS : gRSubU α) (open gRSubU RS) where
 
   is-modal-equiv←is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-    → is-equiv f → is-modal-equiv RS f
-  is-modal-equiv←is-equiv = is-equiv-○₁
+      → is-equiv f → is-modal-equiv RS f
+  is-modal-equiv←is-equiv = gReflectiveReasoning.is-equiv-○₁ RS
 
   η-is-modal-equiv
     : ∀ {𝓤} {A : Type 𝓤} → is-modal-equiv RS (η: A)
   η-is-modal-equiv = is-modal-equiv←up-modal-equiv RS reflects
-
-  is-modal-equiv-∘
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      {f : A → B} {g : B → C}
-    → is-modal-equiv RS f → is-modal-equiv RS g → is-modal-equiv RS (g ∘ f)
-  is-modal-equiv-∘ {f = f} {g} fe ge = is-equiv-~∘ (○₁-∘ g f) ge fe
-
-  is-modal-equiv-left-cancel
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      {f : A → B} {g : B → C}
-    → is-modal-equiv RS g → is-modal-equiv RS (g ∘ f) → is-modal-equiv RS f
-  is-modal-equiv-left-cancel {f = f} {g} = 3-for-2~ (○₁-∘ g f)
-
-  is-modal-equiv-right-cancel
-    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      {f : A → B} {g : B → C}
-    → is-modal-equiv RS f → is-modal-equiv RS (g ∘ f) → is-modal-equiv RS g
-  is-modal-equiv-right-cancel {f = f} {g} = 3-for-2~' (○₁-∘ g f)
 }
 }

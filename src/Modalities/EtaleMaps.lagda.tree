@@ -1,0 +1,631 @@
+\title{Étale maps}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Modalities.EtaleMaps where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Core.Cube
+open import Core.DescentSurjectiveMaps
+open import Core.SurjectiveMaps
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.PullbackPowers
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ModalEquivalences
+open import Modalities.ConnectedMaps
+}
+}
+
+\subtree[bak-922B]{
+\title{Étale maps}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Definition}
+
+\p{
+Given a #{Σ}-closed reflective subuniverse #{\bigcirc}, then a map
+#{f \colon A \to B} is \em{#{\bigcirc}-étale} if the
+[#{\bigcirc}-naturality square](stt-00JI)
+
+\quiver{
+\begin{tikzcd}
+	A && {\bigcirc A} \\
+	\\
+	B && {\bigcirc B}
+	\arrow["{\eta_A}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{\bigcirc f}", from=1-3, to=3-3]
+	\arrow["{\eta_B}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+is [cartesian](stt-003V).
+}
+
+\agda{
+is-étale-map
+  : ∀ {α 𝓤 𝓥} (RS : gRSubU α) {A : Type 𝓤} {B : Type 𝓥}
+    → (A → B) → Type (𝓤 ⊔ 𝓥)
+is-étale-map RS f = is-cartesian (η-square RS f)
+}
+
+\p{
+Equivalently, if we view #{f} through the modal prism \citek{Mye22}:
+
+\quiver{
+\begin{tikzcd}[column sep=large, row sep=small]
+\fibre{f}{y} && \fibre{\bigcirc f}{\eta(y)} \\
+& {\bigcirc\fibre{f}{y}} \\
+A && {\bigcirc A} \\
+& \Im_{\bigcirc}f \\
+\mathllap{y \in}\, B && {\bigcirc B} \\
+& B
+\arrow[from=1-1, to=1-3]
+\arrow[from=1-1, to=2-2]
+\arrow[from=2-2, to=1-3]
+\arrow[from=3-1, to=3-3]
+\arrow[from=3-1, to=4-2]
+\arrow[from=4-2, to=3-3]
+\arrow[from=5-1, to=5-3]
+\arrow[from=5-1, to=6-2, equals]
+\arrow[from=6-2, to=5-3]
+\arrow[from=1-1, to=3-1]
+\arrow[from=3-1, to=5-1, "f"']
+\arrow[from=1-3, to=3-3]
+\arrow[from=3-3, to=5-3]
+\arrow[from=2-2, to=4-2, crossing over]
+\arrow[from=4-2, to=6-2, crossing over]
+\end{tikzcd}
+}
+then #{f} is étale iff the top horizontal family of maps is a family of equivalences.
+}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, this is also equivalent to the fibre
+family of #{f} [descending uniquely](bak-C152) to a family of modal types over
+#{\bigcirc B}.
+}
+}
+
+\subtree[bak-9E83]{
+\title{Equivalences and maps between modal types are étale}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Lemma}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  where
+
+  is-étale-map←is-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → is-equiv f → is-étale-map RS f
+  is-étale-map←is-equiv {f = f} fe
+    = is-cartesian←dom+cod-is-equiv (η-square RS f) fe (is-equiv-○₁ fe)
+
+  is-étale-map←modal-domain-codomain
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → A ∈ S → B ∈ S → is-étale-map RS f
+  is-étale-map←modal-domain-codomain f am bm
+    = is-cartesian←is-Arrow-equiv (η-square RS f)
+        ( η-is-equiv←in-SubU (reflector _) am
+        , η-is-equiv←in-SubU (reflector _) bm)
+}
+}
+
+
+\subtree[bak-C1C8]{
+\title{The gap map of the modal naturality square is a modal equivalence}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Lemma}
+
+\proof{
+\p{
+Given a map #{f \colon A \to B}, we have the pullback factorisation of the
+[naturality square](stt-00JI)
+
+\quiver{
+\begin{tikzcd}
+A && {\bigcirc A} \\
+& B \times_{\bigcirc B} {\bigcirc A} \\
+B && {\bigcirc B}\nsp{.}
+\arrow["{\eta_A}", from=1-1, to=1-3]
+\arrow["f"', from=1-1, to=3-1]
+\arrow["{\bigcirc f}", from=1-3, to=3-3]
+\arrow["{\eta_B}"', from=3-1, to=3-3]
+\arrow["\mathrm{gap}", from=1-1, to=2-2]
+\arrow["\lrcorner" very near start, phantom, from=2-2, to=3-3]
+\arrow["\pi_2", from=2-2, to=3-1]
+\arrow[from=2-2, to=1-3]
+\end{tikzcd}
+}
+
+For a #{Σ}-closed reflective subuniverse, the second projection of the pullback  is
+connected since it is a pullback of #{\eta_B}. Moreover #{\eta_A} is also a modal
+equivalence, so by left cancellation of modal equivalences #{\mathrm{gap}} is one
+too.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (SΣ : is-globally-Σ-closed GS)
+  where
+
+  η-gap-is-modal-equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → is-modal-equiv RS (gap-map←square (η-square RS f))
+  η-gap-is-modal-equiv f
+    = is-modal-equiv-left-cancel RS
+        (is-modal-equiv←is-connected-map RS pb.π₂
+          (π₂-is-connected-map RS η (○₁ f) (η-is-connected RS SΣ)))
+        (η-is-modal-equiv RS)
+}
+}
+
+\subtree[bak-30AA]{
+\title{Étale maps are precisely the right orthogonal maps to modal equivalences}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, a map is étale if and only if it is
+right orthogonal to every modal equivalence.
+}
+
+\proof{
+
+\p{
+Let #{f \colon A \to B} be our étale map and let #{g \colon X \to Y} be an arbitrary
+modal equivalence. Since #{f} is a base change of #{\bigcirc f}, it suffices to show
+#{g \perp {\bigcirc f}}, and this only holds if the exponential square
+
+\quiver{
+\begin{tikzcd}
+	{{(\bigcirc A)}^Y} && {{(\bigcirc A)}^X} \\
+	\\
+	{{(\bigcirc B)}^Y} && {{(\bigcirc B)}^X}
+	\arrow["{{-} \circ g}", from=1-1, to=1-3]
+	\arrow["{{\bigcirc f} \circ {-}}"', from=1-1, to=3-1]
+	\arrow["{{\bigcirc f} \circ {-}}", from=1-3, to=3-3]
+	\arrow["{{-} \circ g}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+is cartesian. But the horizontal maps are equivalences since #{g} is exponentiated by
+a #{\bigcirc}-modal type.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  where
+
+  modal-equiv⊥map-between-modal-types
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → is-modal-equiv RS g → A ∈ S → B ∈ S → are-orthogonal g f
+  modal-equiv⊥map-between-modal-types {f = f} {g} ge am bm
+    = are-orthogonal←is-cartesian
+        (untranspose-is-cartesian (power-hom g f)
+          (is-cartesian←dom+cod-is-equiv
+            (transpose-square (power-hom g f))
+            (up-modal-equiv←is-modal-equiv RS ge am)
+            (up-modal-equiv←is-modal-equiv RS ge bm)))
+
+  modal-equiv⊥etale
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → is-modal-equiv RS g → is-étale-map RS f → are-orthogonal g f
+  modal-equiv⊥etale {f = f} {g} ge fe
+    = orthogonal←base-change g (η-square RS f) fe
+        (modal-equiv⊥map-between-modal-types ge ○∈S ○∈S)
+}
+}
+
+\p{
+Conversely, if #{f} is right orthogonal to every modal
+equivalence then the gap map is too by the left cancellation property, since it
+factors #{f},  #{f \sim \pi \circ \mathrm{gap}}, and both #{f} and #{\pi} are right
+orthogonal to modal equivalences. Now, recall that the gap map of the naturality
+square is also a modal equivalence, hence it is orthogonal to itself and so must be
+an equivalence.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  where
+
+  is-étale-map←right-orthogonal
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+      → ( ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+          → is-modal-equiv RS g → are-orthogonal g f)
+      → is-étale-map RS f
+  is-étale-map←right-orthogonal {f = f} orth
+    = is-cartesian←is-pullback
+        (η-square RS f)
+        (is-equiv←self-orthogonal
+          (right-orthogonal-left-cancel
+            (gap-map←square (η-square RS f))
+            (orthogonal←base-change _
+              (base-change-arrow-map η (○₁ f))
+              (base-change-arrow-map-is-cartesian η (○₁ f))
+              (modal-equiv⊥map-between-modal-types RS gap-equiv ○∈S ○∈S))
+            (orth gap-equiv)))
+    where
+    open gReflectiveReasoning RS
+    gap-equiv = η-gap-is-modal-equiv RS SΣ f
+}
+}
+
+\subtree[bak-2B30]{
+\title{Composition and cancellation closure of étale maps}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\proof{
+\p{Follows immediately from the pasting and cancellation property of pullbacks.}
+}
+
+\agda{
+module _ {α} (RS : gRSubU α) where
+
+  is-étale-map-∘
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-étale-map RS f → is-étale-map RS g → is-étale-map RS (g ∘ f)
+  is-étale-map-∘ {f = f} {g} fe ge
+    = untranspose-is-cartesian (η-square RS (g ∘ f))
+        (tr is-cartesian (sym (Arrow-map-path→ (η-square'-∘ RS g f)))
+          (compose-cartesian
+            (transpose-is-cartesian (η-square RS g) ge)
+            (transpose-is-cartesian (η-square RS f) fe)))
+
+  is-étale-map-left-cancel
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-étale-map RS g → is-étale-map RS (g ∘ f) → is-étale-map RS f
+  is-étale-map-left-cancel {f = f} {g} ge gfe
+    = untranspose-is-cartesian (η-square RS f)
+        (3-for-2-cartesian (η-square'-∘ RS g f)
+          (transpose-is-cartesian (η-square RS (g ∘ f)) gfe)
+          (transpose-is-cartesian (η-square RS g) ge))
+}
+}
+
+\subtree[bak-8C31]{
+\title{Right cancellation of étale maps with surjective reflections}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+Suppose #{f} and #{g \circ f} are étale. If #{\bigcirc f} is
+surjective, then #{g} is étale by
+[descent for surjections](Core.DescentSurjectiveMaps).
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  where
+
+  is-étale-map-right-cancel←○₁-surj
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-surjective (○₁ f)
+      → is-étale-map RS f → is-étale-map RS (g ∘ f) → is-étale-map RS g
+  is-étale-map-right-cancel←○₁-surj {f = f} {g} fs fe gfe
+    = untranspose-is-cartesian (η-square RS g)
+        (descent-is-surjective (η-square' RS g) (η-square' RS f) fs
+          (transpose-is-cartesian (η-square RS f) fe)
+          (tr is-cartesian (Arrow-map-path→ (η-square'-∘ RS g f))
+            (transpose-is-cartesian (η-square RS (g ∘ f)) gfe)))
+
+  is-étale-map-right-cancel←surj
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        {f : A → B} {g : B → C}
+      → is-surjective (η: B) → is-surjective f
+      → is-étale-map RS f → is-étale-map RS (g ∘ f) → is-étale-map RS g
+  is-étale-map-right-cancel←surj {f = f} ηs fs
+    = is-étale-map-right-cancel←○₁-surj
+        (is-surjective-3-for-2~' (○₁-β f h⁻¹) (is-surjective-∘ ηs fs))
+}
+}
+
+\subtree[bak-F224]{
+\title{Factoring the modal naturality square}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Construction}
+
+\p{
+Given a reflective subuniverse, any map #{f \colon A \to B} factors
+via #{B \times_{\bigcirc B} {\bigcirc A}}:
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+A && B \nsp{.} \\
+& {B \times_{\bigcirc B} {\bigcirc A}}
+\arrow["f", from=1-1, to=1-3]
+\arrow["l"', from=1-1, to=2-2]
+\arrow["r"', from=2-2, to=1-3]
+\end{tikzcd}
+}
+}
+\p{
+The map #{l} factors the unit map:
+
+\quiver{
+\begin{tikzcd}[column sep=small]
+A && \bigcirc A\nsp{.} \\
+& {B \times_{\bigcirc B} {\bigcirc A}}
+\arrow["\eta", from=1-1, to=1-3]
+\arrow["l"', from=1-1, to=2-2]
+\arrow["\pi"', from=2-2, to=1-3]
+\end{tikzcd}
+}
+
+The unit map is always a modal equivalence. Moreover, the fibre of #{\pi} at
+#{y : \bigcirc A} may be computed as #{\fibre{\eta}{\bigcirc f (y)}}, and for
+#{Σ}-closed reflective subuniverses the units are connected, and hence so is #{\pi}.
+Thus, by the left cancellation property of modal equivalences (which connected maps
+don't satisfy in general), #{l} is a modal equivalence.
+}
+
+\p{
+The map #{r} is a base change of #{\bigcirc f}
+
+\quiver{
+\begin{tikzcd}
+{B \times_{\bigcirc B} {\bigcirc A}} && {\bigcirc A} \\
+\\
+B && {\bigcirc B}\nsp{,}
+\arrow["r"', from=1-1, to=3-1]
+\arrow["\bigcirc f", from=1-3, to=3-3]
+\arrow["\eta"', from=3-1, to=3-3]
+\arrow[from=1-1, to=1-3]
+\arrow["\lrcorner" very near start, from=1-1, to=3-3, phantom]
+\end{tikzcd}
+}
+and modal equivalences are left orthogonal to maps between modal types, and hence
+#{r} is right orthogonal to all modal equivalences. For a #{Σ}-closed reflective
+subuniverse, the [characterisation above](bak-30AA) therefore shows that #{r} is
+étale.
+}
+
+\agda{
+module ModalNaturalityFactorisation
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  where
+
+  Im : Type (𝓤 ⊔ 𝓥)
+  Im = Pullback (η: B) (○₁ f)
+
+  l : A → Im
+  l = gap-map←square (η-square RS f)
+
+  r : Im → B
+  r = pb.π₁
+
+  π : Im → ○ A
+  π = pb.π₂
+
+  module _ (SΣ : is-globally-Σ-closed GS) where
+
+    π-is-connected : is-connected-map RS π
+    π-is-connected
+      = π₂-is-connected-map RS η (○₁ f) (η-is-connected RS SΣ)
+
+    π-is-modal-equiv : is-modal-equiv RS π
+    π-is-modal-equiv
+      = is-modal-equiv←is-connected-map RS π π-is-connected
+
+    l-is-modal-equiv : is-modal-equiv RS l
+    l-is-modal-equiv
+      = η-gap-is-modal-equiv RS SΣ f
+
+  modal-equiv⊥r
+    : ∀ {𝓦 𝓜} {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+      → is-modal-equiv RS g → are-orthogonal g r
+  modal-equiv⊥r {g = g} ge
+    = orthogonal←base-change g
+        (base-change-arrow-map η (○₁ f))
+        (base-change-arrow-map-is-cartesian η (○₁ f))
+        (modal-equiv⊥map-between-modal-types RS ge ○∈S ○∈S)
+
+  module _ (SΣ : is-globally-Σ-closed GS) where
+
+    r-is-étale : is-étale-map RS r
+    r-is-étale = is-étale-map←right-orthogonal RS SΣ modal-equiv⊥r
+
+right-factor-is-étale
+  : ∀ {α} (RS : gRSubU α)
+    → is-globally-Σ-closed (gRSubU.GS RS)
+    → ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → is-étale-map RS (ModalNaturalityFactorisation.r RS f)
+right-factor-is-étale RS SΣ f = ModalNaturalityFactorisation.r-is-étale RS f SΣ
+}
+}
+
+\subtree[bak-264E]{
+\title{Squares of modal equivalences and étale maps}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+Consider a commuting square
+
+\quiver{
+\begin{tikzcd}
+A && C \\
+\\
+B && D
+\arrow["u", from=1-1, to=1-3]
+\arrow["f"', from=1-1, to=3-1]
+\arrow["g", from=1-3, to=3-3]
+\arrow["v"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+whose vertical maps #{f} and #{g} are modal equivalences and whose bottom map
+#{v} is étale. Then the square is cartesian if and only if #{u} is étale.
+In particular, every étale morphism of modal equivalences is cartesian.
+}
+
+\p{This is Proposition 6.5 and Proposition 7.3 in \citek{CR21}.}
+
+\proof{
+\p{
+Consider the [naturality cube](bak-434D),
+
+\quiver{
+\begin{tikzcd}
+A && C \\
+& B && D \\
+\bigcirc A && \bigcirc C \\
+&\bigcirc B && \bigcirc D
+\arrow["u", from=1-1, to=1-3]
+\arrow["v" near start, from=2-2, to=2-4]
+\arrow["f", from=1-1, to=2-2]
+\arrow["g", from=1-3, to=2-4]
+\arrow["\bigcirc u" near end, from=3-1, to=3-3]
+\arrow["\bigcirc v", from=4-2, to=4-4]
+\arrow["\bigcirc f", "\sim"' sloped, from=3-1, to=4-2]
+\arrow["\bigcirc g", "\sim"' sloped, from=3-3, to=4-4]
+\arrow[from=1-1, to=3-1]
+\arrow[from=1-3, to=3-3]
+\arrow[from=2-2, to=4-4, phantom, "\lrcorner" very near start]
+\arrow[from=2-2, to=4-2, crossing over]
+\arrow[from=2-4, to=4-4, crossing over]
+\end{tikzcd}
+}
+
+The naturality square of #{v} is cartesian, and the reflected square is cartesian
+because #{\bigcirc f} and #{\bigcirc g} are equivalences. This gives us that the
+naturality square of #{u} is cartesian iff the original square is cartesian.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+  {f : A → B} {g : C → D}
+  (F : Arrow-map f g)
+  (fe : is-modal-equiv RS f) (ge : is-modal-equiv RS g)
+  where
+
+  is-cartesian←modal-equiv-étale
+    : is-étale-map RS (F .Arrow-map.top)
+    → is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F
+  is-cartesian←modal-equiv-étale te be
+    = untranspose-is-cartesian F
+        (front-cartesian←cartesian-cube
+          (transpose-square F) (○-square RS (transpose-square F))
+          (η-cube RS (transpose-square F)) te be
+          (is-cartesian←is-Arrow-equiv _ (fe , ge)))
+
+  is-étale-map-top←is-cartesian
+    : is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F → is-étale-map RS (F .Arrow-map.top)
+  is-étale-map-top←is-cartesian be cart
+    = 3-for-2-cartesian
+        {a = ○-square RS (transpose-square F)}
+        (Arrow-map-path←id
+          (sym (Arrow-map-path→ (η-cube RS (transpose-square F) .Cube.comm))))
+        (compose-cartesian be (transpose-is-cartesian F cart))
+        (is-cartesian←is-Arrow-equiv (○-square RS (transpose-square F)) (fe , ge))
+
+  is-cartesian↔is-étale-map-top
+    : is-étale-map RS (F .Arrow-map.bot)
+    → is-cartesian F ↔ is-étale-map RS (F .Arrow-map.top)
+  is-cartesian↔is-étale-map-top be
+    = (is-étale-map-top←is-cartesian be , λ te → is-cartesian←modal-equiv-étale te be)
+}
+
+\subtree[bak-7FF5]{
+\title{A converse for surjections}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+In the [square above](bak-264E), suppose that #{u} and #{v} are étale,
+#{g} is a modal equivalence, and #{\eta_C \colon C \to \bigcirc C} is surjective.
+Then the square is cartesian if and only if #{f} is a modal equivalence.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+  {f : A → B} {g : C → D}
+  (F : Arrow-map f g)
+  (ηs : is-surjective (η: C))
+  (te : is-étale-map RS (F .Arrow-map.top))
+  (be : is-étale-map RS (F .Arrow-map.bot))
+  (ge : is-modal-equiv RS g)
+  where
+
+  is-modal-equiv-left←is-cartesian←η-surj
+    : is-cartesian F → is-modal-equiv RS f
+  is-modal-equiv-left←is-cartesian←η-surj cart
+    = top-is-equiv←is-cartesian
+        (○-square RS (transpose-square F))
+        (descent-is-surjective
+          (○-square RS (transpose-square F)) (η-square RS (F .Arrow-map.top)) ηs te
+          (tr is-cartesian
+            (sym (Arrow-map-path→ (η-cube RS (transpose-square F) .Cube.comm)))
+            (compose-cartesian be (transpose-is-cartesian F cart))))
+        (ge)
+
+  is-cartesian↔is-modal-equiv-left←η-surj
+    : is-cartesian F ↔ is-modal-equiv RS f
+  is-cartesian↔is-modal-equiv-left←η-surj
+    = ( is-modal-equiv-left←is-cartesian←η-surj
+      , λ fe → is-cartesian←modal-equiv-étale RS F fe ge te be)
+}
+}
+}

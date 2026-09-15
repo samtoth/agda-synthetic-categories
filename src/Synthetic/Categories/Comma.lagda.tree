@@ -263,6 +263,11 @@ Coslice-path-refl
     → (p : Coslice C F) → Coslice-path p p
 Coslice-path-refl a = (refl , λ _ → Hom-pathᵈ-refl)
 
+Coslice-path←Id
+  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+    → {p q : Coslice C F} → p ＝ q → Coslice-path p q
+Coslice-path←Id refl = Coslice-path-refl _
+
 opaque
   Coslice-path-is-torsorial
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
@@ -572,7 +577,42 @@ Coslice-arrow-map
     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜 ⊔ 𝓚)
 Coslice-arrow-map {p = p} {q} {r} {s} f g
   = Σ[ t ∶ Coslice-map p r ] Σ[ b ∶ Coslice-map q s ]
-      Coslice-map-path (Coslice-map-∘ _ _ _ g t) (Coslice-map-∘ _ _ _ b f)
+      Coslice-map-path (Coslice-map-∘ _ _ _ b f) (Coslice-map-∘ _ _ _ g t)
+
+Arrow-map←Coslice-arrow-map
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
+      {K : Type 𝓚}
+      {p : K → A} {q : K → B} {r : K → A'} {s : K → B'}
+      {f : Coslice-map p q} {g : Coslice-map r s}
+    → Coslice-arrow-map f g → Arrow-map (f .fst) (g .fst)
+Arrow-map←Coslice-arrow-map (t , b , coh) = mk-amap (t .fst) (b .fst) (coh .fst)
+
+postcomp-coslice'-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓚} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      {K : Type 𝓚}
+      {p : K → A} {q : K → B} {r : K → C}
+      (f : Coslice-map p q) (g : Coslice-map r p)
+    → postcompose-coslice' f ∘ postcompose-coslice' g
+    ~ postcompose-coslice' (Coslice-map-∘ _ _ _ f g)
+postcomp-coslice'-∘ (f , p) (g , q) x = Coslice-path→
+  ( refl
+  , λ i
+    → Hom-pathᵈ←path
+        ( ~refl
+        , sym (∙-assoc (ap (f ∘ g) (x .snd i .Homᵈ.hom0)) (ap f (q i)) (p i))
+        ∙ sym (ap (_∙ p i) (ap-∙ f _ (q i) ∙ ap (_∙ ap f (q i)) (sym (ap-∘ f g _))))
+        , ap (_∙ refl) (ap-∘ f g _ ∙ ap (ap f) (sym (∙-reflr _)))))
+
+postcomp-coslice←~
+  : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {B : Type 𝓥}
+      {K : Type 𝓚}
+      {p : K → A} {q : K → B}
+      {ϕ γ : Coslice-map p q}
+    → Coslice-map-path ϕ γ
+    → postcompose-coslice' ϕ
+    ~ postcompose-coslice' γ
+postcomp-coslice←~ {ϕ = ϕ}
+  = IdSJ (λ (γ , p) → postcompose-coslice' ϕ ~ postcompose-coslice' γ) ~refl
 
 postcomp-coslice₁'
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
@@ -583,9 +623,10 @@ postcomp-coslice₁'
     → Arrow-map (postcompose-coslice' f) (postcompose-coslice' g)
 postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.top = postcompose-coslice' t
 postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.bot = postcompose-coslice' b
-postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.comm x = Coslice-path→
-  ( sym (coh .fst (x .fst))
-  , λ i → ?)
+postcomp-coslice₁' f g (t , b , coh) .Arrow-Π.comm
+  =  postcomp-coslice'-∘ b f
+  ∙h postcomp-coslice←~ coh
+  ∙h postcomp-coslice'-∘ g t h⁻¹
 
 postcomp-coslice₁
   : ∀ {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}

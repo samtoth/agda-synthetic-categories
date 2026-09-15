@@ -27,7 +27,13 @@ open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.Instances.Localisation
 open import Modalities.Instances.Nullification
 
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Core.Cube
 open import Core.Coslices
+open import Core.FunctorialityPullbacks
+open import Core.CanonicalPushouts
 
 open import Ergonomics.Extensionality
 
@@ -170,6 +176,10 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} (p : B
   join⊣coslice = equiv←qequiv
     (mk≊ coslice←join-map (join←coslice-map , join⊣coslice-ε , join⊣coslice-η))
 
+  coslice←join-map-is-equiv
+    : is-equiv coslice←join-map
+  coslice←join-map-is-equiv = _≃_.fwd-is-equiv join⊣coslice
+
   join←coslice-map-is-equiv
     : is-equiv join←coslice-map
   join←coslice-map-is-equiv = bwd-is-equiv join⊣coslice
@@ -177,5 +187,180 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} (p : B
   join≃coslice-map
     : (A → Coslice C p) ≃ Coslice-map {X = B ◇ A} ↑-ι₁ p
   join≃coslice-map = mk≃ join←coslice-map join←coslice-map-is-equiv
+}
+}
+
+\subtree[tot-7492]{
+\title{Coslices preserve limits}
+\taxon{Corollary}
+
+\p{As right adjoints, bot the slice and coslice constructions preserve limits.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓚} (A : Type 𝓤)
+  {B : Type 𝓥} {C : Type 𝓦}
+  {K : Type 𝓚}
+  {p : K → B} {q : K → C}
+  (g : Coslice-map p q)
+  where
+
+  join⊣coslice₁
+    : Arrow-equiv
+        (Coslice-map-postcompose {X = K ◇ A} ↑-ι₁ g)
+        (postcomp A (postcompose-coslice' g))
+  join⊣coslice₁ = mk-arr-equiv
+    (join⊣coslice p)
+    (join⊣coslice q)
+    λ f → funext→ λ a → Coslice-path→ (refl ,
+          (λ i → Hom-pathᵈ←path (~refl , {!ap-∘ (g .fst) (f .fst) _ ∙ ?!} , {!!})))
+  -- .Arrow-Π.top = join←coslice-map p
+  -- join⊣coslice-map₁ .Arrow-Π.bot = join←coslice-map q
+  -- join⊣coslice-map₁ .Arrow-Π.comm f = ext!
+  --   ( ↑-rec-unique
+  --       ( g .snd
+  --       , ~refl
+  --       , λ (k , a) → ~refl , ({!!} , {!!})) h⁻¹
+  --   , λ a → ∙-sym' (g .snd a))
+
+module _
+  {𝓤 𝓥 𝓦 𝓜 𝓚} {A : Type 𝓤} {B : Type 𝓥} {A' : Type 𝓦} {B' : Type 𝓜}
+  {K : Type 𝓚}
+  {p : K → A} {q : K → B} {r : K → A'} {s : K → B'}
+  {f : Coslice-map p q} {g : Coslice-map r s}
+  (α : Coslice-arrow-map f g)
+  where
+
+  module _
+    {𝓠} {D : Type 𝓠}
+    where
+
+    sq-cod
+      : Arrow-map
+          (postcomp D (postcompose-coslice' f))
+          (postcomp D (postcompose-coslice' g))
+    sq-cod = postcomp-Arrow-map D (postcomp-coslice₁' f g α)
+
+    opaque
+      sq-dom
+        : Arrow-map
+            (Coslice-map-postcompose {X = K ◇ D} ↑-ι₁ f)
+            (Coslice-map-postcompose {X = K ◇ D} ↑-ι₁ g)
+      sq-dom .Arrow-Π.top = Coslice-map-postcompose ↑-ι₁ (α .fst)
+      sq-dom .Arrow-Π.bot = Coslice-map-postcompose ↑-ι₁ (α .snd .fst)
+      sq-dom .Arrow-Π.comm x = ext!
+        ( α .snd .snd .fst ▹h (x .fst)
+        , {!α .snd .snd .snd!})
+
+      cube-eq : Σ (Cube sq-dom sq-cod) is-Cube-equiv
+      cube-eq .fst .Cube.left  = join⊣coslice₁ D f .fst
+      cube-eq .fst .Cube.right = join⊣coslice₁ D g .fst
+      cube-eq .fst .Cube.comm .fst = {!!}
+      cube-eq .fst .Cube.comm .snd .fst = {!!}
+      cube-eq .fst .Cube.comm .snd .snd = {!!}
+      cube-eq .snd .fst = join⊣coslice₁ D f .snd
+      cube-eq .snd .snd = join⊣coslice₁ D g .snd
+
+  opaque
+    postcomp-coslice₁'-is-cartesian
+      : is-cartesian (Arrow-map←Coslice-arrow-map α)
+      → is-cartesian (postcomp-coslice₁' f g α)
+    postcomp-coslice₁'-is-cartesian α-cart
+      = is-cartesian←postcomp-is-cartesian _ lemma
+      where
+
+      opaque
+        lemma
+          : ∀ {𝓠} {C : Type 𝓠}
+            → is-cartesian (postcomp-Arrow-map C (postcomp-coslice₁' f g α))
+        lemma
+          = back-cartesian←equiv-cube (cube-eq .fst) (cube-eq .snd)
+              {!postcomp-coslice-cartesian!}
+-- module _
+--   {𝓤 𝓥 𝓦 𝓚} {X : Type 𝓤} {Y : Type 𝓥} {Z : Type 𝓦}
+--   {K : Type 𝓚}
+--   {q : K → X} {r : K → Y} {s : K → Z}
+--   (f : Coslice-map q r) (g : Coslice-map s r)
+--   where
+
+--   coslice-cospan : Cospan _ _ _
+--   coslice-cospan = mk-cospan _ (postcompose-coslice' f) (postcompose-coslice' g)
+
+--   coslice-cone
+--     : ∀ {𝓜} {D : Type 𝓜} {t : K → D}
+--         (ϕ : Coslice-map t q) (γ : Coslice-map t s)
+--       → Coslice-map-path
+--           (Coslice-map-∘ _ _ _ f ϕ)
+--           (Coslice-map-∘ _ _ _ g γ)
+--       → Cone coslice-cospan (Coslice D t)
+--   coslice-cone ϕ γ coh
+--     = mk-cone
+--         (postcompose-coslice' ϕ)
+--         (postcompose-coslice' γ)
+--         (  postcomp-coslice'-∘ f ϕ
+--         ∙h postcomp-coslice←~ coh
+--         ∙h postcomp-coslice'-∘ g γ h⁻¹)
+
+-- module _
+--   {𝓤 𝓥 𝓦 𝓚} {X : Type 𝓤} {Y : Type 𝓥} {Z : Type 𝓦}
+--   {K : Type 𝓚}
+--   {q : K → X} {r : K → Y} {s : K → Z}
+--   {f : Coslice-map q r} {g : Coslice-map s r}
+--   {𝓜} {T : Type 𝓜} {t : K → T}
+--   (ϕ : Coslice-map t q) (γ : Coslice-map t s)
+--   (α : Coslice-map-path (Coslice-map-∘ _ _ _ f ϕ) (Coslice-map-∘ _ _ _ g γ))
+--   where
+
+--   underlying-cospan : Cospan 𝓥 𝓤 𝓦
+--   underlying-cospan = mk-cospan _ (f .fst) (g .fst)
+
+--   underlying-cone : Cone underlying-cospan T
+--   underlying-cone = mk-cone (ϕ .fst) (γ .fst) (α .fst)
+
+--   module _
+--     {𝓠} {D : Type 𝓠} (d : K → D)
+--     where
+
+--     atop
+--       : (D → Coslice T t)
+--       → Pullback-of-cospan (postcomp-cospan D (coslice-cospan f g))
+--     atop = postcomp-cone≃pb ._≃_.fwd ∘ cone-map (coslice-cospan f g) (coslice-cone f g ϕ γ α)
+
+--     -- sq-dom : 
+
+
+--     -- TODO(Sam): Abstract properly
+--     Coslice-cospan-postcomp : Cospan (𝓘 ⊔ 𝓥 ⊔ 𝓚 ⊔ 𝓠) (𝓘 ⊔ 𝓤 ⊔ 𝓚 ⊔ 𝓠) (𝓘 ⊔ 𝓦 ⊔ 𝓚 ⊔ 𝓠)
+--     Coslice-cospan-postcomp
+--       = mk-cospan _
+--           (Coslice-map-postcompose {X = K ◇ D} ↑-ι₁ f)
+--           (Coslice-map-postcompose {X = K ◇ D} ↑-ι₁ g)
+
+
+--     abot
+--       : Coslice-map {X = K ◇ D} ↑-ι₁ t
+--       → Pullback-of-cospan Coslice-cospan-postcomp
+--     abot k .fst = Coslice-map-∘ _ _ _ ϕ k
+--     abot f .snd .fst = Coslice-map-∘ _ _ _ γ f
+--     abot f .snd .snd = {!!}
+
+--     aeq : Arrow-equiv abot atop
+--     aeq = mk-arr-equiv
+--       (join⊣coslice t)
+--       (Pullback≃
+--         ( mk-cospan-map
+--             (coslice←join-map q)
+--             (coslice←join-map r)
+--             (coslice←join-map s)
+--             (λ a → funext→ (λ a → Coslice-path→ (refl , (λ k → Hom-pathᵈ←path (~refl , ({!!} , {!!}))))))
+--             {!!}
+--         , coslice←join-map-is-equiv q
+--         , coslice←join-map-is-equiv r
+--         , {!!}))
+--       {!!}
+
+--   postcomp-coslice₁-has-up-pullback
+--     : up-pullback (coslice-cospan f g) (coslice-cone f g ϕ γ α)
+--   postcomp-coslice₁-has-up-pullback = {!!}
 }
 }

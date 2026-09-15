@@ -25,6 +25,7 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+open import Foundations.InjectiveMaps
 
 open import Algebra.Poset
 
@@ -60,34 +61,41 @@ open import Synthetic.Categories.WalkingIso Δ¹ I
 A type is \em{Rezk-complete} if it is null at the [walking isomorphism](stt-00P7).
 }
 
+\remark{
+\p{
+This concept is named after [[charlesrezk]], who studied the corresponding condition
+on simplicial spaces \citek{Rez01}.
+}
+}
+
 \agda{
-fam-is-rezk-complete : 𝟙 → ℑ → 𝟙ᴸ: 𝓘
-fam-is-rezk-complete _ = !ᴸ
+fam-is-rezk-complete : 𝟙 → Type 𝓘
+fam-is-rezk-complete = point ℑ
 
 is-rezk-complete
   : ∀ {𝓤}
   → (A : Type 𝓤)
   → Type (𝓘 ⊔ 𝓤)
 is-rezk-complete A
-  = is-local fam-is-rezk-complete A
+  = is-null fam-is-rezk-complete A
 
 is-rezk-complete-is-prop
   : ∀ {𝓤} {A : Type 𝓤}
   → is-prop (is-rezk-complete A)
 is-rezk-complete-is-prop {A = A}
-  = is-local-is-prop A
+  = is-null-is-prop A
 }
 
 \agda{
 RezkCompl-SubU : ∀ {𝓤} → SubU 𝓤 (𝓤 ⊔ 𝓘)
-RezkCompl-SubU = Local-SubU fam-is-rezk-complete _
+RezkCompl-SubU = Null-SubU fam-is-rezk-complete _
 
 RezkCompl-gSubU : gSubU (_⊔ 𝓘)
-RezkCompl-gSubU = Local-gSubU fam-is-rezk-complete
+RezkCompl-gSubU = Null-gSubU fam-is-rezk-complete
 
 RezkCompl-is-globally-reflective
   : is-globally-reflective RezkCompl-gSubU
-RezkCompl-is-globally-reflective = Local-global-reflectors fam-is-rezk-complete
+RezkCompl-is-globally-reflective = Null-globally-reflective
 
 RezkCompl-gRSubU : gRSubU (_⊔ 𝓘)
 RezkCompl-gRSubU .gRSubU.GS = RezkCompl-gSubU
@@ -121,14 +129,38 @@ open gReflectiveClosure RezkCompl-gRSubU public using () renaming
 open gRSubUHomClosure RezkCompl-gRSubU public using () renaming
   ( Hom∈S to Hom-is-rezk-complete)
 
+Σ-is-rezk-complete : is-globally-Σ-closed RezkCompl-gSubU
+Σ-is-rezk-complete = Null-globally-Σ-closed
+
 module RezkCompl where
   open gRSubU RezkCompl-gRSubU public
   open gReflectiveReasoning RezkCompl-gRSubU public
+  open gRSubUInduction RezkCompl-gRSubU Σ-is-rezk-complete public
   open gReflectiveClosure RezkCompl-gRSubU public
   open gRSubUHomClosure RezkCompl-gRSubU public
 }
 }
 
+
+\subtree[stt-010J]{
+\title{Rezk-complete types are closed under [injections](Foundations.InjectiveMaps)}
+\taxon{Corollary}
+\author{fredrikbakke}
+
+\p{
+If #{f \colon A \to B} is an injection and #{B} is Rezk-complete, then so is #{A}.
+}
+
+\agda{
+is-rezk-complete←injection
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → injective-map A B
+    → is-rezk-complete B
+    → is-rezk-complete A
+is-rezk-complete←injection
+  = is-null←injection←pointed-exponent (point src-ℑ)
+}
+}
 
 \subtree[stt-00Q0]{
 \title{Comparison map between the total space of identities and isomorphisms}
@@ -193,8 +225,8 @@ module _ {𝓤} {A : Type 𝓤} where
   is-rezk-complete←Iso←Id-is-equiv
     : Iso←Id-is-equiv A
     → is-rezk-complete A
-  is-rezk-complete←Iso←Id-is-equiv A-iso
-    = is-localᴸ←is-null λ _ → is-equiv←qinv qinv where
+  is-rezk-complete←Iso←Id-is-equiv A-iso _
+    = is-equiv←qinv qinv where
     module totid = is-equiv (id-TotalIso-is-equiv←Iso←Id-is-equiv A-iso)
 
     qinv : quasi-inv (const: A ℑ)
@@ -211,7 +243,7 @@ module _ {𝓤} {A : Type 𝓤} where
     = is-equiv-∘~
         (ℑ-rep→const A-is-segal)
         (ℑ-rep→-is-equiv A-is-segal)
-        (is-null←is-localᴸ A-is-rezk-complete tt)
+        (A-is-rezk-complete tt)
 
   Iso←Id-is-equiv←is-rezk-complete
     : is-segal A → is-rezk-complete A → Iso←Id-is-equiv A
@@ -256,11 +288,14 @@ module _  {𝓤 : Level} {A : Type 𝓤}  where
 
   is-segal×is-rezk-complete←is-complete-segal
     : is-complete-segal A → is-segal A × is-rezk-complete A
-  is-segal×is-rezk-complete←is-complete-segal = ×-is-local←is-local-⨄₁ᶠ
+  is-segal×is-rezk-complete←is-complete-segal A-complete-segal
+    = ( ×-is-local←is-local-⨄₁ᶠ A-complete-segal .fst
+      , is-null←is-localᴸ (×-is-local←is-local-⨄₁ᶠ A-complete-segal .snd))
 
   is-complete-segal←is-segal←is-rezk-complete
     : is-segal A → is-rezk-complete A → is-complete-segal A
-  is-complete-segal←is-segal←is-rezk-complete = is-local-⨄₁ᶠ←is-local
+  is-complete-segal←is-segal←is-rezk-complete A-segal A-rezk-complete
+    = is-local-⨄₁ᶠ←is-local A-segal (is-localᴸ←is-null A-rezk-complete)
 }
 
 \agda{
@@ -338,8 +373,9 @@ module _ {𝓤} {A : Type 𝓤} where
 
   is-precategory×is-rezk-complete←is-category
     : is-category A → is-precategory A × is-rezk-complete A
-  is-precategory×is-rezk-complete←is-category
-    = ×-is-local←is-local-⨄₁ᶠ
+  is-precategory×is-rezk-complete←is-category A-category
+    = ( ×-is-local←is-local-⨄₁ᶠ A-category .fst
+      , is-null←is-localᴸ (×-is-local←is-local-⨄₁ᶠ A-category .snd))
 
   is-precategory←is-category
     : is-category A → is-precategory A
@@ -363,8 +399,8 @@ module _ {𝓤} {A : Type 𝓤} where
 
   is-category←is-precategory←is-rezk-complete
     : is-precategory A → is-rezk-complete A → is-category A
-  is-category←is-precategory←is-rezk-complete
-    = is-local-⨄₁ᶠ←is-local
+  is-category←is-precategory←is-rezk-complete A-precategory A-rezk-complete
+    = is-local-⨄₁ᶠ←is-local A-precategory (is-localᴸ←is-null A-rezk-complete)
 
   is-category←is-segal×is-simplicial×is-rezk-complete
     : is-segal A → is-simplicial A → is-rezk-complete A → is-category A

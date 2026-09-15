@@ -45,6 +45,7 @@ pkgs.stdenv.mkDerivation rec {
     forester build
     mkdir -p ./output/agda-synthetic-categories/assets
     cp -Lrvf assets/logo-wide-transparent.svg ./output/agda-synthetic-categories/assets/
+    cp -Lrvf assets/ML_workshop_photo.JPG ./output/agda-synthetic-categories/assets/
     if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
       if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
         echo "Warning: failed to copy Agda.css into output/html; continuing." >&2
@@ -61,6 +62,7 @@ pkgs.stdenv.mkDerivation rec {
     cp -Lrvf output/html "$out"/
     mkdir -p "$out/assets"
     cp -Lrvf assets/logo-wide-transparent.svg "$out/assets"/
+    cp -Lrvf assets/ML_workshop_photo.JPG "$out/assets"/
     mkdir -p "$out/benchmarks"
     cp -Lrvf assets/benchmarks/. "$out/benchmarks"/
     if [ -f "$out/benchmarks/data.json" ]; then

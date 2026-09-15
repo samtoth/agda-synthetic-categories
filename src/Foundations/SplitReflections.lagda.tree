@@ -1,0 +1,569 @@
+\title{Split-reflections}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-09-08}
+\import{stt-macros}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+module Foundations.SplitReflections where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Sigma
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.NullHomotopy
+open import Foundations.Equivalences
+open import Foundations.Retracts
+open import Foundations.Subtypes
+open import Foundations.GlobalSubuniverses
+open import Foundations.Subuniverses
+open import Foundations.Small
+open import Foundations.FunExt
+open import Foundations.IdempotentMaps
+open import Foundations.Subuniverses
+open import Foundations.Currying
+open import Foundations.CompositionEquiv
+open import Foundations.ExtensionsMaps
+open import Foundations.Singletons
+open import Foundations.SingletonClosure
+open import Foundations.EquivSingleton
+open import Foundations.SingletonFibres
+open import Foundations.FibrewiseEquivalences
+open import Foundations.Embeddings
+open import Foundations.IdentityEquiv
+open import Foundations.TheoremOfChoice
+open import Foundations.TotalEquiv
+open import Foundations.Univalence
+import Foundations.IsEquivIsProp
+}
+}
+
+\subtree[bak-C186]{
+\title{The split-reflection property}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+Given a global subuniverse #{\mathcal{𝒦}}, a \em{split-reflection} of a type
+#{A \in \UU} is a type #{KA \in \mathcal{𝒦}} together with a unit map
+#{\eta : A \to KA} such that for every retract #{B} of #{A} in #{\mathcal{𝒦}}, there
+is a map #{KA \to B} which restricts along #{\eta} to the original retract.
+}
+
+\p{
+In particular, the split-reflection is a type #{KA \in \mathcal{K}} such that every
+retract of #{A} in #{\mathcal{𝒦}} is a retract of #{KA}.
+}
+
+\remark{
+Note that, while the formalisation is relative to a \em{global} subuniverse,
+the construction of the splitting reflection later on this page is small, and so this
+notion makes just as much sense for (small) subuniverses. We formalise it first with
+respect to global subuniverses because these are more broadly useful in
+formalisation.
+}
+
+\agda{
+module _ {α} (𝒦 : gSubU α) (open gSubU 𝒦) where
+
+  record is-global-split-reflection
+    {𝓤 𝓥} {A : Type 𝓤} {KA : Type 𝓥} (η : A → KA)
+    : Typeω where
+    field
+      ∈S : KA ∈ S
+      elim : ∀ {𝓦} {B : Type 𝓦} → B ∈ S → retract B A → KA → B
+      elim-β
+        : ∀ {𝓦} {B : Type 𝓦}
+        → (h : B ∈ S) (R : retract B A)
+        → elim h R ∘ η ~ R .snd .fst
+
+    elim'
+      : KA → (R : Retracts 𝓤 A)
+      → carrier-Retracts R ∈ S → carrier-Retracts R
+    elim' x R h = elim h (R .snd) x
+
+    preserves-retract
+      : ∀ {𝓦} {B : Type 𝓦}
+        → B ∈ S → retract B A → retract B KA
+    preserves-retract h R
+      = (η ∘ R .fst , elim h R , elim-β h R ▹h R .fst ∙h R .snd .snd)
+
+    unit-retraction : A ∈ S → retraction η
+    unit-retraction h = (elim h idretract , elim-β h idretract)
+}
+}
+
+\subtree[bak-327A]{
+\title{The small split-reflection property}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+Given a subuniverse #{\mathcal{𝒦} \subseteq \UU}, a \em{split-reflection} of a type
+#{A \in \UU} is a type #{KA \in \mathcal{𝒦}} together with a unit map
+#{\eta : A \to KA}
+such that for every retract #{B} of #{A} in #{\mathcal{𝒦}}, there is a map
+#{KA \to B} which restricts along #{\eta} to the original retract.
+}
+
+\agda{
+module _ {𝓤 𝓥} (𝒦 : SubU 𝓤 𝓥) (open Subtype 𝒦) where
+
+  record is-split-reflection
+    {A KA : Type 𝓤} (η : A → KA) : Type (lsuc 𝓤 ⊔ 𝓥)
+    where
+    field
+      ∈S : KA ∈ 𝒦
+      elim
+        : {B : Type 𝓤}
+        → B ∈ 𝒦 → retract B A → KA → B
+      elim-β
+        : {B : Type 𝓤}
+        → (h : B ∈ 𝒦) (R : retract B A)
+        → elim h R ∘ η ~ R .snd .fst
+
+    preserves-retract
+      : {B : Type 𝓤}
+      → B ∈ 𝒦 → retract B A → retract B KA
+    preserves-retract h R
+      = (η ∘ R .fst , elim h R , elim-β h R ▹h R .fst ∙h R .snd .snd)
+
+    unit-retraction : A ∈ 𝒦 → retraction η
+    unit-retraction h = (elim h idretract , elim-β h idretract)
+
+  split-reflection : Type 𝓤 → Type (lsuc 𝓤 ⊔ 𝓥)
+  split-reflection A
+    = Σ[ KA ∶ Type 𝓤 ] Σ[ η ∶ (A → KA) ] (is-split-reflection η)
+}
+}
+
+\subtree[bak-C236]{
+\title{Morphisms of split-reflections}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+Let #{A} be a type and #{\mathcal{K}} be a subuniverse. Given two
+split-reflections of #{A} in #{\mathcal{K}},
+#{\eta \colon A \to X} and #{\eta' \colon A \to X'}, write {\varepsilon_{(-)}} and
+{\varepsilon_{(-)}'} for their respective eliminators, and {\beta_{(-)}} and
+{\beta_{(-)}'} for their computation laws. A \em{morphism} of split-reflections
+from #{X} to #{X'} consists of
+
+\ul{
+\li{A map #{f \colon X \to X'}.}
+\li{A witness #{H} that the following triangle commutes
+\quiver{
+\begin{tikzcd}[column sep=small]
+& A \\
+X && X'
+\arrow["\eta"', from=1-2, to=2-1]
+\arrow["\eta'", from=1-2, to=2-3]
+\arrow["f", from=2-1, to=2-3]
+\end{tikzcd}
+}
+}
+\li{
+For each #{\mathcal{K}}-valued retract #{R} with domain #{B}, a witness #{Q_R} that
+the following triangle commutes
+\quiver{
+\begin{tikzcd}[column sep=small]
+X && X' \\
+& B
+\arrow["\varepsilon_R"', from=1-1, to=2-2]
+\arrow["\varepsilon_R'", from=1-3, to=2-2]
+\arrow["f", from=1-1, to=1-3]
+\end{tikzcd}
+}
+}
+\li{
+For each #{\mathcal{K}}-valued retract #{R} with underlying retraction #{r_R}, a
+a coherence between the computation laws
+\quiver{
+\begin{tikzcd}
+\varepsilon'_R \circ f \circ \eta & \varepsilon'_R \eta' \\
+ \varepsilon_R \circ \eta  & r_R
+\arrow["\varepsilon'_R H", equals, from=1-1, to=1-2]
+\arrow["\beta_R"', equals, from=2-1, to=2-2]
+\arrow["Q_R \eta"', equals, from=1-1, to=2-1]
+\arrow["\beta'_R", equals, from=1-2, to=2-2]
+\end{tikzcd}
+}
+}
+}
+}
+
+\agda{
+module _
+  {α} (𝒦 : gSubU α) (open gSubU 𝒦)
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦}
+  {η : A → X} {η' : A → Y}
+  (open is-global-split-reflection)
+  where
+
+  split-reflection-map
+    : is-global-split-reflection 𝒦 η
+    → is-global-split-reflection 𝒦 η'
+    → Type (lsuc 𝓤 ⊔ α 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  split-reflection-map KX KY
+    = Σ[ f ∶ Ext η η' ]
+      ( (R : Retracts 𝓤 A) (h : carrier-Retracts R ∈ S)
+      → Ext-htpy
+          ( elim KY h (R .snd) ∘ f .fst
+          , elim KY h (R .snd) ◃h f .snd ∙h elim-β KY h (R .snd))
+          ( elim KX h (R .snd) , elim-β KX h (R .snd)))
+}
+}
+
+\subtree[bak-9239]{
+\title{Universal split-reflections}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{A split-reflection is \em{universal} if it is terminal among split-reflections.}
+
+\agda{
+is-universal-split-reflection
+  : ∀ {α} (𝒦 : gSubU α) {𝓤 𝓥} {A : Type 𝓤} {KA : Type 𝓥}
+    {η : A → KA} → is-global-split-reflection 𝒦 η → Typeω
+is-universal-split-reflection 𝒦 {A = A} K
+  = ∀ {𝓦} {KA : Type 𝓦} {η : A → KA}
+    → (U : is-global-split-reflection 𝒦 η)
+    → is-singleton (split-reflection-map 𝒦 U K)
+}
+}
+
+\subtree[bak-D682]{
+\title{The split-reflection is universal if the elimination principle is an equivalence}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+module _
+  (FE : FunExt-global)
+  (open WithFunExt-global FE)
+  (open ExtWithFunExt FE)
+  {α} (𝒦 : gSubU α) (open gSubU 𝒦)
+  {𝓤 𝓥} {A : Type 𝓤} {KA : Type 𝓥} {η : A → KA}
+  (K : is-global-split-reflection 𝒦 η)
+  (open Foundations.IsEquivIsProp FE)
+  (open is-global-split-reflection)
+  where
+
+  Ext≃retract-extensions
+    : is-equiv (elim' K)
+    → ∀ {𝓦} {X : Type 𝓦} (ηL : A → X)
+    → Ext ηL η
+    ≃ ((R : Σ[ R ∶ Retracts 𝓤 A ] (carrier-Retracts R ∈ S))
+      → Ext ηL (R .fst .snd .snd .fst))
+  Ext≃retract-extensions H ηL
+    = Σ-≃
+        (postcomp-≃ FE (mk≃ (elim' K) H ∙e uncurry≃) ∙e flip≃)
+        (λ f
+         → Π-fam-≃ (λ a → ap-Π-equiv FE
+            (embedding←equiv (mk≃ (elim' K) H ∙e uncurry≃)))
+          ∙e flip≃
+          ∙e Π-fam-≃ (λ (R , h) → Π-fam-≃ (λ a
+              → ＝-preconcat-≃ (elim-β K h (R .snd) a))))
+    ∙e (Σ-Π-swap≃ _ _ e⁻¹)
+
+  universal-split-reflection←elim-is-equiv
+    : is-equiv (elim' K)
+    → is-universal-split-reflection 𝒦 K
+  universal-split-reflection←elim-is-equiv H {η = ηL} U
+    = is-single←equiv-to-single
+        (Σ-snd-≃ (λ F
+          → funext≃
+          ∙e curry≃
+          ∙e Π-fam-≃ (λ R → Π-fam-≃ (λ h → Id≃Ext-htpy _ _))))
+        (has-singleton-fibres←is-equiv
+          (Ext≃retract-extensions H ηL ._≃_.fwd-is-equiv)
+          (λ (R , h) → (elim U h (R .snd) , elim-β U h (R .snd))))
+}
+}
+
+\subtree[bak-E633]{
+\title{The split-reflection}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+Given a type #{A \in \UU}, the split-reflection may be constructed as the type of
+sections on the family of retracts #{B} of #{A} in #{\mathcal{𝒦}}
+
+##{KA \coloneqq \Pi_{(B : \mathsf{Retracts}_{\mathcal{𝒦}}(A))} B.}
+
+By [the splitting construction](bak-FF4D), this type is small.
+}
+
+\p{
+This construction generalises the "populatedness" predicate studied by Kraus et
+al.~\citek{KECA17}, assuming function extensionality. It remains an open problem
+whether this construction can be performed in the absence of function
+extensionality~\citet{Open Problem 10.4}{Shu17b}.
+}
+
+\agda{
+module SplitReflection
+  (FE : FunExt-global)
+  (open SplitRetractWithFunExt FE)
+  {α} (𝒦 : gSubU α)
+  (open gSubU 𝒦)
+  {𝓤} (A : Type 𝓤)
+  (open SmallRetractsWithFunExt FE A)
+  where
+
+  type : Type (𝓤 ⊔ α 𝓤)
+  type
+    = (B : Small-retracts)
+    → carrier-Small-retract B ∈ S
+    → carrier-Small-retract B
+
+  η : A → type
+  η a B h = retract-Retracts (retract-Small-retract B) .snd .fst a
+
+  ∈S : is-globally-indexed-product-closed 𝒦 → type ∈ S
+  ∈S Π∈𝒦 = Π∈𝒦 (λ B → Π∈𝒦 id)
+
+  module _ {𝓥} {B : Type 𝓥} (h : B ∈ S) (R : retract B A) where
+
+    elim : type → B
+    elim x
+      = _≃_.fwd
+          (split-retract-equiv R)
+          (x (small-retracts←retract R)
+             (∈S←equiv (split-retract-equiv R e⁻¹) h))
+
+    elim-β : elim ∘ η ~ R .snd .fst
+    elim-β a = R .snd .snd (R .snd .fst a)
+
+  η-is-split-reflection
+    : is-globally-indexed-product-closed 𝒦 → is-global-split-reflection 𝒦 η
+  η-is-split-reflection Π∈𝒦 .is-global-split-reflection.∈S = ∈S Π∈𝒦
+  η-is-split-reflection Π∈𝒦 .is-global-split-reflection.elim = elim
+  η-is-split-reflection Π∈𝒦 .is-global-split-reflection.elim-β = elim-β
+}
+
+\subtree[bak-F5C0]{
+\title{If the split-reflector is null-homotopic then the split-reflection is a singleton}
+\taxon{Theorem}
+\author{fredrikbakke}
+
+\agda{
+  is-single←null-homotopy-η
+    : null-homotopy η → is-singleton type
+  is-single←null-homotopy-η (u , H)
+    = Π-is-single FE λ E → Π-is-single FE λ h →
+        let R = retract-Small-retract E .snd
+        in mk-singl (u E h) λ b →
+          ap (λ x → x E h) (H (R .fst b)) ∙ R .snd .snd b
+}
+}
+
+\subtree[bak-15B0]{
+\title{Extension of maps that factor through #{𝒦}-valued retracts}
+\taxon{Lemma}
+\author{fredrikbakke}
+
+\p{
+Given a retract #{B \overset{i}\to A \overset{r}\to B} where #{B \in \mathcal{K}},
+then any map #{f : A \to C} that factors through #{r}, #{f \sim f' \circ r},
+extend to the split-reflection: #{f \sim \bar{f} \circ \eta} for some
+#{\bar{f} \colon KA \to A}.
+}
+
+\agda{
+  Ext-split-reflection←retract
+    : ∀ {𝓥 𝓦} {B : Type 𝓥} {C : Type 𝓦}
+    → B ∈ S → (R : retract B A) (g : B → C)
+    → Ext η (g ∘ R .snd .fst)
+  Ext-split-reflection←retract h R g
+    = (g ∘ elim h R , g ◃h elim-β h R)
+}
+}
+
+\subtree[bak-0BD2]{
+\title{Maps back from split-reflections}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\p{
+If there exists any retract of #{A} in #{\mathcal{K}}, then there is a map #{m} from
+the split-reflection to #{A} such that both #{m \circ \eta} and #{\eta \circ m} are
+coherently idempotent.
+}
+
+\agda{
+  map-from-split-reflection←retract
+    : ∀ {𝓥} {B : Type 𝓥} → B ∈ S → retract B A → type → A
+  map-from-split-reflection←retract h R
+    = Ext-split-reflection←retract h R (R .fst) .fst
+
+  module _
+    {𝓥} {B : Type 𝓥} (h : B ∈ S) (R : retract B A)
+    (let m = map-from-split-reflection←retract h R)
+    (open WithFunExt-global FE)
+    where
+
+    map-from-split-reflection←retract-β : m ∘ η ~ R .fst ∘ R .snd .fst
+    map-from-split-reflection←retract-β
+      = Ext-split-reflection←retract h R (R .fst) .snd
+
+    absorption-map-from-split-reflection←retract : m ∘ η ∘ m ~ m
+    absorption-map-from-split-reflection←retract
+      = map-from-split-reflection←retract-β ▹h m
+      ∙h R .fst ◃h (R .snd .snd ▹h elim h R)
+
+    preidempotence-map-from-split-reflection-unit←retract : preidempotence (m ∘ η)
+    preidempotence-map-from-split-reflection-unit←retract
+      = absorption-map-from-split-reflection←retract ▹h η
+
+    preidempotence-unit-map-from-split-reflection←retract : preidempotence (η ∘ m)
+    preidempotence-unit-map-from-split-reflection←retract
+      = η ◃h absorption-map-from-split-reflection←retract
+
+    qidempotence-map-from-split-reflection-unit←retract : qidempotence (m ∘ η)
+    qidempotence-map-from-split-reflection-unit←retract
+      = tr qidempotence
+          (funext→ (~sym map-from-split-reflection←retract-β))
+          (qidempotent-map←retract R .snd)
+
+    qidempotence-unit-map-from-split-reflection←retract : qidempotence (η ∘ m)
+    qidempotence-unit-map-from-split-reflection←retract
+      = qidempotence←section-retraction (η ∘ R .fst) (elim h R)
+          (elim-β h R ▹h R .fst ∙h R .snd .snd)
+}
+}
+
+\subtree[bak-6466]{
+\title{Universality of the split-reflection}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{The split-reflection produced by the splitting construction is universal.}
+
+\agda{
+  module _
+    (UA : Univalence)
+    (open RetractsQIdempotentsWithFunExtUnivalence FE UA {A = A})
+    (open is-global-split-reflection)
+    (Π∈𝒦 : is-globally-indexed-product-closed 𝒦)
+    where
+
+    elim-is-equiv
+      : is-equiv (elim' (η-is-split-reflection Π∈𝒦))
+    elim-is-equiv
+      = is-equiv-∘
+          ( Foundations.IsEquivIsProp.Π-is-equiv FE (λ R →
+            ( precomp-≃ FE (≃∈S←equiv (split-retract-equiv (R .snd) e⁻¹))
+            ∙e postcomp-≃ FE (split-retract-equiv (R .snd))) ._≃_.fwd-is-equiv))
+          ( precomp-Π-is-equiv FE small-retracts←retract-is-equiv)
+
+    is-universal
+      : is-universal-split-reflection 𝒦 (η-is-split-reflection Π∈𝒦)
+    is-universal
+      = universal-split-reflection←elim-is-equiv FE 𝒦
+          (η-is-split-reflection Π∈𝒦)
+          (elim-is-equiv)
+}
+}
+}
+
+
+\subtree[bak-E5EE]{
+\title{The non-parametric split-reflection}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\p{
+We record the non-parametric split-reflection to demonstrate that our
+construction is entirely predicative.
+}
+
+\agda{
+module SmallSplitReflection
+  (FE : FunExt-global)
+  (open SplitRetractWithFunExt FE)
+  {𝓤} (𝒦 : SubU 𝓤 𝓤)
+  (∈𝒦←equiv : is-equiv-closed 𝒦)
+  (A : Type 𝓤)
+  (open SmallRetractsWithFunExt FE A)
+  where
+
+  type : Type 𝓤
+  type
+    = (B : Small-retracts)
+    → carrier-Small-retract B ∈ 𝒦
+    → carrier-Small-retract B
+
+  η : A → type
+  η a B h = retract-Retracts (retract-Small-retract B) .snd .fst a
+
+  ∈S : is-indexed-product-closed 𝒦 → type ∈ 𝒦
+  ∈S Π∈𝒦 = Π∈𝒦 (λ B → Π∈𝒦 id)
+
+  elim : {B : Type 𝓤} → B ∈ 𝒦 → retract B A → type → B
+  elim h R x
+    = _≃_.fwd
+        (split-retract-equiv R)
+        (x (small-retracts←retract R)
+           (∈𝒦←equiv (split-retract-equiv R e⁻¹) h))
+
+  elim-β
+    : {B : Type 𝓤} (h : B ∈ 𝒦) (R : retract B A)
+    → elim h R ∘ η ~ R .snd .fst
+  elim-β h R a = R .snd .snd (R .snd .fst a)
+
+  η-is-split-reflection : is-indexed-product-closed 𝒦 → is-split-reflection 𝒦 η
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.∈S = ∈S Π∈𝒦
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim = elim
+  η-is-split-reflection Π∈𝒦 .is-split-reflection.elim-β = elim-β
+
+  reflection : is-indexed-product-closed 𝒦 → split-reflection 𝒦 A
+  reflection Π∈𝒦 = (type , η , η-is-split-reflection Π∈𝒦)
+}
+}
+
+\subtree[bak-724B]{
+\title{The split-reflection is a retract of the double split-reflection}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\agda{
+module DoubleSplitReflection
+  (FE : FunExt-global)
+  {α} (𝒦 : gSubU α) (open gSubU 𝒦)
+  (Π∈S : is-globally-indexed-product-closed 𝒦)
+  (let module Split {𝓤} (A : Type 𝓤) = SplitReflection FE 𝒦 A)
+  where
+
+  double-split-reflection-unit-retraction
+    : ∀ {𝓤} {A : Type 𝓤} → retraction (Split.η (Split.type A))
+  double-split-reflection-unit-retraction {A = A}
+    = is-global-split-reflection.unit-retraction
+        (Split.η-is-split-reflection (Split.type A) Π∈S)
+        (Split.∈S A Π∈S)
+
+  split-reflection-retract-double-split-reflection
+    : ∀ {𝓤} {A : Type 𝓤} → retract (Split.type A) (Split.type (Split.type A))
+  split-reflection-retract-double-split-reflection {A = A}
+    = (Split.η (Split.type A) , double-split-reflection-unit-retraction)
+}
+}

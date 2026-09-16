@@ -20,6 +20,8 @@ let
       dvisvgm
       mathpartir
       standalone
+      bbold
+      bboold-type1
       ;
   };
 in

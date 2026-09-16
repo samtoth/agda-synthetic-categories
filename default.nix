@@ -21,7 +21,7 @@ let
       mathpartir
       standalone
       bbold
-      bboold-type1
+      bbold-type1
       ;
   };
 in

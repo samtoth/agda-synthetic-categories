@@ -4,10 +4,9 @@
   <br clear="right">
 </h1>
 
-This is an Agda development focussed on the development of ∞-category theory using
-simplicial type theory. Visit
-[the forest](https://samtoth.github.io/agda-synthetic-categories) to browse the
-resource and find out more about the project.
+An Agda development focussed on the synthetic theory of ∞-categories using simplicial
+type theory. Visit [the forest](https://samtoth.github.io/agda-synthetic-categories)
+to browse the resource and find out more about the project.
 
 Have questions or just want to chat? Join our
 [Discord server](https://discord.gg/Jfxv4jPTva)!

@@ -28,17 +28,27 @@
       </head>
       <body>
         <ninja-keys placeholder="Start typing a note title or ID"></ninja-keys>
-        <xsl:if test="not(/f:tree[@root = 'true'])">
-          <header class="header">
-            <nav class="nav">
-              <div class="logo">
-                <a href="{/f:tree/@base-url}index.html" title="Home">
-                  <xsl:text>« Home</xsl:text>
-                </a>
-              </div>
-            </nav>
-          </header>
-        </xsl:if>
+	<header class="header">
+	  <nav class="nav">
+	    <div class="logo">
+	      <xsl:if test="not(/f:tree[@root = 'true'])">
+		<a href="{/f:tree/@base-url}index.html" title="Home">
+		  <xsl:text>« Home</xsl:text>
+		</a>
+	      </xsl:if>
+	      <button id="search-button" type="button" title="Search">
+	        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="18"
+                     viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                     stroke="currentcolor"
+                     stroke-width="2" stroke-linecap="round"
+                     stroke-linejoin="round">
+                     <circle cx="11" cy="11" r="8"></circle>
+                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+	      </button>
+	    </div>
+	  </nav>
+	</header>
         <div id="grid-wrapper">
           <article>
             <xsl:apply-templates select="f:tree" />

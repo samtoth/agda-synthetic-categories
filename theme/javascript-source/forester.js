@@ -45,6 +45,11 @@ window.addEventListener('load', (event) => {
   const baseUrl = document.querySelector('html').getAttribute('data-base-url');
   const jsonUrl = `${baseUrl}forest.json`;
 
+  const searchBtn = document.querySelector('#search-button');
+  searchBtn.addEventListener('click', () => {
+    ninja.open();
+  });
+
   fetch(jsonUrl)
     .then((res) => res.json())
     .then((trees) => {

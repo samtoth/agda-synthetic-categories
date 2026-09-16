@@ -46,6 +46,7 @@ open import Synthetic.Simplicial Δ¹ I
 \subtree[stt-00DY]{
 \taxon{Definition}
 \title{Disjunctive types}
+\contributor{reidbarton}
 
 \p{
 The generic interval does not necessarily satisfy \em{the disjunctive property}, in
@@ -58,11 +59,28 @@ be the type of elements #{i} and #{j} such that #{(i ∨ j) = 1}.
 }
 
 \agda{
+∨=1 : Δ¹ × Δ¹ → Type 𝓘
+∨=1 (i , j) = (i ∨ j ＝ i1)
+
+∨=1-is-prop : {p : Δ¹ × Δ¹} → is-prop (∨=1 p)
+∨=1-is-prop = carrier-is-set _ _
+
 ∨² : Type 𝓘
-∨² = Σ (Δ¹ × Δ¹) (λ (i , j) → (i ∨ j ＝ i1))
+∨² = Σ (Δ¹ × Δ¹) ∨=1
 
 fam-disjunctive : Δ¹ × Δ¹ → Type 𝓘
 fam-disjunctive (i , j) = (i ＝ i1) * (j ＝ i1)
+
+fam-disjunctive-is-prop : {p : Δ¹ × Δ¹} → is-prop (fam-disjunctive p)
+fam-disjunctive-is-prop = *-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
+
+fam-disjunctive-is-mono
+  : {i j : Δ¹ × Δ¹} → (fst i ≤ fst j) × (snd i ≤ snd j)
+  → fam-disjunctive i → fam-disjunctive j
+fam-disjunctive-is-mono {i1 , i2} {j1 , j2} (h1 , h2) =
+  *-prop-rec fam-disjunctive-is-prop
+    (λ H1 → ι₁ (＝1←1≤ (tr (_≤ j1) H1 h1)))
+    (λ H2 → ι₂ (＝1←1≤ (tr (_≤ j2) H2 h2)))
 
 fam-is-disjunctive : ∨² → Type 𝓘
 fam-is-disjunctive = fam-disjunctive ∘ fst
@@ -205,10 +223,8 @@ drop-join-proof-is-equiv
   : (ij : Δ¹ × Δ¹) → is-equiv (drop-join-proof ij)
 drop-join-proof-is-equiv (i , j)
   = is-equiv←inverse
-      (×-is-prop
-        (carrier-is-set _ _)
-        (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _)))
-      (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      (×-is-prop (carrier-is-set _ _) fam-disjunctive-is-prop)
+      (fam-disjunctive-is-prop)
       (λ d → ∨=1←fam-disjunctive d , d)
 
 Λ[2,2]←Λ[2,2]' : Λ[2,2]' → Λ[2,2]
@@ -226,8 +242,14 @@ drop-join-proof-is-equiv (i , j)
 Λ[2,2]'←Λ[2,2] : Λ[2,2] → Λ[2,2]'
 Λ[2,2]'←Λ[2,2] = _≃_.bwd Λ[2,2]'≃Λ[2,2]
 
-Λ[2,2]-incl : Λ[2,2] → ∨²
-Λ[2,2]-incl ((i , j) , d) = ((i , j) , ∨=1←fam-disjunctive d)
+Λ[2,2]-∨²-incl : Λ[2,2] → ∨²
+Λ[2,2]-∨²-incl ((i , j) , d) = ((i , j) , ∨=1←fam-disjunctive d)
+
+Λ[2,2]-∨²-incl-is-embedding : is-embedding Λ[2,2]-∨²-incl
+Λ[2,2]-∨²-incl-is-embedding
+  = is-embedding-left-cancel
+      (Subtype.Σ̃-π-is-embedding (mk-subtype (λ _ → ∨=1-is-prop)))
+      (Subtype.Σ̃-π-is-embedding (mk-subtype (λ _ → fam-disjunctive-is-prop)))
 }
 }
 
@@ -245,7 +267,7 @@ as identical to the subset of the square whose join is #{1}.
 
 \agda{
 is-upper-located : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
-is-upper-located = is-local (point Λ[2,2]-incl)
+is-upper-located = is-local (point Λ[2,2]-∨²-incl)
 }
 }
 
@@ -299,7 +321,7 @@ disj←simp-over-∨²
   : (x : ∨²) → fam-is-simplicial (x .fst) → fam-is-disjunctive x
 disj←simp-over-∨² ((i , j) , p)
   = *-prop-rec
-      (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      fam-disjunctive-is-prop
       (λ ij → ι₂ (sym (≤-max ij) ∙ p))
       (λ ji → ι₁ (sym (≤-max ji) ∙ sym ∨-comm ∙ p))
 
@@ -316,7 +338,7 @@ disj←simp-over-∨²-is-equiv
 disj←simp-over-∨²-is-equiv x@((i , j) , _)
   = is-equiv←inverse
       (*-is-prop ≤-is-prop ≤-is-prop)
-      (*-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      (fam-disjunctive-is-prop)
       (disj→simp-over-∨² x)
 
 simp-over-∨²≃disj : (x : ∨²) → fam-is-simplicial (x .fst) ≃ fam-is-disjunctive x
@@ -369,7 +391,7 @@ Disjunctive-U-is-disjunctive
   → is-disjunctive (Disjunctive-U 𝓤)
 Disjunctive-U-is-disjunctive {𝓤}
   = Null-U-is-null←is-prop {𝓤 = 𝓘} {𝓥 = 𝓤}
-      (λ _ → *-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      (λ _ → fam-disjunctive-is-prop)
 
 Disjunctive-Trunc-U
   : (n : 𝕋) (𝓤 : Level) → Type (lsuc (𝓘 ⊔ 𝓤))
@@ -382,7 +404,7 @@ Disjunctive-Trunc-U-is-disjunctive
 Disjunctive-Trunc-U-is-disjunctive n {𝓤}
   = Null-in-gSubU-is-null←is-prop {𝓤 = 𝓘} {𝓥 = 𝓤}
       {S = Truncation-gSubU n}
-      (λ _ → *-is-prop (carrier-is-set _ _) (carrier-is-set _ _))
+      (λ _ → fam-disjunctive-is-prop)
       (λ _ → Π-is-truncated)
 
 Disjunctive-Set-U

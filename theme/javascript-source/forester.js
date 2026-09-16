@@ -46,8 +46,8 @@ window.addEventListener('load', (event) => {
   const jsonUrl = `${baseUrl}forest.json`;
 
   const searchBtn = document.querySelector('#search-button');
-  searchBtn.addEventListener("click", () => {
-      ninja.open();
+  searchBtn.addEventListener('click', () => {
+    ninja.open();
   });
 
   fetch(jsonUrl)

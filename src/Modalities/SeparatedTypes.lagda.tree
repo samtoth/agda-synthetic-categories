@@ -31,7 +31,6 @@ open import Ergonomics.Universal
 \p{A type is separated if its identity types are modal. This forms a
 [(global)](stt-007A) [subuniverse](stt-003Z).}
 
-
 \agda{
 is-separated : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦) → Type 𝓤 → Type (𝓤 ⊔ 𝓦)
 is-separated S A = ∀ (x y : A) → (x ＝ y) ∈ S
@@ -124,19 +123,18 @@ equivalence iff precomposition by #{\suspension(f)} is at #{X}.}
 }
 
 \agda{
-module _ {𝓘 𝓤 𝓥} {I : Type 𝓘}
-         {A : I → Type 𝓤} {B : I → Type 𝓥}
-         (f : (i : I) → A i → B i) where
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘}
+  {A : I → Type 𝓤} {B : I → Type 𝓥}
+  (f : (i : I) → A i → B i)
+  (let Sf = Susp-map ∘ f)
+  where
 
-  private
-    Σf : (i : I) → Susp (A i) → Susp (B i)
-    Σf i = Susp-map (f i)
-
-  is-separated↔is-Σ-local
+  is-separated↔is-Susp-local
     : ∀ {𝓤} {X : Type 𝓤}
-      → is-local Σf X
+      → is-local Sf X
       ↔ is-separated (Local-SubU f 𝓤) X
-  is-separated↔is-Σ-local {X = X}
+  is-separated↔is-Susp-local {X = X}
     = ( (λ loc x y i → topmap↔botmap-is-equiv i .snd (loc i) (x , y))
        , λ sep i → topmap↔botmap-is-equiv i .fst λ (x , y) → sep x y i) where
     module _ i where
@@ -155,7 +153,7 @@ module _ {𝓘 𝓤 𝓥} {I : Type 𝓘}
       eqvr = Susp-UP≃ ∙e Σ-assoc e⁻¹
 
       botmap : (Susp (B i) → X) → (Susp (A i) → X)
-      botmap = precomp X (Σf i)
+      botmap = precomp X (Sf i)
 
 
       F : Arrow-equiv (total-map topmap) botmap
@@ -179,17 +177,17 @@ module _ {𝓘 𝓤 𝓥} {I : Type 𝓘}
         =    (fibrewise↔total-is-equiv iff⁻¹)
           ∙iff src↔tgt-is-equiv←Arrow-equiv F
 
-  is-separated←is-Σ-local
+  is-separated←is-Susp-local
     : ∀ {𝓤} {X : Type 𝓤}
-      → is-local Σf X
+      → is-local Sf X
       → is-separated (Local-SubU f 𝓤) X
-  is-separated←is-Σ-local = is-separated↔is-Σ-local .fst
+  is-separated←is-Susp-local = is-separated↔is-Susp-local .fst
 
-  is-Σ-local←is-separated
+  is-Susp-local←is-separated
     : ∀ {𝓤} {X : Type 𝓤}
       → is-separated (Local-SubU f 𝓤) X
-      → is-local Σf X
-  is-Σ-local←is-separated = is-separated↔is-Σ-local .snd
+      → is-local Sf X
+  is-Susp-local←is-separated = is-separated↔is-Susp-local .snd
 }
 
 \p{Because #{\suspension(-)} [preserves](stt-007J) the unit type, we can
@@ -197,14 +195,14 @@ easily derive that #{A}-null separated types are #{\suspension A}-null.}
 
 \agda{
 module _ {𝓘 𝓤} {I : Type 𝓘} (A : I → Type 𝓤) where
-  is-separated←is-Σ-null
+  is-separated←is-Susp-null
     : ∀ {𝓤} {X : Type 𝓤}
       → is-null (Susp ∘ A) X
       → is-separated (Null-SubU A 𝓤) X
-  is-separated←is-Σ-null null
+  is-separated←is-Susp-null null
     = is-separated-SubU-equiv (Local-SubU !A _) (Null-SubU A _)
         Null≃!Local
-        (is-separated←is-Σ-local !A
+        (is-separated←is-Susp-local !A
           (is-target-local←is-Arrow-equiv
             (λ i → Susp-!⁻¹)
             (λ _ → Arrow⁻¹-is-equiv Susp-! Susp-!-is-equiv)
@@ -212,16 +210,16 @@ module _ {𝓘 𝓤} {I : Type 𝓘} (A : I → Type 𝓤) where
       !A : (i : I) → A i → 𝟙
       !A i _ = tt
 
-  is-Σ-null←is-separated
+  is-Susp-null←is-separated
     : ∀ {𝓤} {X : Type 𝓤}
       → is-separated (Null-SubU A 𝓤) X
       → is-null (Susp ∘ A) X
-  is-Σ-null←is-separated sep
+  is-Susp-null←is-separated sep
     = is-null←is-local
        (is-target-local←is-Arrow-equiv
          (λ _ → Susp-!)
          (λ _ → Susp-!-is-equiv)
-         (is-Σ-local←is-separated
+         (is-Susp-local←is-separated
            (λ _ _ → tt)
            (is-separated-SubU-equiv
              (Null-SubU A _)
@@ -288,14 +286,12 @@ opaque
                    (is-equiv⁻¹ fwd-is-equiv)) e⁻¹)
         (sep (bwd b) (bwd b')) where open _≃_ eq
 
-
 n-separated-SubU
   : ∀ {𝓤 𝓦} (S : SubU 𝓤 𝓦)
     → (n : ℕ) → SubU 𝓤 (𝓤 ⊔ 𝓦)
 n-separated-SubU S n .Subtype.family = is-n-separated S n
 n-separated-SubU S n .Subtype.family-is-subtype
   = is-n-separated-is-prop S n
-
 
 n-separated-gSubU
   : ∀ {α} (S : gSubU α)

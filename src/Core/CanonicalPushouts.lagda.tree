@@ -1,6 +1,7 @@
 \date{2025-04-15}
 \title{Properties of the canonical pushouts}
 \author{samueltoth}
+\contributor{fredrikbakke}
 \taxon{Module}
 
 \import{stt-macros}
@@ -201,6 +202,25 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
 }
 }
 
+\subtree[bak-SG3L]{
+\title{The canonical pushout is a pushout}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The [canonical pushout cocone](stt-002L) [is a pushout](stt-00NV).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {f : A → B} {g : A → C}
+  where
+
+  Pushout-is-pushout : is-pushout (pushout {f = f} {g = g})
+  Pushout-is-pushout = is-pushout←up-pushout pushout Pushout-has-up-pushout
+}
+}
 
 \subtree[stt-007Y]{
 \date{2025-07-29}
@@ -494,5 +514,162 @@ module _
 
   Pushout-assoc←-is-equiv : is-equiv Pushout-assoc←
   Pushout-assoc←-is-equiv = is-equiv⁻¹ Pushout-assoc→-is-equiv
+}
+}
+
+\subtree[bak-JDHI]{
+\title{Mapping out of folded spans}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a span #{B \xleftarrow{f} A \xrightarrow{g} C}, then we may \em{fold} the span
+to obtain #{B+C \xleftarrow{f+g} A+A \xrightarrow{\nabla} A}. If we map out of the
+folded span into a type #{Q} we get the cospan
+##{(B \to Q) \times (C \to Q) \xrightarrow{Q^f \times Q^g} (A \to Q) \times (A \to Q) \xleftarrow{\Delta} (A \to Q).}
+By the [folding property of pullbacks](bak-SDV9), the pullback of this cospan is
+equivalent to the pullback of #{Q^f} and #{Q^g}, so the original and folded spans
+have equivalent types of cocones with vertex #{Q}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  (f : A → B) (g : A → C)
+  where
+
+  fold-span : Span 𝓤 (𝓥 ⊔ 𝓦) 𝓤
+  fold-span = mk-span (A ⊎ A) (f ⨄₁ g) [⊎ id , id ]
+
+  module _ {𝓠} (Q : Type 𝓠) where
+
+    fold-precomp-pullback≃
+      : Pullback (precomp Q (f ⨄₁ g)) (precomp Q [⊎ id , id ])
+      ≃ Pullback (precomp Q f ×₁ precomp Q g) (λ r → (r , r))
+    fold-precomp-pullback≃
+      = Σ-≃
+          ( ⊎-UP≃ e⁻¹)
+          ( λ p → Σ-snd-≃ (λ r
+            → mk≃ (ap ⊎-restrict) (is-embedding←is-equiv ⊎-restrict-is-equiv)))
+}
+}
+
+\subtree[bak-NPKP]{
+\title{A cocone is a pushout if and only if its fold is}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a cocone with legs #{p \colon B \to D} and #{q \colon C \to D}, then we may
+\em{fold} the cocone to obtain a cocone with legs #{[p,q] \colon B+C \to D} and
+#{q \circ g \colon A \to D}.
+}
+
+\quiver{
+\begin{tikzcd}
+A \arrow[r,"g"] \arrow[d,"f"'] & C \arrow[d,"q"] &
+A+A \arrow[r,"{\nabla}"] \arrow[d,"f+g"'] & A \arrow[d,"q \circ g"] \\
+B \arrow[r,"p"'] & D & B+C \arrow[r,"{[p,q]}"'] & D
+\end{tikzcd}
+}
+
+\p{
+Mapping these cocones into a type #{Q} turns coproducts into products and
+identifies the precomposition cone of the folded cocone with the fold of the
+original precomposition cone. By the [folding property of pullbacks](bak-LP0S),
+either cone is a pullback if the other is. Hence the original cocone is a pushout if
+and only if the folded cocone is.
+}
+
+\p{
+In particular, the pushout of #{f} and #{g} is equivalent to the pushout of
+#{f+g} and the codiagonal #{A+A \to A}:
+##{(B+C) \amalg_{A+A} A \simeq B \amalg_A C.}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓓} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓓}
+  {f : A → B} {g : A → C} (c : Cocone (mk-span A f g) D)
+  where
+
+  fold-cocone : Cocone (fold-span f g) D
+  fold-cocone
+    = mk-cocone
+        [⊎ Cocone.p c , Cocone.q c ]
+        (Cocone.q c ∘ g)
+        (⊎-ind (Cocone.filler c , ~refl))
+
+  module _ {𝓠} (Q : Type 𝓠) where
+
+    fold-precomp-gap
+      : _≃_.fwd (fold-precomp-pullback≃ f g Q)
+      ∘ gap (precomp-cone fold-cocone Q)
+      ~ gap (fold-cone (precomp-cone c Q))
+    fold-precomp-gap h
+      = ap
+          (λ H → (_ , _ , H))
+          (ap-⊎-restrict (h ◃h Cocone.filler fold-cocone)
+      ∙ ap ×-path→ (×-path→ (refl , funext-refl)))
+
+    fold-precomp-is-pullback
+      : is-pullback (precomp-cone c Q)
+      → is-pullback (precomp-cone fold-cocone Q)
+    fold-precomp-is-pullback pb
+      = 3-for-2~ (fold-precomp-gap h⁻¹)
+          (_≃_.fwd-is-equiv (fold-precomp-pullback≃ f g Q))
+          (fold-cone-is-pullback (precomp-cone c Q) pb)
+
+    unfold-precomp-is-pullback
+      : is-pullback (precomp-cone fold-cocone Q)
+      → is-pullback (precomp-cone c Q)
+    unfold-precomp-is-pullback pb
+      = unfold-cone-is-pullback (precomp-cone c Q)
+          (is-equiv-~∘ (fold-precomp-gap h⁻¹)
+            (_≃_.fwd-is-equiv (fold-precomp-pullback≃ f g Q)) pb)
+
+  fold-cocone-has-up-pushout
+    : up-pushout _ c → up-pushout _ fold-cocone
+  fold-cocone-has-up-pushout po
+    = up-pushout←precomp-pullback fold-cocone (λ Q
+      → up-pullback←is-pullback _
+          (fold-precomp-is-pullback Q
+            (is-pullback←up-pullback _
+              (precomp-pullback←up-pushout c po Q))))
+
+  unfold-cocone-has-up-pushout
+    : up-pushout _ fold-cocone → up-pushout _ c
+  unfold-cocone-has-up-pushout po
+    = up-pushout←precomp-pullback c (λ Q
+      → up-pullback←is-pullback _
+          (unfold-precomp-is-pullback Q
+            (is-pullback←up-pullback _
+                (precomp-pullback←up-pushout fold-cocone po Q))))
+
+  fold-cocone-is-pushout : is-pushout c → is-pushout fold-cocone
+  fold-cocone-is-pushout po
+    = is-pushout←up-pushout fold-cocone
+        (fold-cocone-has-up-pushout (up-pushout←is-pushout c po))
+
+  unfold-cocone-is-pushout : is-pushout fold-cocone → is-pushout c
+  unfold-cocone-is-pushout po
+    = is-pushout←up-pushout c
+        (unfold-cocone-has-up-pushout (up-pushout←is-pushout fold-cocone po))
+
+  fold↔is-pushout : is-pushout c ↔ is-pushout fold-cocone
+  fold↔is-pushout = (fold-cocone-is-pushout , unfold-cocone-is-pushout)
+
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  (f : A → B) (g : A → C)
+  where
+
+  fold-pushout≃ : Pushout (f ⨄₁ g) [⊎ id , id ] ≃ Pushout f g
+  fold-pushout≃
+    = mk≃
+        (cogap (fold-cocone pushout))
+        (fold-cocone-is-pushout pushout Pushout-is-pushout)
 }
 }

@@ -19,6 +19,8 @@ open import Foundations.EquivHomotopy
 open import Foundations.Sigma
 open import Foundations.SigmaProperties
 open import Foundations.Functions
+open import Foundations.FunctionInverses
+open import Foundations.Homotopy
 open import Foundations.Singletons
 open import Foundations.DependentIdentity
 open import Foundations.FunExt
@@ -65,13 +67,11 @@ fibre-point≃ a b = Σ-singl 𝟙-is-singleton tt
 }
 }
 
-\subtree[stt-006S]{
-\date{2025-06-27}
+\subtree[bak-HSMB]{
+\title{Singleton types and the unit type}
+\taxon{Lemma}
 \author{samueltoth}
-\date{2025-03-09}
 \author{fredrikbakke}
-\title{Universal property for singleton types}
-\taxon{Theorem}
 
 \agda{
 const-𝟙ᴸ-is-equiv
@@ -90,23 +90,75 @@ sing≃𝟙 : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → A ≃ 𝟙
 sing≃𝟙 as ._≃_.fwd = !
 sing≃𝟙 as ._≃_.fwd-is-equiv = sing-!-is-equiv as
 }
+}
+
+\subtree[bak-GP33]{
+\title{Induction over a singleton}
+\taxon{Construction}
+\author{fredrikbakke}
 
 \agda{
-module UnitUPWithFunExt (FE : FunExt-global) where
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (s : is-singleton A)
+  where
 
+  sing-ind : B (centre s) → Π A B
+  sing-ind b a = tr B (central s a) b
+
+  sing-ind-β : ev (centre s) ∘ sing-ind ~ id
+  sing-ind-β b
+    = ap (λ q → tr B q b)
+        (is-set←is-single s (centre s) (centre s) (central s (centre s)) refl)
+
+  sing-ind-η : (f : Π A B) → sing-ind (f (centre s)) ~ f
+  sing-ind-η f = apᶠ f ∘ central s
+}
+}
+
+\subtree[bak-TU8K]{
+\title{Dependent evaluation over a singleton has a section}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+[Singleton induction](bak-GP33) gives a [section](stt-000H) of dependent evaluation
+and hence a [retraction](stt-000I) of the induction map.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (s : is-singleton A) where
+
+  sing-evᵈ-section : section (evᵈ: B (centre s))
+  sing-evᵈ-section = (sing-ind s , sing-ind-β s)
+
+  sing-ind-retraction : retraction (sing-ind s)
+  sing-ind-retraction = (ev (centre s) , sing-evᵈ-section .snd)
+}
+}
+
+\agda{
+module UnitUPWithFunExt (FE : FunExt-global) (open WithFunExt-global FE) where
+}
+
+\subtree[stt-006S]{
+\date{2025-06-27}
+\author{samueltoth}
+\date{2025-03-09}
+\author{fredrikbakke}
+\title{Universal property for singleton types}
+\taxon{Theorem}
+
+\agda{
   sing-evᵈ-is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → (s : is-singleton A)
       → is-equiv (evᵈ: B (centre s))
   sing-evᵈ-is-equiv {B = B} s = is-equiv←qinv qinv where
     qinv : quasi-inv (evᵈ: B (centre s))
-    qinv .fst x a = tr B (central s a) x
-    qinv .snd .fst f = WithFunExtω.funext→ FE (λ a → apᶠ f (central s a))
-    qinv .snd .snd x
-      = ap (λ q → tr B q x)
-           (is-set←is-single s (centre s) (centre s)
-             (central s (centre s))
-             (refl))
+    qinv .fst = sing-ind s
+    qinv .snd .fst f = funext→ (sing-ind-η s f)
+    qinv .snd .snd = sing-evᵈ-section s .snd
 
   sing-ev-is-equiv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -114,9 +166,9 @@ module UnitUPWithFunExt (FE : FunExt-global) where
       → is-equiv (ev: B (centre s))
   sing-ev-is-equiv s = is-equiv←qinv qinv where
     qinv : quasi-inv (ev (centre s))
-    qinv .fst a _ = a
-    qinv .snd .fst f = WithFunExtω.funext→ FE (λ a → ap f (central s a))
-    qinv .snd .snd _ = refl
+    qinv .fst = ev-section (centre s) .fst
+    qinv .snd .fst f = funext→ (ap f ∘ central s)
+    qinv .snd .snd = ev-section (centre s) .snd
 
   sing-UP≃
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}

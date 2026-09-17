@@ -1,0 +1,165 @@
+\date{2026-09-17}
+\title{Functoriality of relative suspensions}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Core.RelativeSuspensionsFunctoriality where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.CanonicalPushouts
+open import Core.ArrowEquiv
+open import Core.RelativeSuspensions
+}
+}
+
+\subtree[bak-R365]{
+\title{The functorial action of relative suspensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+A map #{s \colon C \to D} induces a map #{\suspension_δ C \to \suspension_δ D}
+under #{X}. This is the \em{functorial action on maps of the #{\delta}-suspension}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
+
+  RelativeSusp-map-cocone
+    : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
+      → (C → D)
+      → Cocone
+          (mk-span (X × C) (λ (x , c) → (δ x , c)) fst)
+          (RelativeSusp δ D)
+  RelativeSusp-map-cocone s
+    = mk-cocone (λ (y , c) → ι₁ (y , s c)) ι₂ (λ (x , c) → glue (x , s c))
+
+  RelativeSusp-map
+    : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
+      → (C → D) → RelativeSusp δ C → RelativeSusp δ D
+  RelativeSusp-map s = pushout-rec (RelativeSusp-map-cocone s)
+}
+}
+
+\subtree[bak-BMXL]{
+\title{Locality of relative suspensions is locality of extension types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The mapping out property is natural in #{C}. Consequently locality at
+#{\suspension_δ s} is equivalent to locality at #{s} of every extension type.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓩 𝓐} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦} {D : Type 𝓩} (s : C → D)
+  {A : Type 𝓐}
+  where
+
+  opaque
+    RelativeSusp-restrict-natural
+      : RelativeSusp-restrict δ ∘ precomp A (RelativeSusp-map δ s)
+      ~ total-map (λ f → precomp (Ext δ f) s) ∘ RelativeSusp-restrict δ
+    RelativeSusp-restrict-natural h
+      = ap
+          ((h ∘ ι₂) ,_)
+          (funext→
+            ( λ c
+              → Id←Ext-htpy
+                  ( ~refl
+                  , ( λ x
+                      → ap-∘ h (RelativeSusp-map δ s) (glue (x , c))
+                      ∙ ap (ap h) (pushout-rec-apβ (x , c))))))
+
+  RelativeSusp-precomp-equiv
+    : Arrow-equiv
+        (precomp A (RelativeSusp-map δ s))
+        (total-map (λ f → precomp (Ext δ f) s))
+  RelativeSusp-precomp-equiv
+    = mk-arr-equiv (RelativeSusp-UP≃ δ) (RelativeSusp-UP≃ δ)
+        ( RelativeSusp-UP-β δ ▹h precomp A (RelativeSusp-map δ s)
+        ∙h RelativeSusp-restrict-natural
+        ∙h total-map (λ f → precomp (Ext δ f) s) ◃h (RelativeSusp-UP-β δ h⁻¹))
+
+  RelativeSusp-local↔extensions-local
+    : is-equiv (precomp A (RelativeSusp-map δ s))
+    ↔ ((f : X → A) → is-equiv (precomp (Ext δ f) s))
+  RelativeSusp-local↔extensions-local
+    = src↔tgt-is-equiv←Arrow-equiv RelativeSusp-precomp-equiv
+    ∙iff fibrewise↔total-is-equiv
+}
+}
+
+\subtree[bak-T4HG]{
+\title{Functoriality of the relative suspension}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{The relative suspension preserves identities and composition.}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
+
+  RelativeSusp-map-id⁻¹
+    : ∀ {𝓦} {C : Type 𝓦}
+      → id ~ RelativeSusp-map δ (id: C)
+  RelativeSusp-map-id⁻¹
+    = pushout-rec-unique (mk-cocone ι₁ ι₂ glue) id ~refl ~refl
+        (λ a → ∙-reflr _ ∙ ap-id (glue a))
+
+  RelativeSusp-map-∘
+    : ∀ {𝓦 𝓩 𝓐} {C : Type 𝓦} {D : Type 𝓩} {E : Type 𝓐}
+      → (t : D → E) (s : C → D)
+      → RelativeSusp-map δ t ∘ RelativeSusp-map δ s
+      ~ RelativeSusp-map δ (t ∘ s)
+  RelativeSusp-map-∘ t s
+    = pushout-rec-unique
+        (RelativeSusp-map-cocone δ (t ∘ s))
+        (RelativeSusp-map δ t ∘ RelativeSusp-map δ s) ~refl ~refl
+        ( λ (x , c)
+          → ∙-reflr _
+          ∙ ap-∘ (RelativeSusp-map δ t) (RelativeSusp-map δ s) (glue (x , c))
+          ∙ ap (ap (RelativeSusp-map δ t)) (pushout-rec-apβ (x , c))
+          ∙ pushout-rec-apβ (x , s c))
+}
+}
+
+\subtree[bak-LND6]{
+\title{Relative suspension of a family of maps}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given families #{δ_i} and #{s_j}, then there is an induced family of maps on relative
+suspensions indexed by #{I × J}.
+}
+
+\agda{
+module _
+  {𝓘 𝓙 𝓤 𝓥 𝓦 𝓩} {I : Type 𝓘} {J : Type 𝓙}
+  {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  {C : J → Type 𝓦} {D : J → Type 𝓩}
+  (δ : (i : I) → X i → Y i) (s : (j : J) → C j → D j)
+  where
+
+  RelativeSusp-family
+    : (ij : I × J)
+    → RelativeSusp (δ (ij .fst)) (C (ij .snd))
+    → RelativeSusp (δ (ij .fst)) (D (ij .snd))
+  RelativeSusp-family (i , j)
+    = RelativeSusp-map (δ i) (s j)
+}
+}

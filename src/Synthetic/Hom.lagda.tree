@@ -104,17 +104,22 @@ between #{f} and #{g}, we need a homotopy #{H} of the underlying maps, but also
 coherence data: #{H_{0} \sim g_0 \sim f_0} for #{i = 0,1}.}
 
 \agda{
+Homᵈ-path
+  : ∀ {𝓤} {A : I → Type 𝓤} {x : A i0} {y : A i1} (f g : Homᵈ A x y)
+    → Type (𝓘 ⊔ 𝓤)
+Homᵈ-path (mk-hom f p q) (mk-hom g r s)
+  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+
 Hom-path
   : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
     → Type (𝓘 ⊔ 𝓤)
-Hom-path (mk-hom f p q) (mk-hom g r s)
-  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+Hom-path f g = Homᵈ-path f g
 
 opaque
-  Hom-path-is-torsorial
-    : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
-      → is-torsorial (Hom-path f)
-  Hom-path-is-torsorial f
+  Homᵈ-path-is-torsorial
+    : ∀ {𝓤} {A : I → Type 𝓤} {x : A i0} {y : A i1} (f : Homᵈ A x y)
+      → is-torsorial (Homᵈ-path f)
+  Homᵈ-path-is-torsorial f
     = is-single←equiv-to-single (Σ-fst-≃ (Homᵈ-repr≃ e⁻¹))
         (is-singleton-structure←parts
           (SingS-is-single (f .Homᵈ.hom))
@@ -124,22 +129,35 @@ opaque
             (_ , refl)
             Sing'-is-singleton))
 
+Hom-path-is-torsorial
+  : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
+    → is-torsorial (Hom-path f)
+Hom-path-is-torsorial f = Homᵈ-path-is-torsorial f
+
+Homᵈ-path-refl
+  : ∀ {𝓤} {A : I → Type 𝓤} {x} {y} {f : Homᵈ A x y} → Homᵈ-path f f
+Homᵈ-path-refl = (~refl , refl , refl)
+
 Hom-path-refl
   : ∀ {𝓤} {A : Type 𝓤} {x y} {f : Hom A x y} → Hom-path f f
-Hom-path-refl = (~refl , refl , refl)
+Hom-path-refl = Homᵈ-path-refl
 
 instance
-  IdS-Hom : ∀ {𝓤} {A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
-  IdS-Hom .Identity-system.IdS = Hom-path
-  IdS-Hom .Identity-system.IdS←Id refl = Hom-path-refl
+  IdS-Hom : ∀ {𝓤} {A : I → Type 𝓤} {x} {y} → Identity-system (Homᵈ A x y) (𝓘 ⊔ 𝓤)
+  IdS-Hom .Identity-system.IdS = Homᵈ-path
+  IdS-Hom .Identity-system.IdS←Id refl = Homᵈ-path-refl
   IdS-Hom .Identity-system.IdS←Id-is-equiv f
-    = fundamental-Id (Hom-path f) (Hom-path-is-torsorial f) _
-
+    = fundamental-Id (Homᵈ-path f) (Homᵈ-path-is-torsorial f) _
 
 Hom-ext→
   : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
     → Hom-path f g → f ＝ g
 Hom-ext→ = ext!
+
+Homᵈ-ext→
+  : ∀ {𝓤} {A : I → Type 𝓤} {x} {y} {f g : Homᵈ A x y}
+    → Homᵈ-path f g → f ＝ g
+Homᵈ-ext→ = ext!
 
 adjust-hom
   : ∀ {𝓤} {A : Type 𝓤} {x y x' y'} (p : x ＝ x') (q : y ＝ y')
@@ -222,7 +240,7 @@ Hom-pathᵈ-is-torsorial
       {f : Hom A x y} → is-torsorial (Hom-pathᵈ refl refl f)
 Hom-pathᵈ-is-torsorial
   = is-single←equiv-to-single (Σ-snd-≃ (λ _ → Hom-pathᵈ≃path))
-      (Hom-path-is-torsorial _)
+      (Homᵈ-path-is-torsorial _)
 
 Hom-pathᵈ-refl
   : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f : Hom A x y} → Hom-pathᵈ refl refl f f
@@ -241,6 +259,16 @@ Hom-IdSᵈ .Identity-system.IdS = Hom-pathᵈ refl refl
 Hom-IdSᵈ .Identity-system.IdS←Id refl = Hom-pathᵈ-refl
 Hom-IdSᵈ .Identity-system.IdS←Id-is-equiv a
   = fundamental-Id _ Hom-pathᵈ-is-torsorial _
+
+
+adjust-homᵈ-is-equiv
+  : ∀ {𝓤} {A : I → Type 𝓤} {x x' : A i0} {y y' : A i1}
+      (p : x ＝ x') (q : y ＝ y')
+    → is-equiv (adjust-homᵈ A p q)
+adjust-homᵈ-is-equiv refl refl
+  = is-equiv←~⁻¹
+      (λ a → Homᵈ-ext→ (~refl , ∙-reflr _ , ∙-reflr _))
+      id-is-equiv
 }
 }
 
@@ -294,6 +322,16 @@ ap-hom-over
 ap-hom-over F (mk-hom f hom0 hom1) .Homᵈ.hom = F ∘ f
 ap-hom-over F (mk-hom f refl hom1) .Homᵈ.hom0 = refl
 ap-hom-over F (mk-hom f hom0 refl) .Homᵈ.hom1 = refl
+
+ap-hom-over-fam
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {C : A → Type 𝓦}
+      (f : ∀ (a : A) → B a → C a)
+      {x y} (h : Hom A x y)
+      {e : B x} {e' : B y}
+    → Hom-over h e e' → Hom-over h (f x e) (f y e')
+ap-hom-over-fam f h h' .Homᵈ.hom i = f (h .Homᵈ.hom i) (h' .Homᵈ.hom i)
+ap-hom-over-fam f (mk-hom h refl hom1) (mk-hom h' refl hom1') .Homᵈ.hom0 = refl
+ap-hom-over-fam f (mk-hom h hom1 refl) (mk-hom h' hom0' refl) .Homᵈ.hom1 = refl
 
 ap-total-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -388,6 +426,41 @@ module _  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A} {x' y' : B} wher
 }
 }
 
+\subtree[tot-0AYV]{
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-17}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦}
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  (P : B → Type 𝓦)
+  {x y : A} (h : Hom A x y)
+  where
+
+  -- TODO(Sam): Better name
+  Hom-over-restriction
+    : ∀ {e : P (f x)} {e' : P (f y)}
+      → Hom-over h e e'
+      → Hom-over {B = P} (ap-hom f h) e e'
+  Hom-over-restriction
+    = adjust-homᵈ
+        (P ∘ f ∘ h .Homᵈ.hom)
+        (happly (ap coe (ap-∘ P f _ ∙ ap (ap P) (ap-sym f (h .Homᵈ.hom0)))) _)
+        (happly (ap coe (ap-∘ P f _ ∙ ap (ap P) (ap-sym f (h .Homᵈ.hom1)))) _)
+
+  Hom-over-restriction-is-equiv
+    : ∀ {e : P (f x)} {e' : P (f y)} → is-equiv (Hom-over-restriction {e} {e'})
+  Hom-over-restriction-is-equiv = adjust-homᵈ-is-equiv _ _
+
+  Hom-over-restriction≃
+    : ∀ {e : P (f x)} {e' : P (f y)}
+      → Hom-over h e e'
+      ≃ Hom-over {B = P} (ap-hom f h) e e'
+  Hom-over-restriction≃ = mk≃ Hom-over-restriction Hom-over-restriction-is-equiv
+}
+}
 
 \subtree[stt-00DO]{
 \title{Morphisms in #{Σ}-types}

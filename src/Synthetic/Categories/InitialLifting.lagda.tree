@@ -30,6 +30,8 @@ private
 
 open import Modalities.Instances.Truncation
 
+open import Ergonomics.Extensionality
+
 open import Core.CanonicalPushouts
 open import Core.PiSection
 open import Core.Slices
@@ -48,9 +50,11 @@ open import Synthetic.Categories.Initial Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
 open import Synthetic.Categories.PushoutJoins Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Homotopy Δ¹ I
 open import Synthetic.Categories.NaturalTransformations Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantHomFamilies Δ¹ I
+open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
 }
 }
 
@@ -165,7 +169,7 @@ fibred initial for #{p} iff it is initial in #{E}.
 \taxon{Lemma}
 
 \p{If #{q : E' \to A} is a base change of #{p : E \to B}, then an object #{e' : E'}
-is #{q}-initial just when its image in #{E} is #{p}-initial.}
+is #{q}-initial if its image in #{E} is #{p}-initial.}
 
 \agda{
 module _
@@ -241,6 +245,70 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) where
 }
 }
 
+\subtree[tot-SECY]{
+\title{Dependent initial objects over equivalent families}
+\taxon{Lemma}
+\date{2026-09-17}
+
+\agda{
+
+module _
+  {𝓤 𝓥}
+  {A : Type 𝓤} (Q : A → Type 𝓥) (P : A → Type 𝓥)
+  (e : ∀ a → Q a ≃ P a)
+  where
+
+  -- TODO(Sam): Be less lazy
+  is-dependent-initial←equiv
+    : ∀ {a : A} (x : Q a)
+      → is-dependent-initial P (e a ._≃_.fwd x)
+      → is-dependent-initial Q x
+  is-dependent-initial←equiv {a} x
+    = IdSJ ⦃ IdS-Π ⦃ λ {a} → IdS-ua ⦄ ⦄
+        (λ (P , e) → is-dependent-initial P (e a ._≃_.fwd x) → is-dependent-initial Q x)
+        id
+        e
+}
+}
+
+\subtree[tot-9462]{
+\title{Dependent initial objects over a base-change}
+\taxon{Lemma}
+\date{2026-09-17}
+
+\p{If #{Q : A \to \Type} is a base change of #{P : B \to \Type},
+then an object #{e' : Q(a)} is #{Q}-initial if its image
+in #{P} is #{P}-initial.}
+
+\agda{
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P : B → Type 𝓦) where
+
+  restriction-is-dependent-initial
+    : ∀ (f : A → B) {a : A} (e : P (f a))
+      → is-dependent-initial P e → is-dependent-initial (P ∘ f) e
+  restriction-is-dependent-initial f e e-init b h e'
+    = is-single←equiv-to-single
+        (Hom-over-restriction≃ f P h e⁻¹)
+        (e-init _ (ap-hom f h) e')
+
+module _
+  {𝓤 𝓥 𝓦}
+  {A : Type 𝓤} (Q : A → Type 𝓥)
+  {B : Type 𝓦} (P : B → Type 𝓥)
+  where
+
+  base-change-is-dependent-initial
+    : ∀ (F : Fam-map (A , Q) (B , P))
+        (_ : is-cartesianᶠ {F = (A , Q)} {G = (B , P)} F)
+        {a : A} (e : Q a)
+      → is-dependent-initial P (F .snd _ e)
+      → is-dependent-initial Q e
+  base-change-is-dependent-initial (b , t) teq e te-init
+    = is-dependent-initial←equiv Q (P ∘ b) (λ a → mk≃ (t a) (teq a)) e
+        (restriction-is-dependent-initial P b _ te-init)
+}
+}
+
 \subtree[tot-51LH]{
 \taxon{Lemma}
 
@@ -259,10 +327,12 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (E : B → Type 𝓥) where
         (is-equiv←has-singleton-fibres
           (λ { ((.b' , f) , (b' , e') , refl)
              → is-single←equiv-to-single
-                 (equiv←qequiv {!!}) -- Trivial on paper
+                 {!!}
                  (dinit b' (f tt) e')}))
+
 }
 }
+
 
 \subtree[tot-0236]{
 \title{Initial lifts}
@@ -406,10 +476,23 @@ initial-section←fibrewise-initial E Ein = total-map f where
       s2 = sb'-init e' .centre
 
       cntr : Hom-over h sb e'
-      cntr = {!Compᵈ h id h (Hom2 h id h) sh s2!}
+      cntr = Compᵈ-Hom2 Ein h (idH b') h (refl▵~ h) sh s2
 
       sinith : Hom-over {B = is-initial ∘ s} h sb-init sb'-init
       sinith = ap-hom-over sinit h
+
+      module _ (f' : Hom-over h sb e') where
+
+        β
+          : (i : Δ¹)
+          → Hom (E (Homᵈ.hom h i)) (s (Homᵈ.hom h i)) (f' .Homᵈ.hom i)
+        β i = sinit (h .Homᵈ.hom i) (f' .Homᵈ.hom i) .centre
+
+        -- β0 : Hom-pathᵈ refl (f' .Homᵈ.hom0 ∙ apᶠ s (sym (h .Homᵈ.hom0))) (β i0) (idH (s (h .Homᵈ.hom i0)))
+        -- β0 = {!!}
+
+        -- β1 : Hom-pathᵈ {!!} {!!} (β i1) {!sb'-init _ .centre!}
+        -- β1 = {!!}
 }
 }
 

@@ -66,58 +66,64 @@ FunExt-global = ∀ {𝓥} → FunExtω 𝓥
 
 \agda{
 module WithFunExt {𝓤 𝓥} (fe : FunExt 𝓤 𝓥) where
+
   funext≃ : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → (f ＝ g) ≃ (f ~ g)
   funext≃ = mk≃ happly fe
 
-  module funext {A : Type 𝓤} {B : A → Type 𝓥}
-                {f g : Π A B} = _≃_ (funext≃ {A} {B} {f} {g})
+  module funext {A : Type 𝓤} {B : A → Type 𝓥} {f g : Π A B}
+    = _≃_ (funext≃ {A} {B} {f} {g})
 
-  funext→ : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → f ~ g → f ＝ g
+  funext→ : {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a} → f ~ g → f ＝ g
   funext→ p = is-equiv.bwd fe p
 
-  funext-J
-    : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
-      → (M : (g : (a : A) → B a) → f ~ g → Type 𝓦) → M f ~refl
-      → ∀ (g : (a : A) → B a) (h : f ~ g) → M g h
-  funext-J M mrfl g h = tr (M g) (is-equiv.ε fe h) (J (λ g p → M g (happly p)) mrfl (funext→ h))
+  opaque
+    funext-J
+      : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
+        → (M : (g : (a : A) → B a) → f ~ g → Type 𝓦) → M f ~refl
+        → (g : (a : A) → B a) (h : f ~ g) → M g h
+    funext-J M mrfl g h
+      = tr (M g) (is-equiv.ε fe h) (J (λ g p → M g (happly p)) mrfl (funext→ h))
 
-  funext-rec
-    : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
-        (M : f ~ g → Type 𝓦)
-      → (∀ p → M (happly p))
-      → ∀ h → M h
-  funext-rec M p h = tr M (is-equiv.ε fe h) (p (funext→ h))
+  opaque
+    funext-rec
+      : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f g : (a : A) → B a}
+          (M : f ~ g → Type 𝓦)
+        → (∀ p → M (happly p))
+        → ∀ h → M h
+    funext-rec M p h = tr M (is-equiv.ε fe h) (p (funext→ h))
 
-  funext-refl : ∀ {A : Type 𝓤} {B : A → Type 𝓥} {f : Π A B} → funext→ (~refl) ＝ refl {a = f}
+  funext-refl
+    : {A : Type 𝓤} {B : A → Type 𝓥} {f : Π A B} → funext→ (~refl) ＝ refl {a = f}
   funext-refl = is-equiv.η fe refl
 
-  funext-∙
-    : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
-        {f g h : Π A B} (p : f ~ g) (q : g ~ h)
-      → funext→ (p ∙h q) ＝ funext→ p ∙ funext→ q
-  funext-∙ p = funext-J (λ f' H → ∀ q → funext→ (H ∙h q) ＝ funext→ H ∙ funext→ q)
-                 (λ q → sym (ap (_∙ funext→ q) funext-refl)) _ p
+  opaque
+    funext-∙
+      : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
+          {f g h : Π A B} (p : f ~ g) (q : g ~ h)
+        → funext→ (p ∙h q) ＝ funext→ p ∙ funext→ q
+    funext-∙ p
+      = funext-J
+          (λ f' H → ∀ q → funext→ (H ∙h q) ＝ funext→ H ∙ funext→ q)
+          (λ q → sym (ap (_∙ funext→ q) funext-refl)) _ p
 
   funext-∙∙
     : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
         {f g : Π A B} (p : f ~ g) {h} (q : g ~ h) {k} (r : h ~ k)
       → funext→ (p ∙h q ∙h r) ＝ funext→ p ∙ funext→ q ∙ funext→ r
-  funext-∙∙
-    = funext-J (λ f' H → ∀ {h'} q {k'} r
-                   → funext→ (H ∙h q ∙h r) ＝ funext→ H ∙ funext→ q ∙ funext→ r)
-       (funext-J (λ g' K → ∀ {k'} (r : g' ~ k')
-                     → funext→ (K ∙h r) ＝ funext→ ~refl ∙ funext→ K ∙ funext→ r)
-         (λ r → sym (ap (_∙ (funext→ ~refl ∙ funext→ r)) funext-refl
-                      ∙ ap (_∙ funext→ r) funext-refl)) _) _
-
-  funext-sym
-    : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
-        {f g : Π A B} (p : f ~ g)
-      → funext→ (p h⁻¹) ＝ sym (funext→ p)
-  funext-sym = funext-J (λ g H → funext→ (H h⁻¹) ＝ sym (funext→ H))
-                        (funext-refl ∙ ap sym (sym funext-refl)) _
+  funext-∙∙ p q r = funext-∙ p (q ∙h r) ∙ ap (funext→ p ∙_) (funext-∙ q r)
 
   opaque
+    funext-sym
+      : ∀ {A : Type 𝓤} {B : A → Type 𝓥}
+          {f g : Π A B} (p : f ~ g)
+        → funext→ (p h⁻¹) ＝ sym (funext→ p)
+    funext-sym
+      = funext-J
+          (λ g H → funext→ (H h⁻¹) ＝ sym (funext→ H))
+          (funext-refl ∙ ap sym (sym funext-refl)) _
+
+  opaque
+    unfolding funext-rec
     funext-rec-~refl
       : ∀ {𝓦} {A : Type 𝓤} {B : A → Type 𝓥} {f : (a : A) → B a}
           (M : f ~ f → Type 𝓦)
@@ -134,12 +140,11 @@ module WithFunExt {𝓤 𝓥} (fe : FunExt 𝓤 𝓥) where
       → B ＝ C → ((a : A) → B a) ＝ ((a : A) → C a)
   Π-path p = ap (λ f → (a : _) → f a) p
 
-
 module WithFunExtω {𝓥} (fe : FunExtω 𝓥) where
   private module FE {𝓤} = WithFunExt (fe {𝓤})
   open FE public
 
-module WithFunExt-global (fe : FunExt-global) where
+module WithFunExt-global (fe : FunExt-global) where opaque
   module FE {𝓥} = WithFunExtω {𝓥} fe
   open FE public
 

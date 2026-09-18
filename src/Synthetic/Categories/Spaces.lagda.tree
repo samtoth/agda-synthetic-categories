@@ -1,5 +1,6 @@
 \title{The category of spaces}
 \author{samueltoth}
+\contributor{fredrikbakke}
 \date{2026-02-13}
 \taxon{Module}
 \import{stt-macros}
@@ -12,19 +13,25 @@ open import Foundations.Empty
 open import Foundations.Sigma
 open import Foundations.Singletons
 open import Foundations.Fin
+open import Foundations.TruncationLevels
 
 open import Algebra.Lattice
 
 open import Synthetic.Tiny
 import Synthetic.Directedness
 import Synthetic.Cubes
+import Synthetic.Categories.Initial
 import Synthetic.Categories.Precategories
 import Synthetic.Hom
 import Synthetic.Triangles
+import Synthetic.Boundaries
 
 open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
 
 open import Modalities.Cohesion.Continuity
+open import Modalities.Cohesion.FlatConnectedMaps
+
+open import Modalities.Instances.Truncation
 }
 
 \agda{
@@ -34,9 +41,11 @@ module Synthetic.Categories.Spaces
   (open Synthetic.Directedness Δ¹ I)
   (open Synthetic.Cubes Δ¹ i0 i1)
   (@♭ Δ¹-directed : Δ¹-is-directed)
+  (open Synthetic.Categories.Initial Δ¹ I)
   (open Synthetic.Categories.Precategories Δ¹ I)
   (open Synthetic.Hom Δ¹ i0 i1)
   (open Synthetic.Triangles Δ¹ I)
+  (open Synthetic.Boundaries Δ¹ I)
   (let @♭ Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I)
   (let module Δ² = Algebra.Lattice.Instances.Polynomial.Δ²)
   (let module I[x] = Lattice (Free-Lattice I I-distr))
@@ -46,15 +55,9 @@ module Synthetic.Categories.Spaces
   (@♭ √ε : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (Δ¹ → √ A) → A)
   (@♭ √-is-tiny-str
     : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure Δ¹ A (√ A) √ε)
-  (@♭ cubes-separate : family-separates □^_)
-  (@♭ ♭Δ¹-ind
-    : ∀ {𝓤} (P : @♭ Δ¹ → Prop 𝓤)
-      → P i0 .fst → P i1 .fst → (@♭ x : Δ¹) → P x .fst)
-  -- ♭Δ²-ind should follow from Δ¹
-  (@♭ ♭Δ²-ind
-    : ∀ {𝓤} (P : @♭ Δ² → Prop 𝓤)
-      → (∀ (@♭ x : Fin 3) → P (Δ²-point-incl x) .fst)
-      → (@♭ x : Δ²) → P x .fst)
+  (@♭ types-with-initial-object-separate'
+    : large-family-separates (λ 𝓤 → Type-With-Initial-Obj' 𝓤) fst)
+  (@♭ ∂Δ¹-is-♭-connected : is-♭-connected (Truncation-gRSubU -1𝕋) ∂Δ¹-incl)
   -- The following two assumptions follow from quasicoherence, but this fact is not
   -- yet formalised
   (@♭ Δ¹-is-segal : is-segal Δ¹)
@@ -62,6 +65,14 @@ module Synthetic.Categories.Spaces
   where
 
 open import Axioms.UF
+}
+
+\remark{
+We formalise the construction of the category of spaces under the axiom that types
+with initial objects separate rather than assuming the stronger axiom that the
+finite-dimensional cubes separate, following
+[Gratzer](danielgratzer)–[Weinberger](jonathanweinberger)–[Buchholtz](ulrikbuchholtz)
+\citek{GWB24}. The same proof applies under both assumptions.
 }
 
 \agda-imports{
@@ -93,14 +104,13 @@ open import Core.FunctorialityPushouts
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 
-open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I
 open import Synthetic.Categories.DirectedGlueing Δ¹ I 0≠1 Δ¹-directed
 open import Synthetic.Categories.HornGlueing
   Δ¹ I I-distr 0≠1 Δ¹-directed Δ¹-is-segal Δ²-is-coskeletal-acyclic
-open import Synthetic.Categories.EquivCovariantFamilies Δ¹ I
+open import Synthetic.Categories.DetectingEquivalencesCovariantFamilies Δ¹ I
 }
 }
 
@@ -155,15 +165,7 @@ factors through #{\mathcal{S}}.}
 \agda{
 groupoids-in-Space : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-Δ¹-discrete A → is-acov A
 groupoids-in-Space A Δ¹-discrete
-  = ε♭ (liftFib .fst
-         (mod♭ (is-covariant↔is-left-fibration
-                 (λ _ → A) .snd
-                   (orthogonal-!←orthogonal-type
-                     (is-left←is-Δ¹-discrete
-                       (Null-globally-Σ-closed
-                         (𝟙-is-Δ¹-discrete)
-                         (λ _ → Δ¹-discrete)) tt)))))
-       (tt)
+  = ε♭ (liftFib .fst (mod♭ (const-is-covariant←is-Δ¹-discrete Δ¹-discrete))) tt
 }
 }
 
@@ -181,19 +183,19 @@ reduce the problem to the analogous [closure conditions for covariant
 families](Synthetic.Categories.CovariantClosure).}
 
 \p{We provide the proof for closure under equality as an example. Let #{\Gamma}
-be the type #{\Sigma_{A : \mathcal{S}} (A \times A)}, and #{\sigma} the map
+be the type #{\Sigma1{A : \mathcal{S}}{A \times A}}, and #{\sigma} the map
 #{\Gamma \to \Type} defined as #{(A,a,b) \mapsto a = b}. We need to show that
-#{\Pi_{x : \Gamma} \textsf{is-Acov}(\sigma x)}, which by unfolding the definition
+#{\Pi1{x : \Gamma}{\textsf{is-Acov}(\sigma x)}}, which by unfolding the definition
 of amazing covariance is just
-#{\Pi_{x : \Gamma} \sqrt{\textsf{is-covariant}}(\sigma x)}, but by naturality
+#{\Pi1{x : \Gamma}{\sqrt{\textsf{is-covariant}}(\sigma x)}}, but by naturality
 of the #{\sqrt[I]{{-}}} former, this is the same as
-#{\Pi_{x : \Gamma} \sqrt{\textsf{is-covariant} \circ \sigma_*}(x)}. We may
+#{\Pi1{x : \Gamma}{\sqrt{\textsf{is-covariant} \circ \sigma_*}(x)}}. We may
 use the universal property of #{\sqrt{-}} so that it suffices to give an
-element #{\Pi_{x : \Gamma^{\Delta^1}} \textsf{is-covariant}(\sigma_* \circ x)}.
+element #{\Pi1{x : \Gamma^{\Delta^1}}{\textsf{is-covariant}(\sigma_* \circ x)}}.
 }
 
 \p{Now we have dealt with the root former, we may proceed less formally. We have
-a map #{A : \Delta^1 \to \mathcal{S}}, which means #{A} is a covariant family of
+a map #{A \colon \Delta^1 \to \mathcal{S}}, which means #{A} is a covariant family of
 types over #{\Delta^1}, and a pair of sections #{a\ b : \Pi_{\Delta^1} A},
 we want to show #{i \mapsto a_i = b_i} is covariant, which [follows by general
 closure properties of orthogonality](stt-00KG).}
@@ -336,11 +338,12 @@ instance
 \subtree[stt-00K6]{
 \title{Equivalences of #{Δ¹}-copresheaves}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
-\p{We show that for a pair of copresheaves #{F\ G : \Delta^1 \to \mathcal{S}},
-a natural transformation #{\alpha : \Pi_{i} F(i) \to G(i)} is a fibrewise
-equivalence iff the restriction along #{\partial \Delta^1 \hookrightarrow \Delta^1}
-is a fibrewise-equivalence.}
+\p{We show that for a pair of copresheaves #{F\ G \colon \Delta^1 \to \mathcal{S}},
+a natural transformation #{\alpha \colon \Pi1{i : \Delta^1}{F(i) \to G(i)}} is a
+fibrewise equivalence iff the restriction along
+#{\partial \Delta^1 \hookrightarrow \Delta^1} is a fibrewise-equivalence.}
 
 \agda{
 Cov-Nat-is-equiv
@@ -348,21 +351,22 @@ Cov-Nat-is-equiv
     → (∀ x → is-equiv (α (∂Δ¹-incl x))) → ∀ i → is-equiv (α i)
 Cov-Nat-is-equiv {𝓤} f g α
   = is-equiv.bwd
-       (is-fibrewise-equiv←family-separates-with-𝟙
-         □^_ cubes-separate
+       (is-fibrewise-equiv←large-family-separates-with-𝟙
+         types-with-initial-object-separate'
          {X = Σ[ X Y ∶ (Δ¹ → Space 𝓤) ] (∀ i → X i .Space.Carrier → Y i .Space.Carrier)}
          {P = λ (X , Y , α) → is-fibrewise-equiv α}
          {Q = λ (X , Y , α) → is-fibrewise-equiv (α ∘ ∂Δ¹-incl)}
          (λ (X , Y , α) → precomp-Π (is-equiv ∘ α) ∂Δ¹-incl)
-         {0} single!
-         (λ m σ
+         {is = 𝟙 , tt , (λ _ → Hom𝟙-is-single .centre) , Hom𝟙-is-single .central (idH tt)}
+         single!
+         (λ I σ
           → is-equiv←inverse
               (♭-is-prop (Π-is-prop (λ _ → Π-is-prop (λ _ → is-equiv-is-prop))))
               (♭-is-prop (Π-is-prop (λ _ → Π-is-prop (λ _ → is-equiv-is-prop))))
               (♭-ind (λ x → mod♭ (λ c i
                → ∂Δ¹-cov-Nat-is-equiv
-                   cubes-separate
-                   ♭Δ¹-ind
+                   types-with-initial-object-separate'
+                   ∂Δ¹-is-♭-connected
                    (UFib-transport (uncurry (fst ∘ σ)) )
                    (UFib-transport (uncurry (fst ∘ snd ∘ σ)))
                    (uncurry (snd ∘ snd ∘ σ))
@@ -440,9 +444,9 @@ module SpacePath
 \subtree[stt-00UW]{
 \taxon{Lemma}
 
-\p{There is a map ##{(\Gamma \to \Sigma_{X, Y : \mathcal{S}} (X \to Y)) \to
-\Sigma_{X, Y : \textrm{LFib}_\Gamma} (X \to Y)} (where the latter type is the type of
-[covariant #{Δ¹}-bundles]() over #{Γ}) given by the fact #{\mathcal{S}
+\p{There is a map ##{(\Gamma \to \Sigma1{X, Y : \mathcal{S}}{(X \to Y)}) \to
+\Sigma1{X, Y : \rm{LFib}_\Gamma}{(X \to Y)}} (where the latter type is the type of
+[covariant #{Δ¹}-bundles](stt-00V3) over #{Γ}) given by the fact #{\mathcal{S}
 \to \UU} is a covariant type family. Because #{\mathcal{S}} is the universal such
 family, this map is a #{\flat}-equivalence.}
 
@@ -532,24 +536,24 @@ opaque
 }
 
 \p{We then show that the induced map
-#{\mathcal{S}^{\Delta^1} \to \Sigma_{(X, Y : \mathcal{S})} X \to Y}
+#{\mathcal{S}^{\Delta^1} \to \Sigma1{X, Y : \mathcal{S}}{(X \to Y)}}
 is an equivalence.}
 
 \proof{
-\p{For concision, let #{M := \Sigma_{(X, Y : \mathcal{S})} X \to Y} and
-#{N := \Sigma_{X, Y : \textrm{LFib}_{\Gamma}} X \to Y}.
+\p{For concision, let #{M \defeq \Sigma1{X, Y : \mathcal{S}}{(X \to Y)}} and
+#{N \defeq \Sigma1{X, Y : \rm{LFib}_{\Gamma}}{(X \to Y)}}.
 By the fact that types separate, it is enough to show that the induced map
-#{\flat(\mathcal{S}^{\Delta^1 \times \Gamma}) \to \flat(M^{\Gamma})} is an
+#{\modflat{\mathcal{S}^{\Delta^1 \times \Gamma}} \to \modflat{M^{\Gamma}}} is an
 equivalence. We may construct a square:
 
 \quiver{
 \begin{tikzcd}[cramped]
-	{\flat(\mathcal{S}^{\Delta^1 \times \Gamma})} && {\flat(\textrm{LFib}_{\Delta^1 \times \Gamma})} \\
+	{\modflat{\mathcal{S}^{\Delta^1 \times \Gamma}}} && {\modflat{\rm{LFib}_{\Delta^1 \times \Gamma}}} \\
 	\\
-	{\flat(M^\Gamma)} && {\flat(N)}
+	{\modflat{M^\Gamma}} && {\modflat{N}}
 	\arrow["\sim", from=1-1, to=1-3]
 	\arrow["{tr_{\mathcal{S}}}"', from=1-1, to=3-1]
-	\arrow["{tr_{\textrm{LFib}}}", from=1-3, to=3-3]
+	\arrow["{tr_{\rm{LFib}}}", from=1-3, to=3-3]
 	\arrow["\sim"', from=3-1, to=3-3]
 \end{tikzcd}
 }
@@ -592,7 +596,10 @@ module _
          → src-is-equiv←Arrow-equiv
              ammape
              (total-tr-cov-is-♭-equiv {𝓥} {𝓤}
-               (∂Δ¹-cov-Nat-is-equiv cubes-separate ♭Δ¹-ind))) where
+               (∂Δ¹-cov-Nat-is-equiv
+                  types-with-initial-object-separate'
+                  ∂Δ¹-is-♭-connected)))
+    where
     open Space
     module _ {@♭ 𝓥} {@♭ Γ : Type 𝓥} where opaque
 
@@ -611,11 +618,14 @@ module _
       ammape .fst = ammap
       ammape .snd .fst = is-equiv-∘ UP-UFib (is-♭-equiv←is-equiv uncurry-is-equiv)
       ammape .snd .snd = Cov-bundle←SpaceΣ-is-♭-equiv
+
+  total-dua≃ : ∀ {@♭ 𝓤} → (Δ¹ → Space (𝓤 ⊔ 𝓘)) ≃ SpaceΣ (𝓤 ⊔ 𝓘)
+  total-dua≃ {𝓤} = mk≃ total-dua→ (total-dua {𝓤})
 }
 
 \p{
 As a consequence of the fact that the canonical total map
-#{\mathcal{S}^{Δ¹} \to \Sigma_{(A, B : \mathcal{S})}(A \to B)} is an equivalence,
+#{\mathcal{S}^{Δ¹} \to \Sigma1{A, B : \mathcal{S}}{(A \to B)}} is an equivalence,
 we immediately get that the canonical fibred map
 #{\Hom_\mathcal{S}(A,B) \to (A \to B)} is an equivalence as well.
 }
@@ -654,7 +664,7 @@ together with a pair of maps #{Y \to Z} and #{X \to Y}. The induced map
 
 \proof{
 We use the fact that [types separate](stt-00NM) so that we may show that for any crisp type
-#{\Gamma}, the induced map #{\flat(\mathcal{S}^{\Delta^2 \times \Gamma}) \to \flat({\mathcal{S}_2}^{\Gamma})}
+#{\Gamma}, the induced map #{\modflat{\mathcal{S}^{\Delta^2 \times \Gamma}} \to \modflat{{\mathcal{S}_2}^{\Gamma}}}
 is an equivalence. We construct a square as in \ref{stt-00AT} so that we may apply the
 [corresponding fact for \em{closed} left fibrations](stt-00XA).
 }
@@ -729,7 +739,12 @@ module _
                ♭Cov-Δ²-bundle≃♭Space
                (♭-ind (λ _ → refl)))
              (total-tr²-cov-is-♭-equiv {𝓥}{𝓤}
-               (points-Δ²-cov-Nat-is-equiv cubes-separate ♭Δ²-ind)))
+               (points-Δ²-cov-Nat-is-equiv
+                 types-with-initial-object-separate'
+                 ∂Δ¹-is-♭-connected)))
+
+  total-dua²≃ : ∀ {@♭ 𝓤} → (Δ² → Space (𝓤 ⊔ 𝓘)) ≃ Space²Σ (𝓤 ⊔ 𝓘)
+  total-dua²≃ {𝓤} = mk≃ total-dua²→ (total-dua² {𝓤})
 }
 }
 
@@ -742,9 +757,9 @@ module _
 \put\transclude/toc{false}
 \subtree[stt-00XF]{
 \taxon{Proof}
-\p{First note that the type #{\mathcal{S}_2 := \Sigma_{X,Y,Z \colon \mathcal{S}} (Y
-\to Z) \times (X \to Y)} is a pullback of #{\Sigma_{X,Y \colon \mathcal{S}} (X \to
-Y)} with #{\Sigma_{Y,Z \colon \mathcal{S}} (Y \to Z)}. Then we may construct a
+\p{First note that the type #{\mathcal{S}_2 \defeq \Sigma1{X,Y,Z : \mathcal{S}}{(Y
+\to Z) \times (X \to Y)}} is a pullback of #{\Sigma1{X,Y : \mathcal{S}}{(X \to
+Y)}} with #{\Sigma1{Y,Z : \mathcal{S}}{(Y \to Z)}}. Then we may construct a
 commuting cube as below where, by [directed univalence](stt-00AT) and
 [#{\Delta^2}-directed univalence](stt-00X0), the vertical maps are
 equivalences. \ref{stt-00WX} tells us that #{\mathcal{S}} is Segal precisely when
@@ -755,9 +770,9 @@ this top square is cartesian.}
 	{{\mathcal{S}}^{\Delta^2}} &&& {{\mathcal{S}}^{\Delta^1}} && \\
 	\\
 	& {{\mathcal{S}}^{\Delta^1}} &&&& {{\mathcal{S}}} \\
-	{\mathcal{S}_2} &&& {\Sigma_{(X,Y \colon \mathcal{S})} X \to Y} \\
+	{\mathcal{S}_2} &&& {\Sigma1{X,Y : \mathcal{S}}{(X \to Y)}} \\
 	\\
-	& {\Sigma_{(X,Y \colon \mathcal{S})} X \to Y} &&&& {\mathcal{S}}
+	& {\Sigma1{X,Y : \mathcal{S}}{(X \to Y)}} &&&& {\mathcal{S}}
 	\arrow[from=1-1, to=1-4]
 	\arrow[from=1-1, to=3-2]
 	\arrow["\sim"', from=1-1, to=4-1]
@@ -799,56 +814,64 @@ this top square is cartesian.}
 \agda{
   opaque
     unfolding tr-cov-hom
-    Space²-cube
-      : ∀ (@♭ 𝓥)
-        → Cube
-            (precomp-square Λ[2,1]-Δ²-square (Space 𝓥))
-            (Arrow-map←Cone (Space²-cone {𝓥}))
-    Space²-cube 𝓥 .Cube.left .Arrow-Π.top = total-dua²→
-    Space²-cube 𝓥 .Cube.left .Arrow-Π.bot = total-dua→
-    Space²-cube 𝓥 .Cube.left .Arrow-Π.comm F = SpaceΣ-Id→ _ _
-      ( tr≃ (Space.Carrier ∘ F) Δ²-refl
-      , tr≃ (Space.Carrier ∘ F) Δ²-refl
-      , λ x
-        → tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢 (F ∘ δ₀²) x)
-        ＝⟨⟩
-          tr (Space.Carrier ∘ F) Δ²-refl (tr-𝓢-hom F (λhom δ₀²) x)
-        ＝⟨ tr-cov-hom-Idᵈ (Space.Carrier ∘ F) (UFib-is-fib F)
-              Δ²-refl Δ²-refl (λhom δ₀²) Δ²-1≤2
-              ( (λ _ → Δ²-refl)
-              , (mk-square (Δ²-is-set _ _ _ _)
-              , (mk-square (Δ²-is-set _ _ _ _)))) x ⟩
-          (tr-𝓢-hom F Δ²-1≤2 (tr (Space.Carrier ∘ F) Δ²-refl x))
-        ∎)
-    Space²-cube 𝓥 .Cube.right .Arrow-Π.top = total-dua→
-    Space²-cube 𝓥 .Cube.right .Arrow-Π.bot = ev tt
-    Space²-cube 𝓥 .Cube.right .Arrow-Π.comm = ~refl
-    Space²-cube 𝓥 .Cube.comm .fst = ~refl
-    Space²-cube 𝓥 .Cube.comm .snd .fst = ~refl
-    Space²-cube 𝓥 .Cube.comm .snd .snd a = ap (_∙ refl) (∙-reflr _
-      ∙ ap-fst-SpaceΣ-Id _ _ _
-      ∙ (ext! (tr≃ (Space.Carrier ∘ a) Δ²-refl)
-      ＝⟨ ap ext! (ext! (λ _ → tr∘ Space.Carrier a Δ²-refl)) ⟩
-        ext! (tr≃ Space.Carrier (ap a Δ²-refl))
-      ＝⟨ UFib-tr (ap a Δ²-refl) ⟩
-         ap a Δ²-refl
-      ＝⟨ ap (ap a) (Δ²-is-set _ _ _ _) ⟩
-         ap a (sym Δ²-refl)
-      ＝⟨ sym (happly (funext-redex) tt) ⟩
-         happly (funext→ (λ x → ap a (sym Δ²-refl))) tt ∎))
 
-    Space²-cube-is-equiv
-      : ∀ {@♭ 𝓥} → is-Cube-equiv (Space²-cube (𝓥 ⊔ 𝓘))
-    Space²-cube-is-equiv {𝓥} .fst = (total-dua² {𝓥 ⊔ 𝓘} , total-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘})
-    Space²-cube-is-equiv {𝓥} .snd = (total-dua √ᵈ-is-prop {𝓥 ⊔ 𝓘} , unit-ev-is-equiv)
+    Space²-left-Arrow-equiv
+      : ∀ (@♭ 𝓥)
+      → Arrow-equiv
+          (precomp (Space (𝓥 ⊔ 𝓘)) δ₀²)
+          (Space²-cone {𝓥 ⊔ 𝓘} .Cone.j)
+    Space²-left-Arrow-equiv 𝓥
+      = mk-arr-equiv
+          (total-dua²≃ {𝓥})
+          (total-dua≃ √ᵈ-is-prop {𝓥})
+          (λ F → SpaceΣ-Id→ _ _
+            ( tr≃ (Space.Carrier ∘ F) Δ²-refl
+            , tr≃ (Space.Carrier ∘ F) Δ²-refl
+            , λ x
+            → tr-cov-hom-Idᵈ (Space.Carrier ∘ F) (UFib-is-fib F)
+                Δ²-refl Δ²-refl (λhom δ₀²) Δ²-1≤2
+                ( (λ _ → Δ²-refl)
+                , (mk-square (Δ²-is-set _ _ _ _)
+                , (mk-square (Δ²-is-set _ _ _ _)))) x ))
+
+    Space²-right-Arrow-equiv
+      : ∀ (@♭ 𝓥)
+      → Arrow-equiv
+          (precomp (Space (𝓥 ⊔ 𝓘)) (point i1))
+          (SpaceΛ[2,1]-Σ-cospan (𝓥 ⊔ 𝓘) .Cospan.left)
+    Space²-right-Arrow-equiv 𝓥
+      = mk-arr-equiv (total-dua≃ √ᵈ-is-prop {𝓥}) unit-UP≃ ~refl
+
+    Space²-cube-equiv
+      : ∀ (@♭ 𝓥)
+      → Cube-equiv
+          (precomp-square Λ[2,1]-Δ²-square (Space (𝓥 ⊔ 𝓘)))
+          (Arrow-map←Cone (Space²-cone {𝓥 ⊔ 𝓘}))
+    Space²-cube-equiv 𝓥
+      = mk-cube-equiv
+          (Space²-left-Arrow-equiv 𝓥) (Space²-right-Arrow-equiv 𝓥)
+          ( ~refl , ~refl
+          , λ a
+            → ap
+              (_∙ refl)
+              ( ∙-reflr _
+                ∙ ap-fst-SpaceΣ-Id _ _ _
+                ∙ (ext! (tr≃ (Space.Carrier ∘ a) Δ²-refl)
+              ＝⟨ ap ext! (ext! (λ _ → tr∘ Space.Carrier a Δ²-refl)) ⟩
+                ext! (tr≃ Space.Carrier (ap a Δ²-refl))
+              ＝⟨ UFib-tr (ap a Δ²-refl) ⟩
+                ap a Δ²-refl
+              ＝⟨ ap (ap a) (Δ²-is-set _ _ _ _) ⟩
+                ap a (sym Δ²-refl)
+              ＝⟨ sym (happly (funext-redex) tt) ⟩
+                happly (funext→ (λ x → ap a (sym Δ²-refl))) tt ∎)))
 
   Space-is-segal
     : ∀ {@♭ 𝓤} → is-segal (Space (𝓤 ⊔ 𝓘))
   Space-is-segal {𝓤}
     = is-segal←is-cartesian
         (front-cartesian←equiv-cube
-          (Space²-cube (𝓤 ⊔ 𝓘))
-          (Space²-cube-is-equiv {𝓤 ⊔ 𝓘})
+          (Space²-cube-equiv 𝓤)
           (is-cartesian←cone-is-pullback _ Space²-is-pullback))
 }
 }

@@ -36,7 +36,7 @@ open import Ergonomics.Representation
 \title{Orthogonal maps}
 \taxon{Definition}
 
-\p{Given maps #{f : A \to B} and #{g : C \to D}, we say #{f} is \em{left
+\p{Given maps #{f \colon A \to B} and #{g \colon C \to D}, we say #{f} is \em{left
 orthogonal} to #{g} when the [pullback power](stt-004D) #{\pullpow{f}{g}} is an
 equivalence.}
 
@@ -65,7 +65,7 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
        {B : Type 𝓥} {C : Type 𝓦}
        {D : Type 𝓛} where
   admit-unique-lifts : ∀ (f : A → B) (g : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  admit-unique-lifts f g = ∀ (F : Arrow-map f g) → unique-lifts F
+  admit-unique-lifts f g = ∀ (F : Arrow-map f g) → has-unique-lift F
 
   are-orthogonal←unique-lifts
      : ∀ {f : A → B} {g : C → D}
@@ -95,13 +95,63 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
 }
 }
 
+\subtree[stt-00ZQ]{
+\title{Self-orthogonal maps are equivalences}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  (f⊥f : are-orthogonal f f)
+  where
+
+  is-equiv←self-orthogonal : is-equiv f
+  is-equiv←self-orthogonal
+    = is-equiv←self-lift
+        ( unique-lifts←are-orthogonal f⊥f id-square .centre)
+}
+}
+
+\subtree[stt-00ZV]{
+\title{Orthogonal classes of maps}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given a function class #{K}, then we may define the \em{left} and
+\em{right orthogonal classes} to #{K}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥}
+  (K : {X : Type 𝓦} {Y : Type 𝓜} → Subtype (X → Y) 𝓝)
+  where
+
+  left-orthogonal-class : Subtype (A → B) (𝓤 ⊔ 𝓥 ⊔ lsuc (𝓦 ⊔ 𝓜) ⊔ 𝓝)
+  left-orthogonal-class .Subtype.family f
+    = {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y} → g ∈ K → are-orthogonal f g
+  left-orthogonal-class .Subtype.family-is-subtype f
+    = Πᵢ-is-prop (Πᵢ-is-prop (Πᵢ-is-prop (→-is-prop is-equiv-is-prop)))
+
+  right-orthogonal-class : Subtype (A → B) (𝓤 ⊔ 𝓥 ⊔ lsuc (𝓦 ⊔ 𝓜) ⊔ 𝓝)
+  right-orthogonal-class .Subtype.family g
+    = {X : Type 𝓦} {Y : Type 𝓜} {f : X → Y} → f ∈ K → are-orthogonal f g
+  right-orthogonal-class .Subtype.family-is-subtype g
+    = Πᵢ-is-prop (Πᵢ-is-prop (Πᵢ-is-prop (→-is-prop is-equiv-is-prop)))
+}
+}
+
 \subtree[stt-00NX]{
 \title{Orthogonality of a map with a family}
 \taxon{Definition}
 
-\p{Given a map #{f : X \to Y}, and a family #{P : A \to \Type}, we say that
-#{f} is orthogonal to #{P} when for each #{g : Y \to A}, the map
-#{f^* : \mathsf{\Pi} Pg \to \mathsf{\Pi} Pgf} is an equivalence.}
+\p{Given a map #{f \colon X \to Y}, and a family #{P \colon A \to \Type}, we say that
+#{f} is orthogonal to #{P} when for each #{g \colon Y \to A}, the map
+#{f^* \colon \mathsf{\Pi} Pg \to \mathsf{\Pi} Pgf} is an equivalence.}
 
 \agda{
 are-orthogonal-fam
@@ -135,9 +185,9 @@ are-orthogonal-fam←equiv {f = f} {P} {P'} e o h
 \title{Unique extensions from orthogonality}
 \taxon{Lemma}
 
-\p{Given a map #{f : A \to B} and a family #{P : C \to \Type},
+\p{Given a map #{f \colon A \to B} and a family #{P \colon C \to \Type},
 together with a [morhpism](stt-00OB) from #{f} to #{P}, consisting of
-#{g : B \to C} and #{h : \mathsf{\Pi} Pgf}, we define the type of
+#{g \colon B \to C} and #{h : \mathsf{\Pi} Pgf}, we define the type of
 lifting solutions to be [extensions](stt-00CL) of #{h} along
 #{f}. #{f} and #{P} are orthogonal iff such extensions are unique.}
 
@@ -220,34 +270,26 @@ module _
 
   power-hom-arr-fibre
     : ∀ h
-      → Arrow-map
+      → Arrow-equiv
           (arrow-fibre (power-hom f g) h)
           (precomp-Π (fibre g ∘ h) f)
-  power-hom-arr-fibre h .Arrow-map.top = _≃_.fwd (fibre-postcomp≃ g h)
-  power-hom-arr-fibre h .Arrow-map.bot = _≃_.fwd (fibre-postcomp≃ g (h ∘ f))
-  power-hom-arr-fibre h .Arrow-map.comm (_ , refl) = refl
-
-  power-hom-arr-fibre-is-equiv : ∀ h → is-Arrow-equiv (power-hom-arr-fibre h)
-  power-hom-arr-fibre-is-equiv h
-    = ( fibre-postcomp≃ g h ._≃_.fwd-is-equiv
-      , fibre-postcomp≃ g (h ∘ f) ._≃_.fwd-is-equiv
-      )
+  power-hom-arr-fibre h
+    = mk-arr-equiv
+        (fibre-postcomp≃ g h)
+        (fibre-postcomp≃ g (h ∘ f))
+        (λ where (_ , refl) → refl)
 
   are-orthogonal-fibre←is-cartesian
     : is-cartesian (power-hom f g)
     → are-orthogonal-fam f (fibre g)
   are-orthogonal-fibre←is-cartesian pb h
-    = tgt-is-equiv←Arrow-equiv
-        (power-hom-arr-fibre h , power-hom-arr-fibre-is-equiv h)
-        (pb h)
+    = tgt-is-equiv←Arrow-equiv (power-hom-arr-fibre h) (pb h)
 
   is-cartesian←are-orthogonal-fibre
     : are-orthogonal-fam f (fibre g)
     → is-cartesian (power-hom f g)
   is-cartesian←are-orthogonal-fibre eq h
-    = src-is-equiv←Arrow-equiv
-        (power-hom-arr-fibre h , power-hom-arr-fibre-is-equiv h)
-        (eq h)
+    = src-is-equiv←Arrow-equiv (power-hom-arr-fibre h) (eq h)
 
   are-orthogonal-fibre←are-orthogonal
       : are-orthogonal f g
@@ -307,7 +349,7 @@ module _
 \taxon{Theorem}
 
 \p{We summarise the main results of this module.
-For maps #{f : A \to B} and #{g : C \to D}, we have that the following
+For maps #{f \colon A \to B} and #{g \colon C \to D}, we have that the following
 are equivalent:}
 
 \ol{
@@ -449,9 +491,9 @@ open notation
 \title{Proof of \ref{stt-004O}}
 
 \p{
-We want to show #{A \to \b1} is orthogonal to #{f : X \to Y}, which by
-the [[stt-004A]], it suffices to show that for all #{h : Y \to 1}, the map
-#{{-} \circ f : ((y : Y) \to \fibre{!}{h(y)}) \to ((x : X) \to \fibre{!}{h(f(x))})}
+We want to show #{A \to \b1} is orthogonal to #{f \colon X \to Y}, which by
+the [[stt-004A]], it suffices to show that for all #{h \colon Y \to 1}, the map
+#{{-} \circ f : (\Pi1{y : Y}{\fibre{!}{h(y)}}) \to (\Pi1{x : X}{\fibre{!}{h(f(x))}})}
 is an equivalence. But the fibre of #{A \to 1} is just A. Formally, we can
 use the 3-for-2 property on the following diagram:
 }
@@ -614,7 +656,7 @@ module _
 \author{samueltoth}
 \date{2026-09-02}
 
-\p{We give a useful criteria for when a [type is orthogonal to a map](stt-004O)
+\p{We give a useful criterion for when a [type is orthogonal to a map](stt-004O)
 defined as the cogap map of a square. In particular, given the following square:
 
 \quiver{

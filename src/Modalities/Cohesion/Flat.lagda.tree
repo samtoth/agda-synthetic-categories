@@ -6,6 +6,8 @@
 
 \agda{
 module Modalities.Cohesion.Flat where
+
+open import Axioms.FunExt
 }
 
 \agda-imports{
@@ -41,6 +43,20 @@ data ⟨♭|_⟩ {@♭ 𝓤} (@♭ A : Type 𝓤) : Type 𝓤 where
     → (x : ⟨♭| A ⟩) → B x
 ♭-ind = ♭-ind: _
 
+♭-ind-is-equiv
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → is-equiv (♭-ind {B = B})
+♭-ind-is-equiv
+  = is-equiv←qinv
+      ( (λ f x → f (mod♭ x))
+      , ~refl
+      , λ g → funext→ (♭-ind (λ _ → refl)))
+
+♭-ind≃
+  : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : ⟨♭| A ⟩ → Type 𝓥}
+    → ((@♭ x : A) → B (mod♭ x)) ≃ Π ⟨♭| A ⟩ B
+♭-ind≃ = mk≃ ♭-ind ♭-ind-is-equiv
+
 ♭-rec
   : ∀ {@♭ 𝓤} {𝓥} {@♭ A : Type 𝓤} {B : Type 𝓥}
     → (@♭ A → B) → ⟨♭| A ⟩ → B
@@ -63,9 +79,9 @@ give the definition making #{\modflat{-}} into a functor informally
 (in pain-staking detail), and compare it to the agda definition:}
 
 \p{Given crisp types #{A :^\flat \UU} and #{B :^\flat \UV}, and a function
-#{f :^\flat A \to B}, we can define a function #{\modflat{A} \to \modflat{B}}.
+#{f \colon-flat A \to B}, we can define a function #{\modflat{A} \to \modflat{B}}.
 By crisp induction, it suffices to define a function
-#{(a :^\flat A) \to \modflat{B}}. Then by #{\flat}-intro, we can assume a
+#{\Pi1{a :^\flat A}{\modflat{B}}}. Then by #{\flat}-intro, we can assume a
 crisp #{a :^\flat A} and give a crisp term of type #{B}, but now both #{f} and
 #{a} were assumed crisp and so #{f(a) :^\flat B}, and we are done.
  }
@@ -160,7 +176,7 @@ comult-is-equiv .is-equiv.coherent (mod♭ x) = refl
 \date{2025-06-10}
 
 \p{We can define an induction principle for crisp identity types, defined for
-families #{P : \Pi_{(a :^{\flat} A)} (a = b) \to \UU}}
+families #{P \colon \Pi1{a :^\flat A}{(a = b) \to \UU}}}
 
 \agda{
 J♭
@@ -225,7 +241,7 @@ this stronger crisp induction principle.}
 
 \p{Using induction on #{\flat} and this (weak) crisp identity induction
 principle, we can define a map
-#{\modflat{a = b} \to \mod_{\flat}(a) ＝ \mod_{\flat}(b)}. In analogy to function
+#{\modflat{a = b} \to (\mod_{\flat}(a) ＝ \mod_{\flat}(b))}. In analogy to function
 types, we call this map #{\textsf{mapply}_\flat}.}
 
 \agda{
@@ -252,7 +268,7 @@ _ = ♭-rec (ap♭ mod♭)
 \taxon{Definition}
 \title{#{♭}-Equivalences}
 
-\p{We call a map #{f} a \em{#{\flat}-equivalence} if #{\flat f} is an equivalence.}
+\p{We call a map #{f} a \em{#{\flat}-equivalence} if #{\modflat{f}} is an equivalence.}
 
 \agda{
 is-♭-equiv
@@ -266,8 +282,8 @@ is-♭-equiv f = is-equiv (♭-map f)
 \taxon{Lemma}
 \title{Equivalences are #{♭}-Equivalences}
 
-\p{An equivalence #{f : A \toeq B} induces an equivalence
-#{\flat f : \modflat{A} \toeq \modflat{B}}.}
+\p{An equivalence #{f \colon A \toeq B} induces an equivalence
+#{\modflat{f} \colon \modflat{A} \toeq \modflat{B}}.}
 
 \agda{
 is-♭-equiv←is-equiv
@@ -305,9 +321,17 @@ is-♭-equiv-∘ fe ge
 \title{Flat preserves retracts}
 \taxon{Lemma}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-04-29}
 
 \agda{
+♭-retraction-witness
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      {@♭ f : A → B} {@♭ g : B → A}
+    → @♭ (retraction-witness g f)
+    → retraction-witness (♭-map g) (♭-map f)
+♭-retraction-witness ret (mod♭ x) = mapply♭ (mod♭ (ret x))
+
 ♭-retract
   : ∀ {@♭ 𝓤 𝓥}
       {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -316,7 +340,7 @@ is-♭-equiv-∘ fe ge
 ♭-retract (i , r , H)
   = ♭-map i
   , ♭-map r
-  , λ where (mod♭ a) → ap♭ mod♭ (H a)
+  , ♭-retraction-witness H
 }
 }
 
@@ -367,8 +391,8 @@ is-♭-equiv-∘ fe ge
 
 \p{Given a crisp type #{A},
 and a family of types #{B} crisply over #{A}, we can define the
-dependent flat-sum, written #{\Sigma_{a :^\flat A} B(a)}. Defined
-as #{\Sigma_{x : \modflat{A}}\flat\textrm{-rec}(\_,B,x)}.}
+dependent flat-sum, written #{\Sigma1{a :^\flat A}{B(a)}}. Defined
+as #{\Sigma1{x : \modflat{A}}{\flat\rm{-rec}(\_,B,x)}}.}
 
 \agda{
 Σ♭
@@ -411,7 +435,7 @@ snd♭ = snd
 }
 
 \p{
-We also introduce Agda syntax for the shorthand style #{\Sigma_{x,y : A} B(x)} for
+We also introduce Agda syntax for the shorthand style #{\Sigma1{x,y : A}{B(x)}} for
 multivariable dependent flat-sums.
 }
 
@@ -437,8 +461,8 @@ module _ {@♭ 𝓤 𝓥} where
 }
 
 \p{We now show #{\flat} commutes with #{\Sigma} in the sense that
-#{\Sigma_{a :^\flat A} \modflat{B(a)}} is equivalent to
-#{\modflat{\Sigma_{a : A}B(a)}}}
+#{\Sigma1{a :^\flat A}{\modflat{B(a)}}} is equivalent to
+#{\modflat{\Sigma1{a : A}{B(a)}}}}
 
 \agda{
 ♭-Σ
@@ -469,8 +493,8 @@ module _ {@♭ 𝓤 𝓥} where
 \author{samueltoth}
 \date{2026-06-26}
 
-\p{For a map of of families #{(f,g) : \Fam((A,X), (B,Y))}, there is an equivalence
-of maps between #{\flat(\Sigma_f g)} and #{\Sigma_{\flat f} \flat g}.}
+\p{For a map of of families #{(f,g) : \rm{Fam}((A,X), (B,Y))}, there is an equivalence
+of maps between #{\modflat{\Sigma_f g}} and #{\Sigma_{\modflat{f}} \modflat{g}}.}
 
 \agda{
 module _
@@ -502,6 +526,27 @@ module _
     = src-is-equiv←Arrow-equiv
         ♭-Σ₁
         (map-Σ-is-equiv fe (♭-ind ge))
+}
+
+\p{We also provide a non-dependent version of this lemma.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥 𝓦 𝓜} {@♭ A : Type 𝓤} {@♭ A' : Type 𝓥}
+  {@♭ X : Type 𝓦} {@♭ Y : Type 𝓜}
+  (@♭ f : A → A') (@♭ g : X → Y)
+  where
+
+  ♭-×₁ : Arrow-equiv (♭-map (f ×₁ g)) (♭-map f ×₁ ♭-map g)
+  ♭-×₁ = mk-arr-equiv
+    ♭-pres-× ♭-pres-× (♭-ind (λ x → refl))
+
+  ×₁-is-♭-equiv
+     : is-♭-equiv f
+     → is-♭-equiv g
+     → is-♭-equiv (f ×₁ g)
+  ×₁-is-♭-equiv fe ge
+    = src-is-equiv←Arrow-equiv ♭-×₁ (×₁-is-equiv fe ge)
 }
 }
 
@@ -565,5 +610,53 @@ module _
       : is-equiv (total-map (♭ᶠ-map f))
       → is-♭-equiv (total-map f)
     ♭-map-total-is-equiv = tgt-is-equiv←Arrow-equiv (♭-map-total-Arrow-equiv)
+}
+}
+
+\subtree[stt-00ZZ]{
+\title{Dependent #{♭} precomposition}
+\taxon{Construction}
+\date{2026-09-11}
+\author{samueltoth}
+
+\p{We may define a crisp precomposition map which takes a crisply-indexed family of
+types #{U \colon \Pi1{b \colon-flat B}{\UU}} and a crisp map #{f \colon-flat A \to B} and defines
+a canonical map
+
+##{(\Pi1{b \colon-flat B}{F(b)}) \to (\Pi1{a \colon-flat A}{F(f(a))})}
+
+by precomposition.
+}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭ : ((@♭ b : B) → U b) → (@♭ a : A) → U (f a)
+  precomp-Π♭ g x = g (f x)
+}
+
+\p{This is equivalent as a map to precomposing the induced family
+#{\hat{U} \colon \modflat{B} \to \UU} by #{\modflat{f} \colon \modflat{A} \to \modflat{B}}.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : @♭ B → Type 𝓦) (@♭ f : A → B)
+  where
+
+  precomp-Π♭≃
+    : Arrow-equiv (precomp-Π♭ U f) (precomp-Π (♭-ind U) (♭-map f))
+  precomp-Π♭≃ = mk-arr-equiv ♭-ind≃ ♭-ind≃ λ g → funext→ (♭-ind λ _ → refl)
+
+module _
+  {@♭ 𝓤 𝓥} {𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+  (U : ⟨♭| B ⟩ → Type 𝓦) (@♭ f : A → B)
+  where
+  precomp-Π♭≃'
+    : Arrow-equiv (precomp-Π♭ (λ x → U (mod♭ x)) f) (precomp-Π U (♭-map f))
+  precomp-Π♭≃' = mk-arr-equiv ♭-ind≃ ♭-ind≃ (λ g → funext→ (♭-ind λ _ → refl))
 }
 }

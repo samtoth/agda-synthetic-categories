@@ -12,6 +12,7 @@ open import Axioms.UF
 \agda{
 open import Axioms.FreeAlgebraicInjectives
 open import Foundations.Prelude
+open import Foundations.InjectiveMaps
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.Arrows
@@ -81,6 +82,57 @@ Null-SubU A 𝓦 .Subtype.family-is-subtype = is-null-is-prop
 }
 }
 
+\subtree[stt-010L]{
+\title{Maps from the nullifying types into null types are null-homotopic}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-15}
+
+\p{
+If #{B} is #{Y}-null, then every map #{Y_i \to B} is null-homotopic.
+}
+
+\agda{
+module _ {𝓘 𝓤 𝓥} {I : Type 𝓘} {Y : I → Type 𝓤} {B : Type 𝓥} where
+
+  null-homotopy←is-null
+    : is-null Y B → (i : I) (g : Y i → B) → null-homotopy g
+  null-homotopy←is-null B-null i g
+    = ( is-equiv.bwd (B-null i) g
+      , happly (is-equiv.ε (B-null i) g))
+
+  weakly-constant←is-null
+    : is-null Y B → (i : I) (g : Y i → B) (x y : Y i) → g x ＝ g y
+  weakly-constant←is-null B-null i g
+    = weakly-constant←null-homotopy (null-homotopy←is-null B-null i g)
+}
+}
+
+\subtree[stt-010H]{
+\title{Types that are null at pointed types are closed under [injections](Foundations.InjectiveMaps)}
+\taxon{Proposition}
+\author{fredrikbakke}
+
+\p{
+Let #{Y} be a family of pointed types and #{f \colon A \to B} be an injection.
+Then if #{B} is #{Y}-null so is #{A}.
+}
+
+\agda{
+module _ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {Y : I → Type 𝓤} {A : Type 𝓥} {B : Type 𝓦} where
+
+  is-null←injection←pointed-exponent
+    : ((i : I) → Y i)
+    → injective-map A B
+    → is-null Y B
+    → is-null Y A
+  is-null←injection←pointed-exponent y (r , R) B-null i
+    = is-equiv←qinv
+        ( ev (y i)
+        , ~refl
+        , λ g → funext→ λ z → R (weakly-constant←is-null B-null i (r ∘ g) (y i) z))
+}
+}
 
 \subtree[stt-005H]{
 \date{2025-06-17}
@@ -88,7 +140,7 @@ Null-SubU A 𝓦 .Subtype.family-is-subtype = is-null-is-prop
 \taxon{Theorem}
 \title{Null types are #{!}-local}
 
-\p{A type is #{A_i}-null iff it is #{(! : A_i \to 1)}-local.}
+\p{A type is #{A_i}-null iff it is #{(! \colon A_i \to 1)}-local.}
 
 \proof{ \p{A type #{X} is #{!\rm{-local}} when the map #{- \circ\ ! :
 (1 \to X) \to (A_i \to X)} is an equivalence.}
@@ -197,20 +249,20 @@ map already has a retract, and so the type is not just
 algebraically #{A}-injective, but #{A}-null.}
 
 \agda{
-Null∙
+Null∗
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘} (A : I → Type 𝓤)
-      (A∙ : Π _ A) (X : Type 𝓥)
+    → (Π _ A) → (X : Type 𝓥)
     → Type 𝓥
-Null∙ A _ X = FreeInj
+Null∗ A _ X = FreeInj
                (λ i → !: A i)
                 X
 
-Null∙-is-null
+Null∗-is-null
   : ∀ {𝓘 𝓤 𝓥} {I : Type 𝓘}
       {A : I → Type 𝓤} (A∙ : Π _ A)
       {X : Type 𝓥}
-    → is-null A (Null∙ A A∙ X)
-Null∙-is-null a = is-null←is-local I where
+    → is-null A (Null∗ A A∙ X)
+Null∗-is-null a = is-null←is-local I where
   I : is-local (λ _ → !) _
   I i = is-equiv←qinv λ where
     .fst → injector-FreeInj i .fst
@@ -250,24 +302,24 @@ module _ where
         (Local-global-reflectors (λ i → !: A i))
 
   opaque
-    Null∙-global-reflectors
+    Null∗-global-reflectors
       : ∀ {𝓘 𝓤} {I : Type 𝓘}
           {A : I → Type 𝓤}
           (a∙ : ∀ i → A i)
         → is-globally-reflective (Null-gSubU A)
-    Null∙-global-reflectors a .○ = Null∙ _ a
-    Null∙-global-reflectors a .η = FreeInj.inc
-    Null∙-global-reflectors a .η-is-reflector
-      .○∈S = Null∙-is-null a
-    Null∙-global-reflectors a .η-is-reflector
+    Null∗-global-reflectors a .○ = Null∗ _ a
+    Null∗-global-reflectors a .η = FreeInj.inc
+    Null∗-global-reflectors a .η-is-reflector
+      .○∈S = Null∗-is-null a
+    Null∗-global-reflectors a .η-is-reflector
       .reflects cnull = FreeInj-reflects _ (is-local←is-null cnull)
 
-  Null∙-reflective
+  Null∗-reflective
     : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
         {A : I → Type 𝓤}
         (a∙ : ∀ i → A i)
       → is-reflective (Null-SubU A 𝓦)
-  Null∙-reflective a = is-reflective←global (Null∙-global-reflectors a)
+  Null∗-reflective a = is-reflective←global (Null∗-global-reflectors a)
 
   Null-gRSubU
     : ∀ {𝓘 𝓤} {I : Type 𝓘} (A : I → Type 𝓤)
@@ -275,13 +327,13 @@ module _ where
   Null-gRSubU A .gRSubU.GS = Null-gSubU A
   Null-gRSubU A .gRSubU.GS-is-globally-reflective = Null-globally-reflective
 
-  Null∙-gRSubU
+  Null∗-gRSubU
     : ∀ {𝓘 𝓤} {I : Type 𝓘}
         {A : I → Type 𝓤}
         (a∙ : ∀ i → A i)
       → gRSubU (_⊔ (𝓘 ⊔ 𝓤))
-  Null∙-gRSubU {A = A} a .gRSubU.GS = Null-gSubU A
-  Null∙-gRSubU a .gRSubU.GS-is-globally-reflective = Null∙-global-reflectors a
+  Null∗-gRSubU {A = A} a .gRSubU.GS = Null-gSubU A
+  Null∗-gRSubU a .gRSubU.GS-is-globally-reflective = Null∗-global-reflectors a
 }
 }
 
@@ -299,9 +351,9 @@ is also a higher modality.}
 
 ##{
 \begin{align}
-  \Sigma_{(x : X)} Y(x)  &\simeq \Sigma_{(x : X)} A_i \to Y(x) \\
-                         &\simeq \Sigma_{(x : A_i \to X)} \Pi_{(a : A_i)} Y(f(a))\\
-                         &\simeq A_i \to \Sigma_{(x : X)} Y(x)
+  \Sigma1{x : X}{Y(x)}  &\simeq \Sigma1{x : X}{(A_i \to Y(x))} \\
+                         &\simeq \Sigma1{x \colon A_i \to X}{(\Pi1{a : A_i}{Y(f(a))})}\\
+                         &\simeq A_i \to \Sigma1{x : X}{Y(x)}
 \end{align}
 }
 
@@ -358,13 +410,13 @@ Null-Σ-closed
 Null-Σ-closed {A = A}
   = is-Σ-closed←globally (Null-gSubU A) Null-globally-Σ-closed
 
-Null∙-HigherModality
+Null∗-HigherModality
   : ∀ {𝓘 𝓤 𝓦} {I : Type 𝓘}
       {A : I → Type 𝓤}
       (a : Π _ A)
     → HigherModality 𝓦
-Null∙-HigherModality a
-  = HigherModality←SubU (Null∙-reflective a) (Null-Σ-closed)
+Null∗-HigherModality a
+  = HigherModality←SubU (Null∗-reflective a) (Null-Σ-closed)
 
 module _
   {𝓘 𝓤 : Level} {I : Type 𝓘}
@@ -413,8 +465,8 @@ module Null {𝓘 𝓤 : Level} {I : Type 𝓘} (A : I → Type 𝓤) where
 \taxon{Corollary}
 
 \p{
-If each codomain #{B_i} is [contractible](stt-000F), then localisation at
-#{f_i : A_i \to B_i} is [#{\Sigma}-closed](stt-006F), and hence determines a
+If each codomain #{B_i} is [contractible](stt-0006), then localisation at
+#{f_i \colon A_i \to B_i} is [#{\Sigma}-closed](stt-006F), and hence determines a
 higher modality.
 }
 
@@ -463,14 +515,20 @@ module _
   {X : Type 𝓧}
   where
 
+  const-Arrow-incoherent-retract←retract
+    : (i : I) → retract (A i) (B i)
+    → Arrow-incoherent-retract (const: X (A i)) (const: X (B i))
+  const-Arrow-incoherent-retract←retract i R
+    = ( mk-amap id (precomp X (R .snd .fst)) ~refl
+      , mk-amap id (precomp X (R .fst)) ~refl
+      , ~refl
+      , λ h → funext→ λ a → ap h (R .snd .snd a))
+
   is-null-at-retract
     : ((i : I) → retract (A i) (B i)) → is-null B X → is-null A X
   is-null-at-retract R B-null i
-    = is-equiv←incoherent-retraction-equiv
-        (mk-amap id (precomp X (R i .snd .fst)) ~refl)
-        (mk-amap id (precomp X (R i .fst)) ~refl
-        , ~refl
-        , λ h → funext→ λ a → ap h (R i .snd .snd a))
+    = is-equiv←Arrow-incoherent-retract
+        (const-Arrow-incoherent-retract←retract i (R i))
         (B-null i)
 
   is-null-at-equiv
@@ -562,7 +620,7 @@ module _
 \p{
 If a type is null at a family #{X}, and for each #{i} also null at a family
 #{Y_{i}} over #{X_i}, then it is null at the family of dependent sums
-#{\sum_{(x : X_i)} Y_{i,x}}.
+#{\Sigma1{x : X_i}{Y_{i,x}}}.
 }
 
 \agda{
@@ -597,7 +655,7 @@ module _
 \taxon{Lemma}
 
 \p{
-If a type is null at #{C} and local at #{f : A \to B}, then it is null at any
+If a type is null at #{C} and local at #{f \colon A \to B}, then it is null at any
 pushout #{B \amalg_A C}.
 }
 

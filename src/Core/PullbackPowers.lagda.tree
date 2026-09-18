@@ -20,6 +20,8 @@ open import Foundations.Prelude
 open import Core.Arrows
 open import Core.CartesianSquares
 open import Core.ArrowEquiv
+open import Core.Cube
+open import Core.Postwhisker
 open import Core.LiftingSquares
 open import Core.PullbackPowersFamilies
 open import Ergonomics.Extensionality
@@ -33,15 +35,15 @@ open import Ergonomics.Representation
 \author{fredrikbakke}
 
 \p{
-Given an [arrow](stt-0038) #{f : A \to B} and a dependent arrow over it
-#{g : (b : B) \to X(b) \to Y(b)}, then we may form the \em{dependent pullback power}
+Given an [arrow](stt-0038) #{f \colon A \to B} and a dependent arrow over it
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}}, then we may form the \em{dependent pullback power}
 #{\pulldpow_f g} as the gap map in the square
 
 \quiver{
 \begin{tikzcd}
-	(\Pi_{(b : B)} X(b)) && (\Pi_{(b : B)}Y(b)) \\
+	(\Pi1{b : B}{X(b)}) && (\Pi1{b : B}{Y(b)}) \\
 	& \Hom^\mathrm{d}(f, g) \\
-	(\Pi_{(a : A)} X(f(a))) && (\Pi_{(a : A)}Y(f(a)))
+	(\Pi1{a : A}{X(f(a))}) && (\Pi1{a : A}{Y(f(a))})
 	\arrow[from=1-1, to=1-3]
 	\arrow[from=1-1, to=3-1]
 	\arrow[from=1-3, to=3-3]
@@ -100,12 +102,6 @@ module _
 
   infixl 20 ⟨_,_⟩
   ⟨_,_⟩ = pullback-power
-
-  pullback-power-lifts : (l : B → C) → Lift (pullback-power l)
-  pullback-power-lifts l .Lift.lift = l
-  pullback-power-lifts l .Lift.K = ~refl
-  pullback-power-lifts l .Lift.L = ~refl
-  pullback-power-lifts l .Lift.pastes = ~refl
 }
 
 \p{The pullback power of #{f} with #{g} is sometimes written #{\pullpow{f}{g}}.}
@@ -245,9 +241,82 @@ module _
 }
 }
 
+\subtree[stt-010N]{
+\taxon{Construction}
+\title{Functoriality of exponential squares}
+\date{2025-11-26}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+Morphisms of arrows induce cubes between exponential squares. If the
+morpism is an equivalence of arrows the induced cube is an equivalence of squares.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥}
+  {X : Type 𝓦} {Y : Type 𝓜}
+  {C : Type 𝓝} {D : Type 𝓛}
+  where
+
+  power-hom-cube←right-arrow-map
+    : (f : A → B)
+      (g : X → Y)
+      (g' : C → D)
+      (F : Arrow-map g g')
+    → Cube (power-hom f g) (power-hom f g')
+  power-hom-cube←right-arrow-map f g g' F .Cube.left = postcomp-square F _
+  power-hom-cube←right-arrow-map f g g' F .Cube.right = postcomp-square F _
+  power-hom-cube←right-arrow-map f g g' F .Cube.comm .fst = ~refl
+  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .fst = ~refl
+  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .snd a
+      = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-prewhisker-funext _)
+
+  power-hom-cube←right-arrow-equiv
+    : (f : A → B)
+      {g : X → Y}
+      {g' : C → D}
+    → Arrow-equiv g g'
+    → Cube-equiv (power-hom f g) (power-hom f g')
+  power-hom-cube←right-arrow-equiv f (F , Fe)
+    = ( power-hom-cube←right-arrow-map f _ _ F
+      , postcomp-square-is-equiv F Fe , postcomp-square-is-equiv F Fe)
+
+  power-hom-cube←left-arrow-map
+    : (f : A → B)
+      (f' : X → Y)
+      (F : Arrow-map f f')
+      (g : C → D)
+    → Cube
+        (transpose-square (power-hom f' g))
+        (transpose-square (power-hom f g))
+  power-hom-cube←left-arrow-map f f' F g .Cube.left = precomp-square F _
+  power-hom-cube←left-arrow-map f f' F g .Cube.right = precomp-square F _
+  power-hom-cube←left-arrow-map f f' F g .Cube.comm .fst = ~refl
+  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .fst = ~refl
+  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .snd k
+    = ∙-reflr _ ∙ ∙-reflr _
+    ∙ sym (commutes-postwhisker-funext {h = g} _)
+    ∙ ap funext→ (funext→ (◃h∘ g k _ h⁻¹))
+
+  power-hom-cube←left-arrow-equiv
+    : {f : A → B} {f' : X → Y}
+    → Arrow-equiv f f'
+    → (g : C → D)
+    → Cube-equiv
+        (transpose-square (power-hom f' g))
+        (transpose-square (power-hom f g))
+  power-hom-cube←left-arrow-equiv (F , Fe) g
+    = ( power-hom-cube←left-arrow-map _ _ F g
+      , precomp-square-is-equiv F Fe , precomp-square-is-equiv F Fe)
+}
+}
+
 \subtree[stt-004K]{
 \taxon{Theorem}
-\title{Characterising fibres of the pullback map}
+\title{Characterising fibres of the pullback power as lifting squares}
 
 \agda{
 module _
@@ -273,7 +342,7 @@ module _
 \title{The equivalence of unstraightened pullback powers}
 
 \p{
-Given #{f : A \to B} and #{g : (b : B) \to X(b) \to Y(b)}, the dependent pullback
+Given #{f \colon A \to B} and #{g \colon \Pi1{b : B}{X(b) \to Y(b)}}, the dependent pullback
 power is equivalent, as an arrow, to the unstraightening of the fibrewise pullback
 power.
 
@@ -283,13 +352,12 @@ power.
 \proof{
 \p{
 First, consider the codomain of #{\pulldpow_f g}, #{\Hom^{\mathrm d}(f,g)}. It
-consists of a section #{i : \Pi_{(b : B)} Y(b)} together with a section
-#{j : \Pi_{(a : A)} X(f(a))} such that #{i \circ f \sim g \circ j}. Reindexing the
+consists of a section #{i \colon \Pi1{b : B}{Y(b)}} together with a section
+#{j \colon \Pi1{a : A}{X(f(a))}} such that #{i \circ f \sim g \circ j}. Reindexing the
 second piece fibrewise over the fibres of #{f} this data is equivalent to the type
 
 ##{
-\Sigma_{(i : \Pi_{(b : B)} Y(b))}
-\Pi_{(b : B)} (\fibre{f}{b} \to \fibre{g(b)}{i(b)}),
+\Sigma1{i : \Pi1{b : B}{Y(b)}}{(\Pi1{b : B}{\fibre{f}{b} \to \fibre{g(b)}{i(b)}})},
 }
 
 so the codomain of #{\pulldpow_f g} is identified with the base of the fibrewise
@@ -298,10 +366,10 @@ pullback power family.
 
 \p{
 Second, consider the fibrewise pullback power family over this base: over a section
-#{i : \Pi_{(b : B)} Y(b)} its fibre is the type
+#{i \colon \Pi1{b : B}{Y(b)}} its fibre is the type
 
 ##{
-\Pi_{(b : B)} (\fibre{f}{b} \to \fibre{g(b)}{i(b)}).
+\Pi1{b : B}{\fibre{f}{b} \to \fibre{g(b)}{i(b)}}.
 }
 
 Unstraightening this family essentially adds, for each #{b : B}, a null-homotopy of
@@ -309,20 +377,17 @@ the map #{\fibre{f}{b} \to \fibre{g(b)}{i(b)}}. After exchanging the outer
 #{\Sigma}-types and #{\Pi}-types, the domain becomes
 
 ##{
-\Pi_{(b : B)}
-\Sigma_{(y : Y(b))}
-\Sigma_{(k : \fibre{f}{b} \to \fibre{g(b)}{y})}
-\nullhtpy(k).
+\Pi1{b : B}{\Sigma2{y : Y(b)}{k : \fibre{f}{b} \to \fibre{g(b)}{y}}{\nullhtpy(k)}}.
 }
 
 For each #{b : B} this is the [pointed-total presentation](stt-00F5) of the map
-#{g(b) : X(b) \to Y(b)} at #{\fibre{f}{b}}, and hence it is equivalent
+#{g(b) \colon X(b) \to Y(b)} at #{\fibre{f}{b}}, and hence it is equivalent
 to #{X(b)}. Taking the dependent product over #{B} this gives an equivalence between
-the domain of the unstraightened fibrewise pullback power and #{\Pi_{(b : B)} X(b)}.
+the domain of the unstraightened fibrewise pullback power and #{\Pi1{b : B}{X(b)}}.
 }
 
 \p{
-Under these identifications, a section #{\ell : \Pi_{(b : B)} X(b)} is sent to the
+Under these identifications, a section #{\ell \colon \Pi1{b : B}{X(b)}} is sent to the
 family whose fibre over #{b} is the point #{g(b)(\ell(b)) : Y(b)} together with the
 constant map
 #{\fibre{f}{b} \to \fibre{g(b)}{g(b)(\ell(b))}}, sending every point of
@@ -567,9 +632,10 @@ module _
     = mk≃ Π̂-unstraight-cod←Arrow-Π Π̂-unstraight-cod←Arrow-Π-is-equiv
     , (λ t
       → mk≃ (arrow-fibre Π̂ᶠ-unstraight←Π̂ t)
-            (is-cartesian←is-equiv Π̂ᶠ-unstraight←Π̂
-                                   Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv
-                                   t))
+            (is-cartesian←is-Arrow-equiv
+                Π̂ᶠ-unstraight←Π̂
+                Π̂ᶠ-unstraight←Π̂-is-Arrow-equiv
+                t))
 
   Π̂-unstraight-fibre-fam≃Π̂ᶠ-unstraight-fibre-fam
     : Π̂-unstraight-fibre-fam ≃ᶠ Π̂ᶠ-unstraight-fibre-fam f g
@@ -621,7 +687,7 @@ module _
 \author{fredrikbakke}
 
 
-\p{Given families #{B : A \to \UU} and #{Y : (a : A) \to X a \to \UV}, their
+\p{Given families #{B \colon A \to \UU} and #{Y \colon \Pi1{a : A}{X a \to \UV}}, their
 fibrewise dependent pullback power is equivalent, as a family, to the straightening
 of the dependent pullback power of total space projections.
 

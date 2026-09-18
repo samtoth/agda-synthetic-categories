@@ -1,0 +1,166 @@
+\title{Split idempotent maps}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+open import Foundations.FunExt
+
+module Foundations.SplitIdempotentMaps where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.Sigma
+open import Foundations.Unit
+open import Foundations.Nat
+open import Foundations.QuasiidempotentMaps
+open import Foundations.SplittingConstruction
+open import Foundations.Squares
+open import Foundations.CanonicalEqualisers
+open import Foundations.SigmaIdentity
+open import Foundations.IdentityReasoning
+open import Foundations.Towers
+open import Foundations.CanonicalSequentialLimits
+open import Foundations.Spans
+open import Foundations.Forks
+open import Foundations.Pullbacks
+open import Foundations.CanonicalPullbacks
+open import Foundations.IdentitySystems
+open import Foundations.TorsorialTypeFamilies
+open import Foundations.Univalence
+open import Foundations.FunctionInverses
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.EquivHomotopy
+open import Foundations.3for2
+open import Foundations.IdentityEquiv
+open import Foundations.Retracts
+open import Foundations.FibrewiseEquivalences
+open import Foundations.SigmaProperties
+open import Foundations.Singletons
+open import Foundations.EquivSingleton
+open import Foundations.SingletonFibres
+open import Foundations.SingletonClosure
+open import Foundations.TheoremOfChoice
+open import Foundations.HomotopyEquiv
+
+import Foundations.IsEquivIsProp
+}
+}
+
+\subtree[stt-006V]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Definition}
+\title{Split idempotent maps}
+
+\p{
+A map #{f \colon X \to X} is \em{split idempotent} if there is a
+[retract](stt-00HE) of #{X} whose inclusion-retraction composite is homotopic
+to #{f}.
+}
+
+\agda{
+is-split-idem
+  : {𝓤 : Level} (𝓥 : Level) {X : Type 𝓤}
+  → (X → X) → Type (𝓤 ⊔ lsuc 𝓥)
+is-split-idem 𝓥 {X} f
+  = Σ[ R ∶ Retracts 𝓥 X ] (R .snd .fst ∘ R .snd .snd .fst ~ f)
+
+split-idempotent-map
+  : {𝓤 : Level} (𝓥 : Level) (X : Type 𝓤)
+  → Type (𝓤 ⊔ lsuc 𝓥)
+split-idempotent-map 𝓥 X = Σ[ f ∶ (X → X) ] is-split-idem 𝓥 f
+}
+}
+
+\subtree[stt-006Y]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{Split idempotent maps are equivalent to retracts}
+
+\p{
+For a fixed type #{X}, specifying a split idempotent endomap on #{X} is
+equivalent to specifying a retract of #{X}.
+}
+
+\agda{
+qidempotence←split
+  : ∀ {𝓤 𝓥} {X : Type 𝓤} {f : X → X}
+    → is-split-idem 𝓥 f → qidempotence f
+qidempotence←split H
+  = qidempotence←htpy (H .snd h⁻¹) (qidempotent←Retracts (H .fst) .snd)
+
+module SplitIdemWithFunExt
+  (FE : FunExt-global)
+  (open WithFunExt-global FE)
+  (open IdemWithFunExt FE)
+  {𝓤 𝓥} {X : Type 𝓤}
+  where
+
+  split←qidempotence
+    : {f : X → X}
+    → qidempotence f
+    → is-split-idem 𝓤 f
+  split←qidempotence {f} H
+    = ( Splitting.type f
+      , retract-Splitting-type H)
+    , Splitting.factorisation f (H .fst)
+
+  split-idempotent-map≃Retracts
+    : split-idempotent-map 𝓥 X ≃ Retracts 𝓥 X
+  split-idempotent-map≃Retracts
+    = Σ-comm
+    ∙e Σ-singleton (λ R → htpy-is-torsorial FE (R .snd .fst ∘ R .snd .snd .fst))
+}
+}
+
+\subtree[stt-006W]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{The splitting type of a split idempotent map is essentially unique}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤} {f : X → X} where
+
+  ←Retracts←split
+    : ∀ {𝓥 𝓦}
+      → (R : is-split-idem 𝓥 f)
+      → (S : is-split-idem 𝓦 f)
+      → carrier-Retracts (R .fst)
+      → carrier-Retracts (S .fst)
+  ←Retracts←split R S
+    = S .fst .snd .snd .fst ∘ R .fst .snd .fst
+
+  ←Retracts←split-sec
+    : ∀ {𝓥 𝓦}
+      → (R : is-split-idem 𝓥 f)
+      → (S : is-split-idem 𝓦 f)
+      → ←Retracts←split S R
+        ∘ ←Retracts←split R S
+        ~ id
+  ←Retracts←split-sec ((_ , i , r , ri) , R) ((_ , j , s , sj) , S)
+    = r ◃h (S ∙h R h⁻¹) ▹h i ∙h ri ▹h (r ∘ i) ∙h ri
+
+  ess-unique-splitting-type←split
+    : ∀ {𝓥 𝓦}
+      → (R : is-split-idem 𝓥 f)
+      → (S : is-split-idem 𝓦 f)
+      → carrier-Retracts (R .fst) ≃ carrier-Retracts (S .fst)
+  ess-unique-splitting-type←split R S
+    = mk≃ (←Retracts←split R S) (is-equiv←qinv qinv)
+    where
+    qinv : quasi-inv (←Retracts←split R S)
+    qinv .fst = ←Retracts←split S R
+    qinv .snd .fst = ←Retracts←split-sec R S
+    qinv .snd .snd = ←Retracts←split-sec S R
+}
+}

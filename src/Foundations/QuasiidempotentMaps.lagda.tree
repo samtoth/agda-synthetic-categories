@@ -1,0 +1,468 @@
+\title{Quasiidempotent maps}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.FunExt
+
+module Foundations.QuasiidempotentMaps where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.Sigma
+open import Foundations.CanonicalEqualisers
+open import Foundations.SigmaIdentity
+open import Foundations.Spans
+open import Foundations.CanonicalPullbacks
+open import Foundations.TorsorialTypeFamilies
+open import Foundations.Equivalences
+open import Foundations.Retracts
+open import Foundations.FibrewiseEquivalences
+open import Foundations.SigmaProperties
+open import Foundations.EquivSingleton
+open import Foundations.SingletonClosure
+open import Foundations.TheoremOfChoice
+open import Foundations.HomotopyEquiv
+
+import Foundations.IsEquivIsProp
+}
+}
+
+\subtree[stt-00H9]{
+\taxon{Definition}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Preidempotent maps}
+
+\p{
+A \em{preidempotent map} is a map #{f \colon X \to X} such that #{f \circ f \sim f}. The
+data of a [homotopy](stt-001M) #{f \circ f \sim f} is called a \em{preidempotence}.
+}
+\p{
+In set-level mathematics, this concept is better known as an "idempotent map".
+However, in homotopical mathematics such as our present setting, the preidempotence
+condition #{f \circ f \sim f} is not enough to ensure a well-behaved notion of
+idempotence in general. For instance, one would expect idempotents to split, but this
+is not true for all preidempotent maps in the homotopical setting of univalent
+foundations. Instead, we must ask for additional data to ensure the homotopy
+#{f \circ f \sim f} itself is well-enough behaved. This leads to the definitions of
+[quasiidempotent](stt-00II) and [(coherently) idempotent](stt-00IG) maps.
+}
+\p{
+Our terminology follows that of [[michaelshulman]] \citek{Shu17b}
+and so we designate the somewhat derogatory term "preidempotent" for the reason
+described above.
+}
+
+\agda{
+preidempotence
+  : ∀ {𝓤} {X : Type 𝓤} → (X → X) → Type 𝓤
+preidempotence f = f ∘ f ~ f
+
+preidempotent-map
+  : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+preidempotent-map X = Σ[ f ∶ (X → X) ] preidempotence f
+}
+}
+
+\subtree[stt-00II]{
+\taxon{Definition}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Quasiidempotent maps}
+
+\p{
+A map #{f \colon X \to X} is \em{quasiidempotent} if it comes equipped with a
+\em{quasiidempotence}: a [homotopy](stt-001M) #{I \colon f \circ f \sim f} such that
+#{f I \sim I f}.
+}
+\p{
+While the single extra condition of #{f I \sim I f} compared to
+[preidempotent maps](stt-00H9) is not enough for the notion of quasiidempotence to
+present a fully coherent notion of idempotence of maps in homotopical mathematics, it
+\em{is} enough for us to be able to show [that #{f} splits](stt-00HC). We show this
+following [[michaelshulman]]'s work \citek{Shu17b}.
+}
+\p{
+Our terminology follows that of [[michaelshulman]] \citek{Shu17b}
+and so we designate the somewhat derogatory term "quasiidempotent" for the reason
+described above.
+}
+
+\agda{
+qcoh-preidempotence
+  : ∀ {𝓤} {X : Type 𝓤} (f : X → X)
+    → preidempotence f
+    → Type 𝓤
+qcoh-preidempotence f I = (f ◃h I) ~ (I ▹h f)
+
+qidempotence
+  : ∀ {𝓤} {X : Type 𝓤}
+    → (X → X) → Type 𝓤
+qidempotence f = Σ[ I ∶ preidempotence f ] qcoh-preidempotence f I
+
+qidempotent-map
+  : ∀ {𝓤} → Type 𝓤 → Type 𝓤
+qidempotent-map X = Σ[ f ∶ (X → X) ] qidempotence f
+
+qidempotence-natural
+  : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+      (H : qidempotence f) {x y : X} (p : x ＝ f y)
+    → ap (f ∘ f) p ∙ ap f (H .fst y)
+    ＝ H .fst x ∙ ap f p
+qidempotence-natural (I , Q) {y = y} refl
+  = Q y ∙ ∙-reflr' _
+}
+}
+
+\subtree{
+\taxon{Theorem}
+\date{2026-03-17}
+\author{fredrikbakke}
+\title{Equality of quasiidempotences}
+
+\p{
+Equalities of quasiidempotences are characterised by homotopies between the
+underlying preidempotences together with a compatible homotopy between the
+quasicoherences.
+}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤} {f : X → X} where
+
+  qidempotence-coherence
+    : (H K : qidempotence f)
+    → (H .fst ~ K .fst)
+    → Type 𝓤
+  qidempotence-coherence H K ρ
+    = (H .snd ∙h (ρ ∘ f)) ~ ((ap (ap f) ∘ ρ) ∙h K .snd)
+
+  qidempotence-htpy
+    : qidempotence f
+    → qidempotence f
+    → Type 𝓤
+  qidempotence-htpy H K
+    = Σ[ ρ ∶ H .fst ~ K .fst ] qidempotence-coherence H K ρ
+
+  refl-qidempotence-htpy
+    : (H : qidempotence f)
+    → qidempotence-htpy H H
+  refl-qidempotence-htpy (I , Q)
+    = (~refl , ∙h-reflr Q)
+
+module QIdemWithFunExt (FE : FunExt-global) where
+
+  module _
+    {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+    (H : qidempotence f)
+    where
+
+    qidempotence-htpy-is-torsorial
+      : is-torsorial (qidempotence-htpy H)
+    qidempotence-htpy-is-torsorial
+      = is-singleton-structure←parts
+          (htpy-is-torsorial FE (H .fst))
+          (_ , ~refl)
+          (is-single←equiv-to-single
+            (Σ-fst-≃ (∙h≃ FE ~refl))
+            (htpy-is-torsorial FE (H .snd ∙h ~refl)))
+
+  qidempotence-htpy←Id
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+        {H K : qidempotence f}
+      → H ＝ K
+      → qidempotence-htpy H K
+  qidempotence-htpy←Id {H = H} refl
+    = refl-qidempotence-htpy H
+
+  qidempotence-htpy-is-equiv
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+        (H K : qidempotence f)
+      → is-equiv (qidempotence-htpy←Id {H = H} {K = K})
+  qidempotence-htpy-is-equiv H
+    = fundamental-Id
+        (qidempotence-htpy H)
+        (qidempotence-htpy-is-torsorial H)
+        (λ _ → qidempotence-htpy←Id)
+
+  Id≃qidempotence-htpy
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+        (H K : qidempotence f)
+      → (H ＝ K) ≃ qidempotence-htpy H K
+  Id≃qidempotence-htpy H K
+    = mk≃ qidempotence-htpy←Id (qidempotence-htpy-is-equiv H K)
+
+  Id←qidempotence-htpy
+    : ∀ {𝓤} {X : Type 𝓤} {f : X → X}
+        {H K : qidempotence f}
+      → qidempotence-htpy H K
+      → H ＝ K
+  Id←qidempotence-htpy {H = H} {K = K}
+    = _≃_.bwd (Id≃qidempotence-htpy H K)
+}
+}
+
+\subtree[stt-00HB]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Retracts give quasiidempotent maps}
+
+\p{
+A retract #{A \xrightarrow{i} X \xrightarrow{r} A} such that #{r \circ i \sim \id}
+determines a quasiidempotent map on #{X}, #{i \circ r}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {X : Type 𝓥} where
+
+  retraction-htpy-nat
+    : {i : A → X} {r : X → A} (rs : r ∘ i ~ id)
+    → (r ◃h i ◃h rs) ▹h r ~ rs ▹h (r ∘ i ∘ r)
+  retraction-htpy-nat {i = i} {r = r} rs
+    = (r ◃h i ◃h rs) ▹h r
+        ~⟨ ◃h∘ r i (rs ▹h r) h⁻¹ ⟩
+      (r ∘ i) ◃h (rs ▹h r)
+        ~⟨ (homotopy-inverse (r ∘ i) rs ∘ r) h⁻¹ ⟩
+      rs ▹h (r ∘ i ∘ r) ~∎
+
+  qidempotence←section-retraction
+    : (i : A → X) (r : X → A)
+      (rs : r ∘ i ~ id)
+    → qidempotence (i ∘ r)
+  qidempotence←section-retraction i r rs
+    = (I , Q) where
+
+    I : preidempotence (i ∘ r)
+    I = i ◃h rs ▹h r
+
+    Q : qcoh-preidempotence (i ∘ r) I
+    Q = ◃h∘ i r I ∙h (i ⟩◃h⟨ retraction-htpy-nat rs)
+
+  qidempotent-map←retract
+    : retract A X
+    → qidempotent-map X
+  qidempotent-map←retract (i , r , rs)
+    = (i ∘ r , qidempotence←section-retraction i r rs)
+
+qidempotent←Retracts
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} → Retracts 𝓥 A → qidempotent-map A
+qidempotent←Retracts (_ , R) = qidempotent-map←retract R
+}
+}
+
+\subtree[stt-011N]{
+\title{Quasiidempotence respects homotopies}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-18}
+
+\p{
+If #{f \sim g}, then any quasiidempotence witness on #{f} gives rise to a
+quasiidempotence witness on #{g}.
+}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤} {f g : X → X} where
+
+  preidempotence←htpy : g ~ f → preidempotence f → preidempotence g
+  preidempotence←htpy e I
+    = e ▹h g ∙h f ◃h e ∙h I ∙h (e h⁻¹)
+
+  qidempotence←htpy : g ~ f → qidempotence f → qidempotence g
+  qidempotence←htpy e H = (I' , Q) where
+    I = H .fst
+
+    I' : preidempotence g
+    I' = preidempotence←htpy e I
+
+    natural
+      : (x : X) {y : X} (p : y ＝ f x)
+      → ap f (ap f p ∙ I x ∙ sym p) ＝ I y
+    natural x refl = ap (ap f) (∙-reflr (I x)) ∙ H .snd x
+
+    Q : qcoh-preidempotence g I'
+    Q x
+      = ap g (I' x)
+          ＝⟨ right-transpose-∙ _ _ _ (sym (homotopy-natural e (I' x))) ⟩
+        (e (g (g x)) ∙ ap f (I' x)) ∙ sym (e (g x))
+          ＝⟨ ( e (g (g x))
+              ◂ ( ap-∙ f (e (g x)) (ap f (e x) ∙ I x ∙ sym (e x))
+                ∙ (ap f (e (g x)) ◂ natural x (e x))))
+            ▸ sym (e (g x)) ⟩
+        (e (g (g x)) ∙ (ap f (e (g x)) ∙ I (g x))) ∙ sym (e (g x))
+          ＝⟨ ∙-assoc _ _ _ ∙ e (g (g x)) ◂ ∙-assoc _ _ _ ⟩
+        I' (g x) ∎
+}
+}
+
+
+\subtree[stt-00IH]{
+\taxon{Theorem}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{Limit presentation of quasiidempotent maps}
+
+\p{
+We present the type of [quasiidempotent maps](stt-00II) as a [pullback](stt-003I).
+A preidempotent map #{(f,I)} determines, for each #{x : X}, a pair of identifications
+in the total identity type of #{X}, #{\Sigma1{x,y : X}{(x = y)}}:
+namely the equality #{\ap_f(I(x)) \colon f(f(f(x))) = f(f(x))} and the equality
+#{I(f(x)) \colon f(f(f(x))) = f(f(x))}. Equivalently, these are two points of the total
+identity type lying over the same pair #{(f(f(f(x))),f(f(x)))}. A quasicoherence of
+the preidempotence is exactly a family of fillers between these two identifications.
+}
+
+\p{
+Therefore, #{\textsf{QIdem}(X)} is the pullback of the boundary map of a
+preidempotent map against the forgetful map from fillers to their boundaries:
+\quiver{
+\begin{tikzcd}
+		\textsf{QIdem}(X) && (X \to \textsf{QData}(X)) \\
+		\\
+	\textsf{PreIdem}(X) && (X \to \textsf{QBoundary}(X))
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow["{\fst^X}", from=1-3, to=3-3]
+	\arrow["\textsf{boundary}", from=3-1, to=3-3]
+	\arrow["\lrcorner" very near start, phantom, from=1-1, to=3-3]
+\end{tikzcd}
+}
+Here #{\textsf{boundary}} is the map formalised as \code{quasicoherence-boundary-map}.
+}
+
+\agda{
+quasicoherence-boundary
+  : {𝓤 : Level}
+  → Type 𝓤 → Type 𝓤
+quasicoherence-boundary X
+  = Σ[ uv ∶ (TotalId X × TotalId X) ]
+      (uv .fst .fst ＝ uv .snd .fst)
+
+quasicoherence-filler
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-boundary X
+  → Type 𝓤
+quasicoherence-filler ((u , v) , p)
+  = Idᵈ
+      ( ap (λ (x , y) → x ＝ y) p)
+      ( u .snd)
+      ( v .snd)
+
+quasicoherence-data
+  : {𝓤 : Level} → Type 𝓤 → Type 𝓤
+quasicoherence-data X
+  = Σ[ B ∶ quasicoherence-boundary X ] quasicoherence-filler B
+
+quasicoherence-boundary-map
+  : {𝓤 : Level} {X : Type 𝓤}
+  → preidempotent-map X
+  → (a : X)
+  → quasicoherence-boundary X
+quasicoherence-boundary-map (f , I) a
+  = ( ( ((f (f (f a)) , f (f a)) , ap f (I a))
+      , ((f (f (f a)) , f (f a)) , I (f a)))
+    , refl)
+
+quasicoherence-data≃TotalId
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-data X
+  ≃ TotalId (TotalId X)
+quasicoherence-data≃TotalId
+  = Σ-assoc ∙e Σ-snd-≃ (λ _ → Σ-path)
+
+quasicoherence-data≃
+  : {𝓤 : Level} {X : Type 𝓤}
+  → quasicoherence-data X ≃ X
+quasicoherence-data≃ {X = X}
+  = quasicoherence-data≃TotalId
+  ∙e TotalId≃ {X = TotalId X}
+  ∙e TotalId≃ {X = X}
+
+module QIdemWithFunExt2 (FE : FunExt-global) (open WithFunExt-global FE) where
+
+  quasicoherence-fibre≃filler
+    : {𝓤 : Level} {X : Type 𝓤}
+      (B : quasicoherence-boundary X)
+    → fibre fst B
+    ≃ quasicoherence-filler B
+  quasicoherence-fibre≃filler {X = X} B
+    = fibre-straighten {A = quasicoherence-boundary X} quasicoherence-filler B
+
+  quasicoherence-forget
+    : {𝓤 : Level} {X : Type 𝓤}
+    → (X → quasicoherence-data X)
+    → (X → quasicoherence-boundary X)
+  quasicoherence-forget = fst ∘_
+
+  qcoh-preidempotence≃quasicoherence-forget-fibre
+    : {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+      (I : preidempotence f)
+    → qcoh-preidempotence f I
+    ≃ fibre
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map (f , I))
+  qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I
+    = Foundations.IsEquivIsProp.Π-fam-≃ FE {A = X}
+        ( λ a
+          → quasicoherence-fibre≃filler (quasicoherence-boundary-map (f , I) a) e⁻¹)
+    ∙e Σ-Π-swap≃ _ _
+    ∙e Σ-snd-≃ (λ _ → funext≃ e⁻¹)
+
+  quasicoherence-forget-fibre←qcoh-preidempotence
+    : {𝓤 : Level} {X : Type 𝓤} {f : X → X}
+      (I : preidempotence f)
+    → qcoh-preidempotence f I
+    → fibre
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map (f , I))
+  quasicoherence-forget-fibre←qcoh-preidempotence {X = X} {f = f} I
+    = _≃_.fwd (qcoh-preidempotence≃quasicoherence-forget-fibre I)
+
+  qidempotent-map-pullback-cone
+    : {𝓤 : Level} {X : Type 𝓤}
+    → Cone
+        (mk-cospan
+          (X → quasicoherence-boundary X)
+          (quasicoherence-forget {X = X})
+          (quasicoherence-boundary-map {X = X}))
+        (qidempotent-map X)
+  qidempotent-map-pullback-cone {X = X}
+    = mk-cone
+        (λ (f , I , Q)
+         → quasicoherence-forget-fibre←qcoh-preidempotence {f = f} I Q .fst)
+        (λ (f , I , _) → (f , I))
+        (λ (f , I , Q)
+         → quasicoherence-forget-fibre←qcoh-preidempotence {f = f} I Q .snd)
+
+  qidempotent-map-pullback-is-pullback
+    : {𝓤 : Level} {X : Type 𝓤}
+    → is-pullback (qidempotent-map-pullback-cone {X = X})
+  qidempotent-map-pullback-is-pullback {X = X}
+    = _≃_.fwd-is-equiv
+        ( (Σ-assoc e⁻¹)
+        ∙e Σ-snd-≃ (λ (f , I)
+          → qcoh-preidempotence≃quasicoherence-forget-fibre {X = X} {f = f} I)
+        ∙e Σ-comm)
+
+  qidempotent-map≃pullback
+    : {𝓤 : Level} {X : Type 𝓤}
+    → qidempotent-map X
+    ≃ Pullback
+        (quasicoherence-forget {X = X})
+        (quasicoherence-boundary-map {X = X})
+  qidempotent-map≃pullback {X = X}
+    = mk≃
+        (gap (qidempotent-map-pullback-cone {X = X}))
+        (qidempotent-map-pullback-is-pullback {X = X})
+}
+}

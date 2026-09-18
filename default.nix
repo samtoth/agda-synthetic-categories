@@ -36,25 +36,7 @@ pkgs.stdenv.mkDerivation rec {
   ];
 
   buildPhase = ''
-    mkdir -p trees/stt/autogen
-    bash ./scripts/generateEverything.sh
-    echo "Generated everything file"
-    mkdir -p ./output
-    mkdir -p ./output/html
-    echo "made /output/html dir"
-    LC_ALL=C.UTF-8 Agda_datadir=./_build agda-forester --forest -otrees/stt/autogen --fhtml-dir=output/html --fhtml-link-root="/agda-synthetic-categories/html/" --fhtml-css-path="../Agda.css" --fforest-root="/agda-synthetic-categories/" --fdisable-backlinks -j src/Everything.agda
-    echo "Generated trees"
-    forester build
-    mkdir -p ./output/agda-synthetic-categories/assets
-    cp -Lrvf assets/logo-wide-transparent.svg ./output/agda-synthetic-categories/assets/
-    cp -Lrvf assets/ML_workshop_photo.JPG ./output/agda-synthetic-categories/assets/
-    if [ -f ./output/agda-synthetic-categories/Agda.css ]; then
-      if ! cp ./output/agda-synthetic-categories/Agda.css ./output/html/Agda.css; then
-        echo "Warning: failed to copy Agda.css into output/html; continuing." >&2
-      fi
-    else
-      echo "Warning: ./output/agda-synthetic-categories/Agda.css not found; skipping copy." >&2
-    fi
+    LC_ALL=C.UTF-8 make nix-build
   '';
 
   installPhase = ''

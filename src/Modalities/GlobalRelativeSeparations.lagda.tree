@@ -1,0 +1,491 @@
+\date{2026-09-17}
+\title{Global relative separations}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Modalities.GlobalRelativeSeparations where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.ComplementedEmbeddings
+open import Core.RelativeSuspensions
+open import Core.RelativeSuspensionsFunctoriality
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.SeparatedTypes
+}
+}
+
+\subtree[bak-6I8C]{
+\title{Relative separation of a global subuniverse with respect to a family of maps}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a [global subuniverse](stt-007A) #{\mathcal{K}} and a family of maps
+#{δ_{(-)} \colon \Pi1{i : I}{X(i) \to Y(i)}},
+then a type #{A} is \em{relatively separated} with respect to #{δ}, or
+\em{#{δ}-separated}, if every
+[extension type](stt-00CL) into #{A} along #{δ_i} belongs to #{\mathcal{K}}.
+}
+
+\agda{
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘}
+  {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i)
+  {α} (K : gSubU α) (open gSubU K)
+  where
+
+  is-relatively-separated
+    : ∀ {𝓦} → Type 𝓦 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓦 ⊔ α (𝓤 ⊔ 𝓥 ⊔ 𝓦))
+  is-relatively-separated A
+    = (i : I) (f : X i → A) → Ext (δ i) f ∈ S
+
+  relatively-separated-gSubU
+    : gSubU (λ 𝓦 → 𝓘 ⊔ 𝓤 ⊔ 𝓦 ⊔ α (𝓤 ⊔ 𝓥 ⊔ 𝓦))
+  relatively-separated-gSubU .gSubU.S .Subtype.family
+    = is-relatively-separated
+  relatively-separated-gSubU .gSubU.S .Subtype.family-is-subtype A
+    = Π-is-prop (λ i → Π-is-prop (λ f → ∈-is-prop S _))
+  relatively-separated-gSubU .gSubU.∈S←equiv e sep i f
+    = ∈S←equiv
+        (Ext-codomain-≃ (δ i) (_≃_.bwd e ∘ f) f e (_≃_.ε e ▹h f))
+        (sep i (_≃_.bwd e ∘ f))
+}
+}
+
+\subtree[bak-TOUN]{
+\title{Ordinary separation is relative separation at the booleans}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+For any [global subuniverse](stt-007A), [separation](stt-007E) is
+#{\Bool}-[relative separation](bak-6I8C).
+}
+
+\agda{
+module _ {α} (K : gSubU α) (open gSubU K) where
+
+  module _ {𝓤} {A : Type 𝓤} where
+
+    is-Bool-separated←is-separated
+      : is-separated (SubU←global K) A
+      → is-relatively-separated (point (!: Bool)) K A
+    is-Bool-separated←is-separated sep _ f
+      = ∈S←equiv (Ext-Bool≃Id f e⁻¹) (sep (f true) (f false))
+
+    is-separated←is-Bool-separated
+      : is-relatively-separated (point (!: Bool)) K A
+      → is-separated (SubU←global K) A
+    is-separated←is-Bool-separated sep x y
+      = ∈S←equiv (Ext-Bool≃Id (λ b → if b then x else y))
+          (sep tt (λ b → if b then x else y))
+
+    is-separated↔is-Bool-separated
+      : is-separated (SubU←global K) A
+      ↔ is-relatively-separated (point (!: Bool)) K A
+    is-separated↔is-Bool-separated
+      = ( is-Bool-separated←is-separated
+        , is-separated←is-Bool-separated)
+
+  Bool-separated≃separated-gSubU
+    : gSubU-equiv
+        (separated-gSubU K)
+        (relatively-separated-gSubU (point (!: Bool)) K)
+  Bool-separated≃separated-gSubU A
+    = is-separated↔is-Bool-separated {A = A}
+}
+}
+
+\agda{
+module _
+  {α 𝓘 𝓤 𝓥} (K : gRSubU α)
+  {I : Type 𝓘} {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i)
+  (open gRSubU K)
+  where
+}
+
+\subtree[bak-K99G]{
+\title{Relative separations the underlying global reflective subuniverse}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\agda{
+  is-relatively-separated←in-subuniverse
+    : ∀ {𝓦} {A : Type 𝓦}
+      → A ∈ S → is-relatively-separated δ GS A
+  is-relatively-separated←in-subuniverse A∈S i
+    = gReflectiveClosure.Ext∈S K (δ i) (λ _ → A∈S)
+}
+}
+
+\subtree[bak-IP0F]{
+\title{A presentation of relative separation via the units}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{δ} be a family of maps #{δ_{(-)} \colon \Pi1{i : I}{X(i) \to Y(i)}}
+where #{X : I \to \UU} and #{Y : I \to \UV}. Given any type #{A : \UW}, then #{A} is
+#{δ}-separated if and only if it is local at #{\suspension_{δ_{i}} \eta_C} for every
+#{i : I} and type #{C : \UU \sqcup \UV \sqcup \UW}.
+}
+
+\agda{
+  relative-unit-generators
+    : (𝓧 : Level) (iC : I × Type 𝓧)
+    → RelativeSusp (δ (iC .fst)) (iC .snd)
+    → RelativeSusp (δ (iC .fst)) (○ (iC .snd))
+  relative-unit-generators _ = RelativeSusp-family δ (η:_)
+
+  module _ {𝓦} {A : Type 𝓦} where
+
+    relative-unit-local←separated
+      : is-relatively-separated δ GS A
+      → (𝓧 : Level) → is-local (relative-unit-generators 𝓧) A
+    relative-unit-local←separated sep 𝓧 (i , C)
+      = RelativeSusp-local←extensions-local (δ i) (η: C) (reflects ∘ sep i)
+
+    separated←relative-unit-local
+      : is-local (relative-unit-generators (𝓤 ⊔ 𝓥 ⊔ 𝓦)) A
+      → is-relatively-separated δ GS A
+    separated←relative-unit-local loc i f
+      = in-SubU←η-retraction
+          (reflector (Ext (δ i) f))
+          (is-equiv.bwd e id , happly (is-equiv.ε e id))
+      where
+      opaque
+        e : is-equiv (precomp (Ext (δ i) f) (η: (Ext (δ i) f)))
+        e = extensions-local←RelativeSusp-local (δ i) (η: (Ext (δ i) f))
+              (loc (i , Ext (δ i) f)) f
+}
+}
+
+\subtree[bak-JWAU]{
+\title{Reflectivity of relative separations}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The [relative separation](bak-6I8C) of a [global reflective subuniverse](stt-00IF) is
+reflective.
+}
+
+\agda{
+  module _
+    {𝓦} (A : Type 𝓦)
+    (let generators = relative-unit-generators (𝓤 ⊔ 𝓥 ⊔ 𝓦))
+    (let module L = gReflector (gReflector←gRSubU (Local-gRSubU generators) A))
+    where
+
+    relative-localisation-is-global-reflector
+      : is-global-reflector (relatively-separated-gSubU δ GS) A L.○ L.η
+    relative-localisation-is-global-reflector .is-global-reflector.○∈S
+      = separated←relative-unit-local L.○∈S
+    relative-localisation-is-global-reflector .is-global-reflector.reflects sep
+      = L.reflects (relative-unit-local←separated sep (𝓤 ⊔ 𝓥 ⊔ 𝓦))
+
+    relative-global-reflector : gReflector (relatively-separated-gSubU δ GS) A
+    relative-global-reflector
+      = mk-greflector L.○ L.η relative-localisation-is-global-reflector
+
+  relative-global-reflectors
+    : is-globally-reflective (relatively-separated-gSubU δ GS)
+  relative-global-reflectors .is-globally-reflective.○ A
+    = relative-global-reflector A .gReflector.○
+  relative-global-reflectors .is-globally-reflective.η {A = A}
+    = relative-global-reflector A .gReflector.η
+  relative-global-reflectors .is-globally-reflective.η-is-reflector {A = A}
+    = relative-global-reflector A .gReflector.η-is-global-reflector
+
+  relatively-separated-gRSubU
+    : gRSubU (λ 𝓦 → 𝓘 ⊔ 𝓤 ⊔ 𝓦 ⊔ α (𝓤 ⊔ 𝓥 ⊔ 𝓦))
+  relatively-separated-gRSubU
+    = mk-gRSubU (relatively-separated-gSubU δ GS) relative-global-reflectors
+}
+}
+
+\subtree[bak-N54B]{
+\title{Accessibility of relative separations}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+If #{\mathcal{K}} is a [localisation](stt-005Y) presented by a family
+#{s_j \colon C_j \to D_j}, then its [relative separation](bak-6I8C) with respect
+to #{δ_i} is presented by the [relative suspensions](bak-LND6)
+#{\suspension_{δ_i}(s_j)}, indexed by #{I × J}.
+}
+
+\agda{
+module _
+  {𝓘 𝓙 𝓤 𝓥 𝓦 𝓩} {I : Type 𝓘} {J : Type 𝓙}
+  {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  {C : J → Type 𝓦} {D : J → Type 𝓩}
+  (δ : (i : I) → X i → Y i) (s : (j : J) → C j → D j)
+  where
+
+  is-relatively-separated↔is-relative-susp-local
+    : ∀ {𝓐} {A : Type 𝓐}
+      → is-relatively-separated δ (Local-gSubU s) A
+      ↔ is-local (RelativeSusp-family δ s) A
+  is-relatively-separated↔is-relative-susp-local .fst sep (i , j)
+    = RelativeSusp-local←extensions-local (δ i) (s j) (λ f → sep i f j)
+  is-relatively-separated↔is-relative-susp-local .snd loc i f j
+    = extensions-local←RelativeSusp-local (δ i) (s j) (loc (i , j)) f
+
+  relatively-separated-local-gSubU-equiv
+    : gSubU-equiv
+        (relatively-separated-gSubU δ (Local-gSubU s))
+        (Local-gSubU (RelativeSusp-family δ s))
+  relatively-separated-local-gSubU-equiv A
+    = is-relatively-separated↔is-relative-susp-local
+
+  relative-susp-local-global-reflectors
+    : is-globally-reflective (relatively-separated-gSubU δ (Local-gSubU s))
+  relative-susp-local-global-reflectors
+    = is-globally-reflective-subtype-equiv
+        (λ A → relatively-separated-local-gSubU-equiv A iff⁻¹)
+        (Local-global-reflectors (RelativeSusp-family δ s))
+}
+}
+
+\subtree[bak-B908]{
+\title{Relative separation at terminal projections}
+\taxon{Submodule}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\agda{
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘} {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i) (c : (i : I) → is-singleton (Y i))
+  {α} (K : gSubU α) (open gSubU K)
+  where
+}
+
+\subtree[bak-NAMF]{
+\title{Null-homotopy characterisation of relative separation at terminal projections}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+For a family of maps #{δ_i \colon X_i \to Y_i} into [contractible](stt-0006) types,
+[relative separation](bak-6I8C) means that the type of [null-homotopies](stt-00F3)
+of any map from #{X_i} belongs to #{\mathcal{K}}.
+}
+
+\agda{
+  null-homotopy∈S←is-relatively-separated
+    : ∀ {𝓦} {A : Type 𝓦}
+      → is-relatively-separated δ K A
+      → (i : I) (f : X i → A) → null-homotopy f ∈ S
+  null-homotopy∈S←is-relatively-separated sep i f
+    = ∈S←equiv (Ext-singleton-codomain≃ (c i) (δ i) f e⁻¹) (sep i f)
+
+  is-relatively-separated←null-homotopy∈S
+    : ∀ {𝓦} {A : Type 𝓦}
+      → ((i : I) (f : X i → A) → null-homotopy f ∈ S)
+      → is-relatively-separated δ K A
+  is-relatively-separated←null-homotopy∈S h i f
+    = ∈S←equiv (Ext-singleton-codomain≃ (c i) (δ i) f) (h i f)
+
+  is-relatively-separated↔null-homotopy∈S
+    : ∀ {𝓦} {A : Type 𝓦}
+      → is-relatively-separated δ K A
+      ↔ ((i : I) (f : X i → A) → null-homotopy f ∈ S)
+  is-relatively-separated↔null-homotopy∈S
+    = ( null-homotopy∈S←is-relatively-separated
+      , is-relatively-separated←null-homotopy∈S)
+}
+}
+
+\subtree[bak-IUQZ]{
+\title{#{Σ}-closure of relative separation at terminal projections}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{\mathcal{K}} be a [#{Σ}-closed global subuniverse](stt-007C). If the codomain
+of each #{δ_i} is [contractible](stt-0006), then the [relative separation](bak-6I8C)
+#{\suspension_δ \mathcal{K}} is #{Σ}-closed.
+}
+
+\proof{
+\p{
+By the [null-homotopy characterisation](bak-NAMF) it suffices to show that the type
+of null-homotopies of dependent sums of relatively separated types
+belong to #{\mathcal{K}}. This follows from #{Σ}-closure of #{\mathcal{K}} and the
+fact that
+[null-homotopies into dependent sums are dependent sums of null-homotopies](bak-PVH9).
+}
+}
+
+\agda{
+  relatively-separated-singleton-codomains-Σ-closed
+    : is-globally-Σ-closed K
+    → is-globally-Σ-closed (relatively-separated-gSubU δ K)
+  relatively-separated-singleton-codomains-Σ-closed KΣ {B = P} A-sep P-sep
+    = is-relatively-separated←null-homotopy∈S (λ i f
+      → ∈S←equiv (null-homotopy-Σ≃ f e⁻¹)
+          (KΣ
+            (∈S←equiv (null-homotopy-sym≃ (fst ∘ f))
+              (null-homotopy∈S←is-relatively-separated A-sep i (fst ∘ f)))
+            (λ (a , H)
+              → null-homotopy∈S←is-relatively-separated (P-sep a) i
+                  (λ x → tr P (H x) (f x .snd)))))
+}
+}
+}
+
+\subtree[bak-4021]{
+\title{Relative separation at complemented embeddings}
+\taxon{Submodule}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\subtree[bak-6TO5]{
+\title{Relative separation from nonsurjectivity}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{\mathcal{K}} be an [indexed product closed global subuniverse](stt-00XO), and
+let #{δ} be a family of [complemented embeddings](bak-DPOG). Then a type #{A} is
+[relatively separated](bak-6I8C) if, for each #{i : I}, an inhabitant of the
+complement of #{δ_i} implies #{A \in \mathcal{K}}.
+}
+
+\agda{
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘} {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i)
+  (d : (i : I) → is-complemented-embedding (δ i))
+  {α} (GS : gSubU α) (KΠ : is-globally-indexed-product-closed GS)
+  (open gSubU GS)
+  where
+
+  is-relatively-separated←complement-in-subuniverse
+    : ∀ {𝓦} {A : Type 𝓦}
+      → ((i : I) → map-complement (δ i) → A ∈ S)
+      → is-relatively-separated δ GS A
+  is-relatively-separated←complement-in-subuniverse h i f
+    = ∈S←equiv (Ext-is-complemented-embedding≃ (d i) f e⁻¹) (KΠ (h i))
+}
+}
+
+\subtree[bak-VJWB]{
+\title{Relative separation at complemented embeddings}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+If #{\mathcal{K}} is [retract closed](bak-USH3), [#{Σ}-closed](stt-007C), and
+[contains all propositions](bak-E8L2), the converse of [[bak-6TO5]] holds.
+If it is also [indexed product closed](stt-00XO), we obtain the characterisation:
+##{A \in \suspension_δ \mathcal{K}
+\;\Leftrightarrow\; \Pi1{i : I}{((Y_i\setminus\Im δ_i) \to (A \in \mathcal{K}))}.}
+}
+
+\agda{
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘} {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i)
+  (d : (i : I) → is-complemented-embedding (δ i))
+  {α} (GS : gSubU α) (open gSubU GS)
+  (KΣ : is-globally-Σ-closed GS) (Kprop : contains-props GS)
+  (Kr : is-globally-retract-closed GS)
+  where
+
+  in-subuniverse←complement-relatively-separated
+    : ∀ {𝓦} {A : Type 𝓦}
+      → is-relatively-separated δ GS A
+      → (i : I) → map-complement (δ i) → A ∈ S
+  in-subuniverse←complement-relatively-separated sep i z
+    = ∈S←inhabited-∈S GS KΣ Kprop (λ a
+      → Kr (const , const-retraction z)
+          (∈S←equiv
+            (Ext-is-complemented-embedding≃ (d i) (const a))
+            (sep i (const a))))
+
+  is-relatively-separated↔complement-in-subuniverse
+    : ∀ {𝓦} {A : Type 𝓦}
+      → is-globally-indexed-product-closed GS
+      → is-relatively-separated δ GS A
+      ↔ ((i : I) → map-complement (δ i) → A ∈ S)
+  is-relatively-separated↔complement-in-subuniverse KΠ
+    = ( in-subuniverse←complement-relatively-separated
+      , is-relatively-separated←complement-in-subuniverse δ d GS KΠ)
+}
+}
+
+\subtree[bak-MKG2]{
+\title{#{Σ}-closure of relative separation at complemented embeddings}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{\mathcal{K}} be a [global subuniverse](stt-007A) that
+[contains all propositions](bak-E8L2) is [#{Σ}-closed](stt-007C),
+[retract closed](bak-USH3), and [indexed product closed](stt-00XO). Then its
+[relative separation](bak-6I8C) at a family of [complemented embeddings](bak-DPOG) is
+#{Σ}-closed. In particular, this applies to [#{Σ}-closed](stt-007C)
+[global reflective subuniverses](stt-00IF) that [contain all propositions](bak-E8L2).
+}
+
+\agda{
+module _
+  {𝓘 𝓤 𝓥} {I : Type 𝓘} {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  (δ : (i : I) → X i → Y i)
+  (d : (i : I) → is-complemented-embedding (δ i))
+  where
+
+  module _
+    {α} (GS : gSubU α)
+    (KΣ : is-globally-Σ-closed GS) (Kprop : contains-props GS)
+    (Kr : is-globally-retract-closed GS)
+    (KΠ : is-globally-indexed-product-closed GS)
+    (let ∈K = in-subuniverse←complement-relatively-separated δ d GS KΣ Kprop Kr)
+    where
+
+    relatively-separated-complemented-embeddings-Σ-closed
+      : is-globally-Σ-closed (relatively-separated-gSubU δ GS)
+    relatively-separated-complemented-embeddings-Σ-closed A-sep P-sep
+      = is-relatively-separated←complement-in-subuniverse δ d GS KΠ (λ i z
+        → KΣ (∈K A-sep i z) (λ a → ∈K (P-sep a) i z))
+
+  module _
+    {α} (K : gRSubU α) (open gRSubU K)
+    (let module C = gReflectiveClosure K)
+    (KΣ : is-globally-Σ-closed GS) (Kprop : contains-props GS)
+    where
+
+    relatively-separated-complemented-embeddings-reflective-Σ-closed
+      : is-globally-Σ-closed (relatively-separated-gSubU δ GS)
+    relatively-separated-complemented-embeddings-reflective-Σ-closed
+      = relatively-separated-complemented-embeddings-Σ-closed
+          GS KΣ Kprop C.∈S←retract C.Π∈S
+}
+}
+}

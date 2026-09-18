@@ -1,0 +1,684 @@
+\title{The splitting construction}
+\taxon{Module}
+
+\import{stt-macros}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+
+module Foundations.SplittingConstruction where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.FunExt
+open import Foundations.Homotopy
+open import Foundations.Identity
+open import Foundations.DependentIdentity
+open import Foundations.QuasiidempotentMaps
+open import Foundations.Sigma
+open import Foundations.Nat
+open import Foundations.Squares
+open import Foundations.SigmaIdentity
+open import Foundations.IdentityReasoning
+open import Foundations.Towers
+open import Foundations.CanonicalSequentialLimits
+open import Foundations.Univalence
+open import Foundations.QuasiEquivalences
+open import Foundations.Equivalences
+open import Foundations.EquivHomotopy
+open import Foundations.3for2
+open import Foundations.Retracts
+open import Foundations.FibrewiseEquivalences
+open import Foundations.SigmaProperties
+open import Foundations.TheoremOfChoice
+
+import Foundations.IsEquivIsProp
+}
+}
+
+\subtree[stt-011O]{
+\taxon{Construction}
+\date{2026-03-11}
+\author{fredrikbakke}
+\title{The sequential splitting of a preidempotent map}
+
+\p{
+Given a map #{f \colon A \to A}, then we may form its
+\em{sequential splitting} as the [sequential limit](Foundations.CanonicalSequentialLimits) of
+the [tower](Foundations.Towers)
+##{\cdots \to A \xrightarrow{f} A \to \cdots \to A \xrightarrow{f} A,}
+i.e., the type of sequences #{a} of elements of #{A} such that #{a_i = f(a_{i+1})}
+for all #{i}. When #{f} is [preidempotent](stt-00H9) this type factors #{f}.
+}
+
+\agda{
+module Splitting
+  {𝓤 : Level} {X : Type 𝓤}
+  (f : X → X)
+  where
+
+  type : Type 𝓤
+  type = Seq-lim (tower←endomap f)
+
+  inclusion : type → X
+  inclusion = limit-point (tower←endomap f)
+
+  shift : type → type
+  shift (a , α)
+    = ( (λ n → f (f (a (suc n))))
+      , (λ n → ap (f ∘ f) (α (suc n))))
+
+  map-retraction
+    : preidempotence f
+    → X → type
+  map-retraction I x
+    = ((λ _ → f x) , (λ _ → sym (I x)))
+
+  factorisation
+    : (I : preidempotence f)
+    → inclusion ∘ map-retraction I ~ f
+  factorisation I = ~refl
+}
+}
+
+\subtree[stt-00HC]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{Splitting construction on quasiidempotent maps}
+
+\p{
+Any quasiidempotent map #{f \colon A \to A} splits its domain. I.e., there is a type
+#{X} such that #{X} is a retract of #{A} and factors #{f}.
+}
+
+\p{
+We show that the sequential limit of the [tower](Foundations.Towers)
+##{\cdots \to A \xrightarrow{f} A \to \cdots \to A \xrightarrow{f} A}
+is a retract of #{A} that factors #{f}, following
+\citet{Thm 5.3}{Shu17b}.
+}
+
+\p{
+The construction uses two different levels of coherence. The type
+#{\textsf{Splitting.type}(f)} and its inclusion into #{A} were already defined
+above for any endomap #{f}. Moreover, a preidempotence #{I \colon f \circ f \sim f} alone
+already gives the converse map
+#{\textsf{Splitting.map-retraction}(I) \colon A \to \textsf{Splitting.type}(f)}
+and the factorisation #{i \circ r \sim f}. What remains is to show that,
+assuming a full quasiidempotence, this converse map is also a retraction of the
+inclusion.
+}
+
+\agda{
+module IdemWithFunExt (FE : FunExt-global) (open LimitWithFunExt FE) where
+
+  module _ {𝓤} {X : Type 𝓤} {f : X → X} (H : qidempotence f) where
+
+    path-shift-Splitting-type~id
+      : (aα : Splitting.type f)
+      → (n : ℕ) → f (f (aα .fst (suc n))) ＝ (aα .fst n)
+    path-shift-Splitting-type~id (a , α)
+      = H .fst ▹h (a ∘ suc) ∙h (α h⁻¹)
+
+    square-shift-Splitting-type~id
+      : (aα : Splitting.type f)
+        (n : ℕ)
+      → Square
+          (path-shift-Splitting-type~id aα n)
+          (ap f (path-shift-Splitting-type~id aα (suc n)))
+          (ap (f ∘ f) (aα .snd (suc n)))
+          (aα .snd n)
+    square-shift-Splitting-type~id (a , α) n
+      = mk-square
+          ( path-shift-Splitting-type~id (a , α) n ∙ α n
+              ＝⟨ ∙.cancell _ (∙-sym' (α n)) ⟩
+            I (a (suc n))
+              ＝⟨ sym rhs→I ⟩
+            ap (f ∘ f) (α (suc n))
+            ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n))
+              ∎)
+      where
+      I = H .fst
+      Q = H .snd
+
+      rhs→I
+        : ap (f ∘ f) (α (suc n))
+        ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n))
+        ＝ I (a (suc n))
+      rhs→I
+        = ap (f ∘ f) (α (suc n))
+        ∙ ap f (path-shift-Splitting-type~id (a , α) (suc n))
+            ＝⟨ ap (f ∘ f) (α (suc n))
+              ◂ ( ap-∙ f (I (a (suc² n))) (sym (α (suc n)))
+                ∙ (Q (a (suc² n)) ⟩∙⟨ ap-sym f (α (suc n)))) ⟩
+          ap (f ∘ f) (α (suc n))
+        ∙ (I (f (a (suc² n))) ∙ sym (ap f (α (suc n))))
+            ＝⟨ sym (∙-assoc _ _ _) ⟩
+          (ap (f ∘ f) (α (suc n)) ∙ I (f (a (suc² n))))
+        ∙ sym (ap f (α (suc n)))
+            ＝⟨ homotopy-cancel I (α (suc n)) ⟩
+          I (a (suc n)) ∎
+
+    opaque
+      shift-Splitting-type~id
+        : Splitting.shift f ~ id
+      shift-Splitting-type~id aα
+        = Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-shift-Splitting-type~id aα
+            , square-shift-Splitting-type~id aα)
+
+      ap-inclusion-shift-Splitting-type~id
+        : (aα : Splitting.type f)
+        → ap (Splitting.inclusion f) (shift-Splitting-type~id aα)
+        ＝ path-shift-Splitting-type~id aα 0
+      ap-inclusion-shift-Splitting-type~id aα
+        = ap-limit-point-Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-shift-Splitting-type~id aα
+            , square-shift-Splitting-type~id aα)
+}
+
+\p{
+We first introduce the shift endomap on the splitting type. On a coherent sequence
+#{(a,\alpha)}, it discards the initial entry and then whiskers the tail by
+#{f \circ f}. The quasicoherence data are used exactly to show that this shift is
+homotopic to the identity, first levelwise by
+\code{path-shift-Splitting-type~id}, and then coherently by
+\code{square-shift-Splitting-type~id}. Function extensionality and the universal
+property of sequential limits turn these data into
+\code{shift-Splitting-type~id}.
+}
+
+\agda{
+    path-compute-retraction-Splitting-type
+      : (aα : Splitting.type f)
+      → (n : ℕ) → f (aα .fst 0) ＝ f (f (aα .fst (suc n)))
+    path-compute-retraction-Splitting-type (a , α) 0
+      = ap f (α 0)
+    path-compute-retraction-Splitting-type (a , α) (suc n)
+      = path-compute-retraction-Splitting-type (a , α) n
+      ∙ H .fst (a (suc n))
+      ∙ ap f (α (suc n))
+
+    square-compute-retraction-Splitting-type
+      : (aα : Splitting.type f)
+        (n : ℕ)
+      → Square
+          (path-compute-retraction-Splitting-type aα n)
+          (ap f (path-compute-retraction-Splitting-type aα (suc n)))
+          (sym (H .fst (aα .fst 0)))
+          (ap (f ∘ f) (aα .snd (suc n)))
+    square-compute-retraction-Splitting-type (a , α) 0
+      = mk-square (sym rhs) where
+      I = H .fst
+      ξ = path-compute-retraction-Splitting-type (a , α)
+
+      rhs
+        : sym (I (a 0)) ∙ ap f (ξ 1)
+        ＝ ξ 0 ∙ ap (f ∘ f) (α 1)
+      rhs
+        = sym (I (a 0)) ∙ ap f (ξ 1)
+            ＝⟨ sym (I (a 0)) ◂ ap-∙∙ f (ξ 0) (I (a 1)) (ap f (α 1)) ⟩
+          sym (I (a 0))
+          ∙ (ap f (ξ 0) ∙ ap f (I (a 1)) ∙ ap f (ap f (α 1)))
+            ＝⟨ sym (I (a 0)) ◂ ( sym (ap-∘ f f (α 0)) ⟩∙⟨ (ap f (I (a 1)) ◂ sym (ap-∘ f f (α 1)))) ⟩
+          sym (I (a 0))
+          ∙ (ap (f ∘ f) (α 0) ∙ ap f (I (a 1)) ∙ ap (f ∘ f) (α 1))
+            ＝⟨ sym (I (a 0)) ◂ (qidempotence-natural H (α 0) ◫ refl) ⟩
+          sym (I (a 0)) ∙ ((I (a 0) ∙ ξ 0) ∙ ap (f ∘ f) (α 1))
+            ＝⟨ sym (I (a 0)) ◂ ∙-assoc _ _ _ ⟩
+          sym (I (a 0)) ∙ I (a 0) ∙ (ξ 0 ∙ ap (f ∘ f) (α 1))
+            ＝⟨ sym'∙ (I (a 0)) (ξ 0 ∙ ap (f ∘ f) (α 1)) ⟩
+          ξ 0 ∙ ap (f ∘ f) (α 1) ∎
+}
+
+
+\p{
+For the inductive step we fill the following diagram, following
+\citek{Shu17b}:
+
+\quiver{
+\begin{tikzcd}
+	f(a_0) &&& f(f(a_{n+1})) &&& f(a_{n+1}) \\
+	\\
+	f(f(a_0)) &&& f(f(f(a_{n+2}))) &&& f(f(a_{n+2}))
+	\arrow["{\xi_{n+1}}", from=1-1, to=1-4]
+	\arrow["{I(a_{n+1})}", from=1-4, to=1-7]
+	\arrow["{I(a_0)^{-1}}"', from=1-1, to=3-1]
+	\arrow["{f(f(\alpha_{n+1}))}" description, from=1-4, to=3-4]
+	\arrow["{f(\alpha_{n+1})}", from=1-7, to=3-7]
+	\arrow["{f(\xi_n) \concat I(a_{n+1}) \concat f(\alpha_{n+1})}"', from=3-1, to=3-4]
+	\arrow["{I(f(a_{n+2}))}", from=3-4, to=3-7, shift left=3]
+	\arrow["{f(I(a_{n+2}))}"', from=3-4, to=3-7, shift right=3]
+	\arrow["Q"{anchor=center, pos=.5}, draw=none, from=3-4, to=3-7]
+	\arrow["{\Xi_n}"{anchor=center, pos=.5}, draw=none, from=1-1, to=3-4]
+	\arrow["{\text{naturality}}"{anchor=center, pos=.5}, draw=none, from=1-4, to=3-7]
+\end{tikzcd}
+}
+}
+
+\ul{
+\li{#{\xi} is formalised as \code{path-compute-retraction-Splitting-type}.}
+\li{#{\Xi} is formalised as \code{square-compute-retraction-Splitting-type}.}
+}
+
+\p{
+In particular, the left-hand square labelled #{\Xi_n} is the inductive hypothesis.
+}
+
+\agda{
+    square-compute-retraction-Splitting-type (a , α) (suc n)
+      = mk-square (sym rhs) where
+      I = H .fst
+      ξ = path-compute-retraction-Splitting-type (a , α)
+      Ξ = square-compute-retraction-Splitting-type (a , α)
+
+      rhs
+        : sym (I (a 0)) ∙ ap f (ξ (suc² n))
+        ＝ ξ (suc n) ∙ ap (f ∘ f) (α (suc² n))
+      rhs
+        = sym (I (a 0)) ∙ ap f (ξ (suc² n))
+            ＝⟨ sym (I (a 0))
+              ◂ ap-∙ f (ξ (suc n)) (I (a (suc² n)) ∙ ap f (α (suc² n))) ⟩
+          sym (I (a 0))
+        ∙ (ap f (ξ (suc n)) ∙ ap f (I (a (suc² n)) ∙ ap f (α (suc² n))))
+            ＝⟨ sym (I (a 0))
+              ◂ ap f (ξ (suc n))
+              ◂ ( ap-∙ f (I (a (suc² n))) (ap f (α (suc² n)))
+                ∙ (ap f (I (a (suc² n))) ◂ sym (ap-∘ f f (α (suc² n))))) ⟩
+          sym (I (a 0))
+        ∙ ( ap f (ξ (suc n)) ∙ ap f (I (a (suc² n))) ∙ ap (f ∘ f) (α (suc² n)))
+            ＝⟨ sym (un-square (Ξ n)) ◫ (qidempotence-natural H (α (suc n)) ◫ refl) ⟩
+          ξ (suc n) ∙ ap (f ∘ f) (α (suc² n)) ∎
+}
+
+\p{
+Taken together, the base case and the inductive step produce a coherent homotopy from
+the composite
+#{\textsf{Splitting.map-retraction}(\fst H) \circ \textsf{Splitting.inclusion}}
+to the shift.
+}
+
+\agda{
+    opaque
+      compute-retraction-Splitting-type
+        : Splitting.map-retraction f (H .fst)
+        ∘ Splitting.inclusion f
+        ~ Splitting.shift f
+      compute-retraction-Splitting-type aα
+        = Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-compute-retraction-Splitting-type aα
+            , square-compute-retraction-Splitting-type aα)
+
+      ap-inclusion-compute-retraction-Splitting-type
+        : (aα : Splitting.type f)
+        → ap (Splitting.inclusion f)
+            (compute-retraction-Splitting-type aα)
+        ＝ path-compute-retraction-Splitting-type aα 0
+      ap-inclusion-compute-retraction-Splitting-type aα
+        = ap-limit-point-Id←Seq-lim-htpy
+            ( tower←endomap f)
+            ( path-compute-retraction-Splitting-type aα
+            , square-compute-retraction-Splitting-type aα)
+}
+
+\p{
+The retracting homotopy is now obtained by composing the comparison
+\code{compute-retraction-Splitting-type} with the previously constructed
+\code{shift-Splitting-type~id}. This yields the promised retract of #{A} by its
+sequential splitting type.
+}
+
+\agda{
+    retract-Splitting-type
+      : retract (Splitting.type f) X
+    retract-Splitting-type
+      = ( Splitting.inclusion f
+        , Splitting.map-retraction f (H .fst)
+        , compute-retraction-Splitting-type ∙h shift-Splitting-type~id)
+}
+}
+
+\subtree[stt-011M]{
+\title{Splitting a composite gives a retract of the intermediate type}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-10}
+
+\agda{
+  retract-Splitting-composite
+    : ∀ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y) (g : Y → X)
+    → qidempotence (g ∘ f) → retract (Splitting.type (g ∘ f)) Y
+  retract-Splitting-composite f g H
+    = let R = retract-Splitting-type H in
+      ( f ∘ R .fst
+      , R .snd .fst ∘ g
+      , R .snd .snd ▹h (R .snd .fst ∘ R .fst) ∙h R .snd .snd)
+}
+}
+
+\subtree[stt-00HD]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Theorem}
+\title{The splitting construction of a retract is a retract}
+
+\p{
+If a quasiidempotent comes from an actual retract, then its sequential splitting
+carrier retracts back to the original carrier.
+}
+
+\p{
+This theorem is due to [[michaelshulman]] \citet{Thm 6.2}{Shu17b}.
+}
+
+\agda{
+module SplitRetractWithFunExt (FE : FunExt-global) (open IdemWithFunExt FE) where
+
+  module _
+    {𝓤 𝓥} {A : Type 𝓤} {X : Type 𝓥}
+    (R@(s , r , rs) : retract A X)
+    (let Hq = snd (qidempotent-map←retract R))
+    (let L = retract-Splitting-type Hq)
+    (let w = L .snd .snd)
+    where
+
+    map-section-retract-Splitting-type
+      : A → Splitting.type (s ∘ r)
+    map-section-retract-Splitting-type a
+      = ((λ _ → s a) , (λ _ → sym (ap s (rs a))))
+
+    retract-Splitting-type←retract
+      : retract (Splitting.type (s ∘ r)) A
+    retract-Splitting-type←retract
+      = ( r ∘ Splitting.inclusion (s ∘ r)
+        , map-section-retract-Splitting-type
+        , w)
+
+    split-retract-equiv
+      : Splitting.type (s ∘ r) ≃ A
+    split-retract-equiv
+      = mk≃
+          (r ∘ Splitting.inclusion (s ∘ r))
+          (is-equiv←qinv qinv) where
+      qinv : quasi-inv (r ∘ Splitting.inclusion (s ∘ r))
+      qinv .fst = map-section-retract-Splitting-type
+      qinv .snd .fst = retract-Splitting-type←retract .snd .snd
+      qinv .snd .snd x = rs x
+
+    opaque
+      splitting-map-retraction-is-equiv
+        : (I : preidempotence (s ∘ r))
+        → is-equiv (Splitting.map-retraction (s ∘ r) I ∘ s)
+      splitting-map-retraction-is-equiv I
+        = 3-for-2
+            (_≃_.fwd-is-equiv split-retract-equiv)
+            (is-equiv←~ (rs ▹h (r ∘ s) ∙h rs) id-is-equiv)
+
+    compare-splittings-inclusion
+      : comp-retract (retract←equiv split-retract-equiv) R .fst
+      ~ L .fst
+    compare-splittings-inclusion = L .fst ◃h w
+
+    compare-splittings-retraction
+      : L .snd .fst
+      ~ comp-retract (retract←equiv split-retract-equiv) R .snd .fst
+    compare-splittings-retraction = ~refl
+
+    nat-rs←retract
+      : ∀ {x y : X}
+          (p : x ＝ (s ∘ r) y)
+        → rs (r x) ∙ ap r p
+        ＝ ap (r ∘ s ∘ r) p
+        ∙ rs (r ((s ∘ r) y))
+    nat-rs←retract = homotopy-natural (rs ▹h r)
+
+    compare-splittings-compute
+      : (a : (n : ℕ) → X)
+        (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
+      → ap (r ∘ Splitting.inclusion (s ∘ r))
+        (compute-retraction-Splitting-type Hq (a , α))
+      ＝ ap (r ∘ s ∘ r) (α 0)
+    compare-splittings-compute a α
+      = ap-∘ r
+          (Splitting.inclusion (s ∘ r))
+          (compute-retraction-Splitting-type Hq (a , α))
+      ∙ ap (ap r) (ap-inclusion-compute-retraction-Splitting-type Hq (a , α))
+      ∙ sym (ap-∘ r (s ∘ r) (α 0))
+
+    compare-splittings-shift
+      : (a : (n : ℕ) → X)
+        (α : (n : ℕ) → a n ＝ (s ∘ r) (a (suc n)))
+      → ap (r ∘ Splitting.inclusion (s ∘ r)) (shift-Splitting-type~id Hq (a , α))
+      ＝ ap r (fst Hq (a 1)) ∙ sym (ap r (α 0))
+    compare-splittings-shift a α
+      = ap-∘ r (Splitting.inclusion (s ∘ r)) (shift-Splitting-type~id Hq (a , α))
+      ∙ ap (ap r) (ap-inclusion-shift-Splitting-type~id Hq (a , α))
+      ∙ ap-∙ r (fst Hq (a 1)) (sym (α 0))
+      ∙ (ap r (fst Hq (a 1)) ◂ ap-sym r (α 0))
+
+    opaque
+      unfolding compute-retraction-Splitting-type
+      unfolding shift-Splitting-type~id
+
+      compare-splittings-section
+        : (z : Splitting.type (s ∘ r))
+        → ap (r ∘ Splitting.inclusion (s ∘ r)) (w z)
+        ＝ rs (r (Splitting.inclusion (s ∘ r) z))
+      compare-splittings-section (a , α)
+        = ap (r ∘ Splitting.inclusion (s ∘ r)) (w (a , α))
+            ＝⟨ ap-∙
+                (r ∘ Splitting.inclusion (s ∘ r))
+                (compute-retraction-Splitting-type Hq (a , α))
+                (shift-Splitting-type~id Hq (a , α)) ⟩
+          ap (r ∘ Splitting.inclusion (s ∘ r))
+             (compute-retraction-Splitting-type Hq (a , α))
+        ∙ ap (r ∘ Splitting.inclusion (s ∘ r))
+             (shift-Splitting-type~id Hq (a , α))
+            ＝⟨ compare-splittings-compute a α ⟩∙⟨ compare-splittings-shift a α ⟩
+          ap (r ∘ s ∘ r) (α 0) ∙ (ap r (fst Hq (a 1)) ∙ sym (ap r (α 0)))
+            ＝⟨ ap (r ∘ s ∘ r) (α 0)
+              ◂ (retraction-htpy-nat rs (a 1) ▸ sym (ap r (α 0))) ⟩
+          ap (r ∘ s ∘ r) (α 0) ∙ (rs (r ((s ∘ r) (a 1))) ∙ sym (ap r (α 0)))
+            ＝⟨ sym (∙-assoc _ _ _) ⟩
+          (ap (r ∘ s ∘ r) (α 0) ∙ rs (r ((s ∘ r) (a 1)))) ∙ sym (ap r (α 0))
+            ＝⟨ homotopy-cancel (rs ▹h r) (α 0) ⟩
+          rs (r (a 0)) ∎
+
+    compare-splittings-map-retraction
+      : (z : Splitting.type (s ∘ r))
+      → ap (L .snd .fst) (compare-splittings-inclusion z)
+      ＝ ap map-section-retract-Splitting-type
+            (rs (r (Splitting.inclusion (s ∘ r) z)))
+    compare-splittings-map-retraction z
+      = ap (L .snd .fst) (compare-splittings-inclusion z)
+          ＝⟨ ap-∘ map-section-retract-Splitting-type r
+              (compare-splittings-inclusion z) ⟩
+        ap map-section-retract-Splitting-type (ap r (compare-splittings-inclusion z))
+          ＝⟨ ap (ap map-section-retract-Splitting-type)
+                 (sym (ap-∘ r (L .fst) (w z))) ⟩
+        ap map-section-retract-Splitting-type (ap (r ∘ L .fst) (w z))
+          ＝⟨ ap (ap map-section-retract-Splitting-type)
+                (compare-splittings-section z) ⟩
+        ap map-section-retract-Splitting-type
+          (rs (r (Splitting.inclusion (s ∘ r) z))) ∎
+
+    compare-splittings-coherence
+      : coherence-retract-htpy
+          L
+          (comp-retract (retract←equiv split-retract-equiv) R)
+          (compare-splittings-inclusion h⁻¹)
+          compare-splittings-retraction
+    compare-splittings-coherence
+      = w
+          ~⟨ left-transpose-∙h (compare-splittings-map-retraction ▸h w) ⟩
+        ((L .snd .fst ◃h compare-splittings-inclusion) h⁻¹)
+      ∙h (comp-retract (retract←equiv split-retract-equiv) R) .snd .snd
+          ~⟨ (◃h⁻¹ (L .snd .fst) compare-splittings-inclusion h⁻¹)
+              ▸h (comp-retract (retract←equiv split-retract-equiv) R) .snd .snd ⟩
+        (L .snd .fst ◃h (compare-splittings-inclusion h⁻¹))
+      ∙h (comp-retract (retract←equiv split-retract-equiv) R) .snd .snd ~∎
+
+    compare-splittings-htpy
+      : retract-htpy
+          ( retract-Splitting-type (snd (qidempotent-map←retract R)))
+          ( comp-retract (retract←equiv split-retract-equiv) R)
+    compare-splittings-htpy
+      = ( compare-splittings-inclusion h⁻¹
+        , compare-splittings-retraction
+        , compare-splittings-coherence)
+}
+}
+
+\subtree[stt-011L]{
+\title{The small splitting construction on quasiidempotents}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+module SmallRetractsWithFunExt
+  (FE : FunExt-global)
+  (open IdemWithFunExt FE)
+  {𝓤} (A : Type 𝓤)
+  where
+
+  Retracts←qidempotent-map : qidempotent-map A → Retracts 𝓤 A
+  Retracts←qidempotent-map q
+    = (Splitting.type (q .fst) , retract-Splitting-type (q .snd))
+
+  step-qidempotent-map : qidempotent-map A → qidempotent-map A
+  step-qidempotent-map = qidempotent←Retracts ∘ Retracts←qidempotent-map
+
+  Small-retracts : Type 𝓤
+  Small-retracts = Splitting.type step-qidempotent-map
+
+  opaque
+    splitting-is-stable
+      : (q : qidempotent-map A)
+      → retract-Retracts (Retracts←qidempotent-map (step-qidempotent-map q))
+      ＝ retract-Retracts (Retracts←qidempotent-map q)
+    splitting-is-stable q
+      = let R = retract-Retracts (Retracts←qidempotent-map q)
+        in RetractWithFunExt.Id←retract-htpy FE
+             (SplitRetractWithFunExt.compare-splittings-htpy FE R)
+         ∙ ap (λ e → comp-retract (retract←equiv e) R)
+             (Foundations.IsEquivIsProp.≃-path→ FE
+               {e1 = SplitRetractWithFunExt.split-retract-equiv FE R} {e2 = id≃}
+               (WithFunExt-global.funext→ FE (R .snd .snd)))
+         ∙ RetractWithFunExt'.comp-retract-left-unit FE R
+
+  step-qidempotent-map-is-preidempotent : preidempotence step-qidempotent-map
+  step-qidempotent-map-is-preidempotent q
+    = ap qidempotent-map←retract (splitting-is-stable q)
+
+  retract-Small-retract : Small-retracts → Retracts 𝓤 A
+  retract-Small-retract e = Retracts←qidempotent-map (e .fst zero)
+
+  carrier-Small-retract : Small-retracts → Type 𝓤
+  carrier-Small-retract e = carrier-Retracts (retract-Small-retract e)
+
+  small-retracts←retract
+    : ∀ {𝓥} {B : Type 𝓥} → retract B A → Small-retracts
+  small-retracts←retract R
+    = Splitting.map-retraction step-qidempotent-map
+        step-qidempotent-map-is-preidempotent (qidempotent-map←retract R)
+}
+}
+
+\subtree[stt-0072]{
+\date{2026-03-25}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{The splitting type of a total endomap}
+
+\p{
+If an endomap on a dependent sum preserves the base point definitionally, then
+its splitting type is the dependent sum of the splitting types on the fibres.
+}
+
+\agda{
+module SplittingWithFunExt
+  (FE : FunExt-global)
+  (open SplitRetractWithFunExt FE)
+  {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+  (f : (a : A) → B a → B a)
+  where
+
+  split-total-map-paths
+    : (a : ℕ → A)
+    → (b : (n : ℕ) → B (a n))
+    → ((n : ℕ) → (a n , b n) ＝ (a (suc n) , f (a (suc n)) (b (suc n))))
+    ≃  Σ[ p ∶ ((n : ℕ) → a n ＝ a (suc n)) ]
+        ( (n : ℕ) → Idᶠ B (p n) (b n) (f (a (suc n)) (b (suc n))))
+  split-total-map-paths a b
+    = Foundations.IsEquivIsProp.Π-fam-≃ FE ( λ n → Σ-path e⁻¹)
+    ∙e Σ-Π-swap≃
+        (λ n → a n ＝ a (suc n))
+        (λ n p → Idᶠ B p (b n) (f (a (suc n)) (b (suc n))))
+
+  splitting-total-map
+    : Splitting.type (total-map f)
+    ≃ Σ A (λ a → Splitting.type (f a))
+  splitting-total-map
+    = Σ-fst-≃ (Σ-→-swap≃ A B)
+    ∙e Σ-snd-≃ (λ (a , b) → split-total-map-paths a b)
+    ∙e Σ-interchange
+    ∙e Σ-fst-≃-bwd⁻¹ (split-retract-equiv {A = A} {X = A} idretract)
+}
+}
+
+
+\subtree[stt-00I7]{
+\date{2026-03-11}
+\author{fredrikbakke}
+\taxon{Corollary}
+\title{The universe of retracts is a retract of quasiidempotents}
+
+\p{
+Combining the [splitting construction](stt-00HD) with the
+[equality principle](stt-00H4) for the [universe of retracts](stt-00H5), we obtain a
+[retract](stt-00HE) from the universe of retracts of #{A} into the type of
+[quasiidempotent maps](stt-00II) of #{A}.
+}
+
+\agda{
+module RetractsQIdempotentsWithFunExtUnivalence
+  (FE : FunExt-global)
+  (UA : Univalence)
+  {𝓤} {A : Type 𝓤}
+  (open SplitRetractWithFunExt FE)
+  (open RetractsWithFunExtUnivalence FE UA)
+  (open SmallRetractsWithFunExt FE A)
+  where
+
+  retracts-qidempotent-map-retract
+    : retract (Retracts 𝓤 A) (qidempotent-map A)
+  retracts-qidempotent-map-retract
+    = ( qidempotent←Retracts
+      , Retracts←qidempotent-map
+      , λ (_ , R)
+      → Id←Retracts-equiv
+          (split-retract-equiv R
+          , compare-splittings-htpy R))
+
+  small-retracts-equiv
+    : SmallRetractsWithFunExt.Small-retracts FE A ≃ Retracts 𝓤 A
+  small-retracts-equiv = split-retract-equiv retracts-qidempotent-map-retract
+
+  opaque
+    small-retracts←retract-is-equiv
+      : is-equiv (λ (R : Retracts 𝓤 A) → small-retracts←retract (R .snd))
+    small-retracts←retract-is-equiv
+      = splitting-map-retraction-is-equiv
+          retracts-qidempotent-map-retract
+          step-qidempotent-map-is-preidempotent
+}
+}

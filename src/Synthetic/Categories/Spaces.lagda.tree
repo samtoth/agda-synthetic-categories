@@ -158,13 +158,15 @@ groupoids-in-Space A Δ¹-discrete
 }
 
 \subtree[stt-00L2]{
-\contributor{fredrikbakke}
 \title{Closure properties of amazing covariance}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \p{
-The universe of amazingly covariant types is closed under #{\times}, #{\Sigma} and
-identity types.
+The universe of amazingly covariant types is closed under retracts, #{\Sigma},
+#{\times}, identity types, and products indexed by a crisp type. Maps between
+amazingly covariant types have amazingly covariant fibres, and pullbacks of
+amazingly covariant types are amazingly covariant.
 }
 
 \proof{
@@ -176,22 +178,14 @@ former, from which the result follows by the usual closure properties.
 
 \agda{
 opaque
-  ×-is-acov
+  is-acov←retract
     : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      → is-acov A → is-acov B → is-acov (A × B)
-  ×-is-acov {𝓤} {𝓥} a b
+      → retract A B → is-acov B → is-acov A
+  is-acov←retract {𝓤} {𝓥} {A} R bc
     = lift-fibrancy i0
-        (λ ((A , B) : Space 𝓤 × Space 𝓥) → Space.Carrier A × Space.Carrier B)
-        (×-is-covariant {P = Space.Carrier ∘ fst} {Q = Space.Carrier ∘ snd}
-          (UFib-is-fib fst) (UFib-is-fib snd))
-        (mk-ufib _ a , mk-ufib _ b)
-
-instance
-  ×-Is-acov
-    : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-        ⦃ _ : is-acov A ⦄ ⦃ _ : is-acov B ⦄
-      → is-acov (A × B)
-  ×-Is-acov = ×-is-acov auto! auto!
+        ( λ ((B , A , R) : Σ[ B ∶ Space 𝓥 ] Retracts 𝓤 (Space.Carrier B)) → A)
+        (is-covariant←retract (λ γ → γ .snd .snd) (UFib-is-fib fst))
+        (mk-ufib _ bc , A , R)
 
 opaque
   Σ-is-acov
@@ -204,7 +198,7 @@ opaque
         (Σ-is-covariant {B = Space.Carrier ∘ fst}
           {C = λ γ a → Space.Carrier (γ .snd a)}
           (UFib-is-fib fst) (UFib-is-fib (uncurry snd)))
-        (mk-ufib _ a , (λ x → mk-ufib _ (b x)))
+        (mk-ufib _ a , (mk-ufib _ ∘ b))
 
 instance
   Σ-Is-acov
@@ -212,6 +206,12 @@ instance
       → ⦃ _ : is-acov A ⦄ ⦃ _ : ∀ {a} → is-acov (B a) ⦄
       → is-acov (Σ A B)
   Σ-Is-acov = Σ-is-acov auto! (λ _ → auto!)
+
+opaque
+  ×-is-acov
+    : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → is-acov A → is-acov B → is-acov (A × B)
+  ×-is-acov {𝓤} {𝓥} a b = Σ-is-acov a (λ _ → b)
 
 opaque
   ＝-is-acov
@@ -229,6 +229,40 @@ instance
     : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A} ⦃ _ : is-acov A ⦄
       → is-acov (a ＝ b)
   ＝-is-Acov = ＝-is-acov auto!
+
+opaque
+  Π-is-acov
+    : ∀ {@♭ 𝓤 𝓥} {@♭ K : Type 𝓤} {P : K → Type 𝓥}
+      → (∀ k → is-acov (P k)) → is-acov (Π K P)
+  Π-is-acov {𝓥 = 𝓥} {K} ac
+    = lift-fibrancy i0
+        (λ (P : K → Space 𝓥) → (k : K) → Space.Carrier (P k))
+        (Π-is-covariant (λ k P → Space.Carrier (P k))
+          (λ k → UFib-is-fib (ev k)))
+        (λ k → mk-ufib _ (ac k))
+
+instance
+  Π-Is-acov
+    : ∀ {@♭ 𝓤 𝓥} {@♭ K : Type 𝓤} {P : K → Type 𝓥}
+      → ⦃ _ : ∀ {k} → is-acov (P k) ⦄ → is-acov (Π K P)
+  Π-Is-acov = Π-is-acov (λ _ → auto!)
+
+→-is-acov
+  : ∀ {@♭ 𝓤 𝓥} {@♭ K : Type 𝓤} {A : Type 𝓥}
+    → is-acov A → is-acov (K → A)
+→-is-acov ac = Π-is-acov (λ _ → ac)
+
+fibre-is-acov
+  : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+    → is-acov A → is-acov B → (b : B) → is-acov (fibre f b)
+fibre-is-acov f ac bc b = Σ-is-acov ac (λ _ → ＝-is-acov bc)
+
+Pullback-is-acov
+  : ∀ {@♭ 𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      (f : A → C) (g : B → C)
+    → is-acov A → is-acov B → is-acov C → is-acov (Pullback f g)
+Pullback-is-acov f g ac bc cc
+  = Σ-is-acov ac (λ _ → Σ-is-acov bc (λ _ → ＝-is-acov cc))
 
 opaque
   exp-●-is-acov

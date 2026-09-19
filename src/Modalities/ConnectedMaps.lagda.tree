@@ -24,6 +24,7 @@ open import Core.ArrowRetracts
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Core.ArrowEquiv
+open import Core.CartesianSquares
 open import Core.CocartesianSquares
 open import Core.SurjectiveMaps
 open import Ergonomics.Notations.Orthogonality
@@ -202,8 +203,8 @@ module _
       → is-connected-map RS f
       ↔ is-connected-map RS (f ∘ g)
   is-connected-map↔∘ {f = f} {g} gconn
-    = ( (λ fc c → is-single←equiv-to-single (eqv c e⁻¹) (fc c))
-       , λ fgc c → is-single←equiv-to-single (eqv c) (fgc c)) where
+    = ( (λ fc c → is-single←equiv⁻¹ (eqv c) (fc c))
+      , (λ fgc c → is-single←equiv (eqv c) (fgc c))) where
     eqv : ∀ z → ○ (fibre (f ∘ g) z) ≃ ○ (fibre f z)
     eqv z
       = ○ (fibre (f ∘ g) z) ≃⟨ ○-≃ (fibre-∘ z) ⟩
@@ -293,11 +294,12 @@ up-connected-map←⊥modal K f orth {U = U} U∈K
 \title{Closure properties of #{K}-connected maps}
 
 \p{
-Connected maps are stable under homotopies, retracts of arrows, and cobase change.
+Connected maps are stable under homotopies, composition, right cancellation,
+retracts of arrows, cobase change, and cartesian products.
 }
 
 \agda{
-module _ {α} (K : gSubU α)  where
+module _ {α} (K : gSubU α) where
 
   up-connected-map-homotopy
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -411,31 +413,58 @@ module _ {α} (K : gSubU α)  where
 }
 }
 
-\subtree[stt-00ME]{
-\date{2026-03-19}
-\author{fredrikbakke}
+\subtree[stt-0122]{
+\title{Base change stability of connected maps}
 \taxon{Lemma}
-\title{#{K}-connected maps are #{K}-equivalences}
+\author{fredrikbakke}
+\date{2026-09-18}
 
 \agda{
-up-modal-equiv←up-connected-map
-  : ∀ {α 𝓤 𝓥} (K : gSubU α)
-      {A : Type 𝓤} {B : Type 𝓥}
-      (f : A → B)
-    → up-connected-map K f
-    → up-modal-equiv K f
-up-modal-equiv←up-connected-map K f fconn U∈K = fconn (λ _ → U∈K)
+module _ {α} (K : gSubU α) where
 
-module gRSubUConnectedModalEquivalences {α} (RS : gRSubU α) (open gRSubU RS) where
+  up-connected-fibres←base-change
+    : ∀ {𝓤 𝓥 𝓦 𝓜}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → (F : Arrow-map f g) → is-cartesian F
+      → up-connected-fibres K g → up-connected-fibres K f
+  up-connected-fibres←base-change F cart gc b U∈K
+    = is-equiv-∘ (precomp-equiv (cart b)) (gc (F .Arrow-map.bot b) U∈K)
 
-  is-modal-equiv←up-connected-map
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-        (f : A → B)
-      → up-connected-map GS f
-      → is-modal-equiv RS f
-  is-modal-equiv←up-connected-map f fconn
-    = is-modal-equiv←up-modal-equiv RS
-        (up-modal-equiv←up-connected-map GS f fconn)
+  π₂-up-connected-fibres
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : A → C) (g : B → C)
+      → up-connected-fibres K f
+      → up-connected-fibres K (pb.π₂ {f = f} {g = g})
+  π₂-up-connected-fibres f g fc b U∈K
+    = is-equiv-∘ (precomp-equiv (fib-π₂ f g b ._≃_.fwd-is-equiv)) (fc (g b) U∈K)
+
+module _ {α} (RS : gRSubU α) where
+
+  is-connected-map←base-change
+    : ∀ {𝓤 𝓥 𝓦 𝓜}
+        {A : Type 𝓤} {B : Type 𝓥}
+        {X : Type 𝓦} {Y : Type 𝓜}
+        {f : A → B} {g : X → Y}
+      → (F : Arrow-map f g) → is-cartesian F
+      → is-connected-map RS g → is-connected-map RS f
+  is-connected-map←base-change F cart gc b
+    = is-connected←equiv RS
+        (mk≃ (arrow-fibre F b) (cart b) e⁻¹)
+        (gc (F .Arrow-map.bot b))
+
+  π₂-is-connected-map
+    : ∀ {𝓤 𝓥 𝓦}
+        {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (f : A → C) (g : B → C)
+      → is-connected-map RS f
+      → is-connected-map RS (pb.π₂ {f = f} {g = g})
+  π₂-is-connected-map f g fc b
+    = is-single←equiv⁻¹
+        (gReflectiveReasoning.○-≃ RS (fib-π₂ f g b))
+        (fc (g b))
 }
 }
 
@@ -454,8 +483,8 @@ module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveClosure RS) whe
       → is-equiv f
   is-equiv←is-modal←is-connected m c
     = is-equiv←has-singleton-fibres λ b
-      → is-single←equiv-to-single
-          (mk≃ _ (η-is-equiv←in-SubU (reflector (fibre _ b)) (m b)) e⁻¹)
+      → is-single←equiv⁻¹
+          (mk≃ _ (η-is-equiv←in-SubU (reflector (fibre _ b)) (m b)))
           (c b)
 }
 }
@@ -482,7 +511,7 @@ unique-extensions←up-connected-map
     → (h : Π A (U ∘ f))
     → is-singleton (Extᵈ f U h)
 unique-extensions←up-connected-map K f fconn U∈K h
-  = is-single←equiv-to-single
+  = is-single←equiv
       (Σ-snd-≃ (λ _ → funext≃))
       (has-singleton-fibres←is-equiv (fconn U∈K) h)
 
@@ -497,9 +526,7 @@ up-connected-map←unique-extensions
     → up-connected-map K f
 up-connected-map←unique-extensions K f ext {U = U} U∈K
   = is-equiv←has-singleton-fibres λ h
-    → is-single←equiv-to-single
-        (Σ-snd-≃ (λ _ → funext≃ e⁻¹))
-        (ext U∈K h)
+    → is-single←equiv⁻¹ (Σ-snd-≃ (λ _ → funext≃)) (ext U∈K h)
 }
 }
 
@@ -840,7 +867,7 @@ module _
       in
       mk-singl (d b) (∈S▸η.bwd ○∈S (λ { (a , refl) → H a }))
 
-module gRSubUConnectedCharacterisation
+module _
   {α} (RS : gRSubU α)
   (open gRSubU RS)
   (open gReflectiveReasoning RS)
@@ -914,6 +941,41 @@ module _
   connected⊥modal' {f = f} fc gm
     = are-orthogonal←are-orthogonal-fibre λ h
       → up-connected-map'←is-connected-map' RS f fc (gm ∘ h)
+}
+}
+
+\subtree[stt-00ME]{
+\date{2026-03-19}
+\author{fredrikbakke}
+\taxon{Lemma}
+\title{#{K}-connected maps are #{K}-equivalences}
+
+\agda{
+up-modal-equiv←up-connected-map
+  : ∀ {α 𝓤 𝓥} (K : gSubU α)
+      {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B)
+    → up-connected-map K f
+    → up-modal-equiv K f
+up-modal-equiv←up-connected-map K f fconn U∈K = fconn (λ _ → U∈K)
+
+module _ {α} (RS : gRSubU α) (open gRSubU RS) where
+
+  is-modal-equiv←up-connected-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        (f : A → B)
+      → up-connected-map GS f
+      → is-modal-equiv RS f
+  is-modal-equiv←up-connected-map f fconn
+    = is-modal-equiv←up-modal-equiv RS
+        (up-modal-equiv←up-connected-map GS f fconn)
+
+  is-modal-equiv←is-connected-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → is-connected-map RS f → is-modal-equiv RS f
+  is-modal-equiv←is-connected-map f fconn
+    = is-modal-equiv←up-connected-map f
+        (up-connected-map←is-connected-map RS f fconn)
 }
 }
 

@@ -153,64 +153,38 @@ factors through #{\mathcal{S}}.}
 \agda{
 groupoids-in-Space : ∀ {@♭ 𝓤} (@♭ A : Type 𝓤) → @♭ is-Δ¹-discrete A → is-acov A
 groupoids-in-Space A Δ¹-discrete
-  = ε♭ (liftFib .fst (mod♭ (const-is-covariant←is-Δ¹-discrete Δ¹-discrete))) tt
+  = lift-fibrancy i0 _ (const-is-covariant←is-Δ¹-discrete Δ¹-discrete) tt
 }
 }
 
 \subtree[stt-00L2]{
+\contributor{fredrikbakke}
 \title{Closure properties of amazing covariance}
 \taxon{Theorem}
 
-\p{The universe of amazingly covariant types is closed under
-#{\times, \Sigma} and #{=}.
+\p{
+The universe of amazingly covariant types is closed under #{\times}, #{\Sigma} and
+identity types.
 }
 
 \proof{
-\p{The proof strategy for all of the results are the same, in general we may
-reduce the problem to the analogous [closure conditions for covariant
-families](Synthetic.Categories.CovariantClosure).}
-
-\p{We provide the proof for closure under equality as an example. Let #{\Gamma}
-be the type #{\Sigma1{A : \mathcal{S}}{A \times A}}, and #{\sigma} the map
-#{\Gamma \to \Type} defined as #{(A,a,b) \mapsto a = b}. We need to show that
-#{\Pi1{x : \Gamma}{\textsf{is-Acov}(\sigma x)}}, which by unfolding the definition
-of amazing covariance is just
-#{\Pi1{x : \Gamma}{\sqrt{\textsf{is-covariant}}(\sigma x)}}, but by naturality
-of the #{\sqrt[I]{{-}}} former, this is the same as
-#{\Pi1{x : \Gamma}{\sqrt{\textsf{is-covariant} \circ \sigma_*}(x)}}. We may
-use the universal property of #{\sqrt{-}} so that it suffices to give an
-element #{\Pi1{x : \Gamma^{\Delta^1}}{\textsf{is-covariant}(\sigma_* \circ x)}}.
+\p{
+In each case we apply [amazing fibrancy lifting](stt-00KS) to the corresponding type
+former, from which the result follows by the usual closure properties.
 }
-
-\p{Now we have dealt with the root former, we may proceed less formally. We have
-a map #{A \colon \Delta^1 \to \mathcal{S}}, which means #{A} is a covariant family of
-types over #{\Delta^1}, and a pair of sections #{a\ b : \Pi_{\Delta^1} A},
-we want to show #{i \mapsto a_i = b_i} is covariant, which [follows by general
-closure properties of orthogonality](stt-00KG).}
 }
-
 
 \agda{
 opaque
   ×-is-acov
     : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
       → is-acov A → is-acov B → is-acov (A × B)
-  ×-is-acov {𝓤} {𝓥} a b = need ((mk-ufib _ a) , (mk-ufib _ b)) where
-    open Space
-    @♭ ϕ : (x : Δ¹ → Space 𝓤 × Space 𝓥)
-         → is-covariant (λ i → x i .fst .Carrier × x i .snd .Carrier)
-    ϕ Γ = ×-is-covariant
-               {P = Carrier ∘ fst ∘ Γ}
-               {Q = Carrier ∘ snd ∘ Γ}
-               (UFib-is-fib (fst ∘ Γ))
-               (UFib-is-fib (snd ∘ Γ))
-
-    ϕ̂ : Π (Space 𝓤 × Space 𝓥)
-              (√ᵈ (λ g → is-covariant (λ i → g i .fst .Carrier × g i .snd .Carrier)))
-    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
-
-    need : (Γ : Space 𝓤 × Space 𝓥) → (is-acov (Γ .fst .Carrier × Γ .snd .Carrier))
-    need g = √ᵈ-naturality← _ _ _ (ϕ̂ g)
+  ×-is-acov {𝓤} {𝓥} a b
+    = lift-fibrancy i0
+        (λ ((A , B) : Space 𝓤 × Space 𝓥) → Space.Carrier A × Space.Carrier B)
+        (×-is-covariant {P = Space.Carrier ∘ fst} {Q = Space.Carrier ∘ snd}
+          (UFib-is-fib fst) (UFib-is-fib snd))
+        (mk-ufib _ a , mk-ufib _ b)
 
 instance
   ×-Is-acov
@@ -223,26 +197,14 @@ opaque
   Σ-is-acov
     : ∀ {@♭ 𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → is-acov A → (∀ a → is-acov (B a)) → is-acov (Σ A B)
-  Σ-is-acov {𝓤} {𝓥} a b = need ((mk-ufib _ a) , (λ i → mk-ufib _ (b i))) where
-    open Space
-    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤 ⊔ 𝓥))
-    Γ = Σ[ A ∶ Space 𝓤 ] (A .Carrier → Space 𝓥)
-
-    @♭ πΓ : Γ → Type (𝓤 ⊔ 𝓥)
-    πΓ Γ = Σ (Γ .fst .Carrier) (Carrier ∘ Γ .snd)
-
-    @♭ ϕ : (x : Δ¹ → Γ) → is-covariant (λ i → Σ (x i .fst .Carrier) (Carrier ∘ x i .snd))
-    ϕ x = Σ-is-covariant
-            {B = Carrier ∘ fst ∘ x}
-            {C = λ i a → x i .snd a .Carrier}
-            (UFib-is-fib (fst ∘ x))
-            (UFib-is-fib (uncurry (snd ∘ x)))
-
-    @♭ ϕ̂ : Π Γ (√ᵈ(λ a → is-covariant (λ i → Σ (a i .fst .Carrier) (Carrier ∘ a i .snd))))
-    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
-
-    need : (x : Γ) → is-acov (Σ (x .fst .Carrier) (Carrier ∘ x .snd))
-    need x = √ᵈ-naturality← is-covariant _ x (ϕ̂ x)
+  Σ-is-acov {𝓤} {𝓥} a b
+    = lift-fibrancy i0
+        ( λ ((A , B) : Σ[ A ∶ Space 𝓤 ] (Space.Carrier A → Space 𝓥))
+          → Σ (Space.Carrier A) (Space.Carrier ∘ B))
+        (Σ-is-covariant {B = Space.Carrier ∘ fst}
+          {C = λ γ a → Space.Carrier (γ .snd a)}
+          (UFib-is-fib fst) (UFib-is-fib (uncurry snd)))
+        (mk-ufib _ a , (λ x → mk-ufib _ (b x)))
 
 instance
   Σ-Is-acov
@@ -255,31 +217,12 @@ opaque
   ＝-is-acov
     : ∀ {@♭ 𝓤} {A : Type 𝓤} {a b : A}
       → is-acov A → is-acov (a ＝ b)
-  ＝-is-acov {𝓤} {A} ac = need (mk-ufib A ac , _ , _) where
-    open Space
-    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤))
-    Γ = Σ (Space 𝓤) (λ A → A .Carrier × A .Carrier)
-
-    @♭ σ : Γ → Type 𝓤
-    σ x = x .snd .fst ＝ x .snd .snd
-
-    @♭ ϕ : Π (Δ¹ → Γ) (is-covariant ∘ postcomp Δ¹ σ)
-    ϕ g = ＝-is-covariant a b A'-is-cov where
-      A' : Δ¹ → Type 𝓤
-      A' = Carrier ∘ fst ∘ g
-
-      a b : Π Δ¹ A'
-      a = fst ∘ snd ∘ g
-      b = snd ∘ snd ∘ g
-
-      A'-is-cov : is-covariant A'
-      A'-is-cov = UFib-is-fib (fst ∘ g)
-
-    @♭ ϕ̂ : Π Γ (√ᵈ (is-covariant ∘ postcomp Δ¹ σ))
-    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
-
-    need : (x : Γ) → is-acov (σ x)
-    need x = √ᵈ-naturality← _ _ _ (ϕ̂ x)
+  ＝-is-acov {𝓤} {A} ac
+    = lift-fibrancy i0
+        ( λ ((A , a , b) : Σ[ A ∶ Space 𝓤 ] (Space.Carrier A × Space.Carrier A))
+          → (a ＝ b))
+        (＝-is-covariant (fst ∘ snd) (snd ∘ snd) (UFib-is-fib fst))
+        (mk-ufib A ac , _ , _)
 
 instance
   ＝-is-Acov
@@ -293,27 +236,10 @@ opaque
      → is-acov A
      → (∀ {i} → is-acov (i ＝ i0 → A))
   exp-●-is-acov {𝓤} {A} ac {i}
-    = √ᵈ-naturality← _ _ _ (ϕ̂ (mk-ufib A ac , i)) where
-    open Space
-    @♭ Γ : Type (lsuc (𝓘 ⊔ 𝓤))
-    Γ = Space 𝓤 × Δ¹
-
-    @♭ σ : Γ → Type (𝓘 ⊔ 𝓤)
-    σ (A , i) = (i ＝ i0) → Carrier A
-
-    @♭ ϕ : Π (Δ¹ → Γ) (is-covariant ∘ postcomp Δ¹ σ)
-    ϕ g = ^●-is-covariant Δ¹-directed A' A'-is-cov f where
-      A' : Δ¹ → Type 𝓤
-      A' = Carrier ∘ fst ∘ g
-
-      A'-is-cov : is-covariant A'
-      A'-is-cov = UFib-is-fib (fst ∘ g)
-
-      f : Δ¹ → Δ¹
-      f = snd ∘ g
-
-    @♭ ϕ̂ : Π Γ (√ᵈ (is-covariant ∘ postcomp Δ¹ σ))
-    ϕ̂ = ε♭ (rintro (mod♭ ϕ))
+    = lift-fibrancy i0
+        (λ ((A , i) : Space 𝓤 × Δ¹) → (i ＝ i0) → Space.Carrier A)
+        (^●-is-covariant Δ¹-directed (Space.Carrier ∘ fst) (UFib-is-fib fst) snd)
+        (mk-ufib A ac , i)
 
 instance
   exp-●-is-Acov

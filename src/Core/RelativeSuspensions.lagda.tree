@@ -1,0 +1,194 @@
+\date{2026-09-17}
+\title{Relative suspensions}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Core.RelativeSuspensions where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
+open import Core.SpanMaps
+open import Core.Suspensions
+}
+}
+
+\subtree[bak-3MIV]{
+\title{Relative suspensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a map #{δ \colon X \to Y} and a type #{C}, then the \em{#{\delta}-suspension}
+of #{C}, #{\suspension_δ C}, is the pushout #{(Y × C) \amalg_{X × C} X}.
+\quiver{
+\begin{tikzcd}
+X \times C && X \\
+\\
+Y \times C && \suspension_\delta C
+\arrow[from=1-1, to=1-3]
+\arrow[from=1-1, to=3-1]
+\arrow[from=3-1, to=3-3]
+\arrow[from=1-3, to=3-3]
+\arrow[from=1-1, to=3-3, phantom, "\lrcorner" very near end]
+\end{tikzcd}
+}
+Equivalently, it is the [pushout product](stt-00BS) of #{δ} and #{!_C}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
+
+  RelativeSusp : ∀ {𝓦} → Type 𝓦 → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  RelativeSusp C = Pushout (λ (x , c) → (δ x , c)) (fst: λ _ → C)
+}
+}
+
+\subtree[bak-U5BK]{
+\title{The dependent mapping out property of relative suspensions}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a type family #{P \colon \suspension_δ C \to \UU}, a section of
+#{P} amounts to choosing a section #{q} over #{X} and, for each #{c : C},
+a section #{p_c} over #{Y} together with coherence that these sections agree along
+#{δ} after transport along the suspension glue:
+##{\operatorname{transport}_{P}(\glue(x,c),p_c(δ(x))) = q(x).}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓩} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦} (P : RelativeSusp δ C → Type 𝓩)
+  where
+
+  RelativeSusp-section-data : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓩)
+  RelativeSusp-section-data
+    = Σ[ q ∶ ((x : X) → P (ι₂ x)) ]
+       ( (c : C)
+       → Σ[ p ∶ ((y : Y) → P (ι₁ (y , c))) ]
+          ( (x : X) → Idᵈ (ap P (glue (x , c))) (p (δ x)) (q x)))
+
+  relative-suspension-coconeᵈ≃
+    : Coconeᵈ (mk-span (X × C) (λ (x , c) → (δ x , c)) fst) pushout P
+    ≃ RelativeSusp-section-data
+  relative-suspension-coconeᵈ≃ = mk≃
+    (λ (mk-coconeᵈ p q H) → (q , (λ c → (p ∘ (_, c) , H ∘ (_, c)))))
+    (mk-eqv (from , ~refl , ~refl) ~refl)
+    where
+    from : RelativeSusp-section-data → _
+    from (q , F)
+      = mk-coconeᵈ (λ (y , c) → F c .fst y) q (λ (x , c) → F c .snd x)
+
+  RelativeSusp-UPᵈ≃
+    : ((z : RelativeSusp δ C) → P z) ≃ RelativeSusp-section-data
+  RelativeSusp-UPᵈ≃ = Pushout-UPᵈ≃ e⁻¹ ∙e relative-suspension-coconeᵈ≃
+
+  RelativeSusp-ind
+    : RelativeSusp-section-data → (z : RelativeSusp δ C) → P z
+  RelativeSusp-ind = _≃_.bwd RelativeSusp-UPᵈ≃
+}
+}
+
+\subtree[bak-JY7C]{
+\title{The mapping out property of relative suspensions}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Mapping out of the relative suspension #{\suspension_δ C} into a type #{A} amounts
+to choosing a map #{f \colon X \to A} and a #{C}-indexed family of
+[extensions](stt-00CL) of #{f} along #{δ}. We derive this as a special case of the
+dependent mapping out property.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓩} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦} {A : Type 𝓩}
+  where
+
+  RelativeSusp-section-data-const≃
+    : RelativeSusp-section-data δ (λ _ → A)
+    ≃ (Σ[ f ∶ (X → A) ] (C → Ext δ f))
+  RelativeSusp-section-data-const≃
+    = Σ-snd-≃ (λ f → Π-fam-≃ (λ c → Σ-snd-≃ (λ p → Π-fam-≃ (λ x
+      → coe≃ (tr-constant (glue (x , c)) (p (δ x)) ∙-)))))
+
+  RelativeSusp-UP≃
+    : (RelativeSusp δ C → A) ≃ (Σ[ f ∶ (X → A) ] (C → Ext δ f))
+  RelativeSusp-UP≃
+    = RelativeSusp-UPᵈ≃ δ (λ _ → A) ∙e RelativeSusp-section-data-const≃
+
+  RelativeSusp-rec
+    : (Σ[ f ∶ (X → A) ] (C → Ext δ f)) → RelativeSusp δ C → A
+  RelativeSusp-rec = _≃_.bwd RelativeSusp-UP≃
+
+  RelativeSusp-restrict
+    : (RelativeSusp δ C → A) → Σ[ f ∶ (X → A) ] (C → Ext δ f)
+  RelativeSusp-restrict h
+    = ( h ∘ ι₂
+      , (λ c → (h ∘ ι₁ ∘ (_, c) , (h ◃h glue) ∘ (_, c))))
+
+  RelativeSusp-UP-β : _≃_.fwd RelativeSusp-UP≃ ~ RelativeSusp-restrict
+  RelativeSusp-UP-β h
+    = ap ((h ∘ ι₂) ,_)
+        (funext→ (λ c → Id←Ext-htpy (~refl , (λ x → apᶠ-is-ap))))
+}
+}
+
+\subtree[bak-UMTO]{
+\title{Relative suspension at the booleans is suspension}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The relative suspension at #{{!} \colon \sphere{0} \to \b1} agrees with ordinary
+suspension:
+##{\suspension_{\sphere{0}}(C) \simeq \suspension C.}
+}
+
+\proof{
+\p{
+This follows readily from the [folding property of pushouts](bak-NPKP), using that
+#{\sphere{0}} are the booleans.
+}
+}
+
+\agda{
+module _ {𝓤} (C : Type 𝓤) where
+
+  relative-suspension-Bool-fold-span-equiv
+    : Span-equiv'
+        (mk-span (Bool × C) fst (λ (b , c) → (tt , c)))
+        (fold-span (!: C) (!: C))
+  relative-suspension-Bool-fold-span-equiv
+    = ( Σ-Bool≃⊎
+      , (Σ-𝟙 e⁻¹ ∙e ×-swap ∙e Σ-Bool≃⊎)
+      , (λ where
+          (true , c) → refl
+          (false , c) → refl)
+      , Σ-𝟙
+      , (λ where
+          (true , c) → refl
+          (false , c) → refl))
+
+  RelativeSusp-Bool≃Susp : RelativeSusp (!: Bool) C ≃ Susp C
+  RelativeSusp-Bool≃Susp
+    = pushout-comm
+    ∙e Pushout≃←Span-equiv' relative-suspension-Bool-fold-span-equiv
+    ∙e fold-pushout≃ (!: C) (!: C)
+}
+}

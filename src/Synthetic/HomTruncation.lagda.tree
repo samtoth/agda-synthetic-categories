@@ -1,0 +1,135 @@
+\title{Hom truncation}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-09-19}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.HomTruncation
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.Spheres
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.DirectedSuspensions Δ¹ I
+}
+}
+
+\subtree[bak-B254]{
+\title{The hom truncation generator}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+The \em{hom #{k}-truncation generator} is the
+[directed suspension](bak-D451) of #{\sphere{k+1} \to \b1}.
+We define hom #{k}-truncated types by locality at this map.
+}
+
+\agda{
+hom-truncation-generator
+  : (k : 𝕋) → DirectedSusp (S (suc-𝕋₋₁←𝕋 k)) → DirectedSusp 𝟙
+hom-truncation-generator k
+  = DirectedSusp-map (!: S (suc-𝕋₋₁←𝕋 k))
+
+is-hom-truncated : ∀ {𝓤} → 𝕋 → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+is-hom-truncated k = is-local (point (hom-truncation-generator k))
+
+HomTruncation-gRSubU : 𝕋 → gRSubU (𝓘 ⊔_)
+HomTruncation-gRSubU k
+  = Local-gRSubU (point (hom-truncation-generator k))
+}
+}
+
+\subtree[bak-173E]{
+\title{Hom truncation characterises truncated hom types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+A type is hom #{k}-truncated if and only if each of its hom types is #{k}-truncated.
+Thus hom truncation is the [directed separation](bak-2678) of the
+[#{k}-truncation subuniverse](stt-006Q).
+}
+
+\agda{
+module _ (k : 𝕋) where
+
+  module _ {𝓤} {A : Type 𝓤} where
+
+    Hom-is-truncated←is-hom-truncated
+      : is-hom-truncated k A → (a b : A) → is-truncated k (Hom A a b)
+    Hom-is-truncated←is-hom-truncated loc a b
+      = is-truncated←null k (is-null←is-local
+          (λ _ → Hom-local←DirectedSusp-local
+            (!: S (suc-𝕋₋₁←𝕋 k)) (loc tt) a b))
+
+    is-hom-truncated←Hom-is-truncated
+      : ((a b : A) → is-truncated k (Hom A a b)) → is-hom-truncated k A
+    is-hom-truncated←Hom-is-truncated h _
+      = DirectedSusp-local←Hom-local (!: S (suc-𝕋₋₁←𝕋 k))
+          (λ a b → is-local←is-null (is-null←truncated k (h a b)) tt)
+
+    is-hom-truncated↔Hom-is-truncated
+      : is-hom-truncated k A ↔ ((a b : A) → is-truncated k (Hom A a b))
+    is-hom-truncated↔Hom-is-truncated
+      = ( Hom-is-truncated←is-hom-truncated
+        , is-hom-truncated←Hom-is-truncated)
+
+  HomTruncation≃directed-separated-gSubU
+    : gSubU-equiv
+        (gRSubU.GS (HomTruncation-gRSubU k))
+        (DirectedSeparated-gSubU (Truncation-gSubU k))
+  HomTruncation≃directed-separated-gSubU A
+    = ( is-directed-separated←Hom∈S (Truncation-gSubU k)
+      ∘ Hom-is-truncated←is-hom-truncated
+      , is-hom-truncated←Hom-is-truncated
+      ∘ Hom∈S←is-directed-separated (Truncation-gSubU k))
+}
+}
+
+\subtree[bak-8C75]{
+\title{The hom truncation reflector}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+The hom #{k}-truncation of a type is its reflection into types with #{k}-truncated
+homs.
+}
+
+\agda{
+module HomTruncation (k : 𝕋) where
+  open gRSubU (HomTruncation-gRSubU k) public
+  open gReflectiveReasoning (HomTruncation-gRSubU k) public
+  open gReflectiveClosure (HomTruncation-gRSubU k) public
+
+  hom-is-truncated
+    : ∀ {𝓤} {A : Type 𝓤} (a b : ○ A) → is-truncated k (Hom (○ A) a b)
+  hom-is-truncated = Hom-is-truncated←is-hom-truncated k ○∈S
+
+  reflects-truncated-homs
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → ((a b : B) → is-truncated k (Hom B a b))
+      → is-equiv (precomp B (η: A))
+  reflects-truncated-homs h
+    = reflects (is-hom-truncated←Hom-is-truncated k h)
+}
+}

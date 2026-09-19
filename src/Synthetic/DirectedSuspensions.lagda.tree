@@ -1,0 +1,139 @@
+\title{Directed suspensions}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-09-19}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.DirectedSuspensions
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.Orthogonal
+open import Core.RelativeSuspensions
+open import Core.RelativeSuspensionsFunctoriality
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.GlobalRelativeSeparations
+open import Modalities.Instances.Localisation
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+}
+}
+
+\subtree[bak-D451]{
+\title{Directed suspension}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+The \em{directed suspension} of a type is its [relative suspension](bak-3MIV) with
+respect to the [boundary inclusion](stt-00LG) #{∂Δ¹ \to Δ¹}.
+}
+
+\agda{
+DirectedSusp : ∀ {𝓤} → Type 𝓤 → Type (𝓘 ⊔ 𝓤)
+DirectedSusp = RelativeSusp ∂Δ¹-incl
+
+DirectedSusp-map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → (A → B) → DirectedSusp A → DirectedSusp B
+DirectedSusp-map = RelativeSusp-map ∂Δ¹-incl
+}
+}
+
+\subtree[bak-2678]{
+\title{The directed separation is given by local hom types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+The \em{directed separation} of a [global subuniverse](stt-007A) is its
+[relative separation](bak-6I8C) at #{∂Δ¹ \to Δ¹}. A type belongs to the directed
+separation precisely when all its [hom types](stt-00LG) belong to the original
+subuniverse.
+}
+
+\agda{
+module _ {α} (K : gSubU α) (open gSubU K) where
+
+  DirectedSeparated-gSubU : gSubU (λ 𝓤 → 𝓘 ⊔ 𝓤 ⊔ α (𝓘 ⊔ 𝓤))
+  DirectedSeparated-gSubU = relatively-separated-gSubU (point ∂Δ¹-incl) K
+
+  module _ {𝓤} {A : Type 𝓤} where
+
+    Hom∈S←is-directed-separated
+      : A ∈ gSubU.S DirectedSeparated-gSubU
+      → (a b : A) → Hom A a b ∈ S
+    Hom∈S←is-directed-separated sep a b
+      = ∈S←equiv (Hom≃Ext-∂Δ¹-incl e⁻¹) (sep tt (make-∂Δ¹ b a))
+
+    is-directed-separated←Hom∈S
+      : ((a b : A) → Hom A a b ∈ S)
+      → A ∈ gSubU.S DirectedSeparated-gSubU
+    is-directed-separated←Hom∈S h _ f
+      = ∈S←equiv
+          ( Hom≃Ext-∂Δ¹-incl
+          ∙e coe≃ (ap (Ext ∂Δ¹-incl) (funext→ (λ where ∂Δ¹-0 → refl; ∂Δ¹-1 → refl))))
+          ( h (f ∂Δ¹-0) (f ∂Δ¹-1))
+
+    is-directed-separated↔Hom∈S
+      : (A ∈ gSubU.S DirectedSeparated-gSubU)
+      ↔ ((a b : A) → Hom A a b ∈ S)
+    is-directed-separated↔Hom∈S
+      = (Hom∈S←is-directed-separated , is-directed-separated←Hom∈S)
+}
+}
+
+\subtree[bak-54B5]{
+\title{Locality at directed suspensions characterises local hom types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+A type is local at the directed suspension of a map #{s} if and only if
+all its hom types are local at #{s}. This follows from the
+[locality characterisation for relative suspensions](bak-BMXL) and the
+[characterisation of directed separation](bak-2678).
+}
+
+\agda{
+module _ {𝓤 𝓥 𝓦} {C : Type 𝓤} {D : Type 𝓥} (s : C → D) {A : Type 𝓦} where
+
+  Hom-local←DirectedSusp-local
+    : orthogonal-type (DirectedSusp-map s) A
+    → (a b : A) → orthogonal-type s (Hom A a b)
+  Hom-local←DirectedSusp-local loc a b
+    = Hom∈S←is-directed-separated (Local-gSubU (point s))
+        (λ _ f _ → extensions-local←RelativeSusp-local ∂Δ¹-incl s loc f)
+        a b tt
+
+  DirectedSusp-local←Hom-local
+    : ((a b : A) → orthogonal-type s (Hom A a b))
+    → orthogonal-type (DirectedSusp-map s) A
+  DirectedSusp-local←Hom-local h
+    = RelativeSusp-local←extensions-local ∂Δ¹-incl s (λ f
+      → is-directed-separated←Hom∈S
+          (Local-gSubU (point s))
+          (λ a b _ → h a b) tt f tt)
+
+  DirectedSusp-local↔Hom-local
+    : orthogonal-type (DirectedSusp-map s) A
+    ↔ ((a b : A) → orthogonal-type s (Hom A a b))
+  DirectedSusp-local↔Hom-local
+    = ( Hom-local←DirectedSusp-local
+      , DirectedSusp-local←Hom-local)
+}
+}

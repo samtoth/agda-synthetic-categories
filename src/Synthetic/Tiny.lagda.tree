@@ -19,6 +19,7 @@ open import Foundations.Prelude
 open import Modalities.Cohesion.Flat
 open import Modalities.Cohesion.FlatLex
 open import Modalities.Cohesion.FlatDiscrete
+open import Modalities.Cohesion.LiftingSquares
 open import Modalities.Cohesion.Connectivity
 open import Modalities.Cohesion.Continuity
 
@@ -26,10 +27,12 @@ open import Ergonomics.Extensionality
 
 open import Core.Arrows
 open import Core.ArrowEquiv
+open import Core.Cube
 open import Core.PiSection
 open import Core.GlobalClassesMaps
 open import Core.UniversalFibrations
 open import Core.Small
+open import Core.Postwhisker
 }
 }
 
@@ -134,7 +137,12 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
   untranspose
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
       → (Γ → √ A) → ((I → Γ) → A)
-  untranspose = postcomp _ √ε ∘ postcomp I
+  untranspose {Γ = Γ} = postcomp (I → Γ) √ε ∘ postcomp I
+
+  untranspose'
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+      → (Γ → √ A) → ((I → Γ) → A)
+  untranspose' f = √ε ∘ postcomp I f
 
   √-tiny≃
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
@@ -239,12 +247,12 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
     ＝⟨ ap (♭-map _) (is-tiny.ε (mod♭ P)) ⟩
       ♭-map (precomp _ (postcomp I σ)) (mod♭ P) ∎))
 
-  untranspose-naturality
+  untranspose-∘
     : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : Type 𝓥}
       → (σ : Δ → Γ)
       → (f : Γ → √ A)
       → untranspose (f ∘ σ) ＝ untranspose f ∘ postcomp _ σ
-  untranspose-naturality σ f = refl
+  untranspose-∘ σ f = refl
 
   exp⊣√
     : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
@@ -265,29 +273,64 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
   √₁-id : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √₁ (mod♭ id) ＝ mod♭ (id: √ A)
   √₁-id = sym (transpose-unique' refl)
 
-
-  √₁-nat
+  untranspose-naturality
     : ∀ {@♭ 𝓤 𝓥 𝓥'} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓥'}
       → (f : ⟨♭| (B → A)⟩)
       → untranspose {Γ = Γ} {A} ∘ postcomp _ (ε♭ (√₁ f))
       ＝ postcomp _ (ε♭ f) ∘ untranspose
-  √₁-nat {Γ = Γ} {A} (mod♭ f)
-    =     untranspose ∘ postcomp Γ (ε♭ (√₁ (mod♭ f)))
-    ＝⟨⟩
-          untranspose ∘ postcomp Γ (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ f))))
-    ＝⟨⟩
-          (λ x → untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))) ∘ x))
-    ＝⟨⟩
-         postcomp _ (untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))))) ∘ postcomp I
-    ＝⟨ ap (_∘ postcomp I)
-           (ap (postcomp _) (sym (ε♭-natural (transpose (mod♭ (f ∘ √ε)))))) ⟩
-         postcomp _ (ε♭ (♭-map untranspose (transpose (mod♭ (f ∘ √ε)))))
-       ∘ postcomp I
-    ＝⟨ ap (_∘ postcomp I) (ap (postcomp _) (ap ε♭ (is-tiny.ε (mod♭ (f ∘ √ε))))) ⟩
-          postcomp _ (f ∘ √ε) ∘ postcomp I
-    ＝⟨⟩
-          postcomp (I → _) f ∘ untranspose
-    ∎
+  untranspose-naturality {Γ = Γ} {A} (mod♭ f)
+    = ap ((_∘ postcomp I) ∘ postcomp (I → Γ))
+       ( sym (ε♭-natural (transpose (mod♭ (f ∘ √ε))))
+       ∙ ap ε♭ (is-tiny.ε (mod♭ (f ∘ √ε))))
+    -- =     untranspose ∘ postcomp Γ (ε♭ (√₁ (mod♭ f)))
+    -- ＝⟨⟩
+    --       untranspose ∘ postcomp Γ (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ f))))
+    -- ＝⟨⟩
+    --       (λ x → untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))) ∘ x))
+    -- ＝⟨⟩
+    --      postcomp _ (untranspose (ε♭ (transpose (mod♭ (f ∘ √ε))))) ∘ postcomp I
+    -- ＝⟨ ap (_∘ postcomp I)
+    --        (ap (postcomp _) (sym (ε♭-natural (transpose (mod♭ (f ∘ √ε)))))) ⟩
+
+    --      postcomp _ (ε♭ (♭-map untranspose (transpose (mod♭ (f ∘ √ε)))))
+    --    ∘ postcomp I
+
+    -- ＝⟨ ap (_∘ postcomp I) (ap (postcomp _) (ap ε♭ (is-tiny.ε (mod♭ (f ∘ √ε))))) ⟩
+    --       postcomp _ (f ∘ √ε) ∘ postcomp I
+    -- ＝⟨⟩
+    --       postcomp (I → _) f ∘ untranspose
+    -- ∎
+
+  opaque
+    √₁-∘
+      : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+          (@♭ f : B → C) (@♭ g : A → B)
+        → ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)) ~ ε♭ (√₁ (mod♭ (f ∘ g)))
+    √₁-∘ {A = A} {B} {C} f g = happly (ε♭ (transpose-unique (mod♭
+      ( untranspose (ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)))
+      ＝⟨⟩
+        untranspose (postcomp _ (ε♭ (√₁ (mod♭ f))) (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        (untranspose ∘ postcomp _ (ε♭ (√₁ (mod♭ f)))) (ε♭ (√₁ (mod♭ g)))
+      ＝⟨ happly (untranspose-naturality (mod♭ f)) (ε♭ (√₁ (mod♭ g))) ⟩
+        postcomp _ f (untranspose (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        postcomp _ f (untranspose (ε♭ (transpose (♭-map (precomp _ √ε) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f) (sym (ε♭-natural (transpose (♭-map (precomp _ √ε) (mod♭ g))))) ⟩
+        postcomp _ f (ε♭ (♭-map untranspose (transpose (♭-map (precomp _ √ε) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f ∘ ε♭) (is-tiny.ε (♭-map (precomp _ √ε) (mod♭ g))) ⟩
+        postcomp _ f (precomp _ √ε g)
+      ＝⟨⟩
+        f ∘ g ∘ √ε
+      ∎))))
+
+  -- TODO(Sam): Could be cleaner def?
+  √₁←~
+    : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → {@♭ f g : ⟨♭| (A → B) ⟩}
+      → @♭ (ε♭ f ~ ε♭ g)
+      → ε♭ (√₁ f) ~ ε♭ (√₁ g)
+  √₁←~ {f = mod♭ f} {mod♭ g} H a = ap (λ p → ε♭ (√₁ p) a) (mapply♭ (mod♭ (funext→ H)))
 
   ♭-map' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
              (f : ⟨♭| (A → B)⟩) → ⟨♭| A ⟩ → ⟨♭| B ⟩
@@ -313,6 +356,22 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
 \p{The counit map is a natural transformation.}
 
 \agda{
+  opaque
+    √ε-nat'
+      : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+          (@♭ f : Γ → A)
+        → √ε ∘ postcomp I (ε♭ (√₁ (mod♭ f)))
+        ~ f ∘ √ε
+    √ε-nat' f
+      = √ε ∘ postcomp I (ε♭ (√₁ (mod♭ f)))
+      ~⟨⟩
+        (postcomp _ √ε ∘ postcomp I) (ε♭ (√₁ (mod♭ f)))
+      ~⟨ happly (sym (ε♭-natural (√₁ (mod♭ f)))) ⟩
+        ε♭ (♭-map (postcomp _ √ε ∘ postcomp I) (√₁ (mod♭ f)))
+      ~⟨ happly (ap ε♭ (is-tiny.ε (mod♭ (f ∘ √ε)))) ⟩
+        f ∘ √ε
+      ~∎
+
   opaque
     √ε-nat
       : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
@@ -341,6 +400,14 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
           → (_∘♭_ (mod♭ √ε)) ~ ♭-map {B = A → B} (postcomp A √ε)
       lemma (mod♭ x) = refl
 
+
+  √ε-naturality-square'
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
+        (@♭ f : Γ → A)
+      → Arrow-map (postcomp I (ε♭ (√₁ (mod♭ f)))) f
+  √ε-naturality-square' f .Arrow-Π.top = √ε
+  √ε-naturality-square' f .Arrow-Π.bot = √ε
+  √ε-naturality-square' f .Arrow-Π.comm = √ε-nat' f
 
   √ε-naturality-square
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
@@ -449,8 +516,8 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
         (♭-ind
           (λ x' → mapply♭ (mod♭
             (×-path→
-              ( happly (√₁-nat (mod♭ fst)) x'
-              , happly (√₁-nat (mod♭ snd)) x'))))))
+              ( happly (untranspose-naturality (mod♭ fst)) x'
+              , happly (untranspose-naturality (mod♭ snd)) x'))))))
       (is-♭-equiv←is-equiv (×-→-swap≃ A B ._≃_.fwd-is-equiv)))
 
    -- ♭-map
@@ -468,7 +535,111 @@ module Tiny {@♭ 𝓘} (@♭ I : Type 𝓘)
    --                            , happly (√₁-nat (mod♭ snd)) x'))) ⟩
    --   mod♭ (Σ-Π-swap _ _ (untranspose x'))
    -- ∎
+}
+}
 
+\subtree[tot-5AYJ]{
+\title{The action of the amazing right adjoint on squares}
+\taxon{Construction}
+\author{samueltoth}
+\date{2026-09-18}
+
+\agda{
+  √-arrow-map
+    : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜}
+        {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+        {@♭ C : Type 𝓦} {@♭ D : Type 𝓜} {@♭ g : C → D}
+      → @♭ Arrow-map f g
+      → Arrow-map (ε♭ (√₁ (mod♭ f))) (ε♭ (√₁ (mod♭ g)))
+  √-arrow-map F .Arrow-Π.top = ε♭ (√₁ (mod♭ (F .Arrow-map.top)))
+  √-arrow-map F .Arrow-Π.bot = ε♭ (√₁ (mod♭ (F .Arrow-map.bot)))
+  √-arrow-map {f = f} {g = g} F .Arrow-Π.comm
+    = √₁-∘ (F .Arrow-map.bot) f
+    ∙h √₁←~ (F .Arrow-map.comm)
+    ∙h √₁-∘ g (F .Arrow-map.top) h⁻¹
+
+  -- untranspose-arrow
+  --   : ∀ {@♭ 𝓤 𝓥 𝓦} (@♭ Γ : Type 𝓤) {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
+  --     → (@♭ f : A → B)
+  --     → Arrow-map (postcomp Γ (ε♭ (√₁ (mod♭ f)))) (postcomp (I → Γ) f)
+  -- untranspose-arrow _ f .Arrow-Π.top = untranspose
+  -- untranspose-arrow _ f .Arrow-Π.bot = untranspose
+  -- untranspose-arrow _ f .Arrow-Π.comm = happly (untranspose-naturality (mod♭ f))
+
+  -- √ε-arrow
+  --   : ∀ {@♭ 𝓤 𝓥 𝓦} (@♭ Γ : Type 𝓤) {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
+  --     → (@♭ f : A → B)
+  --     → Arrow-map {!!} f
+  -- √ε-arrow = {!√ε!}
+  postcomp-arrow-naturality
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {Γ : Type 𝓤} (Δ : Type 𝓜)
+        {A : Type 𝓥} {B : Type 𝓦} (f : A → B)
+      → Arrow-map (postcomp Γ f) (postcomp (Δ → Γ) (postcomp Δ f))
+  postcomp-arrow-naturality Δ f .Arrow-Π.top = postcomp Δ
+  postcomp-arrow-naturality Δ f .Arrow-Π.bot = postcomp Δ
+  postcomp-arrow-naturality Δ f .Arrow-Π.comm = ~refl
+
+  untranspose-arrow
+    : ∀ {@♭ 𝓤 𝓥 𝓦} (@♭ Γ : Type 𝓤) {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
+      → (@♭ f : A → B)
+      → Arrow-map (postcomp Γ (ε♭ (√₁ (mod♭ f)))) (postcomp (I → Γ) f)
+  untranspose-arrow Γ f
+    = paste-squares
+        (postcomp-square (√ε-naturality-square' f) (I → Γ))
+        (postcomp-arrow-naturality I (ε♭ (√₁ (mod♭ f))))
+
+  is-tiny-str-arrow
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓦}
+      → (@♭ f : A → B)
+      → is-Arrow-equiv (♭Square (untranspose-arrow Γ f))
+  is-tiny-str-arrow f .fst = √-is-tiny-str
+  is-tiny-str-arrow f .snd = √-is-tiny-str
+
+  opaque
+    untranspose-arrow-naturality
+      : ∀ {@♭ 𝓤 𝓥 𝓦 𝓜 𝓧}
+          {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+          {@♭ C : Type 𝓦} {@♭ D : Type 𝓜} {@♭ g : C → D}
+          {@♭ Γ : Type 𝓧}
+          (@♭ F : Arrow-map f g)
+        → Arrow-map-path
+            (paste-squares (postcomp-square F (I → Γ)) (untranspose-arrow Γ f))
+            (paste-squares (untranspose-arrow Γ g) (postcomp-square (√-arrow-map F) Γ))
+    untranspose-arrow-naturality {f = f} {g = g} {Γ} F
+      = concat-Arrow-map-path
+          -- F^(I → Γ) ∘ (√ε f)^(I → Γ) ∘ postcomp-arrow-naturality I (√₁ f)
+          (paste-squares-assoc
+            (postcomp-square F (I → Γ))
+            (postcomp-square (√ε-naturality-square' f) (I → Γ))
+            (postcomp-arrow-naturality I (ε♭ (√₁ (mod♭ f)))))
+          (concat-Arrow-map-path
+            (right-whisker-Arrow-map-path
+              (concat-Arrow-map-path
+                {T = postcomp-square (paste-squares F (√ε-naturality-square' f)) (I → Γ)}
+                {U = {!!}}
+                (postcomp-square-∘ F (√ε-naturality-square' f) (I → Γ))
+                {!!})
+              (postcomp-arrow-naturality I (ε♭ (√₁ (mod♭ f)))))
+            {!!})
+
+  module _
+    {@♭ 𝓤 𝓥 𝓦 𝓜}
+    {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ f : A → B}
+    {@♭ C : Type 𝓦} {@♭ D : Type 𝓜} {@♭ g : C → D}
+    (@♭ F : Arrow-map f g)
+    {@♭ 𝓧} (@♭ Γ : Type 𝓧)
+    where
+
+    untranspose-cube
+      : Cube (postcomp-square (√-arrow-map F) Γ) (postcomp-square F (I → Γ))
+    untranspose-cube .Cube.left = untranspose-arrow Γ f
+    untranspose-cube .Cube.right = untranspose-arrow Γ g
+    untranspose-cube .Cube.comm = untranspose-arrow-naturality F
+
+    is-tiny-str-cube
+      : is-Cube-equiv (♭-cube untranspose-cube)
+    is-tiny-str-cube .fst = is-tiny-str-arrow f
+    is-tiny-str-cube .snd = is-tiny-str-arrow g
 }
 }
 
@@ -554,12 +725,12 @@ module Dependent√ {@♭ 𝓘} (@♭ I : Type 𝓘)
       @♭ f : ∀ (@♭ l : Γ → √ (Type∗' 𝓥))
              → ⟨♭| fst ∘ untranspose l ＝ A ⟩
              → ⟨♭| ε♭ √Type∗-π ∘ l ＝ ε♭ (transpose (mod♭ A)) ⟩
-      f l  = transpose-unique ∘ ♭-map ((happly (√₁-nat (mod♭ fst)) l ∙_))
+      f l  = transpose-unique ∘ ♭-map ((happly (untranspose-naturality (mod♭ fst)) l ∙_))
 
       @♭ feq : ∀ (@♭ l) → is-equiv (f l)
       feq l = is-equiv-∘
         transpose-unique-is-equiv
-        (is-♭-equiv←is-equiv (∙-is-equiv (happly (√₁-nat (mod♭ fst)) l)))
+        (is-♭-equiv←is-equiv (∙-is-equiv (happly (untranspose-naturality (mod♭ fst)) l)))
 
   Π←lift
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}

@@ -14,16 +14,19 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 open import Core.CanonicalPushouts
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
 open import Core.ArrowEquiv
 open import Core.Orthogonal
 open import Core.RelativeSuspensions
 }
 }
 
-\subtree[bak-R365]{
+\subtree[stt-012Q]{
 \title{The functorial action of relative suspensions}
 \taxon{Definition}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-09-17}
 
 \p{
@@ -34,31 +37,42 @@ under #{X}. This is the \em{functorial action on maps of the #{\delta}-suspensio
 \agda{
 module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
 
-  RelativeSusp-map-cocone
+  relative-suspension-span-map
     : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
       → (C → D)
-      → Cocone
-          (mk-span (X × C) (λ (x , c) → (δ x , c)) fst)
-          (RelativeSusp δ D)
-  RelativeSusp-map-cocone s
-    = mk-cocone (λ (y , c) → ι₁ (y , s c)) ι₂ (λ (x , c) → glue (x , s c))
+      → Span-map (relative-suspension-span δ C) (relative-suspension-span δ D)
+  relative-suspension-span-map s = mk-span-map (id ×₁ s) (id ×₁ s) id ~refl ~refl
 
   RelativeSusp-map
     : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
       → (C → D) → RelativeSusp δ C → RelativeSusp δ D
-  RelativeSusp-map s = pushout-rec (RelativeSusp-map-cocone s)
+  RelativeSusp-map s = Pushout₁ (relative-suspension-span-map s)
 }
 }
 
-\subtree[bak-BMXL]{
+\subtree[stt-012I]{
 \title{Locality of relative suspensions is locality of extension types}
 \taxon{Theorem}
 \author{fredrikbakke}
 \date{2026-09-17}
 
 \p{
-The mapping out property is natural in #{C}. Consequently locality at
-#{\suspension_δ s} is equivalent to locality at #{s} of every extension type.
+For any function #{s \colon C \to D} and type #{A}, there's an equivalence of arrows
+
+\quiver{
+\begin{tikzcd}
+\suspension_\delta C \to A && \Sigma1{f \colon X \to A}{(C \to \Ext{\delta}{f})} \\
+\\
+\suspension_\delta D \to A && \Sigma1{f \colon X \to A}{(D \to \Ext{\delta}{f})}\nsp{.}
+\arrow[from=1-1, to=1-3, "\sim"]
+\arrow[from=1-1, to=3-1, "{(-)} \circ \suspension_\delta s"']
+\arrow[from=1-3, to=3-3, "\sim"]
+\arrow[from=3-1, to=3-3, "\Sigma{({(-)}\circ \suspension_\delta s)}"]
+\end{tikzcd}
+}
+
+Consequently locality at #{\suspension_δ s} is equivalent to locality at #{s} of
+every extension type.
 }
 
 \agda{
@@ -81,7 +95,7 @@ module _
                   ( ~refl
                   , ( λ x
                       → ap-∘ h (RelativeSusp-map δ s) (glue (x , c))
-                      ∙ ap (ap h) (pushout-rec-apβ (x , c))))))
+                      ∙ ap (ap h) (pushout-rec-apβ (x , c) ∙ ∙-reflr _)))))
 
   RelativeSusp-precomp-equiv
     : Arrow-equiv
@@ -116,7 +130,7 @@ module _
 }
 }
 
-\subtree[bak-T4HG]{
+\subtree[stt-012T]{
 \title{Functoriality of the relative suspension}
 \taxon{Theorem}
 \author{fredrikbakke}
@@ -127,12 +141,9 @@ module _
 \agda{
 module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
 
-  RelativeSusp-map-id⁻¹
-    : ∀ {𝓦} {C : Type 𝓦}
-      → id ~ RelativeSusp-map δ (id: C)
-  RelativeSusp-map-id⁻¹
-    = pushout-rec-unique (mk-cocone ι₁ ι₂ glue) id ~refl ~refl
-        (λ a → ∙-reflr _ ∙ ap-id (glue a))
+  RelativeSusp-map-id
+    : ∀ {𝓦} {C : Type 𝓦} → id ~ RelativeSusp-map δ (id: C)
+  RelativeSusp-map-id = Pushout-id
 
   RelativeSusp-map-∘
     : ∀ {𝓦 𝓩 𝓐} {C : Type 𝓦} {D : Type 𝓩} {E : Type 𝓐}
@@ -140,18 +151,11 @@ module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
       → RelativeSusp-map δ t ∘ RelativeSusp-map δ s
       ~ RelativeSusp-map δ (t ∘ s)
   RelativeSusp-map-∘ t s
-    = pushout-rec-unique
-        (RelativeSusp-map-cocone δ (t ∘ s))
-        (RelativeSusp-map δ t ∘ RelativeSusp-map δ s) ~refl ~refl
-        ( λ (x , c)
-          → ∙-reflr _
-          ∙ ap-∘ (RelativeSusp-map δ t) (RelativeSusp-map δ s) (glue (x , c))
-          ∙ ap (ap (RelativeSusp-map δ t)) (pushout-rec-apβ (x , c))
-          ∙ pushout-rec-apβ (x , s c))
+    = Pushout-∘ (relative-suspension-span-map δ t) (relative-suspension-span-map δ s)
 }
 }
 
-\subtree[bak-LND6]{
+\subtree[stt-012M]{
 \title{Relative suspension of a family of maps}
 \taxon{Definition}
 \author{fredrikbakke}

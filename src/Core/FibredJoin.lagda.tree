@@ -37,7 +37,7 @@ open import Ergonomics.Extensionality
 }
 
 \subtree[stt-0084]{
-\title{The Fibred Join}
+\title{The fibred join}
 \taxon{Definition}
 
 \p{Given a cospan #{A \xrightarrow{f} B \xleftarrow{g} C}, and a
@@ -164,8 +164,9 @@ with the fibre of #{f'} at #{x}.}
 }
 
 \subtree[stt-008K]{
-\title{Fibred joins preserve universal embedding}
+\title{Fibred joins preserve universal embeddings}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 \citet{3.1}{Rij17}
 
 \p{Let #{f} be a map #{A \to B}, then given a map #{f' \colon A' \to B}
@@ -204,12 +205,15 @@ are arranged in the diagram below:}
 \end{tikzcd}
 }
 
-\p{To construct the map #{j \colon A *_B A' \to I'}, we need to show that the
-square with #{k} and #{\varphi^i(k)} commutes, but because #{i} is an
-embedding, it suffices to show the outer square commutes. Now, by
-pasting together triangles, we have #{f \sim ij\iota_1} and
-#{f' \sim ij\iota_2}, which by the universal property of pullbacks
-gives us #{ij \sim f * f'} as required.}
+\p{
+We construct the map #{j \colon A *_B A' \to I'} together with a homotopy
+#{i \circ j \sim f * f'} by pushout induction into the family
+#{z \mapsto \fibre{i}{(f * f')(z)}}. The maps #{k} and #{\varphi^i(k)}, together with
+the homotopies #{i \circ k \sim f} and #{i \circ \varphi^i(k) \sim f'}, specify the
+lift along the inclusions #{\iota_1 \colon A \to A *_B A'} and
+#{\iota_2 \colon A' \to A *_B A'}, respectively. Since #{i} is an embedding, equality
+over glue follows.
+}
 }
 
 \agda{
@@ -234,28 +238,17 @@ module _ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {A' : Type 𝓦} {B : Type 𝓥}
               (slice-embedding-is-prop iemb)
               (slice-embedding-is-prop iemb)
               map where
-      open pbₑ {f = f} {f'}
       module φ = is-equiv (emb i iemb)
 
       map : Slice-map f i → Slice-map (fibre-join f f') i
-      map k .fst = pushout-rec (mk-cocone
-        (k .fst)
-        (φ.bwd  k .fst)
-        (iemb ◂emb (k .snd ▹h π₁ ∙h pbₑ.filler ∙h ((φ.bwd k .snd ▹h π₂) h⁻¹))))
-      map k .snd = pushout-ind _ (mk-coconeᵈ
-        (k .snd)
-        (φ.bwd k .snd)
-        λ a → Idᵈ-func←Square (glue a) _ _ (mk-square
-                (ap (_∙ φ.bwd k .snd (π₂ a))
-                    ( ap-∘ i _ (glue a)
-                    ∙ ap (ap i) (pushout-rec-apβ a)
-                    ∙ is-equiv.ε iemb _)
-                ∙ (ap (_∙ φ.bwd k .snd (π₂ a))
-                      (sym (∙-assoc (k .snd _) (filler a) _))
-                ∙ ∙-assoc (k .snd _ ∙ filler a) (sym _) _
-                ∙ ap ((k .snd _ ∙ filler a) ∙_) (∙-sym' (φ.bwd k .snd _)))
-                ∙ ∙-reflr _
-                ∙ ap (k .snd (π₁ a) ∙_) (sym (pushout-rec-apβ a)))))
+      map k = ((λ z → lift z .fst) , (λ z → lift z .snd))
+        where
+        lift : (z : Fibre-join f f') → fibre i (fibre-join f f' z)
+        lift = pushout-ind _
+          (mk-coconeᵈ
+            (λ a → (k .fst a , k .snd a))
+            (λ a → (φ.bwd k .fst a , φ.bwd k .snd a))
+            (λ a → is-prop-map←is-embedding iemb _ _ _))
 }
 }
 
@@ -375,6 +368,7 @@ module _ {𝓤 𝓥 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
 \subtree[stt-008G]{
 \title{The modified image of a map}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
 \citet{3.3}{Rij17}
 
@@ -436,13 +430,10 @@ commutes:}
 \end{tikzcd}
 }
 
-\p{We construct the map via the recursion principle of the sequential
-colimit, so we require a cocone under the iterated fibred join
-sequence.  But we already have such a map for each point in the
-sequence because we have just shown that each #{f^{*n}} is a universal
-embedding. We show that the triangle commutes in the same way,
-first applying induction on the sequential colimit and then using the
-universal embedding property for each approximation.  }
+\p{We construct the map together with a proof that the displayed triangle commutes by
+induction on the sequential colimit into the family #{z \mapsto \fibre{i'}{i(z)}}.
+The universal embedding property of each #{f^{*n}} gives a lift on
+that stage of the sequence. Since #{i'} is an embedding, equality over glue follows.}
 
 \agda{
   all-univ
@@ -458,7 +449,6 @@ universal embedding property for each approximation.  }
     = Fibre-join-is-universal-embedding f _ (im-slice-map n) (all-univ n)
 
   opaque
-    unfolding Fibre-join-is-universal-embedding
     universal : is-universal-embedding f incl factors
     universal
       = is-universal-embedding←logical f incl factors map where
@@ -466,28 +456,13 @@ universal embedding property for each approximation.  }
           : ∀ {𝓦} {I' : Type 𝓦}
               (i' : I' → B) → is-embedding i'
             → Slice-map f i' → Slice-map incl i'
-        map i' iemb fi' .fst = seq-colim-rec (mk-seq-cocone
-          (λ {n} → is-equiv.bwd (all-univ n i' iemb) fi' .fst)
-          ~refl)
-        map i' iemb fi' .snd = pushout-ind _
-          (mk-coconeᵈ
-            (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
-            (uncurry λ n → is-equiv.bwd (all-univ n i' iemb) fi' .snd)
-            (⊎-ind
-              ( (uncurry λ n a → Idᵈ-func←Square (glue (inl (n , a))) _ _ (mk-square
-                        ( ap (_∙ (is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
-                            ( ap-∘ i' _ (glue (inl (n , a)))
-                            ∙ ap (ap i') (pushout-rec-apβ (inl (n , a))))
-                        ∙ sym (ap ((is-equiv.bwd (all-univ n i' iemb) fi' .snd a) ∙_)
-                                  (pushout-rec-apβ (inl (n , a)))
-                        ∙ ∙-reflr _))))
-              , uncurry λ n a → Idᵈ-func←Square (glue (inr (n , a))) _ _
-                  let e = is-equiv.bwd (all-univ n i' iemb) fi' .snd a
-                  in mk-square (
-                        ap (_∙ e) ( ap-∘ i' _ (glue (inr _))
-                                  ∙ ap (ap i') (pushout-rec-apβ _))
-                      ∙ sym ( ap (e ∙_) (pushout-rec-apβ _)
-                            ∙ ∙-reflr _)))))
+        map i' iemb fi' = ((λ z → lift z .fst) , (λ z → lift z .snd)) where
+          lift : (z : Im') → fibre i' (incl z)
+          lift = seq-colimit-ind
+            ( ( λ {n} a
+                → ( is-equiv.bwd (all-univ n i' iemb) fi' .fst a
+                  , is-equiv.bwd (all-univ n i' iemb) fi' .snd a))
+            , (λ a → is-prop-map←is-embedding iemb _ _ _))
 }
 
 \p{Now we show that that the inclusion #{i \colon \rm{Im}' \to B} is an

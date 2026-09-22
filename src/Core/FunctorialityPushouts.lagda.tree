@@ -22,6 +22,7 @@ open import Core.SpanMaps
 \subtree[stt-00B1]{
 \title{Span maps induce functors of pushouts}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \agda{
 Cocone₁
@@ -70,76 +71,57 @@ Pushout₁
     → Pushout₀ S → Pushout₀ S'
 Pushout₁ F = cogap (Cocone₁ F pushout)
 
+cogap-∘-Pushout₁
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓛}
+      {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'} {P : Type 𝓛}
+      (F : Span-map S S') (C : Cocone S' P)
+    → cogap C ∘ Pushout₁ F ~ cogap (Cocone₁ F C)
+cogap-∘-Pushout₁ F C
+  = let module F = Span-map F in
+    cogap-unique _ (cogap C) _ ~refl ~refl
+      ( ∙h-reflr _
+      ∙h ◃h∙∙ (cogap C) (ι₁ ◃h F.H) (glue ▹h F.h₂) (ι₂ ◃h (F.K h⁻¹))
+      ∙h ( (◃h∘ (cogap C) ι₁ F.H h⁻¹)
+         ⟩∙h⟨ (pushout-rec-apβ {c = C} ∘ F.h₂)
+         ⟩∙h⟨ (◃h∘ (cogap C) ι₂ (F.K h⁻¹) h⁻¹)))
+
 Pushout-id
   : ∀ {𝓤 𝓥 𝓦} {S : Span 𝓤 𝓥 𝓦}
     → id ~ Pushout₁ (id-span-map {S = S})
 Pushout-id
   = pushout-rec-unique _ _ ~refl ~refl λ a → ap (_∙ refl) (ap-id (glue a))
 
+Cocone₁-∘
+  : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦'' 𝓛}
+      {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'} {S'' : Span 𝓤'' 𝓥'' 𝓦''}
+      {P : Type 𝓛} (F : Span-map S' S'') (G : Span-map S S') (C : Cocone S'' P)
+    → Cocone₁ G (Cocone₁ F C) ＝ Cocone₁ (compose-span-map F G) C
+Cocone₁-∘ F G C
+  = let module F = Span-map F; module G = Span-map G; module C = Cocone C in
+    ap (mk-cocone _ _) (funext→ (λ a
+    → concat-rebase＝ (C.p ∘ F.h₁) (C.q ∘ F.h₃) (G.H a) (G.K a) _
+    ∙ ap (rebase＝ (ap (C.p ∘ F.h₁) (sym (G.H a))) (ap (C.q ∘ F.h₃) (sym (G.K a))))
+        (concat-rebase＝ C.p C.q (F.H (G.h₂ a)) (F.K (G.h₂ a)) (C.filler (F.h₂ (G.h₂ a))))
+    ∙ rebase＝-ap-∘ F.h₁ F.h₃ C.p C.q
+        (G.H a) (F.H (G.h₂ a)) (G.K a) (F.K (G.h₂ a))
+        (C.filler (F.h₂ (G.h₂ a)))
+    ∙ sym (concat-rebase＝ C.p C.q
+        (ap F.h₁ (G.H a) ∙ F.H (G.h₂ a))
+        (ap F.h₃ (G.K a) ∙ F.K (G.h₂ a))
+        (C.filler (F.h₂ (G.h₂ a))))))
+
 Pushout-∘
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦' 𝓤'' 𝓥'' 𝓦''}
       {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'} {S'' : Span 𝓤'' 𝓥'' 𝓦''}
       (F : Span-map S' S'') (G : Span-map S S')
-    → Pushout₁ F ∘ Pushout₁ G
-    ~ Pushout₁ (compose-span-map F G)
-Pushout-∘ {S = S} F G
-  = pushout-rec-unique
-          (Cocone₁ (compose-span-map F G) pushout)
-          (Pushout₁ F ∘ Pushout₁ G)
-          ~refl
-          ~refl
-          (∙h-reflr _
-          ∙h (ap-∘ (Pushout₁ F) (Pushout₁ G) ∘ glue)
-          ∙h (λ x → ap (ap (Pushout₁ F)) (pushout-rec-apβ x))
-          ∙h λ x → ap-∙∙ (Pushout₁ F)
-                         (ap ι₁ (G.H x)) (glue (G.h₂ x)) (ap ι₂ (sym (G.K x)))
-                  ∙   ap₃ (λ x y z → x ∙ y ∙ z)
-                         (sym (ap-∘ (Pushout₁ F) ι₁ (G.H x)))
-                         (pushout-rec-apβ (G.h₂ x))
-                         (sym (ap-∘ (Pushout₁ F) ι₂ (sym (G.K x))))
-                  ∙ lem) where
-    module F = Span-map F
-    module G = Span-map G
-    lem : {x : G.S.Centre} →
-      ap (λ a → ι₁ (F.h₁ a)) (G.H x) ∙
-      (ap ι₁ (F.H (G.h₂ x)) ∙
-       glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
-      ∙ ap (λ a → ι₂ (F.h₃ a)) (sym (G.K x))
-      ＝
-      ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
-      glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (ap F.h₃ (G.K x) ∙ F.K (G.h₂ x)))
-    lem {x}
-      = ap (ι₁ ∘ F.h₁) (G.H x) ∙
-         (ap ι₁ (F.H (G.h₂ x)) ∙
-          glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
-         ∙ ap (ι₂ ∘ F.h₃) (sym (G.K x))
-
-          ＝⟨ ap₂ (_∙_) (ap-∘ ι₁ F.h₁ (G.H x))
-                     (∙-assoc (ap ι₁ (F.H (G.h₂ x)))
-                              (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x))))
-                              (ap (ι₂ ∘ F.h₃) (sym (G.K x)))) ⟩
-        ap ι₁ (ap F.h₁ (G.H x)) ∙
-         ap ι₁ (F.H (G.h₂ x)) ∙
-         (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x)))) ∙
-         ap (ι₂ ∘ F.h₃) (sym (G.K x))
-
-         ＝⟨ sym (∙-assoc (ap ι₁ (ap F.h₁ (G.H x))) (ap ι₁ (F.H (G.h₂ x))) _)
-             ∙ ap (_∙ _) (sym (ap-∙ ι₁ (ap F.h₁ (G.H x)) (F.H (G.h₂ x)))) ⟩
-
-        ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
-         (glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (F.K (G.h₂ x)))) ∙
-         ap (ι₂ ∘ F.h₃) (sym (G.K x))
-
-         ＝⟨ ap (ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙_)
-              (∙-assoc (glue (F.h₂ (G.h₂ x))) _ _
-              ∙ ap (glue (F.h₂ (G.h₂ x)) ∙_)
-                   (ap (ap ι₂ _ ∙_) (ap-∘ ι₂ F.h₃ (sym (G.K x))
-                                    ∙ ap (ap ι₂) (ap-sym F.h₃ (G.K x)))
-                   ∙ sym (ap-∙ ι₂ (sym (F.K (G.h₂ x))) _)
-                   ∙ ap (ap ι₂) ( sym (∙-symsym (ap F.h₃ (G.K x)) (F.K (G.h₂ x)))))) ⟩
-
-        ap ι₁ (ap F.h₁ (G.H x) ∙ F.H (G.h₂ x)) ∙
-         glue (F.h₂ (G.h₂ x)) ∙ ap ι₂ (sym (ap F.h₃ (G.K _) ∙ F.K (G.h₂ _))) ∎
+    → Pushout₁ F ∘ Pushout₁ G ~ Pushout₁ (compose-span-map F G)
+Pushout-∘ F G
+  = Pushout₁ F ∘ Pushout₁ G
+      ~⟨ cogap-∘-Pushout₁ G _ ⟩
+    cogap (Cocone₁ G (Cocone₁ F pushout))
+      ~⟨ happly (ap cogap (Cocone₁-∘ F G pushout)) ⟩
+    Pushout₁ (compose-span-map F G)
+      ~∎
 
 Pushout-qinv
   : ∀ {𝓤 𝓥 𝓦 𝓤' 𝓥' 𝓦'} {S : Span 𝓤 𝓥 𝓦} {S' : Span 𝓤' 𝓥' 𝓦'}

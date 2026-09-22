@@ -1,0 +1,131 @@
+\title{Coslice types}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Coslices
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrows
+open import Core.CartesianSquares
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Categories Δ¹ I
+}
+}
+
+\subtree[tot-00C4]{
+\title{Coslice types}
+\taxon{Definition}
+
+\p{Given a type #{C} and an element #{c} of #{C}, we define a type
+#{C_{c/}} whose elements consists of morphisms in #{C} with domain #{c}.
+Equivalently, this is the fibre of the evaluation at #{0} map,
+#{C^{\Delta^1} \to C}.
+}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} where
+
+  Coslice : C → Type (𝓘 ⊔ 𝓤)
+  Coslice = fibre (ev: C i0)
+
+  Coslice-proj: : ∀ (c : C) → Coslice c → C
+  Coslice-proj: c = ev i1 ∘ fst
+
+  Coslice-proj : ∀ {c : C} → Coslice c → C
+  Coslice-proj = Coslice-proj: _
+
+  Hom←Slice : {c : C} → (x : Coslice c) → Hom C c (Coslice-proj x)
+  Hom←Slice x .Homᵈ.hom = x .fst
+  Hom←Slice x .Homᵈ.hom0 = x .snd
+  Hom←Slice x .Homᵈ.hom1 = refl
+}
+}
+
+
+\subtree[tot-C9R1]{
+\title{Coslice projection as a base-change of the endpoint evaluation map}
+\taxon{Lemma}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The codomain projection #{C_{/c} \to C} is a base-change of
+#{C^{\Delta^1} \to C \times C} by #{C \xrightarrow{(c, _)} C \times C}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  src×tgt←coslice-proj : Arrow-map (Coslice-proj: c) (src×tgt: C)
+  src×tgt←coslice-proj .Arrow-Π.top = fst
+  src×tgt←coslice-proj .Arrow-Π.bot = (c ,_)
+  src×tgt←coslice-proj .Arrow-Π.comm (f , p) = ×-path→ (sym p , refl)
+
+  opaque
+    coslice-proj-base-change-of-src×tgt : is-cartesian src×tgt←coslice-proj
+    coslice-proj-base-change-of-src×tgt a
+      = is-equiv←~
+          (λ where ((f , refl) , refl) → refl)
+          (eqv a ._≃_.fwd-is-equiv) where
+      eqv : ∀ a → fibre (Coslice-proj: c) a ≃ fibre (src×tgt: C) (c , a)
+      eqv a = Σ-assoc ∙e Σ-snd-≃ λ f → ×-path
+}
+}
+
+\subtree[tot-ACUV]{
+\title{[Global reflective subuniverses]() are closed under taking coslices}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-22}
+
+\agda{
+module gReflectiveCosliceClosure
+  {α 𝓤} (K : gRSubU α)
+  (open gRSubU K renaming (S to 𝓚))
+  (open gReflectiveClosure K)
+  {C : Type 𝓤} (c : C) (C∈K : C ∈ 𝓚)
+  where
+
+  Coslice∈S : Coslice c ∈ 𝓚
+  Coslice∈S = fibre∈S (ev i0) c (Π∈S (λ _ → C∈K)) C∈K
+}
+
+\p{In particular, slices of [(complete)]() [Segal types]() are (complete) Segal, and
+slices of [(pre)]()[categories]() are (pre)categories.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  open gReflectiveCosliceClosure Segal-gRSubU c public
+    renaming (Coslice∈S to Coslice-is-segal)
+
+  open gReflectiveCosliceClosure Precat-gRSubU c public
+    renaming (Coslice∈S to Coslice-is-precategory)
+
+  open gReflectiveCosliceClosure CompleteSegal-gRSubU c public
+    renaming (Coslice∈S to Coslice-is-complete-segal)
+
+  open gReflectiveCosliceClosure Category-gRSubU c public
+    renaming (Coslice∈S to Coslice-is-category)
+}
+}

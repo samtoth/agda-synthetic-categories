@@ -26,7 +26,8 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-
+open import Core.Arrows
+open import Core.CartesianSquares
 open import Core.Orthogonal
 open import Core.FunctorialityPullbacks
 open import Core.Slices
@@ -36,6 +37,7 @@ open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.NaturalTransformations Δ¹ I
 }
 }
@@ -114,15 +116,72 @@ module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
 }
 }
 
-\subtree[stt-00C4]{
+\subtree[stt-00CG]{
+\title{Paths in comma types}
+
+\agda{
+Comma-path
+  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+      {f : a → b} {g : c → b}
+    → (x y : f ↓ g) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓘)
+Comma-path {f = F} {g = G} (a , b , f) (a' , b' , f')
+  = Σ[ p ∶ a ＝ a' ] Σ[ q ∶ b ＝ b' ] Hom-pathᵈ (ap F p) (ap G q) f f'
+
+Comma-path-refl
+  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+      {f : a → b} {g : c → b}
+    → {x : f ↓ g} → Comma-path x x
+Comma-path-refl = (refl , refl , Hom-pathᵈ-refl)
+
+opaque
+  Comma-path-is-torsorial
+    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+        {f : a → b} {g : c → b}
+      → {x : f ↓ g} → is-torsorial (Comma-path x)
+  Comma-path-is-torsorial
+    = is-singleton-structure←parts
+        Sing-is-singleton
+        (_ , refl)
+        (is-singleton-structure←parts
+          Sing-is-singleton
+          (_ , refl)
+          Hom-pathᵈ-is-torsorial)
+
+instance
+  IdS-Comma
+    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
+        {F : a → b} {G : c → b} → Identity-system (F ↓ G) (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  IdS-Comma .Identity-system.IdS = Comma-path
+  IdS-Comma .Identity-system.IdS←Id refl = Comma-path-refl
+  IdS-Comma .Identity-system.IdS←Id-is-equiv x
+    = fundamental-Id _ Comma-path-is-torsorial _
+}
+}
+
+\subtree[tot-CID4]{
 \title{Slice and coslice categories as lax pullbacks}
 \taxon{Example}
 
-\p{A common example of a comma category is a slice category. Given a type
-#{C} and #{c}, an object of #{C}, we consider the category #{C/c} of which
-the objects consists of pairs of objects of #{C} together with maps into #{c}.
+\agda{
+-- Slice-directed-cone
+--   : ∀ {𝓤} {C : Type 𝓤} (c : C)
+--     → directed-cone (mk-cospan C id (point c)) (Slice' c)
+-- Slice-directed-cone _ .directed-cone.p = Slice-proj
+-- Slice-directed-cone _ .directed-cone.q = !
+-- Slice-directed-cone _ .directed-cone.filler = Hom←Slice
+
+-- Slice-has-up-comma
+--   : ∀ {𝓤} {C : Type 𝓤} {c : C}
+--     → up-comma (Slice-directed-cone c)
+-- Slice-has-up-comma = is-equiv←qinv
+--   ( (λ c q
+--      → (c .directed-cone.filler q .Homᵈ.hom , c .directed-cone.filler q .Homᵈ.hom1))
+--   , ~refl
+--   , (λ c → {!!}))
+}
 }
 
+\subtree[tot-BSCY]{
 \p{We generalise this notation slightly, to consider any diagram
 #{F \colon \mathcal{I}\to C}, which gives rise to the slice category #{C/F} for which
 the objects consists of pairs of objects of #{c}, now with a natural transformation
@@ -185,7 +244,6 @@ Coslice-is-comma F = is-equiv←qinv qinv where
   qinv .snd .fst f =  funext→ (λ q → Σ-path→ (refl , _≃_.ε Nat≃Hom (f q .snd)))
   qinv .snd .snd c =  ap (mk-directed-cone _ (directed-cone.q c))
                         (funext→ (_≃_.η Nat≃Hom ∘ directed-cone.filler c))
-
 
 Slice-path
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
@@ -335,48 +393,6 @@ Slice-object-repr≃ = equiv←qequiv ∘ Slice-object-repr≊
 }
 }
 
-\subtree[stt-00CG]{
-\title{Paths in comma types}
-
-\agda{
-Comma-path
-  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
-      {f : a → b} {g : c → b}
-    → (x y : f ↓ g) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓘)
-Comma-path {f = F} {g = G} (a , b , f) (a' , b' , f')
-  = Σ[ p ∶ a ＝ a' ] Σ[ q ∶ b ＝ b' ] Hom-pathᵈ (ap F p) (ap G q) f f'
-
-Comma-path-refl
-  : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
-      {f : a → b} {g : c → b}
-    → {x : f ↓ g} → Comma-path x x
-Comma-path-refl = (refl , refl , Hom-pathᵈ-refl)
-
-opaque
-  Comma-path-is-torsorial
-    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
-        {f : a → b} {g : c → b}
-      → {x : f ↓ g} → is-torsorial (Comma-path x)
-  Comma-path-is-torsorial
-    = is-singleton-structure←parts
-        Sing-is-singleton
-        (_ , refl)
-        (is-singleton-structure←parts
-          Sing-is-singleton
-          (_ , refl)
-          Hom-pathᵈ-is-torsorial)
-
-instance
-  IdS-Comma
-    : ∀ {𝓤 𝓥 𝓦} {a : Type 𝓤} {b : Type 𝓥} {c : Type 𝓦}
-        {F : a → b} {G : c → b} → Identity-system (F ↓ G) (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
-  IdS-Comma .Identity-system.IdS = Comma-path
-  IdS-Comma .Identity-system.IdS←Id refl = Comma-path-refl
-  IdS-Comma .Identity-system.IdS←Id-is-equiv x
-    = fundamental-Id _ Comma-path-is-torsorial _
-}
-}
-
 \subtree[stt-00TO]{
 \taxon{Lemma}
 
@@ -471,7 +487,7 @@ Comma-∘ F G (x , y , f) = ext!
 \title{Functoriality of the slice construction}
 \taxon{Corollary}
 
-\p{The functoriality of somewhat of the (co)slice construction is somewhat
+\p{The functoriality of the (co)slice construction is somewhat
 more subtle to express. The operation #{-_{/-}} can be considered a functor
 #{(\Sigma1{A : \UU}{(\UU_{/A})^{\op}}) \to \UU}. In the first argument, we can express
 functoriality as follows: given a map #{f \colon A \to B}, there is a function

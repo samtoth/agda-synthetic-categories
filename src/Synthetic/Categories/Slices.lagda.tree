@@ -1,0 +1,157 @@
+\title{Slice types}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Slices
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrows
+open import Core.CartesianSquares
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Categories Δ¹ I
+}
+}
+
+\subtree[stt-00C4]{
+\title{Slice types}
+\taxon{Definition}
+
+\p{Given a type #{C} and an element #{c} of #{C}, we define a type
+#{C_{/c}} whose elements consists of morphisms in #{C} with codomain #{c}.
+Equivalently, this is the fibre of the evaluation at #{1} map, #{C^{\Delta^1} \to C}.
+}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} where
+  Slice : C → Type (𝓘 ⊔ 𝓤)
+  Slice = fibre (ev: C i1)
+
+  Slice-proj: : ∀ (c : C) → Slice c → C
+  Slice-proj: c = ev i0 ∘ fst
+
+  Slice-proj : ∀ {c : C} → Slice c → C
+  Slice-proj = Slice-proj: _
+
+  Hom←Slice : {c : C} → (x : Slice c) → Hom C (Slice-proj x) c
+  Hom←Slice x .Homᵈ.hom = x .fst
+  Hom←Slice x .Homᵈ.hom0 = refl
+  Hom←Slice x .Homᵈ.hom1 = x .snd
+}
+}
+
+\subtree[tot-CYR1]{
+\title{Slice projection as a base-change of the endpoint evaluation map}
+\taxon{Lemma}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The domain projection #{C_{/c} \to C} is a base-change of
+#{C^{\Delta^1} \to C \times C} by #{C \xrightarrow{(_, c)} C \times C}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  src×tgt←slice-proj : Arrow-map (Slice-proj: c) (src×tgt: C)
+  src×tgt←slice-proj .Arrow-Π.top = fst
+  src×tgt←slice-proj .Arrow-Π.bot = (_, c)
+  src×tgt←slice-proj .Arrow-Π.comm (f , p) = ×-path→ (refl , sym p)
+
+  opaque
+    slice-proj-base-change-of-src×tgt : is-cartesian src×tgt←slice-proj
+    slice-proj-base-change-of-src×tgt a
+      = is-equiv←~
+          (λ where ((f , refl) , refl) → refl)
+          (eqv a ._≃_.fwd-is-equiv) where
+      eqv : ∀ a → fibre (Slice-proj: c) a ≃ fibre (src×tgt: C) (a , c)
+      eqv a = Σ-assoc ∙e Σ-snd-≃ (λ f → ×-swap ∙e ×-path)
+}
+}
+
+\subtree[tot-0943]{
+\title{[Global reflective subuniverses]() are closed under taking slices}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-22}
+
+\agda{
+module gReflectiveSliceClosure
+  {α 𝓤} (K : gRSubU α)
+  (open gRSubU K renaming (S to 𝓚))
+  (open gReflectiveClosure K)
+  {C : Type 𝓤} (c : C) (C∈K : C ∈ 𝓚)
+  where
+
+  Slice∈S : Slice c ∈ 𝓚
+  Slice∈S = fibre∈S (ev i1) c (Π∈S (λ _ → C∈K)) C∈K
+}
+
+\p{In particular, slices of [(complete)]() [Segal types]() are (complete) Segal, and
+slices of [(pre)]()[categories]() are (pre)categories.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  open gReflectiveSliceClosure Segal-gRSubU c public
+    renaming (Slice∈S to Slice-is-segal)
+
+  open gReflectiveSliceClosure Precat-gRSubU c public
+    renaming (Slice∈S to Slice-is-precategory)
+
+  open gReflectiveSliceClosure CompleteSegal-gRSubU c public
+    renaming (Slice∈S to Slice-is-complete-segal)
+
+  open gReflectiveSliceClosure Category-gRSubU c public
+    renaming (Slice∈S to Slice-is-category)
+}
+}
+
+\subtree[tot-00Y6]{
+\title{Functoriality of the slice construction}
+
+\agda{
+module _ (open Type∗) (open map∗) where
+
+  Slice₀ : ∀ {𝓤} → Type∗ 𝓤 → Type (𝓘 ⊔ 𝓤)
+  Slice₀ A = Slice (A .Type∗.pt)
+
+  Slice₁ : ∀ {𝓤 𝓥} {A : Type∗ 𝓤} {B : Type∗ 𝓥} → map∗ A B → Slice₀ A → Slice₀ B
+  Slice₁ (mk-map∗ f p) = map-Σ (postcomp Δ¹ f) (λ g → (_∙ p) ∘ ap f)
+
+  Slice-id : ∀ {𝓤} {A : Type∗ 𝓤} → Slice₁ (id∗ A) ~ id: (Slice₀ A)
+  Slice-id x = fibre-path→ (refl , (sym (∙-reflr _ ∙ ap-id _)))
+
+  Slice-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type∗ 𝓤} {B : Type∗ 𝓥} {C : Type∗ 𝓦}
+        {f : map∗ B C} {g : map∗ A B}
+      → Slice₁ (f ∘∗ g) ~ Slice₁ f ∘ Slice₁ g
+  Slice-∘ {f = f} {g} h
+    = fibre-path→
+        ( refl
+        , ap (_∙ f .pres-pt)
+            ( ap-∙ (f .hom) _ (g .pres-pt)
+            ∙ ap (_∙ ap (f .hom) (g .pres-pt)) (sym (ap-∘ (f .hom) (g .hom) (h .snd))))
+        ∙ ∙-assoc (ap (f .hom ∘ g .hom) (h .snd)) (ap (f .hom) (g .pres-pt)) (f .pres-pt))
+}
+}

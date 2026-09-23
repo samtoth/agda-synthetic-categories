@@ -25,6 +25,7 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.CanonicalPushouts
+open import Core.Postwhisker
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
@@ -195,7 +196,7 @@ adjust-Hom2-filler
     → (px : x ＝ x') (py : y ＝ y') (pz : z ＝ z')
     → {f : Hom A y z} {g : Hom A x y} {h : Hom A x z}
     → (K : Hom2 f g h)
-    → (adjust-Hom2 px py pz K) .fst ＝ K .fst
+    → (adjust-Hom2 px py pz {f = f} {g} {h} K) .fst ＝ K .fst
 adjust-Hom2-filler refl refl refl {f = f} {g} {h}
   = Hom2-filler-tr
       (adjust-hom-refl f)
@@ -266,7 +267,7 @@ ap-hom2
       {x y z : A} (f : Hom A y z) (g : Hom A x y) (h : Hom A x z)
     → Hom2 f g h → Hom2 (ap-hom F f) (ap-hom F g) (ap-hom F h)
 ap-hom2 F f g h K .fst = F ∘ K .fst
-ap-hom2 F f g h K .snd a = ap F (K .snd a) ∙ ap-∂Δ² F a
+ap-hom2 F f g h K .snd a = ap F (K .snd a) ∙ ap-∂Δ² F {f = f} {g} {h} a
 
 ap-hom2-diagonal
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (F : A → B)
@@ -274,7 +275,8 @@ ap-hom2-diagonal
       (K : Hom2 f g h)
     → ap-hom2 F f g h K .snd ∘ ι₂ ~ ap F ∘ K .snd ∘ ι₂
 ap-hom2-diagonal F f g h K i
-  = ap (ap F (K .snd (ι₂ i)) ∙_) (ap-∂Δ²-diagonal F i) ∙ ∙-reflr _
+  = ap (ap F (K .snd (ι₂ i)) ∙_) (ap-∂Δ²-diagonal F {f = f} {g} {h} i)
+  ∙ ∙-reflr _
 
 Hom2-Σ-fst
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
@@ -519,5 +521,73 @@ we formalise next.
           (Δ²-ext (1-coinit' , 1-top'))
           (Δ²-ext (0-bottom , 0-init'))
           Hom2-horn-glue)
+}
+}
+
+\subtree[bak-ADA2]{
+\title{Composition triangles as extensions of inner horns}
+\taxon{Equivalence}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-09-22}
+
+\p{
+Given a [horn](stt-00AD) #{f : \Hom_A(x,y)}, #{g : \Hom_A(y,z)}, then an extension
+of the horn to a [triangle](stt-00AK) is equivalent to a choice of morphism
+#{h : \Hom_A(x,z)} together with a witness of composition.
+}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} {x y z} (f : Hom A y z) (g : Hom A x y) where
+
+  ext-∂Δ²←Λ[2,1] : Hom A x z → Ext ∂Δ²←Λ[2,1] (make-horn f g)
+  ext-∂Δ²←Λ[2,1] h = (make-∂Δ² f g h , ~refl)
+
+  opaque
+    ext-∂Δ²←Λ[2,1]-is-equiv : is-equiv ext-∂Δ²←Λ[2,1]
+    ext-∂Δ²←Λ[2,1]-is-equiv = e ._≃_.fwd-is-equiv where
+      e : Hom A x z ≃ Ext ∂Δ²←Λ[2,1] (make-horn f g)
+      e = Homᵈ-repr≃
+        ∙e Σ-snd-≃ (λ h
+          → ( (sym≃ ∙e ＝-postconcat-≃ (g .Homᵈ.hom0))
+            ×≃ (sym≃ ∙e ＝-postconcat-≃ (f .Homᵈ.hom1)))
+          ∙e ∂Δ¹-UP)
+        ∙e (remove-singleton-structure Sing'-is-singleton (_ , refl) e⁻¹)
+        ∙e Σ-fst-≃ (cocone-repr≃ e⁻¹)
+        ∙e Σ-snd-≃ (λ _ → funext≃)
+        ∙e Σ-fst-≃ (Pushout-UP≃ e⁻¹)
+
+  Hom≃Ext-∂Δ²←Λ[2,1] : Hom A x z ≃ Ext ∂Δ²←Λ[2,1] (make-horn f g)
+  Hom≃Ext-∂Δ²←Λ[2,1] = mk≃ ext-∂Δ²←Λ[2,1] ext-∂Δ²←Λ[2,1]-is-equiv
+
+  Hom≃Ext-∂Δ²←Λ[2,1]-diagonal
+    : Homᵈ.hom ∘ is-equiv.bwd ext-∂Δ²←Λ[2,1]-is-equiv ~ precomp A ι₂ ∘ fst
+  Hom≃Ext-∂Δ²←Λ[2,1]-diagonal
+    = (Homᵈ.hom ◃h is-equiv.η ext-∂Δ²←Λ[2,1]-is-equiv)
+    ▸e⁻¹ ext-∂Δ²←Λ[2,1]-is-equiv
+
+  Λ[2,1]-incl-ext≃composite
+    : (Σ[ H ∶ (Δ² → A) ] (H ∘ Λ[2,1]-incl ＝ make-horn f g))
+    ≃ (Σ[ h ∶ Hom A x z ] (Hom2 f g h))
+  Λ[2,1]-incl-ext≃composite
+    = Σ-snd-≃ (λ _ → funext≃)
+    ∙e Ext-compose≃ ∂Δ²-incl ∂Δ²←Λ[2,1] (make-horn f g)
+    ∙e (Σ-fst-≃ {B = Ext ∂Δ²-incl ∘ fst} Hom≃Ext-∂Δ²←Λ[2,1] e⁻¹)
+
+  composite←Λ[2,1]-incl-ext
+    : (Σ[ H ∶ (Δ² → A) ] (H ∘ Λ[2,1]-incl ＝ make-horn f g))
+    → Σ[ h ∶ Hom A x z ] (Hom2 f g h)
+  composite←Λ[2,1]-incl-ext = Λ[2,1]-incl-ext≃composite ._≃_.fwd
+
+  composite←Λ[2,1]-incl-ext-is-equiv
+    : is-equiv composite←Λ[2,1]-incl-ext
+  composite←Λ[2,1]-incl-ext-is-equiv
+    = Λ[2,1]-incl-ext≃composite ._≃_.fwd-is-equiv
+
+  composite←Λ[2,1]-incl-ext-diagonal
+    : Homᵈ.hom ∘ fst ∘ composite←Λ[2,1]-incl-ext
+    ~ precomp A Δ²-diagonal ∘ fst
+  composite←Λ[2,1]-incl-ext-diagonal H
+    = Hom≃Ext-∂Δ²←Λ[2,1]-diagonal _
 }
 }

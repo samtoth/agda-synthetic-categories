@@ -24,6 +24,23 @@ open import Foundations.IsEquivIsProp
 }
 }
 
+\subtree[bak-68A4]{
+\title{Types over a base}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-23}
+
+\p{
+For a type #{B : \UU}, a \em{bundle} over #{B} with domain in #{\UV} consists of a
+type #{E : \UV} together with a map #{E \to B}.
+}
+
+\agda{
+Bundle : ∀ {𝓤} (𝓥 : Level) (B : Type 𝓤) → Type (𝓤 ⊔ lsuc 𝓥)
+Bundle 𝓥 B = Σ[ E ∶ Type 𝓥 ] (E → B)
+}
+}
+
 \subtree[stt-003S]{
 \taxon{Theorem}
 \title{Replacement by fibres}
@@ -57,69 +74,53 @@ total≃total-fibre {A = A} p
 }
 }
 
+\agda{
+module WithUA (𝓤 𝓥 : Level) (UU : is-univalent (𝓤 ⊔ 𝓥)) (FE : FunExt-global) where
+  open WithLocalUnivalence UU
+  open WithFunExt-global FE
+}
+
 \subtree[stt-003Q]{
 \title{Straightening}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 \date{2025-08-06}
 
-\p{Under the assumption of univalence, given a base type #{B}, we can
-define an equivalence between types \em{over} #{B} - #{\Sigma1{E : \UU}{(E
-\to B)}} and type families #{B \to \UU}. The former type is said to be
-the \em{unstraightened} version of the later - and
-visa-versa. Sometimes, we also call the unstraightened perspective to
-be called \em{fibred} and the staightened version \em{indexed}.}
+\p{
+Under the assumption of univalence, given a base type #{B : \UU}, we can define an
+equivalence between types \em{over} #{B} — #{\Sigma1{E : \UU \cup \UV}{(E \to B)}}
+and type families #{B \to \UU \cup \UV}. The former type is said to be the
+\em{unstraightened} version of the latter — and the latter is said to be the
+em{straightened} version of the former. We also call the unstraightened perspective
+\em{fibred} and the \em{straightened} perspective \em{indexed}.
+}
 
 \agda{
-module WithUA {𝓤} (UU : is-univalent 𝓤) (FE : FunExt-global) where
-  open WithLocalUnivalence UU
-  open WithFunExt-global FE
-
-  Bundle : Type 𝓤 → Type (lsuc 𝓤)
-  Bundle B = Σ[ E ∶ Type 𝓤 ] (E → B)
-
-  straighten : ∀ {B} → Bundle B → B → Type 𝓤
+  straighten : {B : Type 𝓤} → Bundle (𝓤 ⊔ 𝓥) B → B → Type (𝓤 ⊔ 𝓥)
   straighten (E , p) = fibre p
 
-  unstraighten : ∀ {B} → (B → Type 𝓤) → Bundle B
+  unstraighten : {B : Type 𝓤} → (B → Type (𝓤 ⊔ 𝓥)) → Bundle (𝓤 ⊔ 𝓥) B
   unstraighten {B} P = (Σ _ P , fst)
 
-  straighten-qinv : ∀ {B} → quasi-inv (straighten {B})
+  straighten-qinv : {B : Type 𝓤} → quasi-inv (straighten {B})
   straighten-qinv .fst = unstraighten
   straighten-qinv .snd .snd P
     = funext→ (λ b → ua (fibre-straighten P b))
   straighten-qinv .snd .fst (E , p)
     = Σ-path→
       ( ua (total≃total-fibre p)
-      , tr-ap1 (ua (total≃total-fibre p)) fst ∙ ap (fst ∘_) (sym-coe-ua))
-    where
-    tr-ap1
-      : ∀ {A A' B : Type 𝓤} (p : A ＝ A') f
-        → tr (λ A → A → B) p f ＝ λ x → f (coe (sym p) x)
-    tr-ap1 refl f = refl
+      , tr-→-domain (ua (total≃total-fibre p)) fst ∙ ap (fst ∘_) coe-sym-ua)
 
-    lem : ∀ {A} → id≃ e⁻¹ ＝ id≃ {𝓤} {A}
-    lem = ≃-path→ FE refl
-
-    ua-sym : ∀ {A B} {e : A ≃ B} → sym (ua e) ＝ ua (e e⁻¹)
-    ua-sym = equiv-J (λ _ e → sym (ua e) ＝ ua (e e⁻¹))
-                     (ap sym (ua-id≃) ∙ sym (ap ua lem ∙ ua-id≃))
-                     _ _
-
-    sym-coe-ua : ∀ {A B} → {e : A ≃ B} → coe (sym (ua e)) ＝ _≃_.bwd e
-    sym-coe-ua {A} {e = e} = ≃-ind (λ _ e → coe (sym (ua e)) ＝ _≃_.bwd e)
-                              (λ where .A refl → ap coe ua-sym ∙ coe-ua)
-                               _ e
-
-  straighten-is-equiv : ∀ {B} → is-equiv (straighten {B})
+  straighten-is-equiv : {B : Type 𝓤} → is-equiv (straighten {B})
   straighten-is-equiv = is-equiv←qinv straighten-qinv
 
-  straighten≃ : ∀ {B} → Bundle B ≃ (B → Type 𝓤)
+  straighten≃ : {B : Type 𝓤} → Bundle (𝓤 ⊔ 𝓥) B ≃ (B → Type (𝓤 ⊔ 𝓥))
   straighten≃ = mk≃ _ straighten-is-equiv
 
-  unstraighten-is-equiv : ∀ {B} → is-equiv (unstraighten {B})
+  unstraighten-is-equiv : {B : Type 𝓤} → is-equiv (unstraighten {B})
   unstraighten-is-equiv = is-equiv⁻¹ straighten-is-equiv
 
-  unstraighten≃ : ∀ {B} →  (B → Type 𝓤) ≃ Bundle B
+  unstraighten≃ : {B : Type 𝓤} → (B → Type (𝓤 ⊔ 𝓥)) ≃ Bundle (𝓤 ⊔ 𝓥) B
   unstraighten≃ = mk≃ _ unstraighten-is-equiv
 }
 }

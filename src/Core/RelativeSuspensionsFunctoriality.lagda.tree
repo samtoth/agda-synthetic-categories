@@ -1,0 +1,184 @@
+\date{2026-09-17}
+\title{Functoriality of relative suspensions}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+module Core.RelativeSuspensionsFunctoriality where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.CanonicalPushouts
+open import Core.FunctorialityPushouts
+open import Core.SpanMaps
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.RelativeSuspensions
+}
+}
+
+\subtree[stt-012Q]{
+\title{The functorial action of relative suspensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-09-17}
+
+\p{
+A map #{s \colon C \to D} induces a map #{\suspension_δ C \to \suspension_δ D}
+under #{X}. This is the \em{functorial action on maps of the #{\delta}-suspension}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
+
+  relative-suspension-span-map
+    : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
+      → (C → D)
+      → Span-map (relative-suspension-span δ C) (relative-suspension-span δ D)
+  relative-suspension-span-map s = mk-span-map (id ×₁ s) (id ×₁ s) id ~refl ~refl
+
+  RelativeSusp-map
+    : ∀ {𝓦 𝓩} {C : Type 𝓦} {D : Type 𝓩}
+      → (C → D) → RelativeSusp δ C → RelativeSusp δ D
+  RelativeSusp-map s = Pushout₁ (relative-suspension-span-map s)
+}
+}
+
+\subtree[stt-012I]{
+\title{Locality of relative suspensions is locality of extension types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+For any function #{s \colon C \to D} and type #{A}, there's an equivalence of arrows
+
+\quiver{
+\begin{tikzcd}
+\suspension_\delta C \to A && \Sigma1{f \colon X \to A}{(C \to \Ext{\delta}{f})} \\
+\\
+\suspension_\delta D \to A && \Sigma1{f \colon X \to A}{(D \to \Ext{\delta}{f})}\nsp{.}
+\arrow[from=1-1, to=1-3, "\sim"]
+\arrow[from=1-1, to=3-1, "{(-)} \circ \suspension_\delta s"']
+\arrow[from=1-3, to=3-3, "\sim"]
+\arrow[from=3-1, to=3-3, "\Sigma{({(-)}\circ \suspension_\delta s)}"]
+\end{tikzcd}
+}
+
+Consequently locality at #{\suspension_δ s} is equivalent to locality at #{s} of
+every extension type.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓩 𝓐} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦} {D : Type 𝓩} (s : C → D)
+  {A : Type 𝓐}
+  where
+
+  opaque
+    RelativeSusp-restrict-natural
+      : RelativeSusp-restrict δ ∘ precomp A (RelativeSusp-map δ s)
+      ~ total-map (λ f → precomp (Ext δ f) s) ∘ RelativeSusp-restrict δ
+    RelativeSusp-restrict-natural h
+      = ap
+          ((h ∘ ι₂) ,_)
+          (funext→
+            ( λ c
+              → Id←Ext-htpy
+                  ( ~refl
+                  , ( λ x
+                      → ap-∘ h (RelativeSusp-map δ s) (glue (x , c))
+                      ∙ ap (ap h) (pushout-rec-apβ (x , c) ∙ ∙-reflr _)))))
+
+  RelativeSusp-precomp-equiv
+    : Arrow-equiv
+        (precomp A (RelativeSusp-map δ s))
+        (total-map (λ f → precomp (Ext δ f) s))
+  RelativeSusp-precomp-equiv
+    = mk-arr-equiv (RelativeSusp-UP≃ δ) (RelativeSusp-UP≃ δ)
+        ( RelativeSusp-UP-β δ ▹h precomp A (RelativeSusp-map δ s)
+        ∙h RelativeSusp-restrict-natural
+        ∙h total-map (λ f → precomp (Ext δ f) s) ◃h (RelativeSusp-UP-β δ h⁻¹))
+
+  extensions-local←RelativeSusp-local
+    : orthogonal-type (RelativeSusp-map δ s) A
+    → (f : X → A) → orthogonal-type s (Ext δ f)
+  extensions-local←RelativeSusp-local
+    = is-fibrewise-equiv←is-total-equiv
+    ∘ tgt-is-equiv←Arrow-equiv RelativeSusp-precomp-equiv
+
+  RelativeSusp-local←extensions-local
+    : ((f : X → A) → orthogonal-type s (Ext δ f))
+    → orthogonal-type (RelativeSusp-map δ s) A
+  RelativeSusp-local←extensions-local
+    = src-is-equiv←Arrow-equiv RelativeSusp-precomp-equiv
+    ∘ is-total-equiv←is-fibrewise-equiv
+
+  RelativeSusp-local↔extensions-local
+    : orthogonal-type (RelativeSusp-map δ s) A
+    ↔ ((f : X → A) → orthogonal-type s (Ext δ f))
+  RelativeSusp-local↔extensions-local
+    = ( extensions-local←RelativeSusp-local
+      , RelativeSusp-local←extensions-local)
+}
+}
+
+\subtree[stt-012T]{
+\title{Functoriality of the relative suspension}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{The relative suspension preserves identities and composition.}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥} (δ : X → Y) where
+
+  RelativeSusp-map-id
+    : ∀ {𝓦} {C : Type 𝓦} → id ~ RelativeSusp-map δ (id: C)
+  RelativeSusp-map-id = Pushout-id
+
+  RelativeSusp-map-∘
+    : ∀ {𝓦 𝓩 𝓐} {C : Type 𝓦} {D : Type 𝓩} {E : Type 𝓐}
+      → (t : D → E) (s : C → D)
+      → RelativeSusp-map δ t ∘ RelativeSusp-map δ s
+      ~ RelativeSusp-map δ (t ∘ s)
+  RelativeSusp-map-∘ t s
+    = Pushout-∘ (relative-suspension-span-map δ t) (relative-suspension-span-map δ s)
+}
+}
+
+\subtree[stt-012M]{
+\title{Relative suspension of a family of maps}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given families #{δ_i} and #{s_j}, then there is an induced family of maps on relative
+suspensions indexed by #{I × J}.
+}
+
+\agda{
+module _
+  {𝓘 𝓙 𝓤 𝓥 𝓦 𝓩} {I : Type 𝓘} {J : Type 𝓙}
+  {X : I → Type 𝓤} {Y : I → Type 𝓥}
+  {C : J → Type 𝓦} {D : J → Type 𝓩}
+  (δ : (i : I) → X i → Y i) (s : (j : J) → C j → D j)
+  where
+
+  RelativeSusp-family
+    : (ij : I × J)
+    → RelativeSusp (δ (ij .fst)) (C (ij .snd))
+    → RelativeSusp (δ (ij .fst)) (D (ij .snd))
+  RelativeSusp-family (i , j)
+    = RelativeSusp-map (δ i) (s j)
+}
+}

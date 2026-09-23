@@ -1,6 +1,7 @@
 \date{2025-04-16}
 \title{Coproducts}
 \author{samueltoth}
+\contributor{fredrikbakke}
 \taxon{Module}
 
 \import{stt-macros}
@@ -13,11 +14,18 @@ module Foundations.Coproducts where
 \agda-imports{
 \agda{
 open import Foundations.Universes
+open import Foundations.Bool
+open import Foundations.Empty
+open import Foundations.Singletons
 open import Foundations.Functions
 open import Foundations.Identity
+open import Foundations.Homotopy
 open import Foundations.Sigma
+open import Foundations.SigmaIdentity
+open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
 open import Foundations.FunExt
+open import Foundations.SigmaProperties
 }
 }
 
@@ -39,28 +47,189 @@ data _⊎_ {𝓤 𝓥} (A : Type 𝓤) (B : Type 𝓥) : Type (𝓤 ⊔ 𝓥) wh
 ⊎[ f , g ] (inl x) = f x
 ⊎[ f , g ] (inr x) = g x
 
-⊎-ind
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A ⊎ B → Type 𝓦}
-    → (Π A (C ∘ inl) × Π B (C ∘ inr)) → Π _ C
-⊎-ind (f , g) (inl x) = f x
-⊎-ind (f , g) (inr x) = g x
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : A ⊎ B → Type 𝓦} where
 
-⊎-ind-is-equiv
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
-      {C : A ⊎ B → Type 𝓦}
-    → FunExtω 𝓦 → is-equiv (⊎-ind {C = C})
-⊎-ind-is-equiv FE = is-equiv←qinv (λ where
-  .fst f → (f ∘ inl , f ∘ inr)
-  .snd .fst (f , g) → refl
-  .snd .snd f → WithFunExtω.funext→ FE λ where
-    (inl x) → refl
-    (inr x) → refl)
+  ⊎-ind : Π A (P ∘ inl) × Π B (P ∘ inr) → Π _ P
+  ⊎-ind (f , g) (inl x) = f x
+  ⊎-ind (f , g) (inr x) = g x
 
-⊎-UP≃
-  : ∀ {𝓤 𝓥 𝓦} → FunExtω 𝓦
-    → {A : Type 𝓤} {B : Type 𝓥}
-      {C : A ⊎ B → Type 𝓦}
-    → (Π _ (C ∘ inl) × Π _ (C ∘ inr)) ≃ Π _ C
-⊎-UP≃ FE = mk≃ _ (⊎-ind-is-equiv FE)
+  ⊎-restrict
+    : Π (A ⊎ B) P → Π A (P ∘ inl) × Π B (P ∘ inr)
+  ⊎-restrict h = (h ∘ inl , h ∘ inr)
+
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : A ⊎ B → Type 𝓦} where
+
+  ⊎-restrict-happly
+    : {u v : Π (A ⊎ B) P} (p : u ＝ v)
+    → (happly ×₁ happly) (_≃_.bwd ×-path (ap ⊎-restrict p))
+    ＝ ⊎-restrict (happly p)
+  ⊎-restrict-happly refl = refl
+}
+}
+
+\subtree[stt-012Y]{
+\title{Coproducts of disjoint propositions}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The [coproduct](stt-002Y) of two disjoint [propositions](stt-0009) is a proposition.
+}
+
+\agda{
+module _ {𝓤 𝓥} {P : Type 𝓤} {Q : Type 𝓥} where
+
+  ⊎-is-prop : is-prop P → is-prop Q → (P → ¬ Q) → is-prop (P ⊎ Q)
+  ⊎-is-prop p q disjoint (inl x) (inl y) = ap inl (p x y)
+  ⊎-is-prop p q disjoint (inl x) (inr y) = ¡ (disjoint x y)
+  ⊎-is-prop p q disjoint (inr x) (inl y) = ¡ (disjoint y x)
+  ⊎-is-prop p q disjoint (inr x) (inr y) = ap inr (q x y)
+}
+}
+
+\subtree[stt-012U]{
+\title{Coproducts are binary indexed sums}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Given a family #{P} over the booleans, then its total type is
+#{P(\true) + P(\false)}.
+}
+
+\agda{
+Σ-Bool≃⊎ : ∀ {𝓤} {P : Bool → Type 𝓤} → Σ Bool P ≃ (P true ⊎ P false)
+Σ-Bool≃⊎ {P = P} = mk≃ fwd (mk-eqv
+  ( bwd
+  , (λ where
+      (true , _) → refl
+      (false , _) → refl)
+  , (λ where
+      (inl _) → refl
+      (inr _) → refl))
+  (λ where
+    (true , _) → refl
+    (false , _) → refl))
+  where
+  fwd : Σ Bool P → P true ⊎ P false
+  fwd (true , a) = inl a
+  fwd (false , a) = inr a
+
+  bwd : P true ⊎ P false → Σ Bool P
+  bwd (inl a) = (true , a)
+  bwd (inr a) = (false , a)
+}
+}
+
+\subtree[stt-009B]{
+\title{Commuting coproducts with dependent sums}
+\taxon{Theorem}
+\author{samueltoth}
+
+\p{
+For a family #{P} over a [coproduct](stt-002Y) #{A+B}, there is an equivalence
+##{\Sigma_{A+B} P \simeq \Sigma_A(P \circ \mathrm{inl}) + \Sigma_B(P \circ \mathrm{inr}).}
+}
+
+\agda{
+Σ-⊎≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P : A ⊎ B → Type 𝓦)
+    → (Σ A (P ∘ inl) ⊎ Σ B (P ∘ inr)) ≃ Σ (A ⊎ B) P
+Σ-⊎≃ P = mk≃ ⊎[ total-map-fst inl , total-map-fst inr ]
+            (mk-eqv qinv coh) where
+  qinv : quasi-inv ⊎[ total-map-fst inl , total-map-fst inr ]
+  qinv .fst (inl x , p) = inl (x , p)
+  qinv .fst (inr x , p) = inr (x , p)
+  qinv .snd .fst = ⊎-ind (~refl , ~refl)
+  qinv .snd .snd (inl x , p) = refl
+  qinv .snd .snd (inr x , p) = refl
+
+  coh : qinv-coh qinv
+  coh (inl _) = refl
+  coh (inr _) = refl
+}
+}
+
+\subtree[stt-013A]{
+\title{Fibres of maps out of coproducts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+The [fibre](stt-000M) of #{[f,g]} is the [coproduct](stt-002Y)
+of the corresponding fibres of #{f} and #{g}.
+}
+
+\agda{
+fibre-⊎-elim≃
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → (f : A → C) (g : B → C) (c : C)
+    → (fibre f c ⊎ fibre g c) ≃ fibre ⊎[ f , g ] c
+fibre-⊎-elim≃ f g c = Σ-⊎≃ (λ x → ⊎[ f , g ] x ＝ c)
+}
+}
+
+\agda{
+module CoproductWithFunExt (FE : FunExt-global) (open WithFunExt-global FE) where
+}
+
+\subtree[stt-012H]{
+\title{Coproduct induction is an equivalence}
+\taxon{Lemma}
+\author{samueltoth}
+\contributor{fredrikbakke}
+
+\p{
+Assuming [function extensionality](stt-0024), the induction principle
+for [coproducts](stt-002Y) is an equivalence.
+}
+
+\agda{
+  module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : A ⊎ B → Type 𝓦} where
+
+    ⊎-ind-is-equiv : is-equiv (⊎-ind {P = P})
+    ⊎-ind-is-equiv = is-equiv←qinv
+      ( λ where
+          .fst → ⊎-restrict
+          .snd .fst (f , g) → refl
+          .snd .snd f → funext→
+            ( λ where
+                (inl x) → refl
+                (inr x) → refl))
+
+    ⊎-UP≃ : (Π A (P ∘ inl) × Π B (P ∘ inr)) ≃ Π (A ⊎ B) P
+    ⊎-UP≃ = mk≃ _ ⊎-ind-is-equiv
+
+    ⊎-restrict-is-equiv : is-equiv (⊎-restrict {P = P})
+    ⊎-restrict-is-equiv = is-equiv⁻¹ ⊎-ind-is-equiv
+}
+}
+
+\subtree[stt-012P]{
+\title{Restriction commutes with function extensionality}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+[Restriction](stt-002Y) commutes with evaluating paths as homotopies.
+}
+
+\agda{
+  module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : A ⊎ B → Type 𝓦} where
+
+    ap-⊎-restrict
+      : {u v : Π (A ⊎ B) P} (H : u ~ v)
+      → ap ⊎-restrict (funext→ H)
+      ＝ ×-path→ (funext→ (H ∘ inl) , funext→ (H ∘ inr))
+    ap-⊎-restrict
+      = transpose-square-equiv
+          (funext≃)
+          ((×-path e⁻¹) ∙e (funext≃ ×≃ funext≃))
+          {f = ap ⊎-restrict}
+          (⊎-restrict-happly)
 }
 }

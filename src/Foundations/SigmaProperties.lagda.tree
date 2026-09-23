@@ -1,6 +1,8 @@
 \date{2025-04-14}
 \title{Miscellaneous properties of Sigma Types}
 \taxon{Module}
+\author{samueltoth}
+\contributor{fredrikbakke}
 \import{stt-macros}
 
 \agda{
@@ -22,7 +24,6 @@ open import Foundations.FibrewiseEquivalences
 open import Foundations.Singletons
 open import Foundations.SingletonFibres
 open import Foundations.EquivSingleton
-open import Foundations.Coproducts
 open import Foundations.Homotopy
 }
 }
@@ -197,59 +198,34 @@ total-is-equiv←fst-is-equiv {B = B} {f} feq = is-equiv←qinv qusi where
     → (A × B) × C ≃ A × (B × C)
 ×-assoc = Σ-assoc
 
-×₁-is-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓜}
-      {f : A → B} {g : C → D}
-    → is-equiv f → is-equiv g
-    → is-equiv (f ×₁ g)
-×₁-is-equiv {A = A} {C = C} {f = f}{g} feq geq = mk-eqv qiso coh where
-    open is-equiv
-
-    qiso : quasi-inv (f ×₁ g)
-    qiso .fst (b , d) = (bwd feq b , bwd geq d)
-    qiso .snd .fst (a , c) = ×-path→ ((η feq a) , (η geq c))
-    qiso .snd .snd (b , d) = ×-path→ ((ε feq b) , (ε geq d))
-
-    coh : qinv-coh qiso
-    coh (a , c)
-      = ap-×₁-×-path (η feq a) (η geq c)
-      ∙ ap ×-path→ (×-path→ ((coherent feq a) , (coherent geq c)))
-
-_×≃_ : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
-      → A ≃ B → C ≃ D → (A × C) ≃ (B × D)
-(mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ (f ×₁ g) (×₁-is-equiv ef eg)
-
 Σ-tr
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : A → B → Type 𝓦}
       {a b : A} {p : a ＝ b} {b : B} {c : C a b}
     → (tr (λ a → Σ B (C a)) p (b , c)) ＝ (b , tr (λ a → C a b) p c)
 Σ-tr {p = refl} = refl
 
-Σ-interchange : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : A → Type 𝓥} {C : A → Type 𝓦}
-                  {D : (a : A) → B a → C a → Type 𝓜} →
-                  (Σ[ t@(a , b) ∶ Σ A B ] (Σ (C a) (D a b)))
-                    ≃
-                  (Σ[ t@(a , c) ∶ Σ A C ] (Σ[ b ∶ B a ] (D a b c)))
-Σ-interchange = mk≃ fwd (mk-eqv qinv coh) where
-  fwd : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
-        {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
-      Σ (Σ A B) (λ t → Σ (C (t .fst)) (D (t .fst) (t .snd))) →
-      Σ (Σ A C) (λ t → Σ (B (t .fst)) (λ b → D (t .fst) b (t .snd)))
-  fwd ((a , b) , (c , d)) = (a , c) , (b , d)
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : A → Type 𝓥} {C : A → Type 𝓦}
+  {D : (a : A) → B a → C a → Type 𝓜}
+  where
 
-  qinv : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
-        {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
-      quasi-inv
-        (fwd {A = A} {B} {C} {D})
-  qinv .fst ((a , c) , (b , d)) = ((a , b) , (c , d))
-  qinv .snd .fst = ~refl
-  qinv .snd .snd = ~refl
+  Σ-interchange
+    : (Σ[ (a , b) ∶ Σ A B ] Σ (C a) (D a b))
+    ≃ (Σ[ (a , c) ∶ Σ A C ] Σ[ b ∶ B a ] D a b c)
+  Σ-interchange = mk≃ fwd (mk-eqv qinv coh) where
+    fwd
+      : (Σ[ (a , b) ∶ Σ A B ] Σ (C a) (D a b))
+      → (Σ[ (a , c) ∶ Σ A C ] Σ[ b ∶ B a ] D a b c)
+    fwd ((a , b) , (c , d)) = ((a , c) , (b , d))
 
-  coh : ∀ {𝓤} {𝓥} {𝓦} {𝓜} {A : Type 𝓤} {B : A → Type 𝓥}
-        {C : A → Type 𝓦} {D : (a : A) → B a → C a → Type 𝓜} →
-      qinv-coh (qinv {A = A} {B} {C} {D})
-  coh = ~refl
+    qinv : quasi-inv fwd
+    qinv .fst ((a , c) , (b , d)) = ((a , b) , (c , d))
+    qinv .snd .fst = ~refl
+    qinv .snd .snd = ~refl
+
+    coh : qinv-coh qinv
+    coh = ~refl
+
 }
 
 \subtree[stt-002T]{
@@ -296,28 +272,36 @@ singleton-fst-is-equiv {P = P} sngl
 }
 }
 
-\subtree[stt-009B]{
-\title{Commuting coproducts with dependent sums}
-\taxon{Theorem}
+\subtree[stt-012J]{
+\title{Products of equivalences}
+\taxon{Lemma}
+\author{samueltoth}
+\contributor{fredrikbakke}
 
-\p{There is an equivalence #{\Sigma_{A + B} (Q[f,g]) \simeq
-\Sigma_A(Qf) + \Sigma_B(Qg)}}
+\p{The product of two [equivalences](stt-001U) is an equivalence.}
 
 \agda{
-Σ-⊎≃
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (P  : A ⊎ B → Type 𝓦)
-    → (Σ A (P ∘ inl) ⊎ Σ B (P ∘ inr)) ≃ Σ (A ⊎ B) P
-Σ-⊎≃ P = mk≃ ⊎[ total-map-fst inl , total-map-fst inr ]
-            (mk-eqv qinv coh) where
-  qinv : quasi-inv ⊎[ total-map-fst inl , total-map-fst inr ]
-  qinv .fst (inl x , p) = inl (x , p)
-  qinv .fst (inr x , p) = inr (x , p)
-  qinv .snd .fst = ⊎-ind (~refl , ~refl)
-  qinv .snd .snd (inl x , p) = refl
-  qinv .snd .snd (inr x , p) = refl
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓜}
+  where
 
-  coh : qinv-coh qinv
-  coh (inl _) = refl
-  coh (inr _) = refl
+  ×₁-is-equiv
+    : {f : A → B} {g : C → D}
+    → is-equiv f → is-equiv g
+    → is-equiv (f ×₁ g)
+  ×₁-is-equiv {f = f} {g} feq geq = mk-eqv qiso coh where
+    qiso : quasi-inv (f ×₁ g)
+    qiso .fst (b , d) = (is-equiv.bwd feq b , is-equiv.bwd geq d)
+    qiso .snd .fst (a , c) = ×-path→ (is-equiv.η feq a , is-equiv.η geq c)
+    qiso .snd .snd (b , d) = ×-path→ (is-equiv.ε feq b , is-equiv.ε geq d)
+
+    coh : qinv-coh qiso
+    coh (a , c)
+      = ap-×₁-×-path (is-equiv.η feq a) (is-equiv.η geq c)
+      ∙ ap ×-path→ (×-path→ (is-equiv.coherent feq a , is-equiv.coherent geq c))
+
+  _×≃_ : A ≃ B → C ≃ D → (A × C) ≃ (B × D)
+  (mk≃ f ef) ×≃ (mk≃ g eg) = mk≃ (f ×₁ g) (×₁-is-equiv ef eg)
 }
 }

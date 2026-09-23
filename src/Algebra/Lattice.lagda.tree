@@ -40,7 +40,8 @@ structure can be described by a poset, with operations taking binary meets
 (#{\land}) and joins (#{\lor}) for each pair of elements. It follows from the
 algebraic structure that the carrier type forms a set. We include a
 proposition-valued order relation as part of the structure such that both
-#{(x \le y) \iff (x \land y = x)} and #{(x \le y) \iff (x \lor y = y)}.}
+#{(x \le y) \iff (x \land y = x)} and #{(y \le x) \iff (x \lor y = x)}.
+}
 
 \agda{
 record is-lattice
@@ -88,17 +89,17 @@ record is-lattice
     Carrier-is-truncated = truncation-instance _ carrier-is-0-truncated
 
   abstract
-    ∨-eq←∧-eq : ∀ {x y} → x ∧ y ＝ x → x ∨ y ＝ y
+    ∨-eq←∧-eq : ∀ {x y} → y ∧ x ＝ y → x ∨ y ＝ x
     ∨-eq←∧-eq {x} {y} p
-      = x ∨ y       ＝⟨ ap (_∨ y) (sym p) ⟩
-        (x ∧ y) ∨ y ＝⟨ ap (_∨ y) ∧-comm ∙ ∨-comm ∙ ∨-∧-abs ⟩
-        y ∎
-
-    ∧-eq←∨-eq : ∀ {x y} → x ∨ y ＝ y → x ∧ y ＝ x
-    ∧-eq←∨-eq {x} {y} p
-      = x ∧ y       ＝⟨ ap (x ∧_) (sym p) ⟩
-        x ∧ (x ∨ y) ＝⟨ ∧-∨-abs ⟩
+      = x ∨ y       ＝⟨ ap (x ∨_) (sym p ∙ ∧-comm) ⟩
+        x ∨ (x ∧ y) ＝⟨ ∨-∧-abs ⟩
         x ∎
+
+    ∧-eq←∨-eq : ∀ {x y} → x ∨ y ＝ x → y ∧ x ＝ y
+    ∧-eq←∨-eq {x} {y} p
+      = y ∧ x         ＝⟨ ap (y ∧_) (sym p ∙ ∨-comm) ⟩
+        y ∧ (y ∨ x)   ＝⟨ ∧-∨-abs ⟩
+        y ∎
 
 record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
   field
@@ -110,12 +111,19 @@ record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
     ≤-is-prop : ∀ {x y} → is-prop (x ≤ y)
     ≤-min : ∀ {x y} → x ≤ y → x ∧ y ＝ x
     ≤←∧ : ∀ {x y} → x ∧ y ＝ x → x ≤ y
-    ≤-max : ∀ {x y} → x ≤ y → x ∨ y ＝ y
-    ≤←∨ : ∀ {x y} → x ∨ y ＝ y → x ≤ y
+    ≤-max' : ∀ {x y} → y ≤ x → x ∨ y ＝ x
+    ≤←∨' : ∀ {x y} → x ∨ y ＝ x → y ≤ x
   infixr 40 _∧_
   infixr 35 _∨_
 
   open is-lattice str-is-lattice public
+
+  abstract
+    ≤-max : ∀ {x y} → x ≤ y → x ∨ y ＝ y
+    ≤-max p = ∨-comm ∙ ≤-max' p
+
+    ≤←∨ : ∀ {x y} → x ∨ y ＝ y → x ≤ y
+    ≤←∨ p = ≤←∨' (∨-comm ∙ p)
 
   abstract
     0-bottom' : {x : L} → 0l ∨ x ＝ x
@@ -197,10 +205,6 @@ record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
 
   ≥←＝ : ∀ {a b} → a ＝ b → b ≤ a
   ≥←＝ refl = ≤-refl
-
-  abstract
-    ≤-max' : ∀ {a b} → b ≤ a → a ∨ b ＝ a
-    ≤-max' b≤a = ∨-comm ∙ ≤-max b≤a
 
   abstract
     ∨-UP : ∀ {a b c} → a ≤ c × b ≤ c → (a ∨ b ≤ c)
@@ -288,8 +292,8 @@ module _
   mk-lattice .Lattice.≤-is-prop = carrier-is-set _ _
   mk-lattice .Lattice.≤-min = id
   mk-lattice .Lattice.≤←∧ = id
-  mk-lattice .Lattice.≤-max = ∨-eq←∧-eq
-  mk-lattice .Lattice.≤←∨ = ∧-eq←∨-eq
+  mk-lattice .Lattice.≤-max' = ∨-eq←∧-eq
+  mk-lattice .Lattice.≤←∨' = ∧-eq←∨-eq
 }
 }
 

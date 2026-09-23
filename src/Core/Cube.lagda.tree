@@ -19,6 +19,9 @@ open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.ArrowRetracts
 open import Core.CartesianSquares
+open import Core.CanonicalPushouts
+open import Core.SpanMaps
+open import Core.FunctorialityPushouts
 open import Core.FunctorialityPullbacks
 
 open import Ergonomics.Extensionality
@@ -486,5 +489,85 @@ opaque
           (gap-map-square-ret←cube-partial-ret _ _ α β)
           (is-pullback←up-pullback _
             (up-pullback←is-cartesian _ gcart)))
+}
+}
+
+\subtree[bak-D4FE]{
+\title{The induced morphism of cogap maps in a cube}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-21}
+
+\p{A [commuting cube](stt-00B2) induces a morphism of cogap maps.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓧} {g : C → D} (F : Arrow-map f g)
+  {X : Type 𝓛} {Y : Type 𝓜} {h : X → Y}
+  {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W} (G : Arrow-map h k)
+  where
+
+  span-map←cube
+    : Cube F G → Span-map (Cocone←Arrow-map F .fst) (Cocone←Arrow-map G .fst)
+  span-map←cube α
+    = mk-span-map α.botl α.topl α.topr α.left.comm (α.top h⁻¹)
+    where module α = Cube α
+
+  cogap-map-square←cube
+    : Cube F G → Arrow-map (cogap-square F) (cogap-square G)
+  cogap-map-square←cube α .Arrow-map.top = Pushout₁ (span-map←cube α)
+  cogap-map-square←cube α .Arrow-map.bot = Cube.botr α
+  cogap-map-square←cube α .Arrow-map.comm
+    = let module α = Cube α; module G = Arrow-map G
+    in α.botr ∘ cogap-square F
+        ~⟨ cogap-unique _ α.botr _ (α.bot h⁻¹) α.right.comm
+            ( left-transpose-∙h {P = α.bot ▹h f} ((Hexagon.un-hex ∘ α.fill-hex) h⁻¹)
+            ∙h ( (α.bot h⁻¹) ▹h f
+              ◂h ( (G.bot ◃h α.left.comm)
+                ◂h (G.comm ▹h α.topl ◂h (k ⟩◃h⟨ (λ _ → sym sym-sym)))))) ⟩
+      cogap (Cocone₁ (span-map←cube α) (Cocone←Arrow-map G .snd))
+        ~⟨ cogap-∘-Pushout₁ (span-map←cube α) (Cocone←Arrow-map G .snd) h⁻¹ ⟩
+      cogap-square G ∘ Pushout₁ (span-map←cube α)
+        ~∎
+}
+}
+
+\subtree[bak-6280]{
+\title{Retracts of squares give retracts of cogap maps}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-21}
+
+\p{
+Suppose given morphisms of squares #{α \colon F \Rightarrow G} and
+#{β \colon G \Rightarrow F} which exhibit a retract on the
+underlying spans and on the target arrows. The induced maps between
+cogap maps then form an [incoherent retract of arrows](stt-00BJ).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓧 𝓛 𝓜 𝓝 𝓞}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓧} {g : C → D} (F : Arrow-map f g)
+  {X : Type 𝓛} {Y : Type 𝓜} {h : X → Y}
+  {Z : Type 𝓝} {W : Type 𝓞} {k : Z → W} (G : Arrow-map h k)
+  (α : Cube F G) (β : Cube G F)
+  where
+
+  cogap-map-square-incoherent-ret←cube-incoherent-ret
+    : Span-map-homotopy
+        (compose-span-map (span-map←cube G F β) (span-map←cube F G α))
+        (id-span-map)
+    → retraction-witness (Cube.botr α) (Cube.botr β)
+    → Arrow-incoherent-retract (cogap-square F) (cogap-square G)
+  cogap-map-square-incoherent-ret←cube-incoherent-ret span-ret botr-ret
+    = ( cogap-map-square←cube F G α , cogap-map-square←cube G F β
+      , Pushout-∘ (span-map←cube G F β) (span-map←cube F G α)
+        ∙h happly (ap Pushout₁ (Span-map-funext→ span-ret))
+        ∙h (Pushout-id h⁻¹)
+      , botr-ret)
 }
 }

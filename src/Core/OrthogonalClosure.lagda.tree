@@ -26,6 +26,7 @@ open import Core.Cube
 open import Core.PullbackPowers
 open import Core.Postwhisker
 open import Core.CocartesianSquares
+open import Core.CanonicalPushouts
 open import Core.CartesianSquares
 open import Core.PushoutSums
 open import Core.Coslices
@@ -882,6 +883,109 @@ opaque
         (left-orthogonal-∘ _ _ k
             (left-orthogonal-pushout₁-left F _ k Fk)
             (left-orthogonal-pushout₁-right _ G k Gk))
+}
+}
+
+\subtree[bak-927F]{
+\title{Anodyne cancellation property of cogap maps of squares}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{
+Given two horizontally composable squares, if the cogap maps of the left square
+and the outer rectangle are [anodyne](stt-00EB), then so is the cogap map of the
+right square.
+}
+
+\quiver{
+\begin{tikzcd}
+  A && C && E \\
+  \\
+  B && D && F
+  \arrow[from=1-1, to=1-3]
+  \arrow[from=1-3, to=1-5]
+  \arrow[from=3-1, to=3-3]
+  \arrow[from=3-3, to=3-5]
+  \arrow[from=1-1, to=3-1]
+  \arrow[from=1-3, to=3-3]
+  \arrow[from=1-5, to=3-5]
+\end{tikzcd}
+}
+
+\proof{
+\p{
+By pushout pasting, the outer cogap map factors up to an equivalence of
+its source as a pushout of the left cogap map followed by the right cogap map.
+The result then follows from closure under pushouts and right cancellation of
+anodyne maps.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓧 𝓨 𝓩}
+  {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {D : Type 𝓧}
+  {E : Type 𝓨} {F : Type 𝓩} {f : A → B} {g : C → D} {h : E → F}
+  (L : Arrow-map f g) (R : Arrow-map g h)
+  (let module L = Arrow-map L)
+  (let module R = Arrow-map R)
+  where
+
+  cogap-paste-square
+    : Arrow-map f (ι₂ {f = ι₂ {f = f} {L.top}} {R.top})
+  cogap-paste-square
+    = paste-squares
+        (Pushout-square (mk-span _ ι₂ R.top))
+        (Pushout-square (mk-span _ f L.top))
+
+  cogap-paste-is-equiv : is-equiv (cogap-square cogap-paste-square)
+  cogap-paste-is-equiv
+    = is-pushout←up-pushout _
+        (up-pushout←up-cocartesian _
+          (cocartesian-square-∘
+            (Pushout-square-has-up-cocartesian _)
+            (Pushout-square-has-up-cocartesian _)))
+
+  cogap-paste-factorisation
+    : cogap-square R ∘ Pushout₁-left (cogap-square L , ~refl) R.top
+    ∘ cogap-square cogap-paste-square
+    ~ cogap-square (paste-squares R L)
+  cogap-paste-factorisation
+    = let q = cogap-square R ∘ Pushout₁-left (cogap-square L , ~refl) R.top
+    in cogap-unique
+        (Cocone←Arrow-map cogap-paste-square .snd)
+        (q)
+        (Cocone←Arrow-map (paste-squares R L) .snd)
+        ~refl
+        ~refl
+        ( ∙h-reflr _ ∙h ◃h∙ q (ι₁ ◃h glue) (glue ▹h L.top)
+        ∙h ( ( ◃h∘ q ι₁ glue h⁻¹ ∙h cogap-◃h-glue (Cocone←Arrow-map L .snd) R.bot)
+          ⟩∙h⟨ ( cogap-◃h-glue
+                  ( mk-cocone (ι₁ ∘ cogap-square L) ι₂ (glue ∙h ~refl))
+                  ( cogap-square R)
+              ∙h ◃h∙ (cogap-square R) glue ~refl
+              ∙h ∙h-reflr _ ∙h pushout-rec-apβ)
+            ∘ L.top))
+
+  left-orthogonal-cogap-cancel
+    : ∀ {𝓜 𝓝} {X : Type 𝓜} {Y : Type 𝓝} (k : X → Y)
+      → cogap-square L ⊥ k
+      → cogap-square (paste-squares R L) ⊥ k
+      → cogap-square R ⊥ k
+  left-orthogonal-cogap-cancel k Lk RLk
+    = left-orthogonal-right-cancel
+        (left-orthogonal-pushout₁-left (cogap-square L , ~refl) R.top k Lk)
+        (left-orthogonal-right-cancel (equiv⊥ cogap-paste-is-equiv k)
+          (left-orthogonal-homotopy k (cogap-paste-factorisation h⁻¹) RLk))
+
+  is-anodyne-cogap-cancel
+    : ∀ {𝓜 𝓝} {X : Type 𝓜} {Y : Type 𝓝} (k : X → Y)
+      → is-anodyne (cogap-square L) k
+      → is-anodyne (cogap-square (paste-squares R L)) k
+      → is-anodyne (cogap-square R) k
+  is-anodyne-cogap-cancel k Lk RLk r orth
+    = left-orthogonal-cogap-cancel r (Lk r orth) (RLk r orth)
 }
 }
 

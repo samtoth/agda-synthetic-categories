@@ -1,0 +1,155 @@
+\title{Free covariant families}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-09-24}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.FreeCovariantFamily
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+
+open import Modalities.Factorisations
+open import Modalities.OrthogonalFactorisationSystems
+
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Initial Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.AlgebraicLaws Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
+}
+}
+
+\subtree[tot-65RY]{
+\title{The free covariant family}
+\author{samueltoth}
+\date{2026-09-24}
+\taxon{Definition}
+
+\agda{
+FreeCov : ∀ {𝓤 𝓥} {A : Type 𝓤} {E : Type 𝓥} → (E → A) → A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+FreeCov p a = Δ¹Disc.○ (p ↓ point a)
+}
+}
+
+\subtree[tot-EN21]{
+\title{The free covariant family over a Segal type is covariant}
+\author{samueltoth}
+\date{2026-09-24}
+\taxon{Lemma}
+
+\p{If #{B} is a [Segal]() type, then the free covariant family on any map
+#{p \colon E \to B} is a covariant type family.}
+
+\proof{
+\p{We use the [unital transport criteria], where the transport is given by
+precomposition in the Segal type.}
+}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝓐 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  transport-free
+    : ∀ {a b : B} → Hom B a b → p ↓ point a → p ↓ point b
+  transport-free f = total-map (λ c → total-map (λ _ → f ∘[ 𝓐 ]_))
+
+  ○transport-free
+    : ∀ {a b : B} → Hom B a b → FreeCov p a → FreeCov p b
+  ○transport-free f = Δ¹Disc.○₁ (transport-free f)
+
+  transport-unital
+    : ∀ {a : B} → transport-free (idH a) ~ id
+  transport-unital x = Σ-path→ (refl , (Σ-path→ (refl , ∘[ 𝓐 ]-right-unit)))
+
+  ○transport-unital
+    : ∀ (a : B) → ○transport-free (idH a) ~ id
+  ○transport-unital _ = Δ¹Disc.○-~ transport-unital ∙h Δ¹Disc.○₁-id
+
+  FreeCov-is-covariant : is-covariant (FreeCov p)
+  FreeCov-is-covariant
+    = is-covariant←cov-unital-transport (λ a → Δ¹Disc.○∈S {A = p ↓ point a})
+        (○transport-free , ○transport-unital)
+}
+}
+
+\subtree[tot-0913]{
+\title{The free covariant family gives a left anodyne-left fibration factorision}
+\author{samueltoth}
+\date{2026-09-24}
+\taxon{Lemma}
+
+\p{If #{B} is a [Segal]() type and #{p} any map #{E \to B}, then the canonical lift
+of #{|| p \down - ||} along #{p} is a left-anodyne map, and induces a factorisation
+of #{p} into a left-anodyne map followed by a left fibration.}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  FreeCov-incl : (e : E) → FreeCov p (p e)
+  FreeCov-incl b = Δ¹Disc.η (b , (_ , idH (p b)))
+
+  FreeCov-incl-is-left-anodyne'
+    : ∀ {𝓦 𝓜} {X : Type 𝓦} (Y : X → Type 𝓜) (X-cov : is-covariant Y)
+      → are-orthogonal-fam {B = Σ _ (FreeCov p)} (λ e → (p e , FreeCov-incl e)) Y
+  FreeCov-incl-is-left-anodyne' Y Y-cov g
+    = src-is-equiv←Arrow-equiv
+        aeq
+        (postcomp-Π-equiv
+          (λ {e}
+           → ev-init-covariant-is-equiv
+               (coslice-init 𝓑 (p e))
+               (covariant-base-change {P = Y}
+                 (g ∘ total-map (λ _ x → Δ¹Disc.η (e , tt , x tt))) Y-cov)))
+    where
+
+    eqv : (Σ[ e ∶ E ] Coslice B (point (p e))) ≃ (Σ[ b ∶ B ] (p ↓ point b))
+    eqv ._≃_.fwd (e , b , h) = (b , e , (tt , h tt))
+    eqv ._≃_.fwd-is-equiv .is-equiv.qinv .fst (b , e , (tt , h)) = (e , b , const h)
+    eqv ._≃_.fwd-is-equiv .is-equiv.qinv .snd = (~refl , ~refl)
+    eqv ._≃_.fwd-is-equiv .is-equiv.coherent = ~refl
+
+    aeq
+      : Arrow-equiv
+          (precomp-Π (Y ∘ g) (λ e → (p e , FreeCov-incl e)))
+          (postcomp-Π
+            λ (e : E)
+            → evᵈ:
+                (λ (x : Coslice B (point (p e))) → Y (g (x .fst , Δ¹Disc.η (e , _ , x .snd tt))))
+                (p e , λ _ → idH (p e)))
+    aeq
+      = mk-arr-equiv
+          ( curry≃
+          ∙e postcomp-Π-≃
+               (λ b → Δ¹Disc.○-UPᵈ≃ {P = Y ∘ g ∘ (b ,_)}
+                 (is-Δ¹-discrete-family←is-covariant
+                   (covariant-base-change {P = Y} (g ∘ (b ,_)) Y-cov)))
+          ∙e (uncurry≃ ∙e precomp-Π-≃ _ eqv ∙e curry≃))
+          id≃
+          ~refl
+
+}
+}

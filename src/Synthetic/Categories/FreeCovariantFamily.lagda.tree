@@ -25,6 +25,7 @@ open import Foundations.Prelude
 
 open import Core.ArrowEquiv
 open import Core.Orthogonal
+open import Core.OrthogonalClosure
 
 open import Modalities.Factorisations
 open import Modalities.OrthogonalFactorisationSystems
@@ -109,13 +110,16 @@ of #{p} into a left-anodyne map followed by a left fibration.}
 \agda{
 module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E → B) where
 
-  FreeCov-incl : (e : E) → FreeCov p (p e)
-  FreeCov-incl b = Δ¹Disc.η (b , (_ , idH (p b)))
+  FreeCov-η : (e : E) → FreeCov p (p e)
+  FreeCov-η e = Δ¹Disc.η (e , (_ , idH (p e)))
 
-  FreeCov-incl-is-left-anodyne'
+  FreeCov-η-total : E → Σ B (FreeCov p)
+  FreeCov-η-total e = (p e , FreeCov-η e)
+
+  FreeCov-η-is-left-anodyne'
     : ∀ {𝓦 𝓜} {X : Type 𝓦} (Y : X → Type 𝓜) (X-cov : is-covariant Y)
-      → are-orthogonal-fam {B = Σ _ (FreeCov p)} (λ e → (p e , FreeCov-incl e)) Y
-  FreeCov-incl-is-left-anodyne' Y Y-cov g
+      → are-orthogonal-fam FreeCov-η-total Y
+  FreeCov-η-is-left-anodyne' Y Y-cov g
     = src-is-equiv←Arrow-equiv
         aeq
         (postcomp-Π-equiv
@@ -134,7 +138,7 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E 
 
     aeq
       : Arrow-equiv
-          (precomp-Π (Y ∘ g) (λ e → (p e , FreeCov-incl e)))
+          (precomp-Π (Y ∘ g) (λ e → (p e , FreeCov-η e)))
           (postcomp-Π
             λ (e : E)
             → evᵈ:
@@ -151,5 +155,40 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E 
           id≃
           ~refl
 
+  FreeCov-η-is-left-anodyne : is-left-anodyne FreeCov-η-total
+  FreeCov-η-is-left-anodyne g gleft
+    = are-orthogonal←are-orthogonal-fibre
+        (FreeCov-η-is-left-anodyne' (fibre g)
+          (is-covariant←is-left-family (fibre g)
+            (are-orthogonal-fibre←are-orthogonal gleft)))
+}
+}
+
+\subtree[tot-092B]{
+\title{A map into a Segal type is left anodyne iff the free covariant family is an equivalence}
+\author{samueltoth}
+\date{2026-09-24}
+\taxon{Lemma}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  opaque
+    FreeCov-is-equiv←is-left-anodyne
+      :  is-left-anodyne p → is-equiv (fst: FreeCov p)
+    FreeCov-is-equiv←is-left-anodyne pl
+      = is-equiv←self-orthogonal
+          (is-anodyne-right-cancel (point i0)
+            pl
+            (FreeCov-η-is-left-anodyne 𝓑 p)
+            fst
+            (is-left-fibration←is-covariant (FreeCov p) (FreeCov-is-covariant 𝓑 p)))
+
+    is-left-anodyne←FreeCov-is-equiv
+      : is-equiv (fst: FreeCov p) → is-left-anodyne p
+    is-left-anodyne←FreeCov-is-equiv fe
+      = is-anodyne-∘ {f = fst} (point i0)
+          (λ g _ → equiv⊥ fe g)
+          (FreeCov-η-is-left-anodyne 𝓑 p)
 }
 }

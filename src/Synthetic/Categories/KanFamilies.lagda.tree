@@ -1,0 +1,141 @@
+\title{Kan families}
+\author{fredrikbakke}
+\date{2026-09-19}
+\taxon{Module}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.KanFamilies
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.GlobalClassesMaps
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+}
+}
+
+\subtree[bak-8ED4]{
+\title{Kan families}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+A map is a \em{Kan fibration} if it is [right orthogonal](stt-0048) to both
+endpoint inclusions of #{\Delta^1}. A family is \em{Kan} if it is both
+[covariant](stt-00AY) and [contravariant](stt-00OD).
+}
+
+\agda{
+fam-generators-kan : Bool → 𝟙 → Δ¹
+fam-generators-kan false = point i0
+fam-generators-kan true = point i1
+
+module Kan = RightOrthogonalClassClosure fam-generators-kan
+
+is-kan-fibration
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
+    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-kan-fibration = Kan.∈R
+
+is-kan : ∀ {𝓤 𝓥} {A : Type 𝓤} → (A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-kan P = is-kan-fibration (fst: P)
+
+is-kan-is-prop
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) → is-prop (is-kan P)
+is-kan-is-prop P = ∈-is-prop (gClass-maps.𝓕-fam Kan.R-gClass) P
+
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (f : E → B) where
+
+  is-kan-fibre↔is-kan-fibration
+    : is-kan (fibre f) ↔ is-kan-fibration f
+  is-kan-fibre↔is-kan-fibration
+    = Kan.∈R-iff←Arrow-equiv (unstraightening-arrow-map f)
+
+  is-kan-fibration↔is-left-and-right-fibration
+    : is-kan-fibration f ↔ (is-left-fibration f × is-right-fibration f)
+  is-kan-fibration↔is-left-and-right-fibration .fst kan
+    = (kan false , kan true)
+  is-kan-fibration↔is-left-and-right-fibration .snd (left , right) false = left
+  is-kan-fibration↔is-left-and-right-fibration .snd (left , right) true = right
+
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+
+  is-covariant←is-kan : is-kan P → is-covariant P
+  is-covariant←is-kan bi = is-covariant←is-left-fibration P (bi false)
+
+  is-contravariant←is-kan : is-kan P → is-contravariant P
+  is-contravariant←is-kan bi
+    = is-contravariant←is-right-fibration P (bi true)
+
+  is-kan↔covariant-and-contravariant
+    : is-kan P ↔ (is-covariant P × is-contravariant P)
+  is-kan↔covariant-and-contravariant .fst bi
+    = ( is-covariant←is-kan bi
+      , is-contravariant←is-kan bi)
+  is-kan↔covariant-and-contravariant .snd (cov , contrav) false
+    = is-left-fibration←is-covariant P cov
+  is-kan↔covariant-and-contravariant .snd (cov , contrav) true
+    = is-right-fibration←is-contravariant P contrav
+
+is-kan-is-Δ¹-relative : is-relative-fam Δ¹ is-kan
+is-kan-is-Δ¹-relative P .fst bi σ b
+  = are-orthogonal-fst←are-orthogonal-fam (λ τ
+      → are-orthogonal-fam←are-orthogonal-fst (bi b) (σ ∘ τ))
+is-kan-is-Δ¹-relative P .snd bi b
+  = are-orthogonal-fst←are-orthogonal-fam (λ σ
+      → are-orthogonal-fam←are-orthogonal-fst (bi σ b) id)
+}
+}
+
+\subtree[bak-99A2]{
+\title{Transport is an equivalence}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+Transport between fibres in a Kan family are equivalences.
+}
+\proof{
+\p{
+Let #{P \colon A \to \UV} be a Kan family and let #{f : \Hom_A(x,y)}.
+By covariance evaluation at #{0} gives an equivalence
+#{P(x) \simeq \Pi_{\Delta^1}(P\circ f)}, and by contravariance evaluation at #{1}
+gives an equivalence #{\Pi_{\Delta^1}(P\circ f) \simeq P(y)}.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (bi : is-kan P)
+  where
+
+  tr≃←is-kan : (h : Δ¹ → A) → P (h i0) ≃ P (h i1)
+  tr≃←is-kan h
+    = P (h i0)
+        ≃⟨ ev-i0≃←is-covariant {P = P} (is-covariant←is-kan P bi) h e⁻¹ ⟩
+      Π Δ¹ (P ∘ h)
+        ≃⟨ ev-i1≃←is-contravariant {P = P} (is-contravariant←is-kan P bi) h ⟩
+      P (h i1)
+        ≃∎
+
+  tr-hom≃←is-kan : {x y : A} → Hom A x y → P x ≃ P y
+  tr-hom≃←is-kan (mk-hom h refl refl) = tr≃←is-kan h
+}
+}

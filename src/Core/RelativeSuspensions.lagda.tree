@@ -13,11 +13,16 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+
 open import Core.CanonicalPushouts
+open import Core.PushoutEquiv
 open import Core.FunctorialityPushouts
 open import Core.PushoutEquiv
 open import Core.SpanMaps
 open import Core.Suspensions
+open import Core.Slices
+open import Core.Coslices
+open import Core.Cofibres
 }
 }
 
@@ -98,6 +103,15 @@ module _
     : ((z : RelativeSusp δ C) → P z) ≃ RelativeSusp-section-data
   RelativeSusp-UPᵈ≃ = Pushout-UPᵈ≃ e⁻¹ ∙e relative-suspension-coconeᵈ≃
 
+  RelativeSusp-restrictᵈ
+    : ((z : RelativeSusp δ C) → P z) → RelativeSusp-section-data
+  RelativeSusp-restrictᵈ f .fst = f ∘ ι₂
+  RelativeSusp-restrictᵈ f .snd c .fst = f ∘ ι₁ ∘ (_, c)
+  RelativeSusp-restrictᵈ f .snd c .snd = apᶠ f ∘ glue ∘ (_, c)
+
+  RelativeSusp-UPᵈ : is-equiv RelativeSusp-restrictᵈ
+  RelativeSusp-UPᵈ = RelativeSusp-UPᵈ≃ ._≃_.fwd-is-equiv
+
   RelativeSusp-ind
     : RelativeSusp-section-data → (z : RelativeSusp δ C) → P z
   RelativeSusp-ind = _≃_.bwd RelativeSusp-UPᵈ≃
@@ -135,20 +149,23 @@ module _
   RelativeSusp-UP≃
     = RelativeSusp-UPᵈ≃ δ (λ _ → A) ∙e RelativeSusp-section-data-const≃
 
-  RelativeSusp-rec
-    : (Σ[ f ∶ (X → A) ] (C → Ext δ f)) → RelativeSusp δ C → A
-  RelativeSusp-rec = _≃_.bwd RelativeSusp-UP≃
-
   RelativeSusp-restrict
     : (RelativeSusp δ C → A) → Σ[ f ∶ (X → A) ] (C → Ext δ f)
   RelativeSusp-restrict h
     = ( h ∘ ι₂
       , (λ c → (h ∘ ι₁ ∘ (_, c) , (h ◃h glue) ∘ (_, c))))
 
-  RelativeSusp-UP-β : _≃_.fwd RelativeSusp-UP≃ ~ RelativeSusp-restrict
-  RelativeSusp-UP-β h
-    = ap ((h ∘ ι₂) ,_)
-         (funext→ (λ c → Id←Ext-htpy (~refl , (λ x → apᶠ-is-ap))))
+  RelativeSusp-UP : is-equiv RelativeSusp-restrict
+  RelativeSusp-UP = is-equiv←~⁻¹ H (RelativeSusp-UP≃ ._≃_.fwd-is-equiv)
+    where
+    H : _≃_.fwd RelativeSusp-UP≃ ~ RelativeSusp-restrict
+    H h
+      = ap ((h ∘ ι₂) ,_)
+          (funext→ (λ c → Id←Ext-htpy (~refl , (λ x → apᶠ-is-ap))))
+
+  RelativeSusp-rec
+    : (Σ[ f ∶ (X → A) ] (C → Ext δ f)) → RelativeSusp δ C → A
+  RelativeSusp-rec = _≃_.bwd RelativeSusp-UP≃
 }
 }
 
@@ -196,3 +213,172 @@ module _ {𝓤} (C : Type 𝓤) where
     ∙e fold-pushout≃ (!: C) (!: C)
 }
 }
+
+\subtree[tot-AYCE]{
+\title{The relative suspension at a point}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-23}
+
+\p{The relative suspion of a type #{C} at a point #{\unitobj \to X} is
+given by the cofibre of the induced map #{C \to C \times X}.}
+
+\agda{
+module _ {𝓤 𝓥} {X : Type 𝓤} (x : X) (C : Type 𝓥) where
+  RelativeSusp≃Cofibre : RelativeSusp (point x) C ≃ Cofibre {A = C} (x ,_)
+  RelativeSusp≃Cofibre = Pushout-adjust-equiv Σ-𝟙
+}
+}
+
+\subtree[tot-AYBC]{
+\title{The coslice mapping out property}
+\author{samueltoth}
+\taxon{Lemma}
+\date{2026-09-24}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦}
+  where
+
+  RelativeSusp-ι : X → RelativeSusp δ C
+  RelativeSusp-ι = ι₂
+
+  RelativeSusp-proj
+    : ∀ {𝓜} {A : Type 𝓜}
+      → (RelativeSusp δ C → A)
+      → (X → A)
+  RelativeSusp-proj {A = A} = precomp A RelativeSusp-ι
+
+  Slice-map-RelativeSusp-restrict
+    : ∀ {𝓜} {A : Type 𝓜}
+      → Slice-map (RelativeSusp-proj {A = A}) (fst: λ f → C → Ext δ f)
+  Slice-map-RelativeSusp-restrict .fst = RelativeSusp-restrict δ
+  Slice-map-RelativeSusp-restrict .snd = ~refl
+
+  RelativeSusp-Slice-UP
+    : ∀ {𝓜} {A : Type 𝓜}
+      → Slice-equiv (RelativeSusp-proj {A = A}) (fst: λ f → C → Ext δ f)
+  RelativeSusp-Slice-UP = (Slice-map-RelativeSusp-restrict , RelativeSusp-UP δ)
+
+  fibre-RelativeSusp-underlying
+    : ∀ {𝓜} {A : Type 𝓜} (i : X → A)
+    → fibre (precomp A (RelativeSusp-ι)) i
+    ≃ Coslice-map (RelativeSusp-ι) i
+  fibre-RelativeSusp-underlying i = Σ-snd-≃ (λ a → funext≃)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {X : Type 𝓤} {Y : Type 𝓥}
+  (δ : X → Y) {C : Type 𝓦}
+  {A : Type 𝓜}
+  where
+
+  RelativeSusp-Coslice-UP→
+    : (i : X → A) → Coslice-map (RelativeSusp-ι δ {C}) i → (C → Ext δ i)
+  RelativeSusp-Coslice-UP→ i (f , p) c
+    = ( f ∘ ι₁ ∘ (_, c)
+      , (f ◃h glue ▹h (_, c)) ∙h p)
+
+  RelativeSusp-Coslice-UP
+    : is-fibrewise-equiv RelativeSusp-Coslice-UP→
+  RelativeSusp-Coslice-UP i
+    = is-equiv←~
+        H
+        (eqv i ._≃_.fwd-is-equiv)
+    where
+
+    eqv : (i : X → A) → (Coslice-map (RelativeSusp-ι δ) i) ≃ (C → Ext δ i)
+    eqv i
+      = fibre-straighten (λ f → C → Ext δ f) i
+      ∘e Slice-fibre≃ (RelativeSusp-Slice-UP δ) i
+      ∘e (fibre-RelativeSusp-underlying δ i) e⁻¹
+
+    opaque
+      H : RelativeSusp-Coslice-UP→ i ~ eqv i ._≃_.fwd
+      H (f , p)
+        = funext-J
+            (λ i' p' → RelativeSusp-Coslice-UP→ i' (f , p') ＝ eqv i' ._≃_.fwd (f , p'))
+            (sym
+              ( ap
+                  (λ p → tr (λ f' → C → Ext δ f') p (RelativeSusp-restrict δ f .snd))
+                  funext-refl
+              ∙ funext→ (λ c → Id←Ext-htpy (~refl , (∙h-reflr _ h⁻¹)))))
+            i p
+
+  RelativeSusp-Coslice-UP≃
+    : (i : X → A) → Coslice-map (RelativeSusp-ι δ {C}) i ≃ (C → Ext δ i)
+  RelativeSusp-Coslice-UP≃ i
+    = mk≃ (RelativeSusp-Coslice-UP→ i) (RelativeSusp-Coslice-UP i)
+}
+}
+
+\subtree[tot-96CQ]{
+\title{The pointed universal property of relative suspension at a point}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-23}
+
+\p{For pointed types #{X} and #{Y}, a pointed map #{\Susp_x C \to Y} is equivalent
+to a map #{C \times X \to Y} which restricts to the constant map at #{y} on #{x}.
+}
+
+\agda{
+module _ {𝓤} {X : Type 𝓤} (x : X) where
+  RelativeSusp∙ : ∀ {𝓥} (C : Type 𝓥) → RelativeSusp (point x) C
+  RelativeSusp∙ _ = ι₂ tt
+
+  RelativeSusp∗ : ∀ {𝓥} → Type 𝓥 → Type∗ (𝓤 ⊔ 𝓥)
+  RelativeSusp∗ C .Type∗.carrier = RelativeSusp (point x) C
+  RelativeSusp∗ C .Type∗.pt = RelativeSusp∙ C
+
+  Ext-point : ∀ {𝓥} → Type∗ 𝓥 → Type (𝓤 ⊔ 𝓥)
+  Ext-point (mk-type∗ C c) = Ext (point x) (point c)
+
+  Ext-point₁
+    : ∀ {𝓤 𝓥} {A : Type∗ 𝓤} {B : Type∗ 𝓥}
+      → map∗ A B
+      → (Ext-point A → Ext-point B)
+  Ext-point₁ f
+    = map-Σ
+        (postcomp X (f .map∗.hom))
+        (λ g → postcomp-Π (λ _ → (_∙ f .map∗.pres-pt) ∘ ap (f .map∗.hom)))
+
+  Susp⊣Ext-ε : ∀ {𝓥} {C : Type∗ 𝓥} → map∗ (RelativeSusp∗ (Ext-point C)) C
+  Susp⊣Ext-ε {C = C} .map∗.hom
+    = RelativeSusp-rec (point x) (point (C .Type∗.pt) , id)
+  Susp⊣Ext-ε .map∗.pres-pt = refl
+
+  Susp⊣Ext-η : ∀ {𝓥} {C : Type 𝓥} → C → Ext-point (RelativeSusp∗ C)
+  Susp⊣Ext-η c .fst x = ι₁ (x , c)
+  Susp⊣Ext-η c .snd t = glue (t , c)
+
+  RelativeSusp∗₁
+    : ∀ {𝓥 𝓦} {C : Type 𝓥} {D : Type 𝓦}
+      → (C → D)
+      → map∗ (RelativeSusp∗ C) (RelativeSusp∗ D)
+  RelativeSusp∗₁ f .map∗.hom
+    = RelativeSusp-rec (point x) (point (RelativeSusp∙ _) , Susp⊣Ext-η ∘ f)
+  RelativeSusp∗₁ f .map∗.pres-pt = refl
+
+  Susp⊣Ext→
+    : ∀ {𝓥 𝓦} {C : Type 𝓥} {Q : Type∗ 𝓦}
+      → map∗ (RelativeSusp∗ C) Q → (C → Ext-point Q)
+  Susp⊣Ext→ {C = C} {Q} = precomp _ (Susp⊣Ext-η {C = C}) ∘ Ext-point₁ {B = Q}
+
+  private
+    lemma
+      : ∀ {𝓥 𝓦} {C : Type 𝓥} {Q : Type∗ 𝓦}
+        → Susp⊣Ext→ {C = C} {Q}
+        ~ RelativeSusp-Coslice-UP→ (point x) (point (Q .Type∗.pt)) ∘ Coslice-map←map∗
+    lemma = ~refl
+
+  Susp⊣Ext
+    : ∀ {𝓥 𝓦} {C : Type 𝓥} {Q : Type∗ 𝓦}
+      → map∗ (RelativeSusp∗ C) Q ≃ (C → Ext-point Q)
+  Susp⊣Ext {Q = Q}
+    = RelativeSusp-Coslice-UP≃ (point x) (point (Q .Type∗.pt))
+    ∘e Coslice-map≃map∗ e⁻¹
+}
+}
+

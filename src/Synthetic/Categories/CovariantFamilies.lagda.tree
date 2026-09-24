@@ -14,7 +14,6 @@ module Synthetic.Categories.CovariantFamilies
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Synthetic.Categories.Groupoids Δ¹ I public
 
 open Lattice I renaming (0l to i0; 1l to i1)
 open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
@@ -44,6 +43,7 @@ open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
 }
 }
 
@@ -226,6 +226,33 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
 }
 }
 
+\subtree[bak-907F]{
+\title{Evaluation at the source in a covariant family}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-24}
+
+\p{
+Given a [covariant family](stt-00AY) #{P \colon A \to \UV} and an arrow
+#{h \colon \Delta^1 \to A}, evaluation at #{0} gives an equivalence between
+sections of #{P \circ h} and the fibre #{P(h(0))}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (P-is-covariant : is-covariant P) (h : Δ¹ → A)
+  where
+
+  ev-i0-is-equiv←is-covariant : is-equiv (evᵈ: (P ∘ h) i0)
+  ev-i0-is-equiv←is-covariant
+    = is-equiv-∘ unit-ev-is-equiv (is-left-family←is-covariant P P-is-covariant h)
+
+  ev-i0≃←is-covariant : Π Δ¹ (P ∘ h) ≃ P (h i0)
+  ev-i0≃←is-covariant = mk≃ (ev i0) ev-i0-is-equiv←is-covariant
+}
+}
+
 \subtree[stt-00AV]{
 \title{Left fibrations}
 \taxon{Definition}
@@ -303,6 +330,7 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \subtree[stt-00TN]{
 \title{Left fibrations are maps which induce equivalences on coslices}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{#{p \colon E \to B} is a left fibration iff for each #{e : E}, the induced map
 #{E_{e/} \to B_{p(e)/}} is an equivalence.}
@@ -310,37 +338,28 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \agda{
 module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 
-  arrow-fibre-left-fibration-is-coslice-map
-    : ∀ (e : E)
-      → Arrow-equiv
-          (postcompose-coslice (point e) p)
-          (arrow-fibre (transpose-square (power-hom (point i0) p)) (point e))
-  arrow-fibre-left-fibration-is-coslice-map e
+  coslice-map-Ext-equiv
+    : (e : E)
+    → Arrow-equiv
+        (postcompose-coslice (point e) p)
+        (postcomp-Ext (point i0) p (point e))
+  coslice-map-Ext-equiv e
     = mk-arr-equiv
-        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (λ x → fibre-path→
-          ( refl
-          , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (x .snd tt)))
-          ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (x .snd tt))))
+        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → point≃))
+        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → point≃))
+        ~refl
 
   coslice-map-is-equiv←is-left-fibration
     : is-left-fibration p → (∀ e → is-equiv (postcompose-coslice (point e) p))
-  coslice-map-is-equiv←is-left-fibration lfib e
-    = src-is-equiv←Arrow-equiv
-        (arrow-fibre-left-fibration-is-coslice-map e)
-        (transpose-is-cartesian _ (is-cartesian←are-orthogonal lfib) (point e))
-
+  coslice-map-is-equiv←is-left-fibration fib e
+    = src-is-equiv←Arrow-equiv (coslice-map-Ext-equiv e)
+        (postcomp-Ext-is-equiv←orthogonal (point i0) p fib (point e))
 
   is-left-fibration←coslice-map-is-equiv
     : (∀ e → is-equiv (postcompose-coslice (point e) p)) → is-left-fibration p
   is-left-fibration←coslice-map-is-equiv eqv
-    = are-orthogonal←is-cartesian
-        (transpose-is-cartesian _
-          λ e
-          → tgt-is-equiv←Arrow-equiv
-              (arrow-fibre-left-fibration-is-coslice-map (e tt))
-              (eqv (e tt)))
+    = orthogonal←postcomp-Ext-is-equiv (point i0) p
+        (λ e → tgt-is-equiv←Arrow-equiv (coslice-map-Ext-equiv (e tt)) (eqv (e tt)))
 }
 }
 

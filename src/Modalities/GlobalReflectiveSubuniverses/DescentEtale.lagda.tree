@@ -1,0 +1,297 @@
+\title{Descent along étale maps}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Module}
+\import{stt-macros}
+
+\subtree[bak-38A6]{
+\title{Modal descent}
+\taxon{Idea}
+\author{fredrikbakke}
+\date{2026-09-23}
+
+\p{
+Modal descent states that [modal families](bak-D69E) over #{\bigcirc B} are in
+correspondence with [étale maps](stt-011Z) into #{B}. We [establish this
+correspondence](bak-1147) following Cherubini–Rijke \citet{§5}{CR21}.
+}
+}
+
+
+\agda{
+module Modalities.GlobalReflectiveSubuniverses.DescentEtale where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Core.ArrowEquiv
+open import Core.CartesianSquares
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.GlobalReflectiveSubuniverses
+open import Modalities.ConnectedMaps
+open import Modalities.EtaleMaps
+}
+}
+
+\subtree[bak-D69E]{
+\title{Modal descent data for a type family}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Definition}
+
+\p{
+\em{Modal descent data} for a type family #{P : B \to \UU} consists of a family of
+modal types #{Q : \bigcirc B \to \UU}, together with equivalences
+#{P(b) \simeq Q(\eta(b))}.
+}
+
+\agda{
+module _ {α} (RS : gRSubU α) (open gRSubU RS) where
+
+  modal-family-subtype
+    : ∀ {𝓤} (B : Type 𝓤) (𝓥 : Level) → Subtype (B → Type 𝓥) (𝓤 ⊔ α 𝓥)
+  modal-family-subtype B 𝓥 .Subtype.family P = (b : B) → P b ∈ S
+  modal-family-subtype B 𝓥 .Subtype.family-is-subtype P
+    = Π-is-prop (λ b → ∈-is-prop S (P b))
+
+  ModalFam : ∀ {𝓤} (𝓥 : Level) (B : Type 𝓤) → Type (𝓤 ⊔ lsuc 𝓥 ⊔ α 𝓥)
+  ModalFam 𝓥 B = Subtype.Σ̃ (modal-family-subtype B 𝓥)
+
+  Modal-descent-data
+    : ∀ {𝓤 𝓥} {B : Type 𝓤} → (B → Type 𝓥) → Type (𝓤 ⊔ lsuc 𝓥 ⊔ α 𝓥)
+  Modal-descent-data {𝓥 = 𝓥} {B} P
+    = Σ[ Q ∶ (○ B → Type 𝓥) ] (((z : ○ B) → Q z ∈ S) × ((b : B) → P b ≃ Q (η b)))
+
+  module _ {𝓤 𝓥} {B : Type 𝓤} where
+
+    restrict-modal-family
+      : ModalFam 𝓥 (○ B) → (B → Type 𝓥)
+    restrict-modal-family (Q , _) = Q ∘ η
+
+    fibre-restrict-modal-family≃descent
+      : (P : B → Type 𝓥)
+      → fibre restrict-modal-family P ≃ Modal-descent-data P
+    fibre-restrict-modal-family≃descent P
+      = Σ-snd-≃ (λ Q → funext≃ ∙e postcomp-Π-≃ (λ b → sym≃ ∙e ua≃ e⁻¹)) ∙e Σ-assoc
+}
+}
+
+\subtree[bak-2E0B]{
+\title{Modal descent data are unique}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+Given a type family #{P : B \to \UU}, then modal descent data for #{P} in a
+#{Σ}-closed reflective subuniverse, when it exists, is unique.
+}
+
+\proof{
+\p{
+By univalence, modal descent data for #{P} is the fibre of restriction of modal
+families along #{η} at #{P}, so it suffices to show restriction along #{η} is an
+embedding. Again by univalence, the action on identifications of restriction along
+#{η} is restriction of families of equivalences between modal types. Equivalence
+types between modal types are modal, so the dependent universal property of #{η}
+implies that this restriction of families is an equivalence.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveClosure RS)
+  (SΣ : is-globally-Σ-closed GS)
+  {𝓤 𝓥} {B : Type 𝓤}
+  where
+
+  modal-family-path≃
+    : (P Q : ModalFam RS 𝓥 (○ B))
+    → (P ＝ Q) ≃ ((z : ○ B) → P .fst z ≃ Q .fst z)
+  modal-family-path≃ P Q
+    = mk≃ (ap fst) (Subtype.Σ̃-π-is-embedding (modal-family-subtype RS (○ B) 𝓥))
+    ∙e funext≃ ∙e postcomp-Π-≃ (λ z → ua≃ e⁻¹)
+
+  restrict-modal-family-path-square
+    : (P Q : ModalFam RS 𝓥 (○ B))
+    → Arrow-equiv
+        (ap (restrict-modal-family RS) {P} {Q})
+        (precomp-Π (λ z → P .fst z ≃ Q .fst z) η)
+  restrict-modal-family-path-square P Q
+    = mk-arr-equiv
+        (modal-family-path≃ P Q)
+        (funext≃ ∙e postcomp-Π-≃ (λ b → ua≃ e⁻¹))
+        (λ where refl → refl)
+
+  restrict-modal-family-is-embedding
+    : is-embedding (restrict-modal-family RS {𝓥 = 𝓥} {B = B})
+  restrict-modal-family-is-embedding {P} {Q}
+    = src-is-equiv←Arrow-equiv
+        (restrict-modal-family-path-square P Q)
+        (gRSubUReflectorConnected.η-up-connected-map RS SΣ
+          (λ z → ≃∈S (P .snd z) (Q .snd z)))
+
+  Modal-descent-data-is-prop
+    : (P : B → Type 𝓥) → is-prop (Modal-descent-data RS P)
+  Modal-descent-data-is-prop P
+    = is-prop←equiv
+        (fibre-restrict-modal-family≃descent RS P)
+        (is-prop-map←is-embedding restrict-modal-family-is-embedding P)
+}
+}
+
+
+\subtree[bak-4877]{
+\title{Maps classified by modal families are étale}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-24}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, any map #{f \colon A \to B} whose fibres
+are classified by a modal family #{P \colon C \to \UV_{\bigcirc}} over a modal type
+#{C} is étale.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α) (SΣ : is-globally-Σ-closed (gRSubU.GS RS))
+  (open gRSubU RS)
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+  {f : A → B} (P : C → Type 𝓜) (c : B → C)
+  where
+
+  is-étale-map←classified-by-modal-family
+    : C ∈ S → ((z : C) → P z ∈ S)
+    → ((b : B) → fibre f b ≃ P (c b)) → is-étale-map RS f
+  is-étale-map←classified-by-modal-family cm pm e
+    = let (F , cart) = cartesian-square←classified-fibres P c e
+      in is-étale-map←base-change RS SΣ F cart
+           (is-étale-map←modal-domain-codomain RS fst (SΣ cm pm) cm)
+}
+}
+
+\subtree[bak-7E5F]{
+\title{The fibre family of an étale map descends}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Construction}
+
+\p{
+Given an étale map #{f \colon A \to B}, then its fibre family descends to
+#{z \mapsto \fibre{\bigcirc f}{z}}. This family is clearly modally valued, and the
+comparison on fibres is an equivalence by the definition of being étale.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (open gReflectiveClosure RS)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  modal-fibre-descent←is-étale-map
+    : is-étale-map RS f → Modal-descent-data RS (fibre f)
+  modal-fibre-descent←is-étale-map fe
+    = ( fibre (○₁ f)
+      , (λ z → fibre∈S (○₁ f) z ○∈S ○∈S)
+      , (λ b → mk≃ (η-fibre-map RS f b) (fe b)))
+}
+}
+
+\subtree[bak-C152]{
+\title{Étale maps are precisely the maps whose fibre families descend}
+\author{fredrikbakke}
+\date{2026-09-12}
+\taxon{Theorem}
+
+\p{
+For a #{Σ}-closed reflective subuniverse, the fibre family of #{f \colon A \to B}
+admits modal descent if and only if #{f} is étale.
+}
+
+\proof{
+\p{
+If #{f} is étale, its fibre family descends by [the preceding construction](bak-7E5F).
+Conversely, apply the [classification by a modal family criterion](bak-4877) to the
+descended family over the modal type #{\bigcirc B}, with classifying map #{η}.
+}
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  where
+
+  is-étale-map←modal-fibre-family
+    : ∀ {𝓦} (Q : ○ B → Type 𝓦)
+      → ((z : ○ B) → Q z ∈ S)
+      → ((b : B) → fibre f b ≃ Q (η b))
+      → is-étale-map RS f
+  is-étale-map←modal-fibre-family Q
+    = is-étale-map←classified-by-modal-family RS SΣ Q η ○∈S
+
+  is-étale-map←modal-fibre-descent
+    : Modal-descent-data RS (fibre f) → is-étale-map RS f
+  is-étale-map←modal-fibre-descent (Q , qm , e)
+    = is-étale-map←modal-fibre-family Q qm e
+
+  is-étale-map↔modal-fibre-descent
+    : is-étale-map RS f ↔ Modal-descent-data RS (fibre f)
+  is-étale-map↔modal-fibre-descent
+    = ( modal-fibre-descent←is-étale-map RS
+      , is-étale-map←modal-fibre-descent)
+
+  unique-modal-fibre-descent
+    : is-étale-map RS f → is-singleton (Modal-descent-data RS (fibre f))
+  unique-modal-fibre-descent fe
+    = mk-singl (modal-fibre-descent←is-étale-map RS fe)
+        (Modal-descent-data-is-prop RS SΣ (fibre f) _)
+}
+}
+
+\subtree[bak-1147]{
+\title{Modal descent correspondence}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-23}
+
+\p{
+For a #{\Sigma}-closed reflective subuniverse and a type #{B : \UU}, the type of
+[étale maps](bak-4482) into #{B} with domain in #{\UU \cup \UV} is equivalent to the
+type of [modal families](bak-D69E) over #{\bigcirc B} valued in #{\UU \cup \UV}.
+}
+
+\p{This is \citet{Theorem 5.4}{CR21} stated for type families.}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (SΣ : is-globally-Σ-closed GS)
+  {𝓤} {B : Type 𝓤}
+  where
+
+  étale-maps≃modal-families
+    : ∀ 𝓥 → Étale RS (𝓤 ⊔ 𝓥) B ≃ ModalFam RS (𝓤 ⊔ 𝓥) (○ B)
+  étale-maps≃modal-families 𝓥
+    = Σ-assoc e⁻¹
+    ∙e Σ̃≃←Subtype-equiv
+        {S = mk-subtype (λ _ → is-cartesian-is-prop)}
+        {T = mk-subtype (λ p → Modal-descent-data-is-prop RS SΣ (fibre (snd p)))}
+        (λ _ → is-étale-map↔modal-fibre-descent RS SΣ)
+    ∙e Σ-fst-≃ {B = Modal-descent-data RS} (straighten≃ 𝓥)
+    ∙e Σ-snd-≃ (λ P → fibre-restrict-modal-family≃descent RS P e⁻¹)
+    ∙e total≃total-fibre (restrict-modal-family RS)
+}
+}

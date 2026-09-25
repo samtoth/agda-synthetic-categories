@@ -1,0 +1,119 @@
+\title{Synthetic cocones}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-09-25}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.Cocones
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open import Axioms.FunExt
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrows
+open import Core.CartesianSquares
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Coslices Δ¹ I
+}
+}
+
+\subtree[tot-A0CE]{
+\title{Cocone types}
+\taxon{Definition}
+
+\p{Given a diagram #{\phi \colon \mathcal{K} \to A}, the type of #{D}-shaped \em{cones}
+at some element #{a : A} is given by a natural transformation #{D \Rightarrow \const_a}.
+The type consisting of a point and a cone at that point, we write #{A_{/\phi}}, called
+\code{Under ϕ} in code. This type comes with a canonical projection to #{A} which
+we call the \em{nadir} map.}
+
+\agda{
+module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
+
+  Cocone-at : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  Cocone-at a = Hom (K → A) ϕ (const a)
+
+  Under : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  Under = Σ A Cocone-at
+
+  nadir : Under → A
+  nadir = fst
+}
+}
+
+\subtree[tot-9923]{
+\title{The nadir map as a base change}
+\taxon{Lemma}
+
+\p{The nadir map #{A_{ϕ/} \to A} is a base change of the slice map
+#{(A^\mathcal{K})_{ϕ/} \to A^{\mathcal{K}}}.}
+
+\agda{
+module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
+
+  Coslice-proj←nadir : Arrow-map (nadir ϕ) (Coslice-proj: ϕ)
+  Coslice-proj←nadir .Arrow-Π.top (a , h) = (h .Homᵈ.hom , h .Homᵈ.hom0)
+  Coslice-proj←nadir .Arrow-Π.bot = const
+  Coslice-proj←nadir .Arrow-Π.comm (a , h) = sym (h .Homᵈ.hom1)
+
+  opaque
+    nadir-base-change-of-Coslice-proj : is-cartesian Coslice-proj←nadir
+    nadir-base-change-of-Coslice-proj a
+      = is-equiv←~
+          (λ where (_ , refl) → fibre-path→ (refl , sym sym-sym ∙ sym (∙-reflr _)))
+          (eqv ._≃_.fwd-is-equiv)
+      where
+
+      eqv : fibre (nadir ϕ) a ≃ fibre (Coslice-proj: ϕ) (const a)
+      eqv ._≃_.fwd ((a , h) , refl) = ((h .Homᵈ.hom , h .Homᵈ.hom0) , h .Homᵈ.hom1)
+      eqv ._≃_.fwd-is-equiv .is-equiv.qinv .fst ((f , p) , q) = ((a , mk-hom f p q) , refl)
+      eqv ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst (_ , refl) = refl
+      eqv ._≃_.fwd-is-equiv .is-equiv.qinv .snd .snd = ~refl
+      eqv ._≃_.fwd-is-equiv .is-equiv.coherent (_ , refl) = refl
+}
+}
+
+\subtree[tot-195I]{
+\taxon{Lemma}
+\title{Under types as comma types}
+
+\p{For any map #{\phi : K \to A}, the overcategory #{A_{\phi/}} is equivalent to the
+comma type of the span #{\{\phi\} \to A^K \leftarrow A}.}
+
+\agda{
+Under-directed-cone
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {K : Type 𝓥}
+      (ϕ : K → A)
+    → directed-cone (mk-cospan (K → A) (point ϕ) (const: A K)) (Under ϕ)
+Under-directed-cone F .directed-cone.p = !
+Under-directed-cone F .directed-cone.q (a , _) = a
+Under-directed-cone F .directed-cone.filler (_ , α) = α
+
+Under-is-comma
+  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
+    → up-comma (Under-directed-cone F)
+Under-is-comma F .is-equiv.qinv .fst cone x = (cone .directed-cone.q x , cone .directed-cone.filler x)
+Under-is-comma F .is-equiv.qinv .snd .fst = ~refl
+Under-is-comma F .is-equiv.qinv .snd .snd = ~refl
+Under-is-comma F .is-equiv.coherent = ~refl
+}
+}

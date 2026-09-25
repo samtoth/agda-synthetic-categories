@@ -1,0 +1,236 @@
+\title{Binary meets in posets}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-09-22}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Algebra.Poset
+
+module Algebra.Order.BinaryMeets
+  {𝓤 𝓥} {A : Type 𝓤} (P : Poset 𝓥 A) (open Poset P)
+  where
+
+open import Axioms.FunExt
+}
+
+\agda-imports{
+\agda{
+open import Algebra.Order.BottomElements
+open import Algebra.Order.TopElements
+}
+}
+
+\subtree[bak-CCD5]{
+\title{Binary meets}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{
+A \em{binary meet} of elements #{x} and #{y} of a [poset](stt-00TJ) is a greatest
+lower bound of #{x} and #{y}. A poset \em{has binary meets} if every pair of elements
+has a binary meet.
+}
+
+\agda{
+is-binary-meet : A → A → A → Type (𝓤 ⊔ 𝓥)
+is-binary-meet x y m
+  = (z : A) → (z ≤ x) × (z ≤ y) ↔ (z ≤ m)
+
+binary-meet : A → A → Type (𝓤 ⊔ 𝓥)
+binary-meet x y = Σ[ m ∶ A ] is-binary-meet x y m
+
+is-binary-meet-is-prop : {x y m : A} → is-prop (is-binary-meet x y m)
+is-binary-meet-is-prop
+  = Π-is-prop (λ _ → ×-is-prop
+      (→-is-prop ≤-is-prop)
+      (→-is-prop (×-is-prop ≤-is-prop ≤-is-prop)))
+
+has-binary-meets : Type (𝓤 ⊔ 𝓥)
+has-binary-meets = (x y : A) → binary-meet x y
+}
+}
+
+\subtree[bak-6D02]{
+\title{Binary meets are unique}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+binary-meet-unique
+  : {x y m n : A}
+  → is-binary-meet x y m → is-binary-meet x y n → m ＝ n
+binary-meet-unique m-is-meet n-is-meet
+  = ≤-antisym
+      (n-is-meet _ .fst (m-is-meet _ .snd ≤-refl))
+      (m-is-meet _ .fst (n-is-meet _ .snd ≤-refl))
+
+binary-meet-is-prop : {x y : A} → is-prop (binary-meet x y)
+binary-meet-is-prop (m , m-is-meet) (n , n-is-meet)
+  = Subtype.subtype-path
+      (mk-subtype (λ _ → is-binary-meet-is-prop))
+      (binary-meet-unique m-is-meet n-is-meet)
+
+has-binary-meets-is-prop : is-prop has-binary-meets
+has-binary-meets-is-prop
+  = Π-is-prop (λ _ → Π-is-prop (λ _ → binary-meet-is-prop))
+}
+}
+
+\agda{
+module HasBinaryMeets (meets : has-binary-meets) where
+}
+
+\subtree[bak-A7E8]{
+\title{The binary meet operation}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+  _∧_ : A → A → A
+  x ∧ y = meets x y .fst
+
+  infixr 40 _∧_
+
+  ∧-is-meet : (x y : A) → is-binary-meet x y (x ∧ y)
+  ∧-is-meet x y = meets x y .snd
+
+  ∧-≤-left : {x y : A} → (x ∧ y) ≤ x
+  ∧-≤-left = (∧-is-meet _ _ _ .snd ≤-refl) .fst
+
+  ∧-≤-right : {x y : A} → (x ∧ y) ≤ y
+  ∧-≤-right = (∧-is-meet _ _ _ .snd ≤-refl) .snd
+
+  ∧-UP : {x y z : A} → z ≤ x → z ≤ y → z ≤ (x ∧ y)
+  ∧-UP p q = ∧-is-meet _ _ _ .fst (p , q)
+}
+}
+
+\subtree[bak-4A5D]{
+\title{Binary meets are idempotent, commutative, and associative}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+  abstract
+    ∧-idem : {x : A} → x ∧ x ＝ x
+    ∧-idem = ≤-antisym ∧-≤-left (∧-UP ≤-refl ≤-refl)
+
+    ∧-comm : {x y : A} → x ∧ y ＝ y ∧ x
+    ∧-comm
+      = ≤-antisym (∧-UP ∧-≤-right ∧-≤-left) (∧-UP ∧-≤-right ∧-≤-left)
+
+    ∧-assoc : {x y z : A} → x ∧ (y ∧ z) ＝ (x ∧ y) ∧ z
+    ∧-assoc
+      = ≤-antisym
+          (∧-UP
+            (∧-UP ∧-≤-left (≤-trans ∧-≤-right ∧-≤-left))
+            (≤-trans ∧-≤-right ∧-≤-right))
+          (∧-UP
+            (≤-trans ∧-≤-left ∧-≤-left)
+            (∧-UP (≤-trans ∧-≤-left ∧-≤-right) ∧-≤-right))
+}
+}
+
+\subtree[bak-BC4F]{
+\title{The order is characterised by binary meets}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+  abstract
+    ≤-min : {x y : A} → x ≤ y → x ∧ y ＝ x
+    ≤-min p = ≤-antisym ∧-≤-left (∧-UP ≤-refl p)
+
+    ≤←∧ : {x y : A} → x ∧ y ＝ x → x ≤ y
+    ≤←∧ p = ≤-trans (≥←＝ p) ∧-≤-right
+
+    ≤-min' : {x y : A} → y ≤ x → x ∧ y ＝ y
+    ≤-min' p = ∧-comm ∙ ≤-min p
+
+    ≤←∧' : {x y : A} → x ∧ y ＝ y → y ≤ x
+    ≤←∧' p = ≤←∧ (∧-comm ∙ p)
+
+  ≤↔∧-eq : {x y : A} → (x ≤ y) ↔ (x ∧ y ＝ x)
+  ≤↔∧-eq = (≤-min , ≤←∧)
+
+  ≥↔∧-eq : {x y : A} → (y ≤ x) ↔ (x ∧ y ＝ y)
+  ≥↔∧-eq = (≤-min' , ≤←∧')
+}
+}
+
+\subtree[bak-C062]{
+\title{Binary meets are monotone}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+  abstract
+    ∧-mono : {x x' y y' : A} → x ≤ x' → y ≤ y' → (x ∧ y) ≤ (x' ∧ y')
+    ∧-mono p q = ∧-UP (≤-trans ∧-≤-left p) (≤-trans ∧-≤-right q)
+}
+}
+
+\subtree[bak-F18C]{
+\title{Binary meets satisfy the interchange law}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+  abstract
+    ∧-∧-interchange : {a b c d : A} → (a ∧ b) ∧ (c ∧ d) ＝ (a ∧ c) ∧ (b ∧ d)
+    ∧-∧-interchange {a} {b} {c} {d}
+      = (a ∧ b) ∧ (c ∧ d) ＝⟨ sym ∧-assoc ⟩
+        a ∧ (b ∧ (c ∧ d)) ＝⟨ ap (a ∧_) ∧-assoc ⟩
+        a ∧ ((b ∧ c) ∧ d) ＝⟨ ap (λ z → a ∧ (z ∧ d)) ∧-comm ⟩
+        a ∧ ((c ∧ b) ∧ d) ＝⟨ ap (a ∧_) (sym ∧-assoc) ⟩
+        a ∧ (c ∧ (b ∧ d)) ＝⟨ ∧-assoc ⟩
+        (a ∧ c) ∧ (b ∧ d) ∎
+}
+}
+
+\subtree[bak-2B64]{
+\title{Binary meets with bottom elements}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{
+A [bottom element](bak-FCC3) is absorbing for the binary meet operation.
+}
+
+\agda{
+  abstract
+    ∧-bot-right : {b x : A} → is-bottom-element P b → x ∧ b ＝ b
+    ∧-bot-right b-is-bottom = ≤-antisym ∧-≤-right (b-is-bottom _)
+
+    ∧-bot-left : {b x : A} → is-bottom-element P b → b ∧ x ＝ b
+    ∧-bot-left b-is-bottom = ∧-comm ∙ ∧-bot-right b-is-bottom
+}
+}
+
+\subtree[bak-60E5]{
+\title{Binary meets with top elements}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{A [top element](bak-5B1C) is a unit for the binary meet operation.}
+
+\agda{
+  abstract
+    ∧-top-right : {t x : A} → is-top-element P t → x ∧ t ＝ x
+    ∧-top-right t-is-top = ≤-antisym ∧-≤-left (∧-UP ≤-refl (t-is-top _))
+
+    ∧-top-left : {t x : A} → is-top-element P t → t ∧ x ＝ x
+    ∧-top-left t-is-top = ∧-comm ∙ ∧-top-right t-is-top
+}
+}

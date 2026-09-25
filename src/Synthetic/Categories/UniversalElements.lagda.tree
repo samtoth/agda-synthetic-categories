@@ -32,6 +32,7 @@ open import Synthetic.Categories.CovariantClosure Δ¹ I
 open import Synthetic.Categories.CovariantHomFamilies Δ¹ I
 open import Synthetic.Categories.Initial Δ¹ I
 open import Synthetic.Categories.Adjoints Δ¹ I
+open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
 }
 }
 
@@ -86,6 +87,32 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {F : A → Type 𝓥} where
     → F b
     → Hom A (x .fst) b
   universal-rec Fc un = is-equiv.bwd (un _)
+}
+}
+
+\subtree[bak-50AB]{
+\title{Fibrewise equivalences preserve universal elements}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-25}
+
+\p{
+Fibrewise equivalences between [covariant families](stt-00AY) preserve and reflect
+[universal elements](stt-00FX).
+}
+
+\agda{
+opaque
+  is-universal-equiv↔
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : A → Type 𝓥} {Q : A → Type 𝓦}
+      → (P-is-cov : is-covariant P) (Q-is-cov : is-covariant Q)
+      → (e : (a : A) → P a ≃ Q a) {a : A} (x : P a)
+      → is-universal P-is-cov (a , x) ↔ is-universal Q-is-cov (a , e a ._≃_.fwd x)
+  is-universal-equiv↔ P-is-cov Q-is-cov e x
+    = postcomp-Π-↔ (λ b
+      → let H f = tr-cov-hom-naturality P-is-cov Q-is-cov (_≃_.fwd ∘ e) f x
+            eb = e b ._≃_.fwd-is-equiv
+        in (is-equiv-~∘ H eb , 3-for-2~ H eb))
 }
 }
 
@@ -193,15 +220,82 @@ Colimit-cocone {A = A} {𝒦} D apex = Hom (𝒦 → A) D (const apex)
 
 module Colimit {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) {𝒦 : Type 𝓥} (D : 𝒦 → A) where
 
-  Colimit-cocone-is-covariant : is-covariant (Colimit-cocone D)
-  Colimit-cocone-is-covariant
-    = covariant-base-change
-      {P = Hom (𝒦 → A) D}
-      (const: A 𝒦)
-      (hom-fam-cov (→-is-segal 𝐴) D)
+  opaque
+    Colimit-cocone-is-covariant : is-covariant (Colimit-cocone D)
+    Colimit-cocone-is-covariant
+      = covariant-base-change
+        {P = Hom (𝒦 → A) D}
+        (const: A 𝒦)
+        (hom-fam-cov (→-is-segal 𝐴) D)
 
   is-colimit : ∀ colimD (cc : Colimit-cocone D colimD) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
   is-colimit colimD cc
     = is-universal Colimit-cocone-is-covariant (colimD , cc)
+}
+}
+
+\subtree[bak-257F]{
+\title{Colimits under restrictions of diagrams}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-25}
+
+\p{
+Let #{A} be a [Segal type](stt-00AI) and let #{j \colon K \to L} be such that
+precomposition at #{A} is fully faithful #{(L \to A) \hookrightarrow (K \to A)}. Then
+restriction along #{j} induces equivalences of [cocones](stt-00FW), and preserves and
+reflects colimits.
+}
+
+\proof{
+\p{
+Full faithfulness yields a fibrewise equivalence of the covariant
+families of cocones, and such equivalences [preserve and reflect universal
+elements](bak-50AB), and hence colimits.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {K : Type 𝓥} {L : Type 𝓦}
+  (j : K → L) (D : L → A)
+  where
+
+  restrict-Colimit-cocone
+    : {a : A} → Colimit-cocone D a → Colimit-cocone (D ∘ j) a
+  restrict-Colimit-cocone = ap-hom (precomp A j)
+
+  module _ (precomp-is-ff : is-ff (precomp A j)) where
+
+    Colimit-cocone-restrict≃
+      : (a : A) → Colimit-cocone D a ≃ Colimit-cocone (D ∘ j) a
+    Colimit-cocone-restrict≃ a
+      = mk≃ restrict-Colimit-cocone (is-ff'←is-ff precomp-is-ff)
+
+    module _
+      (𝐴 : is-segal A)
+      (let module C = Colimit 𝐴 D)
+      (let module C|j = Colimit 𝐴 (D ∘ j))
+      where
+
+      opaque
+        is-colimit-restrict↔
+          : {a : A} (cc : Colimit-cocone D a)
+          → C.is-colimit a cc
+          ↔ C|j.is-colimit a (restrict-Colimit-cocone cc)
+        is-colimit-restrict↔
+          = is-universal-equiv↔ C.Colimit-cocone-is-covariant
+              C|j.Colimit-cocone-is-covariant Colimit-cocone-restrict≃
+
+      colimits-restrict≃
+        : (a : A)
+        → (Σ[ cc ∶ Colimit-cocone D a ] C.is-colimit a cc)
+        ≃ (Σ[ cc ∶ Colimit-cocone (D ∘ j) a ] C|j.is-colimit a cc)
+      colimits-restrict≃ a
+        = Σ-≃ (Colimit-cocone-restrict≃ a) (λ cc
+          → equiv←logical
+            (Π-is-prop (λ _ → is-equiv-is-prop))
+            (Π-is-prop (λ _ → is-equiv-is-prop))
+            (is-colimit-restrict↔ cc))
 }
 }

@@ -56,6 +56,9 @@ record is-global-reflector
       : ∀ {𝓥} {Q : Type 𝓥}
         → Q ∈ S → is-equiv (precomp Q η)
 
+  ○-UP≃ : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (○A → Q) ≃ (A → Q)
+  ○-UP≃ Q∈S = mk≃ (precomp _ η) (reflects Q∈S)
+
   ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
   ○-rec cs = is-equiv.bwd (reflects cs)
 
@@ -180,10 +183,16 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   module R {𝓤} {A} = is-global-reflector (η-is-reflector {𝓤} {A})
   open R public
 
-  module ▸η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h}
-    = is-equiv (prewhisker-is-equiv←ap-compose {g = g} {h}
-                 (is-embedding←is-equiv
-                   (reflects {A = B} (○∈S {𝓤} {A}))))
+  opaque
+    ▹η-is-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+        → is-equiv (prewhisker η g h)
+    ▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h}
+      = prewhisker-is-equiv←ap-compose {g = g} {h}
+          (is-embedding←is-equiv (reflects {A = A} (○∈S {𝓥} {B})))
+
+  module ▸η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+    = is-equiv (▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h})
 
   reflector : ∀ {𝓤} (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η
@@ -690,6 +699,18 @@ module gReflectiveReasoning {α} (RS : gRSubU α) where
   ○₁-id {A = A}
     = ▸η.bwd (○₁-β (id: A))
 
+  ○-~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      → f ~ g → ○₁ f ~ ○₁ g
+  ○-~ {f = f} {g} H = ▸η.bwd
+    (  ○₁ f ∘ η
+    ~⟨ ○₁-β f ⟩
+      η ∘ f
+    ~⟨ η ◃h H ⟩
+      η ∘ g
+    ~⟨ ○₁-β g h⁻¹ ⟩
+      ○₁ g ∘ η ~∎)
+
   ○₁-∘
     : ∀ {𝓤 𝓥 𝓦}
         {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
@@ -930,6 +951,18 @@ module gRSubUInduction
            {B = (a : ○ A) → P a}
            (ind PS)
   ind-is-equiv = is-equiv←qinv ∘ ind-qinv
+
+  ○-UPᵈ
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → is-equiv (precomp-Π P η)
+  ○-UPᵈ P∈S = is-equiv⁻¹ (is-equiv←qinv (ind-qinv P∈S))
+
+  ○-UPᵈ≃
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → (Π (○ A) P) ≃ (Π A (P ∘ η))
+  ○-UPᵈ≃ P∈S = mk≃ (precomp-Π _ η) (○-UPᵈ P∈S)
 
   local-Pullback∈S
     : {𝓦 𝓧 𝓨 : Level}

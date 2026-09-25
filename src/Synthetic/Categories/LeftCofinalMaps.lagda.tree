@@ -1,5 +1,6 @@
 \title{Left cofinal maps}
 \taxon{Module}
+\author{samueltoth}
 \import{stt-macros}
 
 
@@ -25,15 +26,20 @@ open import Core.ArrowEquiv
 open import Core.CartesianSquares
 open import Core.FunctorialityPullbacks
 open import Core.Cube
+open import Core.Orthogonal
 
+open import Modalities.ModalEquivalences
 open import Modalities.ConnectedMaps
 open import Modalities.ConnectedTypes
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
 open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.FreeCovariantFamilies Δ¹ I
 
 open import Ergonomics.Extensionality
 }
@@ -43,18 +49,15 @@ open import Ergonomics.Extensionality
 \title{Left cofinal maps}
 \taxon{Definition}
 
+\p{We say that a map #{p \colon A \to B} is left cofinal if for all #{b}, the
+[comma type](stt-00C3) #{p \downarrow b} is #{\Delta^1}-connected.}
+
 \agda{
 module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} where
 
-  is-left-cofinal' : (p : E → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  is-left-cofinal' p
-    = ∀ (b : B) → is-connected Δ¹DiscreteType-gRSubU (p ↓ point b)
-
-
   is-left-cofinal : (p : E → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
   is-left-cofinal p
-    = is-connected-map Δ¹DiscreteType-gRSubU
-        (fst ∘ base-change-arrow (p ×₁ id) src×tgt)
+    = ∀ (b : B) → is-connected Δ¹DiscreteType-gRSubU (p ↓ point b)
 }
 }
 
@@ -70,7 +73,7 @@ module _
   where
 
   base-change-is-left-cofinal
-    : is-left-cofinal' p → is-left-cofinal' (base-change-arrow F p)
+    : is-left-cofinal p → is-left-cofinal (base-change-arrow F p)
   base-change-is-left-cofinal plcf c
     = is-connected←equiv Δ¹DiscreteType-gRSubU
         (mk≃ map (tgt-is-equiv←Arrow-equiv eq dom-top-is-equiv) e⁻¹)
@@ -131,7 +134,44 @@ module _
 
 \subtree[stt-00TS]{
 \title{Left cofinal maps are left anodyne}
+\author{samueltoth}
+\date{2026-09-24}
 
-\p{This remains to be formalised, and worked out on paper. It should at least be
-true for maps between categories.}
+\p{If #{i \colon A \to B} is a map into a Segal type, then #{i} is left
+cofinal iff it is left anodyne.}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝓑 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  is-left-cofinal←is-left-anodyne
+    : is-left-anodyne p → is-left-cofinal p
+  is-left-cofinal←is-left-anodyne pl
+    = fst-is-equiv←is-singleton (FreeCov-is-equiv←is-left-anodyne 𝓑 p pl)
+
+  is-left-anodyne←is-left-cofinal
+    : is-left-cofinal p → is-left-anodyne p
+  is-left-anodyne←is-left-cofinal lcf
+    = is-left-anodyne←FreeCov-is-equiv 𝓑 p (singleton-fst-is-equiv lcf)
+}
+}
+
+\subtree[tot-ACY1]{
+\title{[Quillen's](danquillen) theorem A}
+\taxon{Theorem}
+\author{samueltoth}
+\date{2026-09-24}
+
+\p{A left-cofinal map between [Segal types](stt-00AI) induces an equivalence on
+classifying spaces (the nullifaction at #{Δ¹}).}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  QuillenA : is-left-cofinal p → is-modal-equiv Δ¹DiscreteType-gRSubU p
+  QuillenA pl = is-modal-equiv←up-modal-equiv Δ¹DiscreteType-gRSubU
+    λ Q
+      → orthogonal-type←orthogonal-!
+          (is-left-anodyne←is-left-cofinal 𝐵 p pl !
+            (!-is-left-fibration←is-Δ¹-discrete Q))
+}
 }

@@ -1,0 +1,341 @@
+\date{2026-09-22}
+\title{Left homotopies}
+\author{fredrikbakke}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+import Algebra.Lattice.Instances.Polynomial as Poly
+
+module Synthetic.LeftHomotopy
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  (let Δ² = Poly.Δ² I)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open Poly hiding (Δ²)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Arrows
+open import Core.Orthogonal
+open import Core.Slices
+open import Core.CocartesianSquares
+open import Core.Cofibres
+open import Core.CanonicalPushouts
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Triangles Δ¹ I
+}
+}
+
+\subtree[bak-14B5]{
+\title{Left homotopies of morphisms}
+\taxon{Definition}
+\author{samueltoth}
+\author{fredrikbakke}
+\date{2025-12-12}
+
+\p{
+A \em{left homotopy} #{f \lhtpy g} is a filler of the [triangle](stt-00AK)
+}
+
+\quiver{
+\begin{tikzcd}
+  a && b\nsp{.} \\
+  & a
+  \arrow[from=1-1, to=1-3, "f"]
+  \arrow[from=1-1, to=2-2, equals]
+  \arrow[from=2-2, to=1-3, "g"']
+\end{tikzcd}
+}
+
+\agda{
+_~▵_ : ∀ {𝓤} {A : Type 𝓤} {a b : A} → (f g : Hom A a b) → Type (𝓘 ⊔ 𝓤)
+f ~▵ g = Hom2 f (idH _) g
+}
+}
+
+\subtree[stt-00DK]{
+\title{The walking left homotopy}
+\taxon{Definition}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\date{2026-01-29}
+
+\p{
+We define the \em{walking left homotopy} #{\Delta_\sim} as the
+[cofibre](Core.Cofibres) of #{d_2 \colon Δ¹ \to Δ²}, which contracts the edge
+#{0 \leq 1}.
+}
+
+\agda{
+Δ~ : Type 𝓘
+Δ~ = Cofibre δ₂²
+
+src-Δ~ : Δ¹ → Δ~
+src-Δ~ = ι₁ ∘ Δ²-diagonal
+
+tgt-Δ~ : Δ¹ → Δ~
+tgt-Δ~ = ι₁ ∘ δ₀²
+
+Δ~-span : Span 𝓘 𝓘 lzero
+Δ~-span = mk-span Δ¹ δ₂² !
+
+Δ~-proj-cocone : Cocone Δ~-span Δ¹
+Δ~-proj-cocone = mk-cocone Δ².t (point i0) ~refl
+
+proj-Δ~ : Δ~ → Δ¹
+proj-Δ~ = cogap Δ~-proj-cocone
+
+Δ~-rep1
+  : ∀ {𝓤} {A : Type 𝓤}
+    → (Δ~ → A) ≃ Σ[ x ∶ A ] Ext δ₂² (const x)
+Δ~-rep1 = Cofibre-map-repr δ₂²
+
+Δ¹-retract-Δ~ : retract Δ¹ Δ~
+Δ¹-retract-Δ~ = (tgt-Δ~ , proj-Δ~ , ~refl)
+}
+}
+
+\subtree[bak-86CC]{
+\title{Projecting the inner horn onto its second edge}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{We have a pushout square}
+
+\quiver{
+\begin{tikzcd}
+  {\Delta^1} && {\Lambda^2_1} \\
+  \\
+  {\b1} && {\Delta^1}\nsp{.}
+  \arrow["{\iota_1}", from=1-1, to=1-3]
+  \arrow["!"', from=1-1, to=3-1]
+  \arrow["{\mathrm{projection}}", from=1-3, to=3-3]
+  \arrow["\point 0"', from=3-1, to=3-3]
+  \arrow["\ulcorner" very near end, phantom, from=1-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+left-unit-horn-degeneracy : Arrow-map (ι₁ {f = point i1} {point i0}) (point i0)
+left-unit-horn-degeneracy = mk-amap ! Λ[2,1]-left-eval ~refl
+
+left-unit-horn-is-pushout : up-cocartesian left-unit-horn-degeneracy
+left-unit-horn-is-pushout
+  = cocartesian-square-cancel
+      (Pushout-square'-has-up-cocartesian Λ[2,1]-span)
+      (untranspose-square-has-up-cocartesian _
+        (cocartesian←equiv-map _ id-is-equiv id-is-equiv))
+}
+}
+
+\subtree[stt-00PX]{
+\title{The walking left homotopy classifies left homotopies}
+\taxon{Theorem}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\date{2026-01-29}
+
+\p{Maps #{\Delta_\sim \to A} classify left homotopies in #{A}.}
+
+\agda{
+module _ {𝓤} {A : Type 𝓤} where
+
+  left-unit-horn≃
+    : (Δ¹ → A) ≃ Σ[ x ∶ A ] Ext {B = Λ[2,1]} ι₁ (const x)
+  left-unit-horn≃
+    = mk≃ (λ f → (_ , make-horn (λhom f) (idH _) , ~refl))
+        (3-for-2 {f = (λ a → a .snd .fst ∘ ι₂)}
+          (3-for-2' (Cofibre-map-repr ι₁ ._≃_.fwd-is-equiv)
+            (precomp-equiv
+              (3-for-2
+                (is-pushout←up-pushout _
+                  (up-pushout←up-cocartesian _ left-unit-horn-is-pushout))
+                id-is-equiv)))
+          id-is-equiv)
+
+  Δ~-rep3
+    : (Δ~ → A) ≃ Σ[ f ∶ (Δ¹ → A) ] Ext Λ[2,1]-incl (make-horn (λhom f) (idH _))
+  Δ~-rep3
+    = Δ~-rep1
+    ∙e Σ-snd-≃ (λ a → Ext-compose≃ Λ[2,1]-incl ι₁ (const a))
+    ∙e (Σ-assoc e⁻¹)
+    ∙e (Σ-fst-≃ left-unit-horn≃ e⁻¹)
+
+  Δ~-rep4
+    : (Δ~ → A)
+    ≃ Σ[ f ∶ (Δ¹ → A) ] Σ[ g ∶ Hom A (f i0) (f i1) ] Hom2 (λhom f) (idH _) g
+  Δ~-rep4
+    = Δ~-rep3
+    ∙e Σ-snd-≃
+        ( λ f → Σ-snd-≃ (λ _ → funext≃ e⁻¹)
+        ∙e Λ[2,1]-incl-ext≃composite (λhom f) (idH _))
+
+  rep4-Δ~tgt
+    : fst ∘ Δ~-rep4 ._≃_.fwd ~ precomp A (tgt-Δ~)
+  rep4-Δ~tgt = ~refl
+
+  rep4-Δ~src
+    : Homᵈ.hom ∘ fst ∘ snd ∘ Δ~-rep4 ._≃_.fwd ~ precomp A (src-Δ~)
+  rep4-Δ~src f
+    = composite←Λ[2,1]-incl-ext-diagonal _ _
+        (total-map (λ _ → funext→) (Δ~-rep3 ._≃_.fwd f .snd))
+    ∙ ap (λ a → a .snd .fst ∘ Δ²-diagonal)
+        (_≃_.ε (Σ-fst-≃ {B = Ext Λ[2,1]-incl ∘ fst ∘ snd} left-unit-horn≃) _)
+
+  Δ~-rep-fibre
+    : {a b : A} (f : Hom A a b)
+    → fibre (precomp A tgt-Δ~) (f .Homᵈ.hom)
+    ≃ Σ[ g ∶ Hom A a b ] (f ~▵ g)
+  Δ~-rep-fibre (mk-hom f refl refl)
+    = mk≃ _ (fibre-equiv←is-equiv
+        (Δ~-rep4 ._≃_.fwd , ~refl) (Δ~-rep4 ._≃_.fwd-is-equiv) f)
+    ∙e fibre-straighten _ f
+}
+}
+
+\subtree[bak-1FCC]{
+\title{Left homotopy is reflexive}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\agda{
+opaque
+  refl~▵ : ∀ {𝓤} {A : Type 𝓤} {a b : A} (f : Hom A a b) → f ~▵ f
+  refl~▵ (mk-hom f refl refl) = Hom2←square (λ _ j → f j) refl refl refl
+
+~▵←＝ : ∀ {𝓤} {A : Type 𝓤} {a b : A} {f g : Hom A a b} → f ＝ g → f ~▵ g
+~▵←＝ {f = f} refl = refl~▵ f
+}
+}
+
+\subtree[bak-F005]{
+\title{Locality at the left homotopy characterises equality of homs}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-22}
+
+\p{
+A type is local at the left homotopy target inclusion if and only if left homotopies
+characterise equality of morphisms.
+}
+
+\agda{
+module _
+  {𝓤} {A : Type 𝓤} (A-tgt-local : orthogonal-type tgt-Δ~ A)
+  where
+
+  opaque
+    ~▵-is-torsorial←tgt-local
+      : {a b : A} (f : Hom A a b) → is-torsorial (f ~▵_)
+    ~▵-is-torsorial←tgt-local f
+      = is-single←equiv (Δ~-rep-fibre f)
+          (has-singleton-fibres←is-equiv A-tgt-local (f .Homᵈ.hom))
+
+  ~▵←＝-is-equiv←tgt-local
+    : {a b : A} (f g : Hom A a b) → is-equiv (~▵←＝ {f = f} {g = g})
+  ~▵←＝-is-equiv←tgt-local f
+    = fundamental-Id _ (~▵-is-torsorial←tgt-local f) _
+
+  ＝≃~▵←tgt-local : {a b : A} (f g : Hom A a b) → (f ＝ g) ≃ (f ~▵ g)
+  ＝≃~▵←tgt-local f g = mk≃ ~▵←＝ (~▵←＝-is-equiv←tgt-local f g)
+
+module _ {𝓤} {A : Type 𝓤} where
+
+  tgt-local←~▵-is-torsorial
+    : ({a b : A} (f : Hom A a b) → is-torsorial (f ~▵_))
+    → orthogonal-type tgt-Δ~ A
+  tgt-local←~▵-is-torsorial tors
+    = is-equiv←has-singleton-fibres (λ f
+        → is-single←equiv⁻¹ (Δ~-rep-fibre (λhom f)) (tors (λhom f)))
+
+  tgt-local←＝≃~▵
+    : ({a b : A} (f g : Hom A a b) → (f ＝ g) ≃ (f ~▵ g))
+    → orthogonal-type tgt-Δ~ A
+  tgt-local←＝≃~▵ e
+    = tgt-local←~▵-is-torsorial
+        (λ f → is-single←equiv (Σ-snd-≃ (e f)) Sing-is-singleton)
+
+  tgt-local←~▵←＝-is-equiv
+    : ({a b : A} (f g : Hom A a b) → is-equiv (~▵←＝ {f = f} {g = g}))
+    → orthogonal-type tgt-Δ~ A
+  tgt-local←~▵←＝-is-equiv e
+    = tgt-local←＝≃~▵ (λ f g → mk≃ ~▵←＝ (e f g))
+}
+}
+
+\subtree[stt-00L6]{
+\title{Left homotopies from morphisms over morphisms}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-03-30}
+
+\p{
+Given a morphism over #{g : \Hom_A(b,c)} from #{f : \Hom_A(a,b)} to
+#{h : \Hom_A(a,c)}, we extract a diagonal morphism #{\delta : \Hom_A(a,c)} together
+with a composition triangle #{\delta = g \circ f} and a left homotopy
+#{h \lhtpy \delta}. In particular, when #{g} is an identity morphism, this gives a
+left + right homotopy decomposition of a morphism of morphisms: given two edges
+#{f, h : \Hom_A(a,b)} and a morphism #{\alpha : \Hom_{\Hom_A(a,b)}(f,h)}, then
+#{h \lhtpy \delta} and #{f \rhtpy \delta}.
+}
+
+\agda{
+Hom2×~▵←Hom-over
+  : ∀ {𝓤} {A : Type 𝓤} {a b c : A}
+      (g : Hom A b c) (f : Hom A a b)
+      {h : Hom A a c}
+    → Hom-over g f h
+    → Σ[ k ∶ Hom A a c ] (Hom2 g f k × (h ~▵ k))
+Hom2×~▵←Hom-over {A = A} {a} (g@(mk-hom gh refl refl)) f {h} (mk-hom α refl refl)
+  = (α▵ , right-triangle , left-triangle)
+  where
+
+  α▵ : Hom A a (gh i1)
+  α▵ = mk-hom (λ i → α i .Homᵈ.hom i) (f .Homᵈ.hom0) (h .Homᵈ.hom1)
+
+  right-triangle : Hom2 g f α▵
+  right-triangle
+    = tr (λ u → Hom2 u f α▵)
+         (Hom-ext→ ((λ i → α i .Homᵈ.hom1) , ∙-reflr _ , ∙-reflr _))
+         (Hom2←square (λ i j → α j .Homᵈ.hom i)
+          (f .Homᵈ.hom0) (f .Homᵈ.hom1) (h .Homᵈ.hom1))
+
+  left-triangle : h ~▵ α▵
+  left-triangle
+    = tr (λ u → Hom2 h u α▵)
+         (Hom-ext→ ((λ i → α i .Homᵈ.hom0) , ∙-reflr _ , ∙-reflr _))
+         (Hom2←square (λ i j → α i .Homᵈ.hom j)
+           (f .Homᵈ.hom0) (h .Homᵈ.hom0) (h .Homᵈ.hom1))
+
+module _
+  {𝓤} {A : Type 𝓤} {a b c : A}
+  (g : Hom A b c) (f : Hom A a b) {h : Hom A a c} (α : Hom-over g f h)
+  where
+
+  diag-hom←Hom-over : Hom A a c
+  diag-hom←Hom-over = Hom2×~▵←Hom-over g f α .fst
+
+  Hom2←Hom-over : Hom2 g f diag-hom←Hom-over
+  Hom2←Hom-over = Hom2×~▵←Hom-over g f α .snd .fst
+
+  ~▵←Hom-over : h ~▵ diag-hom←Hom-over
+  ~▵←Hom-over = Hom2×~▵←Hom-over g f α .snd .snd
+}
+}

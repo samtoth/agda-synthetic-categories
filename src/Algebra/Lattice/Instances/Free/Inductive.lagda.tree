@@ -68,8 +68,8 @@ last-Δ (x :≥: j) = j
 Δ-diagonal {zero} i = ·
 Δ-diagonal {suc n} i = (Δ-diagonal i :≥: i) ⦃ Δ-diagonal-≤ {i} {n} ⦄
 
-Δ-diagonal-≤ {i} {zero} = auto!
-Δ-diagonal-≤ {i} {suc n} = auto!
+Δ-diagonal-≤ {i} {zero} = ≤-top
+Δ-diagonal-≤ {i} {suc n} = ≤-refl
 
 Δ-1 : ∀ {n} → Δ^ n
 Δ-1 = Δ-diagonal i1
@@ -78,8 +78,8 @@ last-Δ (x :≥: j) = j
 Δ-0 = Δ-diagonal i0
 
 Δ-1-≤ : ∀ {i n} → i ≤ last-Δ {n} (Δ-1)
-Δ-1-≤ {i} {zero} = auto!
-Δ-1-≤ {i} {suc n} = auto!
+Δ-1-≤ {i} {zero} = ≤-top
+Δ-1-≤ {i} {suc n} = ≤-top
 
 Δ∗∗ : ℕ → Type∗∗ 𝓘
 Δ∗∗ n = mk-type∗∗ (Δ^ n) Δ-0 Δ-1
@@ -195,10 +195,11 @@ instance
 \taxon{Lemma}
 \date{2026-01-24}
 \author{samueltoth}
+\contributor{fredrikbakke}
 
 \agda{
 Δ^2←Δ² : Δ² L → Δ^ 2
-Δ^2←Δ² (i , j) = (· :≥: i :≥: j)
+Δ^2←Δ² (i , j) = ((· :≥: i) ⦃ ≤-top ⦄ :≥: j)
 
 Δ^2←Δ²-is-equiv : is-equiv Δ^2←Δ²
 Δ^2←Δ²-is-equiv = mk-eqv
@@ -232,8 +233,8 @@ _Δ-∧_ : {n : ℕ} → Δ^ n → Δ^ n → Δ^ n
 _Δ-∧_ {0} · · = ·
 _Δ-∧_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∧ p') :≥: (j ∧ j')) ⦃ Δ-∧-≤ {n} ⦄
 
-Δ-∧-≤ {zero} {·} {·} = auto!
-Δ-∧-≤ {suc n} {p :≥: j} {p' :≥: j'} = auto!
+Δ-∧-≤ {zero} {·} {·} = ≤-top
+Δ-∧-≤ {suc n} {p :≥: j} {p' :≥: j'} = ≤-∧
 
 _Δ-∨_ : {n : ℕ} → Δ^ n → Δ^ n → Δ^ n
 Δ-∨-≤
@@ -243,8 +244,8 @@ _Δ-∨_ : {n : ℕ} → Δ^ n → Δ^ n → Δ^ n
 _Δ-∨_ {0} · · = ·
 _Δ-∨_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∨ p') :≥: (j ∨ j')) ⦃ Δ-∨-≤ {n} ⦄
 
-Δ-∨-≤ {zero} {·} {·} = auto!
-Δ-∨-≤ {suc n} {p :≥: j} {p' :≥: j'} = auto!
+Δ-∨-≤ {zero} {·} {·} = ≤-top
+Δ-∨-≤ {suc n} {p :≥: j} {p' :≥: j'} = ≤-∨
 
 Δ-∧-assoc-path : {n : ℕ} {p q r : Δ^ n} → Δ-path (p Δ-∧ (q Δ-∧ r)) ((p Δ-∧ q) Δ-∧ r)
 Δ-∧-assoc-path {zero} {·} {·} {·} = ·
@@ -278,22 +279,57 @@ _Δ-∨_ {suc n} (p :≥: j) (p' :≥: j') = ((p Δ-∨ p') :≥: (j ∨ j')) �
 Δ-1-top-path {zero} {·} = ·
 Δ-1-top-path {suc n} {p :≥: j} = Δ-1-top-path :≥: 1-top
 
+_Δ-≤_ : {n : ℕ} → Δ^ n → Δ^ n → Type 𝓘
+_Δ-≤_ {zero} _ _ = 𝟙ᴸ
+_Δ-≤_ {suc n} (xs :≥: x) (ys :≥: y) = (xs Δ-≤ ys) × (x ≤ y)
+
+Δ-≤-is-prop : ∀ {n} {xs ys : Δ^ n} → is-prop (xs Δ-≤ ys)
+Δ-≤-is-prop {zero} = is-prop←is-truncated trunc!
+Δ-≤-is-prop {suc n} {xs :≥: x} {ys :≥: y}
+  = ×-is-prop Δ-≤-is-prop ≤-is-prop
+
+Δ-≤-min : ∀ {n} {xs ys : Δ^ n} → (xs Δ-≤ ys) → (xs Δ-∧ ys) ＝ xs
+Δ-≤-min {zero} {·} {·} _ = refl
+Δ-≤-min {suc n} {xs :≥: x} {ys :≥: y} (p , q)
+  = Δ-ext (Δ-IdS .Identity-system.IdS←Id (Δ-≤-min p) :≥: ≤-min q)
+
+Δ-≤←∧ : ∀ {n} {xs ys : Δ^ n} → (xs Δ-∧ ys) ＝ xs → (xs Δ-≤ ys)
+Δ-≤←∧ {zero} _ = ttᴸ
+Δ-≤←∧ {suc n} {xs :≥: x} {ys :≥: y} p
+  = (Δ-≤←∧ (ap (fst ∘ Δ-suc ._≊_.fwd) p) , ≤←∧ (ap last-Δ p))
+
+Δ-≤-max : ∀ {n} {xs ys : Δ^ n} → (xs Δ-≤ ys) → (xs Δ-∨ ys) ＝ ys
+Δ-≤-max {zero} {·} {·} = ~refl
+Δ-≤-max {suc n} {xs :≥: x} {ys :≥: y} (p , q)
+  = Δ-ext (Δ-IdS .Identity-system.IdS←Id (Δ-≤-max p) :≥: ≤-max q)
+
+Δ-≤←∨ : ∀ {n} {xs ys : Δ^ n} → (xs Δ-∨ ys) ＝ ys → (xs Δ-≤ ys)
+Δ-≤←∨ {zero} _ = ttᴸ
+Δ-≤←∨ {suc n} {xs :≥: x} {ys :≥: y} p
+  = (Δ-≤←∨ (ap (fst ∘ Δ-suc ._≊_.fwd) p) , ≤←∨ (ap last-Δ p))
+
+Δ-is-lattice : {n : ℕ} → is-lattice {L = Δ^ n} Δ-0 Δ-1 _Δ-∧_ _Δ-∨_
+Δ-is-lattice .is-lattice.∧-assoc = Δ-ext Δ-∧-assoc-path
+Δ-is-lattice .is-lattice.∨-assoc = Δ-ext Δ-∨-assoc-path
+Δ-is-lattice .is-lattice.∧-comm = Δ-ext Δ-∧-comm-path
+Δ-is-lattice .is-lattice.∨-comm = Δ-ext Δ-∨-comm-path
+Δ-is-lattice .is-lattice.∨-∧-abs = Δ-ext Δ-∨-∧-abs-path
+Δ-is-lattice .is-lattice.∧-∨-abs = Δ-ext Δ-∧-∨-abs-path
+Δ-is-lattice .is-lattice.0-bottom = Δ-ext Δ-0-bottom-path
+Δ-is-lattice .is-lattice.1-top = Δ-ext Δ-1-top-path
+
 Δ-Lattice : (n : ℕ) → Lattice (Δ^ n)
 Δ-Lattice n .Lattice.0l = Δ-0
 Δ-Lattice n .Lattice.1l = Δ-1
 Δ-Lattice n .Lattice._∧_ = _Δ-∧_
 Δ-Lattice n .Lattice._∨_ = _Δ-∨_
-Δ-Lattice n .Lattice.str-is-lattice = l
-  where
-  l : is-lattice _ _ _ _
-  l .is-lattice.∧-assoc = Δ-ext Δ-∧-assoc-path
-  l .is-lattice.∨-assoc = Δ-ext Δ-∨-assoc-path
-  l .is-lattice.∧-comm = Δ-ext Δ-∧-comm-path
-  l .is-lattice.∨-comm = Δ-ext Δ-∨-comm-path
-  l .is-lattice.∨-∧-abs = Δ-ext Δ-∨-∧-abs-path
-  l .is-lattice.∧-∨-abs = Δ-ext Δ-∧-∨-abs-path
-  l .is-lattice.0-bottom = Δ-ext Δ-0-bottom-path
-  l .is-lattice.1-top = Δ-ext Δ-1-top-path
+Δ-Lattice n .Lattice._≤_ = _Δ-≤_
+Δ-Lattice n .Lattice.≤-is-prop = Δ-≤-is-prop
+Δ-Lattice n .Lattice.≤-min = Δ-≤-min
+Δ-Lattice n .Lattice.≤←∧ = Δ-≤←∧
+Δ-Lattice n .Lattice.≤-max = Δ-≤-max
+Δ-Lattice n .Lattice.≤←∨ = Δ-≤←∨
+Δ-Lattice n .Lattice.str-is-lattice = Δ-is-lattice
 }
 }
 

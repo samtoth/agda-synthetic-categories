@@ -23,15 +23,19 @@ private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 \agda{
 open import Foundations.Prelude
 
+open import Ergonomics.Extensionality
+
 open import Modalities.GlobalReflectiveSubuniverses
 
 open import Core.Arrows
+open import Core.Slices
 open import Core.CartesianSquares
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.NaturalTransformations Δ¹ I
 open import Synthetic.Categories.Coslices Δ¹ I
 }
 }
@@ -52,8 +56,20 @@ module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
   Cocone-at : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
   Cocone-at a = Hom (K → A) ϕ (const a)
 
+  Cocone-at' : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  Cocone-at' a = ∀ (k : K) → Hom A (ϕ k) a
+
   Under : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
   Under = Σ A Cocone-at
+
+  Under' : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  Under' = Σ A Cocone-at'
+
+  Cocone-at≃ : ∀ a → Cocone-at a ≃ Cocone-at' a
+  Cocone-at≃ a = Nat≃Hom
+
+  Under≃ : Under ≃ Under'
+  Under≃ = Σ-snd-≃ Cocone-at≃
 
   nadir : Under → A
   nadir = fst
@@ -115,5 +131,121 @@ Under-is-comma F .is-equiv.qinv .fst cone x = (cone .directed-cone.q x , cone .d
 Under-is-comma F .is-equiv.qinv .snd .fst = ~refl
 Under-is-comma F .is-equiv.qinv .snd .snd = ~refl
 Under-is-comma F .is-equiv.coherent = ~refl
+}
+}
+
+\subtree[tot-AYC1]{
+\title{Identity types of undertypes}
+
+\agda{
+Under-Id
+  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+    → Under F → Under F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Under-Id a b
+  = Σ[ p ∶ (a .fst ＝ b .fst) ]
+       (Hom-pathᵈ refl (ap const p) (a .snd) (b .snd))
+
+Under-Id-refl
+  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+    → (p : Under F) → Under-Id p p
+Under-Id-refl a = (refl , Hom-pathᵈ-refl)
+
+opaque
+  Under-Id-is-torsorial
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+      → (F : Under F) → is-torsorial (Under-Id F)
+  Under-Id-is-torsorial F
+    = is-singleton-structure←parts
+        Sing-is-singleton
+        (_ , refl)
+        (SingS-is-single ⦃ Hom-IdSᵈ ⦄ _)
+
+instance
+  Under-IdS
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+      → Identity-system (Under F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Under-IdS .Identity-system.IdS = Under-Id
+  Under-IdS .Identity-system.IdS←Id refl = Under-Id-refl _
+  Under-IdS .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (Under-Id-is-torsorial a) _
+
+opaque
+  Under-Id→
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+      → {x y : Under F}
+      → Under-Id x y → x ＝ y
+  Under-Id→ = Id←IdS ⦃ Under-IdS ⦄
+
+  Under-Id-is-equiv
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
+      → {x y : Under F}
+      → is-equiv (Under-Id→ {x = x} {y})
+  Under-Id-is-equiv
+    = is-equiv⁻¹ (Under-IdS .Identity-system.IdS←Id-is-equiv _ _)
+
+  Under-Id-ap-fst
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : Under F}
+      → (p : Under-Id a b) → ap fst (Under-Id→ p) ＝ fst p
+  Under-Id-ap-fst
+    = IdSJ ⦃ Under-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
+           (ap (ap fst) (Id←IdS←Id refl))
+}
+}
+
+\subtree[tot-000C]{
+\title{Undertypes and coslice categories}
+\taxon{Lemma}
+
+\p{The undercategory of a point #{C_{c/}} is equivalent to the coslice #{C_{c/}}.}
+
+\agda{
+-- Under'-point≃Coslice
+--   : ∀ {𝓤} {A : Type 𝓤} (a : A)
+--     → Under' (point a) ≃ Coslice a
+-- Under'-point≃Coslice a ._≃_.fwd (b , h)
+--   = (h tt .Homᵈ.hom , h tt .Homᵈ.hom0)
+-- Under'-point≃Coslice a ._≃_.fwd-is-equiv .is-equiv.qinv .fst (f , p)
+--   = (f i1 , λ _ → mk-hom f p refl)
+-- Under'-point≃Coslice a ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst (b , h)
+--   = {!!}
+-- Under'-point≃Coslice a ._≃_.fwd-is-equiv .is-equiv.qinv .snd .snd = ~refl
+-- Under'-point≃Coslice a ._≃_.fwd-is-equiv .is-equiv.coherent = {!!}
+
+-- ._≊_.fwd (b , f) = (f tt .Homᵈ.hom , f tt .Homᵈ.hom0)
+-- Under-point≃Coslice a ._≊_.fwd-qinv .fst (f , p) = (f i1 , λ _ → mk-hom f p refl)
+-- Under-point≃Coslice a ._≊_.fwd-qinv .snd .fst (x , y)
+--   = Coslice-path→
+--       ( y tt .Homᵈ.hom1
+--       , (λ _ → ~refl , Square-degen-vert _ _ refl , Square-flatten-vert refl))
+-- Under-point≃Coslice a ._≊_.fwd-qinv .snd .snd = ~refl
+
+-- Coslice-object-repr≃
+--   : ∀ {𝓤} {A : Type 𝓤} a
+--     → (Coslice A (point a)) ≃ (Σ[ f ∶ (Δ¹ → A)] (f i0 ＝ a))
+-- Coslice-object-repr≃ a = equiv←qequiv (Coslice-object-repr≊ a)
+}
+}
+
+\subtree[tot-0001]{
+\title{Functoriality of the under type at a fixed type}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-26}
+
+\p{Fixing a type #{A}, the under type former determines a functor from
+#{\Type_{/A} \to \Type}.}
+
+\agda{
+Under₁
+  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+      {K : Type 𝓚} {p : K → A}
+      {K' : Type 𝓚'} {q : K' → A}
+      (t : Slice-map q p)
+    → Under' p → Under' q
+Under₁ {p = p} {q = q} (f , H)
+  = total-map
+      λ a
+      → postcomp-Π (λ k' → adjust-hom (H k') refl)
+      ∘ precomp-Π (λ k → Hom _ (p k) a) f
 }
 }

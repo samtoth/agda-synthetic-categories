@@ -66,7 +66,7 @@
   </xsl:template>
 
   <!-- Fix for Firefox's XSLT renderer, which preserves the opening newline that HTML
-       parsers discard after <pre>. Remove one newline and preserves indentation. -->
+       parsers discard after <pre>. -->
   <xsl:template name="preformatted-content">
     <!-- Stop HTML parsers from discarding intentional newlines. -->
     <xsl:choose>

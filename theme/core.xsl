@@ -127,4 +127,15 @@
     <xsl:text>\)</xsl:text>
   </xsl:template>
 
+  <!-- QED symbol. -->
+  <xsl:template match="html:p[following-sibling::node()[self::* or normalize-space()][1][self::html:span[@class='qed']]] | f:p[following-sibling::node()[self::* or normalize-space()][1][self::html:span[@class='qed']]]">
+    <p>
+      <xsl:apply-templates select="@* | node()" />
+      <span class="qed">
+        <xsl:apply-templates select="following-sibling::html:span[1]/node()" />
+      </span>
+    </p>
+  </xsl:template>
+  <xsl:template match="html:span[@class='qed'][preceding-sibling::node()[self::* or normalize-space()][1][self::html:p or self::f:p]]" />
+
 </xsl:stylesheet>

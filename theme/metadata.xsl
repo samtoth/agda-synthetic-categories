@@ -128,7 +128,7 @@
 
   <xsl:template match="f:meta[@name='bibtex']">
     <pre>
-      <xsl:value-of select="." />
+      <xsl:call-template name="preformatted-content" />
     </pre>
   </xsl:template>
 

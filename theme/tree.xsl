@@ -386,6 +386,11 @@
               <xsl:attribute name="open">open</xsl:attribute>
             </xsl:if>
             <summary>
+              <xsl:if test="f:frontmatter/f:taxon = 'Proof' and f:mainmatter/*[@class='qed']">
+                <span class="qed" aria-hidden="true">
+                  <xsl:apply-templates select="f:mainmatter/*[@class='qed'][last()]/node()" />
+                </span>
+              </xsl:if>
               <xsl:apply-templates select="f:frontmatter" />
             </summary>
             <xsl:apply-templates select="f:mainmatter" />

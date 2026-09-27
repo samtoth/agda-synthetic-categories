@@ -57,11 +57,29 @@
     </code>
   </xsl:template>
 
-  <xsl:template match="f:pre">
-    <pre>
-      <xsl:apply-templates />
+
+  <xsl:template match="html:pre | f:pre">
+    <pre xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="@*" />
+      <xsl:call-template name="preformatted-content" />
     </pre>
   </xsl:template>
+
+  <!-- Fix for Firefox's XSLT renderer, which preserves the opening newline that HTML
+       parsers discard after <pre>. Remove exactly one newline, preserving indentation. -->
+  <xsl:template name="preformatted-content">
+    <!-- Stop HTML parsers from discarding a second, intentional newline. -->
+    <xsl:choose>
+      <xsl:when test="node()[1][self::text()[starts-with(., '&#10;')]]">
+        <xsl:value-of select="substring(node()[1], 2)" />
+        <xsl:apply-templates select="node()[position() > 1]" />
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates />
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
 
   <xsl:template match="f:em">
     <em>

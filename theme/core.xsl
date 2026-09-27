@@ -68,7 +68,7 @@
   <!-- Fix for Firefox's XSLT renderer, which preserves the opening newline that HTML
        parsers discard after <pre>. -->
   <xsl:template name="preformatted-content">
-    <!-- Stop HTML parsers from discarding intentional newlines. -->
+    <xsl:comment>This is a guard for intentional leading blank lines.</xsl:comment>
     <xsl:choose>
       <xsl:when test="node()[1][self::text()[starts-with(., '&#10;')]]">
         <xsl:value-of select="substring(node()[1], 2)" />

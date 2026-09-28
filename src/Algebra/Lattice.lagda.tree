@@ -101,13 +101,13 @@ record is-lattice
         y ∧ (y ∨ x)   ＝⟨ ∧-∨-abs ⟩
         y ∎
 
-record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
+record Lattice {𝓤} (L : Type 𝓤) : Type (lsuc 𝓤) where
   field
     0l 1l : L
     _∧_ : L → L → L
     _∨_ : L → L → L
     str-is-lattice : is-lattice 0l 1l (_∧_) (_∨_)
-    _≤_ : L → L → Type ℓ
+    _≤_ : L → L → Type 𝓤
     ≤-is-prop : ∀ {x y} → is-prop (x ≤ y)
     ≤-min : ∀ {x y} → x ≤ y → x ∧ y ＝ x
     ≤←∧ : ∀ {x y} → x ∧ y ＝ x → x ≤ y
@@ -188,7 +188,7 @@ record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
       ≤-antisym : {x y : L} → x ≤ y → y ≤ x → x ＝ y
       ≤-antisym {x} {y} p q = sym (≤-min p) ∙ ∧-comm ∙ ≤-min q
 
-  ≤-poset : Poset ℓ L
+  ≤-poset : Poset 𝓤 L
   ≤-poset = mk-poset {_≤_ = _≤_} ≤-is-poset
 
   open is-poset ≤-is-poset public hiding (≤-is-prop)
@@ -242,24 +242,51 @@ record Lattice {ℓ} (L : Type ℓ) : Type (lsuc ℓ) where
     ≤-is-truncated : ∀ {x y} {k} → Is-truncated (itsuc-𝕋 k -1𝕋) (x ≤ y)
     ≤-is-truncated = truncation-instance _ (is-truncated←is-prop ≤-is-prop)
 
+  _≤I_ : L → L → Type 𝓤
+  i ≤I j = ULift lzero (i ≤ j)
+
+  ≤-auto! : ∀ {i j} → ⦃ _ : ULift lzero (i ≤ j) ⦄ → i ≤ j
+  ≤-auto! ⦃ p ⦄ = unlift p
+
+  ≤-∧
+    : ∀ {a b c d} →  (a ≤ b) → (c ≤ d)
+      → (a ∧ c) ≤ (b ∧ d)
+  ≤-∧ p q = ∧-UP (∧-≤-eliml p , ∧-≤-elimr  q)
+
+  ≤-∨
+    : ∀ {a b c d} → (a ≤ b) → (c ≤ d)
+      → (a ∨ c) ≤ (b ∨ d)
+  ≤-∨ p q = ∨-UP (∨-≤-introl p , ∨-≤-intror q)
+
+  ≤-bot : ∀ {i} → 0l ≤ i
+  ≤-bot = ≤←∧ 0-init
+
+  ≤-top : ∀ {i} → i ≤ 1l
+  ≤-top = ≤←∧ 1-top
+
+  instance
+    ≤-bot-inst : ∀ {i} → 0l ≤I i
+    ≤-bot-inst = mk-lift ≤-bot
+
+    ≤-top-inst : ∀ {i} → i ≤I 1l
+    ≤-top-inst = mk-lift ≤-top
+
+    ≤-refl-inst : ∀ {i} → i ≤I i
+    ≤-refl-inst = mk-lift ≤-refl
+
+    {-# INCOHERENT ≤-refl-inst ≤-top-inst #-}
+
+    ≤-∧-instance
+      : ∀ {a b c d} → ⦃ _ : a ≤I b ⦄ → ⦃ _ : c ≤I d ⦄
+        → (a ∧ c) ≤I (b ∧ d)
+    ≤-∧-instance = mk-lift (≤-∧ ≤-auto! ≤-auto!)
+
+    ≤-∨-instance
+      : ∀ {a b c d} → ⦃ _ : a ≤I b ⦄ → ⦃ _ : c ≤I d ⦄
+        → (a ∨ c) ≤I (b ∨ d)
+    ≤-∨-instance = mk-lift (≤-∨ ≤-auto! ≤-auto!)
+
   abstract
-    ≤-bot : ∀ {i} → 0l ≤ i
-    ≤-bot = ≤←∧ 0-init
-
-    ≤-top : ∀ {i} → i ≤ 1l
-    ≤-top = ≤←∧ 1-top
-
-    ≤-∧
-      : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
-        → (a ∧ c) ≤ (b ∧ d)
-    ≤-∧ = ∧-UP (∧-≤-eliml auto! , ∧-≤-elimr auto!)
-
-  abstract
-    ≤-∨
-      : ∀ {a b c d} → ⦃ _ : a ≤ b ⦄ → ⦃ _ : c ≤ d ⦄
-        → (a ∨ c) ≤ (b ∨ d)
-    ≤-∨ = ∨-UP (∨-≤-introl auto! , ∨-≤-intror auto!)
-
     ∨-∨-interchange
       : ∀ {x y z w}
         → (x ∨ y) ∨ (z ∨ w) ＝ (x ∨ z) ∨ (y ∨ w)
@@ -320,8 +347,8 @@ record is-lattice-hom
     pres-1 : f A.1l ＝ B.1l
 
   abstract
-    pres-≤ : {x y : A} → ⦃ x A.≤ y ⦄ → f x B.≤ f y
-    pres-≤ ⦃ p ⦄ = B.≤←∧ (sym pres-∧ ∙ ap f (A.≤-min p))
+    pres-≤ : {x y : A} → ⦃ x A.≤I y ⦄ → f x B.≤ f y
+    pres-≤ ⦃ p ⦄ = B.≤←∧ (sym pres-∧ ∙ ap f (A.≤-min (unlift p)))
 
 unquoteDecl lattice-hom-repr≊ lattice-hom-repr≃
   = make-record-repr lattice-hom-repr≊ lattice-hom-repr≃
@@ -848,7 +875,7 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
         ((a₀ ∧ b₁ ∨ a₁ ∧ b₀ ∨ a₀ ∧ b₀) ∧ x ∨ a₁ ∧ b₁) ∎
 
     polynomial-mult'-≤
-      : ∀ {a₀ a₁ b₀ b₁} → ⦃ a₁ ≤ a₀ ⦄ → ⦃ b₁ ≤ b₀ ⦄ → ∀ x
+      : ∀ {a₀ a₁ b₀ b₁} → ⦃ a₁ ≤I a₀ ⦄ → ⦃ b₁ ≤I b₀ ⦄ → ∀ x
         → ((a₀ ∧ x) ∨ a₁) ∧ ((b₀ ∧ x) ∨ b₁)
         ＝ ((a₀ ∧ b₀) ∧ x) ∨ (a₁ ∧ b₁)
     polynomial-mult'-≤ {a₀} {a₁} {b₀} {b₁} x
@@ -861,9 +888,9 @@ record is-distributive {𝓤} {L : Type 𝓤} (Lat : Lattice L)  : Type 𝓤 whe
       lemma : (a₀ ∧ b₁) ∨ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀) ＝ (a₀ ∧ b₀)
       lemma
         = ((a₀ ∧ b₁) ∨ ⌜ (a₁ ∧ b₀) ∨ (a₀ ∧ b₀) ⌝)
-            ＝⟨ ap! (≤-max (≤-∧ ⦃ auto! ⦄ ⦃ ≤-refl ⦄)) ⟩
+            ＝⟨ ap! (≤-max ≤-auto!) ⟩
           ((a₀ ∧ b₁) ∨ (a₀ ∧ b₀))
-            ＝⟨ ≤-max (≤-∧ ⦃ ≤-refl ⦄ ⦃ auto! ⦄) ⟩
+            ＝⟨ ≤-max ≤-auto! ⟩
           (a₀ ∧ b₀) ∎
 
 is-distributive-algebra

@@ -39,7 +39,7 @@ help:
 	@echo "    # List all of the trees in the forest"
 	@echo "  make assign-tree-ids-no-commit [PREFIX=<prefix>] [UPSTREAM=<upstream>]"
 	@echo "    # Assign tree ids to non-canonically-ID'd trees (PREFIX=... required) (UPSTREAM, default: upstream)"
-	@echo "  make assign-tree-ids           [PREFIX=<prefixr>] [UPSTREAM=<upstream>]"
+	@echo "  make assign-tree-ids           [PREFIX=<prefix>] [UPSTREAM=<upstream>]"
 	@echo "    # Run assign-tree-ids-no-commit and then commit the results"
 	@echo "  make clean-agda"
 	@echo "    # Remove generated agda artefacts"

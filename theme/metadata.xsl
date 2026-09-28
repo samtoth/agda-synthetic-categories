@@ -127,9 +127,52 @@
   </xsl:template>
 
   <xsl:template match="f:meta[@name='bibtex']">
-    <pre>
-      <xsl:value-of select="." />
+    <xsl:variable name="text">
+      <xsl:call-template name="preformatted-content" />
+    </xsl:variable>
+    <pre class="bibtex Agda">
+      <xsl:comment>This is a guard for intentional leading blank lines.</xsl:comment>
+      <xsl:call-template name="highlight-bibtex">
+        <xsl:with-param name="text" select="string($text)" />
+      </xsl:call-template>
     </pre>
+  </xsl:template>
+
+  <!-- BibTeX highlighting -->
+  <xsl:template name="highlight-bibtex">
+    <xsl:param name="text" />
+    <xsl:variable name="line" select="substring-before(concat($text, '&#10;'), '&#10;')" />
+    <xsl:variable name="field" select="normalize-space(substring-before($line, '='))" />
+    <xsl:variable name="letters" select="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'" />
+    <xsl:choose>
+      <xsl:when test="starts-with(normalize-space($line), '@') and contains(substring-after($line, '{'), ',')">
+        <span class="Keyword">
+          <xsl:value-of select="substring-before($line, '{')" />
+        </span>
+        <xsl:text>{</xsl:text>
+        <span class="Module">
+          <xsl:value-of select="substring-before(substring-after($line, '{'), ',')" />
+        </span>
+        <xsl:text>,</xsl:text>
+        <xsl:value-of select="substring-after(substring-after($line, '{'), ',')" />
+      </xsl:when>
+      <xsl:when test="$field != '' and contains($letters, substring($field, 1, 1)) and translate($field, concat($letters, '0123456789_-:'), '') = ''">
+        <xsl:value-of select="substring-before($line, $field)" />
+        <span class="Field">
+          <xsl:value-of select="$field" />
+        </span>
+        <xsl:value-of select="substring-after($line, $field)" />
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$line" />
+      </xsl:otherwise>
+    </xsl:choose>
+    <xsl:if test="contains($text, '&#10;')">
+      <xsl:text>&#10;</xsl:text>
+      <xsl:call-template name="highlight-bibtex">
+        <xsl:with-param name="text" select="substring-after($text, '&#10;')" />
+      </xsl:call-template>
+    </xsl:if>
   </xsl:template>
 
   <xsl:template match="f:meta[@name='venue']|f:meta[@name='position']|f:meta[@name='institution']|f:meta[@name='source']">

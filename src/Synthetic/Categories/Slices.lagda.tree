@@ -30,6 +30,7 @@ open import Core.CartesianSquares
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
 }
 }
 
@@ -38,7 +39,7 @@ open import Synthetic.Categories.Precategories Δ¹ I
 \taxon{Definition}
 
 \p{Given a type #{C} and an element #{c} of #{C}, we define a type
-#{C_{/c}} whose elements consists of morphisms in #{C} with codomain #{c}.
+#{C_{c/}} whose elements consists of morphisms in #{C} with codomain #{c}.
 Equivalently, this is the fibre of the evaluation at #{1} map, #{C^{\Delta^1} \to C}.
 }
 
@@ -47,8 +48,10 @@ module _ {𝓤} {C : Type 𝓤} where
   Slice : C → Type (𝓘 ⊔ 𝓤)
   Slice = fibre (ev: C i1)
 
-  Slice-proj: : ∀ (c : C) → Slice c → C
-  Slice-proj: c = ev i0 ∘ fst
+  infix 25 Slice-proj:_ Slice-const:_
+
+  Slice-proj:_ : ∀ (c : C) → Slice c → C
+  Slice-proj:_ c = ev i0 ∘ fst
 
   Slice-proj : ∀ {c : C} → Slice c → C
   Slice-proj = Slice-proj: _
@@ -57,6 +60,9 @@ module _ {𝓤} {C : Type 𝓤} where
   Hom←Slice x .Homᵈ.hom = x .fst
   Hom←Slice x .Homᵈ.hom0 = refl
   Hom←Slice x .Homᵈ.hom1 = x .snd
+
+  Slice-const:_ : (c : C) → Slice c
+  Slice-const:_ c = (const c , refl)
 }
 }
 
@@ -66,7 +72,7 @@ module _ {𝓤} {C : Type 𝓤} where
 \date{2026-09-22}
 \author{samueltoth}
 
-\p{The domain projection #{C_{/c} \to C} is a base-change of
+\p{The domain projection #{C_{c/} \to C} is a base-change of
 #{C^{\Delta^1} \to C \times C} by #{C \xrightarrow{(_, c)} C \times C}.}
 
 \agda{
@@ -82,9 +88,64 @@ module _ {𝓤} {C : Type 𝓤} (c : C) where
     slice-proj-base-change-of-src×tgt a
       = is-equiv←~
           (λ where ((f , refl) , refl) → refl)
-          (eqv a ._≃_.fwd-is-equiv) where
+          (eqv a ._≃_.fwd-is-equiv)
+      where
+
       eqv : ∀ a → fibre (Slice-proj: c) a ≃ fibre (src×tgt: C) (a , c)
       eqv a = Σ-assoc ∙e Σ-snd-≃ (λ f → ×-swap ∙e ×-path)
+}
+}
+
+\subtree[tot-7YCZ]{
+\title{The fibres of the slice projection}
+\taxon{Lemma}
+
+\p{For any #{x : C}, the fibre of the map #{C_{/c} \to C} at #{x} is equivalent to
+the type of morphisms #{\Hom(x,c)}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  Slice-fibre≃ : ∀ (b : C) → Hom C b c ≃ fibre (Slice-proj: c) b
+  Slice-fibre≃ d = Homᵈ-repr≃ {A = const C} ∙e Σ-snd-≃ (λ f → ×-swap) ∙e Σ-assoc e⁻¹
+
+  Slice-hom-repr≃ : (Σ[ b ∶ C ] Hom C b c) ≃ Slice c
+  Slice-hom-repr≃ = Σ-snd-≃ Slice-fibre≃ ∙e total≃total-fibre Slice-proj
+}
+}
+
+\subtree[tot-195I]{
+\title{Slices are comma types}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-29}
+
+\p{For any map #{a : A}, the slice #{A_{/a}} is equivalent to the
+comma type of the cospan #{A \to A \leftarrow \{a\}}.}
+
+\agda{
+Slice-directed-cone
+  : ∀ {𝓤} {A : Type 𝓤}
+      (a : A)
+    → directed-cone (mk-cospan A id (point a)) (Slice a)
+Slice-directed-cone F .directed-cone.p = Slice-proj
+Slice-directed-cone F .directed-cone.q = !
+Slice-directed-cone F .directed-cone.filler = Hom←Slice
+
+Slice≃Comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → id ↓ point a ≃ Slice a
+Slice≃Comma a = Slice-hom-repr≃ a ∘e Σ-snd-≃ (λ _ → Σ-𝟙)
+
+Slice-is-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → is-comma (Slice-directed-cone a)
+Slice-is-comma a = bwd-is-equiv (Slice≃Comma a)
+
+Slice-up-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → up-comma (Slice-directed-cone a)
+Slice-up-comma a = up-comma←is-comma (Slice-is-comma a)
 }
 }
 

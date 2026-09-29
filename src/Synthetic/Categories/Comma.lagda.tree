@@ -199,128 +199,6 @@ instance
 }
 }
 
-\subtree[tot-BSCY]{
-\p{We generalise this notation slightly, to consider any diagram
-#{F \colon \mathcal{I}\to C}, which gives rise to the slice category #{C/F} for which
-the objects consists of pairs of objects of #{c}, now with a natural transformation
-#{\Delta_c \to F}. This type #{C/F} is the lax pullback of the following diagram:}
-
-\quiver{
-\begin{tikzcd}[cramped]
-	{C/F} && C \\
-	\\
-	1 && {C^I}
-	\arrow[from=1-1, to=1-3]
-	\arrow[from=1-1, to=3-1]
-	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=1-1, to=3-3]
-	\arrow["\Delta", from=1-3, to=3-3]
-	\arrow["F"', from=3-1, to=3-3]
-\end{tikzcd}
-}
-
-\p{We retain the original notion of slice category by taking the slice of an
-object #{c} considered as a function #{1 \to C}.}
-
-\agda{
-Slice : ∀ {𝓤 𝓥} (C : Type 𝓤) {I : Type 𝓥} (F : I → C) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Slice C f = Σ[ c ∶ C ] ∀ i → Hom C c (f i)
-
-Slice-cone : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥}
-           (F : I → C) → directed-cone (mk-cospan (I → C) (const: C I) (point F)) (Slice _ F)
-Slice-cone F .directed-cone.p (c , _) = c
-Slice-cone F .directed-cone.q (c , g) = tt
-Slice-cone F .directed-cone.filler (_ , f) = Hom←Nat f
-
-Slice-is-comma
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
-    → up-comma (Slice-cone F)
-Slice-is-comma F = is-equiv←qinv qinv where
-  qinv : quasi-inv (directed-cone-map (Slice-cone F))
-  qinv .fst cone x = (cone .directed-cone.p x , Nat←Hom (cone .directed-cone.filler x))
-  qinv .snd .fst f = funext→ (λ q → Σ-path→ (refl , _≃_.ε Nat≃Hom (f q .snd)))
-  qinv .snd .snd c = ap (mk-directed-cone (directed-cone.p c) (λ _ → tt))
-                        (funext→ (_≃_.η Nat≃Hom ∘ directed-cone.filler c))
-
-Slice-path
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → Slice C F → Slice C F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Slice-path a b
-  = Σ[ p ∶ (a .fst ＝ b .fst) ]
-       (∀ i → Hom-pathᵈ p refl (a .snd i) (b .snd i))
-
-Slice-path-refl
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → (F : Slice C F) → Slice-path F F
-Slice-path-refl F
-  = (refl , λ i → Hom-pathᵈ-refl)
-
-opaque
-  Slice-path-is-torsorial
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → (F : Slice C F) → is-torsorial (Slice-path F)
-  Slice-path-is-torsorial F
-    = is-singleton-structure←parts
-        Sing-is-singleton
-        (_ , refl)
-        (SingS-is-single ⦃ IdS-Π ⦃ Hom-IdSᵈ ⦄ ⦄ _)
-
-instance
-  Slice-IdS
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → Identity-system (Slice C F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  Slice-IdS .Identity-system.IdS = Slice-path
-  Slice-IdS .Identity-system.IdS←Id refl = Slice-path-refl _
-  Slice-IdS .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Slice-path-is-torsorial _) _
-
-opaque
-  Slice-path→
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Slice C F}
-      → Slice-path x y → x ＝ y
-  Slice-path→ = Id←IdS ⦃ Slice-IdS ⦄
-
-  Slice-path-is-equiv
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Slice C F}
-      → is-equiv (Slice-path→ {x = x} {y})
-  Slice-path-is-equiv
-    = is-equiv⁻¹ (Slice-IdS .Identity-system.IdS←Id-is-equiv _ _)
-
-  Slice-path-ap-fst
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : Slice C F}
-      → (p : Slice-path a b) → ap fst (Slice-path→ p) ＝ fst p
-  Slice-path-ap-fst
-    = IdSJ ⦃ Slice-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
-           (ap (ap fst) (Id←IdS←Id refl))
-}
-
-
-\p{We also remark that in the simple case of a (co)slice over (under) an object,
-there is a 'more coherent' representation:}
-
-##{A_{/x} \simeq \Sigma1{f : A^{\Delta^1}}{(f(1) = x)}}
-
-\agda{
-Slice-object-repr≊
-  : ∀ {𝓤} {A : Type 𝓤} a
-    → (Slice A (point a)) ≊ (Σ[ f ∶ (Δ¹ → A)] (f i1 ＝ a))
-Slice-object-repr≊ a ._≊_.fwd (b , f) = (f tt .Homᵈ.hom , f tt .Homᵈ.hom1)
-Slice-object-repr≊ a ._≊_.fwd-qinv .fst (f , p)
-  = (f i0 , λ i → mk-hom f refl p)
-Slice-object-repr≊ a ._≊_.fwd-qinv .snd .fst (x , f)
-  = Slice-path→
-      ( f tt .Homᵈ.hom0
-      , λ i → (~refl , Square-flatten-vert refl , Square-degen-vert _ _ refl))
-Slice-object-repr≊ a ._≊_.fwd-qinv .snd .snd = ~refl
-
-Slice-object-repr≃
-  : ∀ {𝓤} {A : Type 𝓤} a
-    → (Slice A (point a)) ≃ (Σ[ f ∶ (Δ¹ → A)] (f i1 ＝ a))
-Slice-object-repr≃ = equiv←qequiv ∘ Slice-object-repr≊
-}
-}
-
 \subtree[stt-00TO]{
 \taxon{Lemma}
 
@@ -335,25 +213,25 @@ module _
   (b : B)
   where
 
-  pb-slice←comma-point
-    : F ↓ point b
-    → Pullback {B = Slice B (point b)} fst F
-  pb-slice←comma-point (x , _ , f) = ((_ , λ _ → f) , x , refl)
+  -- pb-slice←comma-point
+  --   : F ↓ point b
+  --   → Pullback {B = Slice B (point b)} fst F
+  -- pb-slice←comma-point (x , _ , f) = ((_ , λ _ → f) , x , refl)
 
-  comma-point←pb-slice
-    : Pullback {B = Slice B (point b)} fst F
-    → F ↓ point b
-  comma-point←pb-slice ((_ , f) , c , p) = (c , _ , adjust-hom p refl (f tt))
+  -- comma-point←pb-slice
+  --   : Pullback {B = Slice B (point b)} fst F
+  --   → F ↓ point b
+  -- comma-point←pb-slice ((_ , f) , c , p) = (c , _ , adjust-hom p refl (f tt))
 
-  comma-point←pb-slice-is-equiv
-    : is-equiv comma-point←pb-slice
-  comma-point←pb-slice-is-equiv = is-equiv←qinv
-    ( pb-slice←comma-point
-    , (λ { ((_ , f) , y , refl) → pullback-path→
-        ( Σ-path→ (refl , (funext→ (λ _ → sym (adjust-hom-refl _))))
-         , refl
-         , ap (_∙ refl) Σ-path-ap-fst) })
-    , (λ x → Σ-path→ (refl , Σ-path→ (refl , sym (adjust-hom-refl _)))))
+  -- comma-point←pb-slice-is-equiv
+  --   : is-equiv comma-point←pb-slice
+  -- comma-point←pb-slice-is-equiv = is-equiv←qinv
+  --   ( pb-slice←comma-point
+  --   , (λ { ((_ , f) , y , refl) → pullback-path→
+  --       ( Σ-path→ (refl , (funext→ (λ _ → sym (adjust-hom-refl _))))
+  --        , refl
+  --        , ap (_∙ refl) Σ-path-ap-fst) })
+  --   , (λ x → Σ-path→ (refl , Σ-path→ (refl , sym (adjust-hom-refl _)))))
 }
 }
 
@@ -428,11 +306,11 @@ slice map, for any #{t \colon K \to L}, we have #{(pt \xrightarrow{t} p) \mapsto
 refer to this as (co)slice postcomposition.}
 
 \agda{
-postcompose-slice
-  : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {K : Type 𝓚} (p : K → A)
-      {B : Type 𝓥} (f : A → B)
-    → Slice A p → Slice B (f ∘ p)
-postcompose-slice p f (a , h) = (f a , ap-hom f ∘ h)
+-- postcompose-slice
+--   : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {K : Type 𝓚} (p : K → A)
+--       {B : Type 𝓥} (f : A → B)
+--     → Slice A p → Slice B (f ∘ p)
+-- postcompose-slice p f (a , h) = (f a , ap-hom f ∘ h)
 
 -- postcompose-coslice
 --   : ∀ {𝓤 𝓥 𝓚} {A : Type 𝓤} {K : Type 𝓚} (p : K → A)
@@ -440,20 +318,20 @@ postcompose-slice p f (a , h) = (f a , ap-hom f ∘ h)
 --     → Coslice A p → Coslice B (f ∘ p)
 -- postcompose-coslice p f (a , h) = (f a , ap-hom f ∘ h)
 
-slice-map-slice
-  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
-      {K : Type 𝓚} (p : K → A)
-      {K' : Type 𝓚'} (q : K' → A)
-      (t : Slice-map p q)
-    → Slice A q → Slice A p
-slice-map-slice p q (t , H) (a , h) = (a , adjust-hom refl (H _) ∘ h ∘ t)
+-- slice-map-slice
+--   : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+--       {K : Type 𝓚} (p : K → A)
+--       {K' : Type 𝓚'} (q : K' → A)
+--       (t : Slice-map p q)
+--     → Slice A q → Slice A p
+-- slice-map-slice p q (t , H) (a , h) = (a , adjust-hom refl (H _) ∘ h ∘ t)
 
-precompose-slice
-  : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
-      {K : Type 𝓚} (p : K → A)
-      {K' : Type 𝓚'} (t : K' → K)
-    → Slice A p → Slice A (p ∘ t)
-precompose-slice p t (a , h) = (a , h ∘ t)
+-- precompose-slice
+--   : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
+--       {K : Type 𝓚} (p : K → A)
+--       {K' : Type 𝓚'} (t : K' → K)
+--     → Slice A p → Slice A (p ∘ t)
+-- precompose-slice p t (a , h) = (a , h ∘ t)
 
 -- coslice-map-slice
 --   : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}

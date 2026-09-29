@@ -57,11 +57,29 @@
     </code>
   </xsl:template>
 
-  <xsl:template match="f:pre">
-    <pre>
-      <xsl:apply-templates />
+
+  <xsl:template match="html:pre | f:pre">
+    <pre xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="@*" />
+      <xsl:call-template name="preformatted-content" />
     </pre>
   </xsl:template>
+
+  <!-- Fix for Firefox's XSLT renderer, which preserves the opening newline that HTML
+       parsers discard after <pre>. -->
+  <xsl:template name="preformatted-content">
+    <xsl:comment>This is a guard for intentional leading blank lines.</xsl:comment>
+    <xsl:choose>
+      <xsl:when test="node()[1][self::text()[starts-with(., '&#10;')]]">
+        <xsl:value-of select="substring(node()[1], 2)" />
+        <xsl:apply-templates select="node()[position() > 1]" />
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates />
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
 
   <xsl:template match="f:em">
     <em>
@@ -126,5 +144,16 @@
     <xsl:value-of select="." />
     <xsl:text>\)</xsl:text>
   </xsl:template>
+
+  <!-- QED symbol. -->
+  <xsl:template match="html:p[following-sibling::node()[self::* or normalize-space()][1][self::html:span[@class='qed']]] | f:p[following-sibling::node()[self::* or normalize-space()][1][self::html:span[@class='qed']]]">
+    <p>
+      <xsl:apply-templates select="@* | node()" />
+      <span class="qed">
+        <xsl:apply-templates select="following-sibling::html:span[1]/node()" />
+      </span>
+    </p>
+  </xsl:template>
+  <xsl:template match="html:span[@class='qed'][preceding-sibling::node()[self::* or normalize-space()][1][self::html:p or self::f:p]]" />
 
 </xsl:stylesheet>

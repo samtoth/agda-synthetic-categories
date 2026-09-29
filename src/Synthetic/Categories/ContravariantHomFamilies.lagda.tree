@@ -32,6 +32,7 @@ open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.Coslices
 open import Core.CanonicalPushouts
+open import Core.WedgeSums
 
 
 open import Ergonomics.Extensionality
@@ -42,10 +43,11 @@ open import Synthetic.Categories.ContravariantFamilies Δ¹ I
 open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
-open import Synthetic.Categories.Comma Δ¹ I
-open import Synthetic.Categories.JoinSlice Δ¹ I
 open import Synthetic.Categories.Homotopy Δ¹ I
 open import Synthetic.Categories.RightSegal Δ¹ I
+open import Synthetic.Categories.Cones Δ¹ I
+open import Synthetic.Categories.Slices Δ¹ I
+open import Synthetic.Categories.RightCones Δ¹ I
 }
 }
 
@@ -58,14 +60,20 @@ representable families are contravariant iff #{X_{/x} \to X} are all right
 fibrations.}
 
 \agda{
-hom-fam-is-contrav↔is-right-fibration
+hom-fam-is-contrav↔Slice-is-right-fibration
   : ∀ {𝓤} {X : Type 𝓤} (x : X)
     → is-contravariant (λ a → Hom X a x)
-    ↔ is-right-fibration {A = Slice X (point x)} fst
-hom-fam-is-contrav↔is-right-fibration {X = X} x
-  = is-contravariant↔is-right-fibration (λ a → Hom X a x)
-  ∙iff right-orthogonal-iff←Arrow-equiv (λ _ → i1)
-        (mk-arr-equiv (Σ-snd-≃ λ _ → unit-UP≃) id≃ ~refl)
+    ↔ is-right-fibration (Slice-proj: x)
+hom-fam-is-contrav↔Slice-is-right-fibration {X = X} x
+  = (is-right-family↔is-contravariant (λ a → Hom X a x)) iff⁻¹
+  ∙iff right-orthogonal-iff←fam-equiv (point i1)
+        {C = fibre (Slice-proj: x)} {D = λ a → Hom X a x} eq
+  ∙iff are-orthogonal↔are-orthogonal-fibre iff⁻¹
+  where
+
+  opaque
+    eq : fibre-fam (Slice-proj: x) ≃ᶠ (X , λ a → Hom X a x)
+    eq = (id≃ , _e⁻¹ ∘ Slice-fibre≃ _ )
 }
 }
 
@@ -94,76 +102,45 @@ right orthogonal to the map #{\Lambda^2_1 \to \Delta^1 \bjoin 1}.
 \end{tikzcd}
 }
 
-\p{The top equivalence is given by the [join-slice adjunction](stt-00D5), and
+\p{The top equivalence is given by the [right cone-slice adjunction](), and
 the bottom via the universal property of the horn.}
 
 \p{Now we use \ref{stt-00DC} to finish the proof.}
 }
 
-\closedScope{
-\subtree[stt-00O1]{
-\title{The bottom equivalence}
-\agda{
-char-slice-lift
-  : ∀ {𝓤} {A : Type 𝓤} x
-    → Arrow-map (point i1) {C = Slice A (point x)} (fst)
-    → Coslice-map {X = Λ[2,1]} (λ _ → ι₂ i1) (point x)
-char-slice-lift x (mk-amap top bot comm)
-  = cogap (mk-cocone bot
-                     (top tt .snd tt .Homᵈ.hom)
-                      λ c → comm c ∙ sym (top tt .snd tt .Homᵈ.hom0))
-  , λ _ → top tt .snd tt .Homᵈ.hom1
-
-opaque
-  char-slice-mk-lift-is-equiv
-    : ∀ {𝓤} {A : Type 𝓤} x
-      → is-equiv (char-slice-lift {A = A} x)
-  char-slice-mk-lift-is-equiv x = is-equiv←qinv qinv where
-    qinv : quasi-inv (char-slice-lift x)
-    qinv .fst (f , p) = mk-amap (λ _ → (_ , λ _ → mk-hom (f ∘ ι₂) refl (p tt)))
-                                (f ∘ ι₁)
-                                (ap f ∘ glue)
-    qinv .snd .fst (mk-amap top bot comm)
-      = let pth = ( (top tt .snd tt .Homᵈ.hom0)
-                  , (λ i → ~refl , Square-flatten-hor refl , Square-degen-vert _ _ refl))
-        in Arrow-map-path→
-             ( (λ a → Slice-path→ pth)
-             , ~refl
-             , λ a → ap (_∙ ap fst (Slice-path→ pth)) (pushout-rec-apβ a)
-                   ∙ ap ((comm tt ∙ sym (Homᵈ.hom0 (top tt .snd tt))) ∙_)
-                        (Slice-path-ap-fst pth)
-                   ∙ ∙.cancell _ (∙-sym' (Homᵈ.hom0 (top tt .snd tt))) )
-    qinv .snd .snd (f , p) = ext!
-      ( (sym ∘ pushout-rec-unique _ _ ~refl ~refl ~refl)
-      , ~refl)
-
-char-slice-mk-lift≃
-  : ∀ {𝓤} {A : Type 𝓤} x
-    → Arrow-map (point i1) {C = Slice A (point x)} fst
-    ≃ Coslice-map {X = Λ[2,1]} (λ _ → ι₂ i1) (point x)
-char-slice-mk-lift≃ x = mk≃ (char-slice-lift x) (char-slice-mk-lift-is-equiv x)
-}
-}
-}
-
 \agda{
 slice-is-right↔right-inner-coslice
   : ∀ {𝓤} {A : Type 𝓤} (x : A)
-    → is-right-fibration {A = Slice A (point x)} fst
-    ↔ (is-equiv (Coslice-map-precompose (point x) Λ[2,1]-incl▻∙))
+    → is-right-fibration (Slice-proj: x)
+    ↔ (is-equiv (precomp∗ (mk-type∗ A x) Λ[2,1]-incl-Δ¹▻∗))
 slice-is-right↔right-inner-coslice x
-  = src↔tgt-is-equiv←Arrow-equiv
-      (mk-arr-equiv
-        (join≃slice-map (λ _ → x))
-        (char-slice-mk-lift≃ x)
-        (λ f → ext!
-          ( sym ∘ pushout-rec-unique _ _ ~refl ~refl
-              (λ a → ap (_∙ refl) ( ap-∘ _ _ (glue a)
-                                  ∙ ap (ap (pushout-rec _)) (pushout-rec-apβ a)
-                                  ∙ ap-sym (pushout-rec _) (glue _)
-                                  ∙ ap sym (pushout-rec-apβ _))
-                    ∙ ∙-reflr _)
-          , λ _ → ∙-reflr _ ∙ pushout-rec-apβ _)))
+  = orthogonal-point-pullback-condition↔ i1
+  ∙iff src↔tgt-is-equiv←Arrow-equiv
+         (mk-arr-equiv
+           RightCone⊣Slice
+           ( map∗≃fibre-ev _ x
+           ∙e (Σ-fst-≃ {B = λ p → p .pb.π₁ i1 ＝ x} (Wedge-UP≃ ∙e pullback-swap)
+           ∙e rearrange))
+           λ a → pullback-path→
+             ( refl
+             , refl
+             , ap (_∙ refl)
+                 ( happly (ap (happly ∘ sym) funext-refl) tt
+                 ∙ sym (ap sym
+                     ( ap-∘ (a .map∗.hom) _ (glue tt)
+                     ∙ ap (ap (a .map∗.hom)) (pushout-rec-apβ tt)))))) iff⁻¹
+
+  where
+
+  rearrange
+    : (Σ[ a ∶ Pullback (ev i0) (ev i1) ] (a .pb.π₁ i1 ＝ x))
+    ≃ Pullback {B = fibre (ev i1) x} (ev i0 ∘ fst) (ev i1)
+  rearrange ._≃_.fwd a
+    = ((a .fst .pb.π₁ , a .snd) , a .fst .pb.π₂ , a .fst .pb.filler)
+  rearrange ._≃_.fwd-is-equiv .is-equiv.qinv .fst a
+    = ((a .pb.π₁ .fst , a .pb.π₂ , a .pb.filler) , a .pb.π₁ .snd)
+  rearrange ._≃_.fwd-is-equiv .is-equiv.qinv .snd = (~refl , ~refl)
+  rearrange ._≃_.fwd-is-equiv .is-equiv.coherent = ~refl
 
 hom-fam-is-contrav↔is-right-segal
   : ∀ {𝓤} {A : Type 𝓤}
@@ -171,10 +148,9 @@ hom-fam-is-contrav↔is-right-segal
     ↔ is-right-segal A
 hom-fam-is-contrav↔is-right-segal {𝓤} {A}
   =  postcomp-Π-↔ (λ
-       x → hom-fam-is-contrav↔is-right-fibration x
+       x → hom-fam-is-contrav↔Slice-is-right-fibration x
          ∙iff slice-is-right↔right-inner-coslice x)
-  ∙iff logical←equiv (precomp-Π-≃ _ unit-UP≃)
-  ∙iff (coslice-orthogonality (Λ[2,1]-incl▻∙) iff⁻¹)
+  ∙iff (pointed-orthogonality (Λ[2,1]-incl-Δ¹▻∗) A iff⁻¹)
   ∙iff logical←equiv {𝓥 = 𝓘 ⊔ 𝓤} (unit-UP≃ e⁻¹)
 }
 }

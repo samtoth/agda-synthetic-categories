@@ -135,12 +135,17 @@ module Tiny
   untranspose
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
       → (Γ → √ A) → ((I → Γ) → A)
-  untranspose = postcomp _ ε√ ∘ postcomp I
+  untranspose f = ε√ ∘ postcomp I f
 
   √-tiny≃
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
       → ⟨♭| (Γ → √ A) ⟩ ≃ ⟨♭| ((I → Γ) → A) ⟩
   √-tiny≃ = mk≃ (♭-map untranspose) √-is-tiny-str
+
+  exp⊣√
+    : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
+      → ⟨♭| ((I → A) → B) ⟩ ≃ ⟨♭| (A → √ B) ⟩
+  exp⊣√ = √-tiny≃ e⁻¹
 
   transpose-unique'
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
@@ -224,13 +229,13 @@ module Tiny
       (is-♭-equiv←is-equiv (is-equiv-∘ (∙-is-equiv' lemma) mapply♭-is-equiv))
       comult-is-equiv
 
-  transpose-naturality
+  transpose-∘
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓦} {@♭ A : Type 𝓥}
       → (P : ⟨♭| ((I → Γ) → A)⟩)
       → (@♭ σ : Δ → Γ)
       → transpose (♭-map (precomp _ (postcomp I σ)) P)
       ＝ ♭-map (precomp _ σ) (transpose P)
-  transpose-naturality (mod♭ P) σ = sym (transpose-unique'
+  transpose-∘ (mod♭ P) σ = sym (transpose-unique'
     ( (♭-map untranspose ∘ ♭-map (precomp (√ _) σ)) (transpose (mod♭ P))
     ＝⟨ sym (♭-∘ untranspose (precomp _ σ) _) ⟩
        ♭-map (untranspose ∘ precomp _ σ) (transpose (mod♭ P))
@@ -241,18 +246,12 @@ module Tiny
     ＝⟨ ap (♭-map _) (is-tiny.ε (mod♭ P)) ⟩
       ♭-map (precomp _ (postcomp I σ)) (mod♭ P) ∎))
 
-  untranspose-naturality
+  untranspose-∘
     : ∀ {@♭ 𝓤 𝓤' 𝓥} {@♭ Γ : Type 𝓤} {@♭ Δ : Type 𝓤'} {@♭ A : Type 𝓥}
       → (σ : Δ → Γ)
       → (f : Γ → √ A)
       → untranspose (f ∘ σ) ＝ untranspose f ∘ postcomp _ σ
-  untranspose-naturality σ f = refl
-
-  exp⊣√
-    : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-      → ⟨♭| ((I → A) → B) ⟩ ≃ ⟨♭| (A → √ B) ⟩
-  exp⊣√ ._≃_.fwd = _
-  exp⊣√ ._≃_.fwd-is-equiv = is-equiv⁻¹ √-is-tiny-str
+  untranspose-∘ σ f = refl
 }
 }
 
@@ -290,43 +289,38 @@ right adjoint it suffices to prove #{I \to \sqrt{\emptyset}}, so to prove
   √₁-id : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √₁ (mod♭ id) ＝ mod♭ (id: √ A)
   √₁-id = sym (transpose-unique' refl)
 
-
-  √₁-nat
+  untranspose-naturality
     : ∀ {@♭ 𝓤 𝓥 𝓥'} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥} {@♭ B : Type 𝓥'}
       → (f : ⟨♭| (B → A)⟩)
       → untranspose {Γ = Γ} {A} ∘ postcomp _ (ε♭ (√₁ f))
       ＝ postcomp _ (ε♭ f) ∘ untranspose
-  √₁-nat {Γ = Γ} {A} (mod♭ f)
-    =     untranspose ∘ postcomp Γ (ε♭ (√₁ (mod♭ f)))
-    ＝⟨⟩
-          untranspose ∘ postcomp Γ (ε♭ (transpose (♭-map (precomp _ ε√) (mod♭ f))))
-    ＝⟨⟩
-          (λ x → untranspose (ε♭ (transpose (mod♭ (f ∘ ε√))) ∘ x))
-    ＝⟨⟩
-         postcomp _ (untranspose (ε♭ (transpose (mod♭ (f ∘ ε√))))) ∘ postcomp I
-    ＝⟨ ap (_∘ postcomp I)
-           (ap (postcomp _) (sym (ε♭-natural (transpose (mod♭ (f ∘ ε√)))))) ⟩
-         postcomp _ (ε♭ (♭-map untranspose (transpose (mod♭ (f ∘ ε√)))))
-       ∘ postcomp I
-    ＝⟨ ap (_∘ postcomp I) (ap (postcomp _) (ap ε♭ (is-tiny.ε (mod♭ (f ∘ ε√))))) ⟩
-          postcomp _ (f ∘ ε√) ∘ postcomp I
-    ＝⟨⟩
-          postcomp (I → _) f ∘ untranspose
-    ∎
+  untranspose-naturality {Γ = Γ} {A} (mod♭ f)
+    = ap ((_∘ postcomp I) ∘ postcomp (I → Γ))
+       ( sym (ε♭-natural (transpose (mod♭ (f ∘ ε√))))
+       ∙ ap ε♭ (is-tiny.ε (mod♭ (f ∘ ε√))))
 
-  ♭-map' : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-             (f : ⟨♭| (A → B)⟩) → ⟨♭| A ⟩ → ⟨♭| B ⟩
-  ♭-map' (mod♭ f) = ♭-map f
-
-  _∘♭_ : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
-           (f : ⟨♭| (B → C) ⟩) (g : ⟨♭| (A → B)⟩) → ⟨♭| (A → C)⟩
-  _∘♭_ f = ♭-map' (♭-map (postcomp _) f)
-
-  ♭-map-∘♭
-    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
-        (f : ⟨♭| (B → C)⟩) (g : ⟨♭| (A → B)⟩)
-      → ♭-map' (f ∘♭ g) ~ ♭-map' f ∘ ♭-map' g
-  ♭-map-∘♭ (mod♭ f) (mod♭ g) (mod♭ a) = refl
+  opaque
+    √₁-∘
+      : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} {@♭ C : Type 𝓦}
+          (@♭ f : B → C) (@♭ g : A → B)
+        → ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)) ~ ε♭ (√₁ (mod♭ (f ∘ g)))
+    √₁-∘ {A = A} {B} {C} f g = happly (ε♭ (transpose-unique (mod♭
+      ( untranspose (ε♭ (√₁ (mod♭ f)) ∘ ε♭ (√₁ (mod♭ g)))
+      ＝⟨⟩
+        untranspose (postcomp _ (ε♭ (√₁ (mod♭ f))) (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        (untranspose ∘ postcomp _ (ε♭ (√₁ (mod♭ f)))) (ε♭ (√₁ (mod♭ g)))
+      ＝⟨ happly (untranspose-naturality (mod♭ f)) (ε♭ (√₁ (mod♭ g))) ⟩
+        postcomp _ f (untranspose (ε♭ (√₁ (mod♭ g))))
+      ＝⟨⟩
+        postcomp _ f (untranspose (ε♭ (transpose (♭-map (precomp _ ε√) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f) (sym (ε♭-natural (transpose (♭-map (precomp _ ε√) (mod♭ g))))) ⟩
+        postcomp _ f (ε♭ (♭-map untranspose (transpose (♭-map (precomp _ ε√) (mod♭ g)))))
+      ＝⟨ ap (postcomp _ f ∘ ε♭) (is-tiny.ε (♭-map (precomp _ ε√) (mod♭ g))) ⟩
+        postcomp _ f (precomp _ ε√ g)
+      ＝⟨⟩
+        f ∘ g ∘ ε√
+      ∎))))
 }
 }
 
@@ -341,39 +335,26 @@ right adjoint it suffices to prove #{I \to \sqrt{\emptyset}}, so to prove
   opaque
     ε√-nat
       : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
-          {@♭ f : Γ → A}
-        → ♭-map ε√ ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
-        ~ ♭-map f ∘ ♭-map ε√
-    ε√-nat {f = f}
-      = ♭-map' (mod♭ ε√) ∘ ♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))
-      ~⟨ ♭-map-∘♭ (mod♭ ε√) (♭-map (postcomp I) (√₁ (mod♭ f))) h⁻¹ ⟩
-        ♭-map' (mod♭ ε√ ∘♭ ♭-map (postcomp I) (√₁ (mod♭ f)))
+          (@♭ f : Γ → A)
+        → ε√ ∘ postcomp I (ε♭ (√₁ (mod♭ f)))
+        ~ f ∘ ε√
+    ε√-nat f
+      = ε√ ∘ postcomp I (ε♭ (√₁ (mod♭ f)))
       ~⟨⟩
-        ♭-map' (((mod♭ ε√ ∘♭_) ∘ ♭-map (postcomp I)) (√₁ (mod♭ f)))
-      ~⟨ happly (ap ♭-map'
-                ( happly (ap (_∘ ♭-map (postcomp I)) (funext→ lemma)) (√₁ (mod♭ f))
-                ∙ sym (♭-∘ (postcomp _ ε√) (postcomp I) (√₁ (mod♭ f))))) ⟩
-        ♭-map' (♭-map (postcomp _ ε√ ∘ postcomp I) (√₁ (mod♭ f)))
-      ~⟨ happly (ap ♭-map' (is-equiv.ε √-is-tiny-str (mod♭ (f ∘ ε√)))) ⟩
-        ♭-map' (mod♭ (f ∘ ε√))
-      ~⟨⟩
-        ♭-map (f ∘ ε√)
-      ~⟨ ♭-∘ f ε√ ⟩
-        ♭-map f ∘ ♭-map ε√
-      ~∎ where
-      lemma
-        : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥}
-          → (_∘♭_ (mod♭ ε√)) ~ ♭-map {B = A → B} (postcomp A ε√)
-      lemma (mod♭ x) = refl
-
+        untranspose (ε♭ (√₁ (mod♭ f)))
+      ~⟨ happly (sym (ε♭-natural (√₁ (mod♭ f)))) ⟩
+        ε♭ (♭-map untranspose (√₁ (mod♭ f)))
+      ~⟨ happly (ap ε♭ (is-tiny.ε (mod♭ (f ∘ ε√)))) ⟩
+        f ∘ ε√
+      ~∎
 
   ε√-naturality-square
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : Type 𝓥}
-        {@♭ f : Γ → A}
-      → Arrow-map (♭-map' (♭-map (postcomp I) (√₁ (mod♭ f)))) (♭-map f)
-  ε√-naturality-square .Arrow-Π.top = ♭-map ε√
-  ε√-naturality-square .Arrow-Π.bot = ♭-map ε√
-  ε√-naturality-square {f = f} .Arrow-Π.comm = ε√-nat
+        (@♭ f : Γ → A)
+      → Arrow-map (postcomp I (ε♭ (√₁ (mod♭ f)))) f
+  ε√-naturality-square f .Arrow-Π.top = ε√
+  ε√-naturality-square f .Arrow-Π.bot = ε√
+  ε√-naturality-square f .Arrow-Π.comm = ε√-nat f
 }
 }
 
@@ -490,8 +471,8 @@ property of products.}
         (♭-ind
           (λ x' → mapply♭ (mod♭
             (×-path→
-              ( happly (√₁-nat (mod♭ fst)) x'
-              , happly (√₁-nat (mod♭ snd)) x'))))))
+              ( happly (untranspose-naturality (mod♭ fst)) x'
+              , happly (untranspose-naturality (mod♭ snd)) x'))))))
       (is-♭-equiv←is-equiv (×-→-swap≃ A B ._≃_.fwd-is-equiv)))
 }
 }
@@ -579,12 +560,12 @@ module Dependent√
       @♭ f : ∀ (@♭ l : Γ → √ (Type∗' 𝓥))
              → ⟨♭| fst ∘ untranspose l ＝ A ⟩
              → ⟨♭| ε♭ √Type∗-π ∘ l ＝ ε♭ (transpose (mod♭ A)) ⟩
-      f l  = transpose-unique ∘ ♭-map ((happly (√₁-nat (mod♭ fst)) l ∙_))
+      f l  = transpose-unique ∘ ♭-map ((happly (untranspose-naturality (mod♭ fst)) l ∙_))
 
       @♭ feq : ∀ (@♭ l) → is-equiv (f l)
       feq l = is-equiv-∘
         transpose-unique-is-equiv
-        (is-♭-equiv←is-equiv (∙-is-equiv (happly (√₁-nat (mod♭ fst)) l)))
+        (is-♭-equiv←is-equiv (∙-is-equiv (happly (untranspose-naturality (mod♭ fst)) l)))
 
   Π←lift
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} {@♭ A : (I → Γ) → Type 𝓥}
@@ -632,7 +613,7 @@ module Dependent√
       = tr
           classify-√
           (sym (happly
-            (ap ε♭ (transpose-naturality (mod♭ A) σ)
+            (ap ε♭ (transpose-∘ (mod♭ A) σ)
             ∙ ε♭-natural (transpose (mod♭ A)))
             (x)))
 
@@ -645,7 +626,7 @@ module Dependent√
       = tr
           classify-√
           (happly
-            ( ap ε♭ (transpose-naturality (mod♭ A) σ)
+            ( ap ε♭ (transpose-∘ (mod♭ A) σ)
             ∙ ε♭-natural (transpose (mod♭ A)))
             (x))
 
@@ -656,7 +637,7 @@ module Dependent√
         → √ᵈ (A ∘ postcomp I σ) ＝ (√ᵈ A ∘ σ)
     √ᵈ-naturality-path A σ
       = ap (classify-√ ∘_)
-           ( ap ε♭ (transpose-naturality (mod♭ A) σ)
+           ( ap ε♭ (transpose-∘ (mod♭ A) σ)
            ∙ ε♭-natural (transpose (mod♭ A)))
 
     √ᵈ-naturality-is-equiv'

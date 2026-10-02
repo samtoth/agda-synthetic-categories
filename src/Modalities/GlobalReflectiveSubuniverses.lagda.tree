@@ -56,6 +56,9 @@ record is-global-reflector
       : ∀ {𝓥} {Q : Type 𝓥}
         → Q ∈ S → is-equiv (precomp Q η)
 
+  ○-UP≃ : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (○A → Q) ≃ (A → Q)
+  ○-UP≃ Q∈S = mk≃ (precomp _ η) (reflects Q∈S)
+
   ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
   ○-rec cs = is-equiv.bwd (reflects cs)
 
@@ -64,7 +67,7 @@ record is-global-reflector
       → ○-rec p f ∘ η ~ f
   ○-rec-β p f a = happly (is-equiv.ε (reflects p) f) a
 
-  module ∈S▸η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
+  module ∈S▹η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
     = is-equiv (prewhisker-is-equiv←ap-compose {A = A} {g = g} {h}
                          (is-embedding←is-equiv (reflects C∈S)))
 
@@ -180,10 +183,16 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
   module R {𝓤} {A} = is-global-reflector (η-is-reflector {𝓤} {A})
   open R public
 
-  module ▸η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h}
-    = is-equiv (prewhisker-is-equiv←ap-compose {g = g} {h}
-                 (is-embedding←is-equiv
-                   (reflects {A = B} (○∈S {𝓤} {A}))))
+  opaque
+    ▹η-is-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+        → is-equiv (prewhisker η g h)
+    ▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h}
+      = prewhisker-is-equiv←ap-compose {g = g} {h}
+          (is-embedding←is-equiv (reflects {A = A} (○∈S {𝓥} {B})))
+
+  module ▹η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+    = is-equiv (▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h})
 
   reflector : ∀ {𝓤} (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η
@@ -689,7 +698,19 @@ module gReflectiveReasoning {α} (RS : gRSubU α) where
     : ∀ {𝓤} {A : Type 𝓤}
       → ○₁ (id: A) ~ id
   ○₁-id {A = A}
-    = ▸η.bwd (○₁-β (id: A))
+    = ▹η.bwd (○₁-β (id: A))
+
+  ○-~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      → f ~ g → ○₁ f ~ ○₁ g
+  ○-~ {f = f} {g} H = ▹η.bwd
+    (  ○₁ f ∘ η
+    ~⟨ ○₁-β f ⟩
+      η ∘ f
+    ~⟨ η ◃h H ⟩
+      η ∘ g
+    ~⟨ ○₁-β g h⁻¹ ⟩
+      ○₁ g ∘ η ~∎)
 
   ○₁-∘
     : ∀ {𝓤 𝓥 𝓦}
@@ -697,7 +718,7 @@ module gReflectiveReasoning {α} (RS : gRSubU α) where
         (g : B → C) (f : A → B)
       → ○₁ (g ∘ f) ~ ○₁ g ∘ ○₁ f
   ○₁-∘ {A = A} g f
-    = ▸η.bwd λ a
+    = ▹η.bwd λ a
     → ○₁ (g ∘ f) (η a)      ＝⟨ ○₁-β (g ∘ f) a ⟩
       η (g (f a))           ＝⟨ sym (○₁-β g (f a)) ⟩
       ○₁ g (η (f a))        ＝⟨ sym (ap (○₁ g) (○₁-β f a)) ⟩
@@ -887,7 +908,7 @@ module gRSubUInduction
     ind
       : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
         → (Π A (P ∘ η)) → Π (○ A) P
-    ind {A = A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
+    ind {A = A} {P} ps f = Π←section (f' , ▹η.bwd secη) module ind where
       f'' : A → Σ (○ A) P
       f'' a = (η a , f a)
 
@@ -903,8 +924,8 @@ module gRSubUInduction
         → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
     ind-β {A = A} {P} PS f a
       = let open ind PS f in
-        tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
-           ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
+        tr P (▹η.bwd secη (η a)) (snd (f' (η a)))
+           ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▹η.ε secη) a) ⟩
         tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
           ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
         tr (P ∘ fst) (○-rec-β _ f'' a) (snd (f' (η a)))
@@ -931,6 +952,18 @@ module gRSubUInduction
            {B = (a : ○ A) → P a}
            (ind PS)
   ind-is-equiv = is-equiv←qinv ∘ ind-qinv
+
+  ○-UPᵈ
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → is-equiv (precomp-Π P η)
+  ○-UPᵈ P∈S = is-equiv⁻¹ (is-equiv←qinv (ind-qinv P∈S))
+
+  ○-UPᵈ≃
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → (Π (○ A) P) ≃ (Π A (P ∘ η))
+  ○-UPᵈ≃ P∈S = mk≃ (precomp-Π _ η) (○-UPᵈ P∈S)
 
   local-Pullback∈S
     : {𝓦 𝓧 𝓨 : Level}
@@ -1012,7 +1045,7 @@ module _
           (η-square' (g ∘ f))
           (paste-squares (η-square' g) (η-square' f))
   η-square'-∘ {A = A} {C = C} g f
-    = (~refl , ▸η.bwd H , coh)
+    = (~refl , ▹η.bwd H , coh)
     where
     module S = Arrow-map (η-square' (g ∘ f))
     module T = Arrow-map (paste-squares (η-square' g) (η-square' f))
@@ -1020,9 +1053,9 @@ module _
     H : precomp (○ C) (η: A) S.bot ~ precomp (○ C) (η: A) T.bot
     H = S.comm ∙h (T.comm h⁻¹)
 
-    coh : S.comm ∙h ~refl ~ (▸η.bwd {g = S.bot} {h = T.bot} H ▹h η) ∙h T.comm
+    coh : S.comm ∙h ~refl ~ (▹η.bwd {g = S.bot} {h = T.bot} H ▹h η) ∙h T.comm
     coh = ∙h-reflr S.comm
-        ∙h right-transpose-∙h⁻¹ (happly (▸η.ε {g = S.bot} {h = T.bot} H)) h⁻¹
+        ∙h right-transpose-∙h⁻¹ (happly (▹η.ε {g = S.bot} {h = T.bot} H)) h⁻¹
 }
 }
 
@@ -1068,7 +1101,7 @@ module _
     ∙h (bot-nat-○-square ∙h pasted-nat-○-square) ∙h (top-nat-○-square h⁻¹)
 
   coh-○-square : ○₁ bot ∘ ○₁ f ~ ○₁ g ∘ ○₁ top
-  coh-○-square = ▸η.bwd coh▸η-○-square
+  coh-○-square = ▹η.bwd coh▸η-○-square
 
   ○-square : Arrow-map (○₁ f) (○₁ g)
   ○-square .Arrow-map.top = ○₁ top
@@ -1083,7 +1116,7 @@ module _
   η-cube .Cube.comm .snd .snd
     = right-transpose-∙h⁻¹
         ( (left-nat-○-square ◂h happly
-            (▸η.ε {g = ○₁ bot ∘ ○₁ f} {h = ○₁ g ∘ ○₁ top} coh▸η-○-square))
+            (▹η.ε {g = ○₁ bot ∘ ○₁ f} {h = ○₁ g ∘ ○₁ top} coh▸η-○-square))
           ∙h ∙h-cancel-left {H = left-nat-○-square} {K = left-nat-○-square h⁻¹}
               (∙h-sym left-nat-○-square)
               ((bot-nat-○-square ∙h pasted-nat-○-square) ∙h (top-nat-○-square h⁻¹)))

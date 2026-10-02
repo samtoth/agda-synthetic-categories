@@ -1,0 +1,99 @@
+\title{Amazing properties}
+\taxon{Module}
+\author{samueltoth}
+\date{2026-09-29}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Prelude
+open import Synthetic.Tiny
+
+module Synthetic.Tiny.AmazingProperties
+  {@♭ 𝓘} {@♭ I : Type 𝓘}
+  (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
+  (@♭ ε√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
+  (@♭ √-is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure I A (√ A) ε√)
+  (@♭ √Prop-is-set : ∀ {@♭ 𝓤} → is-set (√ (Prop-U 𝓤)))
+  (open Tiny I √ ε√ √-is-tiny-str)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Cohesion.Flat
+}
+}
+
+\subtree[stt-00KE]{
+\title{Amazing properties}
+
+\p{We give a partial formalisation of an alternative construction for amazing
+properties. Instead of using the small map classifier, we may use the small
+embedding classifier, so that we directly get a function
+#{\rm{is-amazingly} \colon \modflat{A^I \to \Prop} \to A \to \Prop}.}
+
+\remark{This formalisation is incomplete for similar reasons to the previous
+construction, in order to make use of the embedding classifier, we need to
+show the map #{1 \to \Prop_I} that picks out #{\top}, is an embedding,
+which requires showing that (this time the non-dependent) tiny type former
+preserves sets. This boils down to characterising the identity type in
+amazing right adjoints.}
+
+\agda{
+global-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
+global-√ = ♭-map (ev tt) ∘ transpose ∘ ♭-map const
+
+global-√-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-equiv (global-√ {A = A})
+global-√-is-equiv
+  = is-equiv-∘
+      (is-♭-equiv←is-equiv (unit-ev-is-equiv))
+      (is-equiv-∘
+        (is-equiv⁻¹ √-is-tiny-str)
+        (is-♭-equiv←is-equiv (sing-const-is-equiv single!)))
+
+global-√-point : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ A → √ A
+global-√-point a = ε♭ (global-√ (mod♭ a))
+
+global-⊤ : ∀ (@♭ 𝓤) → √ (Prop-U 𝓤)
+global-⊤ 𝓤 = global-√-point (𝟙ᴸ: 𝓤 , trunc!)
+
+prop-class : ∀ {@♭ 𝓤} → 𝟙 → √ (Prop-U 𝓤)
+prop-class = point (global-⊤ _)
+
+classify-√-prop : ∀ {@♭ 𝓤} → √(Prop-U 𝓤) → Prop-U (lsuc 𝓤)
+classify-√-prop x
+  = ( fibre prop-class x
+    , fibre-is-truncated'
+        prop-class x
+        trunc!
+        (λ x y → is-truncated←is-prop ((√Prop-is-set x y))))
+
+is-amazingly-prop
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+    → ⟨♭| ((I → Γ) → Prop-U 𝓥) ⟩ → ⟨♭| (Γ → Prop-U (lsuc 𝓥)) ⟩
+is-amazingly-prop = ♭-map (postcomp _ classify-√-prop) ∘ transpose
+
+is-amazingly
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
+    → (@♭ A : (I → Γ) → Type 𝓥)
+    → @♭ (∀ g → is-prop (A g))
+    → (Γ → Type (lsuc 𝓥))
+is-amazingly A Ap
+  = fst
+  ∘ (ε♭ (is-amazingly-prop
+          (mod♭ λ g → (A g , is-truncated←is-prop (Ap g)))))
+
+is-amazingly-is-prop
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (I → Γ) → Type 𝓥)
+      (@♭ Ap : ∀ x → is-prop (A x))
+    → ∀ g → is-prop (is-amazingly A Ap g)
+is-amazingly-is-prop A Ap
+  = is-prop←is-truncated
+  ∘ snd
+  ∘ ε♭ (is-amazingly-prop (mod♭ (λ g → A g , is-truncated←is-prop (Ap g))))
+}
+}

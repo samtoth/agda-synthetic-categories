@@ -13,22 +13,25 @@ module Foundations.Retracts where
 \agda{
 open import Foundations.Universes
 open import Foundations.Functions
-open import Foundations.FunExt
+open import Foundations.Subuniverses
+open import Foundations.Subtypes
+open import Foundations.TotalEquiv
 open import Foundations.Homotopy
 open import Foundations.Identity
 open import Foundations.IdentityEquiv
 open import Foundations.Sigma
 open import Foundations.FunctionInverses
 open import Foundations.Equivalences
-open import Foundations.Singletons
 open import Foundations.SingletonClosure
 open import Foundations.EquivSingleton
 open import Foundations.FibrewiseEquivalences
 open import Foundations.SingletonFibres
 open import Foundations.TorsorialTypeFamilies
 open import Foundations.Univalence
-import Foundations.HomotopyEquiv as HEquiv
-import Foundations.IsEquivIsProp as EProp
+open import Foundations.SigmaProperties
+open import Foundations.IsEquivIsProp
+open import Foundations.HomotopyEquiv
+open import Foundations.CompositionEquiv
 }
 }
 
@@ -39,8 +42,8 @@ import Foundations.IsEquivIsProp as EProp
 \title{Retracts}
 
 \p{
-A type #{A} is a \em{retract} of a type #{B} if there is a map #{f : A \to B}
-equipped with a [retraction](stt-000I), i.e., another map #{r : B \to A} such that
+A type #{A} is a \em{retract} of a type #{B} if there is a map #{f \colon A \to B}
+equipped with a [retraction](stt-000I), i.e., another map #{r \colon B \to A} such that
 #{r \circ f \sim \id}.
 }
 
@@ -94,6 +97,30 @@ In [[stt-00I8]] we show that the universe of retracts of a type is a
 }
 }
 
+
+\subtree[stt-00Y8]{
+\title{The universe of retracts in a subuniverse}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\agda{
+Retracts-SubU
+  : ∀ {𝓤 𝓥} → SubU 𝓤 𝓥 → Type 𝓤 → Type (lsuc 𝓤 ⊔ 𝓥)
+Retracts-SubU {𝓤} S A
+  = Σ[ R ∶ Retracts 𝓤 A ] (carrier-Retracts R ∈ S)
+
+carrier-Retracts-SubU
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} {A : Type 𝓤}
+    → Retracts-SubU S A → Type 𝓤
+carrier-Retracts-SubU R = carrier-Retracts (R .fst)
+
+retract-Retracts-SubU
+  : ∀ {𝓤 𝓥} {S : SubU 𝓤 𝓥} {A : Type 𝓤}
+    → (R : Retracts-SubU S A) → retract (carrier-Retracts-SubU {S = S} R) A
+retract-Retracts-SubU R = retract-Retracts (R .fst)
+}
+}
+
 \subtree[stt-00HF]{
 \title{Retracts compose}
 \taxon{Lemma}
@@ -102,10 +129,8 @@ In [[stt-00I8]] we show that the universe of retracts of a type is a
 
 \agda{
 comp-retract
-  : {𝓤 𝓥 𝓦 : Level} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-  → retract A B
-  → retract B C
-  → retract A C
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → retract A B → retract B C → retract A C
 comp-retract (i , Ri) (j , Rj) = (j ∘ i , retraction-∘ Rj Ri)
 }
 }
@@ -157,6 +182,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 }
 }
 
+\agda{
+module RetractWithFunExt (FE : FunExt-global) (open WithFunExt-global FE) where
+}
+
 \subtree[stt-00HH]{
 \title{Equality of retracts}
 \taxon{Theorem}
@@ -165,15 +194,12 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
 \p{
 We characterise equalities of
-[retracts](stt-00HE) #{H : r \circ i \sim \id} and #{H' : r' \circ i' \sim \id} as
-homotopies #{R : r \sim r'}, #{I : i \sim i'} together with a coherence
-#{H \sim (RI \cdot H')}.
+[retracts](stt-00HE) #{H \colon r \circ i \sim \id} and #{H' \colon r' \circ i' \sim \id} as
+homotopies #{R \colon r \sim r'}, #{I \colon i \sim i'} together with a coherence
+#{H \sim RI \concat H'}.
 }
 
 \agda{
-module RetractWithFunExt (FE : FunExt-global) where
-  open WithFunExt-global FE
-
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (R : retract A B) where
 
     retract-htpy-is-torsorial
@@ -185,10 +211,10 @@ module RetractWithFunExt (FE : FunExt-global) where
           (is-singleton-structure←parts
             (htpy-is-torsorial FE (R .snd .fst))
             (_ , ~refl)
-            (is-single←equiv-to-single
-              (Σ-snd-≃ λ ρ' → funext≃ ∙e EProp.Π-fam-≃ FE (λ _ → sym≃))
+            (is-single←equiv
+              (Σ-snd-≃ λ ρ' → funext≃ ∙e Π-fam-≃ FE (λ _ → sym≃))
               (has-singleton-fibres←is-equiv
-                (HEquiv.∙h-is-equiv FE ~refl)
+                (∙h-is-equiv FE ~refl)
                 (R .snd .snd))))
 
   retract-htpy←Id
@@ -223,6 +249,28 @@ module RetractWithFunExt (FE : FunExt-global) where
 }
 }
 
+\subtree[stt-012F]{
+\title{Dependent products preserve retracts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-19}
+
+\p{
+Given families #{P \colon A \to \UV} and #{Q \colon A \to \UW}, then a fibrewise
+retract between #{P} and #{Q} induces a retract between #{\Pi_A Q} and #{\Pi_A P}.
+}
+
+\agda{
+  Π-retract
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {P : A → Type 𝓥} {Q : A → Type 𝓦}
+      → (∀ a → retract (P a) (Q a)) → retract (Π A P) (Π A Q)
+  Π-retract R
+    = ( (λ u a → R a .fst (u a))
+      , (λ v a → R a .snd .fst (v a))
+      , (λ u → funext→ (λ a → R a .snd .snd (u a))))
+}
+}
+
 \subtree[stt-00H2]{
 \title{Unit laws for composition of retracts}
 \taxon{Theorem}
@@ -232,31 +280,55 @@ module RetractWithFunExt (FE : FunExt-global) where
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
-  comp-retract-unit-l-htpy
+  comp-retract-left-unit-htpy
     : (R : retract A B)
     → retract-htpy (comp-retract idretract R) R
-  comp-retract-unit-l-htpy R@(s , r , rs)
+  comp-retract-left-unit-htpy R@(s , r , rs)
     = (~refl , ~refl , (λ a → ∙-reflr (ap id (rs a)) ∙ ap-id (rs a)))
 
-  comp-retract-unit-r-htpy
+  comp-retract-right-unit-htpy
     : (R : retract A B)
     → retract-htpy (comp-retract R idretract) R
-  comp-retract-unit-r-htpy R = (~refl , ~refl , ~refl)
+  comp-retract-right-unit-htpy R = (~refl , ~refl , ~refl)
 
 module RetractWithFunExt' (FE : FunExt-global) where
 
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
-    comp-retract-unit-l
-      : (R : retract A B)
-      → comp-retract idretract R ＝ R
-    comp-retract-unit-l R
-      = RetractWithFunExt.Id←retract-htpy FE (comp-retract-unit-l-htpy R)
+    comp-retract-left-unit
+      : (R : retract A B) → comp-retract idretract R ＝ R
+    comp-retract-left-unit R
+      = RetractWithFunExt.Id←retract-htpy FE (comp-retract-left-unit-htpy R)
 
-    comp-retract-unit-r
+    comp-retract-right-unit
       : (R : retract A B) → comp-retract R idretract ＝ R
-    comp-retract-unit-r R
-      = RetractWithFunExt.Id←retract-htpy FE (comp-retract-unit-r-htpy R)
+    comp-retract-right-unit R
+      = RetractWithFunExt.Id←retract-htpy FE (comp-retract-right-unit-htpy R)
+}
+}
+
+\subtree[stt-00XN]{
+\date{2026-09-08}
+\taxon{Lemma}
+\title{Equivalent types have equivalent universes of retracts}
+\author{fredrikbakke}
+
+\p{
+An [equivalence](stt-001U) of types induces an equivalence on
+[retracts](stt-00HE), and hence on their [universes of retracts](stt-00H5).
+}
+
+\agda{
+  retract-codomain-≃
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {A : Type 𝓥} {B : Type 𝓦}
+      → A ≃ B → retract X A ≃ retract X B
+  retract-codomain-≃ e
+    = Σ-≃ (postcomp-≃ FE e) (λ _ → Σ-fst-≃ (precomp-≃ FE e) e⁻¹)
+
+  Retracts-≃
+    : ∀ {𝓤 𝓥} 𝓦 {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B → Retracts 𝓦 A ≃ Retracts 𝓦 B
+  Retracts-≃ 𝓦 e = Σ-snd-≃ (λ X → retract-codomain-≃ e)
 }
 }
 
@@ -324,11 +396,11 @@ module RetractsWithFunExtUnivalence
       = is-singleton-structure←parts
           (equiv-is-torsorial (carrier-Retracts R))
           (_ , id≃)
-          (is-single←equiv-to-single
+          (is-single←equiv
             (Σ-snd-≃ λ S → equiv←Id
               (ap
                 (retract-htpy (retract-Retracts R))
-                (sym (comp-retract-unit-l S))))
+                (sym (comp-retract-left-unit S))))
             (retract-htpy-is-torsorial (retract-Retracts R)))
 
   Retracts-equiv←Id
@@ -360,5 +432,26 @@ module RetractsWithFunExtUnivalence
     → Retracts-equiv R S
     → R ＝ S
   Id←Retracts-equiv {R = R} {S = S} = _≃_.bwd (Id≃Retracts-equiv R S)
+}
+}
+
+\subtree[stt-00YG]{
+\title{Cancelling a factor of the inclusion map of a retract}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-07}
+
+\p{
+If the inclusion map of a retract factors as #{j \circ i}, then first #{i} is also
+the inclusion of a retract.
+}
+
+\agda{
+retract-left-factor
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+    → (R : retract A C) (i : A → B) (j : B → C)
+    → j ∘ i ~ R .fst → retract A B
+retract-left-factor (s , r , H) i j triangle
+  = (i , r ∘ j , r ◃h triangle ∙h H)
 }
 }

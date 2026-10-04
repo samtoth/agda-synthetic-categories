@@ -12,13 +12,11 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
-open import Foundations.Pushouts
 
 open import Ergonomics.Marker
 
 open import Core.Arrows
 open import Core.Slices
-open import Core.CanonicalPushouts
 }
 }
 
@@ -270,7 +268,6 @@ module _
             (λ _ → pullback-path→ (refl , refl , (sym-sym ∙ sym (∙-reflr _))))
             (pullback-swap ._≃_.fwd-is-equiv)
             pb))
-
 }
 }
 }
@@ -309,9 +306,9 @@ the following triangle, and apply the three for two property for equivalences:
 \begin{tikzcd}
 	{(A \to Q)} &&& {(B \to Q)\times_{(C \to Q)} (D \to Q)} \\
 	\\
-	&& {\textrm{Cone}(f,g)}
+	&& {\rm{Cone}(f,g)}
 	\arrow["{\textit{gap}}", from=1-1, to=1-4]
-	\arrow["{\textrm{cone-map}}"', from=1-1, to=3-3]
+	\arrow["{\rm{cone-map}}"', from=1-1, to=3-3]
 	\arrow["\sim", from=1-4, to=3-3]
 \end{tikzcd}
 }
@@ -426,7 +423,7 @@ top-is-equiv←is-cartesian
     → is-equiv bot
     → is-equiv top
 top-is-equiv←is-cartesian F feq geq
-  = is-equiv-∘ {f = pb.π₂} {g = gap-map←square F}
+  = is-equiv-∘ {f = pb.π₂} {g = gap-square F}
       (pullback-equiv₂ geq)
       (is-pullback←is-cartesian F feq)
 }
@@ -515,7 +512,7 @@ untranspose-is-cartesian F
 	\\
 	{\Pi_iB_i} &&& {\Pi_iD_i}
 	\arrow["\sim"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=1-2, to=3-2]
-	\arrow["{\Pi_i(\textrm{gap})}"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=1-2]
+	\arrow["{\Pi_i(\rm{gap})}"{pos=0.3}, color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=1-2]
 	\arrow[from=2-1, to=2-4]
 	\arrow[color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=3-2]
 	\arrow[from=2-1, to=5-1]
@@ -552,19 +549,88 @@ opaque
       = funext→ λ i → pullback-path→
           (refl , refl , ∙-refll _ ∙ sym (happly funext-redex i) ∙ sym (∙-reflr _))
 
-    htpy : postcomp-Π (λ i → gap-map←square (F i)) ~ curry-pb ∘ gap-map←square (Π-square F)
+    htpy : postcomp-Π (λ i → gap-square (F i)) ~ curry-pb ∘ gap-square (Π-square F)
     htpy a = funext→ λ i → pullback-path→
       (refl , refl , ∙-refll _ ∙ happly funext-redex i ∙ sym (∙-reflr _))
 
     eq : is-equiv (gap (Cone←Arrow-map (Π-square F) .snd))
     eq = (3-for-2~
             {f = curry-pb}
-            {g = gap-map←square (Π-square F)}
-            {k = postcomp-Π (λ i → gap-map←square (F i))}
+            {g = gap-square (Π-square F)}
+            {k = postcomp-Π (λ i → gap-square (F i))}
             (htpy)
             (is-equiv←qinv curry-pb-qinv)
             (postcomp-Π-equiv
               (λ {i} → is-pullback←up-pullback _
                 (up-pullback←is-cartesian _ (cart i)))))
+}
+}
+
+\subtree[stt-00ZM]{
+\title{Base change is base change}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-11}
+
+\p{
+Given a map #{f \colon A \to B} and a type family #{P \colon B \to \UU}, then the
+square
+
+\quiver{
+\begin{tikzcd}
+\Sigma1{a : A}{P(f(a))} && Sigma1{b : B}{P(b)} \\
+\\
+A && B
+\arrow[from=1-1, to=1-3]
+\arrow[from=1-1, to=3-1]
+\arrow[from=1-3, to=3-3]
+\arrow[from=3-1, to=3-3, "f"]
+\end{tikzcd}
+}
+
+is cartesian.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B) (P : B → Type 𝓦)
+  where
+
+  total-map-fst-square : Arrow-map (total-map-fst f {B = P}) f
+  total-map-fst-square = mk-amap fst fst ~refl
+
+  total-map-fst-square-is-cartesian : is-cartesian total-map-fst-square
+  total-map-fst-square-is-cartesian (b , p)
+    = is-equiv←~
+        (λ where ((_ , _) , refl) → refl)
+        (fibre≃total-map-fst f b p ._≃_.fwd-is-equiv)
+}
+
+\p{
+Given a family of maps #{g \colon \Pi1{b : B}{P(b) \to Q(b)}}, then given any
+function #{f \colon A \to B}, the total map of #{g} reindexed by #{f} is a base
+change of the total map of #{g}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  (f : A → B) {P : B → Type 𝓦} {Q : B → Type 𝓜}
+  (g : (b : B) → P b → Q b)
+  where
+
+  reindex-total-map-square
+    : Arrow-map (total-map (g ∘ f)) (total-map g)
+  reindex-total-map-square
+    = mk-amap (total-map-fst f) (total-map-fst f) ~refl
+
+  reindex-total-map-square-is-cartesian
+    : is-cartesian reindex-total-map-square
+  reindex-total-map-square-is-cartesian
+    = untranspose-is-cartesian reindex-total-map-square
+        (3-for-2-cartesian Arrow-map-path-refl
+          (total-map-fst-square-is-cartesian f P)
+          (total-map-fst-square-is-cartesian f Q))
 }
 }

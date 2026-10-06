@@ -10,8 +10,17 @@ category is the opposite of the category of free finitely generated
 distributive lattices, so cubical spaces form the classifying topos of the
 \em{flat} distributive lattices — the filtered colimits of free finitely
 generated ones — and the interval is the generic flat lattice. This module
-writes down what flatness says about #{\II} internally. It is a definition and
-a remark: none of it is assumed, and none of it is proved.}
+writes down what flatness says about #{\II} internally (\ref{ub-0040}),
+which is nowhere assumed, and relates it to the other axioms.}
+
+\p{Flatness says that solutions of crisp equations in #{\II} come from crisp
+solutions in polynomials (\ref{ub-004D}), so a crisp fact about polynomials
+can be evaluated at a crisp vertex and transported to every point along the
+order (\ref{ub-004A}). With the two crisp points of #{\II} that gives the
+disjunctive and the conjunctive properties (\ref{ub-004B}, \ref{ub-004E}).
+In the other direction, flatness follows from SQCP together with the
+separation of cubes (\ref{ub-004C}). Neither is a characterisation, and
+\ref{ub-0041} explains why none in finitely many coherent sequents can be.}
 
 \agda{
 open import Foundations.Universes
@@ -35,10 +44,28 @@ open import Foundations.Fin
 open import Modalities.Cohesion.Flat
 open import Modalities.Instances.Truncation
 
+open import Algebra.Lattice.Instances.Polynomial
 open import Algebra.Lattice.Instances.Free.Multivariate I I-distr
 open import Algebra.Lattice.Presentations I I-distr
 
 open import Synthetic.Quasicoherence Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Duality Δ¹ I I-distr
+  using (Polynomial-Algebra-is-quasicoherent←SQCP)
+open import Synthetic.Disjunctive Δ¹ I
+open import Synthetic.DisjunctiveProperty Δ¹ I
+open import Synthetic.Categories.DetectingEquivalencesCovariantFamilies Δ¹ I
+  using (module ♭Δ-Induction)
+
+open import Modalities.Cohesion.FlatConnectedMaps
+open import Modalities.Cohesion.Continuity
+open import Modalities.Cohesion.FlatLex
+
+open import Core.Arrows
+open import Core.Joins
+open import Core.SetQuotients
+
 }
 }
 
@@ -77,6 +104,12 @@ point-hom
   → LatticeAlgHom (Polynomial-Algebra n) (initial-Algebra I)
 point-hom n = is-equiv.bwd (Polynomial-ev-is-equiv (initial-Algebra I) I-distr n)
 
+point-hom-gen
+  : (n : ℕ) (y : Fin n → Δ¹) (k : Fin n)
+  → point-hom n y .fst .fst (Polynomial-gen k) ＝ y k
+point-hom-gen n y
+  = happly (is-equiv.ε (Polynomial-ev-is-equiv (initial-Algebra I) I-distr n) y)
+
 module _ (@♭ p : Presentation) where
 
   factors-through-cube : ⟨♭| ℕ ⟩ → Spec (Presented p) → Type 𝓘
@@ -89,6 +122,453 @@ interval-is-flat : Type 𝓘
 interval-is-flat
   = (@♭ p : Presentation) (x : Spec (Presented p))
   → ║ Σ[ n ∶ ⟨♭| ℕ ⟩ ] factors-through-cube p n x ║₋₁
+}
+}
+
+\subtree[ub-004A]{
+\taxon{Lemma}
+\title{Polynomials are monotone}
+\date{2026-10-06}
+
+\p{Evaluating a polynomial is monotone in the point: if #{y \le y'} in every
+coordinate then #{q(y) \le q(y')}. The proof is algebra. The assignment
+#{x_k \mapsto y'_k t \lor y_k} extends to a map of algebras
+#{h : \II[x_1, \ldots, x_n] \to \II[t]}, and evaluating #{t} at #{0} and at
+#{1} turns #{h} into maps of algebras that agree with evaluation at #{y}
+and at #{y'} on the generators, hence everywhere. A polynomial
+#{a t \lor b} in one variable has #{b \le a} (\ref{stt-009W}), so its value
+#{b} at #{0} is below its value #{a} at #{1}, and
+#{q(y) = h(q)(0) \le h(q)(1) = q(y')}.}
+
+\agda{
+module _ (n : ℕ) where
+  private
+    I[t] : Algebra I (Δ² I)
+    I[t] = Free-Algebra I I-distr
+
+    I[t]-distr : is-distributive-algebra I[t]
+    I[t]-distr = Polynomial-is-distributive I I-distr
+
+    at-0 at-1 : LatticeAlgHom I[t] (initial-Algebra I)
+    at-0 .fst .fst = Δ².t
+    at-0 .fst .snd a = refl
+    at-0 .snd = mk-is-lattice-alg-hom λ where
+      .is-lattice-hom.pres-∨ → refl
+      .is-lattice-hom.pres-∧ → refl
+      .is-lattice-hom.pres-0 → refl
+      .is-lattice-hom.pres-1 → refl
+    at-1 .fst .fst = Δ².s
+    at-1 .fst .snd a = refl
+    at-1 .snd = mk-is-lattice-alg-hom λ where
+      .is-lattice-hom.pres-∨ → refl
+      .is-lattice-hom.pres-∧ → refl
+      .is-lattice-hom.pres-0 → refl
+      .is-lattice-hom.pres-1 → refl
+
+    ev-is-equiv = Polynomial-ev-is-equiv (initial-Algebra I) I-distr n
+
+  point-hom-is-monotone
+    : (y y' : Fin n → Δ¹) → ((k : Fin n) → y k ≤ y' k)
+    → (q : Polynomials n)
+    → point-hom n y .fst .fst q ≤ point-hom n y' .fst .fst q
+  point-hom-is-monotone y y' le q
+    = tr (_≤ point-hom n y' .fst .fst q) (at (path y at-0 refl))
+        (tr (Δ².t (h .fst .fst q) ≤_) (at (path y' at-1 refl))
+          (Δ².mono (h .fst .fst q)))
+    where
+      segment : Fin n → Δ² I
+      segment k = (y' k , y k) ⦃ le k ⦄
+
+      h : LatticeAlgHom (Polynomial-Algebra n) I[t]
+      h = is-equiv.bwd (Polynomial-ev-is-equiv I[t] I[t]-distr n) segment
+
+      h-gen : Polynomial-ev I[t] I[t]-distr n h ＝ segment
+      h-gen = is-equiv.ε (Polynomial-ev-is-equiv I[t] I[t]-distr n) segment
+
+      path
+        : (z : Fin n → Δ¹) (e : LatticeAlgHom I[t] (initial-Algebra I))
+        → (e .fst .fst ∘ segment ＝ z)
+        → LatticeAlgHom-∘ e h ＝ point-hom n z
+      path z e p
+        = unap-equiv ev-is-equiv
+            (ap (e .fst .fst ∘_) h-gen ∙ p ∙ sym (is-equiv.ε ev-is-equiv z))
+
+      at
+        : {f g : LatticeAlgHom (Polynomial-Algebra n) (initial-Algebra I)}
+        → f ＝ g → f .fst .fst q ＝ g .fst .fst q
+      at e = happly (ap (λ f → f .fst .fst) e) q
+}
+}
+
+\subtree[ub-004D]{
+\taxon{Lemma}
+\title{Flatness in equational form}
+\date{2026-10-06}
+
+\p{Unfolded, flatness is the geometric sequent of \ref{ub-0040}: a solution
+#{v} of a crisp system of equations is a specialisation of a crisp solution in
+polynomials. There is a crisp #{n}, a crisp map of algebras
+#{g : \II[x_1, \ldots, x_k] \to \II[y_1, \ldots, y_n]} that respects the
+equations, and a point #{y} of the #{n}-cube with #{v_i = g(x_i)(y)}. A point of
+the spectrum of the presented algebra is a solution, by its [recursion
+principle](ub-001M), and a map out of it restricts to a map out of the free
+algebra that respects the relations.}
+
+\agda{
+module _ (@♭ p : Presentation) where
+  open Presentation p
+
+  crisp-solution : ⟨♭| ℕ ⟩ → (Fin generators → Δ¹) → Type 𝓘
+  crisp-solution (mod♭ n) v
+    = Σ[ g ∶ ⟨♭| Σ[ g ∶ LatticeAlgHom (Polynomial-Algebra generators)
+                                      (Polynomial-Algebra n) ]
+                   respects p g ⟩ ]
+      Σ[ y ∶ (Fin n → Δ¹) ]
+        ((k : Fin generators)
+        → v k
+        ＝ point-hom n y .fst .fst (ε♭ g .fst .fst .fst (Polynomial-gen k)))
+
+  solutions-factor
+    : interval-is-flat
+    → (v : Fin generators → Δ¹) → respects p (point-hom generators v)
+    → ║ Σ[ n ∶ ⟨♭| ℕ ⟩ ] crisp-solution n v ║₋₁
+  solutions-factor flat v r
+    = Trunc.ind (λ _ → trunc!)
+        (λ where
+          (mod♭ n , mod♭ h , y , e) →
+            Trunc.η
+              ( mod♭ n
+              , mod♭ ( LatticeAlgHom-∘ h (Presented-ι p)
+                     , Presented-ι-respects p h)
+              , y
+              , λ k → sym (point-hom-gen generators v k)
+                    ∙ sym (Presented-rec-β p (point-hom generators v) r
+                            (Polynomial-gen k))
+                    ∙ happly (ap (λ f → f .fst .fst) e)
+                        (ι-quot (Polynomial-gen k))))
+        (flat p (Presented-rec p (point-hom generators v) r))
+}
+}
+
+\subtree[ub-004B]{
+\taxon{Theorem}
+\title{Flatness gives the disjunctive property}
+\date{2026-10-06}
+
+\p{If the interval is flat and its boundary inclusion is
+#{\flat}-surjective, then #{i \lor j = 1} implies #{i = 1} or #{j = 1}. The
+pair #{(i, j)} solves #{x_0 \lor x_1 = 1}, so by \ref{ub-004D} it is merely
+#{(q_0(y), q_1(y))} for crisp polynomials #{q_0 \lor q_1 = 1} in #{n}
+variables and some point #{y}. Evaluating at the bottom vertex, which is
+crisp, gives \em{crisp} #{a = q_0(0)} and #{b = q_1(0)} with
+#{a \lor b = 1}, and for crisp elements the disjunctive property holds by
+\ref{stt-011A}. Say #{a = 1}. Then #{1 = q_0(0) \le q_0(y) = i} by
+\ref{ub-004A}.}
+
+\p{This replaces the directedness and the separation by types with initial
+objects that \ref{stt-0114} uses by flatness, and needs neither duality nor
+SQCP.}
+
+\agda{
+private
+  module P2 = Lattice (Polynomial-Lattice 2)
+
+  x₀ x₁ : Polynomials 2
+  x₀ = Polynomial-gen fzero
+  x₁ = Polynomial-gen (fsuc fzero)
+
+  two-point : Δ¹ → Δ¹ → Fin 2 → Δ¹
+  two-point i j fzero = i
+  two-point i j (fsuc fzero) = j
+
+  point-hom-is-hom
+    : (n : ℕ) (y : Fin n → Δ¹)
+    → is-lattice-hom (Polynomial-Lattice n) I (point-hom n y .fst .fst)
+  point-hom-is-hom n y = un-is-lattice-alg-hom (point-hom n y .snd)
+
+  composite-is-hom
+    : (n : ℕ) (y : Fin n → Δ¹)
+      (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+    → is-lattice-hom (Polynomial-Lattice 2) I
+        (LatticeAlgHom-∘ (point-hom n y) g .fst .fst)
+  composite-is-hom n y g
+    = un-is-lattice-alg-hom (LatticeAlgHom-∘ (point-hom n y) g .snd)
+
+  ∨-presentation : Presentation
+  ∨-presentation = mk-presentation 2 1 (λ _ → x₀ P2.∨ x₁) (λ _ → P2.1l)
+
+  two-point-∨
+    : (i j : Δ¹) → i ∨ j ＝ i1
+    → respects ∨-presentation (point-hom 2 (two-point i j))
+  two-point-∨ i j e _
+    = point-hom-is-hom 2 (two-point i j) .is-lattice-hom.pres-∨ {x₀} {x₁}
+    ∙ ap₂ _∨_ (point-hom-gen 2 (two-point i j) fzero)
+        (point-hom-gen 2 (two-point i j) (fsuc fzero))
+    ∙ e
+    ∙ sym (point-hom-is-hom 2 (two-point i j) .is-lattice-hom.pres-1)
+
+  vertex-∨
+    : (n : ℕ) (c : Fin n → Δ¹)
+      (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+    → respects ∨-presentation g
+    → ∨=1 ( LatticeAlgHom-∘ (point-hom n c) g .fst .fst x₀
+          , LatticeAlgHom-∘ (point-hom n c) g .fst .fst x₁)
+  vertex-∨ n c g r
+    = sym (composite-is-hom n c g .is-lattice-hom.pres-∨ {x₀} {x₁})
+    ∙ ap (point-hom n c .fst .fst) (r fzero)
+    ∙ composite-is-hom n c g .is-lattice-hom.pres-1
+
+module _
+  (@♭ ∂Δ¹-incl-♭-surjective : is-♭-surjective ∂Δ¹-incl)
+  (flat : interval-is-flat)
+  where
+
+  disjunctive-property←flat
+    : (i j : Δ¹) → i ∨ j ＝ i1 → (i ＝ i1) * (j ＝ i1)
+  disjunctive-property←flat i j e
+    = Trunc.ind (λ _ → is-truncated←is-prop generating-fam-disjunctive-is-prop)
+        (λ where (mod♭ n , mod♭ (g , r) , y , s) → from-cube n g r y s)
+        (solutions-factor ∨-presentation flat
+          (two-point i j) (two-point-∨ i j e))
+    where
+      from-cube
+        : (@♭ n : ℕ)
+          (@♭ g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+          (@♭ r : respects ∨-presentation g)
+          (y : Fin n → Δ¹)
+        → ((k : Fin 2)
+          → two-point i j k
+          ＝ point-hom n y .fst .fst (g .fst .fst (Polynomial-gen k)))
+        → (i ＝ i1) * (j ＝ i1)
+      from-cube n g r y s
+        = *-prop-rec generating-fam-disjunctive-is-prop
+            (λ a → ι₁ (lift fzero a))
+            (λ b → ι₂ (lift (fsuc fzero) b))
+            (generating-fam-disjunctive←∨=1-crisp ∂Δ¹-incl-♭-surjective
+              ( LatticeAlgHom-∘ (point-hom n (λ _ → i0)) g .fst .fst x₀
+              , LatticeAlgHom-∘ (point-hom n (λ _ → i0)) g .fst .fst x₁)
+              (vertex-∨ n (λ _ → i0) g r))
+        where
+          lift
+            : (k : Fin 2)
+            → point-hom n (λ _ → i0) .fst .fst (g .fst .fst (Polynomial-gen k))
+              ＝ i1
+            → two-point i j k ＝ i1
+          lift k a
+            = s k
+            ∙ ＝1←1≤
+                (≤-trans (≤←＝ (sym a))
+                  (point-hom-is-monotone n (λ _ → i0) y (λ _ → 0-init)
+                    (g .fst .fst (Polynomial-gen k))))
+}
+}
+
+\subtree[ub-004E]{
+\taxon{Theorem}
+\title{Flatness gives the conjunctive property}
+\date{2026-10-06}
+
+\p{Dually, if the interval is flat and its boundary inclusion is
+#{\flat}-surjective, then #{i \land j = 0} implies #{i = 0} or #{j = 0}: the
+argument of \ref{ub-004B} with the top vertex in place of the bottom one. The
+crisp case is again a case distinction on the crisp element #{i}: if
+#{i = 0} the left clause holds, and if #{i = 1} then #{j = i \land j = 0}.}
+
+\agda{
+private
+  ∧-presentation : Presentation
+  ∧-presentation = mk-presentation 2 1 (λ _ → x₀ P2.∧ x₁) (λ _ → P2.0l)
+
+  two-point-∧
+    : (i j : Δ¹) → i ∧ j ＝ i0
+    → respects ∧-presentation (point-hom 2 (two-point i j))
+  two-point-∧ i j e _
+    = point-hom-is-hom 2 (two-point i j) .is-lattice-hom.pres-∧ {x₀} {x₁}
+    ∙ ap₂ _∧_ (point-hom-gen 2 (two-point i j) fzero)
+        (point-hom-gen 2 (two-point i j) (fsuc fzero))
+    ∙ e
+    ∙ sym (point-hom-is-hom 2 (two-point i j) .is-lattice-hom.pres-0)
+
+  vertex-∧
+    : (n : ℕ) (c : Fin n → Δ¹)
+      (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+    → respects ∧-presentation g
+    → ( LatticeAlgHom-∘ (point-hom n c) g .fst .fst x₀
+      ∧ LatticeAlgHom-∘ (point-hom n c) g .fst .fst x₁) ＝ i0
+  vertex-∧ n c g r
+    = sym (composite-is-hom n c g .is-lattice-hom.pres-∧ {x₀} {x₁})
+    ∙ ap (point-hom n c .fst .fst) (r fzero)
+    ∙ composite-is-hom n c g .is-lattice-hom.pres-0
+
+  =0-is-prop : {i j : Δ¹} → is-prop ((i ＝ i0) * (j ＝ i0))
+  =0-is-prop = *-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
+
+module _
+  (@♭ ∂Δ¹-incl-♭-surjective : is-♭-surjective ∂Δ¹-incl)
+  where
+  open ♭Δ-Induction ∂Δ¹-incl-♭-surjective
+
+  conjunctive-property-crisp
+    : (@♭ i j : Δ¹) → i ∧ j ＝ i0 → (i ＝ i0) * (j ＝ i0)
+  conjunctive-property-crisp i j
+    = ♭Δ¹-ind
+        (λ i → (i ∧ j ＝ i0 → (i ＝ i0) * (j ＝ i0))
+             , →-is-prop =0-is-prop)
+        (λ _ → ι₁ refl)
+        (λ h → ι₂ (sym (∧-comm ∙ 1-top) ∙ h))
+        i
+
+  module _ (flat : interval-is-flat) where
+
+    conjunctive-property←flat
+      : (i j : Δ¹) → i ∧ j ＝ i0 → (i ＝ i0) * (j ＝ i0)
+    conjunctive-property←flat i j e
+      = Trunc.ind (λ _ → is-truncated←is-prop =0-is-prop)
+          (λ where (mod♭ n , mod♭ (g , r) , y , s) → from-cube n g r y s)
+          (solutions-factor ∧-presentation flat
+            (two-point i j) (two-point-∧ i j e))
+      where
+        from-cube
+          : (@♭ n : ℕ)
+            (@♭ g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+            (@♭ r : respects ∧-presentation g)
+            (y : Fin n → Δ¹)
+          → ((k : Fin 2)
+            → two-point i j k
+            ＝ point-hom n y .fst .fst (g .fst .fst (Polynomial-gen k)))
+          → (i ＝ i0) * (j ＝ i0)
+        from-cube n g r y s
+          = *-prop-rec =0-is-prop
+              (λ a → ι₁ (lift fzero a))
+              (λ b → ι₂ (lift (fsuc fzero) b))
+              (conjunctive-property-crisp
+                (LatticeAlgHom-∘ (point-hom n (λ _ → i1)) g .fst .fst x₀)
+                (LatticeAlgHom-∘ (point-hom n (λ _ → i1)) g .fst .fst x₁)
+                (vertex-∧ n (λ _ → i1) g r))
+          where
+            lift
+              : (k : Fin 2)
+              → point-hom n (λ _ → i1) .fst .fst
+                  (g .fst .fst (Polynomial-gen k))
+                ＝ i0
+              → two-point i j k ＝ i0
+            lift k a
+              = s k
+              ∙ ＝0←≤0
+                  (≤-trans
+                    (point-hom-is-monotone n y (λ _ → i1) (λ _ → 1-top)
+                      (g .fst .fst (Polynomial-gen k)))
+                    (≤←＝ a))
+}
+}
+
+\subtree[ub-004C]{
+\taxon{Theorem}
+\title{Cubes separating implies flatness}
+\date{2026-10-06}
+
+\p{If [SQCP](stt-00TC) holds and the [cubes separate](stt-00J7), then the
+interval is flat. Fix a crisp presentation with algebra #{A}, and consider
+the subtype #{C \subseteq \Spec(A)} of points that merely lie on a crisp cube.
+Flatness says that the inclusion #{C \hookrightarrow \Spec(A)} is an
+equivalence, so by separation it is enough that every crisp map
+#{g : \II^m \to \Spec(A)} from a crisp cube lands in #{C}; the crisp points
+are the case #{m = 0}. By the [generalised Phoa principle](ub-001W),
+#{\II[y_1, \ldots, y_m]} is quasicoherent, so maps
+#{\II^m \cong \Spec(\II[y_1, \ldots, y_m]) \to \Spec(A)} are exactly maps of
+algebras #{h : A \to \II[y_1, \ldots, y_m]}, and #{g} is the crisp such #{h}
+followed by evaluation. So #{g(y)} lies on the crisp cube #{h} at #{y}.}
+
+\p{In the intended model this is the observation that every element of a
+presheaf lies in the image of a representable; separation by cubes is how
+type theory sees that. Separation quantifies over all crisp types, so this
+is no finite axiom either, in keeping with \ref{ub-0041}.}
+
+\agda{
+module _
+  (@♭ sqcp : SQCP)
+  (@♭ □-separates : family-separates □^_)
+  (@♭ p : Presentation)
+  where
+
+  private
+    A = Presented p
+
+    covered : Spec A → Type 𝓘
+    covered x = ║ Σ[ n ∶ ⟨♭| ℕ ⟩ ] factors-through-cube p n x ║₋₁
+
+    Covered : Type 𝓘
+    Covered = Σ (Spec A) covered
+
+    Covered-incl-is-embedding : is-embedding (fst {B = covered})
+    Covered-incl-is-embedding = Subtype.Σ̃-π-is-embedding
+        (mk-subtype {family = covered} (λ _ → ║-║₋₁-is-prop))
+
+    hom≃ : (m : ℕ) → is-equiv (Spec-map {A = A} {Polynomial-Algebra m})
+    hom≃ m
+      = Spec-map-is-equiv←quasicoherent (Polynomial-Algebra m)
+          (Polynomial-Algebra-is-quasicoherent←SQCP sqcp m) A
+
+    vertices : (m : ℕ) → Spec (Polynomial-Algebra m) → (Fin m → Δ¹)
+    vertices = Polynomial-ev (initial-Algebra I) I-distr
+
+    vertices-is-equiv : (m : ℕ) → is-equiv (vertices m)
+    vertices-is-equiv = Polynomial-ev-is-equiv (initial-Algebra I) I-distr
+
+    cube-hom
+      : (m : ℕ) → ((Fin m → Δ¹) → Spec A)
+      → LatticeAlgHom A (Polynomial-Algebra m)
+    cube-hom m g = is-equiv.bwd (hom≃ m) (g ∘ vertices m)
+
+    cube-hom-at
+      : (m : ℕ) (g : (Fin m → Δ¹) → Spec A) (z : Fin m → Δ¹)
+      → g z ＝ LatticeAlgHom-∘ (point-hom m z) (cube-hom m g)
+    cube-hom-at m g z
+      = ap g (sym (is-equiv.ε (vertices-is-equiv m) z))
+      ∙ sym (happly (is-equiv.ε (hom≃ m) (g ∘ vertices m)) (point-hom m z))
+
+    covered←cube
+      : (@♭ m : ℕ) (@♭ g : (Fin m → Δ¹) → Spec A) (z : Fin m → Δ¹)
+      → covered (g z)
+    covered←cube m g z
+      = Trunc.η (mod♭ m , mod♭ (cube-hom m g) , z , cube-hom-at m g z)
+
+    Covered-incl-is-♭-equiv : is-♭-equiv (fst {B = covered})
+    Covered-incl-is-♭-equiv
+      = is-equiv←section←injective
+          (♭-map-is-injective (unap Covered-incl-is-embedding))
+          ( (λ where
+              (mod♭ x) → mod♭ (x , covered←cube 0 (λ _ → x) (λ ())))
+          , (λ where (mod♭ x) → refl))
+
+    postcomp-Covered-incl-is-♭-equiv
+      : (@♭ m : ℕ) → is-♭-equiv (postcomp (□^ m) (fst {B = covered}))
+    postcomp-Covered-incl-is-♭-equiv m
+      = is-equiv←section←injective
+          (♭-map-is-injective
+            (unap (postcomp-is-embedding Covered-incl-is-embedding)))
+          ( (λ where
+              (mod♭ g) → mod♭ λ z →
+                ( g z
+                , tr covered (ap g (is-equiv.η (cube←□-is-equiv) z))
+                    (covered←cube m (g ∘ is-equiv.bwd cube←□-is-equiv)
+                      (cube←□ z))))
+          , (λ where (mod♭ g) → refl))
+
+    Covered-incl-is-equiv : is-equiv (fst {B = covered})
+    Covered-incl-is-equiv
+      = □-separates (mk-arrow (fst {B = covered}))
+          Covered-incl-is-♭-equiv
+          (λ {m} → postcomp-Covered-incl-is-♭-equiv m)
+
+  covered←□-separates : (x : Spec A) → covered x
+  covered←□-separates x
+    = tr covered (is-equiv.ε Covered-incl-is-equiv x)
+        (is-equiv.bwd Covered-incl-is-equiv x .snd)
+
+interval-is-flat←□-separates
+  : @♭ SQCP → @♭ family-separates □^_ → interval-is-flat
+interval-is-flat←□-separates sqcp sep p = covered←□-separates sqcp sep p
 }
 }
 
@@ -107,6 +587,13 @@ orthogonality forms are the [disjunctive](stt-00DY) and
 [conjunctive](stt-00TW) conditions, and \citek{SY25} call them (NT), (L) and
 (cL). They do not characterise flatness, and no finite list of coherent
 sequents does.}
+
+\p{Internally the two localities follow from flatness once the crisp points
+of #{\II} are #{0} and #{1} (\ref{ub-004B}, \ref{ub-004E}), by evaluating
+at the vertices. Nontriviality does not: flatness only transfers a crisp
+#{0 = 1}, evaluated at a crisp vertex, to the given one, and the trivial
+lattice is flat. Nontriviality has to be assumed crisply, as it is in
+triangulated type theory.}
 
 \p{\strong{They do not suffice.} Finitely presented distributive lattices are
 finite, and a finite lattice #{A} is flat exactly when it is a retract of a

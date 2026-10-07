@@ -7,16 +7,18 @@
 \subtree[stt-00X5]{
 \taxon{Idea}
 \author{samueltoth}
+\contributor{fredrikbakke}
 
-\p{In \ref{Synthetic.Categories.DirectedGlueing}, a glue type is used to give an
+\p{
+In \ref{Synthetic.Categories.DirectedGlueing}, a glue type is used to give an
 equivalence between [covariant families](stt-00AY) over #{\Gamma \times \Delta^1} and
-pairs of covariant families over #{\Gamma} and maps between them
-(\ref{stt-00V2}); this in turn shows that
-the [category of spaces](stt-00AS) is directed univalent (\ref{stt-00AT}).
-In this module we extend this construction to equivalences between covariant families
-over #{\Gamma \times \Delta^2} and triples of covariant families and composable
-maps between them. This is a crucial ingredient in the proof that [the category of
-spaces is Segal](stt-00XG).}
+pairs of covariant families over #{\Gamma} and [co-strict maps](bak-3B74) between
+them (\ref{stt-00V2}); this in turn shows that the [category of spaces](stt-00AS) is
+directed univalent (\ref{stt-00AT}). In this module we extend this construction to
+equivalences between covariant families over #{\Gamma \times \Delta^2} and triples of
+covariant families and composable co-strict maps between them. This is a crucial
+ingredient in the proof that [the category of spaces is Segal](stt-00XG).
+}
 }
 
 \agda{
@@ -34,7 +36,6 @@ import Synthetic.Hom
 module Synthetic.Categories.HornGlueing
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹) (@♭ I-distr : is-distributive I)
   (open Lattice I renaming (0l to i0; 1l to i1))
-  (@♭ 0≠1 : i0 ≠ i1)
   (@♭ Δ¹-is-directed : Δ¹-is-directed Δ¹ I)
   (open Synthetic.Categories.Precategories Δ¹ I)
   (@♭ Δ¹-is-segal : is-segal Δ¹)
@@ -63,6 +64,7 @@ open import Modalities.Cohesion.Sharp
 open import Core.Arrows
 open import Core.ArrowEquiv
 
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Simplicial Δ¹ I
@@ -70,7 +72,7 @@ open import Synthetic.Triangles Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I
-open import Synthetic.Categories.DirectedGlueing Δ¹ I 0≠1 Δ¹-is-directed
+open import Synthetic.Categories.DirectedGlueing Δ¹ I Δ¹-is-directed
 }
 }
 
@@ -82,13 +84,15 @@ open import Synthetic.Categories.DirectedGlueing Δ¹ I 0≠1 Δ¹-is-directed
 \subtree[stt-00X4]{
 \title{The data of a covariant fibration over #{Δ²}}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{For some base type #{B}, we define covariant #{Δ²}-bundles over #{B} to be the
 data consisting of:
 
 \ul{
 \li{Covariant families of types #{X,Y,Z} over #{B}}
-\li{Fibrewise maps #{\alpha_b \colon X_b \to Y_b} and #{\beta_b \colon Y_b \to Z_b}}
+\li{Fibrewise [co-strict maps](bak-3B74) #{\alpha_b \colon X_b \to-s Y_b} and
+#{\beta_b \colon Y_b \to-s Z_b}}
 }
 }
 
@@ -97,7 +101,8 @@ Cov-Δ²-bundle
   : ∀ {𝓤} (B : Type 𝓤) 𝓥 → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
 Cov-Δ²-bundle B 𝓥
   = Σ[ X Y Z ∶ Σ (B → Type 𝓥) is-covariant ]
-    ((fibrewise-map (Y .fst) (Z .fst)) × (fibrewise-map (X .fst) (Y .fst)))
+    (((b : B) → Y .fst b →ˢ Z .fst b)
+    × ((b : B) → X .fst b →ˢ Y .fst b))
 }
 
 \p{We also provide an alternative definition which consists of a pair of
@@ -111,7 +116,8 @@ Cov-Δ²-bundle'
 Cov-Δ²-bundle' B 𝓥
   = Σ[ X Y Y' Z ∶ Σ (B → Type 𝓥) is-covariant ]
     Σ[ e ∶ (∀ b → Y .fst b ≃ Y' .fst b) ]
-    ((fibrewise-map (Y' .fst) (Z .fst)) × (fibrewise-map (X .fst) (Y .fst)))
+    ( ((b : B) → Y' .fst b →ˢ Z .fst b)
+    × ((b : B) → X .fst b →ˢ Y .fst b))
 }
 
 \p{We provide functions for translating between these definitions.}
@@ -120,7 +126,12 @@ Cov-Δ²-bundle' B 𝓥
 Cov-Δ²-bundle-coh
   : ∀ {𝓤 𝓥} {B : Type 𝓤} → Cov-Δ²-bundle' B 𝓥 → Cov-Δ²-bundle B 𝓥
 Cov-Δ²-bundle-coh (X , Y , Y' , Z , e , f , g)
-  = ( X , Y , Z , (λ b → f b ∘ e b ._≃_.fwd) , g)
+  = ( X , Y , Z
+    , ( λ b
+      → ( f b .fst ∘ e b ._≃_.fwd
+        , is-co-strict-map-∘ (f b .snd)
+            (is-co-strict-map←is-equiv (e b ._≃_.fwd-is-equiv))))
+    , g)
 
 Cov-Δ²-bundle-decoh
   : ∀ {𝓤 𝓥} {B : Type 𝓤} → Cov-Δ²-bundle B 𝓥 → Cov-Δ²-bundle' B 𝓥
@@ -130,8 +141,9 @@ Cov-Δ²-bundle-decoh (A , B , C , f , g)
 }
 
 \subtree[stt-00X3]{
-\title{Characterising the identity type of a covariant bundle over #{Δ^2}}
+\title{Characterising the identity type of a covariant bundle over #{Δ²}}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \agda{
 cov-Δ²-bundle-Id
@@ -141,8 +153,8 @@ cov-Δ²-bundle-Id
   ((A , _) , (B , _) , (C , _) , f , g)
   ((X , _) , (Y , _) , (Z , _) , α , β)
   = Σ[ e ∶ (∀ a → A a ≃ X a)] Σ[ j ∶ (∀ b → B b ≃ Y b)] Σ[ k ∶ (∀ c → C c ≃ Z c)]
-     ( (∀ x → k x ._≃_.fwd ∘ f x ~ α x ∘ j x ._≃_.fwd)
-     × (∀ x → j x ._≃_.fwd ∘ g x ~ β x ∘ e x ._≃_.fwd))
+     ( (∀ x → k x ._≃_.fwd ∘ f x .fst ~ α x .fst ∘ j x ._≃_.fwd)
+     × (∀ x → j x ._≃_.fwd ∘ g x .fst ~ β x .fst ∘ e x ._≃_.fwd))
 
 cov-Δ²-bundle'-Id
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ²-bundle' B 𝓥)
@@ -155,8 +167,8 @@ cov-Δ²-bundle'-Id
     Σ[ l ∶ (∀ b → B' b ≃ Y' b) ]
     Σ[ k ∶ (∀ c → C c ≃ Z c)]
      ( (∀ x → l x ._≃_.fwd ∘ H x ._≃_.fwd ~ K x ._≃_.fwd ∘ j x ._≃_.fwd)
-     × (∀ x → k x ._≃_.fwd ∘ f x ~ α x ∘ l x ._≃_.fwd)
-     × (∀ x → j x ._≃_.fwd ∘ g x ~ β x ∘ e x ._≃_.fwd))
+     × (∀ x → k x ._≃_.fwd ∘ f x .fst ~ α x .fst ∘ l x ._≃_.fwd)
+     × (∀ x → j x ._≃_.fwd ∘ g x .fst ~ β x .fst ∘ e x ._≃_.fwd))
 
 cov-Δ²-bundle-Id-refl
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ²-bundle B 𝓥)
@@ -189,8 +201,10 @@ opaque
 
 cov-Δ²-bundle-Id←Arrow-equivs
   : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ²-bundle B 𝓥)
-      (F : ∀ b → Arrow-equiv (x .snd .snd .snd .fst b) (y .snd .snd .snd .fst b))
-      (G : ∀ b → Arrow-equiv (x .snd .snd .snd .snd b) (y .snd .snd .snd .snd b))
+      (F : (b : B)
+         → Arrow-equiv (x .snd .snd .snd .fst b .fst) (y .snd .snd .snd .fst b .fst))
+      (G : (b : B)
+         → Arrow-equiv (x .snd .snd .snd .snd b .fst) (y .snd .snd .snd .snd b .fst))
       (h : ∀ b → F b .fst .Arrow-map.top ~ G b .fst .Arrow-map.bot)
     → cov-Δ²-bundle-Id x y
 cov-Δ²-bundle-Id←Arrow-equivs x y F G H .fst b
@@ -200,7 +214,7 @@ cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .fst b
 cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .fst b
   = mk≃ (F b .fst .Arrow-map.bot) (F b .snd .snd)
 cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .snd .fst b
-  = F b .fst .Arrow-map.comm ∙h (y .snd .snd .snd .fst b ◃h H b)
+  = F b .fst .Arrow-map.comm ∙h (y .snd .snd .snd .fst b .fst ◃h H b)
 cov-Δ²-bundle-Id←Arrow-equivs x y F G H .snd .snd .snd .snd b
   = G b .fst .Arrow-map.comm
 
@@ -217,6 +231,7 @@ instance
 \subtree[stt-00XD]{
 \title{The induced transport of a covariant family over #{Δ²}}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
 \p{Given a covariant type family over #{B \times \Delta^2}, we can construct a
 [covariant #{Δ²}-bundle over #{B}](stt-00X3) via covariant transport.}
@@ -230,8 +245,10 @@ total-tr²-cov (F , Fcov)
   = ( (F ∘ (_, 0) , covariant-base-change {P = F} (_, 0) Fcov)
     , (F ∘ (_, 1) , covariant-base-change {P = F} (_, 1) Fcov)
     , (F ∘ (_, 2) , covariant-base-change {P = F} (_, 2) Fcov)
-    , (λ b → tr-cov-hom {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) Δ²-1≤2)
-    , (λ b → tr-cov-hom {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) Δ²-0≤1))
+    , (λ b → tr-cov-homˢ {P = F ∘ (b ,_)}
+        (covariant-base-change {P = F} (b ,_) Fcov) Δ²-1≤2)
+    , (λ b → tr-cov-homˢ {P = F ∘ (b ,_)}
+        (covariant-base-change {P = F} (b ,_) Fcov) Δ²-0≤1))
 }
 }
 
@@ -288,21 +305,23 @@ tr-Δ²-1≤2-lemma F Fc .snd = (tr-is-equiv Δ²-refl , tr-is-equiv Δ²-refl)
 \subtree[stt-00XB]{
 \title{The glueing of a composable pair of maps}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
 \p{We give a putative inverse to the map defined in \ref{stt-00XD}. I.e.
-given a pair of composable fibrewise maps between covariant type families over
+given a pair of composable fibrewise co-strict maps between covariant families over
 some base #{B}, we give a covariant family over #{B \times \Delta^2}. Following
 \citek{GWB26} we define such a covariant via a kind of 'iteration' of the
 [glue construction](stt-00UY) used to prove [directed univalence](stt-00V2).}
 
-\p{Concretely, given #{X,Y,Z \colon B \to \Type} and #{\alpha \colon X \to Y} and
-#{\beta \colon Y \to Z}, we may construct a type family
-#{\Gl(\alpha) \colon B \times \Delta^1 \to \Type}, as well as a fibrewise map to
-#{Z} viewed as a type family over #{B \times Δ¹} with a trivial dependence on
-#{\Delta^1}. Since we have a pair of covariant families and a fibrewise map between
-them, we may use glueing again to to obtain a covariant family over
-#{(B \times \Delta^1) \times \Delta^1 = B \times \II^2}. Finally, we may restrict
-to obtain a covariant family over #{B \times Δ²} which we denote #{\Gl^2(\alpha, \beta).}
+\p{Concretely, given #{X,Y,Z \colon B \to \Type} and fibrewise co-strict maps
+#{\alpha \colon X \to-s Y} and #{\beta \colon Y \to-s Z}, we may construct a family
+#{\Gl(\alpha) \colon B \times \Delta^1 \to \Type}, as well as a fibrewise co-strict
+map to #{Z} viewed as a type family over #{B \times Δ¹} with a trivial dependence on
+#{\Delta^1}. We may use glueing again to obtain a covariant family
+over #{(B \times \Delta^1) \times \Delta^1 = B \times \II^2}. Finally, we may
+restrict to obtain a covariant family over #{B \times Δ²} which we denote
+#{\Gl^2(\alpha, \beta).
+}
 }
 
 \agda{
@@ -315,8 +334,23 @@ module HornGlueing
   fibre-map : ∀ i → fibrewise-map (Gl X Y α ∘ (_, i)) Z
   fibre-map i b = β b ∘ fst
 
-  fibre-map-at-1 : ∀ b → Arrow-equiv (fibre-map i1 b) (β b)
-  fibre-map-at-1 b = mk-arr-equiv (Gl-1≃ X Y α b) id≃ ~refl
+  fibre-map-is-co-strict
+    : (i : Δ¹) (b : B)
+    → is-co-strict-map (β b)
+    → is-co-strict-map (α b)
+    → is-co-strict-map (fibre-map i b)
+  fibre-map-is-co-strict i b β-is-co-strict α-is-co-strict
+    = is-co-strict-map←is-equiv-under-0＝1 (λ p
+      → is-equiv-∘
+          (is-equiv-under-0=1←is-co-strict-map β-is-co-strict p)
+          (Σ-singleton (λ y → Π-is-single (λ _
+            → has-singleton-fibres-under-0=1←is-co-strict-map
+                α-is-co-strict p y)) ._≃_.fwd-is-equiv))
+
+  fibre-map-at-1
+    : (b : B) → is-co-strict-map (α b) → Arrow-equiv (fibre-map i1 b) (β b)
+  fibre-map-at-1 b α-is-co-strict
+    = mk-arr-equiv (Gl-1≃ X Y α b α-is-co-strict) id≃ ~refl
 
   fibre-map-at-0 : ∀ b → Arrow-equiv (fibre-map i0 b) (β b ∘ α b)
   fibre-map-at-0 b
@@ -332,8 +366,10 @@ module HornGlueing
   Gl²-as-base-change = ~refl
 }
 
-\p{We verify that #{\Gl^2(\alpha, \beta)(0) \simeq X}, #{\Gl^2(\alpha, \beta)(1) \simeq Y}
-and #{\Gl^2(\alpha, \beta)(2) \simeq Z}}
+\p{
+We verify that #{\Gl^2(\alpha, \beta)(0) \simeq X},
+#{\Gl^2(\alpha, \beta)(1) \simeq Y} and #{\Gl^2(\alpha, \beta)(2) \simeq Z}.
+}
 
 \agda{
   Gl²-0 : fibrewise-map (Gl² ∘ (_, δ₂² i0)) X
@@ -348,18 +384,22 @@ and #{\Gl^2(\alpha, \beta)(2) \simeq Z}}
   Gl²-1 b =  Gl-1 X Y α b ∘ Gl-0 _ Z (fibre-map i1) b
 
   Gl²-1-is-equiv
-    : is-fibrewise-equiv Gl²-1
-  Gl²-1-is-equiv b
-    = is-equiv-∘ (Gl-1-is-equiv X Y α b) (Gl-0-is-equiv _ Z (fibre-map i1) b)
-
-  Gl²-1' : fibrewise-map (Gl² ∘ (_, δ₀² i0)) Y
-  Gl²-1' = Gl²-1
+    : (b : B) → is-co-strict-map (α b) → is-equiv (Gl²-1 b)
+  Gl²-1-is-equiv b α-is-co-strict
+    = is-equiv-∘
+        (Gl-1-is-equiv X Y α b α-is-co-strict)
+        (Gl-0-is-equiv _ Z (fibre-map i1) b)
 
   Gl²-2 : fibrewise-map (Gl² ∘ (_, δ₀² i1)) Z
   Gl²-2 = Gl-1 _ Z _
 
-  Gl²-2-is-equiv : is-fibrewise-equiv Gl²-2
-  Gl²-2-is-equiv = Gl-1-is-equiv _ Z _
+  Gl²-2-is-equiv
+    : (b : B) → is-co-strict-map (β b) → is-co-strict-map (α b)
+    → is-equiv (Gl²-2 b)
+  Gl²-2-is-equiv b β-is-co-strict α-is-co-strict
+    = Gl-1-is-equiv
+        (Gl X Y α ∘ (_, i1)) Z (fibre-map i1) b
+        (fibre-map-is-co-strict i1 b β-is-co-strict α-is-co-strict)
 
   tr-Gl²-refl
     : ∀ {i j} {p q : j ≤ i} b → tr (Gl² ∘ (b ,_)) (Δ²-refl {p = p}{q}) ~ id
@@ -420,12 +460,13 @@ module Gl²-cov
 
 
 \subtree[stt-00XA]{
-\title{Directed #{\Delta^2} univalence for covariant families}
+\title{Directed #{Δ²} univalence for covariant families}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \p{The map defined in \ref{stt-00XD} induces an equivalence between covariant
 families over #{B \times \Delta^2} and the type consisting of a triple of covariant
-families over #{B} and fibrewise maps between them.}
+families over #{B} and fibrewise co-strict maps between them.}
 
 \agda{
 module _ {𝓤 𝓥} {B : Type 𝓤} (open Gl²-cov {𝓤} {𝓥}) where
@@ -434,11 +475,11 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (open Gl²-cov {𝓤} {𝓥}) where
     : Cov-Δ²-bundle B (𝓥 ⊔ 𝓘)
     → (Σ (B × Δ² → Type (𝓥 ⊔ 𝓘)) is-covariant)
   tr²Σ-inv ((A , Ac) , (B , Bc) , (C , Cc) , β , α)
-    = (HornGlueing.Gl² {𝓤} {𝓥} β α , Gl²-is-covariant β α Ac Bc Cc)
+    = ( HornGlueing.Gl² {𝓤} {𝓥} (fst ∘ β) (fst ∘ α)
+      , Gl²-is-covariant (fst ∘ β) (fst ∘ α) Ac Bc Cc)
 }
 
-\p{Without any further assumptions, glueing gives a left inverse of
-covariant transport.}
+\p{Glueing gives a left inverse of covariant transport.}
 
 \proof{
 \p{If #{\alpha \colon X \to Y} and #{\beta \colon Y \to Z} is a covariant
@@ -483,7 +524,8 @@ families so that we may construct a suitably compatible pair of equivalences
 \agda{
 module _
   {𝓤 𝓥} {B : Type 𝓤}
-  (c@((X , Xc) , (Y , Yc) , (Z , Zc) , f , g) : Cov-Δ²-bundle B (𝓘 ⊔ 𝓥))
+  (c@((X , Xc) , (Y , Yc) , (Z , Zc) , β , α) : Cov-Δ²-bundle B (𝓘 ⊔ 𝓥))
+  (let f = fst ∘ β; g = fst ∘ α)
   (open HornGlueing {𝓤} {𝓥} f g)
   (open Gl²-cov {𝓤} {𝓥} f g)
   where
@@ -512,7 +554,7 @@ module _
 
      tr-cov-hom (Gl∘-is-covariant (b ,_) X Y g Xc Yc) 0≤1
 
-   ≃Arr⟨ tr-Gl-0≤1H {𝓤} {𝓥} g Xc Yc b ⟩
+   ≃Arr⟨ tr-Gl-0≤1H {𝓤} {𝓥} g Xc Yc b (α b .snd) ⟩
 
      g b ≃Arr∎
 
@@ -550,11 +592,12 @@ module _
 
       ≃Arr⟨ tr-Gl-0≤1H {𝓤} {𝓥}
               (fibre-map i1)
-              (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc b  ⟩
+              (Gl∘-is-covariant (_, i1) X Y g Xc Yc) Zc b
+              (fibre-map-is-co-strict i1 b (β b .snd) (α b .snd)) ⟩
 
         f b ∘ Gl-1 X Y g b
 
-      ≃Arr⟨ fibre-map-at-1 b ⟩
+      ≃Arr⟨ fibre-map-at-1 b (α b .snd) ⟩
 
         f b ≃Arr∎
 
@@ -700,7 +743,8 @@ module _
                      (ap (b ,_) (Δ²-ext (refl , refl)))
                      x
                      (ap (ap (b ,_)) (Δ²-is-set _ _ _ _))))
-          (Gl²-1-is-equiv b)
+          (Gl²-1-is-equiv b
+            (tr-cov-hom-is-co-strict {P = F ∘ (b ,_)} (Fbc b) Δ²-0≤1))
           id-is-equiv
 
     Gl²←cov-fam-is-equiv-at-2
@@ -711,7 +755,9 @@ module _
             (F ∘ (b ,_)) (Fbc b)
             (Δ²-top 2)
             (Δ²-top-is-id ≤-refl) h⁻¹)
-          (Gl²-2-is-equiv b)
+          (Gl²-2-is-equiv b
+            (tr-cov-hom-is-co-strict {P = F ∘ (b ,_)} (Fbc b) Δ²-1≤2)
+            (tr-cov-hom-is-co-strict {P = F ∘ (b ,_)} (Fbc b) Δ²-0≤1))
           id-is-equiv
 
 module _

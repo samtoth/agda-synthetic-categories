@@ -13,9 +13,16 @@ module Foundations.Pointed where
 open import Foundations.Universes
 open import Foundations.Identity
 open import Foundations.Sigma
+open import Foundations.SigmaProperties
+open import Foundations.FibrewiseEquivalences
 open import Foundations.Functions
 open import Foundations.Homotopy
 open import Foundations.Equivalences
+open import Foundations.FibreIdentity
+open import Foundations.TorsorialTypeFamilies
+open import Foundations.Singletons
+open import Foundations.EquivSingleton
+open import Foundations.FunExt
 }
 }
 
@@ -43,6 +50,7 @@ open Type∗
 \subtree[stt-00M0]{
 \date{2026-03-28}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \taxon{Definition}
 \title{Pointed maps}
 
@@ -61,15 +69,31 @@ record map∗ {𝓤 𝓥} (A : Type∗ 𝓤) (B : Type∗ 𝓥) : Type (𝓤 ⊔
 
 open map∗
 
-id∗ : {𝓤 : Level} (A : Type∗ 𝓤) → map∗ A A
+id∗ : ∀ {𝓤} (A : Type∗ 𝓤) → map∗ A A
 id∗ A = mk-map∗ id refl
 
-const∗ : {𝓤 𝓥 : Level} (A : Type∗ 𝓤) (B : Type∗ 𝓥) → map∗ A B
+const∗ : ∀ {𝓤 𝓥} (A : Type∗ 𝓤) (B : Type∗ 𝓥) → map∗ A B
 const∗ A B = mk-map∗ (λ _ → pt B) refl
+
+_∘∗_
+  : ∀ {𝓤 𝓥 𝓦} {A : Type∗ 𝓤} {B : Type∗ 𝓥} {C : Type∗ 𝓦}
+    → map∗ B C → map∗ A B → map∗ A C
+(f ∘∗ g) .hom = f .hom ∘ g .hom
+(f ∘∗ g) .pres-pt = ap (f .hom) (g .pres-pt) ∙ f .pres-pt
 
 infixr 5 _→∗_
 _→∗_ : {𝓤 𝓥 : Level} → Type∗ 𝓤 → Type∗ 𝓥 → Type∗ (𝓤 ⊔ 𝓥)
 A →∗ B = mk-type∗ (map∗ A B) (const∗ A B)
+
+postcomp∗
+  : ∀ {𝓤 𝓥 𝓦} (A : Type∗ 𝓤) {B : Type∗ 𝓥} {C : Type∗ 𝓦}
+    → map∗ B C → map∗ A B → map∗ A C
+postcomp∗ C f = f ∘∗_
+
+precomp∗
+  : ∀ {𝓤 𝓥 𝓦} {A : Type∗ 𝓤} {B : Type∗ 𝓥} (C : Type∗ 𝓦)
+    → map∗ A B → map∗ B C → map∗ A C
+precomp∗ C f = _∘∗ f
 }
 }
 
@@ -99,5 +123,85 @@ map∗≃fibre-ev X∗ y
 
   from : fibre (ev (pt X∗)) y → map∗ X∗ (mk-type∗ _ y)
   from (f , p) = mk-map∗ f p
+}
+}
+
+\subtree[tot-0239]{
+\title{Unpointed maps out of pointed types}
+\taxon{Lemma}
+\date{2026-09-27}
+\author{samueltoth}
+
+\p{The type of unpointed maps from a pointed type #{A} to some type #{B} is
+equivalent to the type of points of #{B} together with a pointed map #{A \to_* B}.}
+
+\agda{
+map∗←map
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      (f : A → B) (a : A)
+    → map∗ (mk-type∗ A a) (mk-type∗ B (f a))
+map∗←map f a = mk-map∗ f refl
+
+module _
+  {𝓤 𝓥} {A∗ : Type∗ 𝓤} {B : Type 𝓥}
+  (open Type∗ A∗ renaming (carrier to A; pt to a₀))
+  where
+
+  lift-[map∗←map] : (f : A → B) → Σ[ b ∶ B ] (map∗ A∗ (mk-type∗ B b))
+  lift-[map∗←map] f = (f a₀ , map∗←map f a₀)
+
+  map-pointed-dom-repr≃
+      : (Σ[ b ∶ B ] map∗ A∗ (mk-type∗ B b)) ≃ (A → B)
+  map-pointed-dom-repr≃
+    = Σ-snd-≃ (λ y → map∗≃fibre-ev _ _)
+    ∙e Σ-assoc e⁻¹ ∙e Σ-fst-≃ ×-swap
+    ∙e Σ-assoc ∙e Σ-singleton (λ _ → Sing-is-singleton)
+
+  lift-[map∗←map]-is-equiv : is-equiv lift-[map∗←map]
+  lift-[map∗←map]-is-equiv = bwd-is-equiv map-pointed-dom-repr≃
+}
+}
+
+
+\subtree[tot-5555]{
+\title{Identity types of pointed maps}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-22}
+
+\agda{
+module map∗WithFunExt (FE : FunExt-global) {𝓤 𝓥} {X∗ : Type∗ 𝓤} {Y∗ : Type∗ 𝓥}  where
+
+  open map∗
+  open Type∗ X∗ renaming (carrier to X; pt to x)
+  open Type∗ Y∗ renaming (carrier to Y; pt to y)
+
+  map∗-path : ∀ (f g : map∗ X∗ Y∗) → Type (𝓤 ⊔ 𝓥)
+  map∗-path f g = Σ[ H ∶ (f .hom ~ g .hom) ] (H x ∙ g .pres-pt ＝ f .pres-pt)
+
+  map∗-path-refl : ∀ (f : map∗ X∗ Y∗) → map∗-path f f
+  map∗-path-refl f = (~refl , refl)
+
+  map∗-path←Id : ∀ {f g : map∗ X∗ Y∗} → f ＝ g → map∗-path f g
+  map∗-path←Id refl = map∗-path-refl _
+
+  opaque
+    map∗-path-is-torsorial
+      : ∀ (f : map∗ X∗ Y∗) → is-torsorial (map∗-path f)
+    map∗-path-is-torsorial f
+      = is-single←equiv
+          (Σ-fst-≃ (map∗≃fibre-ev X∗ y e⁻¹))
+          (is-singleton-structure←parts
+            (is-torsorial←is-identity-system (f .hom ~_) (λ _ → happly) (λ _ → FE))
+            (f .hom , ~refl)
+            Sing'-is-singleton)
+
+  map∗-path←Id-is-equiv
+    : ∀ {f g : map∗ X∗ Y∗} → is-equiv (map∗-path←Id {f} {g})
+  map∗-path←Id-is-equiv
+    = fundamental-Id _ (map∗-path-is-torsorial _) (λ _ → map∗-path←Id) _
+
+  map∗-path→ : ∀ {f g : map∗ X∗ Y∗} → map∗-path f g → f ＝ g
+  map∗-path→ = is-equiv.bwd map∗-path←Id-is-equiv
 }
 }

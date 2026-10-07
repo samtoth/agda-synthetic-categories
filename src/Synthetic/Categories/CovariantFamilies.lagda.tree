@@ -14,7 +14,7 @@ module Synthetic.Categories.CovariantFamilies
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Synthetic.Categories.Groupoids Δ¹ I public
+open import Synthetic.Categories.Groupoids Δ¹ I
 
 open Lattice I renaming (0l to i0; 1l to i1)
 open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
@@ -27,36 +27,22 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
-open import Modalities.GlobalReflectiveSubuniverses
-open import Modalities.Instances.Localisation
-open import Modalities.Instances.Nullification
 
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
-open import Core.PushoutSums
-open import Core.SpanMaps
 open import Core.Arrows
 open import Core.CartesianSquares
 open import Core.ArrowEquiv
-open import Core.ArrowRetracts
-open import Core.LiftingSquares
 open import Core.PullbackPowers
-open import Core.ExtPullbacks
-open import Core.PiSection
-open import Core.CanonicalPushouts
-open import Core.FunctorialityPushouts
 
 open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
-open import Ergonomics.Auto
 open Core.Orthogonal.notation
 
+open import Modalities.Instances.Truncation
+
 open import Synthetic.Hom Δ¹ i0 i1
-open import Synthetic.Cubes Δ¹ i0 i1
 open import Synthetic.Horns Δ¹ I
-open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
@@ -67,7 +53,7 @@ open import Synthetic.Categories.Comma Δ¹ I
 \taxon{Definition}
 \title{Covariant families}
 
-\p{We say that a type family #{P : A \to \UU} is covariant if for any arrow #{f}
+\p{We say that a type family #{P \colon A \to \UU} is covariant if for any arrow #{f}
 in #{A}, and term #{x_0} at #{P_{f(0)}}, the type of homs over #{f} which extend
 #{x_0} is a singleton type.}
 
@@ -194,6 +180,7 @@ unique extensions.
 
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
+
   cov-lift-is-extension
     : ∀ (σ : Δ¹ → A) (x₀ : B (σ i0))
       → Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀) ≃ Extᵈ (point i0) (B ∘ σ) (point x₀)
@@ -213,16 +200,14 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
     is-covariant←has-unique-extensions
       : has-unique-extensions (point i0) B → is-covariant B
     is-covariant←has-unique-extensions ext σ x₀
-      = is-single←equiv-to-single
-          (cov-lift-is-extension σ x₀ e⁻¹)
+      = is-single←equiv⁻¹
+          (cov-lift-is-extension σ x₀)
           (ext (mk-afmap σ (point x₀)))
 
     has-unique-extensions←is-covariant
       : is-covariant B → has-unique-extensions (point i0) B
     has-unique-extensions←is-covariant cov (mk-afmap σ f)
-      = is-single←equiv-to-single
-          (cov-lift-is-extension σ (f tt))
-          (cov σ (f tt))
+      = is-single←equiv (cov-lift-is-extension σ (f tt)) (cov σ (f tt))
 
   has-unique-extensions↔is-covariant
     : has-unique-extensions (point i0) B ↔ is-covariant B
@@ -269,8 +254,9 @@ is-left-anodyne f = is-anodyne f (point i0)
 \title{Covariant families straighten to left fibrations}
 \taxon{Corollary}
 
-\p{We show that some family #{P : A \to \UU} is [covariant](stt-00AO) iff the map
-#{\pi : \tilde{P} \to A} is a [left fibration](stt-00AV).}
+\p{We show that some family #{P \colon A \to \UU} is [covariant](stt-00AO) iff the map
+#{\pi \colon \tilde{P} \to A} is a [left fibration](stt-00AV). Equivalently, a map
+#{p \colon E \to B} is a left fibration iff its fibre family is covariant.}
 
 \agda{
 opaque
@@ -279,50 +265,76 @@ opaque
       → is-covariant B ↔ is-left-fibration (fst: B)
   is-covariant↔is-left-fibration {A = A} B
     = (is-left-family↔is-covariant B iff⁻¹) ∙iff are-orthogonal-fam↔are-orthogonal-fst
+
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+
+  is-left-fibration←is-covariant
+    : is-covariant P → is-left-fibration (fst: P)
+  is-left-fibration←is-covariant = is-covariant↔is-left-fibration P .fst
+
+  is-covariant←is-left-fibration
+    : is-left-fibration (fst: P) → is-covariant P
+  is-covariant←is-left-fibration = is-covariant↔is-left-fibration P .snd
+
+module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+
+  orthogonal-fibre-fam←is-left-fibration
+    : is-left-fibration p → is-left-family (fibre p)
+  orthogonal-fibre-fam←is-left-fibration
+    = are-orthogonal-fibre←are-orthogonal
+
+  is-left-fibration←orthogonal-fibre-fam
+    : is-left-family (fibre p) → is-left-fibration p
+  is-left-fibration←orthogonal-fibre-fam
+    = are-orthogonal←are-orthogonal-fibre
+
+  fibre-fam-is-covariant←is-left-fibration
+    : is-left-fibration p → is-covariant (fibre p)
+  fibre-fam-is-covariant←is-left-fibration
+    = is-covariant←is-left-family (fibre p)
+    ∘ orthogonal-fibre-fam←is-left-fibration
+
+  is-left-fibration←fibre-fam-is-covariant
+    : is-covariant (fibre p) → is-left-fibration p
+  is-left-fibration←fibre-fam-is-covariant
+    = is-left-fibration←orthogonal-fibre-fam
+    ∘ is-left-family←is-covariant (fibre p)
 }
 }
 
 \subtree[stt-00TN]{
 \title{Left fibrations are maps which induce equivalences on coslices}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
-\p{#{p : E \to B} is a left fibration iff for each #{e : E}, the induced map
+\p{#{p \colon E \to B} is a left fibration iff for each #{e : E}, the induced map
 #{E_{e/} \to B_{p(e)/}} is an equivalence.}
 
 \agda{
 module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 
-  arrow-fibre-left-fibration-is-coslice-map
-    : ∀ (e : E)
-      → Arrow-equiv
-          (postcompose-coslice (point e) p)
-          (arrow-fibre (transpose-square (power-hom (point i0) p)) (point e))
-  arrow-fibre-left-fibration-is-coslice-map e
+  coslice-map-Ext-equiv
+    : (e : E)
+    → Arrow-equiv
+        (postcompose-coslice (point e) p)
+        (postcomp-Ext (point i0) p (point e))
+  coslice-map-Ext-equiv e
     = mk-arr-equiv
-        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (λ x → fibre-path→
-          ( refl
-          , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (x .snd tt)))
-          ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (x .snd tt))))
+        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → point≃))
+        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → point≃))
+        ~refl
 
   coslice-map-is-equiv←is-left-fibration
     : is-left-fibration p → (∀ e → is-equiv (postcompose-coslice (point e) p))
-  coslice-map-is-equiv←is-left-fibration lfib e
-    = src-is-equiv←Arrow-equiv
-        (arrow-fibre-left-fibration-is-coslice-map e)
-        (transpose-is-cartesian _ (is-cartesian←are-orthogonal lfib) (point e))
-
+  coslice-map-is-equiv←is-left-fibration fib e
+    = src-is-equiv←Arrow-equiv (coslice-map-Ext-equiv e)
+        (postcomp-Ext-is-equiv←orthogonal (point i0) p fib (point e))
 
   is-left-fibration←coslice-map-is-equiv
     : (∀ e → is-equiv (postcompose-coslice (point e) p)) → is-left-fibration p
   is-left-fibration←coslice-map-is-equiv eqv
-    = are-orthogonal←is-cartesian
-        (transpose-is-cartesian _
-          λ e
-          → tgt-is-equiv←Arrow-equiv
-              (arrow-fibre-left-fibration-is-coslice-map (e tt))
-              (eqv (e tt)))
+    = orthogonal←postcomp-Ext-is-equiv (point i0) p
+        (λ e → tgt-is-equiv←Arrow-equiv (coslice-map-Ext-equiv (e tt)) (eqv (e tt)))
 }
 }
 
@@ -351,9 +363,7 @@ is-inner←is-left-fibration
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
     → is-left-fibration f → is-inner f
 is-inner←is-left-fibration {f = f} lf
-  = left-orthogonal-retraction
-      Λ[2,1]-incl (pushout-product (point i1) (point i0))
-      Λ[2,1]↪□-section Λ[2,1]↪□-ret _
+  = left-orthogonal←Arrow-retract Λ[2,1]↪□-Arrow-retract _
       (left-orthogonal-pushout-product' (point i0) f lf (point i1))
 }
 }
@@ -368,7 +378,7 @@ is-inner-family←is-covariant
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
     → is-covariant B → is-inner-family B
 is-inner-family←is-covariant
-  = is-inner←is-left-fibration ∘ (is-covariant↔is-left-fibration _ .fst)
+  = is-inner←is-left-fibration ∘ is-left-fibration←is-covariant _
 
 is-inner-family←is-covariant-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
@@ -382,7 +392,7 @@ is-inner-family←is-covariant-hom
 Σ-cov-is-segal apc cov
   = Σ-is-segal apc
       (is-inner←is-left-fibration
-        (is-covariant↔is-left-fibration _ .fst  cov))
+        (is-left-fibration←is-covariant _ cov))
 }
 }
 
@@ -398,7 +408,7 @@ the type of dependent morphisms #{\Hom_{Pf}(x',y')} is equivalent to
 \p{We first give a map #{f^*(x') = y'}, by identity induction, it suffices to give
 a morphism #{\Hom_{Pf}(x', f^*(x'))} for each #{x'}, but this is just the
 coherence you get from covariant transport.
-Now since #{\Sigma_{y' : P(f(1))} \Hom_{Pf}(x',y')} is a singleton by the
+Now since #{\Sigma1{y' : P(f(1))}{\Hom_{Pf}(x',y')}} is a singleton by the
 definition of transport, the fundamental theorem of identity types gives us that
 this map is an equivalence.}
 }
@@ -498,8 +508,8 @@ opaque
 \taxon{Theorem}
 
 \p{
-A type family #{B : A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
-and a transport map #{f_* : B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such that
+A type family #{B \colon A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f_* \colon B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such that
 #{\id_* \sim \id}.
 }
 
@@ -512,7 +522,7 @@ family is a left family by constructing an explicit inverse. I.e., we must const
 a lift of the diagram
 \quiver{
 \begin{tikzcd}
-\{0\} && \Sigma_{(a:A)} B(a) \\
+\{0\} && \Sigma1{a:A}{B(a)} \\
 \\
 \Delta^1 && A
 \arrow[from=1-1, to=1-3, "{(f(0),b)}"]
@@ -529,7 +539,7 @@ and show that this gives an inverse to \code{precomp-Π (B ∘ f) (point i0)}.
 For each #{i : Δ¹}, let #{0\leq i : \Hom_{Δ¹}(0,i)} be the canonical morphism.
 Applying #{f} we get a morphism #{f(0\leq i) : \Hom_A(f(0),f(i))} along which we
 can transport #{b}, and get
-##{f'(i) \coloneqq \left(f(i), f(0\leq i)_*(b)\right).}
+##{f'(i) \defeq \left(f(i), f(0\leq i)_*(b)\right).}
 This lies over #{f}, and its value at #{0} is #{(f(0),b)} by unitality.
 }
 
@@ -631,6 +641,31 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
   is-covariant↔cov-unital-transport .snd (ρ , B-disc)
     = is-covariant←cov-unital-transport B-disc ρ
 }
+
+\p{
+In particular, any constant family of #{Δ¹}-discrete types is covariant.
+}
+
+\agda{
+const-is-covariant←is-Δ¹-discrete
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-Δ¹-discrete B → is-covariant (const: (Type 𝓥) A B)
+const-is-covariant←is-Δ¹-discrete B-disc
+  = is-covariant←cov-unital-transport
+      (λ _ → B-disc) ((λ _ → id) , (λ _ → ~refl))
+
+
+!-is-left-fibration←is-Δ¹-discrete
+  : ∀ {𝓤} {B : Type 𝓤}
+    → is-Δ¹-discrete B → is-left-fibration (!: B)
+!-is-left-fibration←is-Δ¹-discrete {B = B} Bdisc
+  = are-orthogonal←are-orthogonal-fibre
+      (is-left-family←is-covariant (fibre !)
+        (is-covariant←cov-unital-transport {B = fibre ! }
+          (λ _ → is-Δ¹-discrete←equiv (Σ-singleton (λ _ → single!) e⁻¹) Bdisc)
+          ((λ _ → id) , (λ _ → ~refl))))
+
+}
 }
 
 \subtree[stt-00K3]{
@@ -642,7 +677,7 @@ consequently, for covariant families over #{\Delta^1}, we may coerce along
 #{i \le j}. Since #{i \le j} is a proposition, we have the coercing along
 #{i \le i} for any #{i} is the identity and coercing along #{0 \le 1} is the
 same as covariant transport over the canonical morphisms from #{0} to #{1} given
-by #{\id : \Delta^1 \to \Delta^1}.}
+by #{\id \colon \Delta^1 \to \Delta^1}.}
 
 \agda{
 module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where

@@ -33,10 +33,10 @@ assuming any of these conditions we already have a diagram with retracts:
 & \Hom(\Delta^1,\Delta^1) \\
 \Delta^2 && (\Delta^1 \to \Delta^1)
 \arrow[from=1-2, to=2-3, hook]
-\arrow[from=2-1, to=1-2, shift left, hook]
-\arrow[from=1-2, to=2-1, shift left, two heads]
-\arrow[from=2-1, to=2-3, shift left, hook]
-\arrow[from=2-3, to=2-1, shift left, two heads]
+\arrow[from=2-1, to=1-2, shift left=2, hook]
+\arrow[from=1-2, to=2-1, two heads]
+\arrow[from=2-1, to=2-3, hook]
+\arrow[from=2-3, to=2-1, shift left=2, two heads]
 \end{tikzcd}
 }
 }
@@ -62,6 +62,8 @@ open import Core.Coslices
 open import Algebra.Lattice.Instances.Pointwise
 
 open import Ergonomics.Extensionality
+
+open import Synthetic.Hom Δ¹ i0 i1
 }
 }
 
@@ -94,13 +96,13 @@ monotone. In other words, every construction on #{Δ¹} respects its ordering.
 \agda{
 polynomials-are-monotone
   : (s t : Δ¹)
-  → is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) (λ x → (s ∧ x) ∨ t)
+  → is-monotone (Lattice.≤-poset I) (Lattice.≤-poset I) (λ x → t ∨ (s ∧ x))
 polynomials-are-monotone s t a≤b =
-  ∨-UP
-    ( ∨-≤-introl (∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr a≤b))
-    , ∨-≤-intror ≤-refl)
+  ∨-UP  (∨-≤-introl ≤-refl , ∨-≤-intror (∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr a≤b)))
 }
 }
+
+\transclude{stt-00XK}
 
 \subtree[stt-00VT]{
 \title{#{Δ²} is a retract of monotone maps on #{Δ¹}}
@@ -116,16 +118,14 @@ polynomials-are-monotone s t a≤b =
 Δ¹-monotone←Δ²
   : Δ² I → PosetHom (Lattice.≤-poset I) (Lattice.≤-poset I)
 Δ¹-monotone←Δ² c =
-  ((λ i → (c .Δ².s ∧ i) ∨ c .Δ².t) , polynomials-are-monotone (c .Δ².s) (c .Δ².t))
+  ((λ i → c .Δ².t ∨ (c .Δ².s ∧ i)) , polynomials-are-monotone (c .Δ².s) (c .Δ².t))
 
 Δ²←Δ¹-monotone←Δ² : Δ²←Δ¹-monotone ∘ Δ¹-monotone←Δ² ~ id
 Δ²←Δ¹-monotone←Δ² c =
   Δ²-ext
-    ( ap (_∨ (c .Δ².t)) 1-top
-    ∙ ∨-comm
+    ( ap (c .Δ².t ∨_) 1-top
     ∙ ≤-max (c .Δ².mono)
-    , ap (_∨ (c .Δ².t)) (∧-comm ∙ 0-init)
-    ∙ ∨-comm
+    , ap (c .Δ².t ∨_) (∧-comm ∙ 0-init)
     ∙ 0-bottom)
 
 Δ²-retract-of-Δ¹-monotones
@@ -161,7 +161,7 @@ maps with coefficients in #{Δ²}. When this retract is an equivalence we say th
 
 \agda{
 Δ¹-endo←Δ² : (Δ² I) → (Δ¹ → Δ¹)
-Δ¹-endo←Δ² (i , j) x = (i ∧ x) ∨ j
+Δ¹-endo←Δ² (i , j) x = j ∨ (i ∧ x)
 
 Δ²←Δ¹-endo : (Δ¹ → Δ¹) → (Δ² I)
 Δ²←Δ¹-endo f = (f i0 ∨ f i1 , f i0) ⦃ ∧-∨-abs ⦄
@@ -171,8 +171,21 @@ maps with coefficients in #{Δ²}. When this retract is an equivalence we say th
   = ( Δ¹-endo←Δ²
     , Δ²←Δ¹-endo
     , λ ((i , j) ⦃ p ⦄)
-      → let f0 = ≤-max (∧-≤-elimr 0-init)
-            f1 = ap (_∨ j) 1-top ∙ ≤-max' p
+      → let f0 = ap (j ∨_) (∧-comm ∙ 0-init) ∙ 0-bottom
+            f1 = ap (j ∨_) 1-top ∙ ≤-max p
         in Δ²-ext (ap₂ (_∨_) f0 f1 ∙ ≤-max p , f0))
+}
+}
+
+\subtree[stt-0119]{
+\title{Maps to the directed interval preserve arrows}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-14}
+
+\agda{
+≤←Hom : Δ¹-is-directed → {i j : Δ¹} → Hom Δ¹ i j → i ≤ j
+≤←Hom Δ¹-directed h
+  = tr₂ _≤_ (h .Homᵈ.hom0) (h .Homᵈ.hom1) (Δ¹-directed (h .Homᵈ.hom) 0-init)
 }
 }

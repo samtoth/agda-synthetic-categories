@@ -10,7 +10,6 @@ module Foundations.TotalEquiv where
 \agda-imports{
 \agda{
 open import Foundations.Universes
-open import Foundations.QuasiEquivalences
 open import Foundations.Equivalences
 open import Foundations.Sigma
 open import Foundations.SigmaIdentity
@@ -20,7 +19,6 @@ open import Foundations.Identity
 open import Foundations.DependentIdentity
 open import Foundations.Functions
 open import Foundations.SingletonFibres
-open import Foundations.Singletons
 open import Foundations.EquivSingleton
 }
 }
@@ -88,21 +86,29 @@ module _
       Σ[ (a , p) ∶ fibre f b ] Σ[ x ∶ X a ] Idᶠ Y p (g a x) y
         ≃∎
 
-fibre-total-map
-  : {𝓤 𝓥 𝓦 : Level}
-    {A : Type 𝓤} {B : A → Type 𝓥} {B' : A → Type 𝓦}
-    {f : ∀ a → B a → B' a}
-    {a : A} {b : B' a}
-  → fibre (total-map f) (a , b) ≃ fibre (f a) b
-fibre-total-map {A = A} {B} {B'} {f = f} {a} {b}
-  = fibre (total-map f) (a , b)
-      ≃⟨ fibre-map-Σ' id f a b ⟩
-    Σ[ a' ∶ A ] Σ[ p ∶ a' ＝ a ] Σ[ b' ∶ B a' ] Idᶠ B' p (f a' b') b
-      ≃⟨ Σ-＝singl ⟩
-    fibre (f a) b
-      ≃∎
+module _
+  {𝓤 𝓥 𝓦 : Level}
+  {A : Type 𝓤}
+  {B : A → Type 𝓥}
+  {B' : A → Type 𝓦}
+  {f : (a : A) → B a → B' a}
+  {a : A} {b : B' a}
+  where
 
-fibre-total-map-fst
+  fibre≃total-map
+    : fibre (total-map f) (a , b) ≃ fibre (f a) b
+  fibre≃total-map
+    = fibre (total-map f) (a , b)
+        ≃⟨ fibre-map-Σ' id f a b ⟩
+      Σ[ a' ∶ A ] Σ[ p ∶ a' ＝ a ] Σ[ b' ∶ B a' ] Idᶠ B' p (f a' b') b
+        ≃⟨ Σ-＝singl ⟩
+      fibre (f a) b
+        ≃∎
+
+  fibre←total-map : fibre (total-map f) (a , b) → fibre (f a) b
+  fibre←total-map = _≃_.fwd fibre≃total-map
+
+fibre≃total-map-fst
   : {𝓤 𝓥 𝓦 : Level}
     {A : Type 𝓤}
     {A' : Type 𝓥}
@@ -111,7 +117,7 @@ fibre-total-map-fst
     (a : A)
     (b : B a)
   → fibre (total-map-fst f {B}) (a , b) ≃ fibre f a
-fibre-total-map-fst {A = A} {A'} {B} f a b
+fibre≃total-map-fst {A = A} {A'} {B} f a b
   = fibre (total-map-fst f {B}) (a , b)
       ≃⟨ fibre-map-Σ f (λ _ → id) a b ⟩
     Σ[ (a' , p) ∶ fibre f a ] (fibre (tr B p) b)
@@ -157,7 +163,7 @@ module _
       (b : B) (y : Y b)
       (a : A) (x : X (f a))
       (p : (f a , g (f a) x) ＝ (b , y))
-    → _≃_.bwd fibre-total-map (snd (_≃_.fwd (fibre-map-Σ-over g b y) ((a , x) , p)))
+    → _≃_.bwd fibre≃total-map (snd (_≃_.fwd (fibre-map-Σ-over g b y) ((a , x) , p)))
     ＝ ((f a , x) , p)
   fibre-map-Σ-over-left g b y a x refl = refl
 }
@@ -167,15 +173,16 @@ module _
 \taxon{Corollary}
 
 \agda{
-is-fibrewise-equiv←is-total-equiv
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
-      {B' : A → Type 𝓦} {f : ∀ a → B a → B' a}
-    → is-equiv (total-map f) → is-fibrewise-equiv f
-is-fibrewise-equiv←is-total-equiv {f = f} teq a
-  = is-equiv←has-singleton-fibres λ
-      b → is-single←equiv-to-single
-            fibre-total-map
-            (has-singleton-fibres←is-equiv teq (a , b))
+opaque
+  is-fibrewise-equiv←is-total-equiv
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}
+        {B' : A → Type 𝓦} {f : ∀ a → B a → B' a}
+      → is-equiv (total-map f) → is-fibrewise-equiv f
+  is-fibrewise-equiv←is-total-equiv {f = f} teq a
+    = is-equiv←has-singleton-fibres (λ b
+      → is-single←equiv
+          fibre≃total-map
+          (has-singleton-fibres←is-equiv teq (a , b)))
 
 fibrewise↔total-is-equiv
   : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : A → Type 𝓥}

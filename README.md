@@ -4,7 +4,7 @@
   <br clear="right">
 </h1>
 
-An agda development focussed on the development of ∞-category theory using simplicial
+An Agda development focussed on the synthetic theory of ∞-categories using simplicial
 type theory. Visit [the forest](https://samtoth.github.io/agda-synthetic-categories)
 to browse the resource and find out more about the project.
 
@@ -31,7 +31,7 @@ or newer. You can find the latest release binaries
 We use [pre-commit](https://pre-commit.com/) to run a series of quality checks on
 contributions. It can be installed as a stand alone program or via
 [Python](https://www.python.org/) using `python -m pip install pre-commit`. After it
-is installed you can run them manually with `pre-commit run --all-files`, or
+is installed you can run the checks manually with `pre-commit run --all-files`, or
 alternatively enable the automatic git hooks with `pre-commit install` (to disable
 them later run `pre-commit uninstall`).
 
@@ -40,9 +40,10 @@ In order to build the forest, you will need:
 - [agda-forester](https://github.com/samtoth/agda-forester)
 - [treelist](https://github.com/samtoth/treelist)
 - [Forester version 5](https://sr.ht/~jonsterling/forester/)
-- We use [Kento Okura's forest-server](https://github.com/kentookura/forest-server)
-  by default to serve the Forest locally, but you may choose other options. A python
-  server target is provided in the makefile.
+- A tool to serve Forest locally. We use
+  [Kento Okura's forest-server](https://github.com/kentookura/forest-server) by
+  default, but you may choose other options. A python server target is provided in
+  the makefile.
 
 ### Emacs mode
 

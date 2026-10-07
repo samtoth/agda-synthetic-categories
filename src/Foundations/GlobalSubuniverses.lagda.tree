@@ -1,0 +1,191 @@
+\date{2025-06-14}
+\title{Global subuniverses}
+\author{samueltoth}
+\taxon{Module}
+\import{stt-macros}
+
+
+\p{The developments in this module follow \citet{foundations.global-subuniverses}{agda-unimath}.}
+
+\agda{
+module Foundations.GlobalSubuniverses where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Subuniverses
+open import Foundations.Retracts
+open import Foundations.Subtypes
+open import Foundations.Equivalences
+open import Foundations.PropExt
+open import Foundations.Sigma
+open import Foundations.Functions
+open import Foundations.Unit
+open import Foundations.Identity
+open import Foundations.Singletons
+open import Foundations.SigmaProperties
+}
+}
+
+\subtree[stt-007A]{
+\taxon{Definition}
+\title{Global subuniverses}
+
+\p{
+A \em{global subuniverse} is a subuniverse for each #{\UU} which is closed under
+equivalence. This second property holds via univalence for a particular univalent
+universe but doesn't follow automatically for equivalences between types in different
+universes.
+}
+
+\agda{
+record gSubU (α : Level → Level) : Typeω where
+  constructor mk-gSubU
+  no-eta-equality
+  field
+    S : ∀ {𝓤} → SubU 𝓤 (α 𝓤)
+    ∈S←equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+        → A ≃ B
+        → A ∈ S → B ∈ S
+
+  ↔∈S←equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B
+      → (A ∈ S) ↔ (B ∈ S)
+  ↔∈S←equiv e = ( ∈S←equiv e
+                , ∈S←equiv (e e⁻¹))
+
+
+  ≃∈S←equiv
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → A ≃ B
+      → (A ∈ S) ≃ (B ∈ S)
+  ≃∈S←equiv e
+    = equiv←logical (∈-is-prop S _) (∈-is-prop S _)
+        ( ∈S←equiv e
+        , ∈S←equiv (e e⁻¹))
+
+SubU←global : ∀ {α} → gSubU α → ∀ {𝓤} → SubU 𝓤 (α 𝓤)
+SubU←global = gSubU.S
+
+gSubU-equiv : ∀ {α β} → gSubU α → gSubU β → Typeω
+gSubU-equiv S K = ∀ {𝓤} → Subtype-equiv (gSubU.S S {𝓤}) (gSubU.S K {𝓤})
+
+Full-gSubU : gSubU (λ _ → lzero)
+Full-gSubU .gSubU.S .Subtype.family _ = 𝟙
+Full-gSubU .gSubU.S .Subtype.family-is-subtype _ _ _ = refl
+Full-gSubU .gSubU.∈S←equiv _ _ = tt
+}
+}
+
+\subtree[stt-007C]{
+\taxon{Definition}
+\title{#{Σ}-closed global subuniverses}
+
+\agda{
+is-globally-Σ-closed : ∀ {α} (GS : gSubU α) → Typeω
+is-globally-Σ-closed G
+  = let open gSubU G in
+    ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → A ∈ S → ((a : A) → B a ∈ S)
+    → Σ A B ∈ S
+
+is-Σ-closed←globally
+  : ∀ {α} (GS : gSubU α)
+    → is-globally-Σ-closed GS
+    → ∀ {𝓤}
+    → is-Σ-closed (SubU←global GS {𝓤})
+is-Σ-closed←globally GS sc = sc
+}
+}
+
+\subtree[stt-00XO]{
+\title{Indexed product closed global subuniverses}
+\taxon{Definition}
+\author{fredrikbakke}
+
+\agda{
+is-globally-indexed-product-closed : ∀ {α} → gSubU α → Typeω
+is-globally-indexed-product-closed G
+  = let open gSubU G in
+    ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+    → ((a : A) → B a ∈ S)
+    → Π A B ∈ S
+}
+}
+
+\subtree[stt-013T]{
+\title{Retract closed global subuniverses}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+A [global subuniverse](stt-007A) is \em{retract closed} if every
+[retract](stt-00HE) of a type in the subuniverse also belongs to it.
+}
+
+\agda{
+is-globally-retract-closed : ∀ {α} → gSubU α → Typeω
+is-globally-retract-closed G
+  = let open gSubU G in
+    ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → retract A B → B ∈ S → A ∈ S
+}
+}
+
+\subtree[stt-0139]{
+\title{Global subuniverses containing propositions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+A [global subuniverse](stt-007A) \em{contains propositions} if every
+[proposition](stt-0009) belongs to it.
+}
+
+\agda{
+contains-props : ∀ {α} → gSubU α → Typeω
+contains-props K
+  = ∀ {𝓤} {P : Type 𝓤} → is-prop P → P ∈ gSubU.S K
+}
+}
+
+\subtree[stt-013H]{
+\title{Proof of membership by element}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{K} be a [#{\Sigma}-closed global subuniverse](stt-007C) that
+[contains all propositions](stt-0139). Then to show #{A \in K} we may assume an
+element of #{A}.
+}
+
+\proof{
+\p{
+If having an element of #{A} implies #{A \in K}, then #{A \simeq A \times (A\in K)}
+because it is a sum of contractible types. Furthermore
+#{A \times (A\in K) \simeq (A\in K) \times A}. By #{\Sigma}-closure, it thus
+suffices to show that the proposition #{A\in K} is in #{K}, and that, assuming
+#{A\in K}, then #{A} is in #{K}.
+}
+}
+
+\agda{
+module _
+  {α} (K : gSubU α) (open gSubU K)
+  (KΣ : is-globally-Σ-closed K) (Kprop : contains-props K)
+  where
+
+  ∈S←inhabited-∈S : ∀ {𝓤} {A : Type 𝓤} → (A → A ∈ S) → A ∈ S
+  ∈S←inhabited-∈S {A = A} h
+    = ∈S←equiv
+        (×-swap ∙e Σ-singleton (λ a → mk-singl (h a) (∈-is-prop S A (h a))))
+        (KΣ (Kprop (∈-is-prop S A)) id)
+}
+}

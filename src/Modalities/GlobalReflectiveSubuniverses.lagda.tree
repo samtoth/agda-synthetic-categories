@@ -15,16 +15,16 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 open import Foundations.IdempotentMaps
-open import Foundations.SingletonClosure
+open import Foundations.QuasiidempotentMaps
 
-open import Modalities.Subuniverses
-open import Modalities.GlobalSubuniverses
+open import Modalities.ReflectiveSubuniverses
 
+open import Core.Arrows
+open import Core.Cube
 open import Core.Postwhisker
 open import Core.PiSection
 
 open import Ergonomics.Extensionality
-open import Ergonomics.Universal
 }
 }
 
@@ -32,18 +32,21 @@ open import Ergonomics.Universal
 \taxon{Definition}
 \title{Global reflectors}
 
-\p{
-For a particular type #{A : \UU}, we say that #{(\bigcirc A, \eta : A \to \bigcirc A)}
-is a \em{global reflector} for #{A} when postcomposition
-by #{\eta} at modal types (of any universe) is an equivalence. This
-equivalence gives us a recursion principle for #{\bigcirc A}.
+
+\p{Given a [global subuniverse](stt-007A) #{S}, we say that a type #{A : \UU} has a
+\em{global reflection} if there is a type #{\bigcirc A} in #{S} and a map
+#{\eta \colon A \to \bigcirc A} such that any map from #{A} into a type at any
+universe level in #{S} factors uniquely through #{\eta}. This final condition can be
+stated by asking precomposition by #{\eta} to be an equivalence for all types in
+#{S}.
 }
 
-
 \agda{
-record is-global-reflector {α} (GS : gSubU α)
-         {𝓤} (A : Type 𝓤)
-         (○A : Type 𝓤) (η : A → ○A) : Typeω where
+record is-global-reflector
+  {α} (GS : gSubU α)
+  {𝓤} (A : Type 𝓤)
+  (○A : Type 𝓤) (η : A → ○A) : Typeω
+  where
   constructor mk-grfltor
   no-eta-equality
   open gSubU GS
@@ -53,6 +56,9 @@ record is-global-reflector {α} (GS : gSubU α)
       : ∀ {𝓥} {Q : Type 𝓥}
         → Q ∈ S → is-equiv (precomp Q η)
 
+  ○-UP≃ : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (○A → Q) ≃ (A → Q)
+  ○-UP≃ Q∈S = mk≃ (precomp _ η) (reflects Q∈S)
+
   ○-rec : ∀ {𝓥} {Q : Type 𝓥} → Q ∈ S → (A → Q) → (○A → Q)
   ○-rec cs = is-equiv.bwd (reflects cs)
 
@@ -61,7 +67,7 @@ record is-global-reflector {α} (GS : gSubU α)
       → ○-rec p f ∘ η ~ f
   ○-rec-β p f a = happly (is-equiv.ε (reflects p) f) a
 
-  module ∈S▸η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
+  module ∈S▹η {𝓦} {C : Type 𝓦} {g h} (C∈S : C ∈ S)
     = is-equiv (prewhisker-is-equiv←ap-compose {A = A} {g = g} {h}
                          (is-embedding←is-equiv (reflects C∈S)))
 
@@ -105,15 +111,43 @@ Reflector←gReflector G
   = mk-rfltor (G .gReflector.○)
       (G .gReflector.η)
       (is-reflector←global (G .gReflector.η-is-global-reflector))
+}
+
+\p{
+Closure under retracts and dependent products only requires a reflection of the
+retract or product being constructed.
+}
+
+\agda{
+module gReflectorClosure {α} {GS : gSubU α} (open gSubU GS) where
+
+  ∈S←retract
+    : ∀ {𝓤 𝓥} {X : Type 𝓤} {Y : Type 𝓥}
+      → gReflector GS X → retract X Y → Y ∈ S → X ∈ S
+  ∈S←retract RX (s , r , rs) Y∈S
+    = in-SubU←η-retraction (Reflector←gReflector RX)
+        (r ∘ ○-rec Y∈S s , r ◃h ○-rec-β Y∈S s ∙h rs)
+    where open gReflector RX
+
+  Π∈S
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+      → gReflector GS (Π A B)
+      → ((a : A) → B a ∈ S)
+      → Π A B ∈ S
+  Π∈S RΠ B∈S
+    = in-SubU←η-retraction (Reflector←gReflector RΠ)
+        ( (λ u a → ○-rec (B∈S a) (ev a) u)
+        , (λ f → funext→ λ a → ○-rec-β (B∈S a) (ev a) f))
+    where open gReflector RΠ
 
 module gReflectorMap
-    {α 𝓤 𝓥} {GS : gSubU α}
-    {A : Type 𝓤} {B : Type 𝓥}
-    (RA : gReflector GS A)
-    (RB : gReflector GS B) where
-
-  module A = gReflector RA
-  module B = gReflector RB
+  {α 𝓤 𝓥} {GS : gSubU α}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (RA : gReflector GS A)
+  (RB : gReflector GS B)
+  (let module A = gReflector RA)
+  (let module B = gReflector RB)
+  where
 
   ○₁ : (A → B) → A.○ → B.○
   ○₁ f = A.○-rec B.○∈S (B.η ∘ f)
@@ -143,35 +177,43 @@ record is-globally-reflective {α} (GS : gSubU α) : Typeω where
       : ∀ {𝓤} {A : Type 𝓤}
         → is-global-reflector GS A (○ A) η
 
+  η:_ : ∀ {𝓤} (A : Type 𝓤) → A → ○ A
+  η: A = η
+
   module R {𝓤} {A} = is-global-reflector (η-is-reflector {𝓤} {A})
   open R public
 
-  module ▸η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h}
-    = is-equiv (prewhisker-is-equiv←ap-compose {g = g} {h}
-                 (is-embedding←is-equiv
-                   (reflects {A = B} (○∈S {𝓤} {A}))))
+  opaque
+    ▹η-is-equiv
+      : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+        → is-equiv (prewhisker η g h)
+    ▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h}
+      = prewhisker-is-equiv←ap-compose {g = g} {h}
+          (is-embedding←is-equiv (reflects {A = A} (○∈S {𝓥} {B})))
+
+  module ▹η {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {g h : ○ A → ○ B}
+    = is-equiv (▹η-is-equiv {𝓤} {𝓥} {A} {B} {g} {h})
 
   reflector : ∀ {𝓤} (A : Type 𝓤) → Reflector S A
   reflector A = mk-rfltor (○ A) η
                   (is-reflector←global η-is-reflector)
 
-
-
 is-reflective←global
   : ∀ {α} {GS : gSubU α} → is-globally-reflective GS
-    → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
+  → ∀ {𝓤} → is-reflective (SubU←global GS {𝓤})
 is-reflective←global (mk-gReflectors ○ η η-is-reflector)
   = mk-reflective ○ η (is-reflector←global η-is-reflector)
 
-is-globally-reflective-subtype-equiv
-  : ∀ {α β} {S : gSubU α} {K : gSubU β}
-    → gSubU-equiv S K
-    → is-globally-reflective S
-    → is-globally-reflective K
-is-globally-reflective-subtype-equiv {S = S} eq rfl
-  = mk-gReflectors ○ η
-     (is-global-reflector-subtype-equiv eq η-is-reflector)
-  where open is-globally-reflective rfl
+opaque
+  is-globally-reflective-subtype-equiv
+    : ∀ {α β} {S : gSubU α} {K : gSubU β}
+      → gSubU-equiv S K
+      → is-globally-reflective S
+      → is-globally-reflective K
+  is-globally-reflective-subtype-equiv {S = S} eq rfl
+    = mk-gReflectors ○ η
+      (is-global-reflector-subtype-equiv eq η-is-reflector)
+    where open is-globally-reflective rfl
 
 record gRSubU (α : Level → Level) : Typeω where
   constructor mk-gRSubU
@@ -215,8 +257,7 @@ We formalise that [reflective subuniverses](stt-00IF) are closed under
 }
 
 \agda{
-module gReflectiveClosure {α} (RS : gRSubU α) where
-  open gRSubU RS
+module gReflectiveClosure {α} (RS : gRSubU α) (open gRSubU RS) where
 
   ∈S←retract
     : ∀ {𝓦 𝓧}
@@ -224,19 +265,14 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       → retract X Y
       → Y ∈ S
       → X ∈ S
-  ∈S←retract {X = X} {Y = Y} (s , r , rs) Y-loc
-    = in-SubU←η-retraction (reflector X) (r ∘ ○-rec Y-loc s , ret) where
-      ret : (r ∘ ○-rec Y-loc s) ∘ η {A = X} ~ id
-      ret = r ◃h ○-rec-β Y-loc s ∙h rs
+  ∈S←retract {X = X}
+    = gReflectorClosure.∈S←retract (gReflector←gRSubU RS X)
 
   Π∈S
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
       → (∀ a → B a ∈ S)
       → Π A B ∈ S
-  Π∈S b = in-SubU←η-retraction (reflector _) ret where
-    ret : retraction η
-    ret .fst lab a = ○-rec (b a) (ev a) lab
-    ret .snd f = funext→ (λ a → ○-rec-β (b a) (ev a) f)
+  Π∈S = gReflectorClosure.Π∈S (gReflector←gRSubU RS _)
 
   Πᵢ∈S
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
@@ -253,28 +289,24 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
     : ∀ {𝓤 𝓥} {A : Type 𝓤}
       → A ∈ S
       → ULift 𝓥 A ∈ S
-  ULift∈S = ∈S←equiv lift≃
+  ULift∈S = ∈S←equiv mk-lift≃
 
   𝟙∈S : 𝟙 ∈ S
   𝟙∈S = in-SubU←η-retraction (reflector _) (! , ~refl)
 
   ∈S←is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → A ∈ S
-  ∈S←is-singleton sing = in-SubU←η-retraction
-                           (reflector _)
-                           (retraction←singleton-dom sing η)
-
+  ∈S←is-singleton sing
+    = in-SubU←η-retraction (reflector _) (retraction←singleton-dom sing η)
 
   ○-is-singleton : ∀ {𝓤} {A : Type 𝓤} → is-singleton A → is-singleton (○ A)
-  ○-is-singleton {A = A} sa = is-single←equiv-to-single
-    (mk≃ _ (η-is-equiv←in-SubU (reflector A) (∈S←is-singleton sa)))
-    sa
+  ○-is-singleton {A = A} = is-singleton←Reflector (reflector A)
 
   ＝∈S
     : {𝓦 : Level} {X : Type 𝓦}
     → X ∈ S
     → ∀ {x y : X}
     → (x ＝ y) ∈ S
-  ＝∈S loc = ＝-is-modal (is-reflective←gRSubU RS) loc
+  ＝∈S a = ＝-is-modal (is-reflective←gRSubU RS) a
 
   ~∈S
     : {𝓤 𝓥 : Level}
@@ -282,8 +314,7 @@ module gReflectiveClosure {α} (RS : gRSubU α) where
       {f g : Π A B}
     → ((a : A) → B a ∈ S)
     → (f ~ g) ∈ S
-  ~∈S B-loc
-    = Π∈S (λ a → ＝∈S (B-loc a))
+  ~∈S B-loc = Π∈S (λ a → ＝∈S (B-loc a))
 }
 }
 
@@ -323,8 +354,9 @@ then so is #{S}.
     → Q ∈ S
     → Pullback g h ∈ S
   Pullback∈S {X = X} {Y = Y} {Q = Q} g h X-loc Y-loc Q-loc
-    = in-SubU←η-retraction (reflector (Pullback g h)) ret where
-    u = η {A = Pullback g h}
+    = in-SubU←η-retraction (reflector (Pullback g h)) ret
+    where
+    u = η: Pullback g h
 
     S' : Cospan _ _ _
     S' = mk-cospan Q g h
@@ -585,6 +617,51 @@ that #{\textsf{Retracts}_{\UU}(A)}
 }
 }
 
+\subtree[stt-013M]{
+\title{Membership characterises containment of propositions}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+A [global reflective subuniverse](stt-00IF) [contains all propositions](stt-0139)
+if and only if it contains its membership predicate.
+}
+
+\proof{
+\p{
+The forward implication follows because membership is a proposition. Conversely,
+let #{P} be a proposition. If #{P} is true then it is contractible and hence
+an element of the subuniverse, so we have the implication #{P \Rightarrow (P \in K)}.
+Since the proposition #{P \in K} is modal, the implication extends
+to #{h \colon \bigcirc P \Rightarrow (P \in K)}.
+}
+\p{
+Now, to show that #{P} is modal, it suffices to prove #{\bigcirc P \Rightarrow P},
+so assume that #{\bigcirc P} holds. By #{h}, #{P} is modal and so the unit
+is an equivalence #{P \simeq \bigcirc P}. Hence #{P} holds, as required.
+}
+}
+
+\agda{
+module _
+  {α} (K : gRSubU α) (open gRSubU K)
+  (let module C = gReflectiveClosure K)
+  where
+
+  contains-props←contains-membership
+    : (∀ {𝓤} (A : Type 𝓤) → (A ∈ S) ∈ S) → contains-props GS
+  contains-props←contains-membership m {P = P} prop
+    = in-SubU←η-retraction (reflector P) (r , (λ p → prop (r (η p)) p))
+    where
+    h : ○ P → P ∈ S
+    h = ○-rec (m P) (λ p → C.∈S←is-singleton (mk-singl p (prop p)))
+
+    r : ○ P → P
+    r z = unmod (reflector P) (h z) z
+}
+}
+
 \subtree[stt-00MK]{
 \date{2026-03-19}
 \author{fredrikbakke}
@@ -595,6 +672,15 @@ that #{\textsf{Retracts}_{\UU}(A)}
 \agda{
 module gReflectiveReasoning {α} (RS : gRSubU α) where
   open gRSubU RS
+
+  infixl 10 _>>=_
+  _>>=_
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+      → ○ A → (A → ○ B) → ○ B
+  ma >>= f = ○-rec ○∈S f ma
+
+  return : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
+  return = η
 
   ○₁
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
@@ -612,7 +698,19 @@ module gReflectiveReasoning {α} (RS : gRSubU α) where
     : ∀ {𝓤} {A : Type 𝓤}
       → ○₁ (id: A) ~ id
   ○₁-id {A = A}
-    = ▸η.bwd (○₁-β (id: A))
+    = ▹η.bwd (○₁-β (id: A))
+
+  ○-~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f g : A → B}
+      → f ~ g → ○₁ f ~ ○₁ g
+  ○-~ {f = f} {g} H = ▹η.bwd
+    (  ○₁ f ∘ η
+    ~⟨ ○₁-β f ⟩
+      η ∘ f
+    ~⟨ η ◃h H ⟩
+      η ∘ g
+    ~⟨ ○₁-β g h⁻¹ ⟩
+      ○₁ g ∘ η ~∎)
 
   ○₁-∘
     : ∀ {𝓤 𝓥 𝓦}
@@ -620,7 +718,7 @@ module gReflectiveReasoning {α} (RS : gRSubU α) where
         (g : B → C) (f : A → B)
       → ○₁ (g ∘ f) ~ ○₁ g ∘ ○₁ f
   ○₁-∘ {A = A} g f
-    = ▸η.bwd λ a
+    = ▹η.bwd λ a
     → ○₁ (g ∘ f) (η a)      ＝⟨ ○₁-β (g ∘ f) a ⟩
       η (g (f a))           ＝⟨ sym (○₁-β g (f a)) ⟩
       ○₁ g (η (f a))        ＝⟨ sym (ap (○₁ g) (○₁-β f a)) ⟩
@@ -696,10 +794,7 @@ module _ {α} (RS : gRSubU α) where
   open gReflectiveClosure RS
 
   ○𝟙-is-single : is-singleton (○ 𝟙)
-  ○𝟙-is-single
-    = is-single←equiv-to-single
-        (mk≃ (η {A = 𝟙}) (η-is-equiv←in-SubU (reflector 𝟙) 𝟙∈S))
-        𝟙-is-singleton
+  ○𝟙-is-single = ○-is-singleton 𝟙-is-singleton
 }
 }
 
@@ -708,8 +803,8 @@ module _ {α} (RS : gRSubU α) where
 \taxon{Lemma}
 \author{samueltoth}
 
-\p{For an arbitrary map #{f : A \to B}, if the induced precomposition map at
-every type #{Y}: #{Y^f : Y^B \to Y^A} is an equivalence, then #{f} is an
+\p{For an arbitrary map #{f \colon A \to B}, if the induced precomposition map at
+every type #{Y}: #{Y^f \colon Y^B \to Y^A} is an equivalence, then #{f} is an
 equivalence. If #{A} and #{B} are both modal types, then it suffices to check
 precomposition only at modal types.}
 
@@ -759,13 +854,7 @@ equivalence.
               (postcomp-Π-equiv (reflects Ys))
               (is-equiv-∘
                 curry-is-equiv
-                (reflects Ys))) where
-        fact : precomp Y Σ○-η
-             ~ uncurry
-             ∘ postcomp-Π (λ a → precomp Y η)
-             ∘ curry
-             ∘ precomp Y η
-        fact = ~refl
+                (reflects Ys)))
 
       Σ○-is-global-reflector
         : is-global-reflector GS (Σ A P) (○ (Σ A (○ ∘ P))) (Σ○-η)
@@ -795,8 +884,8 @@ principle.
 
 \proof{ \p{Because #{S} is closed under #{\Sigma} types, we can use
 the universal property of the reflector at #{A} to define a map
-#{\bar{f} : \bigcirc A \to \Sigma_{(x : \bigcirc A)} \bigcirc P(x)}
-just by it's action on #{\eta(x)} for #{x : A}. This map is given by
+#{\bar{f} \colon \bigcirc A \to \Sigma1{x : \bigcirc A}{\bigcirc P(x)}}
+just by its action on #{\eta(x)} for #{x : A}. This map is given by
 #{\eta(x) \mapsto (\eta(x), f(x))}.}
 
 \p{To show that #{\bar{f}} is indeed a section, we first note that the
@@ -806,20 +895,20 @@ equivalence, [so is prewhiskering](stt-006I) by #{\eta} (assuming
 funext), thus we can apply the inverse map to get a homotopy #{\pi
 \bar{f} \sim \id}.}  }
 
-
 \agda{
-module gRSubUInduction {α}
-        (RS : gRSubU α)
-        (SΣ : is-globally-Σ-closed (RS .gRSubU.GS)) where
-  open gRSubU RS
-  open gReflectiveReasoning RS
-  open gReflectiveClosure RS
+module gRSubUInduction
+  {α} (RS : gRSubU α)
+  (SΣ : is-globally-Σ-closed (RS .gRSubU.GS))
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  (open gReflectiveClosure RS)
+  where
 
   opaque
     ind
       : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥} (P∈S : ∀ a → P a ∈ S)
         → (Π A (P ∘ η)) → Π (○ A) P
-    ind {A = A} {P} ps f = Π←section (f' , ▸η.bwd secη) module ind where
+    ind {A = A} {P} ps f = Π←section (f' , ▹η.bwd secη) module ind where
       f'' : A → Σ (○ A) P
       f'' a = (η a , f a)
 
@@ -834,15 +923,16 @@ module gRSubUInduction {α}
           (P∈S : ∀ a → P a ∈ S)
         → (f : Π A (P ∘ η)) → ind P∈S f ∘ η ~ f
     ind-β {A = A} {P} PS f a
-      = tr P (▸η.bwd secη (η a)) (snd (f' (η a)))
-           ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▸η.ε secη) a) ⟩
+      = let open ind PS f in
+        tr P (▹η.bwd secη (η a)) (snd (f' (η a)))
+           ＝⟨ ap (λ p → tr P p (snd (f' (η a)))) (happly (▹η.ε secη) a) ⟩
         tr P (ap fst (○-rec-β _ f'' a)) (snd (f' (η a)))
           ＝⟨ ap (λ p → coe p (snd (f' (η a)))) (sym (ap-∘ P fst _)) ⟩
         tr (P ∘ fst) (○-rec-β _ f'' a) (snd (f' (η a)))
           ＝⟨ apᶠ snd (○-rec-β _ f'' a) ⟩
         snd (f'' a)
           ＝⟨⟩
-        f a ∎       where open ind PS f
+        f a ∎
 
   ind-qinv
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
@@ -863,6 +953,18 @@ module gRSubUInduction {α}
            (ind PS)
   ind-is-equiv = is-equiv←qinv ∘ ind-qinv
 
+  ○-UPᵈ
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → is-equiv (precomp-Π P η)
+  ○-UPᵈ P∈S = is-equiv⁻¹ (is-equiv←qinv (ind-qinv P∈S))
+
+  ○-UPᵈ≃
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : ○ A → Type 𝓥}
+      → (PS : ∀ a → P a ∈ S)
+      → (Π (○ A) P) ≃ (Π A (P ∘ η))
+  ○-UPᵈ≃ P∈S = mk≃ (precomp-Π _ η) (○-UPᵈ P∈S)
+
   local-Pullback∈S
     : {𝓦 𝓧 𝓨 : Level}
       {X : Type 𝓦} {Y : Type 𝓧} {Q : Type 𝓨}
@@ -882,19 +984,141 @@ module gRSubUInduction {α}
     → (∀ {x y} → Id Y x y ∈ S)
     → fibre g y ∈ S
   local-fibre∈S g y X-loc Ylocloc
-    = ∈S←equiv
-        (pullback-point≃fibre g y)
-        (local-Pullback∈S (point y) g 𝟙∈S X-loc Ylocloc)
+    = SΣ X-loc (λ _ → Ylocloc)
+}
+}
 
-  infixl 10 _>>=_
-  _>>=_
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-      → ○ A → (A → ○ B) → ○ B
-  ma >>= f = ind (λ _ → ○∈S) f ma
+\subtree[stt-00JI]{
+\taxon{Construction}
+\title{The modal naturality square}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\date{2026-09-12}
 
-  return : ∀ {𝓤} {A : Type 𝓤} → A → ○ A
-  return = η
+\p{We construct the square witnessing the naturality of the modal unit:}
 
-  open Universal
+\quiver{
+\begin{tikzcd}
+	A && {\bigcirc A} \\
+	\\
+	B && {\bigcirc B}
+	\arrow["{\eta_A}", from=1-1, to=1-3]
+	\arrow["f"', from=1-1, to=3-1]
+	\arrow["{\bigcirc f}", from=1-3, to=3-3]
+	\arrow["{\eta_B}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\agda{
+module _
+  {α} (GR : gRSubU α)
+  (open gRSubU GR)
+  (open gReflectiveReasoning GR)
+  where
+
+  η-square
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → Arrow-map f (○₁ f)
+  η-square f .Arrow-map.top = η
+  η-square f .Arrow-map.bot = η
+  η-square f .Arrow-map.comm a = sym (○₁-β f a)
+
+  η-square'
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → Arrow-map (η: A) (η: B)
+  η-square' f = transpose-square (η-square f)
+
+  η-fibre-map
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → (b : B) → fibre f b → fibre (○₁ f) (η b)
+  η-fibre-map f = arrow-fibre (η-square f)
+
+  η-fibre-map'
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+      → (a' : ○ A) → fibre η a' → fibre η (○₁ f a')
+  η-fibre-map' f = arrow-fibre (η-square' f)
+
+  η-square'-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+        (g : B → C) (f : A → B)
+      → Arrow-map-path
+          (η-square' (g ∘ f))
+          (paste-squares (η-square' g) (η-square' f))
+  η-square'-∘ {A = A} {C = C} g f
+    = (~refl , ▹η.bwd H , coh)
+    where
+    module S = Arrow-map (η-square' (g ∘ f))
+    module T = Arrow-map (paste-squares (η-square' g) (η-square' f))
+
+    H : precomp (○ C) (η: A) S.bot ~ precomp (○ C) (η: A) T.bot
+    H = S.comm ∙h (T.comm h⁻¹)
+
+    coh : S.comm ∙h ~refl ~ (▹η.bwd {g = S.bot} {h = T.bot} H ▹h η) ∙h T.comm
+    coh = ∙h-reflr S.comm
+        ∙h right-transpose-∙h⁻¹ (happly (▹η.ε {g = S.bot} {h = T.bot} H)) h⁻¹
+}
+}
+
+\subtree[stt-011V]{
+\title{The modal naturality cube}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-09-12}
+
+\p{
+We may also apply the reflection operator to a morphism of arrows. This gives rise to
+the modal naturality cube.
+}
+
+\agda{
+module _
+  {α} (RS : gRSubU α)
+  (open gRSubU RS)
+  (open gReflectiveReasoning RS)
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥}
+  {C : Type 𝓦} {D : Type 𝓜}
+  {f : A → B} {g : C → D}
+  (F : Arrow-map f g)
+  (open Arrow-map F)
+  where
+
+  left-nat-○-square : ○₁ bot ∘ η ∘ f ~ ○₁ bot ∘ ○₁ f ∘ η
+  left-nat-○-square = ○₁ bot ◃h Arrow-map.comm (η-square RS f)
+
+  top-nat-○-square : ○₁ g ∘ ○₁ top ∘ η ~ ○₁ g ∘ η ∘ top
+  top-nat-○-square = ○₁ g ◃h ○₁-β top
+
+  bot-nat-○-square : ○₁ bot ∘ η ∘ f ~ η ∘ bot ∘ f
+  bot-nat-○-square = ○₁-β bot ▹h f
+
+  pasted-nat-○-square : η ∘ bot ∘ f ~ ○₁ g ∘ η ∘ top
+  pasted-nat-○-square = Arrow-map.comm (paste-squares (η-square RS g) F)
+
+  coh▸η-○-square : (○₁ bot ∘ ○₁ f) ∘ η ~ (○₁ g ∘ ○₁ top) ∘ η
+  coh▸η-○-square
+    = left-nat-○-square h⁻¹
+    ∙h (bot-nat-○-square ∙h pasted-nat-○-square) ∙h (top-nat-○-square h⁻¹)
+
+  coh-○-square : ○₁ bot ∘ ○₁ f ~ ○₁ g ∘ ○₁ top
+  coh-○-square = ▹η.bwd coh▸η-○-square
+
+  ○-square : Arrow-map (○₁ f) (○₁ g)
+  ○-square .Arrow-map.top = ○₁ top
+  ○-square .Arrow-map.bot = ○₁ bot
+  ○-square .Arrow-map.comm = coh-○-square
+
+  η-cube : Cube F ○-square
+  η-cube .Cube.left = η-square RS f
+  η-cube .Cube.right = η-square RS g
+  η-cube .Cube.comm .fst = ○₁-β top
+  η-cube .Cube.comm .snd .fst = ○₁-β bot
+  η-cube .Cube.comm .snd .snd
+    = right-transpose-∙h⁻¹
+        ( (left-nat-○-square ◂h happly
+            (▹η.ε {g = ○₁ bot ∘ ○₁ f} {h = ○₁ g ∘ ○₁ top} coh▸η-○-square))
+          ∙h ∙h-cancel-left {H = left-nat-○-square} {K = left-nat-○-square h⁻¹}
+              (∙h-sym left-nat-○-square)
+              ((bot-nat-○-square ∙h pasted-nat-○-square) ∙h (top-nat-○-square h⁻¹)))
 }
 }

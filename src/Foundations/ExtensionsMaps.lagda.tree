@@ -16,6 +16,13 @@ open import Foundations.Identity
 open import Foundations.Functions
 open import Foundations.Empty
 open import Foundations.Unit
+open import Foundations.UnitUP
+open import Foundations.Bool
+open import Foundations.Coproducts
+open import Foundations.ComplementedEmbeddings
+open import Foundations.SingletonFibres
+open import Foundations.EquivHomotopy
+open import Foundations.EquivSingleton
 open import Foundations.Homotopy
 open import Foundations.Sigma
 open import Foundations.SigmaProperties
@@ -23,18 +30,23 @@ open import Foundations.FibrewiseEquivalences
 open import Foundations.Equivalences
 open import Foundations.IdentityEquiv
 open import Foundations.Singletons
-open import Foundations.EmptyUP
 open import Foundations.FunExt
 open import Foundations.SingletonClosure
+open import Foundations.CompositionEquiv
+open import Foundations.Currying
+open import Foundations.IsEquivIsProp
+open import Foundations.TheoremOfChoice
+open import Foundations.TotalEquiv
+open import Foundations.TorsorialTypeFamilies
 }
 }
 
 \subtree[stt-00CL]{
 \taxon{Definition}
 \title{Extension types}
+\contributor{fredrikbakke}
 
-
-\p{Given a map #{i : A \to B}, and a map #{p : A \to X},
+\p{Given a map #{i \colon A \to B}, and a map #{p \colon A \to X},
 which when #{i} is an embedding we consider a partial element of #{X}, we consider
 the type of maps #{B \to X} which agree with #{p} in the sense that the following
 triangle commutes: }
@@ -72,6 +84,122 @@ Ext-∅
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
     → FunExt-global → Ext ¡ ¡ ≃ (A → B)
 Ext-∅ FE = mk≃ fst (singleton-fst-is-equiv λ x → Π-is-single FE λ ())
+
+Ext-!≃
+  : ∀ {𝓤 𝓥} (X : Type 𝓤) {A : Type 𝓥} (f : X → A)
+    → (Σ[ a ∶ A ] (const a ~ f)) ≃ Ext (!: X) f
+Ext-!≃ X f = Σ-fst-≃ point≃
+}
+}
+
+\subtree[stt-0152]{
+\title{Postcomposition of extensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\agda{
+module _
+  {𝓐 𝓑 𝓤 𝓥}
+  {A : Type 𝓐} {B : Type 𝓑} (i : A → B)
+  {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+  where
+
+  postcomp-Ext : (a : A → X) → Ext i a → Ext i (f ∘ a)
+  postcomp-Ext a (g , H) = (f ∘ g , f ◃h H)
+}
+}
+
+\subtree[stt-00Y9]{
+\title{Homotopies of extensions}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+  {i : A → B} {p : A → X}
+  where
+
+  Ext-htpy : Ext i p → Ext i p → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Ext-htpy F G
+    = Σ[ H ∶ F .fst ~ G .fst ] (F .snd ~ H ▹h i ∙h G .snd)
+
+  refl-Ext-htpy : (F : Ext i p) → Ext-htpy F F
+  refl-Ext-htpy F = (~refl , ~refl)
+
+  Ext-htpy←Id : {F G : Ext i p} → F ＝ G → Ext-htpy F G
+  Ext-htpy←Id {F = F} refl = refl-Ext-htpy F
+}
+}
+
+\agda{
+module ExtWithFunExt
+  (FE : FunExt-global)
+  (open WithFunExt-global FE)
+  (open UnitUPWithFunExt FE)
+  where
+}
+
+\subtree[stt-00Y1]{
+\title{Characterising equality of extensions}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦}
+    {i : A → B} {p : A → X}
+    where
+
+    Ext-htpy-is-torsorial
+      : (F : Ext i p) → is-torsorial (Ext-htpy F)
+    Ext-htpy-is-torsorial F
+      = is-singleton-structure←parts
+          (htpy-is-torsorial FE (F .fst))
+          (_ , ~refl)
+          (htpy-is-torsorial FE (F .snd))
+
+    Ext-htpy←Id-is-equiv
+      : (F G : Ext i p) → is-equiv (Ext-htpy←Id {F = F} {G})
+    Ext-htpy←Id-is-equiv F
+      = fundamental-Id
+          (Ext-htpy F) (Ext-htpy-is-torsorial F) (λ _ → Ext-htpy←Id)
+
+    Id≃Ext-htpy : (F G : Ext i p) → (F ＝ G) ≃ Ext-htpy F G
+    Id≃Ext-htpy F G = mk≃ Ext-htpy←Id (Ext-htpy←Id-is-equiv F G)
+
+    Id←Ext-htpy : {F G : Ext i p} → Ext-htpy F G → F ＝ G
+    Id←Ext-htpy {F} {G} = _≃_.bwd (Id≃Ext-htpy F G)
+}
+}
+
+\subtree[stt-013Q]{
+\title{Extensions along the booleans classify identity types}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+An [extension](stt-00CL) of #{f \colon \Bool \to A} along
+#{{!} \colon \Bool \to \b1} is equivalent to an identification
+#{f(\true) = f(\false)}.
+}
+
+\agda{
+  module _ {𝓤} {A : Type 𝓤} where
+
+    Ext-Bool≃Id : (f : Bool → A) → Ext (!: Bool) f ≃ (f true ＝ f false)
+    Ext-Bool≃Id f
+      = (Σ-fst-≃ unit-UP≃)
+      ∙e Σ-snd-≃ (λ a
+        → precomp-Π-≃ FE (λ b → a ＝ f b)
+            (Σ-Bool≃⊎ e⁻¹ ∙e Σ-singleton (λ _ → 𝟙-is-singleton))
+        ∙e (CoproductWithFunExt.⊎-UP≃ FE e⁻¹)
+        ∙e (unit-UP≃ ×≃ unit-UP≃))
+      ∙e Σ-＝singl
 }
 }
 
@@ -104,22 +232,190 @@ along #{j}.
 \p{By contracting singletons.}
 }
 
+
 \agda{
-Ext-compose
-  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-    → FunExt-global
-    → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X)
-    → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
-Ext-compose {B = B} {C = C} FE j i {X} p
-  = Ext (j ∘ i) p
-      ≃⟨ Σ-snd-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙e Σ-assoc)) ⟩
-    Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-      ≃⟨ Σ-comm ⟩
-    Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-      ≃⟨ Σ-snd-≃ (λ f → Σ-assoc e⁻¹ ∙e ×-swap) ⟩
-    Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
-      ≃⟨ Σ-assoc e⁻¹ ⟩
-    (Σ[ f ∶ Ext i p ] Ext j (f .fst))
-      ≃∎
+  Ext-compose≃
+    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
+      → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X)
+      → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
+  Ext-compose≃ {B = B} {C = C} j i {X} p
+    = Ext (j ∘ i) p
+        ≃⟨ Σ-snd-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙e Σ-assoc)) ⟩
+      Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+        ≃⟨ Σ-comm ⟩
+      Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+        ≃⟨ Σ-snd-≃ (λ f → Σ-assoc e⁻¹ ∙e ×-swap) ⟩
+      Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
+        ≃⟨ Σ-assoc e⁻¹ ⟩
+      (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+        ≃∎
+}
+}
+
+\subtree[stt-0136]{
+\title{Extensions along equivalences are unique}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+[Equivalences](stt-001U) admit unique [extensions](stt-00CL) into any type.
+}
+
+\agda{
+  Ext-is-singleton←is-equiv
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦} {i : X → Y}
+      → is-equiv i → (f : X → A) → is-singleton (Ext i f)
+  Ext-is-singleton←is-equiv e f
+    = is-single←equiv
+        (Σ-snd-≃ (λ _ → funext≃))
+        (has-singleton-fibres←is-equiv (precomp-equiv FE e) f)
+}
+}
+
+\subtree[stt-012X]{
+\title{Extensions along a section and its retraction}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+Let #{s \colon X \to Y} and #{r \colon Y \to X} be such that #{R : r \circ s \sim \id}.
+For any extension #{u \colon Y \to A} of #{f \colon X \to A} along #{s} with witness
+#{H}, the type of extensions of #{u} along #{r} is equivalent to the type of
+identifications of extensions: #{(f \circ r , fR) = (u, H)}.
+}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦}
+    (s : X → Y) (r : Y → X) (rs : r ∘ s ~ id) (f : X → A)
+    where
+
+    section-extension : Ext s f
+    section-extension = (f ∘ r , f ◃h rs)
+
+    Ext-retraction-is-torsorial : is-torsorial (λ u → Ext r (u .fst))
+    Ext-retraction-is-torsorial
+      = is-single←equiv
+          (Ext-compose≃ r s f)
+          (Ext-is-singleton←is-equiv (is-equiv←~ rs id-is-equiv) f)
+
+    Ext-retraction≃Id
+      : (u : Ext s f) → Ext r (u .fst) ≃ (section-extension ＝ u)
+    Ext-retraction≃Id u
+      = fundamental-Id≃ (λ u → Ext r (u .fst))
+          (f , ~refl) Ext-retraction-is-torsorial u e⁻¹
+}
+}
+
+\subtree[stt-0131]{
+\title{Extensions along coproduct inclusions}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+An [extension](stt-00CL) along a [coproduct](stt-002Y) inclusion is
+a map from the other summand.
+}
+
+\agda{
+  Ext-inl≃
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Z : Type 𝓥} {A : Type 𝓦} (f : X → A)
+      → Ext (inl {B = Z}) f ≃ (Z → A)
+  Ext-inl≃ f
+    = (Σ-fst-≃ (CoproductWithFunExt.⊎-UP≃ FE) e⁻¹)
+    ∙e remove-singleton-structure (Ext-is-singleton←is-equiv id-is-equiv f)
+      (f , ~refl)
+}
+}
+
+\subtree[stt-0134]{
+\title{Extensions along complemented embeddings}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+An [extension](stt-00CL) along a [complemented embedding](stt-0138)
+is a map from its complement.
+}
+
+\agda{
+  Ext-is-complemented-embedding≃
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦} {i : X → Y}
+      → is-complemented-embedding i → (f : X → A)
+      → Ext i f ≃ (map-complement i → A)
+  Ext-is-complemented-embedding≃ d f
+    = Σ-fst-≃
+        (precomp-≃ FE
+          (ComplementedEmbeddingsWithFunExt.complemented-embedding-coprod≃ FE d))
+    ∙e Ext-inl≃ f
+}
+}
+
+\subtree[stt-00YB]{
+\title{Extensions into dependent products are dependent products of extensions}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓣 𝓩} {A : Type 𝓤} {X : Type 𝓥}
+    {I : Type 𝓣} {B : I → Type 𝓩}
+    (i : A → X) (j : A → Π I B)
+    where
+
+    Ext-Π-≃ : Ext i j ≃ ((t : I) → Ext i (λ a → j a t))
+    Ext-Π-≃
+      = Σ-≃ flip≃ (λ f → Π-fam-≃ FE (λ a → funext≃) ∙e flip≃)
+      ∙e (Σ-Π-swap≃ _ _ e⁻¹)
+}
+}
+
+\subtree[stt-00Y2]{
+\title{Equivalences of extension types from equivalences of types}
+\taxon{Proposition}
+\author{fredrikbakke}
+\date{2026-09-08}
+
+\agda{
+  Ext-codomain-≃
+    : ∀ {𝓤 𝓥 𝓦 𝓩}
+        {A : Type 𝓤} {X : Type 𝓥}
+        {Y : Type 𝓦} {Z : Type 𝓩}
+      → (i : A → X) (j : A → Y) (k : A → Z)
+      → (e : Y ≃ Z) → e ._≃_.fwd ∘ j ~ k
+      → Ext i j ≃ Ext i k
+  Ext-codomain-≃ i j k e H
+    = Σ-≃
+        (postcomp-≃ FE e)
+        (λ f → Π-fam-≃ FE (λ a → ＝-equiv e ∙e ＝-preconcat-≃ (H a)))
+}
+}
+
+\subtree[stt-013J]{
+\title{Extensions along terminal projections}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-17}
+
+\p{
+An [extension](stt-00CL) along a map with [contractible](stt-0006) codomain is a
+[null-homotopy](stt-00F3).
+}
+\p{
+We write out the type of null-homotopies of #{f} in the formalisation below to avoid
+issues with cyclic dependencies.
+}
+
+\agda{
+  Ext-singleton-codomain≃
+    : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} {A : Type 𝓦}
+      → is-singleton Y → (δ : X → Y) (f : X → A)
+      → (Σ[ a ∶ A ] (const a ~ f)) ≃ Ext δ f
+  Ext-singleton-codomain≃ c δ f = Σ-fst-≃ (sing-const≃ c)
 }
 }

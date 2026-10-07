@@ -14,9 +14,9 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Foundations.Prelude
+open import Foundations.InjectiveMaps
 
 open import Algebra.Poset
-open import Algebra.BoundedPoset
 open import Algebra.SemilatticesAreSets
 
 open import Core.Coslices
@@ -36,7 +36,7 @@ open import Ergonomics.Extensionality
 \contributor{fredrikbakke}
 
 \p{A lattice #{L} is an algebraic structure with a pair of commutative monoids
-#{\land,\lor}, satisfying absorption laws.  Equivalently this
+#{\wedge,\vee}, satisfying absorption laws.  Equivalently this
 structure can be described by a poset, with operations taking binary meets
 (#{\land}) and joins (#{\lor}) for each pair of elements. It follows from the
 algebraic structure that the carrier type forms a set.}
@@ -164,13 +164,6 @@ record Lattice {ℓ} (L : Type ℓ) : Type ℓ where
 
   ≤-poset : Poset ℓ L
   ≤-poset = mk-poset {_≤_ = _≤_} ≤-is-poset
-
-  lattice-is-bounded : is-bounded-poset ≤-poset
-  lattice-is-bounded = ((0l , (λ _ → 0-init)) , (1l , (λ _ → 1-top)))
-
-  ≤-bounded-poset : BoundedPoset ℓ L
-  ≤-bounded-poset .BoundedPoset.poset = ≤-poset
-  ≤-bounded-poset .BoundedPoset.poset-is-bounded = lattice-is-bounded
 
   open is-poset ≤-is-poset public
 
@@ -457,6 +450,17 @@ Algebra-id-hom p q .fst .snd = p
 Algebra-id-hom p q .snd = mk-is-lattice-alg-hom q
 
 
+Algebra-res-hom
+  : ∀ {𝓤 𝓥 𝓦 𝓧}
+      {X : Type 𝓤} {L : Lattice X} {Y : Type 𝓥} (A : Algebra L Y)
+      {Z : Type 𝓦} {B : Algebra (Algebra.str-Lattice A) Z}
+      {W : Type 𝓧} {C : Algebra (Algebra.str-Lattice A) W}
+    → LatticeAlgHom B C → LatticeAlgHom (Algebra-res A B) (Algebra-res A C)
+Algebra-res-hom A f .fst .fst = f .fst .fst
+Algebra-res-hom A f .fst .snd x = f .fst .snd (Algebra.ι A x)
+Algebra-res-hom A f .snd = mk-is-lattice-alg-hom (un-is-lattice-alg-hom (f .snd))
+
+
 LatticeAlgHom-∘
   : ∀ {𝓤 𝓥 𝓦 𝓧}
       {A : Type 𝓤} {L : Lattice A}
@@ -537,6 +541,21 @@ instance
     = LatticeAlgHom-~＝ _ _
   LatticeAlgHom-equiv-IdS  .Identity-system.IdS←Id-is-equiv
     p  = fundamental-Id _ (LatticeAlgHom-~-is-torsorial p) _
+}
+
+\p{In particular algebra homomorphisms form a set, since their underlying
+maps do.}
+
+\agda{
+LatticeAlgHom-is-set
+  : ∀ {𝓤 𝓥 𝓦}
+      {A : Type 𝓤} {L : Lattice A}
+      {B : Type 𝓥} {C : Type 𝓦}
+      {A1 : Algebra L B} {A2 : Algebra L C}
+    → is-set (LatticeAlgHom A1 A2)
+LatticeAlgHom-is-set {A2 = A2}
+  = is-set←is-injective {f = λ h → h .fst .fst} (λ p → ext! (happly p))
+      (→-is-set (Algebra.carrier-is-set A2))
 
 
 
@@ -674,6 +693,17 @@ initial-Algebra-is-initial  L AX
                         (λ a → is-lattice-alg-hom-is-prop) _)
   where
     module AX = Algebra AX
+}
+
+\p{The unique map out of the initial algebra is the structure map.}
+
+\agda{
+Algebra-ι-hom
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {L : Lattice A} {X : Type 𝓥} (AX : Algebra L X)
+    → LatticeAlgHom (initial-Algebra L) AX
+Algebra-ι-hom AX .fst .fst = Algebra.ι AX
+Algebra-ι-hom AX .fst .snd a = refl
+Algebra-ι-hom AX .snd = mk-is-lattice-alg-hom (Algebra.ι-alg AX)
 }
 }
 

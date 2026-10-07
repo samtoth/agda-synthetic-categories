@@ -16,7 +16,8 @@ quasicoherence of #{\II[x]}, which is [SQCP](stt-00TC) and implies
 the generalised Phoa principle (\ref{ub-001X}) and quasicoherence
 (\ref{ub-0020}), so from SQCP alone every free algebra on finitely many
 generators is quasicoherent (\ref{ub-0021}). That gives the #{n}-variable Phoa
-principle (\ref{ub-001W}) and the sobriety of the cubes (\ref{ub-001Z}).}
+principle (\ref{ub-001W}), the sobriety of the cubes (\ref{ub-001Z}), and that
+a cube in a spectrum is a homomorphism to polynomials (\ref{ub-004L}).}
 
 \p{The full axiom is used for algebras with relations. For one relation
 #{s = t} it is a Nullstellensatz (\ref{ub-003X}), and from it the interval is
@@ -63,7 +64,8 @@ open import Synthetic.Directedness Δ¹ I
 open import Synthetic.Quasicoherence Δ¹ I I-distr
 open import Synthetic.Simplicial Δ¹ I
 open import Synthetic.Cubes Δ¹ i0 i1
-open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I using (Δ^_; Δ-suc; Δ⁰-is-singleton)
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+  using (Δ^_; Δ-suc; Δ⁰-is-singleton)
 }
 }
 
@@ -196,63 +198,53 @@ the counit is an equivalence by three-for-two.}
 
 \agda{
 module _ (n : ℕ) where
+  open is-lattice-hom
 
-  private
-    module Pn = Algebra (Polynomial-Algebra n)
-    open is-lattice-hom
+  Polynomial-linear : Polynomials (suc n) → (Δ¹ → Polynomials n)
+  Polynomial-linear p i = Δ².t p Pn.∨ (Δ².s p Pn.∧ Pn.ι i)
+    where module Pn = Algebra (Polynomial-Algebra n)
 
-    adj : Δ¹ × Spec (Polynomial-Algebra n)
-        → Spec (Polynomial-Algebra (suc n))
-    adj = Polynomial-adjoin (initial-Algebra I) I-distr n
+  Polynomial-linear-is-equiv
+    : Phoa's-Generalised-Principle (Polynomial-Algebra n)
+    → is-equiv Polynomial-linear
+  Polynomial-linear-is-equiv ph = is-equiv←qinv (endpoints , η , ε)
+    where
+      module Pn = Algebra (Polynomial-Algebra n)
 
-    linear : Polynomials (suc n) → (Δ¹ → Polynomials n)
-    linear p i = Δ².t p Pn.∨ (Δ².s p Pn.∧ Pn.ι i)
+      mono : (α : Δ¹ → Polynomials n) → α i0 Pn.≤ α i1
+      mono α
+        = Pn.≤←∨
+            (sym (ph α i1
+                 ∙ ap (α i0 Pn.∨_)
+                     (ap (α i1 Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)))
 
-    linear-is-equiv
-      : Phoa's-Generalised-Principle (Polynomial-Algebra n) → is-equiv linear
-    linear-is-equiv ph = is-equiv←qinv (endpoints , η , ε)
-      where
-        mono : (α : Δ¹ → Polynomials n) → α i0 Pn.≤ α i1
-        mono α
-          = Pn.≤←∨
-              (sym (ph α i1
-                   ∙ ap (α i0 Pn.∨_)
-                       (ap (α i1 Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)))
+      endpoints : (Δ¹ → Polynomials n) → Polynomials (suc n)
+      endpoints α = (α i1 , α i0) ⦃ mono α ⦄
 
-        endpoints : (Δ¹ → Polynomials n) → Polynomials (suc n)
-        endpoints α = (α i1 , α i0) ⦃ mono α ⦄
+      η : (p : Polynomials (suc n)) → endpoints (Polynomial-linear p) ＝ p
+      η p
+        = Δ²-ext
+            ( ap (Δ².t p Pn.∨_)
+                (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)
+              ∙ Pn.∨-comm ∙ Pn.≤-max' (Δ².mono p)
+            , ap (Δ².t p Pn.∨_)
+                (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-0) ∙ Pn.0-init')
+              ∙ Pn.∨-comm ∙ Pn.0-bottom')
 
-        η : (p : Polynomials (suc n)) → endpoints (linear p) ＝ p
-        η p
-          = Δ²-ext
-              ( ap (Δ².t p Pn.∨_)
-                  (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)
-                ∙ Pn.∨-comm ∙ Pn.≤-max' (Δ².mono p)
-              , ap (Δ².t p Pn.∨_)
-                  (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-0) ∙ Pn.0-init')
-                ∙ Pn.∨-comm ∙ Pn.0-bottom')
-
-        ε : (α : Δ¹ → Polynomials n) → linear (endpoints α) ＝ α
-        ε α = funext→ λ i → sym (ph α i)
-
-    key : (p : Polynomials (suc n)) (i : Δ¹)
-        → (λ g → eval (Polynomial-Algebra (suc n)) p (adj (i , g)))
-          ＝ eval (Polynomial-Algebra n) (linear p i)
-    key p i
-      = funext→ λ g →
-          let gh = un-is-lattice-alg-hom (g .snd) in
-          sym ( gh .pres-∨
-              ∙ ap (g .fst .fst (Δ².t p) ∨_)
-                  (gh .pres-∧ ∙ ap (g .fst .fst (Δ².s p) ∧_) (g .fst .snd i))
-              ∙ ∨-comm)
+      ε : (α : Δ¹ → Polynomials n) → Polynomial-linear (endpoints α) ＝ α
+      ε α = funext→ λ i → sym (ph α i)
 
   Polynomial-Algebra-is-quasicoherent-suc
     : is-quasicoherent (Polynomial-Algebra n)
     → Phoa's-Generalised-Principle (Polynomial-Algebra n)
     → is-quasicoherent (Polynomial-Algebra (suc n))
   Polynomial-Algebra-is-quasicoherent-suc qc ph
-    = 3-for-2~ compare Φ-is-equiv (linear-is-equiv ph)
+    = 3-for-2~ compare Φ-is-equiv (Polynomial-linear-is-equiv ph)
     where
+      adj : Δ¹ × Spec (Polynomial-Algebra n)
+          → Spec (Polynomial-Algebra (suc n))
+      adj = Polynomial-adjoin (initial-Algebra I) I-distr n
+
       Φ : Obs (Spec (Polynomial-Algebra (suc n))) → (Δ¹ → Polynomials n)
       Φ = (is-equiv.bwd qc ∘_) ∘ curry ∘ (_∘ adj)
 
@@ -263,11 +255,23 @@ module _ (n : ℕ) where
               (precomp-equiv
                 (Polynomial-adjoin-is-equiv (initial-Algebra I) I-distr n)))
 
-      compare : linear ~ Φ ∘ eval (Polynomial-Algebra (suc n))
+      eval-adj
+        : (p : Polynomials (suc n)) (i : Δ¹)
+        → (λ g → eval (Polynomial-Algebra (suc n)) p (adj (i , g)))
+          ＝ eval (Polynomial-Algebra n) (Polynomial-linear p i)
+      eval-adj p i
+        = funext→ λ g →
+            let gh = un-is-lattice-alg-hom (g .snd) in
+            sym ( gh .pres-∨
+                ∙ ap (g .fst .fst (Δ².t p) ∨_)
+                    (gh .pres-∧ ∙ ap (g .fst .fst (Δ².s p) ∧_) (g .fst .snd i))
+                ∙ ∨-comm)
+
+      compare : Polynomial-linear ~ Φ ∘ eval (Polynomial-Algebra (suc n))
       compare p
         = funext→ λ i →
-            sym (ap (is-equiv.bwd qc) (key p i)
-                ∙ is-equiv.η qc (linear p i))
+            sym (ap (is-equiv.bwd qc) (eval-adj p i)
+                ∙ is-equiv.η qc (Polynomial-linear p i))
 }
 }
 
@@ -368,6 +372,67 @@ cube-is-sober←duality = cube-is-sober ∘ SQCP←duality
 }
 }
 
+\subtree[ub-004L]{
+\taxon{Lemma}
+\title{Cubes in a spectrum are homomorphisms to polynomials}
+\author{ulrikbuchholtz}
+\date{2026-10-07}
+
+\p{Assume [SQCP](stt-00TC). For an algebra #{A}, a map
+#{g : \II^m \to \Spec(A)} is the same thing as a map of algebras
+#{h : A \to \II[y_1, \ldots, y_m]}, with #{g(z)} the composite of #{h} and
+evaluation at #{z}. Indeed #{\II^m \simeq \Spec(\II[y_1, \ldots, y_m])} by
+[freeness](ub-001U), and #{\II[y_1, \ldots, y_m]} is
+[quasicoherent](ub-0021), so #{\Spec} is fully faithful on maps into it.
+This is what reconciles the two readings of a crisp cube in
+[flatness](ub-0040).}
+
+\quiver{
+\begin{tikzcd}
+	{\II^m} && {\Spec(A)} \\
+	\\
+	{\Spec(\II[y_1, \ldots, y_m])}
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["\simeq"', from=1-1, to=3-1]
+	\arrow["{\Spec(h)}"', from=3-1, to=1-3]
+\end{tikzcd}
+}
+
+\p{The vertical map sends a point #{z} to evaluation at #{z}, and #{\Spec(h)}
+is precomposition with #{h}, so the triangle says #{g(z) = \mathrm{ev}_z
+\circ h}.}
+
+\agda{
+module _ (sqcp : SQCP) {𝓤} {X : Type 𝓤} (A : Algebra I X) where
+
+  Spec-map-from-cube-is-equiv
+    : (m : ℕ) → is-equiv (Spec-map {A = A} {Polynomial-Algebra m})
+  Spec-map-from-cube-is-equiv m
+    = Spec-map-is-equiv←quasicoherent (Polynomial-Algebra m)
+        (Polynomial-Algebra-is-quasicoherent←SQCP sqcp m) A
+
+  cube-hom
+    : (m : ℕ) → ((Fin m → Δ¹) → Spec A)
+    → LatticeAlgHom A (Polynomial-Algebra m)
+  cube-hom m g
+    = is-equiv.bwd (Spec-map-from-cube-is-equiv m)
+        (g ∘ Polynomial-ev (initial-Algebra I) I-distr m)
+
+  cube-hom-at
+    : (m : ℕ) (g : (Fin m → Δ¹) → Spec A) (z : Fin m → Δ¹)
+    → g z ＝ LatticeAlgHom-∘ (Polynomial-eval-at m z) (cube-hom m g)
+  cube-hom-at m g z
+    = ap g (sym (is-equiv.ε vertices-is-equiv z))
+    ∙ sym
+        (happly
+          (is-equiv.ε (Spec-map-from-cube-is-equiv m)
+            (g ∘ Polynomial-ev (initial-Algebra I) I-distr m))
+          (Polynomial-eval-at m z))
+    where
+      vertices-is-equiv = Polynomial-ev-is-equiv (initial-Algebra I) I-distr m
+}
+}
+
 \subtree[ub-003X]{
 \taxon{Lemma}
 \title{The Nullstellensatz for one relation}
@@ -408,10 +473,10 @@ module Nullstellensatz (s t : Δ¹) where
         ( Algebra-id-hom ~refl (initial-lattice-algebra I)
         , λ where x y (_ , px , py) → px ∙ e ∙ sym py )
 
+  counit-const : (a : Δ¹) → eval A (ι-quot a) ＝ (λ _ → a)
+  counit-const a = funext→ λ φ → φ .fst .snd a
+
   module _ (qc : is-quasicoherent A) where
-    private
-      counit-const : (a : Δ¹) → eval A (ι-quot a) ＝ (λ _ → a)
-      counit-const a = funext→ λ φ → φ .fst .snd a
 
     ⟪⟫←const
       : {a b : Δ¹} → ((φ : Spec A) → a ＝ b) → ⟪⟫-rel {L = I} rel a b
@@ -468,173 +533,185 @@ module _ where
   open is-distributive I-distr
   open PrincipalCongruence I-distr
 
-  private
-    module N≤ (i j : Δ¹) = Nullstellensatz (i ∧ j) i
-    module N= (i j : Δ¹) = Nullstellensatz i j
+  module Nullstellensatz≤ (i j : Δ¹) = Nullstellensatz (i ∧ j) i
 
-    bounds≤
-      : (i j : Δ¹) {a b : Δ¹}
-      → N≤.rel i j a b → bounded-rel (i ∧ j) i a b
-    bounds≤ i j (_ , pa , pb)
-      = ( ap (_∧ (i ∧ j)) pa ∙ ∧-idem
-          ∙ sym (ap (_∧ j) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (_∧ (i ∧ j)) pb)
-        , ap (_∨ i) pa ∙ ∨-comm ∙ ∨-∧-abs ∙ sym ∨-idem ∙ sym (ap (_∨ i) pb) )
+  bounded-rel←≤
+    : (i j : Δ¹) {a b : Δ¹}
+    → Nullstellensatz≤.rel i j a b → bounded-rel (i ∧ j) i a b
+  bounded-rel←≤ i j (_ , pa , pb)
+    = ( ap (_∧ (i ∧ j)) pa ∙ ∧-idem
+        ∙ sym (ap (_∧ j) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (_∧ (i ∧ j)) pb)
+      , ap (_∨ i) pa ∙ ∨-comm ∙ ∨-∧-abs ∙ sym ∨-idem ∙ sym (ap (_∨ i) pb) )
 
-    bounds=
-      : (i j : Δ¹) {a b : Δ¹}
-      → N=.rel i j a b → bounded-rel (i ∧ j) (i ∨ j) a b
-    bounds= i j (_ , pa , pb)
-      = ( ap (_∧ (i ∧ j)) pa ∙ ∧-assoc ∙ ap (_∧ j) ∧-idem ∙ ∧-comm
-          ∙ sym (ap (_∧ i) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (j ∧_) ∧-comm)
-          ∙ sym (ap (_∧ (i ∧ j)) pb)
-        , ap (_∨ (i ∨ j)) pa ∙ ∨-assoc ∙ ap (_∨ j) ∨-idem ∙ ∨-comm
-          ∙ sym (ap (_∨ i) ∨-idem) ∙ sym ∨-assoc ∙ sym (ap (j ∨_) ∨-comm)
-          ∙ sym (ap (_∨ (i ∨ j)) pb) )
+  bounded-rel←＝
+    : (i j : Δ¹) {a b : Δ¹}
+    → Nullstellensatz.rel i j a b → bounded-rel (i ∧ j) (i ∨ j) a b
+  bounded-rel←＝ i j (_ , pa , pb)
+    = ( ap (_∧ (i ∧ j)) pa ∙ ∧-assoc ∙ ap (_∧ j) ∧-idem ∙ ∧-comm
+        ∙ sym (ap (_∧ i) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (j ∧_) ∧-comm)
+        ∙ sym (ap (_∧ (i ∧ j)) pb)
+      , ap (_∨ (i ∨ j)) pa ∙ ∨-assoc ∙ ap (_∨ j) ∨-idem ∙ ∨-comm
+        ∙ sym (ap (_∨ i) ∨-idem) ∙ sym ∨-assoc ∙ sym (ap (j ∨_) ∨-comm)
+        ∙ sym (ap (_∨ (i ∨ j)) pb) )
 
-    glue-formula
-      : (a b i j : Δ¹)
-      → a ∧ (i ∧ j) ＝ b ∧ (i ∧ j) → a ∨ (i ∨ j) ＝ b ∨ (i ∨ j)
-      → i ≤ j → (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b) ＝ a
-    glue-formula a b i j r₁ r₂ h
-      = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
-          ＝⟨ ap (λ x → (a ∧ j) ∨ x ∨ (a ∧ b)) (sym p') ⟩
-        (a ∧ j) ∨ (a ∧ i) ∨ (a ∧ b)
-          ＝⟨ sym distrib₂-∧-∨ ⟩
-        a ∧ (j ∨ i ∨ b)
-          ＝⟨ ap (a ∧_) (∨-assoc ∙ ap (_∨ b) (∨-comm ∙ m) ∙ ∨-comm) ⟩
-        a ∧ (b ∨ j)
-          ＝⟨ ap (a ∧_) (sym q') ⟩
-        a ∧ (a ∨ j)
-          ＝⟨ ∧-∨-abs ⟩
-        a ∎
-      where
-        m : i ∨ j ＝ j
-        m = ≤-max h
+  glue-along-≤
+    : (a b i j : Δ¹)
+    → a ∧ (i ∧ j) ＝ b ∧ (i ∧ j) → a ∨ (i ∨ j) ＝ b ∨ (i ∨ j)
+    → i ≤ j → (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b) ＝ a
+  glue-along-≤ a b i j r₁ r₂ h
+    = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
+        ＝⟨ ap (λ x → (a ∧ j) ∨ x ∨ (a ∧ b)) (sym p') ⟩
+      (a ∧ j) ∨ (a ∧ i) ∨ (a ∧ b)
+        ＝⟨ sym distrib₂-∧-∨ ⟩
+      a ∧ (j ∨ i ∨ b)
+        ＝⟨ ap (a ∧_) (∨-assoc ∙ ap (_∨ b) (∨-comm ∙ m) ∙ ∨-comm) ⟩
+      a ∧ (b ∨ j)
+        ＝⟨ ap (a ∧_) (sym q') ⟩
+      a ∧ (a ∨ j)
+        ＝⟨ ∧-∨-abs ⟩
+      a ∎
+    where
+      m : i ∨ j ＝ j
+      m = ≤-max h
 
-        p' : a ∧ i ＝ b ∧ i
-        p' = sym (ap (a ∧_) h) ∙ r₁ ∙ ap (b ∧_) h
+      p' : a ∧ i ＝ b ∧ i
+      p' = sym (ap (a ∧_) h) ∙ r₁ ∙ ap (b ∧_) h
 
-        q' : a ∨ j ＝ b ∨ j
-        q' = sym (ap (a ∨_) m) ∙ r₂ ∙ ap (b ∨_) m
+      q' : a ∨ j ＝ b ∨ j
+      q' = sym (ap (a ∨_) m) ∙ r₂ ∙ ap (b ∨_) m
 
   module _ (d : duality) (i j : Δ¹) where
-    private
-      P : Type 𝓘
-      P = generating-fam-is-simplicial (i , j)
+    simplicial-const-is-injective
+      : is-injective (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-injective {a} {b} e
+      = cancel-∧-∨ {w = i ∧ j} (cert≤ .fst)
+          (distrib-∨-∧ ∙ ap₂ _∧_ (cert≤ .snd) (cert≥ .snd) ∙ sym distrib-∨-∧)
+      where
+        module N≤ = Nullstellensatz≤
 
-      qc≤ : is-quasicoherent (N≤.A i j)
-      qc≤ = d (N≤.A i j) (Presented-is-finitely-presented _)
+        qc≤ : is-quasicoherent (N≤.A i j)
+        qc≤ = d _ (Presented-is-finitely-presented _)
 
-      qc≥ : is-quasicoherent (N≤.A j i)
-      qc≥ = d (N≤.A j i) (Presented-is-finitely-presented _)
+        qc≥ : is-quasicoherent (N≤.A j i)
+        qc≥ = d _ (Presented-is-finitely-presented _)
 
-      qc= : is-quasicoherent (N=.A i j)
-      qc= = d (N=.A i j) (Presented-is-finitely-presented _)
+        h : (x : generating-fam-is-simplicial (i , j)) → a ＝ b
+        h = happly e
 
-      const-is-injective : is-injective (const: Δ¹ P)
-      const-is-injective {a} {b} e
-        = cancel-∧-∨ {w = i ∧ j} (cert≤ .fst)
-            (distrib-∨-∧ ∙ ap₂ _∧_ (cert≤ .snd) (cert≥ .snd) ∙ sym distrib-∨-∧)
-        where
-          h : (x : P) → a ＝ b
-          h = happly e
+        cert≤ : bounded-rel (i ∧ j) i a b
+        cert≤
+          = ⟪⟫-least (bounded-congruence (i ∧ j) i) (bounded-rel←≤ i j)
+              (N≤.⟪⟫←const i j qc≤ (λ φ → h (ι₁ (N≤.rel←spec i j φ))))
 
-          cert≤ : bounded-rel (i ∧ j) i a b
-          cert≤
-            = ⟪⟫-least (bounded-congruence (i ∧ j) i) (bounds≤ i j)
-                (N≤.⟪⟫←const i j qc≤ (λ φ → h (ι₁ (N≤.rel←spec i j φ))))
+        cert≥ : bounded-rel (j ∧ i) j a b
+        cert≥
+          = ⟪⟫-least (bounded-congruence (j ∧ i) j) (bounded-rel←≤ j i)
+              (N≤.⟪⟫←const j i qc≥ (λ φ → h (ι₂ (N≤.rel←spec j i φ))))
 
-          cert≥ : bounded-rel (j ∧ i) j a b
-          cert≥
-            = ⟪⟫-least (bounded-congruence (j ∧ i) j) (bounds≤ j i)
-                (N≤.⟪⟫←const j i qc≥ (λ φ → h (ι₂ (N≤.rel←spec j i φ))))
+    simplicial-const-is-surjective
+      : is-surjective (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-surjective f
+      = Trunc.ind (λ _ → trunc!)
+          (λ (a , ha) →
+            Trunc.ind (λ _ → trunc!)
+              (λ (b , hb) → Trunc.η (witness a b (fix≤ a ha) (fix≥ b hb)))
+              (N≤.const←fun j i qc≥ (λ φ → f (ι₂ (N≤.rel←spec j i φ)))))
+          (N≤.const←fun i j qc≤ (λ φ → f (ι₁ (N≤.rel←spec i j φ))))
+      where
+        module N≤ = Nullstellensatz≤
+        module N= = Nullstellensatz
 
-      const-is-surjective : is-surjective (const: Δ¹ P)
-      const-is-surjective f
-        = Trunc.ind (λ _ → trunc!)
-            (λ (a , ha) →
-              Trunc.ind (λ _ → trunc!)
-                (λ (b , hb) → Trunc.η (witness a b (fix≤ a ha) (fix≥ b hb)))
-                (N≤.const←fun j i qc≥ (λ φ → f (ι₂ (N≤.rel←spec j i φ)))))
-            (N≤.const←fun i j qc≤ (λ φ → f (ι₁ (N≤.rel←spec i j φ))))
-        where
-          fix≤
-            : (a : Δ¹)
-            → ((φ : Spec (N≤.A i j)) → f (ι₁ (N≤.rel←spec i j φ)) ＝ a)
-            → (p : i ≤ j) → f (ι₁ p) ＝ a
-          fix≤ a ha p
-            = ap (λ q → f (ι₁ q)) (carrier-is-set _ _ _ _)
-            ∙ ha (N≤.spec←rel i j p)
+        qc≤ : is-quasicoherent (N≤.A i j)
+        qc≤ = d _ (Presented-is-finitely-presented _)
 
-          fix≥
-            : (b : Δ¹)
-            → ((φ : Spec (N≤.A j i)) → f (ι₂ (N≤.rel←spec j i φ)) ＝ b)
-            → (q : j ≤ i) → f (ι₂ q) ＝ b
-          fix≥ b hb q
-            = ap (λ q → f (ι₂ q)) (carrier-is-set _ _ _ _)
-            ∙ hb (N≤.spec←rel j i q)
+        qc≥ : is-quasicoherent (N≤.A j i)
+        qc≥ = d _ (Presented-is-finitely-presented _)
 
-          witness
-            : (a b : Δ¹)
-            → ((p : i ≤ j) → f (ι₁ p) ＝ a) → ((q : j ≤ i) → f (ι₂ q) ＝ b)
-            → fibre (const: Δ¹ P) f
-          witness a b fa fb
-            = ( c
-              , funext→ λ x →
-                  *-prop-rec (Π-is-prop λ _ → carrier-is-set _ _)
-                    (λ p y →
-                      left p
-                      ∙ ap f (generating-fam-is-simplicial-is-prop (i , j) (ι₁ p) y))
-                    (λ q y →
-                      right q
-                      ∙ ap f (generating-fam-is-simplicial-is-prop (i , j) (ι₂ q) y))
-                    x x )
-            where
-              c : Δ¹
-              c = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
+        qc= : is-quasicoherent (N=.A i j)
+        qc= = d _ (Presented-is-finitely-presented _)
 
-              agree : (φ : Spec (N=.A i j)) → a ＝ b
-              agree φ = sym (fa p) ∙ ap f (glue (p , q)) ∙ fb q
-                where
-                  e : i ＝ j
-                  e = N=.rel←spec i j φ
+        fix≤
+          : (a : Δ¹)
+          → ((φ : Spec (N≤.A i j)) → f (ι₁ (N≤.rel←spec i j φ)) ＝ a)
+          → (p : i ≤ j) → f (ι₁ p) ＝ a
+        fix≤ a ha p
+          = ap (λ q → f (ι₁ q)) (carrier-is-set _ _ _ _)
+          ∙ ha (N≤.spec←rel i j p)
 
-                  p : i ≤ j
-                  p = ap (i ∧_) (sym e) ∙ ∧-idem
+        fix≥
+          : (b : Δ¹)
+          → ((φ : Spec (N≤.A j i)) → f (ι₂ (N≤.rel←spec j i φ)) ＝ b)
+          → (q : j ≤ i) → f (ι₂ q) ＝ b
+        fix≥ b hb q
+          = ap (λ q → f (ι₂ q)) (carrier-is-set _ _ _ _)
+          ∙ hb (N≤.spec←rel j i q)
 
-                  q : j ≤ i
-                  q = ap (j ∧_) e ∙ ∧-idem
+        witness
+          : (a b : Δ¹)
+          → ((p : i ≤ j) → f (ι₁ p) ＝ a) → ((q : j ≤ i) → f (ι₂ q) ＝ b)
+          → fibre (const: Δ¹ (generating-fam-is-simplicial (i , j))) f
+        witness a b fa fb
+          = ( c
+            , funext→ λ x →
+                *-prop-rec (Π-is-prop λ _ → carrier-is-set _ _)
+                  (λ p y →
+                    left p
+                    ∙ ap f
+                        (generating-fam-is-simplicial-is-prop (i , j) (ι₁ p) y))
+                  (λ q y →
+                    right q
+                    ∙ ap f
+                        (generating-fam-is-simplicial-is-prop (i , j) (ι₂ q) y))
+                  x x )
+          where
+            c : Δ¹
+            c = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
 
-              cert : bounded-rel (i ∧ j) (i ∨ j) a b
-              cert
-                = ⟪⟫-least (bounded-congruence (i ∧ j) (i ∨ j)) (bounds= i j)
-                    (N=.⟪⟫←const i j qc= agree)
+            agree : (φ : Spec (N=.A i j)) → a ＝ b
+            agree φ = sym (fa p) ∙ ap f (glue (p , q)) ∙ fb q
+              where
+                e : i ＝ j
+                e = N=.rel←spec i j φ
 
-              left : (p : i ≤ j) → c ＝ f (ι₁ p)
-              left p = glue-formula a b i j (cert .fst) (cert .snd) p ∙ sym (fa p)
+                p : i ≤ j
+                p = ap (i ∧_) (sym e) ∙ ∧-idem
 
-              right : (q : j ≤ i) → c ＝ f (ι₂ q)
-              right q
-                = rearrange ∙ glue-formula b a j i r₁' r₂' q ∙ sym (fb q)
-                where
-                  r₁' : b ∧ (j ∧ i) ＝ a ∧ (j ∧ i)
-                  r₁' = ap (b ∧_) ∧-comm ∙ sym (cert .fst) ∙ ap (a ∧_) ∧-comm
+                q : j ≤ i
+                q = ap (j ∧_) e ∙ ∧-idem
 
-                  r₂' : b ∨ (j ∨ i) ＝ a ∨ (j ∨ i)
-                  r₂' = ap (b ∨_) ∨-comm ∙ sym (cert .snd) ∙ ap (a ∨_) ∨-comm
+            cert : bounded-rel (i ∧ j) (i ∨ j) a b
+            cert
+              = ⟪⟫-least (bounded-congruence (i ∧ j) (i ∨ j))
+                  (bounded-rel←＝ i j)
+                  (N=.⟪⟫←const i j qc= agree)
 
-                  rearrange : c ＝ (b ∧ i) ∨ (a ∧ j) ∨ (b ∧ a)
-                  rearrange
-                    = ∨-assoc ∙ ap (_∨ (a ∧ b)) ∨-comm ∙ sym ∨-assoc
-                    ∙ ap (λ x → (b ∧ i) ∨ (a ∧ j) ∨ x) ∧-comm
+            left : (p : i ≤ j) → c ＝ f (ι₁ p)
+            left p = glue-along-≤ a b i j (cert .fst) (cert .snd) p ∙ sym (fa p)
 
-    const-is-equiv : is-equiv (const: Δ¹ P)
-    const-is-equiv
-      = is-equiv←is-surjective-embedding const-is-surjective
-          (is-embedding←is-injective (→-is-set carrier-is-set) const-is-injective)
+            right : (q : j ≤ i) → c ＝ f (ι₂ q)
+            right q
+              = rearrange ∙ glue-along-≤ b a j i r₁' r₂' q ∙ sym (fb q)
+              where
+                r₁' : b ∧ (j ∧ i) ＝ a ∧ (j ∧ i)
+                r₁' = ap (b ∧_) ∧-comm ∙ sym (cert .fst) ∙ ap (a ∧_) ∧-comm
+
+                r₂' : b ∨ (j ∨ i) ＝ a ∨ (j ∨ i)
+                r₂' = ap (b ∨_) ∨-comm ∙ sym (cert .snd) ∙ ap (a ∨_) ∨-comm
+
+                rearrange : c ＝ (b ∧ i) ∨ (a ∧ j) ∨ (b ∧ a)
+                rearrange
+                  = ∨-assoc ∙ ap (_∨ (a ∧ b)) ∨-comm ∙ sym ∨-assoc
+                  ∙ ap (λ x → (b ∧ i) ∨ (a ∧ j) ∨ x) ∧-comm
+
+    simplicial-const-is-equiv
+      : is-equiv (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-equiv
+      = is-equiv←is-surjective-embedding simplicial-const-is-surjective
+          (is-embedding←is-injective (→-is-set carrier-is-set)
+            simplicial-const-is-injective)
 
   Δ¹-is-simplicial : duality → is-simplicial Δ¹
-  Δ¹-is-simplicial d (i , j) = const-is-equiv d i j
+  Δ¹-is-simplicial d (i , j) = simplicial-const-is-equiv d i j
 }
 }
 

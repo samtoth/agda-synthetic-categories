@@ -28,6 +28,8 @@ open import Modalities.Instances.Truncation
 
 open import Core.SetQuotients
 
+open import Ergonomics.Extensionality
+
 open import Algebra.Lattice.Instances.Quotient
 open import Algebra.Lattice.Instances.Free.Multivariate L distr
 }
@@ -118,6 +120,29 @@ algebra that respects the relations.}
     → respects (LatticeAlgHom-∘ h Presented-ι)
   Presented-ι-respects h k = ap (h .fst .fst) (relation-holds k)
 }
+
+\p{The quotient map is surjective and the free algebra is free, so two maps
+out of the presented algebra into a distributive algebra agree as soon as
+they agree on the generators.}
+
+\agda{
+  Presented-hom-ext
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y} (Md : is-distributive-algebra M)
+      (f g : LatticeAlgHom Presented M)
+    → ((k : Fin generators)
+      → f .fst .fst (ι-quot (Polynomial-gen k))
+      ＝ g .fst .fst (ι-quot (Polynomial-gen k)))
+    → f ＝ g
+  Presented-hom-ext {M = M} Md f g h
+    = ext! (Quot-elim-prop λ x → happly (ap (λ φ → φ .fst .fst) on-free) x)
+    where
+      open Algebra M using (Carrier-is-truncated)
+
+      on-free
+        : LatticeAlgHom-∘ f Presented-ι ＝ LatticeAlgHom-∘ g Presented-ι
+      on-free
+        = unap-equiv (Polynomial-ev-is-equiv M Md generators) (funext→ h)
+}
 }
 
 \subtree[ub-001N]{
@@ -171,36 +196,31 @@ principle](stt-00D3) applied to the identity.}
 
 \agda{
 module _ (n : ℕ) where
-  private
-    module Pn = Lattice (Polynomial-Lattice n)
-    open Pn using (Carrier-is-truncated)
+  open Lattice (Polynomial-Lattice n) using (Carrier-is-truncated)
 
   free-presentation : Presentation
   free-presentation = mk-presentation n 0 (λ ()) (λ ())
 
-  private
-    R : Polynomials n → Polynomials n → Type 𝓤
-    R = presentation-rel free-presentation
+  free-presentation-ι-is-equiv
+    : is-equiv (ι-quot {A = Polynomials n}
+                       {R = ⟪⟫-rel {L = Polynomial-Lattice n}
+                              (presentation-rel free-presentation)})
+  free-presentation-ι-is-equiv
+    = is-equiv←qinv
+        ( quot-inverse
+        , Quot-rec-β _ _
+        , Quot-elim-prop (λ x → ap ι-quot (Quot-rec-β _ _ x)))
+    where
+      R = presentation-rel free-presentation
 
-    R-is-trivial : (x y : Polynomials n) → R x y → x ＝ y
-    R-is-trivial x y (() , _)
-
-    quot-inverse : Polynomials n / ⟪⟫-rel {L = Polynomial-Lattice n} R
-                 → Polynomials n
-    quot-inverse
-      = Quot-rec id
-          (λ w → pres-⟪⟫ (Polynomial-Lattice n) R (Polynomial-Lattice n) id
-                   (initial-lattice-algebra (Polynomial-Lattice n)) R-is-trivial
-                   (w .fst) (w .snd .fst) (w .snd .snd))
-
-    ι-quot-is-equiv
-      : is-equiv (ι-quot {A = Polynomials n}
-                         {R = ⟪⟫-rel {L = Polynomial-Lattice n} R})
-    ι-quot-is-equiv
-      = is-equiv←qinv
-          ( quot-inverse
-          , Quot-rec-β _ _
-          , Quot-elim-prop (λ x → ap ι-quot (Quot-rec-β _ _ x)))
+      quot-inverse
+        : Polynomials n / ⟪⟫-rel {L = Polynomial-Lattice n} R → Polynomials n
+      quot-inverse
+        = Quot-rec id
+            (λ w → pres-⟪⟫ (Polynomial-Lattice n) R (Polynomial-Lattice n) id
+                     (initial-lattice-algebra (Polynomial-Lattice n))
+                     (λ where _ _ (() , _))
+                     (w .fst) (w .snd .fst) (w .snd .snd))
 
   Polynomial-Algebra-is-finitely-presented
     : is-finitely-presented (Polynomial-Algebra n)
@@ -208,8 +228,8 @@ module _ (n : ℕ) where
     = Trunc.η
         ( free-presentation
         , is-LatticeAlgHom-equiv-bwd
-            {f = ι-quot-LatticeAlgHom (Polynomial-Algebra n) ⟪ R ⟫}
-            ι-quot-is-equiv
-        , is-equiv⁻¹ ι-quot-is-equiv)
+            {f = Presented-ι free-presentation}
+            free-presentation-ι-is-equiv
+        , is-equiv⁻¹ free-presentation-ι-is-equiv)
 }
 }

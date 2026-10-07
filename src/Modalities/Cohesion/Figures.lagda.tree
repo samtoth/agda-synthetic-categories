@@ -1,0 +1,259 @@
+\date{2026-10-06}
+\title{Equivalences on figures}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{A crisp map #{f : X \to Y} is an \em{equivalence on #{S}-figures} when it
+induces an equivalence #{\modflat{(S \to X)} \simeq \modflat{(S \to Y)}} on
+crisp maps out of #{S} (\ref{ub-0032}), in Lawvere's terminology of figures of
+a given shape \citek{Law07}. The main fact is that this condition glues along unions of
+subtypes (\ref{ub-0033}), and hence along filtrations (\ref{ub-0034}): since a
+union of subtypes is a pushout, mapping out of it is a pullback, and
+#{\flat} preserves pullbacks. It is used to show that
+[a map that is an equivalence on simplex-figures is one on ordered-subcube-figures](ub-003D).}
+
+\agda{
+module Modalities.Cohesion.Figures where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Spans
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.LiftingSquares
+
+open import Core.Arrows
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Core.CartesianSquares
+open import Core.CocartesianSquares
+open import Core.FunctorialityPullbacks
+}
+}
+
+\subtree[ub-0032]{
+\taxon{Definition}
+\title{Equivalences on figures}
+\date{2026-09-05}
+
+\p{For a crisp type #{S}, a map #{S \to X} is a \em{figure of shape #{S}} in
+#{X}, and #{\modflat{(S \to X)}} is the type of crisp #{S}-figures; in the
+presheaf model it is the value #{X(S)} of #{X} at #{S}. A crisp
+#{f : X \to Y} is an \em{equivalence on #{S}-figures} when
+#{\modflat{(f \circ -)} : \modflat{(S \to X)} \to \modflat{(S \to Y)}} is an
+equivalence, that is, when #{f \circ -} is a #{\flat}-equivalence. This is the
+condition that a [separating family](stt-00J7) asks of a map on each of its
+members.}
+
+\p{The terminology of figures of a given shape is Lawvere's \citek{Law07}.
+In abstract homotopy theory, a map #{f} for which #{\mathrm{Map}(S, f)} is an
+equivalence is called an \em{#{S}-colocal equivalence}
+\citet{Def. 3.1.8}{Hir03}, or an
+\em{#{S}-cellular equivalence} \citek{Far96}; the notion here is the crisp
+version, with #{\flat} of the mapping type in place of the mapping space.}
+
+\p{Being an equivalence on #{S}-figures is a proposition, and it is invariant
+under crisp equivalence of #{S}, since the two restriction maps commute with
+the two comparisons on the nose. The invariance is used in two shapes: along a
+bundled equivalence, and along a pair of fibrewise maps between crisp subtypes
+of a crisp type, which is an equivalence as soon as it has a converse
+(\ref{ub-0015}).}
+
+\agda{
+is-♭-equiv-on
+  : ∀ {@♭ 𝓦 𝓤 𝓥} (@♭ S : Type 𝓦) {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥}
+  → (@♭ f : X → Y) → Type (𝓦 ⊔ 𝓤 ⊔ 𝓥)
+is-♭-equiv-on S f = is-♭-equiv (postcomp S f)
+
+module _ {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y) where
+
+  is-♭-equiv-on←equiv
+    : ∀ {@♭ 𝓦 𝓦'} {@♭ S : Type 𝓦} {@♭ S' : Type 𝓦'}
+      (@♭ e : S → S') → @♭ is-equiv e
+    → is-♭-equiv-on S' f → is-♭-equiv-on S f
+  is-♭-equiv-on←equiv {S = S} {S'} e ee h
+    = 3-for-2' (is-♭-equiv←is-equiv (precomp-equiv {f = e} ee))
+        (is-equiv←~ square
+          (is-equiv-∘ (is-♭-equiv←is-equiv (precomp-equiv {f = e} ee)) h))
+    where
+      square
+        : ♭-map (postcomp S f) ∘ ♭-map (precomp X e)
+        ~ ♭-map (precomp Y e) ∘ ♭-map (postcomp S' f)
+      square (mod♭ _) = refl
+
+  is-♭-equiv-on←≃
+    : ∀ {@♭ 𝓦 𝓦'} {@♭ S : Type 𝓦} {@♭ S' : Type 𝓦'}
+      (@♭ e : S ≃ S') → is-♭-equiv-on S' f → is-♭-equiv-on S f
+  is-♭-equiv-on←≃ e = is-♭-equiv-on←equiv (e ._≃_.fwd) (e ._≃_.fwd-is-equiv)
+
+  is-♭-equiv-on←iff
+    : ∀ {@♭ 𝓩 𝓦 𝓦'} {@♭ Z : Type 𝓩}
+      {@♭ S : Z → Type 𝓦} {@♭ S' : Z → Type 𝓦'}
+      (@♭ Sp : (z : Z) → is-prop (S z)) (@♭ S'p : (z : Z) → is-prop (S' z))
+      (@♭ g : (z : Z) → S z → S' z) (@♭ g' : (z : Z) → S' z → S z)
+    → is-♭-equiv-on (Σ Z S') f → is-♭-equiv-on (Σ Z S) f
+  is-♭-equiv-on←iff Sp S'p g g' = is-♭-equiv-on←≃ (sub-incl≃ Sp S'p g g')
+}
+}
+
+\subtree[ub-0033]{
+\taxon{Lemma}
+\title{Equivalences on figures glue along unions}
+\date{2026-09-05}
+
+\p{\strong{Lemma.} Let #{P} and #{Q} be crisp families over a crisp type #{Z}.
+If a crisp map #{f} is an equivalence on #{\sum_Z P}-, #{\sum_Z Q}- and
+#{\sum_Z P \land Q}-figures, then it is one on #{\sum_Z P \lor Q}-figures.}
+
+\p{This is the counterpart for mapping out of
+[the glueing lemma](ub-000T) for anodyne maps, and it runs the other way
+round. There the union was a pushout and a class of maps
+closed under cobase change was glued along it. Here the union is again a
+pushout (\ref{ub-0001}), so mapping out of it is a pullback (that is what
+\code{up-cocartesian} says), and #{\flat} preserves pullbacks (\ref{stt-0058}).
+So #{\modflat{(\sum_Z P \lor Q \to X)}} is the pullback of the top row of}
+
+\quiver{
+\begin{tikzcd}
+	{\modflat{(\sum_Z P \to X)}} & {\modflat{(\sum_Z P \land Q \to X)}} & {\modflat{(\sum_Z Q \to X)}} \\
+	{\modflat{(\sum_Z P \to Y)}} & {\modflat{(\sum_Z P \land Q \to Y)}} & {\modflat{(\sum_Z Q \to Y)}}
+	\arrow[from=1-1, to=1-2]
+	\arrow[from=1-3, to=1-2]
+	\arrow[from=2-1, to=2-2]
+	\arrow[from=2-3, to=2-2]
+	\arrow["{f_*}", from=1-1, to=2-1]
+	\arrow["{f_*}", from=1-2, to=2-2]
+	\arrow["{f_*}", from=1-3, to=2-3]
+\end{tikzcd}
+}
+
+\p{and #{\modflat{(\sum_Z P \lor Q \to Y)}} that of the bottom row. The three
+vertical maps are equivalences by hypothesis, and
+[a map of cospans that is an equivalence at each corner is an equivalence on
+the pullbacks](stt-00BG), so #{f_*} is an equivalence on
+#{\modflat{(\sum_Z P \lor Q \to -)}}, once it is checked that the map induced
+on pullbacks is the one induced by #{f}.}
+
+\p{That check is where the work is, and two naturality facts are all it
+needs: #{\flat} of an
+\code{ap} is the \code{ap} of a #{\flat} (\ref{stt-0109}), and function
+extensionality is natural in the target (\ref{ub-0031}). Both are spent on
+one thing, the third component of the gap map, which is where the pushout's
+filler lives; the other two components agree on the nose, because
+precomposition is associative.}
+
+\agda{
+♭-ap-funext
+  : ∀ {@♭ 𝓒 𝓓 𝓤 𝓥} {@♭ C : Type 𝓒} {@♭ D : Type 𝓓}
+      {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥}
+      (@♭ f : X → Y) (@♭ g : C → X) {@♭ u v : D → C} (@♭ H : u ~ v)
+  → ap (♭-map (postcomp D f)) (ap♭ mod♭ (funext→ (g ◃h H)))
+  ＝ ap♭ mod♭ (funext→ ((f ∘ g) ◃h H))
+♭-ap-funext {D = D} f g H
+  = ap-♭-map (postcomp D f) (funext→ (g ◃h H))
+  ∙ ap♭-cong mod♭
+      ( ap-postcomp-funext f (g ◃h H)
+      ∙ ap funext→ (funext→ (λ c → sym (ap-∘ f g (H c)))))
+}
+
+\agda{
+module ♭-equiv-on-union
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  {@♭ 𝓩 𝓟 𝓠} {@♭ Z : Type 𝓩} (@♭ P : Z → Type 𝓟) (@♭ Q : Z → Type 𝓠)
+  where
+
+  private
+    AC = Arrow-map←Cocone (union-cocone P Q)
+    SQ = transpose-square AC
+
+    ♭SQ : ∀ {@♭ 𝓡} (@♭ R : Type 𝓡)
+        → Arrow-map (♭-map (precomp R (AC .Arrow-map.bot)))
+                    (♭-map (precomp R (AC .Arrow-map.top)))
+    ♭SQ R = ♭Square (precomp-square SQ R)
+
+    ♭gap : ∀ {@♭ 𝓡} (@♭ R : Type 𝓡)
+         → is-equiv (gap-square (♭SQ R))
+    ♭gap R
+      = is-pullback←is-cartesian _
+          (♭-is-cartesian (precomp-square SQ R) (union-is-cocartesian P Q R))
+
+    CM : Cospan-map (Cone←Arrow-map (♭SQ X) .fst) (Cone←Arrow-map (♭SQ Y) .fst)
+    CM .Cospan-map.h₁ = ♭-map (postcomp (Σ Z P) f)
+    CM .Cospan-map.h₂ = ♭-map (postcomp (Σ Z (∩-fam P Q)) f)
+    CM .Cospan-map.h₃ = ♭-map (postcomp (Σ Z Q) f)
+    CM .Cospan-map.H (mod♭ _) = refl
+    CM .Cospan-map.K (mod♭ _) = refl
+
+  is-♭-equiv-on-∪
+    : is-♭-equiv-on (Σ Z (∩-fam P Q)) f
+    → is-♭-equiv-on (Σ Z P) f
+    → is-♭-equiv-on (Σ Z Q) f
+    → is-♭-equiv-on (Σ Z (∪-fam P Q)) f
+  is-♭-equiv-on-∪ hC hP hQ
+    = 3-for-2 (♭gap Y)
+        (is-equiv←~ nat
+          (is-equiv-∘ (Pullback₁-is-equiv CM (hP , hC , hQ)) (♭gap X)))
+    where
+      nat : gap-square (♭SQ Y) ∘ ♭-map (postcomp (Σ Z (∪-fam P Q)) f)
+          ~ Pullback₁ CM ∘ gap-square (♭SQ X)
+      nat (mod♭ g)
+        = pullback-path→
+            ( refl , refl
+            , ∙-refll _ ∙ (∙-refll _ ∙ ap (_∙ refl) (♭-ap-funext f g _)) )
+}
+}
+
+\subtree[ub-0034]{
+\taxon{Lemma}
+\title{Equivalences on figures of a filtration}
+\date{2026-09-05}
+
+\p{The form the union lemma is used in. Let #{C_0, C_1, \ldots} be crisp
+subtypes of #{Z}, and #{\bigvee_{l \le b} C_l} their
+[increasing unions](ub-0046). A crisp map is an equivalence on
+#{\sum_Z \bigvee_{l \le b} C_l}-figures as soon as it is one on the figures
+of each cell #{C_l} and of each \em{incidence}, the part
+#{(C_0 \lor \cdots \lor C_b) \land C_{b+1}} of the next cell already covered.
+The incidences are supplied as subtypes #{D_{b+1}} together with a logical
+equivalence, so that they can be named however is convenient. That is what
+makes a filtration cheaper than a general finite union: the cells need not
+be closed under meets, and only the incidences need to be named. For
+[the staircases of a prism](ub-0024) each incidence is a single wall
+(\ref{ub-002A}).}
+
+\agda{
+module ♭-equiv-on-filtration
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  {@♭ 𝓩 𝓒} {@♭ Z : Type 𝓩}
+  (@♭ C : ℕ → Z → Type 𝓒) (@♭ D : ℕ → Z → Type 𝓒)
+  (@♭ Cp : (l : ℕ) (z : Z) → is-prop (C l z))
+  (@♭ Dp : (l : ℕ) (z : Z) → is-prop (D l z))
+  where
+
+  private
+    ⋁C = ⋁fam C
+    ⋁C-is-prop = ⋁fam-is-prop C Cp
+
+  module _
+    (@♭ inc→ : (b : ℕ) (z : Z) → ∩-fam (⋁C b) (C (suc b)) z → D (suc b) z)
+    (@♭ inc← : (b : ℕ) (z : Z) → D (suc b) z → ∩-fam (⋁C b) (C (suc b)) z)
+    (hC : (@♭ l : ℕ) → is-♭-equiv-on (Σ Z (C l)) f)
+    (hD : (@♭ l : ℕ) → is-♭-equiv-on (Σ Z (D l)) f)
+    where
+
+    is-♭-equiv-on-⋁ : (@♭ b : ℕ) → is-♭-equiv-on (Σ Z (⋁fam C b)) f
+    is-♭-equiv-on-⋁ zero = hC 0
+    is-♭-equiv-on-⋁ (suc b)
+      = ♭-equiv-on-union.is-♭-equiv-on-∪ f (⋁C b) (C (suc b))
+          (is-♭-equiv-on←iff f (λ z → ×-is-prop (⋁C-is-prop b z) (Cp (suc b) z))
+            (Dp (suc b)) (inc→ b) (inc← b) (hD (suc b)))
+          (is-♭-equiv-on-⋁ b)
+          (hC (suc b))
+}
+}

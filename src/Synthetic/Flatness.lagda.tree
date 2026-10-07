@@ -1,0 +1,427 @@
+\date{2026-09-06}
+\title{Flatness of the interval}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{The intended model of triangulated type theory is the topos of cubical
+spaces, presheaves on the Dedekind cube category, which classifies
+[flat distributive lattices](ub-004Q); the interval is the generic one. This
+module considers flatness of #{\II}, in two forms (\ref{ub-0040}): as a
+property of #{\II} among all distributive lattices, and in a crisp form,
+which is how the external statement reads in the internal language. It then
+compares flatness with the other axioms on the interval.}
+
+\p{The two forms agree once #{0 \neq 1} and the crisp points of #{\II} are
+#{0} and #{1} (\ref{ub-0050}). From flatness, #{\II} is nontrivial, local and
+colocal (\ref{ub-004S}), for the reasons any flat lattice is; this needs
+neither cohesion nor any other axiom. In the other direction, crisp flatness
+follows from SQCP together with the [density of crisp cubes](ub-004F), and
+so from SQCP and the [separation of cubes](stt-00J7) (\ref{ub-004C}). The
+connection is that a
+crisp cube in the spectrum of an algebra is, by the generalised Phoa
+principle, a crisp homomorphism into polynomials (\ref{ub-004L}). None of
+this is a characterisation, and \ref{ub-0041} explains why none in finitely
+many coherent sequents can be.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Flatness
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
+  (@♭ I-distr : is-distributive I)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatDiscrete
+open import Modalities.Cohesion.FlatConnectedMaps
+open import Modalities.Cohesion.Continuity
+open import Modalities.Instances.Truncation
+
+open import Algebra.Lattice.Flat
+open import Algebra.Lattice.Crisp
+open import Algebra.Lattice.Instances.Bool
+open import Algebra.Lattice.Instances.Free.BaseChange
+  Bool-Lattice Bool-distributive (Bool-Algebra I) I-distr
+open import Algebra.Lattice.Instances.Free.Multivariate I I-distr
+open import Algebra.Lattice.Presentations I I-distr
+
+open import Synthetic.Quasicoherence Δ¹ I I-distr
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.Categories.DetectingEquivalencesCovariantFamilies Δ¹ I
+  using (module ♭Δ-Induction)
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.CubeDensity Δ¹ i0 i1
+open import Synthetic.Duality Δ¹ I I-distr
+  using (cube-hom; cube-hom-at)
+
+open import Core.Joins
+open import Core.SetQuotients
+
+open import Foundations.InjectiveMaps
+
+import Algebra.Lattice.Instances.Free.Multivariate as Multivariate
+import Algebra.Lattice.Presentations as Presentations
+}
+}
+
+\subtree[ub-0040]{
+\taxon{Definition}
+\title{Flatness of the interval}
+
+\p{The interval is \em{flat} when it is a [flat distributive
+lattice](ub-004Q).}
+
+\agda{
+interval-is-flat : Type 𝓘
+interval-is-flat = is-flat I I-distr
+}
+
+\p{Externally, flatness of the generic lattice is a scheme of geometric
+sequents with Boolean parameters. Read in triangulated type theory those
+external data become crisp: a crisp presentation over #{\II} has Boolean
+parameters, since #{\modflat{\II} \simeq \mathrm{Bool}}, and the factorisation
+#{h : A \to \II[y_1, \ldots, y_n]} is a crisp homomorphism. The point #{y}
+of the cube at which it is [evaluated](ub-004M) is not crisp, and neither is
+the point #{x} of the spectrum being factored. So \em{crisp flatness} says:
+every point of the spectrum of a crisp finitely presented algebra lies on a
+crisp cube in it, where a crisp cube is a crisp homomorphism to polynomials
+rather than a crisp map from #{\II^n} (but see \ref{ub-004L}). Under mild
+assumptions on the crisp points of #{\II}, crisp flatness implies flatness
+(\ref{ub-0050}).}
+
+\agda{
+module _ (@♭ p : Presentation) where
+
+  factors-through-crisp-cube : ⟨♭| ℕ ⟩ → Spec (Presented p) → Type 𝓘
+  factors-through-crisp-cube (mod♭ n) x
+    = Σ[ h ∶ ⟨♭| LatticeAlgHom (Presented p) (Polynomial-Algebra n) ⟩ ]
+      Σ[ y ∶ (Fin n → Δ¹) ]
+        (x ＝ LatticeAlgHom-∘ (Polynomial-eval-at n y) (ε♭ h))
+
+interval-is-crisply-flat : Type 𝓘
+interval-is-crisply-flat
+  = (@♭ p : Presentation) (x : Spec (Presented p))
+  → ║ Σ[ n ∶ ⟨♭| ℕ ⟩ ] factors-through-crisp-cube p n x ║₋₁
+}
+}
+
+\subtree[ub-0050]{
+\taxon{Theorem}
+\title{Crisp flatness implies flatness}
+\date{2026-10-07}
+
+\p{Suppose #{0 \neq 1} and the boundary inclusion #{\partial\Delta^1 \to \II}
+is #{\flat}-surjective, both crisply. Then the crisp points of #{\II} are
+exactly the images of #{\mathrm{Bool}}, and crisp flatness implies
+flatness.}
+
+\p{The map #{\mathrm{Bool} \to \II} is injective because #{0 \neq 1}, and a
+crisp point of #{\II} is #{0} or #{1} by \ref{stt-00UT}.}
+
+\agda{
+module _
+  (@♭ 0≠1 : i0 ≠ i1)
+  (@♭ ∂Δ¹-incl-♭-surjective : is-♭-surjective ∂Δ¹-incl)
+  where
+  open ♭Δ-Induction ∂Δ¹-incl-♭-surjective
+
+  Bool-ι-is-injective : is-injective (Algebra.ι (Bool-Algebra I))
+  Bool-ι-is-injective {true} {true} e = refl
+  Bool-ι-is-injective {true} {false} e = ¡ (0≠1 (sym e))
+  Bool-ι-is-injective {false} {true} e = ¡ (0≠1 e)
+  Bool-ι-is-injective {false} {false} e = refl
+
+  Bool-ι-lift : (@♭ i : Δ¹) → fibre (Algebra.ι (Bool-Algebra I)) i
+  Bool-ι-lift
+    = ♭Δ¹-ind
+        (λ i → fibre (Algebra.ι (Bool-Algebra I)) i
+             , is-prop-map←is-embedding
+                 (is-embedding←is-injective carrier-is-set Bool-ι-is-injective)
+                 i)
+        (false , refl) (true , refl)
+}
+
+\p{Now let #{x : A \to \II} be a homomorphism out of a lattice presented over
+#{\mathrm{Bool}}. Presentations over #{\mathrm{Bool}} are #{\flat}-discrete
+(\ref{ub-004Y}), so we may assume the presentation is crisp. Its
+[base change](ub-0051) is a crisp presentation over #{\II}, of an algebra
+#{A_\II} whose points are those of #{A}, and crisp flatness factors the
+point #{x} of #{\Spec(A_\II)} as a crisp #{h_\II : A_\II \to
+\II[y_1, \ldots, y_n]} followed by evaluation at some #{y}. The images of the
+generators under #{h_\II} are crisp polynomials over #{\II}, so they are base
+changes of polynomials #{q_k} over #{\mathrm{Bool}} (\ref{ub-004Z}). These
+satisfy the relations, base change being injective (\ref{ub-004X}), so they
+define #{h : A \to \mathrm{Bool}[y_1, \ldots, y_n]}, and #{x} is #{h}
+followed by evaluation at #{y}, as both agree on the generators.}
+
+\quiver{
+\begin{tikzcd}
+	{\mathrm{Bool}[x_1, \ldots, x_k]} && A
+	&& {\mathrm{Bool}[y_1, \ldots, y_n]} && \II \\
+	\\
+	{\II[x_1, \ldots, x_k]} && {A_\II} && {\II[y_1, \ldots, y_n]}
+	\arrow[two heads, from=1-1, to=1-3]
+	\arrow["h", dashed, from=1-3, to=1-5]
+	\arrow["{\mathrm{ev}_y}", from=1-5, to=1-7]
+	\arrow["x", curve={height=-24pt}, from=1-3, to=1-7]
+	\arrow[two heads, from=3-1, to=3-3]
+	\arrow["{h_\II}"', from=3-3, to=3-5]
+	\arrow["{\mathrm{ev}_y}"', from=3-5, to=1-7]
+	\arrow["\beta"', from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow["\beta", hook, from=1-5, to=3-5]
+\end{tikzcd}
+}
+
+\p{Here #{\beta} is base change, the left square is the
+[unit](ub-0051) #{A \to A_\II} of base change of the presentation, and the
+triangle on the right is \ref{ub-004W}. The
+crisp map #{h_\II} and the point #{y} come from crisp flatness, applied to
+the map #{A_\II \to \II} induced by #{x}. The dashed #{h} is what is
+constructed: on generators it is the lift of #{h_\II} along #{\beta}, so the
+middle square commutes, and then so does the whole diagram.}
+
+\agda{
+  interval-is-flat←crisply-flat
+    : interval-is-crisply-flat → interval-is-flat
+  interval-is-flat←crisply-flat cflat
+    = ♭-discrete-ind
+        (Presentation-is-♭-discrete Bool-Lattice Bool-distributive
+          Bool-is-♭-discrete)
+        _
+        crisp-case
+    where
+      module BMv = Multivariate Bool-Lattice Bool-distributive
+      module BP = Presentations Bool-Lattice Bool-distributive
+
+      I' : Algebra Bool-Lattice Δ¹
+      I' = Algebra-res (Bool-Algebra I) (initial-Algebra I)
+
+      E : (n : ℕ) → (Fin n → Δ¹) → BMv.Polynomials n → Δ¹
+      E n w = BMv.Polynomial-eval (Bool-Algebra I) I-distr n w .fst .fst
+
+      base-change-eval
+        : (n : ℕ) (w : Fin n → Δ¹) (q : BMv.Polynomials n)
+        → Polynomial-eval-at n w .fst .fst (base-change n q) ＝ E n w q
+      base-change-eval n w q
+        = Polynomial-eval-base-change (initial-Algebra I) I-distr n w q
+        ∙ happly (ap (λ f → f .fst .fst) I'-eval) q
+        where
+          I'-eval
+            : BMv.Polynomial-eval I' I-distr n w
+            ＝ LatticeAlgHom-∘
+                (Algebra-id-hom ~refl (initial-lattice-algebra I))
+                (BMv.Polynomial-eval (Bool-Algebra I) I-distr n w)
+          I'-eval
+            = unap-equiv (BMv.Polynomial-ev-is-equiv I' I-distr n)
+                (funext→ λ k →
+                  BMv.Polynomial-eval-gen I' I-distr n w k
+                  ∙ sym (BMv.Polynomial-eval-gen (Bool-Algebra I) I-distr n w k))
+
+      crisp-case
+        : (@♭ p : Presentations.Presentation Bool-Lattice Bool-distributive)
+          (x : LatticeAlgHom (BP.Presented p) (Bool-Algebra I))
+        → ║ factors-through-free I I-distr p x ║₋₁
+      crisp-case p@(BP.mk-presentation g r lhs rhs) x
+        = Trunc.ind (λ _ → trunc!)
+            (λ where (mod♭ n , mod♭ hI , y , e) → from-cube n hI y e)
+            (cflat (base-change-presentation p) xI)
+        where
+          pI = base-change-presentation p
+
+          xI : Spec (Presented pI)
+          xI = Presented-base-change-extend p (initial-Algebra I) I-distr
+                 (LatticeAlgHom-∘
+                   (Algebra-id-hom ~refl (initial-lattice-algebra I)) x)
+
+          from-cube
+            : (@♭ n : ℕ)
+              (@♭ hI : LatticeAlgHom (Presented (base-change-presentation p))
+                         (Polynomial-Algebra n))
+              (y : Fin n → Δ¹)
+            → xI ＝ LatticeAlgHom-∘ (Polynomial-eval-at n y) hI
+            → ║ factors-through-free I I-distr p x ║₋₁
+          from-cube n hI y e = Trunc.η (n , h , y , x＝)
+            where
+              lift
+                : (k : Fin g)
+                → fibre (base-change n)
+                    (hI .fst .fst (ι-quot (Polynomial-gen k)))
+              lift
+                = base-change-lift-family Bool-Lattice Bool-distributive
+                    (Bool-Algebra I) I-distr Bool-ι-is-injective Bool-ι-lift
+                    (Fin-is-♭-discrete g) n
+                    (λ k → hI .fst .fst (ι-quot (Polynomial-gen k)))
+
+              q : Fin g → BMv.Polynomials n
+              q k = lift k .fst
+
+              G : LatticeAlgHom (BMv.Polynomial-Algebra g)
+                    (BMv.Polynomial-Algebra n)
+              G = BMv.Polynomial-eval (BMv.Polynomial-Algebra n)
+                    (BMv.Polynomial-distr n) g q
+
+              G-gen : (k : Fin g) → G .fst .fst (BMv.Polynomial-gen k) ＝ q k
+              G-gen = BMv.Polynomial-eval-gen (BMv.Polynomial-Algebra n)
+                        (BMv.Polynomial-distr n) g q
+
+              base-change-G
+                : (t : BMv.Polynomials g)
+                → base-change n (G .fst .fst t)
+                ＝ hI .fst .fst (ι-quot (base-change g t))
+              base-change-G t
+                = happly (ap (λ f → f .fst .fst) on-gens) t
+                where
+                  on-gens
+                    : LatticeAlgHom-∘ (base-change-hom n) G
+                    ＝ LatticeAlgHom-∘
+                        (Algebra-res-hom (Bool-Algebra I)
+                          (LatticeAlgHom-∘ hI (Presented-ι pI)))
+                        (base-change-hom g)
+                  on-gens
+                    = unap-equiv
+                        (BMv.Polynomial-ev-is-equiv
+                          (Algebra-res (Bool-Algebra I) (Polynomial-Algebra n))
+                          (Polynomial-distr n) g)
+                        (funext→ λ k →
+                          ap (base-change n) (G-gen k)
+                          ∙ lift k .snd
+                          ∙ sym (ap (λ t → hI .fst .fst (ι-quot t))
+                                  (base-change-gen k)))
+
+              G-respects : BP.respects p G
+              G-respects k
+                = base-change-is-injective Bool-ι-is-injective n
+                    ( base-change-G (lhs k)
+                    ∙ ap (hI .fst .fst) (relation-holds pI k)
+                    ∙ sym (base-change-G (rhs k)))
+
+              h : LatticeAlgHom (BP.Presented p) (BMv.Polynomial-Algebra n)
+              h = BP.Presented-rec p G G-respects
+
+              x＝ : x ＝ LatticeAlgHom-∘
+                          (BMv.Polynomial-eval (Bool-Algebra I) I-distr n y) h
+              x＝
+                = BP.Presented-hom-ext p I-distr _ _ λ k →
+                    sym (Presented-base-change-extend-gen p (initial-Algebra I)
+                          I-distr _ k)
+                  ∙ happly (ap (λ f → f .fst .fst) e)
+                      (ι-quot (Polynomial-gen k))
+                  ∙ ap (Polynomial-eval-at n y .fst .fst) (sym (lift k .snd))
+                  ∙ base-change-eval n y (q k)
+                  ∙ ap (E n y) (sym (G-gen k))
+                  ∙ ap (E n y)
+                      (sym (BP.Presented-rec-β p G G-respects
+                             (BMv.Polynomial-gen k)))
+}
+}
+
+\subtree[ub-004S]{
+\taxon{Corollary}
+\title{A flat interval is nontrivial, local and colocal}
+\date{2026-10-07}
+
+\p{If the interval is flat, then #{0 \neq 1}, #{i \lor j = 1} implies
+#{i = 1} or #{j = 1}, and #{i \land j = 0} implies #{i = 0} or #{j = 0}.
+These are \ref{ub-004R}, \ref{ub-004B} and \ref{ub-004E} for #{\II}.}
+
+\p{The disjunctive property obtained this way replaces the directedness and
+the separation by types with initial objects that \ref{stt-0114} uses, and
+needs neither duality nor SQCP.}
+
+\agda{
+interval-is-nontrivial←flat : interval-is-flat → i0 ≠ i1
+interval-is-nontrivial←flat = flat-is-nontrivial I I-distr
+
+disjunctive-property←flat
+  : interval-is-flat → (i j : Δ¹) → i ∨ j ＝ i1 → (i ＝ i1) * (j ＝ i1)
+disjunctive-property←flat = flat-is-local I I-distr
+
+conjunctive-property←flat
+  : interval-is-flat → (i j : Δ¹) → i ∧ j ＝ i0 → (i ＝ i0) * (j ＝ i0)
+conjunctive-property←flat = flat-is-colocal I I-distr
+}
+}
+
+\subtree[ub-004C]{
+\taxon{Theorem}
+\title{Density of cubes implies flatness}
+\date{2026-10-06}
+
+\p{If [SQCP](stt-00TC) holds and the crisp cubes are [dense](ub-004F) in sets,
+then the interval is [crisply flat](ub-0040). Fix a crisp presentation with
+algebra #{A} and a point #{x} of #{\Spec(A)}, which is a set. By density #{x}
+merely lies on a crisp cube #{g : \II^m \to \Spec(A)}, say #{x = g(z)}. By
+\ref{ub-004L}, #{g} is evaluation of a crisp map of algebras #{h : A \to
+\II[y_1, \ldots, y_m]}, and so #{x} is #{h} evaluated at #{z}.}
+
+\agda{
+interval-is-crisply-flat←cubes-are-dense
+  : @♭ SQCP → cubes-are-dense-for-sets → interval-is-crisply-flat
+interval-is-crisply-flat←cubes-are-dense sqcp dense p x
+  = Trunc.ind (λ _ → trunc!)
+      (λ where
+        (mod♭ (m , g) , c , e) →
+          Trunc.η
+            ( mod♭ m
+            , mod♭ (cube-hom sqcp (Presented p) m (g ∘ □←cube))
+            , cube←□ c
+            , sym e
+            ∙ ap g (sym (□←cube-retr c))
+            ∙ cube-hom-at sqcp (Presented p) m (g ∘ □←cube) (cube←□ c)))
+      (dense (Spec (Presented p)) (Spec-is-set (Presented p)) x)
+}
+
+\p{Density for sets is [separation](stt-00J7) for maps between sets
+(\ref{ub-004H}), so crisp flatness follows from the axiom that the cubes
+separate.
+In the intended model this is the observation that every element of a
+presheaf lies in the image of a representable. Separation quantifies over all
+crisp types, so this is no finite axiom either, in keeping with
+\ref{ub-0041}.}
+
+\agda{
+interval-is-crisply-flat←cubes-separate
+  : @♭ SQCP → family-separates □^_ → interval-is-crisply-flat
+interval-is-crisply-flat←cubes-separate sqcp sep
+  = interval-is-crisply-flat←cubes-are-dense sqcp
+      (cubes-are-dense-for-sets←cubes-separate-sets
+        (cubes-separate-sets←cubes-separate sep))
+}
+
+\p{With #{0 \neq 1} and the #{\flat}-surjectivity of the boundary, both of
+which hold in triangulated type theory, crisp flatness is flatness
+(\ref{ub-0050}).}
+
+\agda{
+module _
+  (@♭ 0≠1 : i0 ≠ i1)
+  (@♭ ∂Δ¹-incl-♭-surjective : is-♭-surjective ∂Δ¹-incl)
+  (@♭ sqcp : SQCP)
+  where
+
+  interval-is-flat←cubes-are-dense
+    : cubes-are-dense-for-sets → interval-is-flat
+  interval-is-flat←cubes-are-dense dense
+    = interval-is-flat←crisply-flat 0≠1 ∂Δ¹-incl-♭-surjective
+        (interval-is-crisply-flat←cubes-are-dense sqcp dense)
+
+  interval-is-flat←cubes-separate
+    : family-separates □^_ → interval-is-flat
+  interval-is-flat←cubes-separate sep
+    = interval-is-flat←crisply-flat 0≠1 ∂Δ¹-incl-♭-surjective
+        (interval-is-crisply-flat←cubes-separate sqcp sep)
+}
+}

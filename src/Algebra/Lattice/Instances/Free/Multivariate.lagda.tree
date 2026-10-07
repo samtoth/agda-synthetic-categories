@@ -1,0 +1,505 @@
+\date{2026-09-04}
+\title{Free lattice algebras on finitely many generators}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{Iterating the [one-variable free algebra](stt-009W) gives the free
+#{L}-algebra #{L[x_1, \ldots, x_n]} on #{n} generators. This is the shape a
+[finite presentation](ub-001M) starts from, and hence what
+[the duality axiom](ub-001P) quantifies over.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Algebra.Lattice.Instances.Free.Multivariate
+  {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+
+open import Algebra.Lattice.Instances.Polynomial
+
+open import Ergonomics.Auto
+open import Ergonomics.Extensionality
+}
+}
+
+\subtree[ub-001K]{
+\taxon{Definition}
+\title{The free algebra on #{n} generators}
+
+\p{#{L[x_1, \ldots, x_n]} is #{L} with the one-variable construction applied
+#{n} times, which is possible because #{L[x]} is again distributive
+(\ref{ub-001J}), each time over the algebra built so far. Its carrier is an #{n}-fold
+iterate of [#{\Delta^2}](stt-009X): an element is a family of coefficients
+indexed by the vertices of the #{n}-cube, monotone in the cube's order.}
+
+\p{That it is the free algebra on #{n} generators is
+\ref{ub-001U}, by #{n} applications of the [one-generator universal
+property](stt-00A7). This is what identifies the construction with the
+#{\II[x_1, \ldots, x_n]} that [the duality axiom](ub-001P) is stated over in
+\citek{GWB26}.}
+
+\agda{
+Polynomials : ℕ → Type 𝓤
+Polynomial-Lattice : (n : ℕ) → Lattice (Polynomials n)
+Polynomial-distr : (n : ℕ) → is-distributive (Polynomial-Lattice n)
+
+Polynomials zero = A
+Polynomials (suc n) = Δ² (Polynomial-Lattice n)
+
+Polynomial-Lattice zero = L
+Polynomial-Lattice (suc n)
+  = Free-Lattice (Polynomial-Lattice n) (Polynomial-distr n)
+
+Polynomial-distr zero = distr
+Polynomial-distr (suc n)
+  = Polynomial-is-distributive (Polynomial-Lattice n) (Polynomial-distr n)
+
+Polynomial-ι : (n : ℕ) → A → Polynomials n
+Polynomial-ι zero = id
+Polynomial-ι (suc n) = ι-const {L = Polynomial-Lattice n} ∘ Polynomial-ι n
+
+Polynomial-ι-alg
+  : (n : ℕ) → is-lattice-hom L (Polynomial-Lattice n) (Polynomial-ι n)
+Polynomial-ι-alg zero = initial-lattice-algebra L
+Polynomial-ι-alg (suc n)
+  = is-lattice-hom-∘
+      (Free-Lattice-is-lattice-algebra (Polynomial-Lattice n)
+                                       (Polynomial-distr n))
+      (Polynomial-ι-alg n)
+
+Polynomial-Algebra : (n : ℕ) → Algebra L (Polynomials n)
+Polynomial-Algebra n .Algebra.str-Lattice = Polynomial-Lattice n
+Polynomial-Algebra n .Algebra.ι = Polynomial-ι n
+Polynomial-Algebra n .Algebra.ι-alg = Polynomial-ι-alg n
+
+Polynomial-Algebra-is-distributive
+  : (n : ℕ) → is-distributive-algebra (Polynomial-Algebra n)
+Polynomial-Algebra-is-distributive n = Polynomial-distr n
+}
+
+\p{The last variable adjoined is #{x = 1x \lor 0}, and the variables adjoined
+earlier are carried along by the coefficient inclusion #{a \mapsto ax \lor a}.}
+
+\agda{
+Polynomial-var : (n : ℕ) → Polynomials (suc n)
+Polynomial-var n
+  = ( Lattice.1l (Polynomial-Lattice n)
+    , Lattice.0l (Polynomial-Lattice n)) ⦃ Lattice.≤-bot (Polynomial-Lattice n) ⦄
+
+Polynomial-incl : (n : ℕ) → Polynomials n → Polynomials (suc n)
+Polynomial-incl n = ι-const {L = Polynomial-Lattice n}
+
+Polynomial-gen : ∀ {n} → Fin n → Polynomials n
+Polynomial-gen {suc n} fzero = Polynomial-var n
+Polynomial-gen {suc n} (fsuc i) = Polynomial-incl n (Polynomial-gen i)
+}
+}
+
+\subtree[ub-001T]{
+\taxon{Definition}
+\title{Free algebras on a set of generators}
+
+\p{An #{L}-algebra #{A} equipped with a map #{S \to A} is \em{free on #{S}}
+when every distributive #{L}-algebra sees it that way: an algebra map out of
+#{A} is exactly a choice of image for each generator. Freeness is a property of
+the pair #{(A, \mathrm{gen})}, not extra structure, and it determines #{A} up
+to a unique isomorphism of algebras.}
+
+\p{Distributivity of the target is asked for because it is asked for already in
+the [one-generator case](stt-00A7): the evaluation map is a homomorphism only
+when the target is distributive.}
+
+\agda{
+is-free-algebra-on
+  : ∀ {𝓥 𝓥'} (S : Type 𝓥) {B : Type 𝓥'} (Alg : Algebra L B) (gen : S → B)
+  → Typeω
+is-free-algebra-on S Alg gen
+  = ∀ {𝓦} {C : Type 𝓦} (M : Algebra L C) → is-distributive-algebra M
+  → is-equiv (λ (f : LatticeAlgHom Alg M) → f .fst .fst ∘ gen)
+}
+}
+
+\subtree[ub-001U]{
+\taxon{Theorem}
+\title{The #{n}-fold iterate is free on #{n} generators}
+
+\p{#{L[x_1, \ldots, x_n]} is free on #{\mathrm{Fin}\,n}. The induction is the
+composite of #{n} one-variable universal properties: an algebra map out of
+#{M[x]} is an algebra map out of #{M} together with an image for the new
+variable, and the coefficient inclusion #{M \to M[x]} is what restricts along.}
+
+\agda{
+Polynomial-incl-hom
+  : (n : ℕ) → LatticeAlgHom (Polynomial-Algebra n) (Polynomial-Algebra (suc n))
+Polynomial-incl-hom n .fst .fst = ι-const {L = Polynomial-Lattice n}
+Polynomial-incl-hom n .fst .snd a = refl
+Polynomial-incl-hom n .snd
+  = mk-is-lattice-alg-hom
+      (Free-Lattice-is-lattice-algebra
+        (Polynomial-Lattice n) (Polynomial-distr n))
+}
+
+\p{Fix a distributive #{L}-algebra #{M}. A map of algebras
+#{g : L[x_1, \ldots, x_n] \to M} makes #{M} an algebra over
+#{L[x_1, \ldots, x_n]}, and the [one-variable universal property](stt-00A7)
+over that base extends #{g} to #{L[x_1, \ldots, x_n][x]} by sending #{x} to any
+chosen #{b}. Conversely a map out of #{L[x_1, \ldots, x_{n+1}]} restricts to
+its value at the new variable and its composite with the coefficient
+inclusion. The two are mutually inverse.}
+
+\agda{
+module _
+  {𝓦} {C : Type 𝓦} (M : Algebra L C) (Md : is-distributive-algebra M)
+  where
+
+  algebra-via : (n : ℕ)
+    → LatticeAlgHom (Polynomial-Algebra n) M
+    → Algebra (Polynomial-Lattice n) C
+  algebra-via n g .Algebra.str-Lattice = Algebra.str-Lattice M
+  algebra-via n g .Algebra.ι = g .fst .fst
+  algebra-via n g .Algebra.ι-alg = un-is-lattice-alg-hom (g .snd)
+
+  Polynomial-restrict : (n : ℕ)
+    → LatticeAlgHom (Polynomial-Algebra (suc n)) M
+    → C × LatticeAlgHom (Polynomial-Algebra n) M
+  Polynomial-restrict n h
+    = (h .fst .fst (Polynomial-var n) , LatticeAlgHom-∘ h (Polynomial-incl-hom n))
+
+  Polynomial-adjoin : (n : ℕ)
+    → C × LatticeAlgHom (Polynomial-Algebra n) M
+    → LatticeAlgHom (Polynomial-Algebra (suc n)) M
+  Polynomial-adjoin n (b , g) .fst .fst
+    = eval-polynomial (Polynomial-Lattice n) (Polynomial-distr n)
+        (algebra-via n g) b .fst
+  Polynomial-adjoin n (b , g) .fst .snd a
+    = eval-polynomial (Polynomial-Lattice n) (Polynomial-distr n)
+        (algebra-via n g) b .snd (Polynomial-ι n a)
+    ∙ g .fst .snd a
+  Polynomial-adjoin n (b , g) .snd
+    = mk-is-lattice-alg-hom
+        (un-is-lattice-alg-hom
+          (eval-polynomial-is-alg-hom
+            (Polynomial-Lattice n) (Polynomial-distr n)
+            (algebra-via n g) Md b))
+
+  Polynomial-restrict-adjoin
+    : (n : ℕ) (u : C × LatticeAlgHom (Polynomial-Algebra n) M)
+    → Polynomial-restrict n (Polynomial-adjoin n u) ＝ u
+  Polynomial-restrict-adjoin n (b , g)
+    = ×-path→
+        ( ap₂ M._∨_ (ap (M._∧ b) (ghom .is-lattice-hom.pres-1))
+                    (ghom .is-lattice-hom.pres-0)
+        ∙ ap (M._∨ M.0l) M.1-top'
+        ∙ M.0-bottom
+        , ext! (eval-polynomial (Polynomial-Lattice n) (Polynomial-distr n)
+                  (algebra-via n g) b .snd))
+    where
+      module M = Algebra M
+      ghom = un-is-lattice-alg-hom (g .snd)
+
+  Polynomial-adjoin-restrict
+    : (n : ℕ) (h : LatticeAlgHom (Polynomial-Algebra (suc n)) M)
+    → Polynomial-adjoin n (Polynomial-restrict n h) ＝ h
+  Polynomial-adjoin-restrict n h = ext! H
+    where
+      module M = Algebra M
+      module Pn = Lattice (Polynomial-Lattice n)
+      open Pn using (≤-bot ; ≤-refl-inst ; ≤-top ; ≤-∧ ; ≤-∨)
+      open is-lattice-hom
+
+      hh : Polynomials (suc n) → C
+      hh = h .fst .fst
+
+      hhom : is-lattice-hom (Polynomial-Lattice (suc n)) M.str-Lattice hh
+      hhom = un-is-lattice-alg-hom (h .snd)
+
+      H : (z : Polynomials (suc n))
+        → Polynomial-adjoin n (Polynomial-restrict n h) .fst .fst z ＝ hh z
+      H ((a₀ , a₁) ⦃ p ⦄)
+        = ap (M._∨ hh (a₁ , a₁)) (sym (hhom .pres-∧))
+        ∙ ap (λ z → hh z M.∨ hh (a₁ , a₁))
+             (Δ²-ext {b = (a₀ , Pn.0l) ⦃ ≤-bot ⦄} (Pn.1-top , Pn.0-init'))
+        ∙ sym (hhom .pres-∨)
+        ∙ ap hh (Δ²-ext (Pn.∨-comm ∙ Pn.≤-max p , Pn.0-bottom'))
+
+  Polynomial-restrict-is-equiv : (n : ℕ) → is-equiv (Polynomial-restrict n)
+  Polynomial-restrict-is-equiv n
+    = is-equiv←qinv
+        ( Polynomial-adjoin n
+        , Polynomial-adjoin-restrict n
+        , Polynomial-restrict-adjoin n)
+
+  Polynomial-adjoin-is-equiv : (n : ℕ) → is-equiv (Polynomial-adjoin n)
+  Polynomial-adjoin-is-equiv n
+    = is-equiv←qinv
+        ( Polynomial-restrict n
+        , Polynomial-restrict-adjoin n
+        , Polynomial-adjoin-restrict n)
+
+}
+
+\p{Evaluating at the generators is then an equivalence by induction: for
+#{n = 0} both sides are contractible, the free algebra on no generators being
+#{L} itself, which is initial; and the inductive step is the equivalence just
+constructed, followed by #{(\Fin\,(n+1) \to C) \simeq C \times (\Fin\,n \to C)}.}
+
+\agda{
+  Polynomial-ev
+    : (n : ℕ) → LatticeAlgHom (Polynomial-Algebra n) M → (Fin n → C)
+  Polynomial-ev n f = f .fst .fst ∘ Polynomial-gen
+
+  Polynomial-ev-is-equiv : (n : ℕ) → is-equiv (Polynomial-ev n)
+  Polynomial-ev-is-equiv zero
+    = is-equiv←single-to-prop
+        hom-0-is-single (is-prop←is-single Fin-0-fun-is-single) _
+    where
+      hom-0-is-single : is-singleton (LatticeAlgHom (Polynomial-Algebra 0) M)
+      hom-0-is-single
+        = is-single←equiv
+            (LatticeAlgHom-precomp≃
+              (Algebra-id-hom ~refl (initial-lattice-algebra L)) id-is-equiv)
+            (initial-Algebra-is-initial L M)
+  Polynomial-ev-is-equiv (suc n)
+    = is-equiv←~ H
+        (is-equiv-∘ Fin-suc-fun-is-equiv
+          (is-equiv-∘
+            (×₁-is-equiv id-is-equiv (Polynomial-ev-is-equiv n))
+            (Polynomial-restrict-is-equiv n)))
+    where
+      H : Polynomial-ev (suc n)
+        ~ Fin-suc-fun ∘ (id ×₁ Polynomial-ev n) ∘ Polynomial-restrict n
+      H h = funext→ λ where
+              fzero → refl
+              (fsuc i) → refl
+
+Polynomial-Algebra-is-free
+  : (n : ℕ) → is-free-algebra-on (Fin n) (Polynomial-Algebra n) Polynomial-gen
+Polynomial-Algebra-is-free n M Md = Polynomial-ev-is-equiv M Md n
+}
+}
+
+\subtree[ub-001V]{
+\taxon{Corollary}
+\title{Free algebras are unique}
+
+\p{Two algebras free on the same set of generators are canonically isomorphic:
+each is the image of the other's generators, and the two composites fix the
+generators, so they are the identity. Hence \em{the} free algebra on a finite
+set is the iterate above, and #{L[x_1, \ldots, x_n]} is unambiguous.}
+
+\agda{
+module _
+  {𝓥 𝓥₁ 𝓥₂} {S : Type 𝓥}
+  {B : Type 𝓥₁} {A : Algebra L B} (Ad : is-distributive-algebra A)
+  {gen : S → B} (free : is-free-algebra-on S A gen)
+  {B' : Type 𝓥₂} {A' : Algebra L B'} (Ad' : is-distributive-algebra A')
+  {gen' : S → B'} (free' : is-free-algebra-on S A' gen')
+  where
+
+  free-algebra-compare : LatticeAlgHom A A'
+  free-algebra-compare = is-equiv.bwd (free A' Ad') gen'
+
+  free-algebra-compare-is-equiv
+    : is-LatticeAlgHom-equiv free-algebra-compare
+  free-algebra-compare-is-equiv
+    = is-equiv←qinv
+        ( ψ .fst .fst
+        , LatticeAlgHom-~＝ _ _ ψφ
+        , LatticeAlgHom-~＝ _ _ φψ)
+    where
+      φ = free-algebra-compare
+
+      ψ : LatticeAlgHom A' A
+      ψ = is-equiv.bwd (free' A Ad) gen
+
+      φ-gen : φ .fst .fst ∘ gen ＝ gen'
+      φ-gen = is-equiv.ε (free A' Ad') gen'
+
+      ψ-gen : ψ .fst .fst ∘ gen' ＝ gen
+      ψ-gen = is-equiv.ε (free' A Ad) gen
+
+      ψφ : LatticeAlgHom-∘ ψ φ ＝ LatticeAlgHom-id A
+      ψφ = unap-equiv (free A Ad) (ap (ψ .fst .fst ∘_) φ-gen ∙ ψ-gen)
+
+      φψ : LatticeAlgHom-∘ φ ψ ＝ LatticeAlgHom-id A'
+      φψ = unap-equiv (free' A' Ad') (ap (φ .fst .fst ∘_) ψ-gen ∙ φ-gen)
+}
+}
+
+\subtree[ub-004M]{
+\taxon{Definition}
+\title{Evaluation at a point}
+\author{ulrikbuchholtz}
+\date{2026-10-07}
+
+\p{For a distributive #{L}-algebra #{M}, a point #{y} of #{M^n} gives the
+homomorphism #{L[x_1, \ldots, x_n] \to M} that evaluates polynomials at #{y}:
+by [freeness](ub-001U), it is the unique one sending #{x_k} to #{y_k}.
+More generally, a map of algebras
+#{g : L[x_1, \ldots, x_m] \to L[y_1, \ldots, y_n]} \em{specialises} at #{y} to
+the point #{(g(x_k)(y))_k} of #{M^m}.}
+
+\agda{
+module _
+  {𝓦} {C : Type 𝓦} (M : Algebra L C) (Md : is-distributive-algebra M)
+  where
+
+  Polynomial-eval
+    : (n : ℕ) → (Fin n → C) → LatticeAlgHom (Polynomial-Algebra n) M
+  Polynomial-eval n = is-equiv.bwd (Polynomial-ev-is-equiv M Md n)
+
+  Polynomial-eval-gen
+    : (n : ℕ) (y : Fin n → C) (k : Fin n)
+    → Polynomial-eval n y .fst .fst (Polynomial-gen k) ＝ y k
+  Polynomial-eval-gen n y
+    = happly (is-equiv.ε (Polynomial-ev-is-equiv M Md n) y)
+
+  Polynomial-eval-is-lattice-hom
+    : (n : ℕ) (y : Fin n → C)
+    → is-lattice-hom (Polynomial-Lattice n) (Algebra.str-Lattice M)
+        (Polynomial-eval n y .fst .fst)
+  Polynomial-eval-is-lattice-hom n y
+    = un-is-lattice-alg-hom (Polynomial-eval n y .snd)
+
+  Polynomial-specialise
+    : {m : ℕ} (n : ℕ) (y : Fin n → C)
+    → LatticeAlgHom (Polynomial-Algebra m) (Polynomial-Algebra n)
+    → Fin m → C
+  Polynomial-specialise n y g k
+    = Polynomial-eval n y .fst .fst (g .fst .fst (Polynomial-gen k))
+}
+
+\p{Evaluation in #{L} itself, that is in the [initial algebra](stt-00A0), is
+the case used most.}
+
+\agda{
+Polynomial-eval-at
+  : (n : ℕ) → (Fin n → A)
+  → LatticeAlgHom (Polynomial-Algebra n) (initial-Algebra L)
+Polynomial-eval-at = Polynomial-eval (initial-Algebra L) distr
+
+Polynomial-eval-at-gen
+  : (n : ℕ) (y : Fin n → A) (k : Fin n)
+  → Polynomial-eval-at n y .fst .fst (Polynomial-gen k) ＝ y k
+Polynomial-eval-at-gen = Polynomial-eval-gen (initial-Algebra L) distr
+}
+
+\p{Evaluation commutes with the structure map: evaluating at the image in
+#{M} of a point of #{L^n} is evaluating at the point in #{L} and then
+mapping to #{M}. Both sides are maps of algebras out of the free algebra,
+and they agree on the generators.}
+
+\agda{
+Polynomial-eval-ι
+  : ∀ {𝓦} {C : Type 𝓦} (M : Algebra L C) (Md : is-distributive-algebra M)
+    (n : ℕ) (c : Fin n → A) (q : Polynomials n)
+  → Polynomial-eval M Md n (Algebra.ι M ∘ c) .fst .fst q
+  ＝ Algebra.ι M (Polynomial-eval-at n c .fst .fst q)
+Polynomial-eval-ι M Md n c q
+  = happly
+      (ap (λ f → f .fst .fst)
+        (ap (is-equiv.bwd ev-is-equiv) (sym on-gens) ∙ is-equiv.η ev-is-equiv φ))
+      q
+  where
+    ev-is-equiv = Polynomial-ev-is-equiv M Md n
+
+    φ : LatticeAlgHom (Polynomial-Algebra n) M
+    φ = LatticeAlgHom-∘ (Algebra-ι-hom M) (Polynomial-eval-at n c)
+
+    on-gens : Polynomial-ev M Md n φ ＝ Algebra.ι M ∘ c
+    on-gens = funext→ λ k → ap (Algebra.ι M) (Polynomial-eval-at-gen n c k)
+}
+}
+
+\subtree[ub-004A]{
+\taxon{Lemma}
+\title{Polynomials are monotone}
+\author{ulrikbuchholtz}
+\date{2026-10-06}
+
+\p{Evaluating a polynomial in a distributive algebra #{M} is monotone in the
+point: if #{y \le y'} in every coordinate then #{q(y) \le q(y')}. The proof
+is algebra. The assignment #{x_k \mapsto y'_k t \lor y_k} extends to a map of
+algebras #{h : L[x_1, \ldots, x_n] \to M[t]}, and composing it with evaluation
+of #{t} at #{0} and at #{1} gives maps of algebras that agree with evaluation
+at #{y} and at #{y'} on the generators, hence everywhere. A polynomial
+#{a t \lor b} in one variable has #{b \le a} (\ref{stt-009W}), so its value
+#{b} at #{0} is below its value #{a} at #{1}, and
+#{q(y) = h(q)(0) \le h(q)(1) = q(y')}.}
+
+\agda{
+module _
+  {𝓦} {C : Type 𝓦} (M : Algebra L C) (Md : is-distributive-algebra M)
+  where
+  open Algebra M using (_≤_)
+
+  Polynomial-eval-is-monotone
+    : (n : ℕ) (y y' : Fin n → C) → ((k : Fin n) → y k ≤ y' k)
+    → (q : Polynomials n)
+    → Polynomial-eval M Md n y .fst .fst q
+    ≤ Polynomial-eval M Md n y' .fst .fst q
+  Polynomial-eval-is-monotone n y y' le q
+    = tr (_≤ eval y' q) (at (path y at-0 refl))
+        (tr (Δ².t (h .fst .fst q) ≤_) (at (path y' at-1 refl))
+          (Δ².mono (h .fst .fst q)))
+    where
+      eval : (Fin n → C) → Polynomials n → C
+      eval z = Polynomial-eval M Md n z .fst .fst
+
+      M[t] : Algebra L (Δ² (Algebra.str-Lattice M))
+      M[t] = Algebra-res M (Free-Algebra (Algebra.str-Lattice M) Md)
+
+      at-0 at-1 : LatticeAlgHom M[t] M
+      at-0 .fst .fst = Δ².t
+      at-0 .fst .snd a = refl
+      at-0 .snd = mk-is-lattice-alg-hom λ where
+        .is-lattice-hom.pres-∨ → refl
+        .is-lattice-hom.pres-∧ → refl
+        .is-lattice-hom.pres-0 → refl
+        .is-lattice-hom.pres-1 → refl
+      at-1 .fst .fst = Δ².s
+      at-1 .fst .snd a = refl
+      at-1 .snd = mk-is-lattice-alg-hom λ where
+        .is-lattice-hom.pres-∨ → refl
+        .is-lattice-hom.pres-∧ → refl
+        .is-lattice-hom.pres-0 → refl
+        .is-lattice-hom.pres-1 → refl
+
+      segment : Fin n → Δ² (Algebra.str-Lattice M)
+      segment k = (y' k , y k) ⦃ le k ⦄
+
+      M[t]-ev-is-equiv
+        = Polynomial-ev-is-equiv M[t]
+            (Polynomial-is-distributive (Algebra.str-Lattice M) Md) n
+
+      h : LatticeAlgHom (Polynomial-Algebra n) M[t]
+      h = is-equiv.bwd M[t]-ev-is-equiv segment
+
+      ev-is-equiv = Polynomial-ev-is-equiv M Md n
+
+      path
+        : (z : Fin n → C) (e : LatticeAlgHom M[t] M)
+        → (e .fst .fst ∘ segment ＝ z)
+        → LatticeAlgHom-∘ e h ＝ Polynomial-eval M Md n z
+      path z e p
+        = unap-equiv ev-is-equiv
+            ( ap (e .fst .fst ∘_) (is-equiv.ε M[t]-ev-is-equiv segment)
+            ∙ p
+            ∙ sym (is-equiv.ε ev-is-equiv z))
+
+      at
+        : {f g : LatticeAlgHom (Polynomial-Algebra n) M}
+        → f ＝ g → f .fst .fst q ＝ g .fst .fst q
+      at e = happly (ap (λ f → f .fst .fst) e) q
+}
+}

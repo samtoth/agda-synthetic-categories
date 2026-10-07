@@ -84,6 +84,7 @@ benchmark-typecheck: $(EVERYTHING_FILE)
 	@Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) --profile=modules -i src "$(EVERYTHING_FILE)" +RTS -s -RTS
 
 sync-forest-src:
+	@rm -rf "$(AUTOGEN_DIR)"
 	@mkdir -p "$(AUTOGEN_DIR)"
 	@find ./src -name '*.lagda.tree' | while read -r file; do \
 		rel=$${file#./src/}; \

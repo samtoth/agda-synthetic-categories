@@ -13,7 +13,6 @@ module Synthetic.Tiny.AmazingProperties
   (@♭ √ : ∀ {@♭ 𝓤} → @♭ Type 𝓤 → Type 𝓤)
   (@♭ ε√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → (I → √ A) → A)
   (@♭ √-is-tiny-str : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-tiny-structure I A (√ A) ε√)
-  (@♭ √Prop-is-set : ∀ {@♭ 𝓤} → is-set (√ (Prop-U 𝓤)))
   (open Tiny I √ ε√ √-is-tiny-str)
   where
 
@@ -24,6 +23,7 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
+open import Core.Arrows
 open import Core.CartesianSquares
 
 open import Ergonomics.Extensionality
@@ -61,6 +61,7 @@ proj-√-is-♭-equiv
       (is-♭-equiv-∘
         √-is-tiny-str
         (is-♭-equiv←is-equiv (point-is-equiv)))
+
 opaque
   fibre-√true-mapᵈ
     : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓥} (@♭ ϕ ψ : (I → Γ) → Prop-U 𝓤)
@@ -109,6 +110,21 @@ fibre-√true-lemma {𝓤} {Γ = Γ} ϕ
     ⟨♭| (Π (I → Γ) (fst ∘ ϕ)) ⟩
   ≃∎
 
+fibre-√true→
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓥} (@♭ ϕ : (I → Γ) → Prop-U 𝓤)
+    → ((x : Γ) → ε♭ (transpose (mod♭ ϕ)) x ＝ √true 𝓤 tt)
+    → (Π (I → Γ) (fst ∘ ϕ))
+fibre-√true→ {Γ = Γ} ϕ
+  = postcomp-Π {I = (I → Γ)} (λ g p → tr fst (sym p) ttᴸ)
+  ∘ happly {g = const Prop-true}
+  ∘ tr₂ _＝_
+      ( sym (ε♭-natural {f = untranspose} (transpose (mod♭ ϕ)))
+      ∙ ap ε♭ (is-tiny.ε (mod♭ ϕ)))
+      ( sym (ε♭-natural (transpose (mod♭ (const Prop-true)))
+      ∙ ap untranspose (funext→ (λ a → lemma {x = a})))
+      ∙ ap ε♭ (is-tiny.ε (mod♭ (const Prop-true)))  )
+  ∘ ap untranspose ∘ funext→
+
 opaque
   √true-diagonal-is-equiv : ∀ {@♭ 𝓤} → is-equiv (diagonal (√true 𝓤))
   √true-diagonal-is-equiv
@@ -136,66 +152,137 @@ opaque
 \p{We give a partial formalisation of an alternative construction for amazing
 properties. Instead of using the small map classifier, we may use the small
 embedding classifier, so that we directly get a function
-#{\rm{is-amazingly} \colon \modflat{A^I \to \Prop} \to A \to \Prop}.}
-
-\remark{This formalisation is incomplete for similar reasons to the previous
-construction, in order to make use of the embedding classifier, we need to
-show the map #{1 \to \Prop_I} that picks out #{\top}, is an embedding,
-which requires showing that (this time the non-dependent) tiny type former
-preserves sets. This boils down to characterising the identity type in
-amazing right adjoints.}
+#{\rm{is-amazingly} \colon \modflat{A^I \to \Prop} \to \modflat{A \to \Prop}}.}
 
 \agda{
-global-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → ⟨♭| A ⟩ → ⟨♭| √ A ⟩
-global-√ = ♭-map (ev tt) ∘ transpose ∘ ♭-map const
-
-global-√-is-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-equiv (global-√ {A = A})
-global-√-is-equiv
-  = is-equiv-∘
-      (is-♭-equiv←is-equiv (unit-ev-is-equiv))
-      (is-equiv-∘
-        (is-equiv⁻¹ √-is-tiny-str)
-        (is-♭-equiv←is-equiv (sing-const-is-equiv single!)))
-
-global-√-point : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ A → √ A
-global-√-point a = ε♭ (global-√ (mod♭ a))
-
-global-⊤ : ∀ (@♭ 𝓤) → √ (Prop-U 𝓤)
-global-⊤ 𝓤 = global-√-point (𝟙ᴸ: 𝓤 , trunc!)
-
-prop-class : ∀ {@♭ 𝓤} → 𝟙 → √ (Prop-U 𝓤)
-prop-class = point (global-⊤ _)
-
 classify-√-prop : ∀ {@♭ 𝓤} → √(Prop-U 𝓤) → Prop-U (lsuc 𝓤)
-classify-√-prop x
-  = ( fibre prop-class x
-    , fibre-is-truncated'
-        prop-class x
-        trunc!
-        (λ x y → is-truncated←is-prop ((√Prop-is-set x y))))
+classify-√-prop {𝓤} x
+  = ( fibre (√true 𝓤) x
+    , is-truncated←is-prop (is-prop-map←is-embedding √true-is-embedding x))
 
 is-amazingly-prop
-  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-    → ⟨♭| ((I → Γ) → Prop-U 𝓥) ⟩ → ⟨♭| (Γ → Prop-U (lsuc 𝓥)) ⟩
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}
+    → ⟨♭| ((I → A) → Prop-U 𝓥) ⟩ → ⟨♭| (A → Prop-U (lsuc 𝓥)) ⟩
 is-amazingly-prop = ♭-map (postcomp _ classify-√-prop) ∘ transpose
 
-is-amazingly
-  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤}
-    → (@♭ A : (I → Γ) → Type 𝓥)
-    → @♭ (∀ g → is-prop (A g))
-    → (Γ → Type (lsuc 𝓥))
-is-amazingly A Ap
-  = fst
-  ∘ (ε♭ (is-amazingly-prop
-          (mod♭ λ g → (A g , is-truncated←is-prop (Ap g)))))
+module _
+  {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}
+  (@♭ ϕ : (I → A) → Type 𝓥)
+  (@♭ ϕ-is-prop : ∀ f → is-prop (ϕ f))
+  (let
+    @♭ ϕ-prop : (I → A) → Prop-U 𝓥
+    ϕ-prop f = (ϕ f , is-truncated←is-prop (ϕ-is-prop f))
 
-is-amazingly-is-prop
-  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓤} (@♭ A : (I → Γ) → Type 𝓥)
-      (@♭ Ap : ∀ x → is-prop (A x))
-    → ∀ g → is-prop (is-amazingly A Ap g)
-is-amazingly-is-prop A Ap
-  = is-prop←is-truncated
-  ∘ snd
-  ∘ ε♭ (is-amazingly-prop (mod♭ (λ g → A g , is-truncated←is-prop (Ap g))))
+    @♭ ϕ̄-prop : A → √ (Prop-U 𝓥)
+    ϕ̄-prop = ε♭ (transpose (mod♭ ϕ-prop))
+    )
+  where
+
+  is-amazingly : A → Type (lsuc 𝓥)
+  is-amazingly
+    = fibre (√true _)
+    ∘ ε♭ (transpose (mod♭ (λ f → ϕ f , is-truncated←is-prop (ϕ-is-prop f))))
+
+  is-amazingly-is-subtype
+    : is-subtype is-amazingly
+  is-amazingly-is-subtype a = is-prop-map←is-embedding √true-is-embedding (ϕ̄-prop a)
+
+  is-amazingly-subtype : Subtype A (lsuc 𝓥)
+  is-amazingly-subtype .Subtype.family = is-amazingly
+  is-amazingly-subtype .Subtype.family-is-subtype = is-amazingly-is-subtype
+
+  relative-subtype : Type (𝓤 ⊔ lsuc 𝓥)
+  relative-subtype = Subtype.Σ̃ is-amazingly-subtype
+
+  underlying-is-amazingly
+    : Π A is-amazingly → Π (I → A) ϕ
+  underlying-is-amazingly f = fibre-√true→ ϕ-prop (sym ∘ snd ∘ f)
+
+  opaque
+    underlying-is-amazingly-is-♭-equiv
+      : is-♭-equiv (underlying-is-amazingly)
+    underlying-is-amazingly-is-♭-equiv
+      = is-equiv←~
+          (λ _ → ♭-is-prop (Π-is-prop ϕ-is-prop) _ _)
+          (_≃_.fwd-is-equiv
+            (  ♭≃ (postcomp-Π-≃ (λ _ → Σ-𝟙 ∙e sym≃))
+            ∙e fibre-√true-lemma ϕ-prop))
+
+module _
+  {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}
+  (@♭ ϕ : (I → A) → Type 𝓥)
+  (@♭ ϕ-is-prop : ∀ f → is-prop (ϕ f))
+  (let
+    @♭ ϕ-prop : (I → A) → Prop-U 𝓥
+    ϕ-prop f = (ϕ f , is-truncated←is-prop (ϕ-is-prop f))
+
+    @♭ ϕ̄-prop : A → √ (Prop-U 𝓥)
+    ϕ̄-prop = ε♭ (transpose (mod♭ ϕ-prop))
+    )
+  where
+
+  is-amazingly-naturality
+    : ∀ {@♭ 𝓦} {@♭ Γ : Type 𝓦} (@♭ σ : Γ → A)
+      → Π Γ (is-amazingly ϕ ϕ-is-prop ∘ σ)
+      → Π Γ (is-amazingly (ϕ ∘ postcomp I σ) (ϕ-is-prop ∘ postcomp I σ))
+  is-amazingly-naturality σ = postcomp-Π
+    (λ x → total-map (λ _
+       → _∙ (sym (happly
+         ( ap ε♭ (transpose-context-naturality σ (mod♭ (ϕ-prop)))
+         ∙ ε♭-natural {f = precomp _ σ} (transpose (mod♭ ϕ-prop))) x))))
+}
+}
+
+\subtree[tot-0239]{
+\title{The universal property of relative subtypes}
+
+\p{If #{I} is a tiny type, and #{\phi \colon A^I \to \Prop} some family of
+propositions, we can consider the #{I}-relative subtype of #{A} denoted #{A_{\phi}}.}
+
+\p{This type admits an embedding #{A_{\phi} \hookrightarrow A} such that the following
+square commutes:
+
+\begin{tikzcd}
+	{{A_\phi}^\Gamma} && {{({P(A)}_\phi)}^{P(\Gamma)}} \\
+	& {\Sigma1{f : A^\Gamma}{\phi(f^I)}} \\
+	{A^\Gamma} && {{P(A)}^{P(\Gamma)}}
+	\arrow[from=1-1, to=1-3]
+	\arrow[dotted, from=1-1, to=2-2]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=2-2, to=1-3]
+	\arrow[from=2-2, to=3-1]
+	\arrow["\lrcorner"{anchor=center, pos=0.125}, draw=none, from=2-2, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{The universal property of #{A_{\phi}} says that this square is flat cartesian.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤}
+  (@♭ ϕ : (I → A) → Type 𝓥)
+  (@♭ ϕ-is-prop : ∀ f → is-prop (ϕ f))
+  (let
+    @♭ ϕ-subtype : Subtype (I → A) 𝓥
+    ϕ-subtype = mk-subtype ϕ-is-prop
+    )
+  where
+
+  relative-subtype-square
+    : ∀ {𝓦} {Γ : Type 𝓦}
+      → Arrow-map
+          (postcomp Γ (Subtype.Σ̃-π (is-amazingly-subtype ϕ ϕ-is-prop)))
+          (postcomp (I → Γ) (Subtype.Σ̃-π ϕ-subtype))
+  relative-subtype-square .Arrow-Π.top f σ
+    = ( Subtype.Σ̃-π (is-amazingly-subtype ϕ ϕ-is-prop) ∘ f ∘ σ
+      , underlying-is-amazingly
+          (ϕ ∘ postcomp I (Subtype.Σ̃-π (is-amazingly-subtype ϕ ϕ-is-prop)))
+          (λ _ → ϕ-is-prop _)
+          (is-amazingly-naturality ϕ ϕ-is-prop fst snd)
+          (f ∘ σ))
+  relative-subtype-square .Arrow-Π.bot = postcomp I
+  relative-subtype-square .Arrow-Π.comm = ~refl
 }
 }

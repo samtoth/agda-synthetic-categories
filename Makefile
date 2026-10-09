@@ -8,7 +8,7 @@ WATCH_DIR ?= src
 UPSTREAM ?= upstream
 PORT ?= 1313
 DUP_DIR ?= ./trees/
-AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
+AGDA_FLAGS ?=
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
 .PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-tree-ids list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean

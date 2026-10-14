@@ -27,8 +27,8 @@ open import Ergonomics.TCM
 Σ←field-names : ∀ {𝓤} {A : Type 𝓤} → List A → Term
 Σ←field-names [] = def (quote 𝟙) []
 Σ←field-names (_ ∷ []) = unknown
-Σ←field-names (_ ∷ xs) =
-  def (quote Σ) (lam visible (abs "_" (Σ←field-names xs)) v∷ [])
+Σ←field-names (_ ∷ y ∷ xs) =
+  def (quote Σ) (lam visible (abs "_" (Σ←field-names (y ∷ xs))) v∷ [])
 
 Fields : Type
 Fields = List (Name × List Name)
@@ -52,6 +52,7 @@ iso-type←record eqty namen unfolded = go [] =<< normalise =<< infer-type (def 
     let orig = def namen (reverse (map-up (λ n ai → arg ai (var n [])) 0 acc))
     repr     ← unfolded (reverse (map-up (λ n _ → argH (var n [])) 0 acc))
     returnTC (def eqty (orig v∷ repr v∷ []))
+  {-# CATCHALL #-}
   go acc t = typeError (strErr "Not a record type " ∷ nameErr namen ∷ [])
 
 
@@ -94,27 +95,31 @@ bwd-fwd-clause
 
 -- Look up a record type definition in the signature.
 get-record-type : Name → TC (Name × List (Arg Name))
-get-record-type n = get-definition n >>= λ where
-  (record-type conm fields) → returnTC (conm , fields)
-  _ → typeError (
-                strErr "get-record-type: definition " ∷
-                nameErr n ∷
-                strErr " is not a record type." ∷
-                []) where
-  open DoTC
+get-record-type n = bindTC (get-definition n) get-record-type←definition where
+  get-record-type←definition : Definition → TC (Name × List (Arg Name))
+  get-record-type←definition (record-type conm fields) = returnTC (conm , fields)
+  {-# CATCHALL #-}
+  get-record-type←definition _ = typeError (
+    strErr "get-record-type: definition " ∷
+    nameErr n ∷
+    strErr " is not a record type." ∷
+    [])
 
 private
   instantiate' : Term → Term → Term
   instantiate' (pi _ (abs _ xs)) (pi _ (abs _ b)) = instantiate' xs b
   instantiate' (agda-sort _) tm = tm
+  {-# CATCHALL #-}
   instantiate' _ tm = tm
 
   sigma←pi-term : Term → TC Term
   sigma←pi-term (pi (arg _ x) (abs n (def n' _))) = returnTC x
+  {-# CATCHALL #-}
   sigma←pi-term (pi (arg _ x) (abs n y)) = do
     sig ← sigma←pi-term y
     returnTC (def (quote Σ) (x v∷ lam visible (abs n sig) v∷ []))
     where open DoTC
+  {-# CATCHALL #-}
   sigma←pi-term _ = typeError (strErr "Not a record type constructor! " ∷ [])
 
 

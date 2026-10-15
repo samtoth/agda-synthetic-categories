@@ -1,0 +1,727 @@
+\date{2026-09-03}
+\title{Square lifting}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\p{The inclusion of the union of the two triangles into the square
+#{\Delta^1 \times \Delta^1} is inner anodyne, so every
+[Segal type](stt-00AI) is orthogonal to it. The argument is from
+\citek{SGWB26}, based on initial ideas by Gratzer and Schellingerhout, and has
+two steps. Inside the prism
+#{\Delta^2 \times \Delta^1}, glueing three tetrahedra onto
+#{\Lambda^2_1 \times \Delta^1} one at a time reaches a subtype #{\Phi}, each
+glueing being a cobase change of an inner anodyne map; since
+#{\Lambda^2_1 \times \Delta^1} includes inner anodynely into the prism, so does
+#{\Phi} (\ref{ub-000E}). And the inclusion of the union of the two triangles
+into the square is a retract of #{\Phi \hookrightarrow \Delta^2 \times \Delta^1}
+(\ref{ub-000F}).}
+
+\p{Everything is phrased with subtypes rather than pushouts: a union of two
+subtypes is a pushout (\ref{ub-0001}), so glueing is taking a union, and the
+inner horn is the subtype #{\{j = 0 \lor i = 1\}} of #{\Delta^2}
+(\ref{ub-0003}). The generic facts about unions of subtypes used here are in
+[the module on unions of subtypes](Core.SubtypeUnions).}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.SquareLifting {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Instances.Localisation
+
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.ArrowRetracts
+open import Core.CanonicalPushouts
+open import Core.CocartesianSquares
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+open import Ergonomics.Extensionality
+open import Ergonomics.Auto
+
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+}
+}
+
+\subtree[ub-0003]{
+\taxon{Definition}
+\title{The inner horn as a subtype of the 2-simplex}
+
+\p{The [inner horn](stt-00AD) #{\Lambda^2_1} is identified with the subtype of
+#{\Delta^2} spanned by those #{(i,j)} with #{j = 0} or #{i = 1}
+(\ref{stt-00B8}). We work with that subtype throughout, so that glueing is
+taking a union of subtypes; its inclusion is inner anodyne, being equivalent
+in the arrow category to #{\Lambda^2_1 \hookrightarrow \Delta^2} itself.}
+
+\agda{
+Λ²-fam : Δ² → Type 𝓘
+Λ²-fam = Λ[2,1]Sub .Subtype.family
+
+Λ²-fam-is-prop : (x : Δ²) → is-prop (Λ²-fam x)
+Λ²-fam-is-prop = Λ[2,1]Sub .Subtype.family-is-subtype
+
+Λ² : Type 𝓘
+Λ² = Σ Δ² Λ²-fam
+
+Λ²-incl : Λ² → Δ²
+Λ²-incl = fst
+
+Λ²-incl-is-inner-anodyne : is-inner-anodyne Λ²-incl
+Λ²-incl-is-inner-anodyne
+  = is-anodyne←equiv Λ[2,1]-incl Λ²-incl
+      (mk-arr-equiv Λ[2,1]≃Sub (id≃: Δ²) ~refl)
+      Λ[2,1]-incl (is-self-anodyne Λ[2,1]-incl)
+}
+}
+
+\subtree[ub-0005]{
+\taxon{Definition}
+\title{The prism and its subtypes}
+
+\p{Write #{(i,j,k)} for a point of the prism #{\Delta^2\times\Delta^1}, so
+that #{j \le i}. It contains three tetrahedra, #{T_1 = \{k \le j\}},
+#{T_2 = \{j \le k \le i\}} and #{T_3 = \{i \le k\}}, which cover the part
+where #{k} is comparable with both #{i} and #{j} — not the whole prism, since
+the interval is not assumed total. We glue them onto
+#{\Psi_0 = \Lambda^2_1 \times \Delta^1} in the order #{T_2}, #{T_1}, #{T_3},
+giving #{\Psi_1 = \Psi_0 \lor T_2}, #{\Psi_2 = \Psi_1 \lor T_1} and
+#{\Phi = \Psi_2 \lor T_3}. The middle one goes first because it meets
+#{\Psi_0} in two faces and nothing more; each outer one then also meets #{T_2}
+in an internal face.}
+
+\p{With #{v_0 = (0,0)}, #{v_1 = (1,0)}, #{v_2 = (1,1)} the vertices of
+#{\Delta^2} and #{a_n = (v_n, 0)}, #{b_n = (v_n, 1)} those of the prism, the
+horn #{\Psi_0} is the two squares #{j = 0} and #{i = 1}, and the tetrahedra
+are #{T_2 = a_0a_1b_1b_2}, #{T_1 = a_0a_1a_2b_2} and #{T_3 = a_0b_0b_1b_2}:}
+
+\quiver{
+\begin{tikzpicture}[scale=1.1, line join=round,
+    edge/.style={thin}, hidden/.style={thin, dashed},
+    diag/.style={thin, red!60!black}]
+  \begin{scope}[xshift=0cm]
+    \coordinate (a0) at (0,0);
+    \coordinate (a1) at (1.6,-0.5);
+    \coordinate (a2) at (2.4,0.35);
+    \coordinate (b0) at (0,1.8);
+    \coordinate (b1) at (1.6,1.3);
+    \coordinate (b2) at (2.4,2.15);
+    \fill[blue!20] (a0) -- (a1) -- (b1) -- (b0) -- cycle;
+    \fill[blue!30] (a1) -- (a2) -- (b2) -- (b1) -- cycle;
+    \draw[edge] (a0) -- (a1) -- (a2) -- (b2) -- (b0) -- cycle;
+    \draw[edge] (a1) -- (b1) -- (b0);
+    \draw[edge] (b1) -- (b2);
+    \draw[hidden] (a0) -- (a2);
+    \node[left] at (a0) {$a_0$};
+    \node[below] at (a1) {$a_1$};
+    \node[right] at (a2) {$a_2$};
+    \node[left] at (b0) {$b_0$};
+    \node[below right] at (b1) {$b_1$};
+    \node[right] at (b2) {$b_2$};
+    \node at (1.2,-1.0) {$\Psi_0$};
+  \end{scope}
+  \begin{scope}[xshift=3.8cm]
+    \coordinate (a0) at (0,0);
+    \coordinate (a1) at (1.6,-0.5);
+    \coordinate (a2) at (2.4,0.35);
+    \coordinate (b0) at (0,1.8);
+    \coordinate (b1) at (1.6,1.3);
+    \coordinate (b2) at (2.4,2.15);
+    \fill[red!25] (a0) -- (a1) -- (b2) -- cycle;
+    \draw[edge] (a0) -- (a1) -- (a2) -- (b2) -- (b0) -- cycle;
+    \draw[edge] (a1) -- (b1) -- (b0);
+    \draw[edge] (b1) -- (b2);
+    \draw[hidden] (a0) -- (a2);
+    \draw[diag] (a0) -- (b1); \draw[diag] (a0) -- (b2); \draw[diag] (a1) -- (b2);
+    \node at (1.2,-1.0) {$T_2$};
+  \end{scope}
+  \begin{scope}[xshift=7.6cm]
+    \coordinate (a0) at (0,0);
+    \coordinate (a1) at (1.6,-0.5);
+    \coordinate (a2) at (2.4,0.35);
+    \coordinate (b0) at (0,1.8);
+    \coordinate (b1) at (1.6,1.3);
+    \coordinate (b2) at (2.4,2.15);
+    \fill[red!25] (a0) -- (a1) -- (a2) -- (b2) -- cycle;
+    \draw[edge] (a0) -- (a1) -- (a2) -- (b2) -- (b0) -- cycle;
+    \draw[edge] (a1) -- (b1) -- (b0);
+    \draw[edge] (b1) -- (b2);
+    \draw[hidden] (a0) -- (a2);
+    \draw[diag] (a0) -- (b2); \draw[diag] (a1) -- (b2);
+    \node at (1.2,-1.0) {$T_1$};
+  \end{scope}
+  \begin{scope}[xshift=11.4cm]
+    \coordinate (a0) at (0,0);
+    \coordinate (a1) at (1.6,-0.5);
+    \coordinate (a2) at (2.4,0.35);
+    \coordinate (b0) at (0,1.8);
+    \coordinate (b1) at (1.6,1.3);
+    \coordinate (b2) at (2.4,2.15);
+    \fill[red!25] (a0) -- (b1) -- (b2) -- (b0) -- cycle;
+    \draw[edge] (a0) -- (a1) -- (a2) -- (b2) -- (b0) -- cycle;
+    \draw[edge] (a1) -- (b1) -- (b0);
+    \draw[edge] (b1) -- (b2);
+    \draw[hidden] (a0) -- (a2);
+    \draw[diag] (a0) -- (b1); \draw[diag] (a0) -- (b2);
+    \node at (1.2,-1.0) {$T_3$};
+  \end{scope}
+\end{tikzpicture}
+}
+
+\agda{
+Prism : Type 𝓘
+Prism = Δ² × Δ¹
+
+prism-i prism-j prism-k : Prism → Δ¹
+prism-i z = Poly.Δ².s (z .fst)
+prism-j z = Poly.Δ².t (z .fst)
+prism-k z = z .snd
+
+Δ²-mono : (y : Δ²) → Poly.Δ².t y ≤ Poly.Δ².s y
+Δ²-mono (a , b) = auto!
+
+prism-mono : (z : Prism) → prism-j z ≤ prism-i z
+prism-mono z = Δ²-mono (z .fst)
+
+Prism-is-set : is-set Prism
+Prism-is-set = ×-is-set Δ²-is-set carrier-is-set
+
+Ψ₀ T₁ T₂ T₃ : Prism → Type 𝓘
+Ψ₀ z = Λ²-fam (z .fst)
+T₁ z = prism-k z ≤ prism-j z
+T₂ z = (prism-j z ≤ prism-k z) × (prism-k z ≤ prism-i z)
+T₃ z = prism-i z ≤ prism-k z
+
+Ψ₁ Ψ₂ Φ : Prism → Type 𝓘
+Ψ₁ = ∪-fam Ψ₀ T₂
+Ψ₂ = ∪-fam Ψ₁ T₁
+Φ  = ∪-fam Ψ₂ T₃
+}
+}
+
+\subtree[ub-0006]{
+\taxon{Lemma}
+\title{The base of the filtration}
+
+\p{The inclusion #{\Lambda^2_1\times\Delta^1 \hookrightarrow \Delta^2\times\Delta^1}
+is inner anodyne, being a product of an inner anodyne map with an identity.}
+
+\agda{
+Ψ₀-chart≃ : Λ² × Δ¹ ≃ Σ Prism Ψ₀
+Ψ₀-chart≃ = mk≃ fwd (is-equiv←qinv (bwd , ~refl , ~refl)) where
+  fwd : Λ² × Δ¹ → Σ Prism Ψ₀
+  fwd ((x , u) , k) = ((x , k) , u)
+  bwd : Σ Prism Ψ₀ → Λ² × Δ¹
+  bwd z = ((z .fst .fst , z .snd) , z .fst .snd)
+
+Ψ₀-Arrow-equiv : Arrow-equiv (Λ²-incl ×₁ id) (fst {B = Ψ₀})
+Ψ₀-Arrow-equiv = mk-arr-equiv Ψ₀-chart≃ (id≃: Prism) ~refl
+
+Ψ₀-incl-is-inner-anodyne : is-inner-anodyne (fst {B = Ψ₀})
+Ψ₀-incl-is-inner-anodyne
+  = is-anodyne←equiv (Λ²-incl ×₁ id) fst Ψ₀-Arrow-equiv Λ[2,1]-incl
+      (λ g gp → left-orthogonal-× Λ²-incl id g (Λ²-incl-is-inner-anodyne g gp)
+                                  (id⊥ g))
+}
+}
+
+\subtree[ub-0007]{
+\taxon{Lemma}
+\title{Propositionality of the subtypes of the prism}
+
+\p{Each is built from #{\land}, #{\lor} and equations in the interval,
+so each is a proposition.}
+
+\agda{
+Ψ₀-is-prop : (z : Prism) → is-prop (Ψ₀ z)
+Ψ₀-is-prop z = Λ²-fam-is-prop (z .fst)
+
+T₁-is-prop : (z : Prism) → is-prop (T₁ z)
+T₁-is-prop z = carrier-is-set _ _
+
+T₂-is-prop : (z : Prism) → is-prop (T₂ z)
+T₂-is-prop z = ×-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
+
+T₃-is-prop : (z : Prism) → is-prop (T₃ z)
+T₃-is-prop z = carrier-is-set _ _
+
+Ψ₁-is-prop : (z : Prism) → is-prop (Ψ₁ z)
+Ψ₁-is-prop z = *-is-prop (Ψ₀-is-prop z) (T₂-is-prop z)
+
+Ψ₂-is-prop : (z : Prism) → is-prop (Ψ₂ z)
+Ψ₂-is-prop z = *-is-prop (Ψ₁-is-prop z) (T₁-is-prop z)
+
+Φ-is-prop : (z : Prism) → is-prop (Φ z)
+Φ-is-prop z = *-is-prop (Ψ₂-is-prop z) (T₃-is-prop z)
+}
+}
+
+\subtree[ub-000A]{
+\taxon{Lemma}
+\title{The two boundary faces of a tetrahedron}
+
+\p{Each of the three tetrahedra #{T} meets #{\Psi_0 = \Lambda^2_1\times\Delta^1}
+in the two faces of #{T} cut out by #{i = 1} and #{j = 0}, and the inclusion of
+these faces into #{T} is a retract of
+#{\Delta^1\times\Lambda^2_1 \hookrightarrow \Delta^1\times\Delta^2}. The
+section sends #{(i,j,k)} to #{(k,(i,j))}; the retraction sends #{(x,(i,j))} to
+#{(i,j,\rho_k(x,(i,j)))}, for any #{\rho_k} that lands in #{T} and fixes the
+#{k}-coordinate of the points already in #{T}. Neither map touches #{(i,j)}, so
+both preserve #{\Lambda^2_1}, and the retract is}
+
+\quiver{
+\begin{tikzcd}
+	{T \land \Psi_0} &&& {\Delta^1\times\Lambda^2_1} &&& {T \land \Psi_0} \\
+	\\
+	T &&& {\Delta^1\times\Delta^2} &&& T
+	\arrow["{(i,j,k) \mapsto (k,(i,j))}", from=1-1, to=1-4]
+	\arrow["{(x,y) \mapsto (y,\rho_k(x,y))}", from=1-4, to=1-7]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-4, to=3-4]
+	\arrow[hook, from=1-7, to=3-7]
+	\arrow[from=3-1, to=3-4]
+	\arrow[from=3-4, to=3-7]
+\end{tikzcd}
+}
+
+\p{with the bottom row given by the same formulas.}
+
+\p{For #{T_2} these faces are its whole intersection with what came before
+(\ref{ub-0008}). #{T_1} and #{T_3} meet #{T_2} as well, in an internal face, and
+that is glued on separately (\ref{ub-000B}).}
+
+\agda{
+module face-pair
+  (T : Prism → Type 𝓘) (Tp : (z : Prism) → is-prop (T z))
+  (ρk : Δ¹ → Δ² → Δ¹)
+  (ρ-T : (x : Δ¹) (y : Δ²) → T (y , ρk x y))
+  (ρσ : (z : Prism) → T z → ρk (prism-k z) (z .fst) ＝ prism-k z)
+  where
+
+  Cell : Type 𝓘
+  Cell = Σ Prism T
+
+  Cell-is-set : is-set Cell
+  Cell-is-set = subtype-is-set Prism-is-set Tp
+
+  Base : Cell → Type 𝓘
+  Base w = Ψ₀ (w .fst)
+
+  Base-is-prop : (w : Cell) → is-prop (Base w)
+  Base-is-prop w = Ψ₀-is-prop (w .fst)
+
+  private
+    amap : Arrow-map (fst {B = Base}) (id {A = Δ¹} ×₁ Λ²-incl)
+    amap .Arrow-map.top v = (prism-k (v .fst .fst) , (v .fst .fst .fst , v .snd))
+    amap .Arrow-map.bot w = (prism-k (w .fst) , w .fst .fst)
+    amap .Arrow-map.comm _ = refl
+
+    ret : retraction-arrow-map amap
+    ret .fst .Arrow-map.top v
+      = ( ((v .snd .fst , ρk (v .fst) (v .snd .fst)) , ρ-T (v .fst) (v .snd .fst))
+        , v .snd .snd)
+    ret .fst .Arrow-map.bot v
+      = ((v .snd , ρk (v .fst) (v .snd)) , ρ-T (v .fst) (v .snd))
+    ret .fst .Arrow-map.comm _ = refl
+    ret .snd .fst v
+      = subtype-ext Base-is-prop
+          (subtype-ext Tp (×-path→ (refl , ρσ (v .fst .fst) (v .fst .snd))))
+    ret .snd .snd .fst w
+      = subtype-ext Tp (×-path→ (refl , ρσ (w .fst) (w .snd)))
+    ret .snd .snd .snd _ = Cell-is-set _ _ _ _
+
+  base-is-inner-anodyne : is-inner-anodyne (fst {B = Base})
+  base-is-inner-anodyne g gp
+    = left-orthogonal←Arrow-retract (amap , ret) g
+        (left-orthogonal-× id Λ²-incl g (id⊥ g) (Λ²-incl-is-inner-anodyne g gp))
+}
+}
+
+\subtree[ub-0008]{
+\taxon{Lemma}
+\title{Attaching the middle tetrahedron}
+
+\p{#{T_2} meets #{\Psi_0} in exactly its two boundary faces, so
+\ref{ub-000A} applies with
+##{\rho_k(x, (i,j)) = (x \lor j) \land i,}
+which clamps #{x} into the interval #{[j, i]} and fixes it when it already lies
+there. By \ref{ub-0009} that inclusion is the inclusion
+#{\Psi_0 \land T_2 \hookrightarrow T_2} that glueing #{T_2} on is a cobase
+change of.}
+
+\agda{
+module T₂-pair
+  = face-pair T₂ T₂-is-prop
+      (λ x y → (x ∨ Poly.Δ².t y) ∧ Poly.Δ².s y)
+      (λ x (a , b) → (∧-UP (∨-≤-intror ≤-refl , auto!) , ∧-≤-elimr ≤-refl))
+      (λ z q → ap (_∧ prism-i z) (≤-max' (q .fst)) ∙ q .snd)
+
+T₂-cell-is-inner-anodyne : is-inner-anodyne (∩-incl Ψ₀ T₂)
+T₂-cell-is-inner-anodyne
+  = is-anodyne←equiv fst (∩-incl Ψ₀ T₂)
+      (∩-incl-Arrow-equiv Ψ₀ T₂ Ψ₀-is-prop T₂-is-prop
+        T₂-pair.Base T₂-pair.Base-is-prop (λ w b → b) (λ w b → b))
+      Λ[2,1]-incl
+      T₂-pair.base-is-inner-anodyne
+}
+}
+
+\subtree[ub-000B]{
+\taxon{Lemma}
+\title{Glueing on an internal face of a tetrahedron}
+
+\p{When #{T_1} or #{T_3} is glued on, the part of it already present is the two
+boundary faces of \ref{ub-000A} together with the face it shares with #{T_2}:
+#{j = k} for #{T_1}, #{i = k} for #{T_3}. That face is a copy of #{\Delta^2},
+given by a section #{\kappa} that reads #{k} off #{(i,j)}, and it meets the two
+boundary faces in the inner horn #{\Lambda^2_1}: writing #{D} for the face, the
+inclusion #{\Psi_0 \land D \hookrightarrow D} is a retract of the horn
+inclusion,}
+
+\quiver{
+\begin{tikzcd}
+	{\Psi_0 \land D} && {\Lambda^2_1} && {\Psi_0 \land D} \\
+	\\
+	D && {\Delta^2} && D
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-3, to=1-5]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow["{(i,j,k) \mapsto (i,j)}"', from=3-1, to=3-3]
+	\arrow["{y \mapsto (y,\kappa(y))}"', from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{(indeed an equivalence), so adding #{D} to the boundary faces is a cobase
+change of an inner anodyne map (\ref{ub-0001}).}
+
+\agda{
+module face-glue
+  (T : Prism → Type 𝓘) (Tp : (z : Prism) → is-prop (T z))
+  (κ : Δ² → Δ¹)
+  (κ-T : (y : Δ²) → T (y , κ y))
+  (D : Σ Prism T → Type 𝓘) (Dp : (w : Σ Prism T) → is-prop (D w))
+  (D-κ : (y : Δ²) → D ((y , κ y) , κ-T y))
+  (D-eq : (w : Σ Prism T) → D w → κ (w .fst .fst) ＝ prism-k (w .fst))
+  where
+
+  A : Σ Prism T → Type 𝓘
+  A w = Ψ₀ (w .fst)
+
+  Ap : (w : Σ Prism T) → is-prop (A w)
+  Ap w = Ψ₀-is-prop (w .fst)
+
+  private
+    chart : Δ² → Σ (Σ Prism T) D
+    chart y = (((y , κ y) , κ-T y) , D-κ y)
+
+    amap : Arrow-map (∩-incl A D) Λ²-incl
+    amap .Arrow-map.top v = (v .fst .fst .fst , v .snd .fst)
+    amap .Arrow-map.bot v = v .fst .fst .fst
+    amap .Arrow-map.comm _ = refl
+
+    ret : retraction-arrow-map amap
+    ret .fst .Arrow-map.top u
+      = (((u .fst , κ (u .fst)) , κ-T (u .fst)) , (u .snd , D-κ (u .fst)))
+    ret .fst .Arrow-map.bot = chart
+    ret .fst .Arrow-map.comm _ = refl
+    ret .snd .fst v
+      = subtype-ext (λ w → ×-is-prop (Ap w) (Dp w))
+          (subtype-ext Tp (×-path→ (refl , D-eq (v .fst) (v .snd .snd))))
+    ret .snd .snd .fst v
+      = subtype-ext Dp
+          (subtype-ext Tp (×-path→ (refl , D-eq (v .fst) (v .snd))))
+    ret .snd .snd .snd _
+      = subtype-is-set (subtype-is-set Prism-is-set Tp) Dp _ _ _ _
+
+  face-is-inner-anodyne : is-inner-anodyne (∩-incl A D)
+  face-is-inner-anodyne g gp
+    = left-orthogonal←Arrow-retract (amap , ret) g
+        (Λ²-incl-is-inner-anodyne g gp)
+
+  glue-face-is-inner-anodyne : is-inner-anodyne (∪-incl A D)
+  glue-face-is-inner-anodyne = glue-subtype-is-anodyne A D face-is-inner-anodyne
+}
+}
+
+\subtree[ub-000C]{
+\taxon{Lemma}
+\title{Attaching the lower tetrahedron}
+
+\p{Once #{T_2} has been glued on, the part of #{T_1} already present consists of
+the two boundary faces together with the face #{j = k}. Its inclusion into
+#{T_1} is inner anodyne by right cancellation: the boundary faces include
+inner anodynely into #{T_1} (\ref{ub-000A}, with #{\rho_k(x,(i,j)) = x \land j})
+and into the boundary faces plus #{j = k} (\ref{ub-000B}).}
+
+\agda{
+D₁ : Σ Prism T₁ → Type 𝓘
+D₁ w = prism-j (w .fst) ＝ prism-k (w .fst)
+
+module T₁-pair
+  = face-pair T₁ T₁-is-prop
+      (λ x y → x ∧ Poly.Δ².t y)
+      (λ x y → ∧-≤-elimr ≤-refl)
+      (λ z q → q)
+
+module T₁-face
+  = face-glue T₁ T₁-is-prop
+      (λ y → Poly.Δ².t y)
+      (λ y → ≤-refl)
+      D₁ (λ w → carrier-is-set _ _)
+      (λ y → refl)
+      (λ w d → d)
+
+T₁-cell-is-inner-anodyne : is-inner-anodyne (fst {B = ∪-fam T₁-face.A D₁})
+T₁-cell-is-inner-anodyne
+  = is-anodyne-right-cancel Λ[2,1]-incl
+      T₁-pair.base-is-inner-anodyne
+      T₁-face.glue-face-is-inner-anodyne
+
+Ψ₁∩T₁→ : (w : Σ Prism T₁) → ∪-fam T₁-face.A D₁ w → Ψ₁ (w .fst)
+Ψ₁∩T₁→ w
+  = *-prop-rec (Ψ₁-is-prop (w .fst)) ι₁
+      (λ e → ι₂ (≤←＝ e , ≤-trans (w .snd) (prism-mono (w .fst))))
+
+Ψ₁∩T₁← : (w : Σ Prism T₁) → Ψ₁ (w .fst) → ∪-fam T₁-face.A D₁ w
+Ψ₁∩T₁← w
+  = *-prop-rec (*-is-prop (Ψ₀-is-prop (w .fst)) (carrier-is-set _ _)) ι₁
+      (λ q → ι₂ (≤-antisym (q .fst) (w .snd)))
+
+T₁-attached-is-inner-anodyne : is-inner-anodyne (∩-incl Ψ₁ T₁)
+T₁-attached-is-inner-anodyne
+  = is-anodyne←equiv fst (∩-incl Ψ₁ T₁)
+      (∩-incl-Arrow-equiv Ψ₁ T₁ Ψ₁-is-prop T₁-is-prop
+        (∪-fam T₁-face.A D₁)
+        (λ w → *-is-prop (Ψ₀-is-prop (w .fst)) (carrier-is-set _ _))
+        Ψ₁∩T₁→ Ψ₁∩T₁←)
+      Λ[2,1]-incl
+      T₁-cell-is-inner-anodyne
+}
+}
+
+\subtree[ub-000D]{
+\taxon{Lemma}
+\title{Attaching the upper tetrahedron}
+
+\p{Once #{T_2} and #{T_1} have been glued on, the part of #{T_3} already present
+consists of the two boundary faces together with the face #{i = k}. This is
+the mirror image of \ref{ub-000C}, with #{\rho_k(x,(i,j)) = x \lor i}.}
+
+\agda{
+D₃ : Σ Prism T₃ → Type 𝓘
+D₃ w = prism-i (w .fst) ＝ prism-k (w .fst)
+
+module T₃-pair
+  = face-pair T₃ T₃-is-prop
+      (λ x y → x ∨ Poly.Δ².s y)
+      (λ x y → ∨-≤-intror ≤-refl)
+      (λ z q → ≤-max' q)
+
+module T₃-face
+  = face-glue T₃ T₃-is-prop
+      (λ y → Poly.Δ².s y)
+      (λ y → ≤-refl)
+      D₃ (λ w → carrier-is-set _ _)
+      (λ y → refl)
+      (λ w d → d)
+
+T₃-cell-is-inner-anodyne : is-inner-anodyne (fst {B = ∪-fam T₃-face.A D₃})
+T₃-cell-is-inner-anodyne
+  = is-anodyne-right-cancel Λ[2,1]-incl
+      T₃-pair.base-is-inner-anodyne
+      T₃-face.glue-face-is-inner-anodyne
+
+Ψ₂∩T₃→ : (w : Σ Prism T₃) → ∪-fam T₃-face.A D₃ w → Ψ₂ (w .fst)
+Ψ₂∩T₃→ w
+  = *-prop-rec (Ψ₂-is-prop (w .fst))
+      (λ p → ι₁ (ι₁ p))
+      (λ e → ι₁ (ι₂ (≤-trans (prism-mono (w .fst)) (≤←＝ e) , ≥←＝ e)))
+
+Ψ₂∩T₃← : (w : Σ Prism T₃) → Ψ₂ (w .fst) → ∪-fam T₃-face.A D₃ w
+Ψ₂∩T₃← w
+  = *-prop-rec ∪₃-is-prop
+      (*-prop-rec ∪₃-is-prop ι₁
+        (λ q → ι₂ (≤-antisym (w .snd) (q .snd))))
+      (λ t → ι₂ (≤-antisym (w .snd) (≤-trans t (prism-mono (w .fst)))))
+  where
+    ∪₃-is-prop : is-prop (∪-fam T₃-face.A D₃ w)
+    ∪₃-is-prop = *-is-prop (Ψ₀-is-prop (w .fst)) (carrier-is-set _ _)
+
+T₃-attached-is-inner-anodyne : is-inner-anodyne (∩-incl Ψ₂ T₃)
+T₃-attached-is-inner-anodyne
+  = is-anodyne←equiv fst (∩-incl Ψ₂ T₃)
+      (∩-incl-Arrow-equiv Ψ₂ T₃ Ψ₂-is-prop T₃-is-prop
+        (∪-fam T₃-face.A D₃)
+        (λ w → *-is-prop (Ψ₀-is-prop (w .fst)) (carrier-is-set _ _))
+        Ψ₂∩T₃→ Ψ₂∩T₃←)
+      Λ[2,1]-incl
+      T₃-cell-is-inner-anodyne
+}
+}
+
+\subtree[ub-000E]{
+\taxon{Theorem}
+\title{The filtration}
+
+\p{Successively glueing on #{T_2}, #{T_1} and #{T_3} shows that
+#{\Phi \hookrightarrow \Delta^2\times\Delta^1} is inner anodyne.}
+
+\agda{
+Ψ₁-incl-is-inner-anodyne : is-inner-anodyne (fst {B = Ψ₁})
+Ψ₁-incl-is-inner-anodyne
+  = is-anodyne-right-cancel Λ[2,1]-incl
+      Ψ₀-incl-is-inner-anodyne
+      (glue-subtype-is-anodyne Ψ₀ T₂ T₂-cell-is-inner-anodyne)
+
+Ψ₂-incl-is-inner-anodyne : is-inner-anodyne (fst {B = Ψ₂})
+Ψ₂-incl-is-inner-anodyne
+  = is-anodyne-right-cancel Λ[2,1]-incl
+      Ψ₁-incl-is-inner-anodyne
+      (glue-subtype-is-anodyne Ψ₁ T₁ T₁-attached-is-inner-anodyne)
+
+Φ-incl-is-inner-anodyne : is-inner-anodyne (fst {B = Φ})
+Φ-incl-is-inner-anodyne
+  = is-anodyne-right-cancel Λ[2,1]-incl
+      Ψ₂-incl-is-inner-anodyne
+      (glue-subtype-is-anodyne Ψ₂ T₃ T₃-attached-is-inner-anodyne)
+}
+}
+
+\subtree[ub-000F]{
+\taxon{Theorem}
+\title{The triangulated square is inner anodyne}
+
+\p{The [triangulated square](stt-00CC) ⧅ glues two copies of #{\Delta^2} along
+their diagonal, and its canonical map into the square is identified with the
+inclusion of the subtype
+##{S = \{(a,b) : \Delta^1\times\Delta^1 \mid a \le b \lor b \le a\},}
+the union of the two triangles. That inclusion is a retract of
+#{\Phi \hookrightarrow \Delta^2\times\Delta^1} (\ref{ub-000E}) in the arrow
+category,}
+
+\quiver{
+\begin{tikzcd}
+	S && \Phi && S \\
+	\\
+	{\Delta^1\times\Delta^1} && {\Delta^2\times\Delta^1} && {\Delta^1\times\Delta^1}
+	\arrow["s", from=1-1, to=1-3]
+	\arrow["r", from=1-3, to=1-5]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow["s"', from=3-1, to=3-3]
+	\arrow["r"', from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{with
+##{s(a,b) = ((a,a),b) \qquad r(i,j,k) = (i \land (k \lor j), k),}
+so it is inner anodyne, and hence so is the map out of ⧅. By
+\ref{ub-000S}, all that has to be supplied is #{r \circ s = \id} and that #{s}
+and #{r} carry each subtype into the other.}
+
+\agda{
+σ□ : Δ¹ × Δ¹ → Prism
+σ□ u = ((u .fst , u .fst) , u .snd)
+
+ρ□ : Prism → Δ¹ × Δ¹
+ρ□ z = (prism-i z ∧ (prism-k z ∨ prism-j z) , prism-k z)
+
+ρσ□ : (u : Δ¹ × Δ¹) → ρ□ (σ□ u) ＝ u
+ρσ□ u = ×-path→ (ap (u .fst ∧_) ∨-comm ∙ ∧-∨-abs , refl)
+
+Φ←simp : (u : Δ¹ × Δ¹) → generating-fam-is-simplicial u → Φ (σ□ u)
+Φ←simp u
+  = *-prop-rec (Φ-is-prop (σ□ u)) (λ p → ι₂ p) (λ q → ι₁ (ι₂ q))
+
+simp←Φ : (z : Prism) → Φ z → generating-fam-is-simplicial (ρ□ z)
+simp←Φ z
+  = *-prop-rec fp
+      (*-prop-rec fp
+        (*-prop-rec fp
+          (*-prop-rec fp
+            (λ p → ι₁ (≤-trans (≤←＝ (ap (i ∧_) (ap (k ∨_) (sym p) ∙ 0-bottom)))
+                               (∧-≤-elimr ≤-refl)))
+            (λ q → ι₂ (≤-trans (∨-≤-introl ≤-refl)
+                               (≤←＝ (sym (ap (_∧ (k ∨ j)) (sym q) ∙ 1-top'))))))
+          (λ q → ι₁ (≤←＝ (ap (i ∧_) (≤-max' (q .fst)) ∙ ∧-comm ∙ q .snd))))
+        (λ t → ι₂ (≤-trans t
+                    (≤←＝ (sym (ap (i ∧_) (≤-max t) ∙ ∧-comm ∙ prism-mono z))))))
+      (λ t → ι₁ (≤-trans (≤←＝ (≤-trans t (∨-≤-introl ≤-refl))) t))
+  where
+    i = prism-i z
+    j = prism-j z
+    k = prism-k z
+    fp = generating-fam-is-simplicial-is-prop (ρ□ z)
+
+simplicial-square-incl-is-inner-anodyne
+  : is-inner-anodyne (fst {B = generating-fam-is-simplicial})
+simplicial-square-incl-is-inner-anodyne
+  = is-anodyne←Arrow-retract Λ[2,1]-incl
+      (subtype-Arrow-retract
+        generating-fam-is-simplicial-is-prop (×-is-set carrier-is-set carrier-is-set)
+        σ□ ρ□ ρσ□ Φ←simp simp←Φ)
+      Φ-incl-is-inner-anodyne
+
+⧅-incl-is-inner-anodyne : is-inner-anodyne ⧅-incl
+⧅-incl-is-inner-anodyne
+  = is-anodyne←equiv fst ⧅-incl
+      (mk-arr-equiv (⧅-as-subtype e⁻¹) (id≃: (Δ¹ × Δ¹)) (sym ∘ ⧅-pres-carrier'))
+      Λ[2,1]-incl simplicial-square-incl-is-inner-anodyne
+}
+}
+
+\subtree[ub-000G]{
+\taxon{Corollary}
+\title{Segal types are triangulated}
+
+\p{Every [Segal type](stt-00AI) is [triangulated](stt-00LD): it is local at the
+map from the [triangulated square](stt-00CC) into the square, since that map is
+inner anodyne (\ref{ub-000F}). So a Segal type cannot tell
+#{\Delta^1\times\Delta^1} apart from the union of its two triangles, and the
+[triangulated Segal types](stt-00LA) are exactly the Segal types.}
+
+\p{This is not yet the statement that a Segal type is
+[simplicial](stt-00AC): simpliciality asks for the \em{pointwise} statement that
+#{A \to ((i \le j \lor j \le i) \to A)} is an equivalence for each #{(i,j)},
+which is not a consequence of orthogonality to a single map. That step needs
+#{A} to be crisp, and it is taken in \ref{ub-003F}.}
+
+\agda{
+is-triangulated←is-segal
+  : ∀ {𝓤} {A : Type 𝓤} → is-segal A → is-triangulated A
+is-triangulated←is-segal seg tt
+  = is-orthogonal↔orthogonal-! .fst
+      (⧅-incl-is-inner-anodyne !
+        (is-orthogonal↔orthogonal-! .snd (seg tt)))
+
+⧅-incl-is-segal-equiv : is-segal-equiv ⧅-incl
+⧅-incl-is-segal-equiv seg = is-triangulated←is-segal seg tt
+}
+}

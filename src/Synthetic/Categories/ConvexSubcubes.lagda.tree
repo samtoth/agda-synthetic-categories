@@ -1,0 +1,2185 @@
+\date{2026-09-05}
+\title{Convex subcubes and the clamping retraction}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{This module proves that [the ordered subcube](ub-000Y) includes inner
+anodynely into the cube in every dimension (\ref{ub-0030}), by adjoining the
+comparability of one pair of coordinates at a time. Write #{\square^n_I} for
+the subtype of the cube cut out by comparability of the pairs in a list #{I},
+so that #{\square^n_{[]}} is the cube and #{\square^n_{\text{all}}} is
+#{\mathrm{Ord}_n}, and call a subtype of the cube \em{convex} when it is a
+conjunction of inequalities #{x_a \le x_b} between coordinates. There are three
+steps.}
+
+\ol{
+\li{\strong{The convex case.} For convex #{A} and any pair #{(i,j)},
+#{A \land \square^n_{(i,j)} \hookrightarrow A} is inner anodyne: this is
+\ref{ub-002M} when #{A} leaves the pair unrelated, and otherwise the
+inclusion is an equivalence (\ref{ub-002W}).}
+\li{\strong{Off the convex case.} Hence the same for every subtype that is a
+finite union of convex ones, by [the glueing lemma](ub-000T).}
+\li{\strong{The conclusion.} Adjoining the pairs of #{I} one at a time, each
+step is step 2, and inner anodyne maps compose (\ref{ub-002Y}).}
+}
+
+\p{The module is organised accordingly.}
+
+\ul{
+\li{\strong{The retraction} (\ref{ub-002C} to \ref{ub-002F}): slots, convex
+presentations, and the clamp that retracts the cube onto a convex subcube.}
+\li{\strong{The convex case} (\ref{ub-002G} to \ref{ub-002N}): first for the
+last two coordinates, then for any unrelated pair by reindexing.}
+\li{\strong{Presentations from lists} (\ref{ub-002P} to \ref{ub-002V}):
+adjoining one relation to a closed presentation keeps it closed, so a list of
+relations names a convex subcube and concatenation is the meet.}
+\li{\strong{Steps 2 and 3} (\ref{ub-002W} to \ref{ub-002Z}): the convex case
+for every list, the recursion over a list of pairs, and the enumeration of
+all pairs.}
+}
+
+\p{Step 1 rests on a retraction of the cube onto a convex subtype that fixes
+the two coordinates being compared. It is from \citek{SGWB26}, based on
+initial ideas by Gratzer and Schellingerhout.}
+
+\p{The construction is a \em{clamp}. A convex subtype of #{\square^n} is cut
+out by inequalities #{x_a \le x_b} between coordinates; to retract the cube
+onto it, run through the coordinates and, at each one, push every earlier
+coordinate to the correct side of it — meeting with it below, joining with it
+above, leaving it alone when the two are unrelated. Nothing is done to the
+coordinate being processed, so the last coordinate is untouched and the
+second-to-last is untouched exactly when the two are unrelated. That is what
+makes the retraction fix an incomparable pair, and it is why the comparability
+of that pair transfers from the cube to the subtype.}
+
+\p{The bookkeeping is a labelling of each coordinate by an element of
+#{\{\le, =, \parallel, \ge\}}, and the whole of the case analysis in
+\citek{SGWB26} collapses to one fact: the clamp is monotone in the label and the
+value jointly, for the order #{\le \; < \; \{=, \parallel\} \; < \; \ge}. The
+side conditions on a presentation are then exactly that each labelling is
+monotone for the ones below it.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.ConvexSubcubes
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+open import Foundations.List
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.ArrowRetracts
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.SquareLifting Δ¹ I
+}
+}
+
+\subtree[ub-002C]{
+\taxon{Definition}
+\title{Slots, and the clamp of one coordinate}
+
+\p{A \em{slot} records how one coordinate is constrained relative to another:
+below it, equal to it, unrelated to it, or above it. The clamp of #{x} at #{t}
+in a slot moves #{x} to the side of #{t} that the slot asks for, and does the
+least it can:}
+
+##{\mathrm{cl}_{\le}(t,x) = t \wedge x,\quad \mathrm{cl}_{=}(t,x) = t,\quad
+   \mathrm{cl}_{\parallel}(t,x) = x,\quad \mathrm{cl}_{\ge}(t,x) = t \vee x.}
+
+\agda{
+data Slot : Type where
+  lo eq fr hi : Slot
+
+□-clamp¹ : Slot → Δ¹ → Δ¹ → Δ¹
+□-clamp¹ lo t x = t ∧ x
+□-clamp¹ eq t x = t
+□-clamp¹ fr t x = x
+□-clamp¹ hi t x = t ∨ x
+
+bound¹ : Slot → Δ¹ → Δ¹ → Type 𝓘
+bound¹ lo x t = x ≤ t
+bound¹ eq x t = x ＝ t
+bound¹ fr x t = 𝟙ᴸ
+bound¹ hi x t = t ≤ x
+
+bound¹-is-prop : (s : Slot) (x t : Δ¹) → is-prop (bound¹ s x t)
+bound¹-is-prop lo x t = ≤-is-prop
+bound¹-is-prop eq x t = carrier-is-set _ _
+bound¹-is-prop fr x t = is-prop←is-single 𝟙ᴸ-is-singleton
+bound¹-is-prop hi x t = ≤-is-prop
+}
+
+\p{The clamp does what it was asked, and it does nothing when there was
+nothing to do.}
+
+\agda{
+□-clamp¹-self : (s : Slot) (t x : Δ¹) → bound¹ s (□-clamp¹ s t x) t
+□-clamp¹-self lo t x = ∧-≤-eliml ≤-refl
+□-clamp¹-self eq t x = refl
+□-clamp¹-self fr t x = ttᴸ
+□-clamp¹-self hi t x = ∨-≤-introl ≤-refl
+
+□-clamp¹-fix : (s : Slot) (t x : Δ¹) → bound¹ s x t → □-clamp¹ s t x ＝ x
+□-clamp¹-fix lo t x p = ∧-comm ∙ p
+□-clamp¹-fix eq t x p = sym p
+□-clamp¹-fix fr t x p = refl
+□-clamp¹-fix hi t x p = ≤-max p
+}
+
+\p{The order on slots is the one that makes the clamp monotone:
+#{\le \; \sqsubset \; = \; \sqsubset \; \ge} and
+#{\le \; \sqsubset \; \parallel \; \sqsubset \; \ge}, with #{=} and
+#{\parallel} incomparable. Everything below rests on the single lemma that
+follows it.}
+
+\agda{
+_⊑_ : Slot → Slot → Type
+lo ⊑ _ = 𝟙
+eq ⊑ eq = 𝟙
+eq ⊑ hi = 𝟙
+eq ⊑ _ = ∅
+fr ⊑ fr = 𝟙
+fr ⊑ hi = 𝟙
+fr ⊑ _ = ∅
+hi ⊑ hi = 𝟙
+hi ⊑ _ = ∅
+
+□-clamp¹-mono
+  : (p q : Slot) → p ⊑ q → (t : Δ¹) {x y : Δ¹} → x ≤ y
+  → □-clamp¹ p t x ≤ □-clamp¹ q t y
+□-clamp¹-mono lo lo _ t h = ∧-UP (∧-≤-eliml ≤-refl , ∧-≤-elimr h)
+□-clamp¹-mono lo eq _ t h = ∧-≤-eliml ≤-refl
+□-clamp¹-mono lo fr _ t h = ∧-≤-elimr h
+□-clamp¹-mono lo hi _ t h = ≤-trans (∧-≤-eliml ≤-refl) (∨-≤-introl ≤-refl)
+□-clamp¹-mono eq eq _ t h = ≤-refl
+□-clamp¹-mono eq hi _ t h = ∨-≤-introl ≤-refl
+□-clamp¹-mono fr fr _ t h = h
+□-clamp¹-mono fr hi _ t h = ∨-≤-intror h
+□-clamp¹-mono hi hi _ t h = ∨-UP (∨-≤-introl ≤-refl , ∨-≤-intror h)
+}
+}
+
+\subtree[ub-002D]{
+\taxon{Definition}
+\title{Convex presentations}
+
+\p{A \em{labelling} of the #{n} coordinates of #{\square^n} assigns a slot to
+each. A \em{convex presentation} of dimension #{n} is a labelling for every
+coordinate, saying how it is constrained relative to the coordinates before
+it: a triangular matrix of slots, listed one row at a time. It cuts out the
+subtype on which every one of those constraints holds.}
+
+\agda{
+Lab : ℕ → Type
+Lab zero = 𝟙
+Lab (suc n) = Lab n × Slot
+
+Cvx : ℕ → Type
+Cvx zero = 𝟙
+Cvx (suc n) = Cvx n × Lab n
+
+Bound : ∀ {n} → Lab n → □^ n → Δ¹ → Type 𝓘
+Bound {zero} _ _ _ = 𝟙ᴸ
+Bound {suc zero} (_ , s) x t = bound¹ s x t
+Bound {suc (suc n)} (ℓ , s) (w , x) t = Bound ℓ w t × bound¹ s x t
+
+Locus : ∀ {n} → Cvx n → □^ n → Type 𝓘
+Locus {zero} _ _ = 𝟙ᴸ
+Locus {suc zero} _ _ = 𝟙ᴸ
+Locus {suc (suc n)} (Ψ , ℓ) (w , t) = Locus Ψ w × Bound ℓ w t
+}
+
+\agda{
+Bound-is-prop : ∀ {n} (ℓ : Lab n) (v : □^ n) (t : Δ¹) → is-prop (Bound ℓ v t)
+Bound-is-prop {zero} _ _ _ = is-prop←is-single 𝟙ᴸ-is-singleton
+Bound-is-prop {suc zero} (_ , s) x t = bound¹-is-prop s x t
+Bound-is-prop {suc (suc n)} (ℓ , s) (w , x) t
+  = ×-is-prop (Bound-is-prop ℓ w t) (bound¹-is-prop s x t)
+
+Locus-is-prop : ∀ {n} (Ψ : Cvx n) (v : □^ n) → is-prop (Locus Ψ v)
+Locus-is-prop {zero} _ _ = is-prop←is-single 𝟙ᴸ-is-singleton
+Locus-is-prop {suc zero} _ _ = is-prop←is-single 𝟙ᴸ-is-singleton
+Locus-is-prop {suc (suc n)} (Ψ , ℓ) (w , t)
+  = ×-is-prop (Locus-is-prop Ψ w) (Bound-is-prop ℓ w t)
+}
+
+\p{Not every triangular matrix of slots is a presentation one can retract
+onto: the rows have to fit together. The condition is that each labelling is
+\em{monotone} for the constraints already declared — if coordinate #{a} is
+declared below coordinate #{b}, then #{a}'s slot in a later row must be
+#{\sqsubseteq} #{b}'s. In the intended reading, where the presentation is a
+preorder on the coordinates, this is transitivity; here it is exactly the
+hypothesis [the clamp lemma](ub-002C) wants, and nothing more is assumed.}
+
+\agda{
+compat¹ : Slot → Slot → Slot → Type
+compat¹ lo b s = b ⊑ s
+compat¹ eq b s = (b ⊑ s) × (s ⊑ b)
+compat¹ fr b s = 𝟙
+compat¹ hi b s = s ⊑ b
+
+Compat : ∀ {n} → Lab n → Lab n → Slot → Type
+Compat {zero} _ _ _ = 𝟙
+Compat {suc n} (ℓ , a) (τ , b) s = Compat ℓ τ s × compat¹ a b s
+
+Mono : ∀ {n} → Cvx n → Lab n → Type
+Mono {zero} _ _ = 𝟙
+Mono {suc n} (Ψ , ℓ) (τ , s) = Mono Ψ τ × Compat ℓ τ s
+
+is-coherent : ∀ {n} → Cvx n → Type
+is-coherent {zero} _ = 𝟙
+is-coherent {suc n} (Ψ , ℓ) = is-coherent Ψ × Mono Ψ ℓ
+}
+}
+
+\subtree[ub-002E]{
+\taxon{Lemma}
+\title{Clamping preserves the locus}
+
+\p{Clamping every coordinate of the cube at a single #{t}, in the slots of a
+labelling #{\rho}, sends the locus of #{\Psi} into itself as soon as #{\rho}
+is monotone for #{\Psi}. This is the whole of the case analysis in the proof
+of \citet{Lem. 3.1}{SGWB26}, and it is one appeal to
+[the clamp lemma](ub-002C) per constraint.}
+
+\agda{
+□-clamp : ∀ {n} → Lab n → Δ¹ → □^ n → □^ n
+□-clamp {zero} _ t v = v
+□-clamp {suc zero} (_ , s) t x = □-clamp¹ s t x
+□-clamp {suc (suc n)} (ℓ , s) t (w , x) = (□-clamp ℓ t w , □-clamp¹ s t x)
+}
+
+\p{First the scalar step: one declared constraint, clamped on both sides.}
+
+\agda{
+bound¹-clamp
+  : (a b s : Slot) → compat¹ a b s → (t x u : Δ¹) → bound¹ a x u
+  → bound¹ a (□-clamp¹ b t x) (□-clamp¹ s t u)
+bound¹-clamp lo b s c t x u p = □-clamp¹-mono b s c t p
+bound¹-clamp eq b s c t x u p
+  = ≤-antisym (□-clamp¹-mono b s (c .fst) t (≤←＝ p))
+              (□-clamp¹-mono s b (c .snd) t (≥←＝ p))
+bound¹-clamp fr b s c t x u p = ttᴸ
+bound¹-clamp hi b s c t x u p = □-clamp¹-mono s b c t p
+}
+
+\p{Then the two inductions: a whole row of constraints, and the whole
+presentation.}
+
+\agda{
+Bound-clamp
+  : ∀ {n} (ℓ τ : Lab n) (s : Slot) → Compat ℓ τ s
+  → (t : Δ¹) (w : □^ n) (u : Δ¹) → Bound ℓ w u
+  → Bound ℓ (□-clamp τ t w) (□-clamp¹ s t u)
+Bound-clamp {zero} _ _ _ _ _ _ _ _ = ttᴸ
+Bound-clamp {suc zero} (_ , a) (_ , b) s (_ , c) t x u p
+  = bound¹-clamp a b s c t x u p
+Bound-clamp {suc (suc n)} (ℓ , a) (τ , b) s (cs , c) t (w , x) u (ps , p)
+  = ( Bound-clamp ℓ τ s cs t w u ps
+    , bound¹-clamp a b s c t x u p )
+
+Locus-clamp
+  : ∀ {n} (Ψ : Cvx n) (ρ : Lab n) → Mono Ψ ρ
+  → (t : Δ¹) (v : □^ n) → Locus Ψ v → Locus Ψ (□-clamp ρ t v)
+Locus-clamp {zero} _ _ _ _ _ _ = ttᴸ
+Locus-clamp {suc zero} _ _ _ _ _ _ = ttᴸ
+Locus-clamp {suc (suc n)} (Ψ , ℓ) (τ , s) (m , c) t (w , u) (lw , bd)
+  = ( Locus-clamp Ψ τ m t w lw
+    , Bound-clamp ℓ τ s c t w u bd )
+}
+
+\p{The two facts about a single row that the retraction needs: the clamped
+point satisfies the row it was clamped by, and clamping changes nothing on a
+point that already satisfies it.}
+
+\agda{
+Bound-clamp-self
+  : ∀ {n} (ρ : Lab n) (t : Δ¹) (v : □^ n) → Bound ρ (□-clamp ρ t v) t
+Bound-clamp-self {zero} _ t v = ttᴸ
+Bound-clamp-self {suc zero} (_ , s) t x = □-clamp¹-self s t x
+Bound-clamp-self {suc (suc n)} (ℓ , s) t (w , x)
+  = (Bound-clamp-self ℓ t w , □-clamp¹-self s t x)
+
+□-clamp-fix
+  : ∀ {n} (ρ : Lab n) (t : Δ¹) (v : □^ n) → Bound ρ v t → □-clamp ρ t v ＝ v
+□-clamp-fix {zero} _ t v p = refl
+□-clamp-fix {suc zero} (_ , s) t x p = □-clamp¹-fix s t x p
+□-clamp-fix {suc (suc n)} (ℓ , s) t (w , x) (ps , p)
+  = ×-path→ (□-clamp-fix ℓ t w ps , □-clamp¹-fix s t x p)
+}
+}
+
+\subtree[ub-002F]{
+\taxon{Theorem}
+\title{The retraction onto a convex subcube}
+
+\p{Every coherent convex subcube is a retract of its cube. The retraction
+processes the coordinates from the last inwards: at each step the coordinate
+itself is kept, and everything before it is clamped at its value.}
+
+\agda{
+□-retract : ∀ {n} → Cvx n → □^ n → □^ n
+□-retract {zero} _ v = v
+□-retract {suc zero} _ v = v
+□-retract {suc (suc n)} (Ψ , ℓ) (w , t) = (□-clamp ℓ t (□-retract Ψ w) , t)
+
+□-retract-Locus
+  : ∀ {n} (Ψ : Cvx n) → is-coherent Ψ → (v : □^ n) → Locus Ψ (□-retract Ψ v)
+□-retract-Locus {zero} _ _ _ = ttᴸ
+□-retract-Locus {suc zero} _ _ _ = ttᴸ
+□-retract-Locus {suc (suc n)} (Ψ , ℓ) (c , m) (w , t)
+  = ( Locus-clamp Ψ ℓ m t (□-retract Ψ w) (□-retract-Locus Ψ c w)
+    , Bound-clamp-self ℓ t (□-retract Ψ w) )
+
+□-retract-fix
+  : ∀ {n} (Ψ : Cvx n) (v : □^ n) → Locus Ψ v → □-retract Ψ v ＝ v
+□-retract-fix {zero} _ v p = refl
+□-retract-fix {suc zero} _ v p = refl
+□-retract-fix {suc (suc n)} (Ψ , ℓ) (w , t) (lw , bd)
+  = ×-path→ ( ap (□-clamp ℓ t) (□-retract-fix Ψ w lw) ∙ □-clamp-fix ℓ t w bd
+            , refl )
+}
+
+\p{What makes the retraction useful is \em{which coordinates it fixes}
+(\ref{ub-002I}): the last coordinate is never touched, and the second-to-last
+is touched only by the last one's row. That is the conclusion of
+\citet{Lem. 3.1}{SGWB26}.}
+
+\agda{
+□-last : ∀ {n} → □^ (suc n) → Δ¹
+□-last {zero} v = v
+□-last {suc n} v = v .snd
+
+□-clamp-last
+  : ∀ {n} (ρ : Lab (suc n)) (t : Δ¹) (v : □^ (suc n))
+  → □-last (□-clamp ρ t v) ＝ □-clamp¹ (ρ .snd) t (□-last v)
+□-clamp-last {zero} _ t v = refl
+□-clamp-last {suc n} _ t v = refl
+
+□-retract-last
+  : ∀ {n} (Ψ : Cvx (suc n)) (v : □^ (suc n))
+  → □-last (□-retract Ψ v) ＝ □-last v
+□-retract-last {zero} _ v = refl
+□-retract-last {suc n} _ v = refl
+}
+
+\p{So if the top row of the presentation puts the last two coordinates in the
+unrelated slot, the retraction fixes them both.}
+
+\agda{
+□-last₂ : ∀ {n} → □^ (suc (suc n)) → Δ¹ × Δ¹
+□-last₂ v = (□-last (v .fst) , v .snd)
+
+□-retract-last₂
+  : ∀ {n} (Ψ : Cvx (suc n)) (τ : Lab n) (v : □^ (suc (suc n)))
+  → □-last₂ (□-retract (Ψ , (τ , fr)) v) ＝ □-last₂ v
+□-retract-last₂ Ψ τ (w , t)
+  = ×-path→ ( □-clamp-last (τ , fr) t (□-retract Ψ w) ∙ □-retract-last Ψ w
+            , refl )
+}
+}
+
+\subtree[ub-002G]{
+\taxon{Lemma}
+\title{Comparability of the last two coordinates of a cube}
+
+\p{The free case of step 1, in the position the retraction leaves fixed: on
+the cube itself, comparability of the last two coordinates is
+#{\id \times (S \hookrightarrow \Delta^1\times\Delta^1)} up to the
+associativity that splits #{\square^{n+2}} as #{\square^n \times \square^2},
+and left orthogonal maps are closed under products with an identity.}
+
+\agda{
+□-comparable₂ : ∀ {n} → □^ (suc (suc n)) → Type 𝓘
+□-comparable₂ v = generating-fam-is-simplicial (□-last₂ v)
+
+□-join : ∀ {n} → □^ n × (Δ¹ × Δ¹) → □^ (suc (suc n))
+□-join {zero} (_ , u) = u
+□-join {suc n} (w , u) = ((w , u .fst) , u .snd)
+
+□-split : ∀ {n} → □^ (suc (suc n)) → □^ n × (Δ¹ × Δ¹)
+□-split {zero} v = (ttᴸ , v)
+□-split {suc n} v = (v .fst .fst , (v .fst .snd , v .snd))
+
+private
+  □-join-η : ∀ {n} (x : □^ n × (Δ¹ × Δ¹)) → □-split (□-join x) ＝ x
+  □-join-η {zero} _ = refl
+  □-join-η {suc n} _ = refl
+
+  □-join-ε : ∀ {n} (v : □^ (suc (suc n))) → □-join (□-split v) ＝ v
+  □-join-ε {zero} _ = refl
+  □-join-ε {suc n} _ = refl
+
+□-join≃ : ∀ {n} → □^ n × (Δ¹ × Δ¹) ≃ □^ (suc (suc n))
+□-join≃ = mk≃ □-join (is-equiv←qinv (□-split , □-join-η , □-join-ε))
+}
+
+\agda{
+private
+  chart-top
+    : ∀ {n} → □^ n × Σ (Δ¹ × Δ¹) generating-fam-is-simplicial
+    → Σ (□^ (suc (suc n))) (□-comparable₂ {n})
+  chart-top {zero} (_ , (u , p)) = (u , p)
+  chart-top {suc n} (w , (u , p)) = (((w , u .fst) , u .snd) , p)
+
+  chart-bot
+    : ∀ {n} → Σ (□^ (suc (suc n))) (□-comparable₂ {n})
+    → □^ n × Σ (Δ¹ × Δ¹) generating-fam-is-simplicial
+  chart-bot {zero} (v , p) = (ttᴸ , (v , p))
+  chart-bot {suc n} (v , p) = (v .fst .fst , ((v .fst .snd , v .snd) , p))
+
+  chart-η
+    : ∀ {n} (x : □^ n × Σ (Δ¹ × Δ¹) generating-fam-is-simplicial)
+    → chart-bot (chart-top x) ＝ x
+  chart-η {zero} _ = refl
+  chart-η {suc n} _ = refl
+
+  chart-ε
+    : ∀ {n} (x : Σ (□^ (suc (suc n))) (□-comparable₂ {n}))
+    → chart-top (chart-bot x) ＝ x
+  chart-ε {zero} _ = refl
+  chart-ε {suc n} _ = refl
+
+  chart≃
+    : ∀ {n} → □^ n × Σ (Δ¹ × Δ¹) generating-fam-is-simplicial
+    ≃ Σ (□^ (suc (suc n))) (□-comparable₂ {n})
+  chart≃ = mk≃ chart-top (is-equiv←qinv (chart-bot , chart-η , chart-ε))
+
+  chart-comm
+    : ∀ {n} (x : □^ n × Σ (Δ¹ × Δ¹) generating-fam-is-simplicial)
+    → □-join ((id ×₁ fst) x) ＝ chart-top x .fst
+  chart-comm {zero} _ = refl
+  chart-comm {suc n} _ = refl
+
+□-comparable₂-is-inner-anodyne
+  : ∀ {n} → is-inner-anodyne (fst {B = □-comparable₂ {n}})
+□-comparable₂-is-inner-anodyne {n}
+  = is-anodyne←equiv (id ×₁ fst) fst
+      (mk-arr-equiv chart≃ □-join≃ chart-comm)
+      Λ[2,1]-incl
+      (λ g gp → left-orthogonal-× id fst g (id⊥ g)
+                  (simplicial-square-incl-is-inner-anodyne g gp))
+}
+}
+
+\subtree[ub-002H]{
+\taxon{Theorem}
+\title{Comparability over a convex subcube is inner anodyne}
+
+\p{Step 1 of [the outline](Synthetic.Categories.ConvexSubcubes), for a pair
+sitting in the last two coordinates; this is \citet{Lem. 3.3}{SGWB26}. Let
+#{\Psi} be a coherent convex presentation of #{\square^{n+2}} whose top row
+leaves the last two coordinates unrelated. Then adjoining their comparability
+to the locus of #{\Psi} is inner anodyne. (The lemma there concludes the
+stronger statement that the inclusion lies in the class generated by the
+[triangulated square](stt-00CC); since that map is itself inner anodyne
+(\ref{ub-000F}), the class is contained in the inner anodyne maps, and inner
+anodyne is all that Segal types need.)}
+
+\p{The proof is [the retract lemma](ub-000S) applied to the square}
+
+\quiver{
+\begin{tikzcd}
+	{A \wedge \square^{n+2}_{(i,j)}} && {\square^{n+2}_{(i,j)}} && {A \wedge \square^{n+2}_{(i,j)}} \\
+	\\
+	A && {\square^{n+2}} && A
+	\arrow["s", from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow["r", from=1-3, to=1-5]
+	\arrow[hook, from=1-5, to=3-5]
+	\arrow["s"', from=3-1, to=3-3]
+	\arrow["r"', from=3-3, to=3-5]
+\end{tikzcd}
+}
+
+\p{whose bottom row is the inclusion of the locus followed by
+[the retraction](ub-002F), and whose top row is the same maps restricted to
+the comparability loci — which they do restrict to, because the retraction
+fixes both coordinates. The right-hand column is
+[the free case](ub-002G).}
+
+\agda{
+cvx-ext : ∀ {n} → Cvx (suc n) → Lab n → Cvx (suc (suc n))
+cvx-ext Ψ τ = (Ψ , (τ , fr))
+
+comparable-on
+  : ∀ {n} (P : □^ (suc (suc n)) → Type 𝓘) → Σ (□^ (suc (suc n))) P → Type 𝓘
+comparable-on P q = □-comparable₂ (q .fst)
+
+module _
+  {n : ℕ} (Ψ : Cvx (suc n)) (τ : Lab n)
+  (coh : is-coherent Ψ) (mono : Mono Ψ (τ , fr))
+  where
+
+  private
+    Ψ⁺ : Cvx (suc (suc n))
+    Ψ⁺ = cvx-ext Ψ τ
+
+  convex-comparability-is-inner-anodyne
+    : is-inner-anodyne (fst {B = comparable-on (Locus Ψ⁺)})
+  convex-comparability-is-inner-anodyne
+    = is-anodyne←Arrow-retract Λ[2,1]-incl
+        (subtype-Arrow-retract
+          (λ q → generating-fam-is-simplicial-is-prop (□-last₂ (q .fst)))
+          (subtype-is-set (□-is-set carrier-is-set) (Locus-is-prop Ψ⁺))
+          fst
+          (λ v → (□-retract Ψ⁺ v , □-retract-Locus Ψ⁺ (coh , mono) v))
+          (λ q → subtype-ext (Locus-is-prop Ψ⁺)
+                   (□-retract-fix Ψ⁺ (q .fst) (q .snd)))
+          (λ _ p → p)
+          (λ v p → tr generating-fam-is-simplicial
+                     (sym (□-retract-last₂ Ψ τ v)) p))
+        □-comparable₂-is-inner-anodyne
+}
+}
+
+\subtree[ub-002I]{
+\taxon{Remark}
+\title{Why the retraction has to fix the pair}
+
+\p{Every convex #{A} is a retract of its cube, for instance by
+#{r(x)_a = \bigvee_{b \preceq a} x_b}. But to transport the free case
+(\ref{ub-002G}) from the cube to #{A} along a retraction, as \ref{ub-002H}
+does, the retraction has to carry the comparability of #{x_i} and #{x_j} back
+and forth, and it does so when it leaves both coordinates alone. The obvious
+retraction fixes only the #{\preceq}-minimal coordinates, which is too few.
+[The clamp](ub-002F) fixes whichever two coordinates are processed last, and
+the price is that the processing order becomes data: the triangular form of
+[a presentation](ub-002D). The reindexing of \ref{ub-002J} to \ref{ub-002M}
+pays that price back, moving an arbitrary unrelated pair into the last two
+places without permuting the cube.}
+}
+
+\subtree[ub-002J]{
+\taxon{Definition}
+\title{Coordinates, and the column of a presentation}
+
+\p{A [presentation](ub-002D) lists a \em{row} per coordinate: how that
+coordinate is constrained relative to the ones before it. The reindexing of
+\ref{ub-002I} needs the \em{column}: for
+a fixed coordinate #{i}, how every coordinate is constrained relative to
+#{i}. Rows below #{i} are read off the column of #{i} directly; rows above it
+are read off backwards, so a slot has to be reversed.}
+
+\p{Coordinates are indexed with #{\Fin}, counting from the \em{last} — the
+one processed last is \code{fzero} — since that is the direction the tower
+recurses in.}
+
+\agda{
+rev : Slot → Slot
+rev lo = hi
+rev eq = eq
+rev fr = fr
+rev hi = lo
+
+lab-at : ∀ {n} → Lab n → Fin n → Slot
+lab-at {suc n} (ℓ , s) fzero = s
+lab-at {suc n} (ℓ , s) (fsuc a) = lab-at ℓ a
+
+□-coord : ∀ {n} → □^ n → Fin n → Δ¹
+□-coord {suc zero} v fzero = v
+□-coord {suc zero} v (fsuc ())
+□-coord {suc (suc n)} (w , x) fzero = x
+□-coord {suc (suc n)} (w , x) (fsuc a) = □-coord w a
+
+col : ∀ {n} → Cvx n → Fin n → Lab n
+col {suc n} (Ψ , ρ) fzero = (ρ , eq)
+col {suc n} (Ψ , ρ) (fsuc i) = (col Ψ i , rev (lab-at ρ i))
+}
+
+\p{A row of constraints, read one coordinate at a time.}
+
+\agda{
+Bound-at
+  : ∀ {n} (ℓ : Lab n) (w : □^ n) (t : Δ¹) → Bound ℓ w t
+  → (a : Fin n) → bound¹ (lab-at ℓ a) (□-coord w a) t
+Bound-at {suc zero} (_ , s) x t b fzero = b
+Bound-at {suc zero} (_ , s) x t b (fsuc ())
+Bound-at {suc (suc n)} (ℓ , s) (w , y) t (bs , b) fzero = b
+Bound-at {suc (suc n)} (ℓ , s) (w , y) t (bs , b) (fsuc a)
+  = Bound-at ℓ w t bs a
+
+bound¹-rev : (c : Slot) (x y : Δ¹) → bound¹ c y x → bound¹ (rev c) x y
+bound¹-rev lo x y p = p
+bound¹-rev eq x y p = sym p
+bound¹-rev fr x y p = ttᴸ
+bound¹-rev hi x y p = p
+}
+}
+
+\subtree[ub-002K]{
+\taxon{Definition}
+\title{Closed presentations}
+
+\p{[Coherence](ub-002D) asks only that each row be monotone for the rows
+below it, which is what [the retraction](ub-002F) needs and no more. The
+reindexing needs the stronger condition that the presentation records the
+constraints it \em{implies}, not only those it declares: a presentation is
+\em{closed} when every column is monotone.}
+
+\p{In the intended reading — the presentation is a preorder on the
+coordinates — this is transitivity, and coherence is the special case of it
+that ignores the coordinates above. So closure implies coherence, and the
+proof is two projections.}
+
+\agda{
+is-closed : ∀ {n} → Cvx n → Type
+is-closed {n} Ψ = (i : Fin n) → Mono Ψ (col Ψ i)
+
+is-coherent←is-closed : ∀ {n} (Ψ : Cvx n) → is-closed Ψ → is-coherent Ψ
+is-coherent←is-closed {zero} _ _ = _
+is-coherent←is-closed {suc n} (Ψ , ρ) cl
+  = ( is-coherent←is-closed Ψ (λ i → cl (fsuc i) .fst)
+    , cl fzero .fst )
+}
+
+\p{A column is the row of a coordinate, read in both directions, so on the
+locus it is satisfied at that coordinate's own value.}
+
+\agda{
+Bound-col
+  : ∀ {n} (Ψ : Cvx n) (i : Fin n) (w : □^ n)
+  → Locus Ψ w → Bound (col Ψ i) w (□-coord w i)
+Bound-col {suc zero} (Ψ , ρ) fzero x l = refl
+Bound-col {suc zero} (Ψ , ρ) (fsuc ()) x l
+Bound-col {suc (suc n)} (Ψ , ρ) fzero (w , x) (lw , b) = (b , refl)
+Bound-col {suc (suc n)} (Ψ , ρ) (fsuc i) (w , x) (lw , b)
+  = ( Bound-col Ψ i w lw
+    , bound¹-rev (lab-at ρ i) x (□-coord w i) (Bound-at ρ w x b i) )
+}
+}
+
+\subtree[ub-002L]{
+\taxon{Lemma}
+\title{Two columns of an unrelated pair}
+
+\p{The one thing the reindexing needs beyond [the columns](ub-002J): if #{i}
+and #{j} are unrelated, then adding a copy of #{x_j} on top of a presentation
+that already carries a copy of #{x_i} is again coherent. In slots that reads
+as a compatibility between the two columns, and it comes out of the rows the
+presentation already has — closure is not needed for it, only
+[monotonicity](ub-002D) of the row being extended.}
+
+\p{Two scalar facts do the work. The first is a symmetry: over an unrelated
+pair the compatibility condition does not care which of the two slots is
+which. The second reverses a slot, which is what happens when a column is
+read against a row above it.}
+
+\agda{
+compat¹-fr-sym : (a b : Slot) → compat¹ a b fr → compat¹ b a fr
+compat¹-fr-sym lo lo p = tt
+compat¹-fr-sym lo eq p = ¡ p
+compat¹-fr-sym lo fr p = tt
+compat¹-fr-sym lo hi p = ¡ p
+compat¹-fr-sym eq lo p = ¡ (p .snd)
+compat¹-fr-sym eq eq p = ¡ (p .fst)
+compat¹-fr-sym eq fr p = tt
+compat¹-fr-sym eq hi p = ¡ (p .fst)
+compat¹-fr-sym fr lo p = tt
+compat¹-fr-sym fr eq p = (tt , tt)
+compat¹-fr-sym fr fr p = tt
+compat¹-fr-sym fr hi p = tt
+compat¹-fr-sym hi lo p = ¡ p
+compat¹-fr-sym hi eq p = ¡ p
+compat¹-fr-sym hi fr p = tt
+compat¹-fr-sym hi hi p = tt
+
+compat¹-rev : (c s : Slot) → compat¹ c fr s → compat¹ s (rev c) fr
+compat¹-rev lo lo p = ¡ p
+compat¹-rev lo eq p = ¡ p
+compat¹-rev lo fr p = tt
+compat¹-rev lo hi p = tt
+compat¹-rev eq lo p = ¡ (p .fst)
+compat¹-rev eq eq p = ¡ (p .fst)
+compat¹-rev eq fr p = tt
+compat¹-rev eq hi p = ¡ (p .snd)
+compat¹-rev fr lo p = tt
+compat¹-rev fr eq p = (tt , tt)
+compat¹-rev fr fr p = tt
+compat¹-rev fr hi p = tt
+compat¹-rev hi lo p = tt
+compat¹-rev hi eq p = ¡ p
+compat¹-rev hi fr p = tt
+compat¹-rev hi hi p = ¡ p
+}
+
+\agda{
+Compat-at
+  : ∀ {n} (ℓ τ : Lab n) (s : Slot) → Compat ℓ τ s
+  → (a : Fin n) → compat¹ (lab-at ℓ a) (lab-at τ a) s
+Compat-at {suc n} (ℓ , a) (τ , b) s (cs , c) fzero = c
+Compat-at {suc n} (ℓ , a) (τ , b) s (cs , c) (fsuc i) = Compat-at ℓ τ s cs i
+
+Compat-fr-sym
+  : ∀ {n} (ℓ τ : Lab n) → Compat ℓ τ fr → Compat τ ℓ fr
+Compat-fr-sym {zero} _ _ _ = tt
+Compat-fr-sym {suc n} (ℓ , a) (τ , b) (cs , c)
+  = (Compat-fr-sym ℓ τ cs , compat¹-fr-sym a b c)
+
+Compat-col
+  : ∀ {n} (Ψ : Cvx n) (ρ : Lab n) → Mono Ψ ρ
+  → (j : Fin n) → lab-at ρ j ＝ fr → Compat ρ (col Ψ j) fr
+Compat-col {suc n} (Ψ , ℓ) (ρ , s) (mρ , cm) fzero h
+  = ( Compat-fr-sym ℓ ρ (tr (Compat ℓ ρ) h cm)
+    , tr (λ z → compat¹ z eq fr) (sym h) tt )
+Compat-col {suc n} (Ψ , ℓ) (ρ , s) (mρ , cm) (fsuc j) h
+  = ( Compat-col Ψ ρ mρ j h
+    , compat¹-rev (lab-at ℓ j) s
+        (tr (λ z → compat¹ (lab-at ℓ j) z s) h (Compat-at ℓ ρ s cm j)) )
+}
+
+\p{A coordinate's column is #{=} at that coordinate, which is what pins the
+copy to the original.}
+
+\agda{
+col-diag : ∀ {n} (Ψ : Cvx n) (i : Fin n) → lab-at (col Ψ i) i ＝ eq
+col-diag {suc n} (Ψ , ρ) fzero = refl
+col-diag {suc n} (Ψ , ρ) (fsuc i) = col-diag Ψ i
+
+col-coord
+  : ∀ {n} (Ψ : Cvx n) (i : Fin n) (w : □^ n) (s : Δ¹)
+  → Bound (col Ψ i) w s → □-coord w i ＝ s
+col-coord Ψ i w s b
+  = tr (λ z → bound¹ z (□-coord w i) s) (col-diag Ψ i)
+      (Bound-at (col Ψ i) w s b i)
+}
+}
+
+\subtree[ub-002M]{
+\taxon{Theorem}
+\title{Comparability of any pair over a convex subcube}
+
+\p{Step 1 of [the outline](Synthetic.Categories.ConvexSubcubes), for an
+arbitrary pair. Let #{\Psi} be a [closed](ub-002K) convex presentation of
+#{\square^{n}} with locus #{A}, and let #{i, j} be two coordinates that
+#{\Psi} leaves unrelated. Then}
+
+##{A \wedge \square^{n}_{(i,j)} \hookrightarrow A}
+
+\p{is inner anodyne.}
+
+\p{The reduction to [the last-two case](ub-002H) needs no permutation of the
+cube. Stack two more coordinates on #{\Psi}: one pinned to #{x_i} and one
+pinned to #{x_j}, each by [its column](ub-002J), whose diagonal slot is #{=}.
+The two rows are monotone because #{\Psi} is closed, and they leave the two
+new coordinates unrelated because #{i} and #{j} are unrelated
+(\ref{ub-002L}). Writing #{A^+ \subseteq \square^{n+2}} for the locus of the
+extended presentation, forgetting the two new coordinates is an equivalence
+#{A^+ \simeq A}, since the #{=} slots determine what was added, and under it
+the comparability of the last two coordinates is the comparability of #{x_i}
+and #{x_j}. So the two inclusions are equivalent in the arrow category,}
+
+\quiver{
+\begin{tikzcd}
+	{A^+ \wedge \square^{n+2}_{(n,n+1)}} && {A \wedge \square^{n}_{(i,j)}} \\
+	\\
+	{A^+} && A
+	\arrow["\simeq", from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow["\simeq"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{and the left-hand one is inner anodyne by \ref{ub-002H}.}
+
+\agda{
+comparable-pair
+  : ∀ {m} (Ψ : Cvx (suc m)) (i j : Fin (suc m))
+  → Σ (□^ (suc m)) (Locus Ψ) → Type 𝓘
+comparable-pair Ψ i j q
+  = generating-fam-is-simplicial (□-coord (q .fst) i , □-coord (q .fst) j)
+
+module _
+  {m : ℕ} (Ψ : Cvx (suc m)) (cl : is-closed Ψ)
+  (i j : Fin (suc m)) (ij : lab-at (col Ψ i) j ＝ fr)
+  where
+
+  private
+    Ψ⁺ : Cvx (suc (suc (suc m)))
+    Ψ⁺ = cvx-ext (Ψ , col Ψ i) (col Ψ j)
+
+    Top Bot : Type 𝓘
+    Top = Σ (□^ (suc (suc (suc m)))) (Locus Ψ⁺)
+    Bot = Σ (□^ (suc m)) (Locus Ψ)
+
+    down : Top → Bot
+    down (((w , s) , t) , ((lw , bi) , (bj , _))) = (w , lw)
+
+    up : Bot → Top
+    up (w , lw)
+      = ( ((w , □-coord w i) , □-coord w j)
+        , ( (lw , Bound-col Ψ i w lw)
+          , (Bound-col Ψ j w lw , ttᴸ) ) )
+
+    pin : (e : Top) → (□-coord (down e .fst) i , □-coord (down e .fst) j)
+        ＝ □-last₂ (e .fst)
+    pin (((w , s) , t) , ((lw , bi) , (bj , _)))
+      = ×-path→ (col-coord Ψ i w s bi , col-coord Ψ j w t bj)
+
+    up-down : (e : Top) → up (down e) ＝ e
+    up-down e@(((w , s) , t) , ((lw , bi) , (bj , _)))
+      = subtype-ext (Locus-is-prop Ψ⁺)
+          (×-path→ ( ×-path→ (refl , col-coord Ψ i w s bi)
+                   , col-coord Ψ j w t bj ))
+
+    down-up : (b : Bot) → down (up b) ＝ b
+    down-up b = refl
+
+    bot≃ : Top ≃ Bot
+    bot≃ = mk≃ down (is-equiv←qinv (up , up-down , down-up))
+
+    top-down
+      : Σ Top (comparable-on (Locus Ψ⁺)) → Σ Bot (comparable-pair Ψ i j)
+    top-down (e , p) = (down e , tr generating-fam-is-simplicial (sym (pin e)) p)
+
+    top-up
+      : Σ Bot (comparable-pair Ψ i j) → Σ Top (comparable-on (Locus Ψ⁺))
+    top-up (b , q) = (up b , q)
+
+    top-η : (x : Σ Top (comparable-on (Locus Ψ⁺))) → top-up (top-down x) ＝ x
+    top-η (e , p)
+      = subtype-ext (λ e' → generating-fam-is-simplicial-is-prop (□-last₂ (e' .fst)))
+          (up-down e)
+
+    top-ε : (x : Σ Bot (comparable-pair Ψ i j)) → top-down (top-up x) ＝ x
+    top-ε (b , q)
+      = subtype-ext (λ b' → generating-fam-is-simplicial-is-prop _) refl
+
+    top≃ : Σ Top (comparable-on (Locus Ψ⁺)) ≃ Σ Bot (comparable-pair Ψ i j)
+    top≃ = mk≃ top-down (is-equiv←qinv (top-up , top-η , top-ε))
+
+  convex-pair-comparability-is-inner-anodyne
+    : is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+  convex-pair-comparability-is-inner-anodyne
+    = is-anodyne←equiv fst fst
+        (mk-arr-equiv top≃ bot≃ (λ _ → refl))
+        Λ[2,1]-incl
+        (convex-comparability-is-inner-anodyne
+           (Ψ , col Ψ i) (col Ψ j)
+           (is-coherent←is-closed Ψ cl , cl i)
+           (cl j , Compat-col Ψ (col Ψ i) (cl i) j ij))
+}
+}
+
+\subtree[ub-002N]{
+\taxon{Example}
+\title{An instance in dimension three}
+
+\p{So that the theorem is visibly not vacuous, and to fix the conventions:
+coordinates are indexed from the last, so on
+#{\square^3 = (\Delta^1\times\Delta^1)\times\Delta^1} the index \code{fzero}
+is #{x_2}, and the presentation below reads}
+
+##{x_0 \le x_1, \qquad x_0 \le x_2, \qquad x_1 \parallel x_2.}
+
+\p{It is closed — the only relations its two generators imply are themselves —
+so [the theorem](ub-002M) applies at the pair #{(x_2, x_1)}. Writing #{A} for
+the locus, that is}
+
+##{A \wedge \square^3_{(1,2)} \hookrightarrow A,}
+
+\p{and it is inner anodyne. Neither side is a product of simplices and neither
+map is a projection, so this is not an instance of anything above it.}
+
+\agda{
+private
+  ex : Cvx 3
+  ex = (((tt , tt) , (tt , lo)) , ((tt , lo) , fr))
+
+  ex-is-closed : is-closed ex
+  ex-is-closed fzero = _
+  ex-is-closed (fsuc fzero) = _
+  ex-is-closed (fsuc (fsuc fzero)) = _
+
+  ex-unrelated : lab-at (col ex fzero) (fsuc fzero) ＝ fr
+  ex-unrelated = refl
+
+ex-comparability-is-inner-anodyne
+  : is-inner-anodyne
+      (fst {B = comparable-pair ex fzero (fsuc fzero)})
+ex-comparability-is-inner-anodyne
+  = convex-pair-comparability-is-inner-anodyne
+      ex ex-is-closed fzero (fsuc fzero) ex-unrelated
+}
+}
+
+\subtree[ub-002P]{
+\taxon{Definition}
+\title{Joining slots, and the empty presentation}
+
+\p{Two presentations of the same cube are conjoined slot by slot, in the
+order that reads a slot as \em{how much is being asked}:
+#{\parallel} asks nothing, #{\le} and #{\ge} ask one inequality, #{=} asks
+both. That order is a join semilattice, and a bound in a joined slot is
+exactly the two bounds together. It is not the order #{\sqsubseteq} of
+\ref{ub-002C}, which is about the clamp rather than about constraints.}
+
+\agda{
+_⋎_ : Slot → Slot → Slot
+lo ⋎ lo = lo
+lo ⋎ eq = eq
+lo ⋎ fr = lo
+lo ⋎ hi = eq
+eq ⋎ _ = eq
+fr ⋎ s = s
+hi ⋎ lo = eq
+hi ⋎ eq = eq
+hi ⋎ fr = hi
+hi ⋎ hi = hi
+
+bound¹-⋎←
+  : (s t : Slot) {x y : Δ¹}
+  → bound¹ s x y → bound¹ t x y → bound¹ (s ⋎ t) x y
+bound¹-⋎← lo lo p q = p
+bound¹-⋎← lo eq p q = q
+bound¹-⋎← lo fr p q = p
+bound¹-⋎← lo hi p q = ≤-antisym p q
+bound¹-⋎← eq _ p q = p
+bound¹-⋎← fr _ p q = q
+bound¹-⋎← hi lo p q = ≤-antisym q p
+bound¹-⋎← hi eq p q = q
+bound¹-⋎← hi fr p q = p
+bound¹-⋎← hi hi p q = p
+
+bound¹-⋎→₁
+  : (s t : Slot) {x y : Δ¹} → bound¹ (s ⋎ t) x y → bound¹ s x y
+bound¹-⋎→₁ lo lo p = p
+bound¹-⋎→₁ lo eq p = ≤←＝ p
+bound¹-⋎→₁ lo fr p = p
+bound¹-⋎→₁ lo hi p = ≤←＝ p
+bound¹-⋎→₁ eq _ p = p
+bound¹-⋎→₁ fr _ p = ttᴸ
+bound¹-⋎→₁ hi lo p = ≥←＝ p
+bound¹-⋎→₁ hi eq p = ≥←＝ p
+bound¹-⋎→₁ hi fr p = p
+bound¹-⋎→₁ hi hi p = p
+
+bound¹-⋎→₂
+  : (s t : Slot) {x y : Δ¹} → bound¹ (s ⋎ t) x y → bound¹ t x y
+bound¹-⋎→₂ lo lo p = p
+bound¹-⋎→₂ lo eq p = p
+bound¹-⋎→₂ lo fr p = ttᴸ
+bound¹-⋎→₂ lo hi p = ≥←＝ p
+bound¹-⋎→₂ eq lo p = ≤←＝ p
+bound¹-⋎→₂ eq eq p = p
+bound¹-⋎→₂ eq fr p = ttᴸ
+bound¹-⋎→₂ eq hi p = ≥←＝ p
+bound¹-⋎→₂ fr _ p = p
+bound¹-⋎→₂ hi lo p = ≤←＝ p
+bound¹-⋎→₂ hi eq p = p
+bound¹-⋎→₂ hi fr p = ttᴸ
+bound¹-⋎→₂ hi hi p = p
+}
+
+\p{The join is commutative, and reversing a slot distributes over it. Both are
+case analyses, and they are what makes the column of an extended presentation
+come out symmetric in \ref{ub-002Q}.}
+
+\agda{
+⋎-comm : (s t : Slot) → s ⋎ t ＝ t ⋎ s
+⋎-comm lo lo = refl
+⋎-comm lo eq = refl
+⋎-comm lo fr = refl
+⋎-comm lo hi = refl
+⋎-comm eq lo = refl
+⋎-comm eq eq = refl
+⋎-comm eq fr = refl
+⋎-comm eq hi = refl
+⋎-comm fr lo = refl
+⋎-comm fr eq = refl
+⋎-comm fr fr = refl
+⋎-comm fr hi = refl
+⋎-comm hi lo = refl
+⋎-comm hi eq = refl
+⋎-comm hi fr = refl
+⋎-comm hi hi = refl
+
+rev-⋎ : (s t : Slot) → rev (s ⋎ t) ＝ rev s ⋎ rev t
+rev-⋎ lo lo = refl
+rev-⋎ lo eq = refl
+rev-⋎ lo fr = refl
+rev-⋎ lo hi = refl
+rev-⋎ eq lo = refl
+rev-⋎ eq eq = refl
+rev-⋎ eq fr = refl
+rev-⋎ eq hi = refl
+rev-⋎ fr lo = refl
+rev-⋎ fr eq = refl
+rev-⋎ fr fr = refl
+rev-⋎ fr hi = refl
+rev-⋎ hi lo = refl
+rev-⋎ hi eq = refl
+rev-⋎ hi fr = refl
+rev-⋎ hi hi = refl
+
+rev-rev : (s : Slot) → rev (rev s) ＝ s
+rev-rev lo = refl
+rev-rev eq = refl
+rev-rev fr = refl
+rev-rev hi = refl
+}
+
+\p{The empty presentation constrains nothing. It is closed, its locus is the
+whole cube, and it is where a list of relations is adjoined from.}
+
+\agda{
+fr-lab : ∀ {n} → Lab n
+fr-lab {zero} = tt
+fr-lab {suc n} = (fr-lab , fr)
+
+discrete : ∀ {n} → Cvx n
+discrete {zero} = tt
+discrete {suc n} = (discrete , fr-lab)
+
+Bound-fr : ∀ {n} (v : □^ n) (t : Δ¹) → Bound (fr-lab {n}) v t
+Bound-fr {zero} v t = ttᴸ
+Bound-fr {suc zero} v t = ttᴸ
+Bound-fr {suc (suc n)} (w , x) t = (Bound-fr w t , ttᴸ)
+
+Locus-discrete : ∀ {n} (v : □^ n) → Locus (discrete {n}) v
+Locus-discrete {zero} v = ttᴸ
+Locus-discrete {suc zero} v = ttᴸ
+Locus-discrete {suc (suc n)} (w , t) = (Locus-discrete w , Bound-fr w t)
+
+Compat-fr : ∀ {n} (τ : Lab n) (s : Slot) → Compat (fr-lab {n}) τ s
+Compat-fr {zero} τ s = tt
+Compat-fr {suc n} (τ , b) s = (Compat-fr τ s , tt)
+
+Mono-discrete : ∀ {n} (ρ : Lab n) → Mono (discrete {n}) ρ
+Mono-discrete {zero} ρ = tt
+Mono-discrete {suc n} (τ , s) = (Mono-discrete τ , Compat-fr τ s)
+
+discrete-is-closed : ∀ {n} → is-closed (discrete {n})
+discrete-is-closed i = Mono-discrete (col discrete i)
+}
+}
+
+\subtree[ub-002Q]{
+\taxon{Definition}
+\title{Adjoining one relation}
+
+\p{The meet of two [closed](ub-002K) presentations has to be closed again,
+and it is computed one relation at a time. Adjoining a \em{single} relation
+#{x_a \le x_b} to a presentation that is already closed has a one-step
+formula — the classical one,}
+
+##{x \preceq' y \iff x \preceq y \ \lor\ (x \preceq a \ \land\ b \preceq y),}
+
+\p{with no iteration and nothing to terminate. A meet is then a fold: adjoin
+the second presentation's relations to the first one at a time.}
+
+\p{In slots, #{x \preceq a} is #{\le} or #{=} in [the column of #{a}](ub-002J)
+at #{x}, and #{b \preceq y} is #{\ge} or #{=} in the column of #{b} at #{y}.
+The two conjunctions are one operation.}
+
+\agda{
+push : Slot → Slot → Slot
+push lo hi = lo
+push lo eq = lo
+push eq hi = lo
+push eq eq = lo
+push _ _ = fr
+
+push-sound
+  : (p q : Slot) {x α β y : Δ¹}
+  → bound¹ p x α → bound¹ q y β → α ≤ β → bound¹ (push p q) x y
+push-sound lo eq bp bq h = ≤-trans bp (≤-trans h (≥←＝ bq))
+push-sound lo hi bp bq h = ≤-trans bp (≤-trans h bq)
+push-sound eq eq bp bq h = ≤-trans (≤←＝ bp) (≤-trans h (≥←＝ bq))
+push-sound eq hi bp bq h = ≤-trans (≤←＝ bp) (≤-trans h bq)
+push-sound lo lo _ _ _ = ttᴸ
+push-sound lo fr _ _ _ = ttᴸ
+push-sound eq lo _ _ _ = ttᴸ
+push-sound eq fr _ _ _ = ttᴸ
+push-sound fr _ _ _ _ = ttᴸ
+push-sound hi _ _ _ _ = ttᴸ
+}
+
+\p{One row of the extended presentation, then the whole of it. The two extra
+slots are the column entries at the row's own coordinate.}
+
+\agda{
+addL : ∀ {n} → Lab n → Lab n → Lab n → Slot → Slot → Lab n
+addL {zero} ρ LA UB la⋆ ub⋆ = tt
+addL {suc n} (ρ , s) (LA , la) (UB , ub) la⋆ ub⋆
+  = ( addL ρ LA UB la⋆ ub⋆
+    , s ⋎ (push la ub⋆ ⋎ rev (push la⋆ ub)) )
+
+addC : ∀ {n} → Cvx n → Lab n → Lab n → Cvx n
+addC {zero} Ψ LA UB = tt
+addC {suc n} (Ψ , ρ) (LA , la) (UB , ub) = (addC Ψ LA UB , addL ρ LA UB la ub)
+
+add : ∀ {n} → Cvx n → Fin n → Fin n → Cvx n
+add Ψ a b = addC Ψ (col Ψ a) (col Ψ b)
+}
+}
+
+\subtree[ub-002R]{
+\taxon{Lemma}
+\title{The locus of an extension}
+
+\p{Adjoining #{x_a \le x_b} cuts out exactly that: the locus of the extension
+is the locus of the original meet the half-space. Both directions are wanted,
+since it is the two of them together that make a list of relations a
+presentation of the subtype it names.}
+
+\p{One direction is [the one-step formula](ub-002Q) read as an implication —
+every slot it adds is implied by #{x_a \le x_b} and the original bounds,
+through the reading of the columns on the locus (\ref{ub-002K}).}
+
+\agda{
+addL-sound
+  : ∀ {n} (ρ LA UB : Lab n) (la⋆ ub⋆ : Slot) (v : □^ n) (t α β : Δ¹)
+  → Bound ρ v t → Bound LA v α → Bound UB v β
+  → bound¹ la⋆ t α → bound¹ ub⋆ t β → α ≤ β
+  → Bound (addL ρ LA UB la⋆ ub⋆) v t
+addL-sound {zero} ρ LA UB la⋆ ub⋆ v t α β br bl bu pl pu h
+  = ttᴸ
+addL-sound {suc zero} (_ , s) (_ , la) (_ , ub) la⋆ ub⋆ x t α β br bl bu pl pu h
+  = bound¹-⋎← s (push la ub⋆ ⋎ rev (push la⋆ ub)) br
+      (bound¹-⋎← (push la ub⋆) (rev (push la⋆ ub))
+        (push-sound la ub⋆ bl pu h)
+        (bound¹-rev (push la⋆ ub) x t (push-sound la⋆ ub pl bu h)))
+addL-sound {suc (suc n)} (ρ , s) (LA , la) (UB , ub) la⋆ ub⋆
+           (w , x) t α β (br , bs) (bl , bx) (bu , bux) pl pu h
+  = ( addL-sound ρ LA UB la⋆ ub⋆ w t α β br bl bu pl pu h
+    , bound¹-⋎← s (push la ub⋆ ⋎ rev (push la⋆ ub)) bs
+        (bound¹-⋎← (push la ub⋆) (rev (push la⋆ ub))
+          (push-sound la ub⋆ bx pu h)
+          (bound¹-rev (push la⋆ ub) x t (push-sound la⋆ ub pl bux h))) )
+
+addC-sound
+  : ∀ {n} (Ψ : Cvx n) (LA UB : Lab n) (v : □^ n) (α β : Δ¹)
+  → Locus Ψ v → Bound LA v α → Bound UB v β → α ≤ β
+  → Locus (addC Ψ LA UB) v
+addC-sound {zero} Ψ LA UB v α β l bl bu h = ttᴸ
+addC-sound {suc zero} Ψ LA UB v α β l bl bu h = ttᴸ
+addC-sound {suc (suc n)} (Ψ , ρ) (LA , la) (UB , ub) (w , t) α β
+           (l , br) (bl , pl) (bu , pu) h
+  = ( addC-sound Ψ LA UB w α β l bl bu h
+    , addL-sound ρ LA UB la ub w t α β br bl bu pl pu h )
+
+add-sound
+  : ∀ {n} (Ψ : Cvx n) (a b : Fin n) (v : □^ n)
+  → Locus Ψ v → □-coord v a ≤ □-coord v b → Locus (add Ψ a b) v
+add-sound Ψ a b v l h
+  = addC-sound Ψ (col Ψ a) (col Ψ b) v (□-coord v a) (□-coord v b) l
+      (Bound-col Ψ a v l) (Bound-col Ψ b v l) h
+}
+
+\p{The other direction has two halves. Forgetting the adjoined slots is a
+projection, one \code{⋎} at a time.}
+
+\agda{
+addL-forget
+  : ∀ {n} (ρ LA UB : Lab n) (la⋆ ub⋆ : Slot) (v : □^ n) (t : Δ¹)
+  → Bound (addL ρ LA UB la⋆ ub⋆) v t → Bound ρ v t
+addL-forget {zero} ρ LA UB la⋆ ub⋆ v t b = ttᴸ
+addL-forget {suc zero} (_ , s) (_ , la) (_ , ub) la⋆ ub⋆ x t b
+  = bound¹-⋎→₁ s (push la ub⋆ ⋎ rev (push la⋆ ub)) b
+addL-forget {suc (suc n)} (ρ , s) (LA , la) (UB , ub) la⋆ ub⋆ (w , x) t (br , bs)
+  = ( addL-forget ρ LA UB la⋆ ub⋆ w t br
+    , bound¹-⋎→₁ s (push la ub⋆ ⋎ rev (push la⋆ ub)) bs )
+
+addC-forget
+  : ∀ {n} (Ψ : Cvx n) (LA UB : Lab n) (v : □^ n)
+  → Locus (addC Ψ LA UB) v → Locus Ψ v
+addC-forget {zero} Ψ LA UB v l = ttᴸ
+addC-forget {suc zero} Ψ LA UB v l = ttᴸ
+addC-forget {suc (suc n)} (Ψ , ρ) (LA , la) (UB , ub) (w , t) (l , br)
+  = ( addC-forget Ψ LA UB w l
+    , addL-forget ρ LA UB la ub w t br )
+}
+
+\p{The other half is that the adjoined relation is really recorded. Reading
+a column off an extension is the same operation as building a row of one,
+which is where [the join's commutativity](ub-002P) is spent; at the pair
+#{(a,b)} the two diagonal #{=} slots then leave a #{\ge} behind, and that is
+the constraint.}
+
+\agda{
+lab-at-addL
+  : ∀ {n} (ρ LA UB : Lab n) (la⋆ ub⋆ : Slot) (i : Fin n)
+  → lab-at (addL ρ LA UB la⋆ ub⋆) i
+    ＝ lab-at ρ i ⋎ (push (lab-at LA i) ub⋆ ⋎ rev (push la⋆ (lab-at UB i)))
+lab-at-addL {suc n} (ρ , s) (LA , la) (UB , ub) la⋆ ub⋆ fzero = refl
+lab-at-addL {suc n} (ρ , s) (LA , la) (UB , ub) la⋆ ub⋆ (fsuc i)
+  = lab-at-addL ρ LA UB la⋆ ub⋆ i
+
+col-addC
+  : ∀ {n} (Ψ : Cvx n) (LA UB : Lab n) (i : Fin n)
+  → col (addC Ψ LA UB) i ＝ addL (col Ψ i) LA UB (lab-at LA i) (lab-at UB i)
+col-addC {suc n} (Ψ , ρ) (LA , la) (UB , ub) fzero = refl
+col-addC {suc n} (Ψ , ρ) (LA , la) (UB , ub) (fsuc i)
+  = ×-path→
+      ( col-addC Ψ LA UB i
+      , ap rev (lab-at-addL ρ LA UB la ub i)
+        ∙ rev-⋎ (lab-at ρ i)
+            (push (lab-at LA i) ub ⋎ rev (push la (lab-at UB i)))
+        ∙ ap (rev (lab-at ρ i) ⋎_)
+            ( rev-⋎ (push (lab-at LA i) ub) (rev (push la (lab-at UB i)))
+            ∙ ap (rev (push (lab-at LA i) ub) ⋎_)
+                (rev-rev (push la (lab-at UB i)))
+            ∙ ⋎-comm (rev (push (lab-at LA i) ub)) (push la (lab-at UB i)) ) )
+}
+
+\agda{
+module _ {n : ℕ} (Ψ : Cvx n) (a b : Fin n) where
+
+  private
+    P Q : Slot
+    P = lab-at (col Ψ a) b
+    Q = lab-at (col Ψ b) a
+
+    slot-path : lab-at (col (add Ψ a b) a) b ＝ P ⋎ (push P Q ⋎ hi)
+    slot-path
+      = ap (λ z → lab-at z b) (col-addC Ψ (col Ψ a) (col Ψ b) a)
+      ∙ lab-at-addL (col Ψ a) (col Ψ a) (col Ψ b)
+          (lab-at (col Ψ a) a) (lab-at (col Ψ b) a) b
+      ∙ ap (λ s → P ⋎ (push P Q ⋎ rev s))
+          ( ap (λ z → push z (lab-at (col Ψ b) b)) (col-diag Ψ a)
+          ∙ ap (push eq) (col-diag Ψ b) )
+
+  add-≤
+    : (v : □^ n) → Locus (add Ψ a b) v → □-coord v a ≤ □-coord v b
+  add-≤ v l
+    = bound¹-⋎→₂ (push P Q) hi
+        (bound¹-⋎→₂ P (push P Q ⋎ hi)
+          (tr (λ s → bound¹ s (□-coord v b) (□-coord v a)) slot-path
+            (Bound-at (col (add Ψ a b) a) v (□-coord v a)
+              (Bound-col (add Ψ a b) a v l) b)))
+}
+}
+
+\subtree[ub-002S]{
+\taxon{Definition}
+\title{Reading a slot as two relations}
+
+\p{A slot carries two independent facts, #{x \preceq y} and #{y \preceq x},
+and every operation on slots above is a pair of operations on those. Naming
+them turns the case analyses into ordinary relational reasoning, which is what
+[the closedness of an extension](ub-002T) needs: there the argument is about
+paths, and a case bash in nine slot variables is not the way to do it.}
+
+\agda{
+le ge : Slot → Type
+le lo = 𝟙
+le eq = 𝟙
+le fr = ∅
+le hi = ∅
+ge lo = ∅
+ge eq = 𝟙
+ge fr = ∅
+ge hi = 𝟙
+}
+
+\p{The slot order is the two facts read contravariantly, and the
+[compatibility condition](ub-002D) is the slot order read twice.}
+
+\agda{
+⊑-mk : (s t : Slot) → (ge s → ge t) → (le t → le s) → s ⊑ t
+⊑-mk lo lo f g = tt
+⊑-mk lo eq f g = tt
+⊑-mk lo fr f g = tt
+⊑-mk lo hi f g = tt
+⊑-mk eq lo f g = f tt
+⊑-mk eq eq f g = tt
+⊑-mk eq fr f g = f tt
+⊑-mk eq hi f g = tt
+⊑-mk fr lo f g = g tt
+⊑-mk fr eq f g = g tt
+⊑-mk fr fr f g = tt
+⊑-mk fr hi f g = tt
+⊑-mk hi lo f g = f tt
+⊑-mk hi eq f g = g tt
+⊑-mk hi fr f g = f tt
+⊑-mk hi hi f g = tt
+
+⊑-ge : (s t : Slot) → s ⊑ t → ge s → ge t
+⊑-ge lo t p q = ¡ q
+⊑-ge eq eq p q = tt
+⊑-ge eq hi p q = tt
+⊑-ge fr t p q = ¡ q
+⊑-ge hi hi p q = tt
+
+⊑-le : (s t : Slot) → s ⊑ t → le t → le s
+⊑-le lo t p q = tt
+⊑-le eq eq p q = tt
+⊑-le eq hi p q = ¡ q
+⊑-le fr fr p q = ¡ q
+⊑-le fr hi p q = ¡ q
+⊑-le hi hi p q = ¡ q
+
+compat¹-mk
+  : (a b s : Slot) → (le a → b ⊑ s) → (ge a → s ⊑ b) → compat¹ a b s
+compat¹-mk lo b s f g = f tt
+compat¹-mk eq b s f g = (f tt , g tt)
+compat¹-mk fr b s f g = tt
+compat¹-mk hi b s f g = g tt
+
+compat¹-le : (a b s : Slot) → compat¹ a b s → le a → b ⊑ s
+compat¹-le lo b s p q = p
+compat¹-le eq b s p q = p .fst
+compat¹-le fr b s p q = ¡ q
+compat¹-le hi b s p q = ¡ q
+
+compat¹-ge : (a b s : Slot) → compat¹ a b s → ge a → s ⊑ b
+compat¹-ge lo b s p q = ¡ q
+compat¹-ge eq b s p q = p .snd
+compat¹-ge fr b s p q = ¡ q
+compat¹-ge hi b s p q = p
+}
+
+\p{The join is a disjunction on each side; \code{push} is a conjunction on the
+#{\preceq} side and empty on the other; reversal swaps them.}
+
+\agda{
+le-⋎ : (s t : Slot) → le (s ⋎ t) → le s ⊎ le t
+le-⋎ lo lo p = inl tt
+le-⋎ lo eq p = inl tt
+le-⋎ lo fr p = inl tt
+le-⋎ lo hi p = inl tt
+le-⋎ eq t p = inl tt
+le-⋎ fr t p = inr p
+le-⋎ hi lo p = inr tt
+le-⋎ hi eq p = inr tt
+le-⋎ hi fr p = ¡ p
+le-⋎ hi hi p = ¡ p
+
+le-⋎₁ : (s t : Slot) → le s → le (s ⋎ t)
+le-⋎₁ lo lo p = tt
+le-⋎₁ lo eq p = tt
+le-⋎₁ lo fr p = tt
+le-⋎₁ lo hi p = tt
+le-⋎₁ eq t p = tt
+le-⋎₁ fr t p = ¡ p
+le-⋎₁ hi t p = ¡ p
+
+le-⋎₂ : (s t : Slot) → le t → le (s ⋎ t)
+le-⋎₂ lo lo p = tt
+le-⋎₂ lo eq p = tt
+le-⋎₂ lo fr p = ¡ p
+le-⋎₂ lo hi p = ¡ p
+le-⋎₂ eq t p = tt
+le-⋎₂ fr t p = p
+le-⋎₂ hi lo p = tt
+le-⋎₂ hi eq p = tt
+le-⋎₂ hi fr p = ¡ p
+le-⋎₂ hi hi p = ¡ p
+
+le-rev : (s : Slot) → le (rev s) → ge s
+le-rev lo p = ¡ p
+le-rev eq p = tt
+le-rev fr p = p
+le-rev hi p = tt
+
+le-rev← : (s : Slot) → ge s → le (rev s)
+le-rev← lo p = ¡ p
+le-rev← eq p = tt
+le-rev← fr p = p
+le-rev← hi p = tt
+
+le-push : (p q : Slot) → le (push p q) → le p × ge q
+le-push lo hi r = (tt , tt)
+le-push lo eq r = (tt , tt)
+le-push eq hi r = (tt , tt)
+le-push eq eq r = (tt , tt)
+le-push lo lo r = ¡ r
+le-push lo fr r = ¡ r
+le-push eq lo r = ¡ r
+le-push eq fr r = ¡ r
+le-push fr q r = ¡ r
+le-push hi q r = ¡ r
+
+le-push← : (p q : Slot) → le p → ge q → le (push p q)
+le-push← lo lo u w = ¡ w
+le-push← lo eq u w = tt
+le-push← lo fr u w = ¡ w
+le-push← lo hi u w = tt
+le-push← eq lo u w = ¡ w
+le-push← eq eq u w = tt
+le-push← eq fr u w = ¡ w
+le-push← eq hi u w = tt
+le-push← fr q u w = ¡ u
+le-push← hi q u w = ¡ u
+
+ge-rev : (s : Slot) → ge (rev s) → le s
+ge-rev lo p = tt
+ge-rev eq p = tt
+ge-rev fr p = p
+ge-rev hi p = p
+
+ge-rev← : (s : Slot) → le s → ge (rev s)
+ge-rev← lo p = tt
+ge-rev← eq p = tt
+ge-rev← fr p = p
+ge-rev← hi p = p
+
+ge-push : (p q : Slot) → ge (push p q) → ∅
+ge-push lo lo r = r
+ge-push lo eq r = r
+ge-push lo fr r = r
+ge-push lo hi r = r
+ge-push eq lo r = r
+ge-push eq eq r = r
+ge-push eq fr r = r
+ge-push eq hi r = r
+ge-push fr q r = r
+ge-push hi q r = r
+}
+}
+
+\subtree[ub-002T]{
+\taxon{Lemma}
+\title{Closedness, read at a triple}
+
+\p{[Closedness](ub-002K) is stated level by level, which is what
+[the retraction](ub-002F) wants but not what a transitivity argument wants.
+It is equivalent to the pointwise condition at every triple of coordinates,
+and the translation is an induction with no case analysis on which coordinate
+is deeper than which — the four cases of a pair of #{\Fin}s already sort that
+out.}
+
+\agda{
+rel : ∀ {n} → Cvx n → Fin n → Fin n → Slot
+rel Ψ x y = lab-at (col Ψ y) x
+
+rel-rev : ∀ {n} (Ψ : Cvx n) (x y : Fin n) → rel Ψ x y ＝ rev (rel Ψ y x)
+rel-rev {suc n} (Ψ , ρ) fzero fzero = refl
+rel-rev {suc n} (Ψ , ρ) fzero (fsuc y) = refl
+rel-rev {suc n} (Ψ , ρ) (fsuc x) fzero = sym (rev-rev (lab-at ρ x))
+rel-rev {suc n} (Ψ , ρ) (fsuc x) (fsuc y) = rel-rev Ψ x y
+
+⊑-refl : (s : Slot) → s ⊑ s
+⊑-refl lo = tt
+⊑-refl eq = tt
+⊑-refl fr = tt
+⊑-refl hi = tt
+
+compat¹-swap : (a b s : Slot) → compat¹ a b s → compat¹ (rev a) s b
+compat¹-swap lo b s p = p
+compat¹-swap eq b s p = (p .snd , p .fst)
+compat¹-swap fr b s p = tt
+compat¹-swap hi b s p = p
+}
+
+\agda{
+Compat-mk
+  : ∀ {n} (ℓ τ : Lab n) (s : Slot)
+  → ((x : Fin n) → compat¹ (lab-at ℓ x) (lab-at τ x) s) → Compat ℓ τ s
+Compat-mk {zero} ℓ τ s h = tt
+Compat-mk {suc n} (ℓ , a) (τ , b) s h
+  = (Compat-mk ℓ τ s (λ x → h (fsuc x)) , h fzero)
+
+Mono-at
+  : ∀ {n} (Ψ : Cvx n) (ρ : Lab n) → Mono Ψ ρ
+  → (x y : Fin n) → compat¹ (rel Ψ x y) (lab-at ρ x) (lab-at ρ y)
+Mono-at {suc n} (Ψ , ρ₊) (ρ₀ , s) (m , c) fzero fzero
+  = (⊑-refl s , ⊑-refl s)
+Mono-at {suc n} (Ψ , ρ₊) (ρ₀ , s) (m , c) (fsuc x) fzero
+  = Compat-at ρ₊ ρ₀ s c x
+Mono-at {suc n} (Ψ , ρ₊) (ρ₀ , s) (m , c) fzero (fsuc y)
+  = compat¹-swap (lab-at ρ₊ y) (lab-at ρ₀ y) s (Compat-at ρ₊ ρ₀ s c y)
+Mono-at {suc n} (Ψ , ρ₊) (ρ₀ , s) (m , c) (fsuc x) (fsuc y)
+  = Mono-at Ψ ρ₀ m x y
+
+Mono-mk
+  : ∀ {n} (Ψ : Cvx n) (ρ : Lab n)
+  → ((x y : Fin n) → compat¹ (rel Ψ x y) (lab-at ρ x) (lab-at ρ y))
+  → Mono Ψ ρ
+Mono-mk {zero} Ψ ρ h = tt
+Mono-mk {suc n} (Ψ , ρ₊) (ρ₀ , s) h
+  = ( Mono-mk Ψ ρ₀ (λ x y → h (fsuc x) (fsuc y))
+    , Compat-mk ρ₊ ρ₀ s (λ x → h (fsuc x) fzero) )
+
+is-closed→
+  : ∀ {n} (Ψ : Cvx n) → is-closed Ψ
+  → (x y z : Fin n) → compat¹ (rel Ψ x y) (rel Ψ x z) (rel Ψ y z)
+is-closed→ Ψ cl x y z = Mono-at Ψ (col Ψ z) (cl z) x y
+
+is-closed←
+  : ∀ {n} (Ψ : Cvx n)
+  → ((x y z : Fin n) → compat¹ (rel Ψ x y) (rel Ψ x z) (rel Ψ y z))
+  → is-closed Ψ
+is-closed← Ψ h z = Mono-mk Ψ (col Ψ z) (λ x y → h x y z)
+}
+
+\p{In the two-relation reading of \ref{ub-002S} that is exactly a
+transitive relation, together with its reverse.}
+
+\agda{
+Le : ∀ {n} → Cvx n → Fin n → Fin n → Type
+Le Ψ x y = le (rel Ψ x y)
+
+Ge→Le : ∀ {n} (Ψ : Cvx n) (x y : Fin n) → ge (rel Ψ x y) → Le Ψ y x
+Ge→Le Ψ x y p
+  = ge-rev (rel Ψ y x) (tr ge (rel-rev Ψ x y) p)
+
+Le→Ge : ∀ {n} (Ψ : Cvx n) (x y : Fin n) → Le Ψ y x → ge (rel Ψ x y)
+Le→Ge Ψ x y p
+  = tr ge (sym (rel-rev Ψ x y)) (ge-rev← (rel Ψ y x) p)
+
+Le-trans
+  : ∀ {n} (Ψ : Cvx n) → is-closed Ψ
+  → (x y z : Fin n) → Le Ψ x y → Le Ψ y z → Le Ψ x z
+Le-trans Ψ cl x y z p q
+  = ⊑-le (rel Ψ x z) (rel Ψ y z)
+      (compat¹-le (rel Ψ x y) (rel Ψ x z) (rel Ψ y z) (is-closed→ Ψ cl x y z) p)
+      q
+}
+}
+
+\subtree[ub-002U]{
+\taxon{Theorem}
+\title{An extension of a closed presentation is closed}
+
+\p{With [closedness read at a triple](ub-002T), the one-step formula is what
+it looks like: the extended relation is #{x \preceq y} or
+#{x \preceq a \land b \preceq y}, and that is transitive in four lines, one per
+pair of cases. No fixpoint, no iteration, and no bound on how far to iterate.}
+
+\agda{
+rel-add
+  : ∀ {n} (Ψ : Cvx n) (a b x y : Fin n)
+  → rel (add Ψ a b) x y
+    ＝ rel Ψ x y
+      ⋎ (push (rel Ψ x a) (rel Ψ y b) ⋎ rev (push (rel Ψ y a) (rel Ψ x b)))
+rel-add Ψ a b x y
+  = ap (λ z → lab-at z x) (col-addC Ψ (col Ψ a) (col Ψ b) y)
+  ∙ lab-at-addL (col Ψ y) (col Ψ a) (col Ψ b)
+      (lab-at (col Ψ a) y) (lab-at (col Ψ b) y) x
+
+module _ {n : ℕ} (Ψ : Cvx n) (a b : Fin n) where
+
+  Le-add→
+    : (x y : Fin n) → Le (add Ψ a b) x y
+    → Le Ψ x y ⊎ (Le Ψ x a × Le Ψ b y)
+  Le-add→ x y p
+    = ⊎[ inl
+       , (λ q → ⊎[ (λ r → inr ( le-push (rel Ψ x a) (rel Ψ y b) r .fst
+                              , Ge→Le Ψ y b
+                                  (le-push (rel Ψ x a) (rel Ψ y b) r .snd) ))
+                 , (λ r → ¡ (ge-push (rel Ψ y a) (rel Ψ x b)
+                               (le-rev (push (rel Ψ y a) (rel Ψ x b)) r)))
+                 ] (le-⋎ (push (rel Ψ x a) (rel Ψ y b))
+                         (rev (push (rel Ψ y a) (rel Ψ x b))) q))
+       ] (le-⋎ (rel Ψ x y)
+              (push (rel Ψ x a) (rel Ψ y b)
+                ⋎ rev (push (rel Ψ y a) (rel Ψ x b)))
+              (tr le (rel-add Ψ a b x y) p))
+
+  Le-add←
+    : (x y : Fin n) → Le Ψ x y ⊎ (Le Ψ x a × Le Ψ b y)
+    → Le (add Ψ a b) x y
+  Le-add← x y
+    = ⊎[ (λ p → tr le (sym (rel-add Ψ a b x y))
+                  (le-⋎₁ (rel Ψ x y) _ p))
+       , (λ p → tr le (sym (rel-add Ψ a b x y))
+                  (le-⋎₂ (rel Ψ x y) _
+                    (le-⋎₁ (push (rel Ψ x a) (rel Ψ y b)) _
+                      (le-push← (rel Ψ x a) (rel Ψ y b) (p .fst)
+                        (Le→Ge Ψ y b (p .snd))))))
+       ]
+
+  Le-add-trans
+    : is-closed Ψ → (x y z : Fin n)
+    → Le (add Ψ a b) x y → Le (add Ψ a b) y z → Le (add Ψ a b) x z
+  Le-add-trans cl x y z p q
+    = Le-add← x z
+        (⊎[ (λ p' → ⊎[ (λ q' → inl (Le-trans Ψ cl x y z p' q'))
+                     , (λ q' → inr ( Le-trans Ψ cl x y a p' (q' .fst)
+                                   , q' .snd ))
+                     ] (Le-add→ y z q))
+          , (λ p' → ⊎[ (λ q' → inr ( p' .fst
+                                   , Le-trans Ψ cl b y z (p' .snd) q' ))
+                     , (λ q' → inr ( p' .fst , q' .snd ))
+                     ] (Le-add→ y z q))
+          ] (Le-add→ x y p))
+}
+
+\agda{
+add-is-closed
+  : ∀ {n} (Ψ : Cvx n) → is-closed Ψ → (a b : Fin n) → is-closed (add Ψ a b)
+add-is-closed Ψ cl a b
+  = is-closed← (add Ψ a b) λ x y z →
+      compat¹-mk (rel Ψ' x y) (rel Ψ' x z) (rel Ψ' y z)
+        (λ p → ⊑-mk (rel Ψ' x z) (rel Ψ' y z)
+                 (λ g → Le→Ge Ψ' y z
+                          (tr3 z x y (Ge→Le Ψ' x z g) p))
+                 (λ l → tr3 x y z p l))
+        (λ g → ⊑-mk (rel Ψ' y z) (rel Ψ' x z)
+                 (λ g' → Le→Ge Ψ' x z
+                           (tr3 z y x (Ge→Le Ψ' y z g') (Ge→Le Ψ' x y g)))
+                 (λ l → tr3 y x z (Ge→Le Ψ' x y g) l))
+  where
+    Ψ' = add Ψ a b
+    tr3 = Le-add-trans Ψ a b cl
+}
+}
+
+\subtree[ub-002V]{
+\taxon{Definition}
+\title{Presentations from a list of relations, and their meets}
+
+\p{With \ref{ub-002U} the class of convex pieces is concrete.
+Name a convex subtype by a finite list of ordered pairs — the relations it
+declares — and read it as the presentation got by adjoining them to
+[the empty one](ub-002P) one at a time. Every such presentation is closed, its
+locus is the conjunction of the listed inequalities, and the \em{meet} of two
+names is the concatenation of their lists: no closure to compute, because
+\ref{ub-002U} closes at every step.}
+
+\agda{
+Rels : ℕ → Type
+Rels n = List (Fin n × Fin n)
+
+adds : ∀ {n} → Cvx n → Rels n → Cvx n
+adds Ψ [] = Ψ
+adds Ψ ((a , b) ∷ L) = adds (add Ψ a b) L
+
+adds-is-closed
+  : ∀ {n} (Ψ : Cvx n) → is-closed Ψ → (L : Rels n) → is-closed (adds Ψ L)
+adds-is-closed Ψ cl [] = cl
+adds-is-closed Ψ cl ((a , b) ∷ L)
+  = adds-is-closed (add Ψ a b) (add-is-closed Ψ cl a b) L
+
+Pres : ∀ {n} → Rels n → Cvx n
+Pres L = adds discrete L
+
+Pres-is-closed : ∀ {n} (L : Rels n) → is-closed (Pres L)
+Pres-is-closed L = adds-is-closed discrete discrete-is-closed L
+}
+
+\p{What the list asks of a point, and that it is exactly what the presentation
+asks.}
+
+\agda{
+Holds : ∀ {n} → Rels n → □^ n → Type 𝓘
+Holds [] v = 𝟙ᴸ
+Holds ((a , b) ∷ L) v = (□-coord v a ≤ □-coord v b) × Holds L v
+
+Holds-is-prop : ∀ {n} (L : Rels n) (v : □^ n) → is-prop (Holds L v)
+Holds-is-prop [] v = is-prop←is-single 𝟙ᴸ-is-singleton
+Holds-is-prop ((a , b) ∷ L) v = ×-is-prop ≤-is-prop (Holds-is-prop L v)
+
+adds-locus←
+  : ∀ {n} (Ψ : Cvx n) (L : Rels n) (v : □^ n)
+  → Locus Ψ v → Holds L v → Locus (adds Ψ L) v
+adds-locus← Ψ [] v l h = l
+adds-locus← Ψ ((a , b) ∷ L) v l (p , h)
+  = adds-locus← (add Ψ a b) L v (add-sound Ψ a b v l p) h
+
+adds-locus→₁
+  : ∀ {n} (Ψ : Cvx n) (L : Rels n) (v : □^ n)
+  → Locus (adds Ψ L) v → Locus Ψ v
+adds-locus→₁ Ψ [] v l = l
+adds-locus→₁ Ψ ((a , b) ∷ L) v l
+  = addC-forget Ψ (col Ψ a) (col Ψ b) v
+      (adds-locus→₁ (add Ψ a b) L v l)
+
+adds-locus→₂
+  : ∀ {n} (Ψ : Cvx n) (L : Rels n) (v : □^ n)
+  → Locus (adds Ψ L) v → Holds L v
+adds-locus→₂ Ψ [] v l = ttᴸ
+adds-locus→₂ Ψ ((a , b) ∷ L) v l
+  = ( add-≤ Ψ a b v (adds-locus→₁ (add Ψ a b) L v l)
+    , adds-locus→₂ (add Ψ a b) L v l )
+
+Pres-locus→ : ∀ {n} (L : Rels n) (v : □^ n) → Locus (Pres L) v → Holds L v
+Pres-locus→ L v = adds-locus→₂ discrete L v
+
+Pres-locus← : ∀ {n} (L : Rels n) (v : □^ n) → Holds L v → Locus (Pres L) v
+Pres-locus← L v = adds-locus← discrete L v (Locus-discrete v)
+}
+
+\p{Concatenation is the meet, on the nose.}
+
+\agda{
+Holds-++→
+  : ∀ {n} (L M : Rels n) (v : □^ n) → Holds (L ++ M) v → Holds L v × Holds M v
+Holds-++→ [] M v h = (ttᴸ , h)
+Holds-++→ ((a , b) ∷ L) M v (p , h)
+  = let r = Holds-++→ L M v h in ((p , r .fst) , r .snd)
+
+Holds-++←
+  : ∀ {n} (L M : Rels n) (v : □^ n) → Holds L v → Holds M v → Holds (L ++ M) v
+Holds-++← [] M v hl hm = hm
+Holds-++← ((a , b) ∷ L) M v (p , hl) hm = (p , Holds-++← L M v hl hm)
+}
+}
+
+\subtree[ub-002W]{
+\taxon{Theorem}
+\title{Step 1 at a list presentation}
+
+\p{Step 1 at every name of [the class](ub-002V): adjoining the comparability
+of #{x_i} and #{x_j} to the locus of a list of relations is inner anodyne.
+There are two cases and the list decides which: the presentation is closed,
+so the slot it records at #{(j,i)} is the whole truth about that pair. If it
+is #{\parallel} this is \ref{ub-002M}; otherwise the comparability already
+holds on the locus and the inclusion is an equivalence.}
+
+\agda{
+private
+  fam←slot
+    : (s : Slot) → ¬ (s ＝ fr) → {x y : Δ¹} → bound¹ s x y
+    → generating-fam-is-simplicial (y , x)
+  fam←slot lo nf p = ι₂ p
+  fam←slot eq nf p = ι₁ (≥←＝ p)
+  fam←slot fr nf p = ¡ (nf refl)
+  fam←slot hi nf p = ι₁ p
+
+comparable-pair-is-inner-anodyne←related
+  : ∀ {m} (Ψ : Cvx (suc m)) (i j : Fin (suc m))
+  → ¬ (lab-at (col Ψ i) j ＝ fr)
+  → is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+comparable-pair-is-inner-anodyne←related {m} Ψ i j nf
+  = is-anodyne←is-equiv Λ[2,1]-incl
+      (singleton-fst-is-equiv λ q → mk-singl (inhabited q)
+        (generating-fam-is-simplicial-is-prop _ (inhabited q)))
+  where
+    inhabited : (q : Σ (□^ (suc m)) (Locus Ψ)) → comparable-pair Ψ i j q
+    inhabited q
+      = fam←slot (lab-at (col Ψ i) j) nf
+          (Bound-at (col Ψ i) (q .fst) (□-coord (q .fst) i)
+            (Bound-col Ψ i (q .fst) (q .snd)) j)
+}
+
+\agda{
+module _ {m : ℕ} (Ψ : Cvx (suc m)) (cl : is-closed Ψ) (i j : Fin (suc m)) where
+
+  private
+    ¬fr : (s : Slot) → le s ⊎ ge s → ¬ (s ＝ fr)
+    ¬fr s = ⊎[ (λ p q → tr le q p) , (λ p q → tr ge q p) ]
+
+    related
+      : ∀ {s} → ¬ (s ＝ fr) → lab-at (col Ψ i) j ＝ s
+      → is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+    related nf e
+      = comparable-pair-is-inner-anodyne←related Ψ i j (λ p → nf (sym e ∙ p))
+
+    branch
+      : (s : Slot) → lab-at (col Ψ i) j ＝ s
+      → is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+    branch lo e = related (¬fr lo (inl tt)) e
+    branch eq e = related (¬fr eq (inl tt)) e
+    branch hi e = related (¬fr hi (inr tt)) e
+    branch fr e = convex-pair-comparability-is-inner-anodyne Ψ cl i j e
+
+  closed-pair-comparability-is-inner-anodyne
+    : is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+  closed-pair-comparability-is-inner-anodyne
+    = branch (lab-at (col Ψ i) j) refl
+
+Rels-comparability-is-inner-anodyne
+  : ∀ {m} (L : Rels (suc m)) (i j : Fin (suc m))
+  → is-inner-anodyne (fst {B = comparable-pair (Pres L) i j})
+Rels-comparability-is-inner-anodyne L i j
+  = closed-pair-comparability-is-inner-anodyne (Pres L) (Pres-is-closed L) i j
+}
+}
+
+\subtree[ub-002X]{
+\taxon{Definition}
+\title{Comparability of a list of pairs}
+
+\p{The subtype of the cube on which each pair in a list is comparable. Step 3
+of [the outline](Synthetic.Categories.ConvexSubcubes) is that this inclusion
+is inner anodyne for every list; the ordered subcube is the case where the list
+is every pair.}
+
+\agda{
+cmp-at : ∀ {n} → Fin n → Fin n → □^ n → Type 𝓘
+cmp-at i j v = generating-fam-is-simplicial (□-coord v i , □-coord v j)
+
+cmp-at-is-prop : ∀ {n} (i j : Fin n) (v : □^ n) → is-prop (cmp-at i j v)
+cmp-at-is-prop i j v = generating-fam-is-simplicial-is-prop _
+
+Cmp : ∀ {n} → Rels n → □^ n → Type 𝓘
+Cmp [] v = 𝟙ᴸ
+Cmp ((i , j) ∷ K) v = cmp-at i j v × Cmp K v
+
+Cmp-is-prop : ∀ {n} (K : Rels n) (v : □^ n) → is-prop (Cmp K v)
+Cmp-is-prop [] v = is-prop←is-single 𝟙ᴸ-is-singleton
+Cmp-is-prop ((i , j) ∷ K) v
+  = ×-is-prop (cmp-at-is-prop i j v) (Cmp-is-prop K v)
+}
+
+\p{[Step 1](ub-002W) again, in the shape [the glueing lemma](ub-000T)
+speaks.}
+
+\agda{
+module _ {m : ℕ} (Ψ : Cvx (suc m)) (i j : Fin (suc m)) where
+
+  private
+    reassoc≃
+      : Σ (□^ (suc m)) (∩-fam (cmp-at i j) (Locus Ψ))
+      ≃ Σ (Σ (□^ (suc m)) (Locus Ψ)) (comparable-pair Ψ i j)
+    reassoc≃
+      = mk≃ (λ w → ((w .fst , w .snd .snd) , w .snd .fst))
+          (is-equiv←qinv
+            ( (λ w → (w .fst .fst , (w .snd , w .fst .snd)))
+            , ~refl , ~refl ))
+
+  ∩-comparability←pair
+    : is-inner-anodyne (fst {B = comparable-pair Ψ i j})
+    → is-inner-anodyne (∩-incl (cmp-at i j) (Locus Ψ))
+  ∩-comparability←pair h
+    = is-anodyne←equiv fst (∩-incl (cmp-at i j) (Locus Ψ))
+        (mk-arr-equiv (reassoc≃ e⁻¹) (id≃: (Σ (□^ (suc m)) (Locus Ψ))) ~refl)
+        Λ[2,1]-incl h
+
+Rels-∩-comparability-is-inner-anodyne
+  : ∀ {m} (L : Rels (suc m)) (i j : Fin (suc m))
+  → is-inner-anodyne (∩-incl (cmp-at i j) (Locus (Pres L)))
+Rels-∩-comparability-is-inner-anodyne L i j
+  = ∩-comparability←pair (Pres L) i j
+      (Rels-comparability-is-inner-anodyne L i j)
+}
+}
+
+\subtree[ub-002Y]{
+\taxon{Theorem}
+\title{Comparability of any list of pairs is inner anodyne}
+
+\p{Steps 2 and 3 of [the outline](Synthetic.Categories.ConvexSubcubes),
+together. The recursion on the list of pairs generates the disjunctive
+presentation as it goes, so only [the binary glueing lemma](ub-000T) is used
+and no #{2^{|I|}}-element family is ever written down.}
+
+\p{The statement is relative to a convex base, and that is what makes the
+recursion work: to adjoin the comparability of #{(i,j)} over a base #{L} one
+splits into the two orientations #{L, i \le j} and #{L, j \le i}, which are
+again bases, and glues. Their intersection is the base
+#{L, i \le j, j \le i} — [concatenation is the meet](ub-002V) — so the third
+input to the glueing lemma is the same recursive call again. The pairs still to
+be dealt with never change; only the base grows. Writing #{A_L} for the locus
+of #{L}, one step is the pushout of subtypes}
+
+\quiver{
+\begin{tikzcd}
+	{A_{L,\, i \le j,\, j \le i}} && {A_{L,\, j \le i}} \\
+	\\
+	{A_{L,\, i \le j}} && {A_L \wedge \square_{(i,j)}} && {A_L}
+	\arrow[hook, from=1-1, to=1-3]
+	\arrow[hook, from=1-1, to=3-1]
+	\arrow[hook, from=1-3, to=3-3]
+	\arrow[hook, from=3-1, to=3-3]
+	\arrow[hook, from=3-3, to=3-5]
+	\arrow["\lrcorner"{anchor=center, pos=0.125, rotate=180}, draw=none, from=3-3, to=1-1]
+\end{tikzcd}
+}
+
+\p{(\ref{ub-0001}), followed by the inclusion that \ref{ub-002W} shows inner
+anodyne. The glueing lemma is applied with #{T = \square_K}, the
+comparability of the remaining pairs #{K}, to this square.}
+
+\agda{
+module _ {m : ℕ} where
+
+  private
+    Z : Type 𝓘
+    Z = □^ (suc m)
+
+    split
+      : (L : Rels (suc m)) (a b : Fin (suc m)) (v : Z)
+      → Locus (Pres (L ++ ((a , b) ∷ []))) v
+      → Locus (Pres L) v × (□-coord v a ≤ □-coord v b)
+    split L a b v l
+      = let h = Holds-++→ L _ v (Pres-locus→ _ v l)
+        in (Pres-locus← L v (h .fst) , h .snd .fst)
+
+    merge
+      : (L : Rels (suc m)) (a b : Fin (suc m)) (v : Z)
+      → Locus (Pres L) v → □-coord v a ≤ □-coord v b
+      → Locus (Pres (L ++ ((a , b) ∷ []))) v
+    merge L a b v l p
+      = Pres-locus← _ v
+          (Holds-++← L _ v (Pres-locus→ L v l)
+            (p , ttᴸ))
+
+    split2
+      : (L : Rels (suc m)) (a b : Fin (suc m)) (v : Z)
+      → Locus (Pres (L ++ ((a , b) ∷ (b , a) ∷ []))) v
+      → Locus (Pres L) v
+        × ((□-coord v a ≤ □-coord v b) × (□-coord v b ≤ □-coord v a))
+    split2 L a b v l
+      = let h = Holds-++→ L _ v (Pres-locus→ _ v l)
+        in ( Pres-locus← L v (h .fst)
+           , (h .snd .fst , h .snd .snd .fst) )
+
+    merge2
+      : (L : Rels (suc m)) (a b : Fin (suc m)) (v : Z)
+      → Locus (Pres L) v
+      → □-coord v a ≤ □-coord v b → □-coord v b ≤ □-coord v a
+      → Locus (Pres (L ++ ((a , b) ∷ (b , a) ∷ []))) v
+    merge2 L a b v l p q
+      = Pres-locus← _ v
+          (Holds-++← L _ v (Pres-locus→ L v l)
+            (p , (q , ttᴸ)))
+}
+
+\p{The two logical identities the transfers run on: the base together with a
+comparability is the union of the two orientations, and the intersection of the
+two orientations is the base with both.}
+
+\agda{
+  private
+    U→
+      : (L : Rels (suc m)) (i j : Fin (suc m)) (z : Z)
+      → ∪-fam (Locus (Pres (L ++ ((i , j) ∷ []))))
+              (Locus (Pres (L ++ ((j , i) ∷ [])))) z
+      → ∩-fam (cmp-at i j) (Locus (Pres L)) z
+    U→ L i j z
+      = *-prop-rec
+          (×-is-prop (cmp-at-is-prop i j z) (Locus-is-prop (Pres L) z))
+          (λ x → (ι₁ (split L i j z x .snd) , split L i j z x .fst))
+          (λ y → (ι₂ (split L j i z y .snd) , split L j i z y .fst))
+
+    U←
+      : (L : Rels (suc m)) (i j : Fin (suc m)) (z : Z)
+      → ∩-fam (cmp-at i j) (Locus (Pres L)) z
+      → ∪-fam (Locus (Pres (L ++ ((i , j) ∷ []))))
+              (Locus (Pres (L ++ ((j , i) ∷ [])))) z
+    U← L i j z (c , l)
+      = *-prop-rec
+          (*-is-prop (Locus-is-prop _ z) (Locus-is-prop _ z))
+          (λ p → ι₁ (merge L i j z l p))
+          (λ q → ι₂ (merge L j i z l q))
+          c
+
+    XY←
+      : (L : Rels (suc m)) (i j : Fin (suc m)) (z : Z)
+      → Locus (Pres (L ++ ((i , j) ∷ (j , i) ∷ []))) z
+      → ∩-fam (Locus (Pres (L ++ ((i , j) ∷ []))))
+              (Locus (Pres (L ++ ((j , i) ∷ [])))) z
+    XY← L i j z l
+      = let s = split2 L i j z l
+        in ( merge L i j z (s .fst) (s .snd .fst)
+           , merge L j i z (s .fst) (s .snd .snd) )
+
+    XY→
+      : (L : Rels (suc m)) (i j : Fin (suc m)) (z : Z)
+      → ∩-fam (Locus (Pres (L ++ ((i , j) ∷ []))))
+              (Locus (Pres (L ++ ((j , i) ∷ [])))) z
+      → Locus (Pres (L ++ ((i , j) ∷ (j , i) ∷ []))) z
+    XY→ L i j z (x , y)
+      = let s = split L i j z x
+        in merge2 L i j z (s .fst) (s .snd) (split L j i z y .snd)
+}
+
+\p{The recursion.}
+
+\agda{
+  route
+    : (K L : Rels (suc m))
+    → is-inner-anodyne (∩-incl (Cmp K) (Locus (Pres L)))
+  route [] L
+    = ∩-incl-is-anodyne←implies Λ[2,1]-incl (Cmp []) (Locus (Pres L))
+        (Cmp-is-prop []) (Locus-is-prop (Pres L))
+        (λ z _ → ttᴸ)
+  route ((i , j) ∷ K) L
+    = sub-anodyne-transfer-∩ Λ[2,1]-incl (Cmp ((i , j) ∷ K)) (Locus (Pres L))
+        (λ z → ×-is-prop (Cmp-is-prop K z)
+                 (×-is-prop (cmp-at-is-prop i j z)
+                            (Locus-is-prop (Pres L) z)))
+        (Cmp-is-prop ((i , j) ∷ K))
+        (Locus-is-prop (Pres L))
+        ( ∩-incl (cmp-at i j) (Locus (Pres L))
+        ∘ ∩-incl (Cmp K) (∩-fam (cmp-at i j) (Locus (Pres L))) )
+        (λ _ → refl)
+        (λ z u → ((u .snd .fst , u .fst) , u .snd .snd))
+        (λ z u → (u .fst .snd , (u .fst .fst , u .snd)))
+        (is-anodyne-∘ Λ[2,1]-incl
+          (Rels-∩-comparability-is-inner-anodyne L i j)
+          (sub-anodyne-transfer Λ[2,1]-incl
+            (λ z → ×-is-prop (Cmp-is-prop K z)
+                     (*-is-prop (Locus-is-prop _ z) (Locus-is-prop _ z)))
+            (λ z → *-is-prop (Locus-is-prop _ z) (Locus-is-prop _ z))
+            (λ z → ×-is-prop (Cmp-is-prop K z)
+                     (×-is-prop (cmp-at-is-prop i j z)
+                                (Locus-is-prop (Pres L) z)))
+            (λ z → ×-is-prop (cmp-at-is-prop i j z)
+                             (Locus-is-prop (Pres L) z))
+            (∩-incl (Cmp K)
+              (∪-fam (Locus (Pres (L ++ ((i , j) ∷ []))))
+                     (Locus (Pres (L ++ ((j , i) ∷ []))))))
+            (λ _ → refl)
+            (λ z u → u .snd)
+            (λ z u → (u .fst , U→ L i j z (u .snd)))
+            (λ z u → (u .fst , U← L i j z (u .snd)))
+            (U→ L i j)
+            (U← L i j)
+            (glue-union.glue-union-is-anodyne Λ[2,1]-incl
+              (Cmp K)
+              (Locus (Pres (L ++ ((i , j) ∷ []))))
+              (Locus (Pres (L ++ ((j , i) ∷ []))))
+              (Cmp-is-prop K) (Locus-is-prop _) (Locus-is-prop _)
+              (route K (L ++ ((i , j) ∷ [])))
+              (route K (L ++ ((j , i) ∷ [])))
+              (sub-anodyne-transfer Λ[2,1]-incl
+                (λ z → ×-is-prop (Cmp-is-prop K z) (Locus-is-prop _ z))
+                (Locus-is-prop _)
+                (λ z → ×-is-prop (Cmp-is-prop K z)
+                         (×-is-prop (Locus-is-prop _ z) (Locus-is-prop _ z)))
+                (λ z → ×-is-prop (Locus-is-prop _ z) (Locus-is-prop _ z))
+                (∩-incl (Cmp K)
+                  (Locus (Pres (L ++ ((i , j) ∷ (j , i) ∷ [])))))
+                (λ _ → refl)
+                (λ z u → u .snd)
+                (λ z u → (u .fst , XY← L i j z (u .snd)))
+                (λ z u → (u .fst , XY→ L i j z (u .snd)))
+                (XY← L i j)
+                (XY→ L i j)
+                (route K (L ++ ((i , j) ∷ (j , i) ∷ [])))))))
+}
+
+\p{Taking the base to be empty gives the statement over the whole cube. The
+empty presentation constrains nothing (\ref{ub-002P}), so its locus is a
+singleton family and the inclusion of it into the cube is an equivalence.}
+
+\agda{
+  Cmp-is-inner-anodyne
+    : (K : Rels (suc m)) → is-inner-anodyne (fst {B = Cmp K})
+  Cmp-is-inner-anodyne K
+    = sub-anodyne-transfer-full Λ[2,1]-incl
+        (λ z → ×-is-prop (Cmp-is-prop K z) (Locus-is-prop discrete z))
+        (Cmp-is-prop K)
+        (fst ∘ ∩-incl (Cmp K) (Locus (discrete {suc m})))
+        (λ _ → refl)
+        (λ z u → u .fst)
+        (λ z u → (u , Locus-discrete z))
+        (is-anodyne-∘ Λ[2,1]-incl
+          (is-anodyne←is-equiv Λ[2,1]-incl
+            (singleton-fst-is-equiv λ z →
+              mk-singl (Locus-discrete z) (Locus-is-prop discrete z _)))
+          (route K []))
+}
+}
+
+\subtree[ub-002Z]{
+\taxon{Theorem}
+\title{The ordered subcube, as a list of every pair}
+
+\p{[The theorem above](ub-002Y) is about a list, and the ordered subcube is
+about a quantifier. The passage between them is an enumeration, and this is
+the only place one is needed: a list indexed by #{\Fin k}, and a grid of two of
+them.}
+
+\agda{
+enum : ∀ {n} (k : ℕ) → (Fin k → Fin n × Fin n) → Rels n
+enum zero f = []
+enum (suc k) f = f fzero ∷ enum k (f ∘ fsuc)
+
+grid
+  : ∀ {n} (k : ℕ) (f : Fin k → Fin n) (l : ℕ) (g : Fin l → Fin n) → Rels n
+grid zero f l g = []
+grid (suc k) f l g
+  = enum l (λ b → (f fzero , g b)) ++ grid k (f ∘ fsuc) l g
+
+all-pairs : (n : ℕ) → Rels n
+all-pairs n = grid n id n id
+
+Everywhere : ∀ {n} → □^ n → Type 𝓘
+Everywhere {n} v = (i j : Fin n) → cmp-at i j v
+
+Everywhere-is-prop : ∀ {n} (v : □^ n) → is-prop (Everywhere v)
+Everywhere-is-prop v
+  = Π-is-prop (λ i → Π-is-prop (λ j → cmp-at-is-prop i j v))
+}
+
+\agda{
+private
+  Cmp-++→
+    : ∀ {n} (K M : Rels n) (v : □^ n) → Cmp (K ++ M) v → Cmp K v × Cmp M v
+  Cmp-++→ [] M v c = (ttᴸ , c)
+  Cmp-++→ ((i , j) ∷ K) M v (c , cs)
+    = let r = Cmp-++→ K M v cs in ((c , r .fst) , r .snd)
+
+  Cmp-++←
+    : ∀ {n} (K M : Rels n) (v : □^ n) → Cmp K v → Cmp M v → Cmp (K ++ M) v
+  Cmp-++← [] M v ck cm = cm
+  Cmp-++← ((i , j) ∷ K) M v (c , ck) cm = (c , Cmp-++← K M v ck cm)
+
+  Cmp-enum→
+    : ∀ {n} (k : ℕ) (f : Fin k → Fin n × Fin n) (v : □^ n)
+    → Cmp (enum k f) v → (a : Fin k) → cmp-at (f a .fst) (f a .snd) v
+  Cmp-enum→ (suc k) f v (c , cs) fzero = c
+  Cmp-enum→ (suc k) f v (c , cs) (fsuc a) = Cmp-enum→ k (f ∘ fsuc) v cs a
+
+  Cmp-enum←
+    : ∀ {n} (k : ℕ) (f : Fin k → Fin n × Fin n) (v : □^ n)
+    → ((a : Fin k) → cmp-at (f a .fst) (f a .snd) v) → Cmp (enum k f) v
+  Cmp-enum← zero f v h = ttᴸ
+  Cmp-enum← (suc k) f v h = (h fzero , Cmp-enum← k (f ∘ fsuc) v (h ∘ fsuc))
+
+  Cmp-grid→
+    : ∀ {n} (k : ℕ) (f : Fin k → Fin n) (l : ℕ) (g : Fin l → Fin n) (v : □^ n)
+    → Cmp (grid k f l g) v → (a : Fin k) (b : Fin l) → cmp-at (f a) (g b) v
+  Cmp-grid→ (suc k) f l g v c fzero
+    = Cmp-enum→ l (λ b → (f fzero , g b)) v
+        (Cmp-++→ (enum l (λ b → (f fzero , g b))) (grid k (f ∘ fsuc) l g) v c
+          .fst)
+  Cmp-grid→ (suc k) f l g v c (fsuc a)
+    = Cmp-grid→ k (f ∘ fsuc) l g v
+        (Cmp-++→ (enum l (λ b → (f fzero , g b))) (grid k (f ∘ fsuc) l g) v c
+          .snd)
+        a
+
+  Cmp-grid←
+    : ∀ {n} (k : ℕ) (f : Fin k → Fin n) (l : ℕ) (g : Fin l → Fin n) (v : □^ n)
+    → ((a : Fin k) (b : Fin l) → cmp-at (f a) (g b) v) → Cmp (grid k f l g) v
+  Cmp-grid← zero f l g v h = ttᴸ
+  Cmp-grid← (suc k) f l g v h
+    = Cmp-++← (enum l (λ b → (f fzero , g b))) (grid k (f ∘ fsuc) l g) v
+        (Cmp-enum← l (λ b → (f fzero , g b)) v (h fzero))
+        (Cmp-grid← k (f ∘ fsuc) l g v (h ∘ fsuc))
+
+Everywhere→Cmp
+  : ∀ {n} (v : □^ n) → Everywhere v → Cmp (all-pairs n) v
+Everywhere→Cmp {n} v h = Cmp-grid← n id n id v h
+
+Cmp→Everywhere
+  : ∀ {n} (v : □^ n) → Cmp (all-pairs n) v → Everywhere v
+Cmp→Everywhere {n} v c = Cmp-grid→ n id n id v c
+}
+
+\p{So the part of the cube on which \em{every} pair of coordinates is
+comparable — which is the ordered subcube — includes inner anodynely.}
+
+\agda{
+Everywhere-is-inner-anodyne
+  : ∀ {m} → is-inner-anodyne (fst {B = Everywhere {suc m}})
+Everywhere-is-inner-anodyne {m}
+  = sub-anodyne-transfer-full Λ[2,1]-incl
+      (Cmp-is-prop (all-pairs (suc m)))
+      Everywhere-is-prop
+      (fst {B = Cmp (all-pairs (suc m))})
+      (λ _ → refl)
+      (λ z c → Cmp→Everywhere z c)
+      (λ z h → Everywhere→Cmp z h)
+      (Cmp-is-inner-anodyne (all-pairs (suc m)))
+}
+}

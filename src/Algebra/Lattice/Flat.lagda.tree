@@ -1,0 +1,511 @@
+\date{2026-10-07}
+\title{Flat distributive lattices}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{A distributive lattice is \em{flat} when it is a filtered colimit of free
+finitely generated distributive lattices. The flat lattices are the models of
+a geometric theory, whose classifying topos is the topos of set-valued functors
+on the category of free finitely generated distributive lattices. By Birkhoff
+duality that category is opposite to the Dedekind cube category, so this is
+the topos of cubical spaces.
+This module defines flatness by Lazard's criterion (\ref{ub-004Q}), puts it in
+equational form (\ref{ub-004D}), and shows that a flat lattice is nontrivial,
+local and colocal (\ref{ub-004R}, \ref{ub-004B}, \ref{ub-004E}). Why these do
+not characterise it, and why nothing finite does, is \ref{ub-0041}.}
+
+\agda{
+module Algebra.Lattice.Flat where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+
+open import Modalities.Instances.Truncation
+
+open import Core.Joins
+open import Core.SetQuotients
+
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Bool
+open import Algebra.Lattice.Instances.Free.Multivariate
+  Bool-Lattice Bool-distributive
+open import Algebra.Lattice.Presentations Bool-Lattice Bool-distributive
+}
+}
+
+\subtree[ub-004Q]{
+\taxon{Definition}
+\title{Flat distributive lattices}
+
+\p{An algebra over a Lawvere theory is a filtered colimit of free finitely
+generated algebras exactly when every homomorphism into it from a finitely
+presented algebra factors through a free finitely generated one. This is
+Lazard's criterion, proved for modules in \citet{Thm. 1.2}{Laz69}. In
+general, a presheaf on a small category is a filtered colimit of
+representables exactly when its category of elements is filtered
+\citet{Thm. 8.3.3}{GV72}. For an arbitrary algebraic theory, indeed for any
+clan, this says that a model is a filtered colimit of free finitely generated
+ones exactly when its category of elements over those is filtered
+\citet{Lem. 5.4}{Fre26}. The factorisation property is what makes it
+filtered: the category of elements over the finitely presented algebras is
+always filtered, since a model sends their finite colimits to limits, and a
+full subcategory of a filtered category that every object maps into is
+cofinal, hence filtered \citet{Prop. 8.1.3(c)}{GV72}. Conversely a finitely
+presented algebra is compact, so a map from it into a filtered colimit of free
+ones factors through one of them. It is the only characterisation of flatness
+available in general. Distributive lattices
+are the algebras over the [initial one](stt-00S8), #{\mathrm{Bool}}, so
+presentations and free lattices are those of
+[#{\mathrm{Bool}}-algebras](ub-001M), and every lattice is a
+#{\mathrm{Bool}}-algebra in a unique way.}
+
+\agda{
+Bool-Algebra : ∀ {𝓤} {B : Type 𝓤} (M : Lattice B) → Algebra Bool-Lattice B
+Bool-Algebra M .Algebra.str-Lattice = M
+Bool-Algebra M .Algebra.ι = Bool-initial M .centre .fst
+Bool-Algebra M .Algebra.ι-alg = Bool-initial M .centre .snd
+}
+
+\p{For a distributive lattice #{M} the criterion is the scheme of geometric
+sequents, one for each finite presentation
+#{\langle x_1, \ldots, x_k \mid R \rangle},}
+
+##{R(\vec x) \;\vdash_{\vec x}\; \bigvee_{n \in \mathbb{N}}\;
+  \bigvee_{\substack{\vec q \in F(n)^k \\ R(\vec q)}}\;
+  \exists \vec y.\; \vec x = \vec q(\vec y),}
+
+\p{where #{F(n)} is the free distributive lattice on #{n} generators: a tuple
+in #{M} satisfying the relations is the image of a tuple of polynomials
+satisfying them, evaluated at some point of #{M^n}. The inner disjunction is
+finite, since #{F(n)} is, and the outer one is not. As a type, flatness says
+that every homomorphism #{x : A \to M} out of a presented lattice merely
+factors as a homomorphism #{h : A \to F(n)} followed by
+[evaluation](ub-004M) at a point #{y} of #{M^n}.}
+
+\quiver{
+\begin{tikzcd}
+	A && M \\
+	\\
+	& {F(n)}
+	\arrow["x", from=1-1, to=1-3]
+	\arrow["h"', dashed, from=1-1, to=3-2]
+	\arrow["{\mathrm{ev}_y}"', from=3-2, to=1-3]
+\end{tikzcd}
+}
+
+\agda{
+module _ {𝓤} {B : Type 𝓤} (M : Lattice B) (d : is-distributive M) where
+
+  factors-through-free
+    : (p : Presentation) → LatticeAlgHom (Presented p) (Bool-Algebra M)
+    → Type 𝓤
+  factors-through-free p x
+    = Σ[ n ∶ ℕ ] Σ[ h ∶ LatticeAlgHom (Presented p) (Polynomial-Algebra n) ]
+      Σ[ y ∶ (Fin n → B) ]
+        (x ＝ LatticeAlgHom-∘ (Polynomial-eval (Bool-Algebra M) d n y) h)
+
+  is-flat : Type 𝓤
+  is-flat
+    = (p : Presentation) (x : LatticeAlgHom (Presented p) (Bool-Algebra M))
+    → ║ factors-through-free p x ║₋₁
+
+  is-flat-is-prop : is-prop is-flat
+  is-flat-is-prop = Π-is-prop λ _ → Π-is-prop λ _ → ║-║₋₁-is-prop
+}
+}
+
+\subtree[ub-004D]{
+\taxon{Lemma}
+\title{Flatness in equational form}
+\date{2026-10-06}
+
+\p{Unfolded, flatness says that a solution #{v} in #{M} of a finite system of
+equations is a specialisation of a solution in polynomials. There is an #{n},
+a map of algebras #{g : F(k) \to F(n)} that respects the equations, and a
+point #{y} of #{M^n} with #{v_i = g(x_i)(y)}. A solution is a homomorphism out
+of the presented lattice, by its [recursion principle](ub-001M), and a map
+out of the presented lattice restricts to a map out of the free one that
+respects the relations.}
+
+\agda{
+module _ {𝓤} {B : Type 𝓤} (M : Lattice B) (d : is-distributive M) where
+
+  solution-in-polynomials
+    : (p : Presentation) → (Fin (Presentation.generators p) → B) → Type 𝓤
+  solution-in-polynomials p v
+    = Σ[ n ∶ ℕ ]
+      Σ[ g ∶ LatticeAlgHom (Polynomial-Algebra (Presentation.generators p))
+                           (Polynomial-Algebra n) ]
+      ( respects p g
+      × (Σ[ y ∶ (Fin n → B) ] (v ~ Polynomial-specialise (Bool-Algebra M) d n y g)))
+
+  solutions-factor
+    : is-flat M d
+    → (p : Presentation) (v : Fin (Presentation.generators p) → B)
+    → respects p (Polynomial-eval (Bool-Algebra M) d _ v)
+    → ║ solution-in-polynomials p v ║₋₁
+  solutions-factor flat p v r
+    = Trunc.ind (λ _ → trunc!)
+        (λ where
+          (n , h , y , e) →
+            Trunc.η
+              ( n
+              , LatticeAlgHom-∘ h (Presented-ι p)
+              , Presented-ι-respects p h
+              , y
+              , λ k → sym (Polynomial-eval-gen (Bool-Algebra M) d _ v k)
+                    ∙ sym (Presented-rec-β p ev-v r (Polynomial-gen k))
+                    ∙ happly (ap (λ f → f .fst .fst) e)
+                        (ι-quot (Polynomial-gen k))))
+        (flat p (Presented-rec p ev-v r))
+    where
+      ev-v = Polynomial-eval (Bool-Algebra M) d _ v
+}
+}
+
+\subtree[ub-004R]{
+\taxon{Theorem}
+\title{Flat lattices are nontrivial}
+\date{2026-10-07}
+
+\p{In a flat distributive lattice #{0 \neq 1}. If #{0 = 1}, then the empty
+tuple solves the equation #{0 = 1} with no unknowns, so by \ref{ub-004D}
+there is a map of algebras #{g : F(0) \to F(n)} with #{g(0) = g(1)}.
+Evaluating at any vertex of the cube in #{\mathrm{Bool}} turns this into
+#{\mathrm{false} = \mathrm{true}}.}
+
+\agda{
+0=1-presentation : Presentation
+0=1-presentation = mk-presentation 0 1 (λ _ → false) (λ _ → true)
+
+module _ {𝓤} {B : Type 𝓤} (M : Lattice B) (d : is-distributive M) where
+  open Lattice M using (0l ; 1l)
+
+  flat-is-nontrivial : is-flat M d → 0l ≠ 1l
+  flat-is-nontrivial flat e
+    = Trunc.ind (λ _ → is-truncated←is-prop λ ())
+        (λ (n , g , r , _) → from-free n g r)
+        (solutions-factor M d flat 0=1-presentation (λ ()) respects-0=1)
+    where
+      respects-0=1
+        : respects 0=1-presentation (Polynomial-eval (Bool-Algebra M) d 0 (λ ()))
+      respects-0=1 _
+        = hom .is-lattice-hom.pres-0 ∙ e ∙ sym (hom .is-lattice-hom.pres-1)
+        where hom = Polynomial-eval-is-lattice-hom (Bool-Algebra M) d 0 (λ ())
+
+      from-free
+        : (n : ℕ) (g : LatticeAlgHom (Polynomial-Algebra 0) (Polynomial-Algebra n))
+        → respects 0=1-presentation g → ∅
+      from-free n g r
+        = true≠false
+            (sym (hom .is-lattice-hom.pres-1)
+            ∙ ap (Polynomial-eval-at n (λ _ → false) .fst .fst) (sym (r fzero))
+            ∙ hom .is-lattice-hom.pres-0)
+        where
+          hom
+            = un-is-lattice-alg-hom
+                (LatticeAlgHom-∘ (Polynomial-eval-at n (λ _ → false)) g .snd)
+}
+}
+
+\subtree[ub-004B]{
+\taxon{Theorem}
+\title{Flat lattices are local}
+\date{2026-10-06}
+
+\p{In a flat distributive lattice, #{i \lor j = 1} implies #{i = 1} or
+#{j = 1}. The pair #{(i, j)} solves #{x_0 \lor x_1 = 1}, so by \ref{ub-004D}
+it is merely #{(q_0(y), q_1(y))} for polynomials #{q_0 \lor q_1 = 1} in #{n}
+variables and some point #{y}. Evaluating at the bottom vertex of the cube
+in #{\mathrm{Bool}} gives #{a = q_0(0)} and #{b = q_1(0)} with
+#{a \lor b = 1} in #{\mathrm{Bool}}, where one of the two is #{1}. Say
+#{a = 1}. Evaluation commutes with the map #{\mathrm{Bool} \to M}
+(\ref{ub-004M}), so #{q_0(0) = 1} in #{M} too, and then
+#{q_0(y) = 1} because polynomials are [monotone](ub-004A).}
+
+\p{The equation is presented by two generators and one relation, and
+#{(i, j)} is a solution of it in #{M}. A solution in polynomials specialises
+to a solution at every point of any lattice, in particular at the vertices of
+the cube in #{\mathrm{Bool}}.}
+
+\agda{
+open Lattice (Polynomial-Lattice 2) using ()
+  renaming (_∨_ to _∨ₓ_ ; _∧_ to _∧ₓ_ ; 0l to 0ₓ ; 1l to 1ₓ)
+
+∨=1-presentation : Presentation
+∨=1-presentation
+  = mk-presentation 2 1
+      (λ _ → Polynomial-gen fzero ∨ₓ Polynomial-gen (fsuc fzero)) (λ _ → 1ₓ)
+
+pair : ∀ {𝓤} {B : Type 𝓤} → B → B → Fin 2 → B
+pair i j fzero = i
+pair i j (fsuc fzero) = j
+
+module _
+  {𝓦} {C : Type 𝓦} (N : Algebra Bool-Lattice C)
+  (Nd : is-distributive-algebra N)
+  where
+  open Algebra N using (_∨_ ; _∧_ ; 0l ; 1l)
+
+  pair-respects-∨=1
+    : (i j : C) → i ∨ j ＝ 1l
+    → respects ∨=1-presentation (Polynomial-eval N Nd 2 (pair i j))
+  pair-respects-∨=1 i j e _
+    = hom .is-lattice-hom.pres-∨
+        {Polynomial-gen fzero} {Polynomial-gen (fsuc fzero)}
+    ∙ ap₂ _∨_ (Polynomial-eval-gen N Nd 2 (pair i j) fzero)
+        (Polynomial-eval-gen N Nd 2 (pair i j) (fsuc fzero))
+    ∙ e
+    ∙ sym (hom .is-lattice-hom.pres-1)
+    where hom = Polynomial-eval-is-lattice-hom N Nd 2 (pair i j)
+
+  specialise-∨=1
+    : (n : ℕ) (y : Fin n → C)
+      (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+    → respects ∨=1-presentation g
+    → Polynomial-specialise N Nd n y g fzero
+    ∨ Polynomial-specialise N Nd n y g (fsuc fzero) ＝ 1l
+  specialise-∨=1 n y g r
+    = sym (hom .is-lattice-hom.pres-∨
+            {Polynomial-gen fzero} {Polynomial-gen (fsuc fzero)})
+    ∙ ap (Polynomial-eval N Nd n y .fst .fst) (r fzero)
+    ∙ hom .is-lattice-hom.pres-1
+    where
+      hom
+        = un-is-lattice-alg-hom
+            (LatticeAlgHom-∘ (Polynomial-eval N Nd n y) g .snd)
+
+||-＝true : (a b : Bool) → (a || b) ＝ true → (a ＝ true) ⊎ (b ＝ true)
+||-＝true true b e = inl refl
+||-＝true false true e = inr refl
+||-＝true false false ()
+
+module _ {𝓤} {B : Type 𝓤} (M : Lattice B) (d : is-distributive M) where
+  open Lattice M
+
+  either-＝1-is-prop : {i j : B} → is-prop ((i ＝ 1l) * (j ＝ 1l))
+  either-＝1-is-prop = *-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
+
+  flat-is-local
+    : is-flat M d → (i j : B) → i ∨ j ＝ 1l → (i ＝ 1l) * (j ＝ 1l)
+  flat-is-local flat i j e
+    = Trunc.ind (λ _ → is-truncated←is-prop either-＝1-is-prop)
+        (λ (n , g , r , y , s) → from-free n g r y s)
+        (solutions-factor M d flat ∨=1-presentation (pair i j)
+          (pair-respects-∨=1 (Bool-Algebra M) d i j e))
+    where
+      from-free
+        : (n : ℕ)
+          (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+          (r : respects ∨=1-presentation g) (y : Fin n → B)
+        → pair i j ~ Polynomial-specialise (Bool-Algebra M) d n y g
+        → (i ＝ 1l) * (j ＝ 1l)
+      from-free n g r y s
+        = case (||-＝true _ _
+                 (specialise-∨=1 (initial-Algebra Bool-Lattice)
+                   Bool-distributive n (λ _ → false) g r))
+        where
+          vertex : (k : Fin 2) → Bool
+          vertex = Polynomial-specialise (initial-Algebra Bool-Lattice)
+                     Bool-distributive n (λ _ → false) g
+
+          lift : (k : Fin 2) → vertex k ＝ true → pair i j k ＝ 1l
+          lift k a
+            = s k
+            ∙ ＝1←1≤
+                (≤-trans
+                  (≤←＝
+                    ( sym (ap (Algebra.ι (Bool-Algebra M)) a)
+                    ∙ sym (Polynomial-eval-ι (Bool-Algebra M) d n
+                            (λ _ → false) (g .fst .fst (Polynomial-gen k)))))
+                  (Polynomial-eval-is-monotone (Bool-Algebra M) d n
+                    (λ _ → 0l) y (λ _ → 0-init)
+                    (g .fst .fst (Polynomial-gen k))))
+
+          case
+            : (vertex fzero ＝ true) ⊎ (vertex (fsuc fzero) ＝ true)
+            → (i ＝ 1l) * (j ＝ 1l)
+          case (inl a) = ι₁ (lift fzero a)
+          case (inr b) = ι₂ (lift (fsuc fzero) b)
+}
+}
+
+\subtree[ub-004E]{
+\taxon{Theorem}
+\title{Flat lattices are colocal}
+\date{2026-10-06}
+
+\p{Dually, in a flat distributive lattice #{i \land j = 0} implies #{i = 0}
+or #{j = 0}: the argument of \ref{ub-004B} with the top vertex in place of
+the bottom one.}
+
+\agda{
+∧=0-presentation : Presentation
+∧=0-presentation
+  = mk-presentation 2 1
+      (λ _ → Polynomial-gen fzero ∧ₓ Polynomial-gen (fsuc fzero)) (λ _ → 0ₓ)
+
+module _
+  {𝓦} {C : Type 𝓦} (N : Algebra Bool-Lattice C)
+  (Nd : is-distributive-algebra N)
+  where
+  open Algebra N using (_∨_ ; _∧_ ; 0l ; 1l)
+
+  pair-respects-∧=0
+    : (i j : C) → i ∧ j ＝ 0l
+    → respects ∧=0-presentation (Polynomial-eval N Nd 2 (pair i j))
+  pair-respects-∧=0 i j e _
+    = hom .is-lattice-hom.pres-∧
+        {Polynomial-gen fzero} {Polynomial-gen (fsuc fzero)}
+    ∙ ap₂ _∧_ (Polynomial-eval-gen N Nd 2 (pair i j) fzero)
+        (Polynomial-eval-gen N Nd 2 (pair i j) (fsuc fzero))
+    ∙ e
+    ∙ sym (hom .is-lattice-hom.pres-0)
+    where hom = Polynomial-eval-is-lattice-hom N Nd 2 (pair i j)
+
+  specialise-∧=0
+    : (n : ℕ) (y : Fin n → C)
+      (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+    → respects ∧=0-presentation g
+    → Polynomial-specialise N Nd n y g fzero
+    ∧ Polynomial-specialise N Nd n y g (fsuc fzero) ＝ 0l
+  specialise-∧=0 n y g r
+    = sym (hom .is-lattice-hom.pres-∧
+            {Polynomial-gen fzero} {Polynomial-gen (fsuc fzero)})
+    ∙ ap (Polynomial-eval N Nd n y .fst .fst) (r fzero)
+    ∙ hom .is-lattice-hom.pres-0
+    where
+      hom
+        = un-is-lattice-alg-hom
+            (LatticeAlgHom-∘ (Polynomial-eval N Nd n y) g .snd)
+
+&-＝false : (a b : Bool) → (a & b) ＝ false → (a ＝ false) ⊎ (b ＝ false)
+&-＝false false b e = inl refl
+&-＝false true false e = inr refl
+&-＝false true true ()
+
+module _ {𝓤} {B : Type 𝓤} (M : Lattice B) (d : is-distributive M) where
+  open Lattice M
+
+  either-＝0-is-prop : {i j : B} → is-prop ((i ＝ 0l) * (j ＝ 0l))
+  either-＝0-is-prop = *-is-prop (carrier-is-set _ _) (carrier-is-set _ _)
+
+  flat-is-colocal
+    : is-flat M d → (i j : B) → i ∧ j ＝ 0l → (i ＝ 0l) * (j ＝ 0l)
+  flat-is-colocal flat i j e
+    = Trunc.ind (λ _ → is-truncated←is-prop either-＝0-is-prop)
+        (λ (n , g , r , y , s) → from-free n g r y s)
+        (solutions-factor M d flat ∧=0-presentation (pair i j)
+          (pair-respects-∧=0 (Bool-Algebra M) d i j e))
+    where
+      from-free
+        : (n : ℕ)
+          (g : LatticeAlgHom (Polynomial-Algebra 2) (Polynomial-Algebra n))
+          (r : respects ∧=0-presentation g) (y : Fin n → B)
+        → pair i j ~ Polynomial-specialise (Bool-Algebra M) d n y g
+        → (i ＝ 0l) * (j ＝ 0l)
+      from-free n g r y s
+        = case (&-＝false _ _
+                 (specialise-∧=0 (initial-Algebra Bool-Lattice)
+                   Bool-distributive n (λ _ → true) g r))
+        where
+          vertex : (k : Fin 2) → Bool
+          vertex = Polynomial-specialise (initial-Algebra Bool-Lattice)
+                     Bool-distributive n (λ _ → true) g
+
+          lift : (k : Fin 2) → vertex k ＝ false → pair i j k ＝ 0l
+          lift k a
+            = s k
+            ∙ ＝0←≤0
+                (≤-trans
+                  (Polynomial-eval-is-monotone (Bool-Algebra M) d n
+                    y (λ _ → 1l) (λ _ → 1-top)
+                    (g .fst .fst (Polynomial-gen k)))
+                  (≤←＝
+                    ( Polynomial-eval-ι (Bool-Algebra M) d n
+                        (λ _ → true) (g .fst .fst (Polynomial-gen k))
+                    ∙ ap (Algebra.ι (Bool-Algebra M)) a)))
+
+          case
+            : (vertex fzero ＝ false) ⊎ (vertex (fsuc fzero) ＝ false)
+            → (i ＝ 0l) * (j ＝ 0l)
+          case (inl a) = ι₁ (lift fzero a)
+          case (inr b) = ι₂ (lift (fsuc fzero) b)
+}
+}
+
+\subtree[ub-0041]{
+\taxon{Remark}
+\title{Why flatness is not a finite matter}
+
+\p{Three coherent sequents that every flat lattice satisfies are
+\em{nontriviality}, #{0 \neq 1}, and \em{locality} in both forms,
+#{x \lor y = 1 \Rightarrow x = 1 \lor y = 1} and
+#{x \land y = 0 \Rightarrow x = 0 \lor y = 0}: in a free lattice, evaluation
+at the bottom vertex of the cube is a lattice map to #{\mathrm{Bool}} whose
+kernel is #{\{1\}}, and evaluation at the top vertex one whose kernel is
+#{\{0\}}, and all three sequents are preserved by filtered colimits. Their
+orthogonality forms are the [disjunctive](stt-00DY) and
+[conjunctive](stt-00TW) conditions, and \citek{SY25} call them (NT), (L) and
+(cL). They do not characterise flatness, and no finite list of coherent
+sequents does.}
+
+\p{Flatness implies all three, for any distributive lattice
+(\ref{ub-004R}, \ref{ub-004B}, \ref{ub-004E}), by evaluating at the vertices
+of a cube in #{\mathrm{Bool}}. In triangulated type theory the interval is
+assumed to be nontrivial, and for a flat interval that assumption is a
+consequence.}
+
+\p{\strong{They do not suffice.} Finitely presented distributive lattices are
+finite, and a finite lattice #{A} is flat exactly when it is a retract of a
+free one; under Birkhoff duality that says that the poset #{J(A)} of
+join-irreducibles is a poset retract of a cube, which is to say a lattice.
+Nontriviality and the two localities, on the other hand, say only that
+#{J(A)} is nonempty with a top and a bottom. So the downset lattice of the
+bounded poset #{\{0 < a, b < c, d < 1\}} with #{a, b} both below #{c, d} is
+nontrivial, local and colocal, and not flat. That poset is the smallest
+bounded poset that is not a lattice.}
+
+\quiver{
+\begin{tikzcd}[column sep=small, row sep=small]
+	& 1 \\
+	c && d \\
+	a && b \\
+	& 0
+	\arrow[no head, from=4-2, to=3-1]
+	\arrow[no head, from=4-2, to=3-3]
+	\arrow[no head, from=3-1, to=2-1]
+	\arrow[no head, from=3-1, to=2-3]
+	\arrow[no head, from=3-3, to=2-1]
+	\arrow[no head, from=3-3, to=2-3]
+	\arrow[no head, from=2-1, to=1-2]
+	\arrow[no head, from=2-3, to=1-2]
+\end{tikzcd}
+}
+
+\p{The elements #{a} and #{b} have two minimal upper bounds, #{c} and #{d},
+and so no join.}
+
+\p{\strong{No finite list does.} The models of a coherent theory are closed
+under ultraproducts, and the flat lattices are not, because the dimension #{n}
+in the scheme of \ref{ub-004Q} cannot be bounded in terms of the presentation.
+Take #{A = D(P)} for the poset #{P} just named, so that a homomorphism #{A \to
+F(m) = D([1]^m)} is a monotone map #{g : [1]^m \to P}, and let #{g} send the
+vertex #{e_i} to #{a} for odd #{i} and to #{b} for even #{i}, a sum #{e_i +
+e_j} to #{c} or #{d} according to the parity of #{i + j}, and every vertex of
+weight at least three to #{1}. A factorisation of #{g} through a free lattice
+#{F(n)} is a factorisation of the poset map through a lattice #{L} that is a
+retract of #{[1]^n}, and in #{L} the elements #{x_i \lor x_{i+1}} for #{i} odd
+are pairwise distinct: were two of them equal to a common #{u}, some cross
+join #{x_i \lor x_k} of the other parity would lie below #{u}, putting #{u} in
+both #{r^{-1}(\uparrow c)} and #{r^{-1}(\uparrow d)} and hence in
+#{r^{-1}(1)}. So #{|L| \ge m/2} and #{n \ge \log_2(m/2)}. The maps #{g_m}
+therefore assemble to a homomorphism from #{A} into a nonprincipal
+ultraproduct of the #{F(m)} which factors through no #{F(n)} at all.}
+}

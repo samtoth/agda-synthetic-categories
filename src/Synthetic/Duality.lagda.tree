@@ -1,0 +1,748 @@
+\date{2026-09-04}
+\title{The duality axiom}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{We state the duality axiom for the interval: every [finitely
+presented](ub-001N) #{\II}-algebra is [quasicoherent](stt-00TA), that is, it is
+the algebra of functions on its own spectrum (\ref{ub-001P}). It is one of the
+key axioms of both simplicial and triangulated type theory.}
+
+\p{Much of what it gives needs only its simplest instance, the
+quasicoherence of #{\II[x]}, which is [SQCP](stt-00TC) and implies
+[Phoa's principle](stt-00TC) and the [directedness of #{\II}](stt-00TV)
+(\ref{ub-001S}). Following \citek{SY25}, adjoining a variable preserves both
+the generalised Phoa principle (\ref{ub-001X}) and quasicoherence
+(\ref{ub-0020}), so from SQCP alone every free algebra on finitely many
+generators is quasicoherent (\ref{ub-0021}). That gives the #{n}-variable Phoa
+principle (\ref{ub-001W}), the sobriety of the cubes (\ref{ub-001Z}), and that
+a cube in a spectrum is a homomorphism to polynomials (\ref{ub-004L}).}
+
+\p{The full axiom is used for algebras with relations. For one relation
+#{s = t} it is a Nullstellensatz (\ref{ub-003X}), and from it the interval is
+[simplicial](stt-00AC) (\ref{ub-003Y}), hence so are all cubes and simplices
+(\ref{ub-003Z}).}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Polynomial
+
+module Synthetic.Duality
+  {𝓘}
+  (Δ¹ : Type 𝓘)
+  (I : Lattice Δ¹)
+  (I-distr : is-distributive I)
+  (let I[x] = Free-Algebra I I-distr)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+
+open import Modalities.Instances.Truncation
+
+open import Algebra.Lattice.Instances.Free.Multivariate I I-distr
+open import Algebra.Lattice.Presentations I I-distr
+
+open import Core.SetQuotients
+open import Core.CanonicalPushouts
+open import Core.Joins
+open import Core.SurjectiveMaps
+open import Foundations.InjectiveMaps
+
+open import Algebra.Lattice.Instances.Quotient
+
+open import Synthetic.Directedness Δ¹ I
+open import Synthetic.Quasicoherence Δ¹ I I-distr
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+  using (Δ^_; Δ-suc; Δ⁰-is-singleton)
+}
+}
+
+\subtree[ub-001P]{
+\taxon{Definition}
+\title{Duality}
+
+\p{[Quasicoherence](stt-00TA) of an algebra #{A} says that the counit #{A \to
+\Obs(\Spec(A))} is an equivalence: elements of #{A} are precisely functions on
+the spectrum. The axiom asserts this for every algebra presented by finitely
+many generators and relations.}
+
+\p{This is Axiom 10 of \citek{GWB26}. It is due to \citet{Thm. 4.11}{Ble23},
+and reached triangulated type theory by way of the analogous axiom of
+\citek{CCH23} in synthetic algebraic geometry. Like the interval itself it is
+a hypothesis here rather than a postulate, to be passed to the modules that
+want it — as [distributivity](stt-00A3) already is.}
+
+\agda{
+duality : Type (lsuc 𝓘)
+duality
+  = {X : Type 𝓘} (A : Algebra I X)
+  → is-finitely-presented A → is-quasicoherent A
+
+duality-is-prop : is-prop duality
+duality-is-prop
+  = Πᵢ-is-prop (Π-is-prop λ A → Π-is-prop λ _ → is-equiv-is-prop)
+}
+}
+
+\subtree[ub-001S]{
+\taxon{Theorem}
+\title{Duality implies quasicoherence of #{\II[x]}}
+
+\p{The free algebra on one generator is presented by one generator and no
+relations, so duality applies to it. That instance is [SQCP](stt-00TC), from
+which [Phoa's principle](stt-00TC) and the [directedness of #{\II}](stt-00TV)
+follow.}
+
+\agda{
+I[x]←Polynomial-Algebra-1 : LatticeAlgHom (Polynomial-Algebra 1) I[x]
+I[x]←Polynomial-Algebra-1
+  = Algebra-id-hom ~refl (initial-lattice-algebra _)
+
+I[x]-is-finitely-presented : is-finitely-presented I[x]
+I[x]-is-finitely-presented
+  = is-finitely-presented←equiv
+      I[x]←Polynomial-Algebra-1 id-is-equiv
+      (Polynomial-Algebra-is-finitely-presented 1)
+
+SQCP←duality : duality → SQCP
+SQCP←duality d = d I[x] I[x]-is-finitely-presented
+
+Phoa's-Principle←duality : duality → Phoa's-Principle
+Phoa's-Principle←duality = Phoa's-Principle←SQCP ∘ SQCP←duality
+
+Δ¹-is-directed←duality : duality → Δ¹-is-directed
+Δ¹-is-directed←duality = Δ¹-is-directed←SQPC ∘ SQCP←duality
+}
+}
+
+
+\subtree[ub-001X]{
+\taxon{Theorem}
+\title{Adjoining a variable preserves the generalised Phoa principle}
+
+\p{An algebra #{A} satisfies the [generalised Phoa principle](stt-00TC) when
+every arrow #{\alpha : \II \to A} is linear in the sense that #{\alpha(i) =
+\alpha(0) \lor (\alpha(1) \land i)}. This property passes to #{A[x]}: the
+lattice operations and the structure map of #{A[x]} are those of #{A} on each of
+the two coefficients, so an arrow in #{A[x]} is a pair of arrows in #{A} and
+linearity is checked coefficientwise. Hence ordinary [Phoa's
+principle](stt-00TC) alone gives it for every [free algebra on finitely many
+generators](ub-001K). This is \citet{Thm. 7.2}{SY25}.}
+
+\agda{
+generalised-phoa-polynomial
+  : ∀ {𝓥} {X : Type 𝓥} (A : Algebra I X) (Ad : is-distributive-algebra A)
+  → Phoa's-Generalised-Principle A
+  → Phoa's-Generalised-Principle
+      (Algebra-res A (Free-Algebra (Algebra.str-Lattice A) Ad))
+generalised-phoa-polynomial A Ad ph α x
+  = Δ²-ext (ph (Δ².s ∘ α) x , ph (Δ².t ∘ α) x)
+
+Polynomial-Algebra-generalised-phoa
+  : Phoa's-Principle
+    → (n : ℕ) → Phoa's-Generalised-Principle (Polynomial-Algebra n)
+Polynomial-Algebra-generalised-phoa ph zero = ph
+Polynomial-Algebra-generalised-phoa ph (suc n)
+  = generalised-phoa-polynomial
+      (Polynomial-Algebra n) (Polynomial-distr n)
+      (Polynomial-Algebra-generalised-phoa ph n)
+}
+}
+
+\subtree[ub-0020]{
+\taxon{Theorem}
+\title{Adjoining a variable preserves quasicoherence}
+
+\p{If #{A} is quasicoherent and satisfies the generalised Phoa principle, so is
+#{A[x]}. This is \citet{Thm. 7.3}{SY25}, stated here for the free algebras
+#{L[x_1, \ldots, x_n]}, which is where it is used.}
+
+\p{The spectrum of #{A[x]} is #{\II \times \Spec(A)} — that is the
+[restriction equivalence](ub-001U), read at the [initial
+algebra](stt-00A0) — so a function on #{\Spec(A[x])} is a #{\II}-indexed
+family of functions on #{\Spec(A)}, and quasicoherence of #{A} turns those into
+a path #{\II \to A}. Under that identification the counit at #{A[x]} becomes
+the map sending a polynomial to the path it traces out,}
+
+##{(a_1, a_0) \longmapsto \lambda i.\, a_0 \lor (a_1 \land i),}
+
+\p{that is, the triangle}
+
+\quiver{
+\begin{tikzcd}
+	{A[x]} && {\Obs(\Spec(A[x]))} \\
+	\\
+	&& {(\II \to A)}
+	\arrow["{\mathrm{eval}}", from=1-1, to=1-3]
+	\arrow["\simeq", from=1-3, to=3-3]
+	\arrow["{\mathrm{linear}}"', from=1-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{commutes, with the vertical map built from quasicoherence of #{A}. The
+generalised Phoa principle for #{A} says precisely that the diagonal is an
+equivalence: a path is linear, and its two coefficients are its endpoints. So
+the counit is an equivalence by three-for-two.}
+
+\agda{
+module _ (n : ℕ) where
+  open is-lattice-hom
+
+  Polynomial-linear : Polynomials (suc n) → (Δ¹ → Polynomials n)
+  Polynomial-linear p i = Δ².t p Pn.∨ (Δ².s p Pn.∧ Pn.ι i)
+    where module Pn = Algebra (Polynomial-Algebra n)
+
+  Polynomial-linear-is-equiv
+    : Phoa's-Generalised-Principle (Polynomial-Algebra n)
+    → is-equiv Polynomial-linear
+  Polynomial-linear-is-equiv ph = is-equiv←qinv (endpoints , η , ε)
+    where
+      module Pn = Algebra (Polynomial-Algebra n)
+
+      mono : (α : Δ¹ → Polynomials n) → α i0 Pn.≤ α i1
+      mono α
+        = Pn.≤←∨
+            (sym (ph α i1
+                 ∙ ap (α i0 Pn.∨_)
+                     (ap (α i1 Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)))
+
+      endpoints : (Δ¹ → Polynomials n) → Polynomials (suc n)
+      endpoints α = (α i1 , α i0) ⦃ mono α ⦄
+
+      η : (p : Polynomials (suc n)) → endpoints (Polynomial-linear p) ＝ p
+      η p
+        = Δ²-ext
+            ( ap (Δ².t p Pn.∨_)
+                (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-1) ∙ Pn.1-top)
+              ∙ Pn.∨-comm ∙ Pn.≤-max' (Δ².mono p)
+            , ap (Δ².t p Pn.∨_)
+                (ap (Δ².s p Pn.∧_) (Pn.ι-alg .pres-0) ∙ Pn.0-init')
+              ∙ Pn.∨-comm ∙ Pn.0-bottom')
+
+      ε : (α : Δ¹ → Polynomials n) → Polynomial-linear (endpoints α) ＝ α
+      ε α = funext→ λ i → sym (ph α i)
+
+  Polynomial-Algebra-is-quasicoherent-suc
+    : is-quasicoherent (Polynomial-Algebra n)
+    → Phoa's-Generalised-Principle (Polynomial-Algebra n)
+    → is-quasicoherent (Polynomial-Algebra (suc n))
+  Polynomial-Algebra-is-quasicoherent-suc qc ph
+    = 3-for-2~ compare Φ-is-equiv (Polynomial-linear-is-equiv ph)
+    where
+      adj : Δ¹ × Spec (Polynomial-Algebra n)
+          → Spec (Polynomial-Algebra (suc n))
+      adj = Polynomial-adjoin (initial-Algebra I) I-distr n
+
+      Φ : Obs (Spec (Polynomial-Algebra (suc n))) → (Δ¹ → Polynomials n)
+      Φ = (is-equiv.bwd qc ∘_) ∘ curry ∘ (_∘ adj)
+
+      Φ-is-equiv : is-equiv Φ
+      Φ-is-equiv
+        = is-equiv-∘ (postcomp-equiv (is-equiv⁻¹ qc))
+            (is-equiv-∘ curry-is-equiv
+              (precomp-equiv
+                (Polynomial-adjoin-is-equiv (initial-Algebra I) I-distr n)))
+
+      eval-adj
+        : (p : Polynomials (suc n)) (i : Δ¹)
+        → (λ g → eval (Polynomial-Algebra (suc n)) p (adj (i , g)))
+          ＝ eval (Polynomial-Algebra n) (Polynomial-linear p i)
+      eval-adj p i
+        = funext→ λ g →
+            let gh = un-is-lattice-alg-hom (g .snd) in
+            sym ( gh .pres-∨
+                ∙ ap (g .fst .fst (Δ².t p) ∨_)
+                    (gh .pres-∧ ∙ ap (g .fst .fst (Δ².s p) ∧_) (g .fst .snd i))
+                ∙ ∨-comm)
+
+      compare : Polynomial-linear ~ Φ ∘ eval (Polynomial-Algebra (suc n))
+      compare p
+        = funext→ λ i →
+            sym (ap (is-equiv.bwd qc) (eval-adj p i)
+                ∙ is-equiv.η qc (Polynomial-linear p i))
+}
+}
+
+\subtree[ub-0021]{
+\taxon{Theorem}
+\title{Finitely generated free algebras are quasicoherent}
+
+\p{From SQCP — the quasicoherence of #{\II[x]}, equivalently [Phoa's
+principle](stt-00TC) — every #{L[x_1, \ldots, x_n]} is quasicoherent, by
+\ref{ub-0020} and \ref{ub-001X} alternating up the tower. This is
+\citet{Lem. 7.6}{SY25}, and it is what the rest of this module runs on: the
+full [duality axiom](ub-001P) is not needed.}
+
+\agda{
+Polynomial-Algebra-is-quasicoherent←SQCP
+  : SQCP → (n : ℕ) → is-quasicoherent (Polynomial-Algebra n)
+Polynomial-Algebra-is-quasicoherent←SQCP sqcp zero
+  = is-quasicoherent←equiv
+      (Algebra-id-hom ~refl (initial-lattice-algebra I)) id-is-equiv
+      I-is-quasicoherent
+Polynomial-Algebra-is-quasicoherent←SQCP sqcp (suc n)
+  = Polynomial-Algebra-is-quasicoherent-suc n
+      (Polynomial-Algebra-is-quasicoherent←SQCP sqcp n)
+      (Polynomial-Algebra-generalised-phoa (Phoa's-Principle←SQCP sqcp) n)
+
+Polynomial-Algebra-is-quasicoherent
+  : duality → (n : ℕ) → is-quasicoherent (Polynomial-Algebra n)
+Polynomial-Algebra-is-quasicoherent d
+  = Polynomial-Algebra-is-quasicoherent←SQCP (SQCP←duality d)
+}
+}
+
+\subtree[ub-001W]{
+\taxon{Corollary}
+\title{The generalised Phoa principle}
+
+\p{The spectrum of the [free algebra on #{n} generators](ub-001U) is the
+#{n}-cube, since a map of algebras out of a free algebra is a choice of image
+for each generator. Quasicoherence of that algebra then reads: a function on
+the #{n}-cube is a polynomial in #{n} variables, and the polynomial is
+unique.}
+
+##{\II[x_1, \ldots, x_n] \;\xrightarrow{\ \sim\ }\; (\II^n \to \II)}
+
+\p{This is the #{n}-variable form of [Phoa's principle](stt-00TC), the case
+#{n = 1} being the ordinary one — which is also all that goes in. Concretely,
+an element of #{\II[x_1, \ldots, x_n]} is a family of coefficients indexed by
+the #{2^n} vertices of the cube and monotone in the cube's order, so a function
+on the cube is determined by, and can be prescribed by, its values at the
+vertices. That is the internal counterpart of \em{evaluate at the vertices};
+what it does not give is that those values are #{0} or #{1}.}
+
+\agda{
+Spec-Polynomial-Algebra
+  : (n : ℕ) → Spec (Polynomial-Algebra n) ≃ (Fin n → Δ¹)
+Spec-Polynomial-Algebra n
+  = mk≃ _ (Polynomial-Algebra-is-free n (initial-Algebra I) I-distr)
+
+generalised-phoa
+  : SQCP → (n : ℕ) → Polynomials n ≃ ((Fin n → Δ¹) → Δ¹)
+generalised-phoa sqcp n
+  = equiv←is-quasicoherent (Polynomial-Algebra-is-quasicoherent←SQCP sqcp n)
+  ∙e precomp-≃ (Spec-Polynomial-Algebra n e⁻¹)
+}
+}
+
+\subtree[ub-001Z]{
+\taxon{Corollary}
+\title{Cubes are sober}
+
+\p{The #{n}-cube is [sober](ub-001Y): a point of #{\II^n} is the same thing as
+a homomorphism #{\II[x_1, \ldots, x_n] \to \II}. Half of this is
+unconditional — the cube \em{is} the spectrum of the free algebra, by
+[freeness](ub-001U) — and the other half is that the free algebra is
+quasicoherent, [the spectrum of a quasicoherent algebra being
+sober](ub-001Y). This is \citet{Cor. 7.10}{SY25}.}
+
+\agda{
+cube-is-sober : SQCP → (n : ℕ) → is-sober (Fin n → Δ¹)
+cube-is-sober sqcp n
+  = is-sober←equiv
+      (Spec-Polynomial-Algebra n ._≃_.fwd)
+      (Spec-Polynomial-Algebra n ._≃_.fwd-is-equiv)
+      (Spec-is-sober (Polynomial-Algebra n)
+        (Polynomial-Algebra-is-quasicoherent←SQCP sqcp n))
+}
+
+\p{Everything above is available under [duality](ub-001P) too, which implies
+SQCP by \ref{ub-001S}.}
+
+\agda{
+generalised-phoa←duality
+  : duality → (n : ℕ) → Polynomials n ≃ ((Fin n → Δ¹) → Δ¹)
+generalised-phoa←duality = generalised-phoa ∘ SQCP←duality
+
+cube-is-sober←duality : duality → (n : ℕ) → is-sober (Fin n → Δ¹)
+cube-is-sober←duality = cube-is-sober ∘ SQCP←duality
+}
+}
+
+\subtree[ub-004L]{
+\taxon{Lemma}
+\title{Cubes in a spectrum are homomorphisms to polynomials}
+\author{ulrikbuchholtz}
+\date{2026-10-07}
+
+\p{Assume [SQCP](stt-00TC). For an algebra #{A}, a map
+#{g : \II^m \to \Spec(A)} is the same thing as a map of algebras
+#{h : A \to \II[y_1, \ldots, y_m]}, with #{g(z)} the composite of #{h} and
+evaluation at #{z}. Indeed #{\II^m \simeq \Spec(\II[y_1, \ldots, y_m])} by
+[freeness](ub-001U), and #{\II[y_1, \ldots, y_m]} is
+[quasicoherent](ub-0021), so #{\Spec} is fully faithful on maps into it.
+This is what reconciles the two readings of a crisp cube in
+[flatness](ub-0040).}
+
+\quiver{
+\begin{tikzcd}
+	{\II^m} && {\Spec(A)} \\
+	\\
+	{\Spec(\II[y_1, \ldots, y_m])}
+	\arrow["g", from=1-1, to=1-3]
+	\arrow["\simeq"', from=1-1, to=3-1]
+	\arrow["{\Spec(h)}"', from=3-1, to=1-3]
+\end{tikzcd}
+}
+
+\p{The vertical map sends a point #{z} to evaluation at #{z}, and #{\Spec(h)}
+is precomposition with #{h}, so the triangle says #{g(z) = \mathrm{ev}_z
+\circ h}.}
+
+\agda{
+module _ (sqcp : SQCP) {𝓤} {X : Type 𝓤} (A : Algebra I X) where
+
+  Spec-map-from-cube-is-equiv
+    : (m : ℕ) → is-equiv (Spec-map {A = A} {Polynomial-Algebra m})
+  Spec-map-from-cube-is-equiv m
+    = Spec-map-is-equiv←quasicoherent (Polynomial-Algebra m)
+        (Polynomial-Algebra-is-quasicoherent←SQCP sqcp m) A
+
+  cube-hom
+    : (m : ℕ) → ((Fin m → Δ¹) → Spec A)
+    → LatticeAlgHom A (Polynomial-Algebra m)
+  cube-hom m g
+    = is-equiv.bwd (Spec-map-from-cube-is-equiv m)
+        (g ∘ Polynomial-ev (initial-Algebra I) I-distr m)
+
+  cube-hom-at
+    : (m : ℕ) (g : (Fin m → Δ¹) → Spec A) (z : Fin m → Δ¹)
+    → g z ＝ LatticeAlgHom-∘ (Polynomial-eval-at m z) (cube-hom m g)
+  cube-hom-at m g z
+    = ap g (sym (is-equiv.ε vertices-is-equiv z))
+    ∙ sym
+        (happly
+          (is-equiv.ε (Spec-map-from-cube-is-equiv m)
+            (g ∘ Polynomial-ev (initial-Algebra I) I-distr m))
+          (Polynomial-eval-at m z))
+    where
+      vertices-is-equiv = Polynomial-ev-is-equiv (initial-Algebra I) I-distr m
+}
+}
+
+\subtree[ub-003X]{
+\taxon{Lemma}
+\title{The Nullstellensatz for one relation}
+\date{2026-09-06}
+
+\p{Fix #{s, t : \II} and let #{A = {\II}/(s = t)} be the algebra presented by no
+generators and the one relation #{s = t}. Its spectrum is the proposition
+#{s = t}: a point is an algebra map #{A \to \II}, that is the identity of
+#{\II} together with the fact that it respects the relation. Under
+[duality](ub-001P) #{A} is quasicoherent, which reads: a function on the
+proposition #{s = t} is merely a constant, and two constants #{a, b} agree on
+it only if #{a \sim b} in #{A}. The second half is a Nullstellensatz in
+Blechschmidt's sense \citek{Ble23}: from #{s = t \Rightarrow a = b} it
+extracts an algebraic certificate, membership in the congruence generated by
+#{s = t}, which [the principal congruences](ub-003W) then make explicit.}
+
+\agda{
+module Nullstellensatz (s t : Δ¹) where
+
+  presentation : Presentation
+  presentation = mk-presentation 0 1 (λ _ → s) (λ _ → t)
+
+  rel : Δ¹ → Δ¹ → Type 𝓘
+  rel = presentation-rel presentation
+
+  A : Algebra I (Δ¹ / ⟪⟫-rel {L = I} rel)
+  A = Presented presentation
+
+  rel←spec : Spec A → s ＝ t
+  rel←spec φ
+    = sym (φ .fst .snd s)
+    ∙ ap (φ .fst .fst) (glue-quot (Trunc.η (⟪⟫-inc (fzero , refl , refl))))
+    ∙ φ .fst .snd t
+
+  spec←rel : s ＝ t → Spec A
+  spec←rel e
+    = QuotAlgebra-⟪⟫-rec (Polynomial-Algebra 0) rel (initial-Algebra I)
+        ( Algebra-id-hom ~refl (initial-lattice-algebra I)
+        , λ where x y (_ , px , py) → px ∙ e ∙ sym py )
+
+  counit-const : (a : Δ¹) → eval A (ι-quot a) ＝ (λ _ → a)
+  counit-const a = funext→ λ φ → φ .fst .snd a
+
+  module _ (qc : is-quasicoherent A) where
+
+    ⟪⟫←const
+      : {a b : Δ¹} → ((φ : Spec A) → a ＝ b) → ⟪⟫-rel {L = I} rel a b
+    ⟪⟫←const {a} {b} h
+      = unglue-quot (LatticeCongruence.~-equivalence (⟪_⟫ {L = I} rel))
+          (unap-equiv qc (counit-const a ∙ funext→ h ∙ sym (counit-const b)))
+
+    const←fun
+      : (f : Spec A → Δ¹) → ║ Σ[ a ∶ Δ¹ ] ((φ : Spec A) → f φ ＝ a) ║₋₁
+    const←fun f
+      = Quot-elim-prop
+          {B = λ x → eval A x ＝ f → ║ Σ[ a ∶ Δ¹ ] ((φ : Spec A) → f φ ＝ a) ║₋₁}
+          (λ a e →
+            Trunc.η (a , λ φ → sym (happly e φ) ∙ happly (counit-const a) φ))
+          (is-equiv.bwd qc f) (is-equiv.ε qc f)
+}
+}
+
+\subtree[ub-003Y]{
+\taxon{Theorem}
+\title{The interval is simplicial}
+\date{2026-09-06}
+
+\p{Under [duality](ub-001P), #{\II} is [simplicial](stt-00AC): for all
+#{i, j : \II} the constant map #{\II \to ((i \le j \lor j \le i) \to \II)} is
+an equivalence. This is Lemma 3.11 of \citek{GWB26}, which proves it from the
+axiom that cubes separate; here nothing but duality is used, and the proof is
+algebra. Writing #{P} for the join #{(i \le j) \lor (j \le i)}, a function
+#{P \to \II} is a pair of functions on the two disjuncts agreeing on their
+conjunction #{i = j}, and each of the three propositions is the spectrum of an
+algebra presented by one relation (\ref{ub-003X}). So the statement is that
+the square of quotients}
+
+\quiver{
+\begin{tikzcd}
+	\II && {{\II}/(j \le i)} \\
+	\\
+	{{\II}/(i \le j)} && {{\II}/(i = j)}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{is a pullback, which holds in every distributive lattice: with the
+congruences made explicit by \ref{ub-003W}, injectivity is [the
+cancellation law](stt-00A3) at #{w = i \land j}, and surjectivity is witnessed
+by #{c = (a \land j) \lor (b \land i) \lor (a \land b)}, which agrees with #{a}
+where #{i \le j} and with #{b} where #{j \le i}.}
+
+\agda{
+module _ where
+  open is-distributive I-distr
+  open PrincipalCongruence I-distr
+
+  module Nullstellensatz≤ (i j : Δ¹) = Nullstellensatz (i ∧ j) i
+
+  bounded-rel←≤
+    : (i j : Δ¹) {a b : Δ¹}
+    → Nullstellensatz≤.rel i j a b → bounded-rel (i ∧ j) i a b
+  bounded-rel←≤ i j (_ , pa , pb)
+    = ( ap (_∧ (i ∧ j)) pa ∙ ∧-idem
+        ∙ sym (ap (_∧ j) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (_∧ (i ∧ j)) pb)
+      , ap (_∨ i) pa ∙ ∨-comm ∙ ∨-∧-abs ∙ sym ∨-idem ∙ sym (ap (_∨ i) pb) )
+
+  bounded-rel←＝
+    : (i j : Δ¹) {a b : Δ¹}
+    → Nullstellensatz.rel i j a b → bounded-rel (i ∧ j) (i ∨ j) a b
+  bounded-rel←＝ i j (_ , pa , pb)
+    = ( ap (_∧ (i ∧ j)) pa ∙ ∧-assoc ∙ ap (_∧ j) ∧-idem ∙ ∧-comm
+        ∙ sym (ap (_∧ i) ∧-idem) ∙ sym ∧-assoc ∙ sym (ap (j ∧_) ∧-comm)
+        ∙ sym (ap (_∧ (i ∧ j)) pb)
+      , ap (_∨ (i ∨ j)) pa ∙ ∨-assoc ∙ ap (_∨ j) ∨-idem ∙ ∨-comm
+        ∙ sym (ap (_∨ i) ∨-idem) ∙ sym ∨-assoc ∙ sym (ap (j ∨_) ∨-comm)
+        ∙ sym (ap (_∨ (i ∨ j)) pb) )
+
+  glue-along-≤
+    : (a b i j : Δ¹)
+    → a ∧ (i ∧ j) ＝ b ∧ (i ∧ j) → a ∨ (i ∨ j) ＝ b ∨ (i ∨ j)
+    → i ≤ j → (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b) ＝ a
+  glue-along-≤ a b i j r₁ r₂ h
+    = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
+        ＝⟨ ap (λ x → (a ∧ j) ∨ x ∨ (a ∧ b)) (sym p') ⟩
+      (a ∧ j) ∨ (a ∧ i) ∨ (a ∧ b)
+        ＝⟨ sym distrib₂-∧-∨ ⟩
+      a ∧ (j ∨ i ∨ b)
+        ＝⟨ ap (a ∧_) (∨-assoc ∙ ap (_∨ b) (∨-comm ∙ m) ∙ ∨-comm) ⟩
+      a ∧ (b ∨ j)
+        ＝⟨ ap (a ∧_) (sym q') ⟩
+      a ∧ (a ∨ j)
+        ＝⟨ ∧-∨-abs ⟩
+      a ∎
+    where
+      m : i ∨ j ＝ j
+      m = ≤-max h
+
+      p' : a ∧ i ＝ b ∧ i
+      p' = sym (ap (a ∧_) h) ∙ r₁ ∙ ap (b ∧_) h
+
+      q' : a ∨ j ＝ b ∨ j
+      q' = sym (ap (a ∨_) m) ∙ r₂ ∙ ap (b ∨_) m
+
+  module _ (d : duality) (i j : Δ¹) where
+    simplicial-const-is-injective
+      : is-injective (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-injective {a} {b} e
+      = cancel-∧-∨ {w = i ∧ j} (cert≤ .fst)
+          (distrib-∨-∧ ∙ ap₂ _∧_ (cert≤ .snd) (cert≥ .snd) ∙ sym distrib-∨-∧)
+      where
+        module N≤ = Nullstellensatz≤
+
+        qc≤ : is-quasicoherent (N≤.A i j)
+        qc≤ = d _ (Presented-is-finitely-presented _)
+
+        qc≥ : is-quasicoherent (N≤.A j i)
+        qc≥ = d _ (Presented-is-finitely-presented _)
+
+        h : (x : generating-fam-is-simplicial (i , j)) → a ＝ b
+        h = happly e
+
+        cert≤ : bounded-rel (i ∧ j) i a b
+        cert≤
+          = ⟪⟫-least (bounded-congruence (i ∧ j) i) (bounded-rel←≤ i j)
+              (N≤.⟪⟫←const i j qc≤ (λ φ → h (ι₁ (N≤.rel←spec i j φ))))
+
+        cert≥ : bounded-rel (j ∧ i) j a b
+        cert≥
+          = ⟪⟫-least (bounded-congruence (j ∧ i) j) (bounded-rel←≤ j i)
+              (N≤.⟪⟫←const j i qc≥ (λ φ → h (ι₂ (N≤.rel←spec j i φ))))
+
+    simplicial-const-is-surjective
+      : is-surjective (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-surjective f
+      = Trunc.ind (λ _ → trunc!)
+          (λ (a , ha) →
+            Trunc.ind (λ _ → trunc!)
+              (λ (b , hb) → Trunc.η (witness a b (fix≤ a ha) (fix≥ b hb)))
+              (N≤.const←fun j i qc≥ (λ φ → f (ι₂ (N≤.rel←spec j i φ)))))
+          (N≤.const←fun i j qc≤ (λ φ → f (ι₁ (N≤.rel←spec i j φ))))
+      where
+        module N≤ = Nullstellensatz≤
+        module N= = Nullstellensatz
+
+        qc≤ : is-quasicoherent (N≤.A i j)
+        qc≤ = d _ (Presented-is-finitely-presented _)
+
+        qc≥ : is-quasicoherent (N≤.A j i)
+        qc≥ = d _ (Presented-is-finitely-presented _)
+
+        qc= : is-quasicoherent (N=.A i j)
+        qc= = d _ (Presented-is-finitely-presented _)
+
+        fix≤
+          : (a : Δ¹)
+          → ((φ : Spec (N≤.A i j)) → f (ι₁ (N≤.rel←spec i j φ)) ＝ a)
+          → (p : i ≤ j) → f (ι₁ p) ＝ a
+        fix≤ a ha p
+          = ap (λ q → f (ι₁ q)) (carrier-is-set _ _ _ _)
+          ∙ ha (N≤.spec←rel i j p)
+
+        fix≥
+          : (b : Δ¹)
+          → ((φ : Spec (N≤.A j i)) → f (ι₂ (N≤.rel←spec j i φ)) ＝ b)
+          → (q : j ≤ i) → f (ι₂ q) ＝ b
+        fix≥ b hb q
+          = ap (λ q → f (ι₂ q)) (carrier-is-set _ _ _ _)
+          ∙ hb (N≤.spec←rel j i q)
+
+        witness
+          : (a b : Δ¹)
+          → ((p : i ≤ j) → f (ι₁ p) ＝ a) → ((q : j ≤ i) → f (ι₂ q) ＝ b)
+          → fibre (const: Δ¹ (generating-fam-is-simplicial (i , j))) f
+        witness a b fa fb
+          = ( c
+            , funext→ λ x →
+                *-prop-rec (Π-is-prop λ _ → carrier-is-set _ _)
+                  (λ p y →
+                    left p
+                    ∙ ap f
+                        (generating-fam-is-simplicial-is-prop (i , j) (ι₁ p) y))
+                  (λ q y →
+                    right q
+                    ∙ ap f
+                        (generating-fam-is-simplicial-is-prop (i , j) (ι₂ q) y))
+                  x x )
+          where
+            c : Δ¹
+            c = (a ∧ j) ∨ (b ∧ i) ∨ (a ∧ b)
+
+            agree : (φ : Spec (N=.A i j)) → a ＝ b
+            agree φ = sym (fa p) ∙ ap f (glue (p , q)) ∙ fb q
+              where
+                e : i ＝ j
+                e = N=.rel←spec i j φ
+
+                p : i ≤ j
+                p = ap (i ∧_) (sym e) ∙ ∧-idem
+
+                q : j ≤ i
+                q = ap (j ∧_) e ∙ ∧-idem
+
+            cert : bounded-rel (i ∧ j) (i ∨ j) a b
+            cert
+              = ⟪⟫-least (bounded-congruence (i ∧ j) (i ∨ j))
+                  (bounded-rel←＝ i j)
+                  (N=.⟪⟫←const i j qc= agree)
+
+            left : (p : i ≤ j) → c ＝ f (ι₁ p)
+            left p = glue-along-≤ a b i j (cert .fst) (cert .snd) p ∙ sym (fa p)
+
+            right : (q : j ≤ i) → c ＝ f (ι₂ q)
+            right q
+              = rearrange ∙ glue-along-≤ b a j i r₁' r₂' q ∙ sym (fb q)
+              where
+                r₁' : b ∧ (j ∧ i) ＝ a ∧ (j ∧ i)
+                r₁' = ap (b ∧_) ∧-comm ∙ sym (cert .fst) ∙ ap (a ∧_) ∧-comm
+
+                r₂' : b ∨ (j ∨ i) ＝ a ∨ (j ∨ i)
+                r₂' = ap (b ∨_) ∨-comm ∙ sym (cert .snd) ∙ ap (a ∨_) ∨-comm
+
+                rearrange : c ＝ (b ∧ i) ∨ (a ∧ j) ∨ (b ∧ a)
+                rearrange
+                  = ∨-assoc ∙ ap (_∨ (a ∧ b)) ∨-comm ∙ sym ∨-assoc
+                  ∙ ap (λ x → (b ∧ i) ∨ (a ∧ j) ∨ x) ∧-comm
+
+    simplicial-const-is-equiv
+      : is-equiv (const: Δ¹ (generating-fam-is-simplicial (i , j)))
+    simplicial-const-is-equiv
+      = is-equiv←is-surjective-embedding simplicial-const-is-surjective
+          (is-embedding←is-injective (→-is-set carrier-is-set)
+            simplicial-const-is-injective)
+
+  Δ¹-is-simplicial : duality → is-simplicial Δ¹
+  Δ¹-is-simplicial d (i , j) = simplicial-const-is-equiv d i j
+}
+}
+
+\subtree[ub-003Z]{
+\taxon{Corollary}
+\title{Cubes and simplices are simplicial}
+\date{2026-09-06}
+
+\p{Simplicial types are closed under finite products, dependent sums and
+identity types, and a chain condition #{y \le x} is an identity type in
+#{\II}. So every cube and every simplex is simplicial, under duality.
+More generally the spectrum of \em{any} #{\II}-algebra is, being a subtype of
+a function type into #{\II} cut out by equations in #{\II}; and so is every
+convex subtype of a cube, cut out by finitely many inequalities between
+coordinates. What is not closed under is joins: the split square
+#{\{(i,j) \mid i \le j \lor j \le i\}} is not simplicial, since its reflection
+is the square.}
+
+\agda{
+□-is-simplicial : duality → (n : ℕ) → is-simplicial (□^ n)
+□-is-simplicial d zero = is-simplicial←is-singleton 𝟙ᴸ-is-singleton
+□-is-simplicial d (suc zero) = Δ¹-is-simplicial d
+□-is-simplicial d (suc (suc n))
+  = ×-is-simplicial (□-is-simplicial d (suc n)) (Δ¹-is-simplicial d)
+
+Δ-is-simplicial : duality → (n : ℕ) → is-simplicial (Δ^ n)
+Δ-is-simplicial d zero = is-simplicial←is-singleton Δ⁰-is-singleton
+Δ-is-simplicial d (suc n)
+  = is-simplicial←equiv (equiv←qequiv Δ-suc e⁻¹)
+      (Σ-is-simplicial (Δ-is-simplicial d n) λ _ →
+        Σ-is-simplicial (Δ¹-is-simplicial d) λ _ →
+          ＝-is-simplicial (Δ¹-is-simplicial d))
+}
+}

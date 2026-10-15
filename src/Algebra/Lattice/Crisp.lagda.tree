@@ -1,0 +1,148 @@
+\date{2026-10-07}
+\title{Crisp polynomials}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{Facts about the [free algebras](ub-001K) in the presence of the #{\flat}
+modality. Over a #{\flat}-discrete lattice, such as #{\mathrm{Bool}},
+polynomials and finite presentations are #{\flat}-discrete
+(\ref{ub-004Y}), so a statement about all of them only needs checking on the
+crisp ones. And if every crisp element of an algebra #{M} comes from #{L},
+then every crisp polynomial over #{M} is the [base change](ub-004V) of one
+over #{L} (\ref{ub-004Z}).}
+
+\agda{
+module Algebra.Lattice.Crisp where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+open import Foundations.InjectiveMaps
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatDiscrete
+
+open import Algebra.Lattice
+open import Algebra.Lattice.Instances.Polynomial
+import Algebra.Lattice.Instances.Free.Multivariate as Multivariate
+import Algebra.Lattice.Instances.Free.BaseChange as BaseChange
+import Algebra.Lattice.Presentations as Presentations
+}
+}
+
+\subtree[ub-004Y]{
+\taxon{Proposition}
+\title{Polynomials over a flat discrete lattice are flat discrete}
+
+\p{If the carrier of a crisp lattice #{L} is #{\flat}-discrete, then so is
+#{\Delta^2(L)}, the type of pairs #{t \le s}, since #{\flat}-discrete types
+are closed under dependent sums and identity types. Hence so is
+#{L[x_1, \ldots, x_n]} for crisp #{n}, by induction, and so is the type of
+finite presentations over #{L}, a presentation being two numbers and two
+finite families of polynomials.}
+
+\agda{
+Δ²-is-♭-discrete
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ L : Lattice A}
+  → is-♭-discrete A → is-♭-discrete (Δ² L)
+Δ²-is-♭-discrete {A = A} {L} ad
+  = is-♭-discrete←equiv (Δ²-repr≃ {_} {A} {L} {_} {A} {L} e⁻¹)
+      (Σ-is-♭-discrete ad λ _ → Σ-is-♭-discrete ad λ _ → ＝-is-♭-discrete ad)
+
+module _
+  {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ L : Lattice A) (@♭ distr : is-distributive L)
+  where
+  open Presentations L distr
+
+  Presentation-repr≃
+    : ( Σ[ g ∶ ℕ ] Σ[ r ∶ ℕ ]
+          ( (Fin r → Multivariate.Polynomials L distr g)
+          × (Fin r → Multivariate.Polynomials L distr g)))
+    ≃ Presentation
+  Presentation-repr≃
+    = mk≃ (λ (g , r , l , h) → mk-presentation g r l h)
+        (is-equiv←qinv
+          ( (λ p → let open Presentation p in
+                   (generators , relations , lhs , rhs))
+          , (λ _ → refl)
+          , (λ _ → refl)))
+
+  Polynomials-is-♭-discrete
+    : is-♭-discrete A
+    → (@♭ n : ℕ) → is-♭-discrete (Multivariate.Polynomials L distr n)
+  Polynomials-is-♭-discrete ad zero = ad
+  Polynomials-is-♭-discrete ad (suc n)
+    = Δ²-is-♭-discrete (Polynomials-is-♭-discrete ad n)
+
+  Presentation-is-♭-discrete : is-♭-discrete A → is-♭-discrete Presentation
+  Presentation-is-♭-discrete ad
+    = is-♭-discrete←equiv Presentation-repr≃
+        (Σ-is-♭-discrete ℕ-is-♭-discrete λ g →
+          Σ-is-♭-discrete ℕ-is-♭-discrete λ r →
+            ×-is-♭-discrete
+              (Fin→-is-♭-discrete r (Polynomials-is-♭-discrete ad g))
+              (Fin→-is-♭-discrete r (Polynomials-is-♭-discrete ad g)))
+}
+}
+
+\subtree[ub-004Z]{
+\taxon{Lemma}
+\title{Crisp polynomials come from the base}
+
+\p{Let #{M} be a crisp #{L}-algebra whose structure map is injective, and
+such that every crisp element of #{M} is in its image. Then every crisp
+polynomial over #{M} is the base change of a polynomial over #{L}: by
+induction on the number of variables, a crisp #{a x \lor b} has crisp
+coefficients, which lift, and the lifts are again ordered because base
+change is an injective lattice map. Over #{\flat}-discrete indices the same
+holds for families of polynomials.}
+
+\agda{
+module _
+  {@♭ 𝓤} {@♭ A : Type 𝓤} (@♭ L : Lattice A) (@♭ distr : is-distributive L)
+  {@♭ 𝓥} {@♭ C : Type 𝓥} (@♭ M : Algebra L C)
+  (@♭ Md : is-distributive-algebra M)
+  (ι-is-injective : is-injective (Algebra.ι M))
+  (ι-lift : (@♭ c : C) → fibre (Algebra.ι M) c)
+  where
+  open BaseChange L distr M Md
+
+  base-change-lift
+    : (@♭ n : ℕ) (@♭ q : Multivariate.Polynomials (Algebra.str-Lattice M) Md n)
+    → fibre (base-change n) q
+  base-change-lift zero q = ι-lift q
+  base-change-lift (suc n) q
+    = ( (s' .fst , t' .fst) ⦃ ordered ⦄
+      , Δ²-ext (s' .snd , t' .snd))
+    where
+      s' = base-change-lift n (q .Δ².s)
+      t' = base-change-lift n (q .Δ².t)
+      open is-lattice-hom (base-change-is-lattice-hom n)
+
+      ordered
+        : Lattice._≤_ (Multivariate.Polynomial-Lattice L distr n)
+            (t' .fst) (s' .fst)
+      ordered
+        = base-change-is-injective ι-is-injective n
+            ( pres-∧
+            ∙ ap₂ (Lattice._∧_ (Multivariate.Polynomial-Lattice
+                                  (Algebra.str-Lattice M) Md n))
+                (t' .snd) (s' .snd)
+            ∙ Δ².mono q
+            ∙ sym (t' .snd))
+
+  base-change-lift-family
+    : ∀ {@♭ 𝓦} {@♭ I : Type 𝓦} → is-♭-discrete I
+    → (@♭ n : ℕ)
+      (@♭ W : I → Multivariate.Polynomials (Algebra.str-Lattice M) Md n)
+    → (k : I) → fibre (base-change n) (W k)
+  base-change-lift-family Id n W
+    = ♭-discrete-ind Id (λ k → fibre (base-change n) (W k))
+        (λ k → base-change-lift n (W k))
+}
+}

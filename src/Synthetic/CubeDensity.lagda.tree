@@ -1,0 +1,271 @@
+\date{2026-10-07}
+\title{Density of crisp cubes}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{In the intended model of triangulated type theory every element of a
+presheaf lies in the image of a representable, and the representables are the
+cubes. Read internally this is \em{density}: every point of a crisp type lies
+on a crisp cube (\ref{ub-004F}). It is a statement about points, and so a
+proposition about each of them, and it is not one of the axioms. The axiom
+that plays its part is that [the cubes separate](stt-00J7), which is about
+maps. This module relates the two: separation gives density
+(\ref{ub-004G}), and for sets density gives separation back
+(\ref{ub-004H}), so that the two agree on sets.}
+
+\agda{
+open import Foundations.Universes
+
+module Synthetic.CubeDensity
+  {@♭ 𝓘} (@♭ I : Type 𝓘) (@♭ i0 i1 : I)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.Continuity
+open import Modalities.Instances.Truncation
+
+open import Core.Arrows
+open import Core.SurjectiveMaps
+open import Foundations.InjectiveMaps
+
+open import Synthetic.Cubes I i0 i1
+}
+}
+
+\subtree[ub-004F]{
+\taxon{Definition}
+\title{Density of crisp cubes}
+
+\p{A point #{x} of a crisp type #{X} \em{lies on a crisp cube} when there
+merely are a crisp #{n}, a crisp map #{g : \square^n \to X} and a point #{c}
+of the cube with #{g(c) = x}. Only the cube is crisp: #{c} is not, and
+neither is #{x}. The \em{crisp cubes are dense} when every point of every
+crisp type lies on one.}
+
+\agda{
+lies-on-crisp-cube
+  : ∀ {@♭ 𝓤} {@♭ X : Type 𝓤} → X → Type (𝓘 ⊔ 𝓤)
+lies-on-crisp-cube {X = X} x
+  = ║ Σ[ g ∶ ⟨♭| Σ[ n ∶ ℕ ] (□^ n → X) ⟩ ] fibre (ε♭ g .snd) x ║₋₁
+
+lies-on-crisp-cube-is-prop
+  : ∀ {@♭ 𝓤} {@♭ X : Type 𝓤} (x : X) → is-prop (lies-on-crisp-cube x)
+lies-on-crisp-cube-is-prop x = ║-║₋₁-is-prop
+
+on-crisp-cube
+  : ∀ {@♭ 𝓤} {@♭ X : Type 𝓤} (@♭ n : ℕ) (@♭ g : □^ n → X) (c : □^ n)
+  → lies-on-crisp-cube (g c)
+on-crisp-cube n g c = Trunc.η (mod♭ (n , g) , c , refl)
+
+cubes-are-dense : Typeω
+cubes-are-dense
+  = ∀ {@♭ 𝓤} (@♭ X : Type 𝓤) (x : X) → lies-on-crisp-cube x
+}
+
+\p{The truncation is essential. Without it density would ask for a choice of
+cube for each point, natural in the point, and in the model there is none: it
+would have to be compatible with restriction along every map of cubes.}
+
+\p{Density for sets is the same statement for crisp sets only, and
+separation for sets is [separation](stt-00J7) for crisp maps between sets.}
+
+\agda{
+cubes-are-dense-for-sets : Typeω
+cubes-are-dense-for-sets
+  = ∀ {@♭ 𝓤} (@♭ X : Type 𝓤) → @♭ is-set X → (x : X) → lies-on-crisp-cube x
+
+cubes-separate-sets : Typeω
+cubes-separate-sets
+  = ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B)
+  → @♭ is-set A → @♭ is-set B
+  → @♭ is-♭-equiv f
+  → @♭ (∀ {@♭ n} → is-♭-equiv (postcomp (□^ n) f))
+  → is-equiv f
+
+cubes-separate-sets←cubes-separate
+  : family-separates □^_ → cubes-separate-sets
+cubes-separate-sets←cubes-separate sep f _ _ = sep (mk-arrow f)
+}
+}
+
+\subtree[ub-004G]{
+\taxon{Theorem}
+\title{Separation gives density}
+
+\p{If the cubes separate, then the crisp cubes are dense; and if they
+separate sets, they are dense in sets. For a crisp type #{X}, let
+#{C \subseteq X} be the subtype of points that lie on a crisp cube.
+Every crisp map #{g : \square^n \to X} lands in #{C}, by definition, and
+so does every crisp point, which is the case #{n = 0}. So the inclusion
+#{C \hookrightarrow X}, and its postcomposition with each cube, is an
+embedding with crisp preimages of crisp points, hence a #{\flat}-equivalence
+(\ref{ub-004P}). Separation then says that the inclusion is an equivalence,
+that is #{C = X}.}
+
+\agda{
+module _ {@♭ 𝓤} (@♭ X : Type 𝓤) where
+
+  On-crisp-cube : Type (𝓘 ⊔ 𝓤)
+  On-crisp-cube = Σ X lies-on-crisp-cube
+
+  On-crisp-cube-incl : On-crisp-cube → X
+  On-crisp-cube-incl = fst
+
+  On-crisp-cube-incl-is-embedding : is-embedding On-crisp-cube-incl
+  On-crisp-cube-incl-is-embedding
+    = Subtype.Σ̃-π-is-embedding (mk-subtype lies-on-crisp-cube-is-prop)
+
+  On-crisp-cube-is-set : is-set X → is-set On-crisp-cube
+  On-crisp-cube-is-set X-is-set
+    = is-set←is-injective (unap On-crisp-cube-incl-is-embedding) X-is-set
+
+  On-crisp-cube-incl-is-♭-equiv : is-♭-equiv On-crisp-cube-incl
+  On-crisp-cube-incl-is-♭-equiv
+    = is-♭-equiv←is-embedding On-crisp-cube-incl-is-embedding
+        (λ x → mod♭ ((x , on-crisp-cube 0 (λ _ → x) ttᴸ) , refl))
+
+  postcomp-On-crisp-cube-incl-is-♭-equiv
+    : (@♭ n : ℕ) → is-♭-equiv (postcomp (□^ n) On-crisp-cube-incl)
+  postcomp-On-crisp-cube-incl-is-♭-equiv n
+    = is-♭-equiv←is-embedding
+        (postcomp-is-embedding On-crisp-cube-incl-is-embedding)
+        (λ g → mod♭ ((λ c → (g c , on-crisp-cube n g c)) , refl))
+
+  lies-on-crisp-cube←On-crisp-cube-incl-is-equiv
+    : is-equiv On-crisp-cube-incl → (x : X) → lies-on-crisp-cube x
+  lies-on-crisp-cube←On-crisp-cube-incl-is-equiv e x
+    = tr lies-on-crisp-cube (is-equiv.ε e x) (is-equiv.bwd e x .snd)
+
+cubes-are-dense←cubes-separate
+  : family-separates □^_ → cubes-are-dense
+cubes-are-dense←cubes-separate sep X
+  = lies-on-crisp-cube←On-crisp-cube-incl-is-equiv X
+      (sep (mk-arrow (On-crisp-cube-incl X))
+        (On-crisp-cube-incl-is-♭-equiv X)
+        (λ {n} → postcomp-On-crisp-cube-incl-is-♭-equiv X n))
+
+cubes-are-dense-for-sets←cubes-separate-sets
+  : cubes-separate-sets → cubes-are-dense-for-sets
+cubes-are-dense-for-sets←cubes-separate-sets sep X X-is-set
+  = lies-on-crisp-cube←On-crisp-cube-incl-is-equiv X
+      (sep (On-crisp-cube-incl X) (On-crisp-cube-is-set X X-is-set) X-is-set
+        (On-crisp-cube-incl-is-♭-equiv X)
+        (λ {n} → postcomp-On-crisp-cube-incl-is-♭-equiv X n))
+}
+}
+
+\subtree[ub-004H]{
+\taxon{Theorem}
+\title{Density gives separation for sets}
+
+\p{Conversely, if the crisp cubes are dense in sets, then they separate
+sets. Let #{f : A \to B} be a crisp map between sets that induces
+equivalences #{\modflat{\square^n \to A} \simeq \modflat{\square^n \to B}}
+for every crisp #{n}. A map between sets is an equivalence when it is
+injective and surjective, and density reduces both to crisp cubes.}
+
+\p{\em{Surjectivity.} A point #{b} merely lies on a crisp cube
+#{y : \square^n \to B}, say at #{c}. Then #{y} lifts along #{f} to the crisp
+cube #{x} with #{\modflat{f \circ x} = \modflat{y}} (\ref{ub-004N}), and #{x(c)} is a
+preimage of #{b}.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ B : Type 𝓥} (@♭ f : A → B)
+  (@♭ f-on-cubes : ∀ {@♭ n} → is-♭-equiv (postcomp (□^ n) f))
+  where
+
+  fibre←crisp-cube
+    : (@♭ n : ℕ) (@♭ y : □^ n → B) (c : □^ n) → fibre f (y c)
+  fibre←crisp-cube n y c
+    = ( ♭-equiv-lift (f-on-cubes {n}) y c
+      , happly (♭-equiv-lift-β (f-on-cubes {n}) y) c)
+
+  is-surjective←cubes-are-dense
+    : (@♭ B-is-set : is-set B)
+    → cubes-are-dense-for-sets → is-surjective f
+  is-surjective←cubes-are-dense B-is-set dense b
+    = Trunc.ind (λ _ → trunc!)
+        (λ where
+          (mod♭ (n , y) , c , p) →
+            Trunc.η (tr (fibre f) p (fibre←crisp-cube n y c)))
+        (dense B B-is-set b)
+}
+
+\p{\em{Injectivity.} Given #{a, a'} with #{f(a) = f(a')}, the triple lies in
+the crisp set #{A \times_B A} of pairs with the same image, so it merely lies
+on a crisp cube there, that is a pair of crisp cubes #{x, x'} in #{A} with
+#{f \circ x = f \circ x'}. Since #{f} is injective on crisp cubes
+(\ref{ub-004N}),
+#{x = x'}, and in particular #{a = x(c) = x'(c) = a'}.}
+
+\agda{
+  Same-image : Type (𝓤 ⊔ 𝓥)
+  Same-image = Σ[ a ∶ A ] Σ[ a' ∶ A ] (f a ＝ f a')
+
+  Same-image-is-set
+    : @♭ is-set A → @♭ is-set B → is-set Same-image
+  Same-image-is-set A-is-set B-is-set
+    = Σ-is-set A-is-set λ _ → Σ-is-set A-is-set λ _ →
+        is-set←is-prop (B-is-set _ _)
+
+  crisp-cube-agree
+    : (@♭ n : ℕ) (@♭ x : □^ n → Same-image)
+    → (λ c → x c .fst) ＝ (λ c → x c .snd .fst)
+  crisp-cube-agree n x
+    = unap-♭-equiv (f-on-cubes {n}) (funext→ λ c → x c .snd .snd)
+
+  is-injective←cubes-are-dense
+    : (@♭ A-is-set : is-set A) (@♭ B-is-set : is-set B)
+    → cubes-are-dense-for-sets → is-injective f
+  is-injective←cubes-are-dense A-is-set B-is-set dense {a} {a'} e
+    = Trunc.ind (λ _ → is-truncated←is-prop (A-is-set a a'))
+        (λ where
+          (mod♭ (n , x) , c , p) →
+            ap fst (sym p)
+            ∙ happly (crisp-cube-agree n x) c
+            ∙ ap (λ t → t .snd .fst) p)
+        (dense Same-image (Same-image-is-set A-is-set B-is-set) (a , a' , e))
+
+}
+
+\p{Together with \ref{ub-004G}: the crisp cubes are dense in sets exactly
+when they separate sets.}
+
+\agda{
+cubes-separate-sets←cubes-are-dense
+  : cubes-are-dense-for-sets → cubes-separate-sets
+cubes-separate-sets←cubes-are-dense dense f A-is-set B-is-set _ f-on-cubes
+  = is-equiv←is-surjective-embedding
+      (is-surjective←cubes-are-dense f f-on-cubes B-is-set dense)
+      (is-embedding←is-injective B-is-set
+        (is-injective←cubes-are-dense f f-on-cubes A-is-set B-is-set dense))
+}
+}
+
+\subtree[ub-004K]{
+\taxon{Remark}
+\title{Density beyond sets}
+
+\p{The argument of \ref{ub-004H} is a port of one in extensional type theory
+with uniqueness of identity proofs, where every type is a set and an
+injective surjection is invertible. Without that, the same argument applied
+to #{f} shows only that #{f} is surjective. The hypothesis does pass from #{f}
+to its diagonal #{A \to A \times_B A}, since #{\flat} and cube powers preserve
+pullbacks and the diagonal of an equivalence is an equivalence. So by
+iteration #{f} is #{k}-connected for every #{k}, and hence an equivalence when
+#{A} and #{B} are #{k}-truncated for some crisp #{k}. Whether density makes
+every such #{f} an equivalence is a Whitehead-type question: it asks for
+#{\infty}-connected maps between crisp types to be equivalences. That holds in
+the intended model, which is hypercomplete, but not in every
+#{\infty}-topos. Neither the iteration nor the question is formalised here.}
+}

@@ -24,7 +24,109 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
+open import Core.CartesianSquares
+
+open import Ergonomics.Extensionality
+
 open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.FlatLex
+open import Modalities.Cohesion.Continuity
+}
+}
+
+\subtree[tot-DKSN]{
+\title{The universal tiny embedding}
+\taxon{Construction}
+\date{2026-10-07}
+\author{samueltoth}
+
+\p{There is a map #{\unitobj \to \Prop_I} which picks out the proposition #{\true}.
+This map is an embedding and any proposition #{\phi \colon : A^I \to \Prop} can be
+obtained as a base change of the universal tiny embedding.}
+
+\agda{
+Prop-true : ∀ {𝓤} → Prop-U 𝓤
+Prop-true = (𝟙ᴸ , trunc!)
+
+√true : ∀ (@♭ 𝓤) → 𝟙 → √(Prop-U 𝓤)
+√true 𝓤 = ε♭ (transpose (mod♭ (const (𝟙ᴸ , trunc!))))
+
+proj-√ : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → √ A → A
+proj-√ = ev _ ∘ untranspose ∘ point
+
+proj-√-is-♭-equiv : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → is-♭-equiv (proj-√ {A = A})
+proj-√-is-♭-equiv
+  = is-♭-equiv-∘
+      (is-♭-equiv←is-equiv (sing-ev-is-equiv trunc!))
+      (is-♭-equiv-∘
+        √-is-tiny-str
+        (is-♭-equiv←is-equiv (point-is-equiv)))
+opaque
+  fibre-√true-mapᵈ
+    : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓥} (@♭ ϕ ψ : (I → Γ) → Prop-U 𝓤)
+      → ⟨♭| ((x : Γ) → ε♭ (transpose (mod♭ ϕ)) x ＝ ε♭ (transpose (mod♭ ψ)) x) ⟩
+      ≃ ⟨♭| ((x : I → Γ) → fst (ϕ x) ↔ fst (ψ x)) ⟩
+  fibre-√true-mapᵈ {Γ = Γ} ϕ ψ
+    = ⟨♭| ((x : Γ) → ε♭ (transpose (mod♭ ϕ)) x ＝ ε♭ (transpose (mod♭ ψ)) x) ⟩
+    ≃⟨ ♭≃ (funext≃ e⁻¹) ⟩
+      ⟨♭| (ε♭ (transpose (mod♭ ϕ)) ＝ ε♭ (transpose (mod♭ ψ))) ⟩
+    -- ≃⟨ ♭≃ (tr≃ (ε♭ (transpose (mod♭ ϕ)) ＝_) (sym (ε♭-transpose-∘ (const Prop𝟙) !))) ⟩
+    --   ⟨♭| (ε♭ (transpose (mod♭ ϕ))) ＝ ε♭ (transpose (mod♭ (point Prop𝟙 ∘ !))) ⟩
+    ≃⟨ mapply♭≃ ⟩
+      mod♭ (ε♭ (transpose (mod♭ ϕ))) ＝ mod♭ (ε♭ (transpose (mod♭ ψ)))
+    ≃⟨ ＝-preconcat-≃ (mod♭ε♭ (transpose (mod♭ ψ)))
+    ∙e ＝-postconcat-≃ (sym (mod♭ε♭ (transpose (mod♭ ϕ)))) ⟩
+      transpose (mod♭ ϕ) ＝ transpose (mod♭ ψ)
+    ≃⟨ mk≃ (ap transpose) (is-embedding←is-equiv (is-equiv⁻¹ √-is-tiny-str)) e⁻¹ ⟩
+      mod♭ ϕ ＝ mod♭ ψ
+    ≃⟨ mapply♭≃ e⁻¹ ⟩
+      ⟨♭| ϕ ＝ ψ ⟩
+    ≃⟨ ♭≃ (funext≃ {f = ϕ} {ψ} ) ⟩
+      ⟨♭| ((f : I → Γ) → ϕ f ＝ ψ f) ⟩
+    ≃⟨ ♭≃ (postcomp-Π-≃ (λ f → IdS≃Id e⁻¹)) ⟩
+      ⟨♭| ((f : I → Γ) → ϕ f .fst ↔ ψ f .fst) ⟩
+    ≃∎
+
+lemma
+  : ∀ {@♭ 𝓤 𝓥} {@♭ A : Type 𝓤} {@♭ Γ : Type 𝓥}
+      {@♭ a : A} {x : Γ}
+      → ε♭ (transpose (mod♭ (const a))) x ＝ ε♭ (transpose (mod♭ (const a))) tt
+lemma {a = a} {x}
+    = happly (ap ε♭ (transpose-context-naturality ! (mod♭ (const a)))) x
+    ∙ happly (ε♭-natural (transpose (mod♭ (const a)))) x
+
+fibre-√true-lemma
+  : ∀ {@♭ 𝓤 𝓥} {@♭ Γ : Type 𝓥} (@♭ ϕ : (I → Γ) → Prop-U 𝓤)
+    → ⟨♭| ((x : Γ) → ε♭ (transpose (mod♭ ϕ)) x ＝ √true 𝓤 tt) ⟩
+    ≃ ⟨♭| (Π (I → Γ) (fst ∘ ϕ)) ⟩
+fibre-√true-lemma {𝓤} {Γ = Γ} ϕ
+  = ⟨♭| ((x : Γ) → ε♭ (transpose (mod♭ ϕ)) x ＝ √true 𝓤 tt) ⟩
+  ≃⟨ ♭≃ (postcomp-Π-≃ (λ c → tr≃ ((ε♭ (transpose (mod♭ ϕ)) c) ＝_) (lemma ∙ sym lemma))) ⟩
+    ⟨♭| ((x' : Γ) → ε♭ (transpose (mod♭ ϕ)) x' ＝ ε♭ (transpose (mod♭ (const Prop-true))) x') ⟩
+  ≃⟨ fibre-√true-mapᵈ ϕ (const Prop-true) ⟩
+    ⟨♭| ((x : I → Γ) → fst (ϕ x) ↔ fst Prop-true) ⟩
+  ≃⟨ ♭≃ (postcomp-Π-≃ (λ _ → ×-swap ∙e (Σ-singleton (λ _ → single!) ∙e sing-UP≃ single!))) ⟩
+    ⟨♭| (Π (I → Γ) (fst ∘ ϕ)) ⟩
+  ≃∎
+
+opaque
+  √true-diagonal-is-equiv : ∀ {@♭ 𝓤} → is-equiv (diagonal (√true 𝓤))
+  √true-diagonal-is-equiv
+    = types-separate
+        (diagonal (√true _))
+        λ {_} {Γ}
+        → is-equiv←single-to-prop
+            (♭-is-single single!)
+            (is-prop←equiv
+              (  (fibre-√true-lemma {Γ = Γ} (const Prop-true)) e⁻¹
+              ∙e ♭≃ (  postcomp-Π-≃ (λ c → tr≃ (_＝ _) lemma)
+                    ∙e postcomp-≃ (Σ-𝟙 ∙e Σ-𝟙) e⁻¹))
+              (♭-is-prop (is-prop←is-truncated trunc!)))
+            _
+
+√true-is-embedding : ∀ {@♭ 𝓤} → is-embedding (√true 𝓤)
+√true-is-embedding
+  = is-embedding←diagonal-is-equiv (√true _) √true-diagonal-is-equiv
 }
 }
 

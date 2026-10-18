@@ -74,8 +74,9 @@ opaque
       → is-S-null (suc-𝕋₋₁←𝕋 n) A
       → is-truncated n A
   is-truncated←null -2𝕋 = is-singleton←is-S⁻¹-null
-  is-truncated←null (suc-𝕋 n) {A} null x y
-    = is-truncated←null n (lem x y) where
+  is-truncated←null (suc-𝕋 n) {A} null = is-suc-truncated←Id-is-truncated
+    λ x y
+    → is-truncated←null n (lem x y) where
     lem : is-separated (Null-SubU (point (S (suc-𝕋₋₁←𝕋 n))) _) A
     lem = is-separated←is-Susp-null (λ _ → S (suc-𝕋₋₁←𝕋 n)) null
 
@@ -85,10 +86,10 @@ opaque
       → is-S-null (suc-𝕋₋₁←𝕋 n) A
   is-null←truncated -2𝕋
     = is-S⁻¹-null←is-singleton
-  is-null←truncated (suc-𝕋 n){A} tr
+  is-null←truncated (suc-𝕋 n) {A} trunc
     = is-Susp-null←is-separated _ lem where
     lem : ∀ (x y : A) → is-S-null (suc-𝕋₋₁←𝕋 n) (x ＝ y)
-    lem x y = is-null←truncated n (tr x y)
+    lem x y = is-null←truncated n (Id-is-truncated←is-suc-truncated trunc x y)
 }
 }
 
@@ -157,7 +158,7 @@ opaque
   Truncation-refl n = is-reflective←global (Truncation-grefl)
 
   Truncation-Σ-closed : ∀ {n} → is-globally-Σ-closed (Truncation-gSubU n)
-  Truncation-Σ-closed = Σ-is-truncated
+  Truncation-Σ-closed = Σ-is-truncated _
 
 Truncation-gRSubU : (n : 𝕋) → gRSubU (λ 𝓤 → 𝓤)
 Truncation-gRSubU n .gRSubU.GS = Truncation-gSubU n
@@ -173,7 +174,7 @@ module Trunc {n} where
   untrunc : ∀ {𝓤} {A : Type 𝓤} → is-truncated n A → ○ A → A
   untrunc = unmod (reflector _)
 
-module _ {n} where
+module _ n where
   open gReflectiveClosure (Truncation-gRSubU n) public using () renaming
     ( retract∈S to retract-is-truncated
     ; biinv∈S to biinv-is-truncated
@@ -188,35 +189,41 @@ module _ {n} where
     ; idempotent-map∈S to idempotent-map-is-truncated)
 
 opaque
-  Trunc-U-is-truncated
-    : ∀ n {𝓤} → is-truncated (suc-𝕋 n) (Trunc-U n 𝓤)
-  Trunc-U-is-truncated n (X , Xtr) (Y , Ytr)
-    = is-truncated←equiv
-        (Σ-path)
-        (Σ-is-truncated
-          (is-truncated←equiv (mk≃ _ (is-equiv⁻¹ UA)) (≃-is-truncated Xtr Ytr))
-          (λ where
-            refl → is-truncated←is-single
-              (＝-is-single←is-prop (is-truncated-is-prop n X) Xtr Ytr)))
-
-Trunc : ∀ {𝓤} n → Type 𝓤 → Type 𝓤
-Trunc n = Trunc.○ {n}
+  Trunc-is-suc-truncated
+    : ∀ n {𝓤} → is-truncated (suc-𝕋 n) (Trunc n 𝓤)
+  Trunc-is-suc-truncated n = is-suc-truncated←Id-is-truncated (λ where
+    (X , Xtr) (Y , Ytr)
+      → is-truncated←equiv
+           Σ-path
+           (Σ-is-truncated _
+             (is-truncated←equiv ua≃ (≃-is-truncated _ Xtr Ytr))
+             λ where
+               refl
+                → Id-is-truncated←is-suc-truncated
+                  (is-suc-truncated←is-prop
+                   (is-truncated-is-prop n X) n) Xtr Ytr))
 
 ║_║₋₁ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
-║_║₋₁ = Trunc -1
-{-# NOINLINE ║_║₋₁ #-}
+║_║₋₁ = Trunc.○ {n = -1}
+
+│_│₋₁ : ∀ {𝓤} {A : Type 𝓤} → A → ║ A ║₋₁
+│_│₋₁ = Trunc.η {n = -1}
+
+{-# DISPLAY Trunc.○ -1 A = ║ A ║₋₁ #-}
 
 ║-║₋₁-is-prop : ∀ {𝓤} {A : Type 𝓤} → is-prop ║ A ║₋₁
-║-║₋₁-is-prop = is-prop←is-truncated Trunc.○∈S
+║-║₋₁-is-prop = Trunc.○∈S {n = -1}
 
 ║_║₀ : ∀ {𝓤} → Type 𝓤 → Type 𝓤
-║_║₀ = Trunc 0
-{-# NOINLINE ║_║₀ #-}
+║_║₀ = Trunc.○ {n = 0}
+
+│_│₀ : ∀ {𝓤} {A : Type 𝓤} → A → ║ A ║₀
+│_│₀ = Trunc.η {n = 0}
+
+{-# DISPLAY Trunc.○ 0 A = ║ A ║₀ #-}
 
 ║-║₀-is-set : ∀ {𝓤} {A : Type 𝓤} → is-set ║ A ║₀
-║-║₀-is-set = is-set←is-truncated Trunc.○∈S
-
-{-# DISPLAY Trunc.○ {n} A = Trunc n A #-}
+║-║₀-is-set = Trunc.○∈S {n = 0}
 }
 }
 
@@ -279,24 +286,24 @@ instance
   Trunc-trunc
     : ∀ {𝓤} {A : Type 𝓤}
         {n k}
-      → Is-truncated (itsuc-𝕋 k n) (Trunc n A)
+      → Is-truncated (itsuc-𝕋 k n) (Trunc.○ {n = n} A)
   Trunc-trunc {n = n} {k} = truncation-instance n (Trunc.○∈S) {k}
   {-# INCOHERENT Trunc-trunc #-}
 
 module _ {𝓤} {A : Type 𝓤} ⦃ _ : ∀ {k} → Is-truncated (suc-𝕋 (suc-𝕋 k)) A ⦄ where
   _ : is-truncated 1 A
-  _ = trunc!
+  _ = trunc! 1
 
   _ : ∀ {x y : A} → is-truncated -1 (x ＝ y)
-  _ = trunc!
+  _ = trunc! -1
 
   _ : is-truncated 0 (A → A)
-  _ = trunc!
+  _ = trunc! 0
 
   _ : ∀ {f g : S 5 → A} → is-truncated -1 (f ~ g)
-  _ = trunc!
+  _ = trunc! -1
 
-  _ : is-truncated -1 (A → Trunc -1 (S 5))
-  _ = trunc!
+  _ : is-truncated -1 (A → ║ (S 5) ║₋₁)
+  _ = trunc! -1
 }
 }

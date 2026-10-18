@@ -1,0 +1,289 @@
+\date{2026-10-07}
+\title{Base change of polynomials}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{An #{L}-algebra #{M} is a lattice in its own right, and a polynomial with
+coefficients in #{L} can be read as one with coefficients in #{M}, by mapping
+each coefficient along the structure map #{L \to M}. This is base change
+#{L[x_1, \ldots, x_n] \to M[x_1, \ldots, x_n]} for the
+[free algebras](ub-001K). It is a map of #{L}-algebras that fixes the
+generators (\ref{ub-004V}), so evaluating a base-changed polynomial is
+evaluating the original one, and it is injective when the structure map is.
+Applied to the relations of a presentation, it gives base change of finitely
+presented algebras, with its universal property (\ref{ub-0051}).}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Algebra.Lattice.Instances.Free.BaseChange
+  {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L)
+  {𝓥} {C : Type 𝓥} (M : Algebra L C) (Md : is-distributive-algebra M)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+open import Foundations.InjectiveMaps
+
+open import Algebra.Lattice.Instances.Polynomial
+open import Algebra.Lattice.Instances.Free.Multivariate L distr
+import Algebra.Lattice.Instances.Free.Multivariate as Multivariate
+open import Algebra.Lattice.Presentations L distr
+import Algebra.Lattice.Presentations as Presentations
+
+open import Core.SetQuotients
+}
+}
+
+\subtree[ub-004V]{
+\taxon{Definition}
+\title{Base change of polynomials}
+
+\p{Base change is the structure map on constants, and acts on a polynomial
+#{a x \lor b} in the last variable coefficientwise. It is a lattice map, which
+is what makes it monotone, so the two are defined together.}
+
+\agda{
+open Algebra M using ()
+  renaming (str-Lattice to M-Lattice ; ι to M-ι ; ι-alg to M-ι-alg)
+
+base-change : (n : ℕ) → Polynomials n → Multivariate.Polynomials M-Lattice Md n
+
+base-change-is-lattice-hom
+  : (n : ℕ)
+  → is-lattice-hom (Polynomial-Lattice n)
+      (Multivariate.Polynomial-Lattice M-Lattice Md n) (base-change n)
+
+base-change zero = M-ι
+base-change (suc n) ((s , t) ⦃ p ⦄)
+  = (base-change n s , base-change n t)
+      ⦃ sym (base-change-is-lattice-hom n .is-lattice-hom.pres-∧)
+      ∙ ap (base-change n) p ⦄
+
+base-change-is-lattice-hom zero = M-ι-alg
+base-change-is-lattice-hom (suc n) = h
+  where
+    open is-lattice-hom (base-change-is-lattice-hom n)
+    h : is-lattice-hom _ _ (base-change (suc n))
+    h .is-lattice-hom.pres-∨ = Δ²-ext (pres-∨ , pres-∨)
+    h .is-lattice-hom.pres-∧ = Δ²-ext (pres-∧ , pres-∧)
+    h .is-lattice-hom.pres-0 = Δ²-ext (pres-0 , pres-0)
+    h .is-lattice-hom.pres-1 = Δ²-ext (pres-1 , pres-1)
+}
+
+\p{It commutes with the structure maps, so it is a map of #{L}-algebras, and
+it sends generators to generators.}
+
+\agda{
+base-change-ι
+  : (n : ℕ) (a : A)
+  → base-change n (Polynomial-ι n a)
+  ＝ Multivariate.Polynomial-ι M-Lattice Md n (M-ι a)
+base-change-ι zero a = refl
+base-change-ι (suc n) a = Δ²-ext (base-change-ι n a , base-change-ι n a)
+
+base-change-hom
+  : (n : ℕ)
+  → LatticeAlgHom (Polynomial-Algebra n)
+      (Algebra-res M (Multivariate.Polynomial-Algebra M-Lattice Md n))
+base-change-hom n .fst .fst = base-change n
+base-change-hom n .fst .snd = base-change-ι n
+base-change-hom n .snd = mk-is-lattice-alg-hom (base-change-is-lattice-hom n)
+
+base-change-gen
+  : {n : ℕ} (k : Fin n)
+  → base-change n (Polynomial-gen k) ＝ Multivariate.Polynomial-gen M-Lattice Md k
+base-change-gen {suc n} fzero = Δ²-ext (pres-1 , pres-0)
+  where open is-lattice-hom (base-change-is-lattice-hom n)
+base-change-gen {suc n} (fsuc k) = Δ²-ext (base-change-gen k , base-change-gen k)
+}
+
+\p{Base change of a [presentation](ub-001M) changes the base of the two sides
+of each relation.}
+
+\agda{
+base-change-presentation
+  : Presentations.Presentation L distr
+  → Presentations.Presentation M-Lattice Md
+base-change-presentation p
+  = Presentations.mk-presentation generators relations
+      (base-change generators ∘ lhs) (base-change generators ∘ rhs)
+  where open Presentations.Presentation {L = L} {distr = distr} p
+}
+}
+
+\subtree[ub-004W]{
+\taxon{Lemma}
+\title{Evaluation after base change}
+
+\p{For a distributive #{M}-algebra #{N} and a point #{v} of #{N^n},
+evaluating the base change of #{q} at #{v} over #{M} is evaluating #{q} at
+#{v} over #{L}, with #{N} regarded as an #{L}-algebra. Both are maps of
+#{L}-algebras out of #{L[x_1, \ldots, x_n]} that send #{x_k} to #{v_k}.}
+
+\agda{
+Polynomial-eval-base-change
+  : ∀ {𝓦} {D : Type 𝓦} (N : Algebra M-Lattice D)
+    (Nd : is-distributive-algebra N)
+    (n : ℕ) (v : Fin n → D) (q : Polynomials n)
+  → Multivariate.Polynomial-eval M-Lattice Md N Nd n v .fst .fst
+      (base-change n q)
+  ＝ Polynomial-eval (Algebra-res M N) Nd n v .fst .fst q
+Polynomial-eval-base-change N Nd n v q
+  = happly
+      (ap (λ f → f .fst .fst)
+        (unap-equiv (Polynomial-ev-is-equiv (Algebra-res M N) Nd n)
+          {x = lhs} {y = Polynomial-eval (Algebra-res M N) Nd n v}
+          (funext→ λ k →
+            ap (Multivariate.Polynomial-eval M-Lattice Md N Nd n v .fst .fst)
+              (base-change-gen k)
+            ∙ Multivariate.Polynomial-eval-gen M-Lattice Md N Nd n v k
+            ∙ sym (Polynomial-eval-gen (Algebra-res M N) Nd n v k))))
+      q
+  where
+    lhs : LatticeAlgHom (Polynomial-Algebra n) (Algebra-res M N)
+    lhs
+      = LatticeAlgHom-∘
+          (Algebra-res-hom M (Multivariate.Polynomial-eval M-Lattice Md N Nd n v))
+          (base-change-hom n)
+}
+}
+
+\subtree[ub-004X]{
+\taxon{Lemma}
+\title{Base change is injective}
+
+\p{If the structure map #{L \to M} is injective, then so is base change, by
+induction on the number of variables, coefficientwise.}
+
+\agda{
+base-change-is-injective
+  : is-injective M-ι → (n : ℕ) → is-injective (base-change n)
+base-change-is-injective ι-inj zero = ι-inj
+base-change-is-injective ι-inj (suc n) e
+  = Δ²-ext ( base-change-is-injective ι-inj n (ap Δ².s e)
+           , base-change-is-injective ι-inj n (ap Δ².t e))
+}
+}
+
+\subtree[ub-0051]{
+\taxon{Theorem}
+\title{Base change of presented algebras}
+
+\p{For a finite presentation #{p} over #{L}, presenting #{A}, write #{A_M}
+for the #{M}-algebra presented by the [base change](ub-004V) of #{p}: the
+same generators, and the relations read over #{M}. There is a map of
+#{L}-algebras #{A \to A_M}, sending generators to generators, and it is
+universal: for every distributive #{M}-algebra #{N}, composing with it
+identifies maps of #{M}-algebras #{A_M \to N} with maps of #{L}-algebras
+#{A \to N}. Both are tuples in #{N} that satisfy the relations, over #{M} and
+over #{L} respectively, and those are the same tuples by \ref{ub-004W}.}
+
+\agda{
+module _ (p : Presentation) where
+  open Presentation p
+
+  Presented-base-change : Algebra M-Lattice _
+  Presented-base-change
+    = Presentations.Presented M-Lattice Md (base-change-presentation p)
+
+  Presented-base-change-unit
+    : LatticeAlgHom (Presented p) (Algebra-res M Presented-base-change)
+  Presented-base-change-unit
+    = Presented-rec p
+        (LatticeAlgHom-∘
+          (Algebra-res-hom M
+            (Presentations.Presented-ι M-Lattice Md (base-change-presentation p)))
+          (base-change-hom generators))
+        (Presentations.relation-holds M-Lattice Md (base-change-presentation p))
+
+  Presented-base-change-unit-gen
+    : (k : Fin generators)
+    → Presented-base-change-unit .fst .fst (ι-quot (Polynomial-gen k))
+    ＝ ι-quot (Multivariate.Polynomial-gen M-Lattice Md k)
+  Presented-base-change-unit-gen k
+    = Presented-rec-β p _ _ (Polynomial-gen k) ∙ ap ι-quot (base-change-gen k)
+
+  module _
+    {𝓦} {D : Type 𝓦} (N : Algebra M-Lattice D)
+    (Nd : is-distributive-algebra N)
+    where
+
+    Presented-base-change-restrict
+      : LatticeAlgHom Presented-base-change N
+      → LatticeAlgHom (Presented p) (Algebra-res M N)
+    Presented-base-change-restrict φ
+      = LatticeAlgHom-∘ (Algebra-res-hom M φ) Presented-base-change-unit
+
+    Presented-base-change-extend
+      : LatticeAlgHom (Presented p) (Algebra-res M N)
+      → LatticeAlgHom Presented-base-change N
+    Presented-base-change-extend ψ
+      = Presentations.Presented-rec M-Lattice Md (base-change-presentation p)
+          (Multivariate.Polynomial-eval M-Lattice Md N Nd generators v)
+          respects-v
+      where
+        v : Fin generators → D
+        v k = ψ .fst .fst (ι-quot (Polynomial-gen k))
+
+        ψ-on-free
+          : (q : Polynomials generators)
+          → ψ .fst .fst (ι-quot q)
+          ＝ Polynomial-eval (Algebra-res M N) Nd generators v .fst .fst q
+        ψ-on-free q
+          = happly
+              (ap (λ f → f .fst .fst)
+                (unap-equiv
+                  (Polynomial-ev-is-equiv (Algebra-res M N) Nd generators)
+                  {x = LatticeAlgHom-∘ ψ (Presented-ι p)}
+                  {y = Polynomial-eval (Algebra-res M N) Nd generators v}
+                  (funext→ λ k →
+                    sym (Polynomial-eval-gen (Algebra-res M N) Nd
+                          generators v k))))
+              q
+
+        respects-v
+          : Presentations.respects M-Lattice Md (base-change-presentation p)
+              (Multivariate.Polynomial-eval M-Lattice Md N Nd generators v)
+        respects-v k
+          = Polynomial-eval-base-change N Nd generators v (lhs k)
+          ∙ sym (ψ-on-free (lhs k))
+          ∙ ap (ψ .fst .fst) (relation-holds p k)
+          ∙ ψ-on-free (rhs k)
+          ∙ sym (Polynomial-eval-base-change N Nd generators v (rhs k))
+
+    Presented-base-change-extend-gen
+      : (ψ : LatticeAlgHom (Presented p) (Algebra-res M N)) (k : Fin generators)
+      → Presented-base-change-extend ψ .fst .fst
+          (ι-quot (Multivariate.Polynomial-gen M-Lattice Md k))
+      ＝ ψ .fst .fst (ι-quot (Polynomial-gen k))
+    Presented-base-change-extend-gen ψ k
+      = Presentations.Presented-rec-β M-Lattice Md (base-change-presentation p)
+          _ _ (Multivariate.Polynomial-gen M-Lattice Md k)
+      ∙ Multivariate.Polynomial-eval-gen M-Lattice Md N Nd generators _ k
+
+    Presented-base-change-restrict-is-equiv
+      : is-equiv Presented-base-change-restrict
+    Presented-base-change-restrict-is-equiv
+      = is-equiv←qinv
+          ( Presented-base-change-extend
+          , (λ φ →
+              Presentations.Presented-hom-ext M-Lattice Md
+                (base-change-presentation p) Nd _ _ λ k →
+                  Presented-base-change-extend-gen
+                    (Presented-base-change-restrict φ) k
+                  ∙ ap (φ .fst .fst) (Presented-base-change-unit-gen k))
+          , (λ ψ →
+              Presented-hom-ext p Nd _ _ λ k →
+                ap (Presented-base-change-extend ψ .fst .fst)
+                  (Presented-base-change-unit-gen k)
+                ∙ Presented-base-change-extend-gen ψ k))
+}
+}

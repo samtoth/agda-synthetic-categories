@@ -1,0 +1,235 @@
+\date{2026-09-04}
+\title{Presentations of lattice algebras}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{An #{L}-algebra is \em{finitely presented} when it is a quotient of a [free
+algebra on finitely many generators](ub-001K) by finitely many relations. This
+is the class of algebras [the duality axiom](ub-001P) speaks about.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Algebra.Lattice.Presentations
+  {𝓤} {A : Type 𝓤} (L : Lattice A) (distr : is-distributive L)
+  where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Fin
+
+open import Modalities.Instances.Truncation
+
+open import Core.SetQuotients
+
+open import Ergonomics.Extensionality
+
+open import Algebra.Lattice.Instances.Quotient
+open import Algebra.Lattice.Instances.Free.Multivariate L distr
+}
+}
+
+\subtree[ub-001M]{
+\taxon{Definition}
+\title{Presentations}
+
+\p{A \em{finite presentation} over #{L} is a number of generators, a number of
+relations, and for each relation a pair of elements of the [free algebra on
+those generators](ub-001K) that it is to identify.}
+
+\agda{
+record Presentation : Type 𝓤 where
+  constructor mk-presentation
+  field
+    generators relations : ℕ
+    lhs rhs : Fin relations → Polynomials generators
+}
+
+\p{The algebra it presents is the [quotient](stt-00D3) of the free algebra by
+the [congruence generated](stt-009S) by those pairs, that is
+#{L[x_1, \ldots, x_n]/\langle t_1 = s_1, \ldots, t_m = s_m\rangle}.}
+
+\agda{
+module _ (p : Presentation) where
+  open Presentation p
+
+  presentation-rel
+    : Polynomials generators → Polynomials generators → Type 𝓤
+  presentation-rel s t
+    = Σ[ k ∶ Fin relations ] ((s ＝ lhs k) × (t ＝ rhs k))
+
+  Presented-carrier : Type 𝓤
+  Presented-carrier
+    = Polynomials generators
+    / ⟪⟫-rel {L = Polynomial-Lattice generators} presentation-rel
+
+  Presented : Algebra L Presented-carrier
+  Presented
+    = QuotAlgebra (Polynomial-Algebra generators) ⟪ presentation-rel ⟫
+}
+
+\p{The quotient map sends the generators to generators, and identifies the
+two sides of each relation.}
+
+\agda{
+  Presented-ι : LatticeAlgHom (Polynomial-Algebra generators) Presented
+  Presented-ι
+    = ι-quot-LatticeAlgHom (Polynomial-Algebra generators) ⟪ presentation-rel ⟫
+
+  relation-holds
+    : (k : Fin relations)
+    → Id Presented-carrier (ι-quot (lhs k)) (ι-quot (rhs k))
+  relation-holds k = glue-quot (Trunc.η (⟪⟫-inc (k , refl , refl)))
+}
+
+\p{So a map of algebras out of the presented algebra is a map out of the free
+algebra that respects the relations.}
+
+\agda{
+  respects
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y}
+    → LatticeAlgHom (Polynomial-Algebra generators) M → Type 𝓥
+  respects g = (k : Fin relations) → g .fst .fst (lhs k) ＝ g .fst .fst (rhs k)
+
+  Presented-rec
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y}
+      (g : LatticeAlgHom (Polynomial-Algebra generators) M) → respects g
+    → LatticeAlgHom Presented M
+  Presented-rec {M = M} g r
+    = QuotAlgebra-⟪⟫-rec (Polynomial-Algebra generators) presentation-rel M
+        (g , λ where x y (k , px , py) → ap (g .fst .fst) px ∙ r k
+                                        ∙ sym (ap (g .fst .fst) py))
+
+  Presented-rec-β
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y}
+      (g : LatticeAlgHom (Polynomial-Algebra generators) M) (r : respects g)
+      (x : Polynomials generators)
+    → Presented-rec g r .fst .fst (ι-quot x) ＝ g .fst .fst x
+  Presented-rec-β {M = M} g r = Quot-rec-β _ _
+    where open Algebra M
+
+  Presented-ι-respects
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y}
+      (h : LatticeAlgHom Presented M)
+    → respects (LatticeAlgHom-∘ h Presented-ι)
+  Presented-ι-respects h k = ap (h .fst .fst) (relation-holds k)
+}
+
+\p{The quotient map is surjective and the free algebra is free, so two maps
+out of the presented algebra into a distributive algebra agree as soon as
+they agree on the generators.}
+
+\agda{
+  Presented-hom-ext
+    : ∀ {𝓥} {Y : Type 𝓥} {M : Algebra L Y} (Md : is-distributive-algebra M)
+      (f g : LatticeAlgHom Presented M)
+    → ((k : Fin generators)
+      → f .fst .fst (ι-quot (Polynomial-gen k))
+      ＝ g .fst .fst (ι-quot (Polynomial-gen k)))
+    → f ＝ g
+  Presented-hom-ext {M = M} Md f g h
+    = ext! (Quot-elim-prop λ x → happly (ap (λ φ → φ .fst .fst) on-free) x)
+    where
+      open Algebra M using (Carrier-is-truncated)
+
+      on-free
+        : LatticeAlgHom-∘ f Presented-ι ＝ LatticeAlgHom-∘ g Presented-ι
+      on-free
+        = unap-equiv (Polynomial-ev-is-equiv M Md generators) (funext→ h)
+}
+}
+
+\subtree[ub-001N]{
+\taxon{Definition}
+\title{Finitely presented algebras}
+
+\p{An #{L}-algebra is \em{finitely presented} if it is merely equivalent, as an
+algebra, to one arising from a finite presentation. Merely: a finitely
+presented algebra does not come with a chosen presentation, and none of what
+follows depends on one.}
+
+\agda{
+is-finitely-presented : {B : Type 𝓤} → Algebra L B → Type 𝓤
+is-finitely-presented M
+  = ║ Σ[ p ∶ Presentation ]
+      Σ[ f ∶ LatticeAlgHom (Presented p) M ] is-LatticeAlgHom-equiv f ║₋₁
+
+is-finitely-presented-is-prop
+  : {B : Type 𝓤} (M : Algebra L B) → is-prop (is-finitely-presented M)
+is-finitely-presented-is-prop M = ║-║₋₁-is-prop
+
+Presented-is-finitely-presented
+  : (p : Presentation) → is-finitely-presented (Presented p)
+Presented-is-finitely-presented p
+  = Trunc.η (p , LatticeAlgHom-id (Presented p) , id-is-equiv)
+}
+
+\p{Being finitely presented is a property of an algebra, so it is invariant
+under equivalence of algebras.}
+
+\agda{
+is-finitely-presented←equiv
+  : {X Y : Type 𝓤} {M : Algebra L X} {N : Algebra L Y}
+    (f : LatticeAlgHom M N) → is-LatticeAlgHom-equiv f
+  → is-finitely-presented M → is-finitely-presented N
+is-finitely-presented←equiv f fe
+  = Trunc.ind (λ _ → trunc!) λ where
+      (p , g , ge) → Trunc.η (p , LatticeAlgHom-∘ f g , is-equiv-∘ fe ge)
+}
+}
+
+
+\subtree[ub-001Q]{
+\taxon{Lemma}
+\title{Free algebras are finitely presented}
+
+\p{The free algebra on #{n} generators is presented by those #{n} generators
+and no relations. The only thing to check is that quotienting by a relation
+that never holds changes nothing, which follows from the [recursion
+principle](stt-00D3) applied to the identity.}
+
+\agda{
+module _ (n : ℕ) where
+  open Lattice (Polynomial-Lattice n) using (Carrier-is-truncated)
+
+  free-presentation : Presentation
+  free-presentation = mk-presentation n 0 (λ ()) (λ ())
+
+  free-presentation-ι-is-equiv
+    : is-equiv (ι-quot {A = Polynomials n}
+                       {R = ⟪⟫-rel {L = Polynomial-Lattice n}
+                              (presentation-rel free-presentation)})
+  free-presentation-ι-is-equiv
+    = is-equiv←qinv
+        ( quot-inverse
+        , Quot-rec-β _ _
+        , Quot-elim-prop (λ x → ap ι-quot (Quot-rec-β _ _ x)))
+    where
+      R = presentation-rel free-presentation
+
+      quot-inverse
+        : Polynomials n / ⟪⟫-rel {L = Polynomial-Lattice n} R → Polynomials n
+      quot-inverse
+        = Quot-rec id
+            (λ w → pres-⟪⟫ (Polynomial-Lattice n) R (Polynomial-Lattice n) id
+                     (initial-lattice-algebra (Polynomial-Lattice n))
+                     (λ where _ _ (() , _))
+                     (w .fst) (w .snd .fst) (w .snd .snd))
+
+  Polynomial-Algebra-is-finitely-presented
+    : is-finitely-presented (Polynomial-Algebra n)
+  Polynomial-Algebra-is-finitely-presented
+    = Trunc.η
+        ( free-presentation
+        , is-LatticeAlgHom-equiv-bwd
+            {f = Presented-ι free-presentation}
+            free-presentation-ι-is-equiv
+        , is-equiv⁻¹ free-presentation-ι-is-equiv)
+}
+}

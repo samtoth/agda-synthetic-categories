@@ -179,15 +179,129 @@ lift-alg-inj alg i = alg i .fst
 }
 }
 
+\subtree[ub-00E0]{
+\date{2026-10-21}
+\taxon{Definition}
+\title{Indexed free algebraically injective families}
+\author{ulrikbuchholtz}
+
+\p{
+We shall derive the free algebraically injective type on a type
+from a more general indexed version. So fix a family of maps
+#{f_i \colon A_i \to B_i}, an index type #{G}, and labelings
+#{\tau_i \colon B_i \to G}, from which we get source labelings
+#{\tau_i \circ f_i}. For a family #{X \colon G \to \UU}, the free
+algebraically injective family #{\mathcal{J}_{f,\tau}(X) \colon G \to \UU}
+is the indexed higher inductive type with constructors:
+}
+
+\ul{
+\li{#{\eta \colon X(g) \to \mathcal{J}_{f,\tau}(X)(g)}}
+\li{#{\rm{ext}_i \colon (\Pi_{a : A_i} \mathcal{J}_{f,\tau}(X)(\tau_i(f_i(a))))
+  \to \Pi_{b : B_i} \mathcal{J}_{f,\tau}(X)(\tau_i(b))}}
+\li{#{\rm{isext}_i \colon \Pi2{t}{a : A_i}{\rm{ext}_i(t,f_i(a)) = t(a)}}}
+}
+
+\p{
+We postulate the type, its constructors, the eliminator and
+its computation rules. The computation rule for #{\rm{ext}_i} computes the
+eliminator on #{\rm{ext}_i(t, b)} using the eliminator itself on #{t}.
+}
+
+\agda{
+module _ {𝓖 𝓘 𝓤 𝓥 𝓦} {G : Type 𝓖} {I : Type 𝓘}
+  {A : I → Type 𝓤} {B : I → Type 𝓥} where
+
+  postulate
+    IndexedFreeInj
+      : (f : (i : I) → A i → B i) (τ : (i : I) → B i → G)
+      → (G → Type 𝓦) → G → Type (𝓖 ⊔ 𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+
+  module IndexedFreeInj
+    {f : (i : I) → A i → B i} {τ : (i : I) → B i → G}
+    {X : G → Type 𝓦} where
+
+    private
+      𝒥 = IndexedFreeInj f τ X
+
+    postulate
+      inc : {g : G} → X g → 𝒥 g
+      ext
+        : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+        → (b : B i) → 𝒥 (τ i b)
+      is-ext
+        : {i : I}
+          (t : (a : A i) → 𝒥 (τ i (f i a)))
+          (a : A i)
+        → ext t (f i a) ＝ t a
+
+      ind
+        : ∀ {𝓜} (P : (g : G) → 𝒥 g → Type 𝓜)
+            (N : {g : G} (x : X g) → P g (inc x))
+            (R : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+               → (b : B i) → P (τ i b) (ext t b))
+            (S : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+                 (a : A i)
+               → tr (P (τ i (f i a))) (is-ext t a) (R t h (f i a)) ＝ h a)
+          → (g : G) (x : 𝒥 g) → P g x
+
+      ind-inc
+        : ∀ {𝓜} {P : (g : G) → 𝒥 g → Type 𝓜}
+            {N : {g : G} (x : X g) → P g (inc x)}
+            {R : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+               → (b : B i) → P (τ i b) (ext t b)}
+            {S : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+                 (a : A i)
+               → tr (P (τ i (f i a))) (is-ext t a) (R t h (f i a)) ＝ h a}
+          → {g : G} (x : X g) → ind P N R S g (inc x) ＝ N x
+
+      ind-ext
+        : ∀ {𝓜} {P : (g : G) → 𝒥 g → Type 𝓜}
+            {N : {g : G} (x : X g) → P g (inc x)}
+            {R : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+               → (b : B i) → P (τ i b) (ext t b)}
+            {S : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+                 (a : A i)
+               → tr (P (τ i (f i a))) (is-ext t a) (R t h (f i a)) ＝ h a}
+          → {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+          → (b : B i)
+          → ind P N R S (τ i b) (ext t b)
+          ＝ R t (λ a → ind P N R S (τ i (f i a)) (t a)) b
+
+    {-# REWRITE ind-inc ind-ext #-}
+
+    postulate
+      ind-is-ext
+        : ∀ {𝓜} {P : (g : G) → 𝒥 g → Type 𝓜}
+            {N : {g : G} (x : X g) → P g (inc x)}
+            {R : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+               → (b : B i) → P (τ i b) (ext t b)}
+            {S : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+                 (h : (a : A i) → P (τ i (f i a)) (t a))
+                 (a : A i)
+               → tr (P (τ i (f i a))) (is-ext t a) (R t h (f i a)) ＝ h a}
+          → {i : I} (t : (a : A i) → 𝒥 (τ i (f i a))) (a : A i)
+          → apᶠ (ind P N R S (τ i (f i a))) (is-ext t a)
+          ＝ S t (λ a' → ind P N R S (τ i (f i a')) (t a')) a
+}
+}
+
 \subtree[stt-005I]{
 \taxon{Definition}
 \title{Free algebraically injective types}
 \citek{RSS20}
 
 \p{
-Given a family of types #{f_i \colon A_i \to B_i} and a type #{X}, we can
-define the free algebraically #{f\rm{-injective}} type on #{X}, called
-#{\mathcal{J}_{f}(X)} with the following higher inductive type:
+Given a family of maps #{f_i \colon A_i \to B_i} and a type #{X}, we have
+the free algebraically #{f\rm{-injective}} type on #{X}, called
+#{\mathcal{J}_{f}(X)}, as the following higher inductive type:
 }
 
 \ul{
@@ -197,97 +311,180 @@ define the free algebraically #{f\rm{-injective}} type on #{X}, called
 }
 
 \p{
-In plain agda we have to define higher inductive types via postulates.
+This is the [indexed free algebraically injective family](ub-00E0) over the
+unit type. Its constructors, eliminator and computation rules are those of
+the indexed type, and the computation rules for #{\eta} and #{\rm{ext}_i}
+hold definitionally.
 }
 
 \agda{
 module _ {𝓘 𝓤 𝓥 𝓦} {I : Type 𝓘} {A : I → Type 𝓤} {B : I → Type 𝓥} where
 
-  postulate
-    FreeInj : (f : (i : I) → A i → B i) → Type 𝓦 → Type 𝓦
+  FreeInj
+    : (f : (i : I) → A i → B i) → Type 𝓦 → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  FreeInj f X = IndexedFreeInj f (λ _ _ → tt) (λ _ → X) tt
 
   module FreeInj {f : (i : I) → A i → B i} {X : Type 𝓦} where
 
-    postulate
-      inc : X → FreeInj f X
-      ext
-        : {i : I} (g : A i → FreeInj f X) → B i → FreeInj f X
-      is-ext
-        : {i : I}
-          (g : A i → FreeInj f X)
-          (a : A i)
-        → ext g (f i a) ＝ g a
+    private
+      module 𝒥 = IndexedFreeInj {f = f} {τ = λ _ _ → tt} {X = λ _ → X}
 
-      ind
-        : ∀ {𝓜} (P : FreeInj f X → Type 𝓜)
-            (N : (x : X) → P (inc x))
-            (R : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-               → (b : B i) → P (ext g b))
-            (S : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-                 (a : A i)
-               → tr P (is-ext g a) (R g h (f i a)) ＝ h a)
-          → (x : FreeInj f X) → P x
+    inc : X → FreeInj f X
+    inc = 𝒥.inc
 
-      ind-inc
-        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
-            {N : (x : X) → P (inc x)}
-            {R : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-               → (b : B i) → P (ext g b)}
-            {S : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-                 (a : A i)
-               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
-          → (x : X) → ind P N R S (inc x) ＝ N x
+    ext : {i : I} (g : A i → FreeInj f X) → B i → FreeInj f X
+    ext = 𝒥.ext
 
-      ind-ext
-        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
-            {N : (x : X) → P (inc x)}
-            {R : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-               → (b : B i) → P (ext g b)}
-            {S : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-                 (a : A i)
-               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
-          → {i : I} (g : A i → FreeInj f X)
-            (h : (a : A i) → P (g a))
-          → (b : B i) → ind P N R S (ext g b) ＝ R g h b
+    is-ext
+      : {i : I}
+        (g : A i → FreeInj f X)
+        (a : A i)
+      → ext g (f i a) ＝ g a
+    is-ext = 𝒥.is-ext
 
-    ind-ext-base
-      : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
-          {N : (x : X) → P (inc x)}
-          {R : {i : I} (g : A i → FreeInj f X)
+    ind
+      : ∀ {𝓜} (P : FreeInj f X → Type 𝓜)
+          (N : (x : X) → P (inc x))
+          (R : {i : I} (g : A i → FreeInj f X)
                (h : (a : A i) → P (g a))
-             → (b : B i) → P (ext g b)}
-          {S : {i : I} (g : A i → FreeInj f X)
+             → (b : B i) → P (ext g b))
+          (S : {i : I} (g : A i → FreeInj f X)
                (h : (a : A i) → P (g a))
                (a : A i)
-             → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
-        → {i : I} (g : A i → FreeInj f X)
-        → (b : B i)
-        → ind P N R S (ext g b)
-        ＝ R g (ind P N R S ∘ g) b
-    ind-ext-base g = ind-ext g _
+             → tr P (is-ext g a) (R g h (f i a)) ＝ h a)
+        → (x : FreeInj f X) → P x
+    ind P N R S = 𝒥.ind (λ _ → P) N R S tt
 
-    {-# REWRITE ind-inc ind-ext-base #-}
+    module _ {𝓜} {P : FreeInj f X → Type 𝓜}
+      {N : (x : X) → P (inc x)}
+      {R : {i : I} (g : A i → FreeInj f X)
+           (h : (a : A i) → P (g a))
+         → (b : B i) → P (ext g b)}
+      {S : {i : I} (g : A i → FreeInj f X)
+           (h : (a : A i) → P (g a))
+           (a : A i)
+         → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
+      where
 
-    postulate
+      ind-inc : (x : X) → ind P N R S (inc x) ＝ N x
+      ind-inc x = refl
+
+      ind-ext
+        : {i : I} (g : A i → FreeInj f X) (b : B i)
+        → ind P N R S (ext g b) ＝ R g (ind P N R S ∘ g) b
+      ind-ext g b = refl
+
       ind-is-ext
-        : ∀ {𝓜} {P : FreeInj f X → Type 𝓜}
-            {N : (x : X) → P (inc x)}
-            {R : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-               → (b : B i) → P (ext g b)}
-            {S : {i : I} (g : A i → FreeInj f X)
-                 (h : (a : A i) → P (g a))
-                 (a : A i)
-               → tr P (is-ext g a) (R g h (f i a)) ＝ h a}
-          → {i : I} (g : A i → FreeInj f X) (a : A i)
-          → apᶠ (ind P N R S) (is-ext g a)
-          ＝ S g (ind P N R S ∘ g) a
+        : {i : I} (g : A i → FreeInj f X) (a : A i)
+        → apᶠ (ind P N R S) (is-ext g a)
+        ＝ S g (ind P N R S ∘ g) a
+      ind-is-ext g a = 𝒥.ind-is-ext g a
+}
+}
+
+\subtree[ub-00E1]{
+\date{2026-10-21}
+\taxon{Definition}
+\title{Free dependent lifting families}
+\author{ulrikbuchholtz}
+
+\p{
+Given a family of maps #{F_a \colon B_a \to C_a} and a family
+#{X \colon Y \to \UU}, \citet{Section 2.4}{RSS20} define an indexed higher
+inductive type #{J^Y_F(X) \colon Y \to \UU} with constructors:
+}
+
+\ul{
+\li{#{\beta \colon X(y) \to J^Y_F(X)(y)}}
+\li{#{\rm{lift} \colon \Pi1{g : C_a \to Y}{(\Pi_{b : B_a} J^Y_F(X)(g(F_a(b))))
+  \to \Pi_{c : C_a} J^Y_F(X)(g(c))}}}
+\li{#{\rm{islift} \colon \Pi2{g, f}{b : B_a}{\rm{lift}(g, f, F_a(b)) = f(b)}}}
+}
+
+\p{
+These give a specified dependent filler for every square from #{F_a} to
+#{\Sigma_{y : Y} J^Y_F(X)(y) \to Y}. It reduces to the
+[indexed free algebraically injective family](ub-00E0) whose cells are the
+pairs #{(a, g)} with #{g \colon C_a \to Y}, each labelled by #{g} itself. The
+indexed family is more general, because each cell gets a fixed label.
+}
+
+\agda{
+module _ {𝓨 𝓐 𝓑 𝓒 𝓧} {Y : Type 𝓨} {A : Type 𝓐}
+  {B : A → Type 𝓑} {C : A → Type 𝓒} where
+
+  FreeLift
+    : (F : (a : A) → B a → C a)
+    → (Y → Type 𝓧) → Y → Type (𝓨 ⊔ 𝓐 ⊔ 𝓑 ⊔ 𝓒 ⊔ 𝓧)
+  FreeLift F X
+    = IndexedFreeInj {I = Σ A (λ a → C a → Y)} {A = B ∘ fst} {B = C ∘ fst}
+        (λ i → F (fst i)) snd X
+
+  module FreeLift {F : (a : A) → B a → C a} {X : Y → Type 𝓧} where
+
+    private
+      module 𝒥 = IndexedFreeInj
+        {I = Σ A (λ a → C a → Y)} {A = B ∘ fst} {B = C ∘ fst}
+        {f = λ i → F (fst i)} {τ = snd} {X = X}
+
+    β : {y : Y} → X y → FreeLift F X y
+    β = 𝒥.inc
+
+    lift
+      : {a : A} (g : C a → Y) (f : (b : B a) → FreeLift F X (g (F a b)))
+      → (c : C a) → FreeLift F X (g c)
+    lift g = 𝒥.ext {i = (_ , g)}
+
+    is-lift
+      : {a : A} (g : C a → Y) (f : (b : B a) → FreeLift F X (g (F a b)))
+        (b : B a)
+      → lift g f (F a b) ＝ f b
+    is-lift g = 𝒥.is-ext {i = (_ , g)}
+
+    ind
+      : ∀ {𝓜} (P : (y : Y) → FreeLift F X y → Type 𝓜)
+          (N : {y : Y} (x : X y) → P y (β x))
+          (R : {a : A} (g : C a → Y)
+               (f : (b : B a) → FreeLift F X (g (F a b)))
+               (h : (b : B a) → P (g (F a b)) (f b))
+             → (c : C a) → P (g c) (lift g f c))
+          (S : {a : A} (g : C a → Y)
+               (f : (b : B a) → FreeLift F X (g (F a b)))
+               (h : (b : B a) → P (g (F a b)) (f b))
+               (b : B a)
+             → tr (P (g (F a b))) (is-lift g f b) (R g f h (F a b)) ＝ h b)
+        → (y : Y) (w : FreeLift F X y) → P y w
+    ind P N R S = 𝒥.ind P N (λ {i} → R (snd i)) (λ {i} → S (snd i))
+
+    module _ {𝓜} {P : (y : Y) → FreeLift F X y → Type 𝓜}
+      {N : {y : Y} (x : X y) → P y (β x)}
+      {R : {a : A} (g : C a → Y)
+           (f : (b : B a) → FreeLift F X (g (F a b)))
+           (h : (b : B a) → P (g (F a b)) (f b))
+         → (c : C a) → P (g c) (lift g f c)}
+      {S : {a : A} (g : C a → Y)
+           (f : (b : B a) → FreeLift F X (g (F a b)))
+           (h : (b : B a) → P (g (F a b)) (f b))
+           (b : B a)
+         → tr (P (g (F a b))) (is-lift g f b) (R g f h (F a b)) ＝ h b}
+      where
+
+      ind-β : {y : Y} (x : X y) → ind P N R S y (β x) ＝ N x
+      ind-β x = refl
+
+      ind-lift
+        : {a : A} (g : C a → Y) (f : (b : B a) → FreeLift F X (g (F a b)))
+          (c : C a)
+        → ind P N R S (g c) (lift g f c)
+        ＝ R g f (λ b → ind P N R S (g (F a b)) (f b)) c
+      ind-lift g f c = refl
+
+      ind-is-lift
+        : {a : A} (g : C a → Y) (f : (b : B a) → FreeLift F X (g (F a b)))
+          (b : B a)
+        → apᶠ (ind P N R S (g (F a b))) (is-lift g f b)
+        ＝ S g f (λ b' → ind P N R S (g (F a b')) (f b')) b
+      ind-is-lift g f b = 𝒥.ind-is-ext {i = (_ , g)} f b
 }
 }
 

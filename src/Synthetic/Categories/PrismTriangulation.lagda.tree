@@ -1,0 +1,320 @@
+\date{2026-09-05}
+\title{The staircases of a prism}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{This module sets up the triangulation of the prism #{\Delta^m\times\Delta^1}:
+the #{m+1} [staircases](ub-0024), and [the sorting theorem](ub-0026)
+identifying their union with the part where #{k} is comparable with every
+coordinate of the chain. The staircases are the cells that the ordered
+subcube is glued from (\ref{ub-0037}).}
+
+\p{The [walls](ub-002A) are here too, with the incidence
+#{S_l \land S_{l+1} = W_{l+1}} that says which cell of the filtration meets
+which.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.PrismTriangulation
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹) where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+import Algebra.Lattice.Instances.Polynomial as Poly
+open Poly hiding (Δ²)
+private Δ² = Poly.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Ergonomics.Auto
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.SquareLifting Δ¹ I
+}
+}
+
+\subtree[ub-0018]{
+\taxon{Definition}
+\title{Coordinates of a simplex}
+
+\p{A point of #{\Delta^n} is a descending chain
+#{1 = x_0 \ge x_1 \ge \cdots \ge x_n \ge x_{n+1} = 0} of elements of the
+interval, with the two ends fixed; the [inductive
+presentation](stt-00E1) builds it up from the front, so it is the \em{last}
+coordinate that is peeled off first. We accordingly index coordinates from the
+back: #{\mathrm{coord}(x, m) = x_{n - m}}, with the out-of-range values pinned
+at #{x_0 = 1}.}
+
+\agda{
+Δ-coord : ∀ {n} → Δ^ n → ℕ → Δ¹
+Δ-coord x zero = last-Δ x
+Δ-coord · (suc m) = i1
+Δ-coord (x :≥: j) (suc m) = Δ-coord x m
+}
+
+\p{The chain is descending, so the coordinates increase with the index, and
+the last coordinate is the smallest.}
+
+\agda{
+Δ-coord-min : ∀ {n} (x : Δ^ n) (m : ℕ) → last-Δ x ≤ Δ-coord x m
+Δ-coord-min x zero = ≤-refl
+Δ-coord-min · (suc m) = ≤-refl
+Δ-coord-min (x :≥: j) (suc m) = ≤-trans auto! (Δ-coord-min x m)
+
+Δ-coord-mono : ∀ {n} (x : Δ^ n) (m : ℕ) → Δ-coord x m ≤ Δ-coord x (suc m)
+Δ-coord-mono x zero = Δ-coord-min x 1
+Δ-coord-mono · (suc m) = ≤-refl
+Δ-coord-mono (x :≥: j) (suc m) = Δ-coord-mono x m
+}
+}
+
+\subtree[ub-0024]{
+\taxon{Definition}
+\title{The staircases of a prism}
+
+\p{A point of the prism #{\Delta^m\times\Delta^1} is a descending chain
+#{1 = x_0 \ge x_1 \ge \cdots \ge x_m \ge x_{m+1} = 0} together with one more
+element #{k}. The #{l}-th \em{staircase} is the part where #{k} sits in the
+#{l}-th gap of the chain,}
+
+##{S_l = \{ x_{l+1} \le k \le x_l \},}
+
+\p{which is the simplex spanned by
+#{(0,0) \le \cdots \le (m-l,0) \le (m-l,1) \le \cdots \le (m,1)} — the
+coordinates of \ref{ub-0018} are numbered from the back, so the staircases
+come out in the opposite order to the vertices, and the two pinned ends supply
+the two extreme gaps.}
+
+\p{For #{m = 1} the prism is the square, with the chain's one coordinate #{x}
+horizontal and #{k} vertical, and the two staircases are its two triangles,
+meeting in the wall #{k = x} (\ref{ub-002A}). For #{m = 2} they are the
+three tetrahedra #{T_1}, #{T_2}, #{T_3} of \ref{ub-0005}, in that order.}
+
+\quiver{
+\begin{tikzpicture}[scale=2.2, line join=round]
+  \fill[blue!20] (0,0) -- (1,0) -- (1,1) -- cycle;
+  \fill[red!20] (0,0) -- (1,1) -- (0,1) -- cycle;
+  \draw (0,0) rectangle (1,1);
+  \draw[very thick] (0,0) -- (1,1);
+  \node at (0.68,0.3) {$S_0$};
+  \node at (0.3,0.68) {$S_1$};
+  \node[below] at (0.5,0) {$W_0 : k = 0$};
+  \node[above] at (0.5,1) {$W_2 : k = 1$};
+  \node[right] at (0.55,0.5) {$W_1$};
+  \node[below left] at (0,0) {$0$};
+  \node[below] at (1,0) {$x$};
+  \node[left] at (0,1) {$k$};
+\end{tikzpicture}
+}
+
+\agda{
+Prism^ : ℕ → Type 𝓘
+Prism^ m = Δ^ m × Δ¹
+
+Stair : (l : ℕ) → ∀ {m} → Prism^ m → Type 𝓘
+Stair zero (x , k) = k ≤ Δ-coord x 0
+Stair (suc l) (x , k) = (Δ-coord x l ≤ k) × (k ≤ Δ-coord x (suc l))
+
+Stair-is-prop : ∀ {m} (l : ℕ) (z : Prism^ m) → is-prop (Stair l z)
+Stair-is-prop zero (x , k) = ≤-is-prop
+Stair-is-prop (suc l) (x , k) = ×-is-prop ≤-is-prop ≤-is-prop
+}
+
+\p{The triangulation is the union of the staircases. It is convenient to take
+the union up to an arbitrary bound rather than up to #{m}: the coordinates out
+of range are pinned at #{1}, so #{S_l} for #{l > m} is #{\{k = 1\}}, which is
+already inside #{S_m}, and the union does not change past #{m}.}
+
+\p{The union is taken with [the increasing unions](ub-0046) of
+[the module on unions of subtypes](Core.SubtypeUnions); the cells of
+[the half-sorted shape](ub-003A) are filtered the same way, and
+\ref{ub-0034} is the lemma about such filtrations.}
+
+\agda{
+Slots : (b : ℕ) → ∀ {m} → Prism^ m → Type 𝓘
+Slots b {m} = ⋁fam (λ l → Stair l {m}) b
+
+Slots-is-prop : ∀ {m} (b : ℕ) (z : Prism^ m) → is-prop (Slots b z)
+Slots-is-prop {m} b
+  = ⋁fam-is-prop (λ l → Stair l {m}) (λ l → Stair-is-prop l) b
+
+Tri^ : (m : ℕ) → Prism^ m → Type 𝓘
+Tri^ m = Slots m
+
+Tri^-is-prop : (m : ℕ) (z : Prism^ m) → is-prop (Tri^ m z)
+Tri^-is-prop m = Slots-is-prop m
+
+slot0 : ∀ {m} (b : ℕ) (z : Prism^ m) → Stair 0 z → Slots b z
+slot0 zero z s = s
+slot0 (suc b) z s = ι₁ (slot0 b z s)
+}
+}
+
+\subtree[ub-0025]{
+\taxon{Definition}
+\title{Comparability with every coordinate}
+
+\p{The other description of the same region: #{k} is
+[comparable](stt-00AC) with each of the chain's coordinates. That this is the
+same thing is the content of \ref{ub-0026}.}
+
+\agda{
+comparable-all : ∀ {m} → Δ^ m → Δ¹ → Type 𝓘
+comparable-all · k = 𝟙ᴸ
+comparable-all (x :≥: j) k
+  = generating-fam-is-simplicial (j , k) × comparable-all x k
+
+comparable-all-is-prop
+  : ∀ {m} (x : Δ^ m) (k : Δ¹) → is-prop (comparable-all x k)
+comparable-all-is-prop · k = is-prop←is-single 𝟙ᴸ-is-singleton
+comparable-all-is-prop (x :≥: j) k
+  = ×-is-prop (generating-fam-is-simplicial-is-prop (j , k))
+      (comparable-all-is-prop x k)
+}
+}
+
+\subtree[ub-0026]{
+\taxon{Theorem}
+\title{Sorting: the staircases are the comparable part}
+
+\p{On the prism, pairwise comparability of #{k} with the chain's coordinates is
+exactly the union of the staircases. This is an induction rather than a fact
+about the model: the goal is a union of propositions, so each #{\lor} in the
+hypothesis may be destructed.}
+
+\p{Peeling the smallest coordinate #{j} off the chain shifts the staircases by
+one, and the shift is definitional. #{S_0} at #{x :\ge: j} is #{k \le j}; #{S_1}
+there is #{(j \le k) \land S_0(x)}; and #{S_{l+2}} there is #{S_{l+1}(x)}, since
+past the first gap the constraint #{j \le k} is already implied by
+monotonicity of the chain.}
+
+\agda{
+private
+  shift
+    : ∀ {m} (y : Δ^ m) (j : Δ¹) ⦃ p : j ≤ last-Δ y ⦄ (k : Δ¹) → j ≤ k
+    → (b : ℕ) → Slots b (y , k) → Slots (suc b) ((y :≥: j) ⦃ p ⦄ , k)
+  shift y j k jk zero s = ι₂ (jk , s)
+  shift y j ⦃ p ⦄ k jk (suc b)
+    = *-prop-rec (Slots-is-prop (suc (suc b)) ((y :≥: j) ⦃ p ⦄ , k))
+        (λ s → ι₁ (shift y j k jk b s))
+        ι₂
+
+  unshift
+    : ∀ {m} (y : Δ^ m) (j : Δ¹) ⦃ p : j ≤ last-Δ y ⦄ (k : Δ¹)
+    → (b : ℕ) → Slots (suc b) ((y :≥: j) ⦃ p ⦄ , k) → Slots b (y , k)
+  unshift y j k zero
+    = *-prop-rec (Slots-is-prop 0 (y , k))
+        (λ s → ≤-trans s auto!)
+        snd
+  unshift y j ⦃ p ⦄ k (suc b)
+    = *-prop-rec (Slots-is-prop (suc b) (y , k))
+        (λ s → ι₁ (unshift y j k b s))
+        ι₂
+}
+
+\p{In one direction every staircase puts #{k} on one side of the smallest
+coordinate — below it in the zeroth gap, above it in every other, since the
+chain's smallest coordinate is below all of them (\ref{ub-0018}) — and the
+rest of the comparabilities come from the shorter chain.}
+
+\agda{
+private
+  slots→last
+    : ∀ {m} (x : Δ^ m) (k : Δ¹) (b : ℕ)
+    → Slots b (x , k) → generating-fam-is-simplicial (last-Δ x , k)
+  slots→last x k zero s = ι₂ s
+  slots→last x k (suc b)
+    = *-prop-rec (generating-fam-is-simplicial-is-prop (last-Δ x , k))
+        (slots→last x k b)
+        (λ s → ι₁ (≤-trans (Δ-coord-min x b) (s .fst)))
+
+comparable-all←Tri
+  : ∀ {m} (x : Δ^ m) (k : Δ¹) → Tri^ m (x , k) → comparable-all x k
+comparable-all←Tri {zero} · k s = ttᴸ
+comparable-all←Tri {suc m} (x :≥: j) k s
+  = ( slots→last (x :≥: j) k (suc m) s
+    , comparable-all←Tri x k (unshift x j k m s))
+}
+
+\p{In the other, the induction destructs the comparability of #{k} with the
+smallest coordinate: below it, #{k} is in the zeroth gap; above it, the shorter
+chain places #{k} in some gap and the shift moves that gap up by one.}
+
+\agda{
+Tri←comparable-all
+  : ∀ {m} (x : Δ^ m) (k : Δ¹) → comparable-all x k → Tri^ m (x , k)
+Tri←comparable-all {zero} · k _ = 1-top
+Tri←comparable-all {suc m} (x :≥: j) k (cmp , rest)
+  = *-prop-rec (Tri^-is-prop (suc m) ((x :≥: j) , k))
+      (λ jk → shift x j k jk m (Tri←comparable-all x k rest))
+      (λ kj → slot0 (suc m) ((x :≥: j) , k) kj)
+      cmp
+
+Tri↔comparable-all
+  : ∀ {m} (x : Δ^ m) (k : Δ¹) → Tri^ m (x , k) ↔ comparable-all x k
+Tri↔comparable-all x k
+  = (comparable-all←Tri x k , Tri←comparable-all x k)
+}
+}
+
+\subtree[ub-002A]{
+\taxon{Definition}
+\title{The walls}
+
+\p{The other half of the filtration data. A staircase is a slab between two
+consecutive coordinates, so its two faces in the #{k} direction are the levels
+#{k = c_l}, where the levels are the chain's coordinates together with the two
+pinned ends. There are #{m+2} of them to the staircases' #{m+1}, and
+consecutive staircases meet in the wall between them.}
+
+\agda{
+Δ-level : ∀ {m} → Δ^ m → ℕ → Δ¹
+Δ-level x zero = i0
+Δ-level x (suc l) = Δ-coord x l
+
+Wall : (l : ℕ) → ∀ {m} → Prism^ m → Type 𝓘
+Wall l (x , k) = k ＝ Δ-level x l
+
+Wall-is-prop : ∀ {m} (l : ℕ) (z : Prism^ m) → is-prop (Wall l z)
+Wall-is-prop l (x , k) = carrier-is-set _ _
+
+Wall←Stairs
+  : ∀ {m} (l : ℕ) (z : Prism^ m)
+  → Stair l z × Stair (suc l) z → Wall (suc l) z
+Wall←Stairs zero (x , k) (below , above) = ≤-antisym below (above .fst)
+Wall←Stairs (suc l) (x , k) (below , above)
+  = ≤-antisym (below .snd) (above .fst)
+
+Stairs←Wall
+  : ∀ {m} (l : ℕ) (z : Prism^ m)
+  → Wall (suc l) z → Stair l z × Stair (suc l) z
+Stairs←Wall zero (x , k) p
+  = (≤←＝ p , (≥←＝ p , ≤-trans (≤←＝ p) (Δ-coord-mono x 0)))
+Stairs←Wall (suc l) (x , k) p
+  = ( (≤-trans (Δ-coord-mono x l) (≥←＝ p) , ≤←＝ p)
+    , (≥←＝ p , ≤-trans (≤←＝ p) (Δ-coord-mono x (suc l))) )
+
+Stairs↔Wall
+  : ∀ {m} (l : ℕ) (z : Prism^ m)
+  → (Stair l z × Stair (suc l) z) ↔ Wall (suc l) z
+Stairs↔Wall l z = (Wall←Stairs l z , Stairs←Wall l z)
+}
+}

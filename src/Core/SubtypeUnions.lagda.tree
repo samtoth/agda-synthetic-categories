@@ -1,0 +1,454 @@
+\date{2026-10-06}
+\title{Unions of subtypes}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{Subtypes of a fixed type, given as families of propositions, together with
+their intersections and unions. A union of two subtypes is a pushout of the
+two along their intersection (\ref{ub-0001}), so a class of maps that is closed
+under cobase change, such as the maps [anodyne](stt-00EB) for a fixed #{h},
+can be glued along unions (\ref{ub-000T}). Since equality of subtypes is
+logical equivalence, the identities such arguments rely on hold pointwise and
+are transferred along (\ref{ub-0048}).}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+module Core.SubtypeUnions where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Joins
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.CanonicalPushouts
+open import Core.CocartesianSquares
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+}
+}
+
+\subtree[ub-0001]{
+\taxon{Lemma}
+\title{The union of two subtypes is a pushout}
+\date{2026-09-03}
+
+\p{Let #{P} and #{Q} be families over a type #{Z}. The [join](stt-002S)
+#{P \lor Q} of the two families is computed fibrewise as a pushout, and
+since #{\Sigma} commutes with pushouts, the square}
+
+\quiver{
+\begin{tikzcd}
+	{\sum_Z P \times Q} && {\sum_Z Q} \\
+	\\
+	{\sum_Z P} && {\sum_Z P \lor Q}
+	\arrow[from=1-1, to=1-3]
+	\arrow[from=1-1, to=3-1]
+	\arrow[from=1-3, to=3-3]
+	\arrow[from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{is a pushout. When #{P} and #{Q} are subtypes this exhibits the union of
+#{P} and #{Q} as the pushout of #{P} and #{Q} along their intersection. In
+particular, a class of maps closed under cobase change can be glued along a
+union: if #{P \land Q \hookrightarrow Q} is anodyne, so is
+#{P \hookrightarrow P \lor Q}.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {Z : Type 𝓤} (P : Z → Type 𝓥) (Q : Z → Type 𝓦)
+  where
+
+  ∩-fam : Z → Type (𝓥 ⊔ 𝓦)
+  ∩-fam z = P z × Q z
+
+  ∪-fam : Z → Type (𝓥 ⊔ 𝓦)
+  ∪-fam z = P z * Q z
+
+  union-span : Span (𝓤 ⊔ 𝓥 ⊔ 𝓦) (𝓤 ⊔ 𝓥) (𝓤 ⊔ 𝓦)
+  union-span .Span.Centre = Σ Z ∩-fam
+  union-span .Span.Left = Σ Z P
+  union-span .Span.left x = x .fst , x .snd .fst
+  union-span .Span.Right = Σ Z Q
+  union-span .Span.right x = x .fst , x .snd .snd
+
+  union-cocone : Cocone union-span (Σ Z ∪-fam)
+  union-cocone .Cocone.p x = x .fst , ι₁ (x .snd)
+  union-cocone .Cocone.q x = x .fst , ι₂ (x .snd)
+  union-cocone .Cocone.filler x = Σ-path→ (refl , glue (x .snd))
+
+  private
+    Σ-path→-fibre
+      : ∀ {𝓐 𝓑} {A : Type 𝓐} (B : A → Type 𝓑) {z : A} {y y' : B z}
+        → (q : y ＝ y')
+        → Σ-path→ {B = B} {x = z , y} {y = z , y'} (refl , q) ＝ ap (z ,_) q
+    Σ-path→-fibre B refl = refl
+
+  union-has-up-pushout : up-pushout union-span union-cocone
+  union-has-up-pushout {Q = R} = is-equiv←qinv (inv , ret , sec) where
+
+    fibre-cocone
+      : (c : Cocone union-span R) (z : Z)
+      → Cocone (mk-span (P z × Q z) fst snd) R
+    fibre-cocone c z .Cocone.p p = Cocone.p c (z , p)
+    fibre-cocone c z .Cocone.q q = Cocone.q c (z , q)
+    fibre-cocone c z .Cocone.filler w = Cocone.filler c (z , w)
+
+    inv : Cocone union-span R → (Σ Z ∪-fam → R)
+    inv c (z , u) = pushout-rec (fibre-cocone c z) u
+
+    ret : retraction-witness (cocone-map union-span union-cocone) inv
+    ret k = funext→ λ (z , u)
+          → sym (pushout-rec-unique
+                   (fibre-cocone (cocone-map union-span union-cocone k) z)
+                   (λ v → k (z , v))
+                   ~refl ~refl
+                   (λ w → ∙-reflr _
+                        ∙ ap-∘ k (z ,_) (glue w)
+                        ∙ sym (ap (ap k) (Σ-path→-fibre ∪-fam (glue w)))
+                        ∙ sym (∙-refll _))
+                   u)
+
+    sec : section-witness (cocone-map union-span union-cocone) inv
+    sec c = Cocone-path→ _ _ refl refl
+              (λ w → ∙-reflr _
+                   ∙ ap (ap (inv c)) (Σ-path→-fibre ∪-fam (glue (w .snd)))
+                   ∙ sym (ap-∘ (inv c) (w .fst ,_) (glue (w .snd)))
+                   ∙ pushout-rec-apβ (w .snd)
+                   ∙ sym (∙-refll _))
+
+  ∩-incl : Σ Z ∩-fam → Σ Z Q
+  ∩-incl = Span.right union-span
+
+  ∪-incl : Σ Z P → Σ Z ∪-fam
+  ∪-incl = Cocone.p union-cocone
+
+  union-is-cocartesian
+    : up-cocartesian (transpose-square (Arrow-map←Cocone union-cocone))
+  union-is-cocartesian
+    = transpose-square-has-up-cocartesian _
+        (up-cocartesian←up-pushout union-has-up-pushout)
+
+  glue-subtype-is-anodyne
+    : ∀ {𝓧 𝓨} {X : Type 𝓧} {Y : Type 𝓨} {k : X → Y}
+    → is-anodyne ∩-incl k → is-anodyne ∪-incl k
+  glue-subtype-is-anodyne an h ho
+    = left-orthogonal-cobase-change _ union-is-cocartesian h (an h ho)
+}
+}
+
+\subtree[ub-0009]{
+\taxon{Lemma}
+\title{Recognising the inclusion of an intersection}
+\date{2026-09-03}
+
+\p{If the intersection #{P \land Q} is described, over #{\sum_Z Q}, by a
+subtype #{S}, then #{\sum S \hookrightarrow \sum_Z Q} and the inclusion
+#{\sum_Z P \land Q \hookrightarrow \sum_Z Q} are equivalent in the arrow
+category, with the identity on the codomain.}
+
+\agda{
+∩-incl-Arrow-equiv
+  : ∀ {𝓥 𝓦 𝓜 𝓝} {Z : Type 𝓥} (P : Z → Type 𝓦) (Q : Z → Type 𝓜)
+      (Pp : (z : Z) → is-prop (P z)) (Qp : (z : Z) → is-prop (Q z))
+      (S : Σ Z Q → Type 𝓝) (Sp : (w : Σ Z Q) → is-prop (S w))
+      (to : (w : Σ Z Q) → S w → P (w .fst))
+      (from : (w : Σ Z Q) → P (w .fst) → S w)
+    → Arrow-equiv (fst {B = S}) (∩-incl P Q)
+∩-incl-Arrow-equiv {Z = Z} P Q Pp Qp S Sp to from
+  = mk-arr-equiv
+      (mk≃ (λ v → (v .fst .fst , (to (v .fst) (v .snd) , v .fst .snd)))
+        (is-equiv←qinv
+          ( (λ v → ((v .fst , v .snd .snd) , from _ (v .snd .fst)))
+          , (λ v → subtype-ext Sp refl)
+          , (λ v → subtype-ext (λ z → ×-is-prop (Pp z) (Qp z)) refl))))
+      (id≃: (Σ Z Q)) ~refl
+}
+}
+
+\subtree[ub-0048]{
+\taxon{Lemma}
+\title{Transferring anodyne maps along logical equivalences of subtypes}
+\date{2026-09-05}
+
+\p{Fix #{h}. A square of fibrewise maps between subtypes of #{Z}, over the
+identity of #{Z}, is an [arrow equivalence](stt-004R) as soon as each corner
+has a fibrewise converse (\ref{ub-0015}), so being [anodyne](stt-00EB) for
+#{h} passes along it. Almost every use moves one end of the map and leaves the
+other alone, so there are two one-sided forms: in the first the codomain is
+fixed and the domain is rewritten as an intersection, which is the shape
+[the glueing lemma](ub-000T) states its hypotheses in; in the second the
+domain is fixed and the codomain is rewritten.}
+
+\agda{
+module _
+  {𝓧 𝓨} {H₀ : Type 𝓧} {H₁ : Type 𝓨} (h : H₀ → H₁) {𝓤} {Z : Type 𝓤}
+  where
+
+  sub-anodyne-transfer
+    : ∀ {𝓥 𝓦 𝓥' 𝓦'} {S : Z → Type 𝓥} {S' : Z → Type 𝓦}
+        {R : Z → Type 𝓥'} {R' : Z → Type 𝓦'}
+      (Sp : (z : Z) → is-prop (S z)) (S'p : (z : Z) → is-prop (S' z))
+      (Rp : (z : Z) → is-prop (R z)) (R'p : (z : Z) → is-prop (R' z))
+      (k : Σ Z S → Σ Z S') (over : (w : Σ Z S) → k w .fst ＝ w .fst)
+      (g : (z : Z) → R z → R' z)
+      (α : (z : Z) → S z → R z) (α' : (z : Z) → R z → S z)
+      (β : (z : Z) → S' z → R' z) (β' : (z : Z) → R' z → S' z)
+    → is-anodyne k h → is-anodyne (sub-incl g) h
+  sub-anodyne-transfer Sp S'p Rp R'p k over g α α' β β'
+    = is-anodyne←equiv k (sub-incl g) amap h
+    where
+      amap : Arrow-equiv k (sub-incl g)
+      amap = mk-arr-equiv (sub-incl≃ Sp Rp α α') (sub-incl≃ S'p R'p β β')
+               (λ w → subtype-ext R'p (over w))
+
+  sub-anodyne-transfer-full
+    : ∀ {𝓥 𝓥'} {S : Z → Type 𝓥} {R : Z → Type 𝓥'}
+      (Sp : (z : Z) → is-prop (S z)) (Rp : (z : Z) → is-prop (R z))
+      (k : Σ Z S → Z) (over : (w : Σ Z S) → k w ＝ w .fst)
+      (α : (z : Z) → S z → R z) (α' : (z : Z) → R z → S z)
+    → is-anodyne k h → is-anodyne (fst {B = R}) h
+  sub-anodyne-transfer-full {R = R} Sp Rp k over α α'
+    = is-anodyne←equiv k fst amap h
+    where
+      amap : Arrow-equiv k (fst {B = R})
+      amap = mk-arr-equiv (sub-incl≃ Sp Rp α α') (id≃: Z) over
+
+  sub-anodyne-transfer-∩
+    : ∀ {𝓥 𝓦 𝓦'} {S : Z → Type 𝓥} (P : Z → Type 𝓦) (Q : Z → Type 𝓦')
+      (Sp : (z : Z) → is-prop (S z))
+      (Pp : (z : Z) → is-prop (P z)) (Qp : (z : Z) → is-prop (Q z))
+      (k : Σ Z S → Σ Z Q) (over : (w : Σ Z S) → k w .fst ＝ w .fst)
+      (α : (z : Z) → S z → ∩-fam P Q z) (α' : (z : Z) → ∩-fam P Q z → S z)
+    → is-anodyne k h → is-anodyne (∩-incl P Q) h
+  sub-anodyne-transfer-∩ P Q Sp Pp Qp k over α α'
+    = sub-anodyne-transfer Sp Qp (λ z → ×-is-prop (Pp z) (Qp z)) Qp
+        k over (λ _ u → u .snd) α α' (λ _ u → u) (λ _ u → u)
+
+  sub-anodyne-transfer-cod
+    : ∀ {𝓥 𝓦 𝓦'} {S : Z → Type 𝓥} {S' : Z → Type 𝓦} {R' : Z → Type 𝓦'}
+      (Sp : (z : Z) → is-prop (S z)) (S'p : (z : Z) → is-prop (S' z))
+      (R'p : (z : Z) → is-prop (R' z))
+      (k : Σ Z S → Σ Z S') (over : (w : Σ Z S) → k w .fst ＝ w .fst)
+      (g : (z : Z) → S z → R' z)
+      (β : (z : Z) → S' z → R' z) (β' : (z : Z) → R' z → S' z)
+    → is-anodyne k h → is-anodyne (sub-incl g) h
+  sub-anodyne-transfer-cod Sp S'p R'p k over g β β'
+    = sub-anodyne-transfer Sp S'p Sp R'p k over g (λ _ u → u) (λ _ u → u) β β'
+}
+\p{The degenerate case: when #{Q} already implies #{T}, the inclusion
+#{T \land Q \hookrightarrow Q} is an equivalence, so it is anodyne.}
+
+\agda{
+∩-incl-is-anodyne←implies
+  : ∀ {𝓧 𝓨} {H₀ : Type 𝓧} {H₁ : Type 𝓨} (h : H₀ → H₁)
+      {𝓤 𝓥 𝓦} {Z : Type 𝓤} (T : Z → Type 𝓥) (Q : Z → Type 𝓦)
+  → ((z : Z) → is-prop (T z)) → ((z : Z) → is-prop (Q z))
+  → ((z : Z) → Q z → T z)
+  → is-anodyne (∩-incl T Q) h
+∩-incl-is-anodyne←implies h T Q Tp Qp imp
+  = is-anodyne←is-equiv h
+      (is-equiv←qinv
+        ( (λ w → (w .fst , (imp (w .fst) (w .snd) , w .snd)))
+        , (λ w → subtype-ext (λ z → ×-is-prop (Tp z) (Qp z)) refl)
+        , ~refl))
+}
+}
+
+\subtree[ub-000T]{
+\taxon{Lemma}
+\title{Anodyne inclusions glue along unions}
+\date{2026-09-03}
+
+\p{\strong{Lemma.} Let #{T}, #{X}, #{Y} be subtypes of a type, and fix #{h}.
+If #{T \land X \hookrightarrow X}, #{T \land Y \hookrightarrow Y} and
+#{T \land X \land Y \hookrightarrow X \land Y} are anodyne for #{h}, then so is
+#{T \land (X \lor Y) \hookrightarrow X \lor Y}.}
+
+\p{Every step below is a cobase change along a union of subtypes
+(\ref{ub-0001}), a composite or a right cancellation (\ref{stt-00C0}), and every
+identity it uses is an identity of subtypes, so it holds as soon as it holds
+pointwise as a logical equivalence, and is transferred along by
+\ref{ub-0048}.}
+
+\ol{
+\li{#{T \land X \hookrightarrow (T \land X) \lor (X \land Y)} is a cobase
+change of #{T \land X \land Y \hookrightarrow X \land Y}, because
+#{(T \land X) \land (X \land Y) = T \land X \land Y};}
+\li{so by right cancellation against #{T \land X \hookrightarrow X} we get
+#{(T \land X) \lor (X \land Y) \hookrightarrow X};}
+\li{whose cobase change along #{Y} is
+#{(T \land X) \lor Y \hookrightarrow X \lor Y}, because
+#{((T \land X) \lor Y) \land X = (T \land X) \lor (X \land Y)};}
+\li{and #{(T \land X) \lor (T \land Y) \hookrightarrow (T \land X) \lor Y} is a
+cobase change of #{T \land Y \hookrightarrow Y}, because
+#{((T \land X) \lor (T \land Y)) \land Y = T \land Y};}
+\li{composing the last two, and using
+#{T \land (X \lor Y) = (T \land X) \lor (T \land Y)}.}
+}
+
+\p{Applied to a subtype presented as a union of pieces, and iterated, the
+lemma reduces #{T \land R \hookrightarrow R} to the same statement for each
+piece and for each intersection of pieces.}
+
+\agda{
+module glue-union
+  {𝓧 𝓨} {H₀ : Type 𝓧} {H₁ : Type 𝓨} (h : H₀ → H₁)
+  {𝓤 𝓥 𝓦 𝓜} {Z : Type 𝓤}
+  (T : Z → Type 𝓥) (X : Z → Type 𝓦) (Y : Z → Type 𝓜)
+  (Tp : (z : Z) → is-prop (T z))
+  (Xp : (z : Z) → is-prop (X z))
+  (Yp : (z : Z) → is-prop (Y z))
+  (hX : is-anodyne (∩-incl T X) h)
+  (hY : is-anodyne (∩-incl T Y) h)
+  (hXY : is-anodyne (∩-incl T (∩-fam X Y)) h)
+  where
+
+  private
+    A = ∩-fam T X
+    B = ∩-fam T Y
+    C = ∩-fam X Y
+    U₁ = ∪-fam A C
+    U₂ = ∪-fam A Y
+    U₃ = ∪-fam A B
+    W = ∪-fam X Y
+
+    Ap : (z : Z) → is-prop (A z)
+    Ap z = ×-is-prop (Tp z) (Xp z)
+
+    Bp : (z : Z) → is-prop (B z)
+    Bp z = ×-is-prop (Tp z) (Yp z)
+
+    Cp : (z : Z) → is-prop (C z)
+    Cp z = ×-is-prop (Xp z) (Yp z)
+
+    U₁p : (z : Z) → is-prop (U₁ z)
+    U₁p z = *-is-prop (Ap z) (Cp z)
+
+    U₂p : (z : Z) → is-prop (U₂ z)
+    U₂p z = *-is-prop (Ap z) (Yp z)
+
+    U₃p : (z : Z) → is-prop (U₃ z)
+    U₃p z = *-is-prop (Ap z) (Bp z)
+
+    Wp : (z : Z) → is-prop (W z)
+    Wp z = *-is-prop (Xp z) (Yp z)
+
+    step1 : is-anodyne (∩-incl A C) h
+    step1 = sub-anodyne-transfer-∩ h A C
+              (λ z → ×-is-prop (Tp z) (Cp z)) Ap Cp
+              (∩-incl T C) (λ _ → refl)
+              (λ z u → ((u .fst , u .snd .fst) , u .snd))
+              (λ z u → (u .fst .fst , u .snd))
+              hXY
+
+    step2 : is-anodyne (∪-incl A C) h
+    step2 = glue-subtype-is-anodyne A C step1
+
+    to-X : (z : Z) → U₁ z → X z
+    to-X z = *-prop-rec (Xp z) (λ a → a .snd) (λ c → c .fst)
+
+    step3-comp : is-anodyne (sub-incl to-X ∘ ∪-incl A C) h
+    step3-comp
+      = is-anodyne-homotopy h (λ w → subtype-ext Xp refl) hX
+
+    step3 : is-anodyne (sub-incl to-X) h
+    step3 = is-anodyne-right-cancel h step3-comp step2
+
+    step4 : is-anodyne (∩-incl U₂ X) h
+    step4 = sub-anodyne-transfer-∩ h U₂ X
+              U₁p U₂p Xp
+              (sub-incl to-X) (λ _ → refl)
+              (λ z → *-prop-rec (×-is-prop (U₂p z) (Xp z))
+                       (λ a → (ι₁ a , a .snd))
+                       (λ c → (ι₂ (c .snd) , c .fst)))
+              (λ z u → *-prop-rec (U₁p z) ι₁ (λ y → ι₂ (u .snd , y)) (u .fst))
+              step3
+
+    step5 : is-anodyne (∪-incl U₂ X) h
+    step5 = glue-subtype-is-anodyne U₂ X step4
+
+    to-W : (z : Z) → U₂ z → W z
+    to-W z = *-prop-rec (Wp z) (λ a → ι₁ (a .snd)) ι₂
+
+    step6 : is-anodyne (sub-incl to-W) h
+    step6 = sub-anodyne-transfer-cod h
+              U₂p (λ z → *-is-prop (U₂p z) (Xp z)) Wp
+              (∪-incl U₂ X) (λ _ → refl)
+              to-W
+              (λ z → *-prop-rec (Wp z) (to-W z) ι₁)
+              (λ z → *-prop-rec (*-is-prop (U₂p z) (Xp z)) ι₂ (λ y → ι₁ (ι₂ y)))
+              step5
+
+    step7 : is-anodyne (∩-incl U₃ Y) h
+    step7 = sub-anodyne-transfer-∩ h U₃ Y
+              (λ z → ×-is-prop (Tp z) (Yp z)) U₃p Yp
+              (∩-incl T Y) (λ _ → refl)
+              (λ z u → (ι₂ u , u .snd))
+              (λ z u → (*-prop-rec (Tp z) fst fst (u .fst) , u .snd))
+              hY
+
+    step8 : is-anodyne (∪-incl U₃ Y) h
+    step8 = glue-subtype-is-anodyne U₃ Y step7
+
+    to-U₂ : (z : Z) → U₃ z → U₂ z
+    to-U₂ z = *-prop-rec (U₂p z) ι₁ (λ b → ι₂ (b .snd))
+
+    step9 : is-anodyne (sub-incl to-U₂) h
+    step9 = sub-anodyne-transfer-cod h
+              U₃p (λ z → *-is-prop (U₃p z) (Yp z)) U₂p
+              (∪-incl U₃ Y) (λ _ → refl)
+              to-U₂
+              (λ z → *-prop-rec (U₂p z) (to-U₂ z) ι₂)
+              (λ z → *-prop-rec (*-is-prop (U₃p z) (Yp z)) (λ a → ι₁ (ι₁ a)) ι₂)
+              step8
+
+    step10 : is-anodyne (sub-incl to-W ∘ sub-incl to-U₂) h
+    step10 = is-anodyne-∘ h step6 step9
+
+  glue-union-is-anodyne : is-anodyne (∩-incl T W) h
+  glue-union-is-anodyne
+    = sub-anodyne-transfer-∩ h T W
+        U₃p Tp Wp
+        (sub-incl to-W ∘ sub-incl to-U₂) (λ _ → refl)
+        (λ z → *-prop-rec (×-is-prop (Tp z) (Wp z))
+                 (λ a → (a .fst , ι₁ (a .snd)))
+                 (λ b → (b .fst , ι₂ (b .snd))))
+        (λ z u → *-prop-rec (U₃p z)
+                   (λ x → ι₁ (u .fst , x))
+                   (λ y → ι₂ (u .fst , y))
+                   (u .snd))
+        step10
+}
+}
+
+\subtree[ub-0046]{
+\taxon{Definition}
+\title{Increasing unions of subtypes}
+\date{2026-09-05}
+
+\p{An #{\mathbb{N}}-indexed family of subtypes #{C_0, C_1, \ldots} determines the
+increasing sequence of unions #{C_0 \subseteq C_0 \lor C_1 \subseteq \cdots},
+whose #{b}-th stage is #{C_0 \lor \cdots \lor C_b}.}
+
+\agda{
+⋁fam : ∀ {𝓩 𝓒} {Z : Type 𝓩} (C : ℕ → Z → Type 𝓒) → ℕ → Z → Type 𝓒
+⋁fam C zero = C 0
+⋁fam C (suc b) = ∪-fam (⋁fam C b) (C (suc b))
+
+⋁fam-is-prop
+  : ∀ {𝓩 𝓒} {Z : Type 𝓩} (C : ℕ → Z → Type 𝓒)
+  → ((l : ℕ) (z : Z) → is-prop (C l z))
+  → (b : ℕ) (z : Z) → is-prop (⋁fam C b z)
+⋁fam-is-prop C Cp zero z = Cp 0 z
+⋁fam-is-prop C Cp (suc b) z
+  = *-is-prop (⋁fam-is-prop C Cp b z) (Cp (suc b) z)
+}
+}

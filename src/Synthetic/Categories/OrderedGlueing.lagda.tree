@@ -1,0 +1,755 @@
+\date{2026-09-05}
+\title{The ordered subcube is glued from simplices}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\p{A crisp map that is an [equivalence on figures](ub-0032) of every simplex
+shape is one on figures of every [ordered subcube](ub-000Y) (\ref{ub-003D}). This is what lets \ref{ub-0010}
+trade the ordered subcube for simplices. Unlike the rest of the argument it
+is about colimits rather than lifting: the ordered subcube is glued from
+simplices, and mapping out of a glued shape is computed from the pieces.}
+
+\p{The one fact about #{\flat} it uses is that equivalences on figures glue
+along unions of subtypes (\ref{ub-0033}) and hence along filtrations
+(\ref{ub-0034}), from [the module on figures](Modalities.Cohesion.Figures).
+Everything else is combinatorics, outlined in \ref{ub-0035}.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.OrderedGlueing
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Cohesion.Flat
+
+open import Core.Arrows
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Modalities.Cohesion.Figures
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Categories.SquareLifting Δ¹ I
+open import Synthetic.Categories.PrismTriangulation Δ¹ I
+open import Synthetic.Categories.ConvexSubcubes Δ¹ I
+  using (□-coord ; cmp-at ; Everywhere ; Everywhere-is-prop)
+}
+}
+
+\subtree[ub-0035]{
+\taxon{Remark}
+\title{Outline}
+
+\p{Apart from [the filtration lemma](ub-0034), everything here is
+combinatorics, and it is the combinatorics of
+[the prism](ub-0024) run once per coordinate, in three steps.}
+
+\ol{
+\li{\strong{The prism.} A map that is an equivalence on simplex-figures is
+one on #{\sum_{\Delta^m\times\Delta^1} \mathrm{Tri}^m}-figures
+(\ref{ub-0037}).}
+\li{\strong{One coordinate at a time.} Half-sort the cube: a chain
+#{w : \Delta^k} of coordinates already arranged, and #{m} still free, with
+every free coordinate comparable with every other and with the whole chain
+(\ref{ub-0038}). The last free coordinate is comparable with the chain, so
+it sits in one of the chain's gaps, and the choice of gap cuts the shape into
+#{k+1} cells that meet consecutively in walls — the prism again, fibred over
+the free part. A cell is the same shape with the coordinate moved into the
+chain, a wall with it pinned to a level the chain already has, and both have
+one fewer free coordinate. So induction on the free part alone, with the
+chain's length quantified over, gives \ref{ub-003C}.}
+\li{\strong{The empty chain.} #{\mathrm{O}(0,n)} is the ordered subcube,
+which gives the theorem (\ref{ub-003D}).}
+}
+
+\p{Presenting #{\mathrm{Ord}_n} as the union of its #{n!} simplices
+would need the family of cells to be closed under intersection, and two
+staircases meet in a common refinement that neither of them names — so one
+would have to normalise a total preorder on the coordinates, which means
+sorting. The filtration does not: consecutive cells meet in a wall, which is
+one of the cells, and that is \ref{ub-0034}. And carrying the ranking
+as an explicit \em{chain} rather than as a relation on indices means the chain
+is built by insertion (\ref{ub-0036}) and never has to be computed from
+anything.}
+}
+
+\subtree[ub-0036]{
+\taxon{Definition}
+\title{Inserting a coordinate into a chain}
+
+\p{A point of [the #{l}-th staircase](ub-0024) is a chain together with an
+element sitting in its #{l}-th gap, which is a chain one longer. Inserting is
+a recursion on #{l} and the chain at once: at the zeroth gap the element is
+appended, and past it the chain's smallest coordinate is put back on top of the
+insertion one gap down.}
+
+\p{The two pinned ends make the count of gaps larger than the count of
+coordinates, so a gap beyond the chain's length is the degenerate one where the
+element is #{1}, and there the insertion runs off the end. The dimension of
+the result records this: it is #{m+1} for a gap the chain actually has, and
+#{m} beyond that, and one recursion covers both.}
+
+\agda{
+dim : ℕ → ℕ → ℕ
+dim zero m = suc m
+dim (suc l) zero = zero
+dim (suc l) (suc n) = suc (dim l n)
+
+ins : (l : ℕ) → ∀ {m} (x : Δ^ m) (k : Δ¹) → Stair l (x , k) → Δ^ (dim l m)
+last-ins
+  : (l : ℕ) → ∀ {m} (x : Δ^ m) (k : Δ¹) (t : Stair (suc l) (x , k))
+  → last-Δ (ins (suc l) x k t) ＝ last-Δ x
+
+ins zero x k t = (x :≥: k) ⦃ t ⦄
+ins (suc l) · k t = ·
+ins (suc zero) ((y :≥: j) ⦃ p ⦄) k t
+  = (ins zero y k (t .snd) :≥: j) ⦃ t .fst ⦄
+ins (suc (suc l)) ((y :≥: j) ⦃ p ⦄) k t
+  = (ins (suc l) y k t :≥: j) ⦃ tr (j ≤_) (sym (last-ins l y k t)) p ⦄
+
+last-ins l · k t = refl
+last-ins zero (y :≥: j) k t = refl
+last-ins (suc l) (y :≥: j) k t = refl
+}
+
+\p{Deleting is the same recursion backwards. At a gap the chain does not have
+there is nothing to delete, and the element read back off is #{1}.}
+
+\agda{
+del : (l : ℕ) → ∀ {m} → Δ^ (dim l m) → Σ (Prism^ m) (Stair l)
+last-del
+  : (l : ℕ) → ∀ {m} (z : Δ^ (dim (suc l) m))
+  → last-Δ (del (suc l) z .fst .fst) ＝ last-Δ z
+
+del zero ((x :≥: k) ⦃ p ⦄) = ((x , k) , p)
+del (suc l) {zero} · = ((· , i1) , (1-top , ≤-refl))
+del (suc zero) {suc n} (((y :≥: k) ⦃ q ⦄ :≥: j) ⦃ p ⦄)
+  = (((y :≥: j) ⦃ ≤-trans p q ⦄ , k) , (p , q))
+del (suc (suc l)) {suc n} ((z :≥: j) ⦃ p ⦄)
+  = ( ( (del (suc l) z .fst .fst :≥: j) ⦃ tr (j ≤_) (sym (last-del l z)) p ⦄
+      , del (suc l) z .fst .snd )
+    , del (suc l) z .snd )
+
+last-del l {zero} · = refl
+last-del zero {suc n} ((y :≥: k) :≥: j) = refl
+last-del (suc l) {suc n} (z :≥: j) = refl
+}
+
+\p{The two are inverse. Both round trips are the same case analysis again, and
+every case but one is #{\refl}: the exception is the degenerate gap, where the
+element deleted is #{1} and the element inserted has to be shown to have been
+#{1} already — which it is, since it is squeezed between the two pinned ends.}
+
+\agda{
+Δ-coord-· : (l : ℕ) → Δ-coord {0} · l ＝ i1
+Δ-coord-· zero = refl
+Δ-coord-· (suc l) = refl
+
+stair-·-is-1 : (l : ℕ) (k : Δ¹) → Stair (suc l) (· , k) → k ＝ i1
+stair-·-is-1 l k t = ≤-antisym (t .snd) (tr (_≤ k) (Δ-coord-· l) (t .fst))
+
+del-ins-chain
+  : (l : ℕ) → ∀ {m} (x : Δ^ m) (k : Δ¹) (t : Stair l (x , k))
+  → Δ-path (del l (ins l x k t) .fst .fst) x
+del-ins-chain zero x k t = Δ-refl
+del-ins-chain (suc l) · k t = ·
+del-ins-chain (suc zero) (y :≥: j) k t = Δ-refl :≥: refl
+del-ins-chain (suc (suc l)) (y :≥: j) k t
+  = del-ins-chain (suc l) y k t :≥: refl
+
+del-ins-elt
+  : (l : ℕ) → ∀ {m} (x : Δ^ m) (k : Δ¹) (t : Stair l (x , k))
+  → del l (ins l x k t) .fst .snd ＝ k
+del-ins-elt zero x k t = refl
+del-ins-elt (suc l) · k t = sym (stair-·-is-1 l k t)
+del-ins-elt (suc zero) (y :≥: j) k t = refl
+del-ins-elt (suc (suc l)) (y :≥: j) k t = del-ins-elt (suc l) y k t
+
+ins-del-chain
+  : (l : ℕ) → ∀ {m} (z : Δ^ (dim l m))
+  → Δ-path (ins l (del l z .fst .fst) (del l z .fst .snd) (del l z .snd)) z
+ins-del-chain zero (x :≥: k) = Δ-refl
+ins-del-chain (suc l) {zero} · = ·
+ins-del-chain (suc zero) {suc n} ((y :≥: k) :≥: j) = Δ-refl
+ins-del-chain (suc (suc l)) {suc n} (z :≥: j)
+  = ins-del-chain (suc l) z :≥: refl
+}
+}
+
+\subtree[ub-0037]{
+\taxon{Theorem}
+\title{Equivalences on simplex-figures are equivalences on the triangulated prism}
+
+\p{This is step 1 of [the outline](ub-0035), and it is
+[the filtration lemma](ub-0034) at the staircases and the walls. Three things
+go into it. The cells are simplices: [inserting](ub-0036) is an equivalence
+#{S_l \simeq \Delta^{\dim(l,m)}}. The walls are simplices: #{W_l} pins the
+extra coordinate at a level of the chain, so forgetting it is an equivalence
+#{W_l \simeq \Delta^m}. And the incidence is the wall: a point of #{S_l} has
+#{k \le c_l}, and #{c_l \le c_b} for #{l \le b}, so a point of
+#{(S_0 \lor \cdots \lor S_b) \land S_{b+1}} has #{k \le c_b \le k}.}
+
+\p{No region and no inner horn are needed: this is a colimit statement, not a
+lifting one, and the cells being simplices is all of it.}
+
+\agda{
+stair≃ : (l : ℕ) → ∀ {m} → Σ (Prism^ m) (Stair l) ≃ Δ^ (dim l m)
+stair≃ l
+  = mk≃ (λ w → ins l (w .fst .fst) (w .fst .snd) (w .snd))
+      (is-equiv←qinv
+        ( del l
+        , (λ w → subtype-ext (Stair-is-prop l)
+                   (×-path→ ( Δ-ext (del-ins-chain l _ _ (w .snd))
+                            , del-ins-elt l _ _ (w .snd))))
+        , (λ z → Δ-ext (ins-del-chain l z))))
+
+wall≃ : (l : ℕ) → ∀ {m} → Σ (Prism^ m) (Wall l) ≃ Δ^ m
+wall≃ l
+  = mk≃ (λ w → w .fst .fst)
+      (is-equiv←qinv
+        ( (λ x → ((x , Δ-level x l) , refl))
+        , (λ w → subtype-ext (Wall-is-prop l) (×-path→ (refl , sym (w .snd))))
+        , ~refl))
+}
+
+\p{The incidence, and the identification of the filtration's union with
+[\code{Slots}](ub-0024), which is the same recursion written twice.}
+
+\agda{
+Slots-≤
+  : (b : ℕ) → ∀ {m} (z : Prism^ m) → Slots b z → z .snd ≤ Δ-coord (z .fst) b
+Slots-≤ zero (x , k) t = t
+Slots-≤ (suc b) (x , k)
+  = *-prop-rec ≤-is-prop
+      (λ u → ≤-trans (Slots-≤ b (x , k) u) (Δ-coord-mono x b))
+      (λ t → t .snd)
+
+stair→slots : (b : ℕ) → ∀ {m} (z : Prism^ m) → Stair b z → Slots b z
+stair→slots zero z t = t
+stair→slots (suc b) z t = ι₂ t
+
+slots-inc→
+  : (b : ℕ) → ∀ {m} (z : Prism^ m)
+  → ∩-fam (Slots b) (Stair (suc b)) z → Wall (suc b) z
+slots-inc→ b (x , k) (u , t) = ≤-antisym (Slots-≤ b (x , k) u) (t .fst)
+
+slots-inc←
+  : (b : ℕ) → ∀ {m} (z : Prism^ m)
+  → Wall (suc b) z → ∩-fam (Slots b) (Stair (suc b)) z
+slots-inc← b z p
+  = ( stair→slots b z (Stairs←Wall b z p .fst)
+    , Stairs←Wall b z p .snd )
+}
+
+\p{So the filtration runs, and its top stage is the triangulated prism.}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  (hΔ : (@♭ k : ℕ) → is-♭-equiv-on (Δ^ k) f)
+  where
+
+  is-♭-equiv-on-slots : (@♭ m : ℕ) (@♭ b : ℕ) → is-♭-equiv-on (Σ (Prism^ m) (Slots b)) f
+  is-♭-equiv-on-slots m b
+    = ♭-equiv-on-filtration.is-♭-equiv-on-⋁ f (λ l → Stair l {m}) (λ l → Wall l {m})
+        (λ l → Stair-is-prop l) (λ l → Wall-is-prop l)
+        (λ b z → slots-inc→ b z) (λ b z → slots-inc← b z)
+        (λ l → is-♭-equiv-on←≃ f (stair≃ l) (hΔ (dim l m)))
+        (λ l → is-♭-equiv-on←≃ f (wall≃ l) (hΔ m))
+        b
+
+  is-♭-equiv-on-prism : (@♭ m : ℕ) → is-♭-equiv-on (Σ (Prism^ m) (Tri^ m)) f
+  is-♭-equiv-on-prism m = is-♭-equiv-on-slots m m
+}
+}
+
+\subtree[ub-0038]{
+\taxon{Definition}
+\title{A chain with free coordinates beside it}
+
+\p{Step 2 of [the outline](ub-0035) needs a shape half sorted: some coordinates
+already arranged into a chain, the rest still free. That is a pair
+#{(w, u) : \Delta^k \times \square^m}, and the condition on it is that the free
+coordinates are comparable with one another and with every coordinate of the
+chain. Write #{\mathrm{O}(k,m)} for it. At #{m = 0} it is nothing, so the shape
+is #{\Delta^k}; at #{k = 0} it is [the ordered subcube](ub-000Y).}
+
+\p{The cube is re-presented so that #{\square^{m+1}} is #{\square^m \times
+\Delta^1} on the nose, which [the library's cube](stt-00UU) is not at #{m=1};
+the two agree (\ref{ub-003D}).}
+
+\agda{
+Cube : ℕ → Type 𝓘
+Cube zero = 𝟙ᴸ
+Cube (suc m) = Cube m × Δ¹
+
+cmp-cube : ∀ {m} → Cube m → Δ¹ → Type 𝓘
+cmp-cube {zero} _ _ = 𝟙ᴸ
+cmp-cube {suc m} (u , i) j = cmp-cube u j × generating-fam-is-simplicial (i , j)
+
+cmp-cube-is-prop : ∀ {m} (u : Cube m) (j : Δ¹) → is-prop (cmp-cube u j)
+cmp-cube-is-prop {zero} u j = is-prop←is-single 𝟙ᴸ-is-singleton
+cmp-cube-is-prop {suc m} (u , i) j
+  = ×-is-prop (cmp-cube-is-prop u j) (generating-fam-is-simplicial-is-prop (i , j))
+
+Ord-over : (k : ℕ) → ∀ {m} → Δ^ k → Cube m → Type 𝓘
+Ord-over k {zero} w u = 𝟙ᴸ
+Ord-over k {suc m} w (u , x)
+  = (Ord-over k w u × comparable-all w x) × cmp-cube u x
+
+Ord-over-is-prop
+  : (k : ℕ) → ∀ {m} (w : Δ^ k) (u : Cube m) → is-prop (Ord-over k w u)
+Ord-over-is-prop k {zero} w u = is-prop←is-single 𝟙ᴸ-is-singleton
+Ord-over-is-prop k {suc m} w (u , x)
+  = ×-is-prop
+      (×-is-prop (Ord-over-is-prop k w u) (comparable-all-is-prop w x))
+      (cmp-cube-is-prop u x)
+}
+}
+
+\subtree[ub-0039]{
+\taxon{Lemma}
+\title{Comparability with an enlarged chain}
+
+\p{Inserting #{x} into the chain adds exactly one comparability to check, and
+in the degenerate gap it adds none, because there #{x} is #{1} and everything
+is below #{1}. So being comparable with the enlarged chain is being comparable
+with the old one and with #{x}; and a free coordinate's whole obligation
+towards the enlarged chain is its obligation towards the old one together with
+its comparability with #{x}.}
+
+\agda{
+fam-swap
+  : {x y : Δ¹}
+  → generating-fam-is-simplicial (x , y) → generating-fam-is-simplicial (y , x)
+fam-swap = *-prop-rec (generating-fam-is-simplicial-is-prop _) ι₂ ι₁
+
+cmp-with-1
+  : {x : Δ¹} → x ＝ i1 → (y : Δ¹) → generating-fam-is-simplicial (x , y)
+cmp-with-1 p y = tr (λ z → generating-fam-is-simplicial (z , y)) (sym p) (ι₂ 1-top)
+
+cmp-ins→
+  : (l : ℕ) → ∀ {k} (w : Δ^ k) (x : Δ¹) (t : Stair l (w , x)) (y : Δ¹)
+  → comparable-all (ins l w x t) y
+  → comparable-all w y × generating-fam-is-simplicial (x , y)
+cmp-ins→ zero w x t y c = (c .snd , c .fst)
+cmp-ins→ (suc l) · x t y c
+  = (ttᴸ , cmp-with-1 (stair-·-is-1 l x t) y)
+cmp-ins→ (suc zero) (z :≥: j) x t y c
+  = ((c .fst , c .snd .snd) , c .snd .fst)
+cmp-ins→ (suc (suc l)) (z :≥: j) x t y c
+  = ( (c .fst , cmp-ins→ (suc l) z x t y (c .snd) .fst)
+    , cmp-ins→ (suc l) z x t y (c .snd) .snd )
+
+cmp-ins←
+  : (l : ℕ) → ∀ {k} (w : Δ^ k) (x : Δ¹) (t : Stair l (w , x)) (y : Δ¹)
+  → comparable-all w y × generating-fam-is-simplicial (x , y)
+  → comparable-all (ins l w x t) y
+cmp-ins← zero w x t y (c , d) = (d , c)
+cmp-ins← (suc l) · x t y _ = ttᴸ
+cmp-ins← (suc zero) (z :≥: j) x t y (c , d) = (c .fst , (d , c .snd))
+cmp-ins← (suc (suc l)) (z :≥: j) x t y (c , d)
+  = (c .fst , cmp-ins← (suc l) z x t y (c .snd , d))
+
+Ord-ins→
+  : (l : ℕ) → ∀ {k m} (w : Δ^ k) (x : Δ¹) (t : Stair l (w , x)) (u : Cube m)
+  → Ord-over (dim l k) (ins l w x t) u
+  → Ord-over k w u × cmp-cube u x
+Ord-ins→ l {m = zero} w x t u o
+  = (ttᴸ , ttᴸ)
+Ord-ins→ l {m = suc m} w x t (u , z) o
+  = ( ( ( Ord-ins→ l w x t u (o .fst .fst) .fst
+        , cmp-ins→ l w x t z (o .fst .snd) .fst )
+      , o .snd )
+    , ( Ord-ins→ l w x t u (o .fst .fst) .snd
+      , fam-swap (cmp-ins→ l w x t z (o .fst .snd) .snd) ) )
+
+Ord-ins←
+  : (l : ℕ) → ∀ {k m} (w : Δ^ k) (x : Δ¹) (t : Stair l (w , x)) (u : Cube m)
+  → Ord-over k w u × cmp-cube u x
+  → Ord-over (dim l k) (ins l w x t) u
+Ord-ins← l {m = zero} w x t u _ = ttᴸ
+Ord-ins← l {m = suc m} w x t (u , z) (o , c)
+  = ( ( Ord-ins← l w x t u (o .fst .fst , c .fst)
+      , cmp-ins← l w x t z (o .fst .snd , fam-swap (c .snd)) )
+    , o .snd )
+}
+}
+
+\subtree[ub-003A]{
+\taxon{Definition}
+\title{The cells of the half-sorted shape}
+
+\p{A point of #{\mathrm{O}(k,m+1)} has a last free coordinate #{x}, and #{x} is
+comparable with every coordinate of the chain, so [it sits in one of the
+gaps](ub-0026). Sitting in the #{l}-th gap is the cell #{E_l}: the staircase
+condition on #{(w,x)} together with #{\mathrm{O}} for the enlarged chain, with
+#{x} now part of it. The wall #{F_l} is the same with #{x} pinned at a level,
+and there the chain does not grow.}
+
+\p{Three small facts about chains first: an element below the chain's smallest
+coordinate is comparable with all of them, so a point of any staircase is; a
+family comparable with the whole chain is comparable with each of its
+coordinates; and hence, on a wall, the other free coordinates are comparable
+with #{x} for free — which is what makes the wall a cell of #{\mathrm{O}(k,m)}
+and not of anything larger.}
+
+\agda{
+cmp-all←below
+  : ∀ {k} (w : Δ^ k) (x : Δ¹) → x ≤ last-Δ w → comparable-all w x
+cmp-all←below · x p = ttᴸ
+cmp-all←below ((z :≥: j) ⦃ q ⦄) x p
+  = (ι₂ p , cmp-all←below z x (≤-trans p q))
+
+stair→comparable-all
+  : (l : ℕ) → ∀ {k} (w : Δ^ k) (x : Δ¹) → Stair l (w , x) → comparable-all w x
+stair→comparable-all zero w x t = cmp-all←below w x t
+stair→comparable-all (suc l) · x t = ttᴸ
+stair→comparable-all (suc zero) (z :≥: j) x t
+  = (ι₁ (t .fst) , cmp-all←below z x (t .snd))
+stair→comparable-all (suc (suc l)) ((z :≥: j) ⦃ q ⦄) x t
+  = ( ι₁ (≤-trans q (≤-trans (Δ-coord-min z l) (t .fst)))
+    , stair→comparable-all (suc l) z x t )
+
+comparable-all-at
+  : ∀ {k} (w : Δ^ k) (y : Δ¹) → comparable-all w y
+  → (b : ℕ) → generating-fam-is-simplicial (Δ-coord w b , y)
+comparable-all-at · y c b
+  = tr (λ z → generating-fam-is-simplicial (z , y)) (sym (Δ-coord-· b)) (ι₂ 1-top)
+comparable-all-at (z :≥: j) y c zero = c .fst
+comparable-all-at (z :≥: j) y c (suc b) = comparable-all-at z y (c .snd) b
+
+cmp-cube-at
+  : (b : ℕ) → ∀ {k m} (w : Δ^ k) (u : Cube m)
+  → Ord-over k w u → cmp-cube u (Δ-coord w b)
+cmp-cube-at b {m = zero} w u o = ttᴸ
+cmp-cube-at b {m = suc m} w (u , z) o
+  = ( cmp-cube-at b w u (o .fst .fst)
+    , fam-swap (comparable-all-at w z (o .fst .snd) b) )
+}
+
+\agda{
+module _ (k m : ℕ) where
+
+  Cell : ℕ → Δ^ k × Cube (suc m) → Type 𝓘
+  Cell l (w , (u , x))
+    = Σ (Stair l (w , x)) (λ t → Ord-over (dim l k) (ins l w x t) u)
+
+  Cell-is-prop : (l : ℕ) (z : Δ^ k × Cube (suc m)) → is-prop (Cell l z)
+  Cell-is-prop l (w , (u , x))
+    = Σ-is-prop (Stair-is-prop l (w , x))
+        (λ t → Ord-over-is-prop (dim l k) (ins l w x t) u)
+
+  Wall-cell : ℕ → Δ^ k × Cube (suc m) → Type 𝓘
+  Wall-cell l (w , (u , x)) = Wall l (w , x) × Ord-over k w u
+
+  Wall-cell-is-prop
+    : (l : ℕ) (z : Δ^ k × Cube (suc m)) → is-prop (Wall-cell l z)
+  Wall-cell-is-prop l (w , (u , x))
+    = ×-is-prop (Wall-is-prop l (w , x)) (Ord-over-is-prop k w u)
+}
+}
+
+\subtree[ub-003B]{
+\taxon{Lemma}
+\title{The cells cover, and consecutive ones meet in a wall}
+
+\p{Both halves of the filtration's data, and neither says anything new. The
+cells cover because [sorting](ub-0026) puts #{x} in some gap, and what is left
+to check of #{\mathrm{O}} for the enlarged chain is \ref{ub-0039}.
+Consecutive cells meet in a wall because their staircases do (\ref{ub-0037}),
+and the wall carries the free coordinates' comparability
+with #{x} for nothing, #{x} being a coordinate of the chain there.}
+
+\agda{
+module _ (k m : ℕ) where
+
+  private
+    Zc : Type 𝓘
+    Zc = Δ^ k × Cube (suc m)
+
+  cells→slots
+    : (b : ℕ) (z : Zc)
+    → ⋁fam (Cell k m) b z → Slots b (z .fst , z .snd .snd)
+  cells→slots zero z c = c .fst
+  cells→slots (suc b) z
+    = *-prop-rec
+        (Slots-is-prop (suc b) (z .fst , z .snd .snd))
+        (λ c → ι₁ (cells→slots b z c))
+        (λ c → ι₂ (c .fst))
+
+  slots→cells
+    : (b : ℕ) (z : Zc) → Ord-over k (z .fst) (z .snd)
+    → Slots b (z .fst , z .snd .snd) → ⋁fam (Cell k m) b z
+  slots→cells zero (w , (u , x)) o t
+    = (t , Ord-ins← 0 w x t u (o .fst .fst , o .snd))
+  slots→cells (suc b) z@(w , (u , x)) o
+    = *-prop-rec
+        (⋁fam-is-prop (Cell k m) (Cell-is-prop k m) (suc b) z)
+        (λ s → ι₁ (slots→cells b z o s))
+        (λ t → ι₂ (t , Ord-ins← (suc b) w x t u (o .fst .fst , o .snd)))
+
+  cover→ : (z : Zc) → Ord-over k (z .fst) (z .snd) → ⋁fam (Cell k m) k z
+  cover→ z@(w , (u , x)) o
+    = slots→cells k z o (Tri←comparable-all w x (o .fst .snd))
+
+  cover← : (b : ℕ) (z : Zc) → ⋁fam (Cell k m) b z → Ord-over k (z .fst) (z .snd)
+  cover← zero (w , (u , x)) c
+    = ( ( Ord-ins→ 0 w x (c .fst) u (c .snd) .fst
+        , stair→comparable-all 0 w x (c .fst) )
+      , Ord-ins→ 0 w x (c .fst) u (c .snd) .snd )
+  cover← (suc b) z@(w , (u , x))
+    = *-prop-rec (Ord-over-is-prop k w (u , x))
+        (cover← b z)
+        (λ c → ( ( Ord-ins→ (suc b) w x (c .fst) u (c .snd) .fst
+                 , stair→comparable-all (suc b) w x (c .fst) )
+               , Ord-ins→ (suc b) w x (c .fst) u (c .snd) .snd ))
+}
+
+\agda{
+module _ (k m : ℕ) where
+
+  cell-inc→
+    : (b : ℕ) (z : Δ^ k × Cube (suc m))
+    → ∩-fam (⋁fam (Cell k m) b) (Cell k m (suc b)) z
+    → Wall-cell k m (suc b) z
+  cell-inc→ b z@(w , (u , x)) (c , d)
+    = ( slots-inc→ b (w , x) (cells→slots k m b z c , d .fst)
+      , Ord-ins→ (suc b) w x (d .fst) u (d .snd) .fst )
+
+  cell-inc←
+    : (b : ℕ) (z : Δ^ k × Cube (suc m))
+    → Wall-cell k m (suc b) z
+    → ∩-fam (⋁fam (Cell k m) b) (Cell k m (suc b)) z
+  cell-inc← b z@(w , (u , x)) (p , o)
+    = ( slots→cells k m b z ord (stair→slots b (w , x) (pair .fst))
+      , (pair .snd , Ord-ins← (suc b) w x (pair .snd) u (o , cmp)) )
+    where
+      pair : Stair b (w , x) × Stair (suc b) (w , x)
+      pair = Stairs←Wall b (w , x) p
+
+      cmp : cmp-cube u x
+      cmp = tr (cmp-cube u) (sym p) (cmp-cube-at b w u o)
+
+      ord : Ord-over k w (u , x)
+      ord = ((o , stair→comparable-all b w x (pair .fst)) , cmp)
+}
+}
+
+\subtree[ub-003C]{
+\taxon{Theorem}
+\title{Equivalences on simplex-figures are equivalences on the half-sorted shape}
+
+\p{Step 2 of [the outline](ub-0035), by induction on the number of free
+coordinates. With none left the shape is the chain itself, which is a simplex.
+With one more, [the filtration lemma](ub-0034) applies to
+[the cells and the walls](ub-003A): they cover and meet correctly
+(\ref{ub-003B}), and each of them is a half-sorted shape with one fewer
+free coordinate — the cell because the last free coordinate has joined the
+chain (\ref{ub-0036}), the wall because it has been pinned to a level the
+chain already has. The chain grows and the free part shrinks, so the induction
+is on the free part alone and the chain's length is quantified over.}
+
+\agda{
+cell≃
+  : (k m l : ℕ)
+  → Σ (Δ^ k × Cube (suc m)) (Cell k m l)
+  ≃ Σ (Δ^ (dim l k) × Cube m) (λ z → Ord-over (dim l k) (z .fst) (z .snd))
+cell≃ k m l = mk≃ fwd (is-equiv←qinv (bwd , ret , sec))
+  where
+    fwd : Σ (Δ^ k × Cube (suc m)) (Cell k m l)
+        → Σ (Δ^ (dim l k) × Cube m) (λ z → Ord-over (dim l k) (z .fst) (z .snd))
+    fwd ((w , (u , x)) , (t , o)) = ((ins l w x t , u) , o)
+
+    bwd : Σ (Δ^ (dim l k) × Cube m) (λ z → Ord-over (dim l k) (z .fst) (z .snd))
+        → Σ (Δ^ k × Cube (suc m)) (Cell k m l)
+    bwd ((W , u) , o)
+      = ( (del l W .fst .fst , (u , del l W .fst .snd))
+        , ( del l W .snd
+          , tr (λ V → Ord-over (dim l k) V u)
+               (sym (Δ-ext (ins-del-chain l W))) o ) )
+
+    ret : (z : Σ (Δ^ k × Cube (suc m)) (Cell k m l)) → bwd (fwd z) ＝ z
+    ret ((w , (u , x)) , (t , o))
+      = subtype-ext (Cell-is-prop k m l)
+          (×-path→ ( Δ-ext (del-ins-chain l w x t)
+                   , ×-path→ (refl , del-ins-elt l w x t)))
+
+    sec : (z : Σ (Δ^ (dim l k) × Cube m)
+                 (λ z' → Ord-over (dim l k) (z' .fst) (z' .snd)))
+        → fwd (bwd z) ＝ z
+    sec ((W , u) , o)
+      = subtype-ext (λ z → Ord-over-is-prop (dim l k) (z .fst) (z .snd))
+          (×-path→ (Δ-ext (ins-del-chain l W) , refl))
+
+wall-cell≃
+  : (k m l : ℕ)
+  → Σ (Δ^ k × Cube (suc m)) (Wall-cell k m l)
+  ≃ Σ (Δ^ k × Cube m) (λ z → Ord-over k (z .fst) (z .snd))
+wall-cell≃ k m l
+  = mk≃ (λ w → ((w .fst .fst , w .fst .snd .fst) , w .snd .snd))
+      (is-equiv←qinv
+        ( (λ z → ( (z .fst .fst , (z .fst .snd , Δ-level (z .fst .fst) l))
+                 , (refl , z .snd) ))
+        , (λ w → subtype-ext (Wall-cell-is-prop k m l)
+                   (×-path→ (refl , ×-path→ (refl , sym (w .snd .fst)))))
+        , ~refl))
+
+base≃ : (k : ℕ) → Σ (Δ^ k × Cube 0) (λ z → Ord-over k (z .fst) (z .snd)) ≃ Δ^ k
+base≃ k
+  = mk≃ (λ z → z .fst .fst)
+      (is-equiv←qinv
+        ( (λ w → ((w , ttᴸ) , ttᴸ))
+        , (λ z → subtype-ext (λ z' → Ord-over-is-prop k (z' .fst) (z' .snd))
+                   (×-path→ (refl , 𝟙ᴸ-is-singleton .central _)))
+        , ~refl))
+}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  (hΔ : (@♭ k : ℕ) → is-♭-equiv-on (Δ^ k) f)
+  where
+
+  is-♭-equiv-on-Ord-over
+    : (@♭ m : ℕ) (@♭ k : ℕ)
+    → is-♭-equiv-on (Σ (Δ^ k × Cube m) (λ z → Ord-over k (z .fst) (z .snd))) f
+  is-♭-equiv-on-Ord-over zero k = is-♭-equiv-on←≃ f (base≃ k) (hΔ k)
+  is-♭-equiv-on-Ord-over (suc m) k
+    = is-♭-equiv-on←iff f (λ z → Ord-over-is-prop k (z .fst) (z .snd))
+        (⋁fam-is-prop (Cell k m) (Cell-is-prop k m) k)
+        (cover→ k m) (cover← k m k)
+        (♭-equiv-on-filtration.is-♭-equiv-on-⋁ f (Cell k m) (Wall-cell k m)
+          (Cell-is-prop k m) (Wall-cell-is-prop k m)
+          (cell-inc→ k m) (cell-inc← k m)
+          (λ l → is-♭-equiv-on←≃ f (cell≃ k m l) (is-♭-equiv-on-Ord-over m (dim l k)))
+          (λ l → is-♭-equiv-on←≃ f (wall-cell≃ k m l) (is-♭-equiv-on-Ord-over m k))
+          k)
+}
+}
+
+\subtree[ub-003D]{
+\taxon{Theorem}
+\title{Equivalences on simplex-figures are equivalences on the ordered subcube}
+
+\p{The half-sorted shape with an empty chain is [the ordered
+subcube](ub-000Y), so \ref{ub-003C} at #{k = 0} says that a crisp map that
+is an equivalence on #{\Delta^k}-figures for every #{k} is an equivalence on
+#{\mathrm{Ord}_n}-figures for every #{n}.}
+
+\p{Two identifications are all that is between them, and both are
+bookkeeping. The cube of \ref{ub-0038} puts a #{\Delta^1} on the right at
+every step, where [the library's](stt-00UU) starts at #{\square^1 = \Delta^1};
+and \code{Ord-over} recurses on the coordinates where
+[\code{Everywhere}](ub-002Z) quantifies over pairs of them, so the two are
+matched by the same induction in both directions.}
+
+\agda{
+□←Cube : ∀ {n} → Cube n → □^ n
+□←Cube {zero} u = u
+□←Cube {suc zero} (u , x) = x
+□←Cube {suc (suc n)} (u , x) = (□←Cube u , x)
+
+Cube←□ : ∀ {n} → □^ n → Cube n
+Cube←□ {zero} v = v
+Cube←□ {suc zero} v = (ttᴸ , v)
+Cube←□ {suc (suc n)} (v , x) = (Cube←□ v , x)
+
+□-Cube-η : ∀ {n} (v : □^ n) → □←Cube (Cube←□ v) ＝ v
+□-Cube-η {zero} v = refl
+□-Cube-η {suc zero} v = refl
+□-Cube-η {suc (suc n)} (v , x) = ×-path→ (□-Cube-η v , refl)
+
+Cube-□-η : ∀ {n} (u : Cube n) → Cube←□ (□←Cube u) ＝ u
+Cube-□-η {zero} u = refl
+Cube-□-η {suc zero} (u , x)
+  = ×-path→ (𝟙ᴸ-is-singleton .central u , refl)
+Cube-□-η {suc (suc n)} (u , x) = ×-path→ (Cube-□-η u , refl)
+}
+
+\agda{
+private
+  cmp-cube→
+    : ∀ {n} (u : Cube n) (t : Δ¹) → cmp-cube u t
+    → (a : Fin n) → generating-fam-is-simplicial (□-coord (□←Cube u) a , t)
+  cmp-cube→ {suc zero} (u , i) t c fzero = c .snd
+  cmp-cube→ {suc (suc n)} (u , i) t c fzero = c .snd
+  cmp-cube→ {suc (suc n)} (u , i) t c (fsuc a) = cmp-cube→ u t (c .fst) a
+
+  cmp-cube←
+    : ∀ {n} (u : Cube n) (t : Δ¹)
+    → ((a : Fin n) → generating-fam-is-simplicial (□-coord (□←Cube u) a , t))
+    → cmp-cube u t
+  cmp-cube← {zero} u t h = ttᴸ
+  cmp-cube← {suc zero} (u , i) t h = (ttᴸ , h fzero)
+  cmp-cube← {suc (suc n)} (u , i) t h
+    = (cmp-cube← u t (λ a → h (fsuc a)) , h fzero)
+
+  ordC→ : ∀ {n} (u : Cube n) → Ord-over 0 · u → Everywhere (□←Cube u)
+  ordC→ {suc zero} (u , x) o fzero fzero = ι₁ ≤-refl
+  ordC→ {suc (suc n)} (u , x) o fzero fzero = ι₁ ≤-refl
+  ordC→ {suc (suc n)} (u , x) o fzero (fsuc b)
+    = fam-swap (cmp-cube→ u x (o .snd) b)
+  ordC→ {suc (suc n)} (u , x) o (fsuc a) fzero = cmp-cube→ u x (o .snd) a
+  ordC→ {suc (suc n)} (u , x) o (fsuc a) (fsuc b) = ordC→ u (o .fst .fst) a b
+
+  ordC← : ∀ {n} (u : Cube n) → Everywhere (□←Cube u) → Ord-over 0 · u
+  ordC← {zero} u h = ttᴸ
+  ordC← {suc zero} (u , x) h = ((ttᴸ , ttᴸ) , ttᴸ)
+  ordC← {suc (suc n)} (u , x) h
+    = ( ( ordC← u (λ a b → h (fsuc a) (fsuc b))
+        , ttᴸ )
+      , cmp-cube← u x (λ a → h (fsuc a) fzero) )
+
+ordered≃
+  : (n : ℕ)
+  → Σ (□^ n) (Everywhere {n})
+  ≃ Σ (Δ^ 0 × Cube n) (λ z → Ord-over 0 (z .fst) (z .snd))
+ordered≃ n = mk≃ fwd (is-equiv←qinv (bwd , ret , sec))
+  where
+    fwd : Σ (□^ n) (Everywhere {n})
+        → Σ (Δ^ 0 × Cube n) (λ z → Ord-over 0 (z .fst) (z .snd))
+    fwd (v , h)
+      = ( (· , Cube←□ v)
+        , ordC← (Cube←□ v) (tr Everywhere (sym (□-Cube-η v)) h) )
+
+    bwd : Σ (Δ^ 0 × Cube n) (λ z → Ord-over 0 (z .fst) (z .snd))
+        → Σ (□^ n) (Everywhere {n})
+    bwd ((· , u) , o) = (□←Cube u , ordC→ u o)
+
+    ret : (z : Σ (□^ n) (Everywhere {n})) → bwd (fwd z) ＝ z
+    ret (v , h) = subtype-ext Everywhere-is-prop (□-Cube-η v)
+
+    sec : (z : Σ (Δ^ 0 × Cube n) (λ z' → Ord-over 0 (z' .fst) (z' .snd)))
+        → fwd (bwd z) ＝ z
+    sec ((· , u) , o)
+      = subtype-ext (λ z → Ord-over-is-prop 0 (z .fst) (z .snd))
+          (×-path→ (refl , Cube-□-η u))
+}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  (hΔ : (@♭ k : ℕ) → is-♭-equiv-on (Δ^ k) f)
+  where
+
+  is-♭-equiv-on-ordered-subcube
+    : (@♭ n : ℕ) → is-♭-equiv-on (Σ (□^ n) (Everywhere {n})) f
+  is-♭-equiv-on-ordered-subcube n
+    = is-♭-equiv-on←≃ f (ordered≃ n) (is-♭-equiv-on-Ord-over f hΔ n 0)
+}
+}

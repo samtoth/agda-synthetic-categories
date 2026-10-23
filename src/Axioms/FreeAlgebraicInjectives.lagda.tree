@@ -14,6 +14,7 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 open import Core.Arrows
+open import Core.ArrowEquiv
 open import Core.LiftingSquares
 open import Core.PullbackPowers
 }
@@ -407,7 +408,7 @@ These give a specified dependent filler for every square from #{F_a} to
 #{\Sigma1{y : Y}{J^Y_F(X)(y)} \to Y}. It reduces to the
 [indexed free algebraically injective family](ub-00E0) whose cells are the
 pairs #{(a, g)} with #{g \colon C_a \to Y}, each labelled by #{g} itself. The
-indexed family is more general, because each cell gets a fixed label.
+indexed family is more general, because each cell has a fixed label.
 }
 
 \agda{
@@ -491,6 +492,138 @@ module _
         → apᶠ (ind P N R S (g (F a b))) (is-lift g f b)
         ＝ S g f (λ b' → ind P N R S (g (F a b')) (f b')) b
       ind-is-lift g f b = 𝒥.ind-is-ext {i = (_ , g)} f b
+}
+}
+
+\subtree[ub-00E2]{
+\date{2026-10-22}
+\taxon{Lemma}
+\title{Dependent precomposition at identity families}
+\author{ulrikbuchholtz}
+
+\p{
+TODO: MOVE!
+If precomposition #{({-} \circ f) \colon \Pi_{b : B} Q(b) \to \Pi_{a : A}
+Q(f(a))} is an equivalence, then so is precomposition at the identity family
+#{b \mapsto j(b) = j'(b)}, for any #{j, j' \colon \Pi_{b : B} Q(b)}.
+}
+
+\agda{
+precomp-Π-＝-is-equiv
+  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {Q : B → Type 𝓦} {f : A → B}
+  → is-equiv (precomp-Π Q f)
+  → (j j' : (b : B) → Q b)
+  → is-equiv (precomp-Π (λ b → j b ＝ j' b) f)
+precomp-Π-＝-is-equiv e j j'
+  = tgt-is-equiv←Arrow-equiv
+      (mk-arr-equiv funext≃ funext≃ (λ where refl → refl))
+      (is-embedding←is-equiv e {j} {j'})
+}
+}
+
+\subtree[ub-00E3]{
+\date{2026-10-22}
+\taxon{Lemma}
+\title{Sections of indexed free algebraically injective families}
+\author{ulrikbuchholtz}
+\citet{Lemma 2.40}{RSS20}
+
+\p{
+Let #{\mathcal{J} = \mathcal{J}_{f,\tau}(X)} be an
+[indexed free algebraically injective family](ub-00E0), and let
+#{P \colon \Pi_{g : G} \mathcal{J}(g) \to \UU} be a family such that for every
+cell #{i} and every #{w \colon \Pi_{b : B_i} \mathcal{J}(\tau_i(b))}, the
+precomposition map
+##{
+({-} \circ f_i) \colon \Pi_{b : B_i} P(\tau_i(b), w(b))
+  \to \Pi_{a : A_i} P(\tau_i(f_i(a)), w(f_i(a)))
+}
+is an equivalence. Then restriction along #{\eta}
+##{
+\Pi_{g : G}\Pi_{u : \mathcal{J}(g)} P(g, u)
+  \to \Pi_{g : G}\Pi_{x : X(g)} P(g, \eta(x))
+}
+is an equivalence. Taking #{P} constant in #{u} gives the universal property
+of #{\mathcal{J}} with respect to families that are local for all cells.
+The proof applies induction twice: Once to get a section, and once at the
+identity family to show that two sections agreeing on #{\eta} are equal.
+}
+}
+
+\agda{
+module _
+  {𝓖 𝓘 𝓤 𝓥 𝓦} {G : Type 𝓖} {I : Type 𝓘}
+  {A : I → Type 𝓤} {B : I → Type 𝓥}
+  {f : (i : I) → A i → B i} {τ : (i : I) → B i → G}
+  {X : G → Type 𝓦}
+  (open IndexedFreeInj {f = f} {τ = τ} {X = X})
+  where
+
+  private
+    𝒥 = IndexedFreeInj f τ X
+
+  is-cell-local
+    : ∀ {𝓜} → ((g : G) → 𝒥 g → Type 𝓜)
+    → Type (𝓖 ⊔ 𝓘 ⊔ 𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  is-cell-local P
+    = (i : I) (w : (b : B i) → 𝒥 (τ i b))
+    → is-equiv (precomp-Π (λ b → P (τ i b) (w b)) (f i))
+
+  restrict-inc
+    : ∀ {𝓜} (P : (g : G) → 𝒥 g → Type 𝓜)
+    → ((g : G) (u : 𝒥 g) → P g u)
+    → (g : G) (x : X g) → P g (inc x)
+  restrict-inc P s g x = s g (inc x)
+
+  module _ {𝓜} (P : (g : G) → 𝒥 g → Type 𝓜) (loc : is-cell-local P) where
+
+    ind-local
+      : ((g : G) (x : X g) → P g (inc x))
+      → (g : G) (u : 𝒥 g) → P g u
+    ind-local N = ind P (λ {g} x → N g x) R S where
+      module L {i} (t : (a : A i) → 𝒥 (τ i (f i a))) = is-equiv (loc i (ext t))
+
+      h' : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+        → ((a : A i) → P (τ i (f i a)) (t a))
+        → (a : A i) → P (τ i (f i a)) (ext t (f i a))
+      h' t h a = tr (P _) (sym (is-ext t a)) (h a)
+
+      R : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+        → ((a : A i) → P (τ i (f i a)) (t a))
+        → (b : B i) → P (τ i b) (ext t b)
+      R t h = L.bwd t (h' t h)
+
+      S : {i : I} (t : (a : A i) → 𝒥 (τ i (f i a)))
+          (h : (a : A i) → P (τ i (f i a)) (t a)) (a : A i)
+        → tr (P (τ i (f i a))) (is-ext t a) (R t h (f i a)) ＝ h a
+      S t h a = ap (tr (P _) (is-ext t a)) (happly (L.ε t (h' t h)) a)
+              ∙ tr∘tr-sym' (is-ext t a) (h a)
+
+    restrict-ind-local
+      : (N : (g : G) (x : X g) → P g (inc x))
+      → restrict-inc P (ind-local N) ＝ N
+    restrict-ind-local N = refl
+
+  ind-local-unique
+    : ∀ {𝓜} {P : (g : G) → 𝒥 g → Type 𝓜} → is-cell-local P
+    → (s s' : (g : G) (u : 𝒥 g) → P g u)
+    → ((g : G) (x : X g) → s g (inc x) ＝ s' g (inc x))
+    → (g : G) (u : 𝒥 g) → s g u ＝ s' g u
+  ind-local-unique loc s s'
+    = ind-local (λ g u → s g u ＝ s' g u) λ i w →
+        precomp-Π-＝-is-equiv (loc i w)
+          (λ b → s (τ i b) (w b)) (λ b → s' (τ i b) (w b))
+
+  restrict-inc-is-equiv
+    : ∀ {𝓜} {P : (g : G) → 𝒥 g → Type 𝓜} → is-cell-local P
+    → is-equiv (restrict-inc P)
+  restrict-inc-is-equiv {P = P} loc
+    = is-equiv←qinv
+        ( ind-local P loc
+        , (λ s → funext→ λ g → funext→
+            (ind-local-unique loc (ind-local P loc (restrict-inc P s)) s
+              (λ _ _ → refl) g))
+        , (λ N → refl))
 }
 }
 

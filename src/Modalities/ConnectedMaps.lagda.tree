@@ -14,6 +14,9 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 open import Modalities.ReflectiveSubuniverses
+  hiding
+    ( ＝-in-SubU ; η-is-equiv←in-SubU
+    )
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ConnectedTypes
 open import Modalities.ModalMaps
@@ -97,7 +100,7 @@ fibres have contractible reflections.
 \agda{
 is-connected-map
   : ∀ {α 𝓤 𝓥} (RS : gRSubU α) {A : Type 𝓤} {B : Type 𝓥}
-    → (A → B) → Type (𝓤 ⊔ 𝓥)
+    → (A → B) → Type (𝓥 ⊔ α (𝓤 ⊔ 𝓥))
 is-connected-map RS {B = B} f = (b : B) → is-connected RS (fibre f b)
 
 is-connected-map'
@@ -125,15 +128,30 @@ module _
   η-is-connected'
     : {A : Type 𝓤} → is-connected-map' RS (η: A)
   η-is-connected' x = mk-singl
-    (ind {P = λ x → ○ (fibre η x)} (λ _ → ○∈S) (λ a → η (a , refl)) x)
-    (ind (λ _ → ＝-is-modal RS ○∈S) (λ where (a , refl) → ind-β _ _ a))
+    (ind {P = λ x → ○ (fibre η x)} (λ _ → ○-in-SubU) (λ a → η (a , refl)) x)
+    (ind (λ _ → Modalities.ReflectiveSubuniverses.＝-in-SubU RS ○-in-SubU)
+      (λ where (a , refl) → ind-β _ _ a))
+}
 
+\p{
+The following proof duplicates the one just given for non-global reflective
+subuniverses, but since the reflectors of global reflective subuniverses
+may raise universe levels, neither construction subsumes the other.
+}
+
+\agda{
 η-is-connected
   : ∀ {α} (RS : gRSubU α)
     → is-globally-Σ-closed (gRSubU.GS RS)
     → ∀ {𝓤} {A : Type 𝓤}
     → is-connected-map RS (gRSubU.η RS {A = A})
-η-is-connected RS GΣ = η-is-connected' (is-reflective←gRSubU RS) GΣ
+η-is-connected RS GΣ {A = A} x = mk-singl
+  (ind {P = λ x → ○ (fibre (η: A) x)} (λ _ → ○-in-SubU) (λ a → η (a , refl)) x)
+  (ind (λ _ → ＝-in-SubU ○-in-SubU) (λ where (a , refl) → ind-β _ _ a))
+  where
+  open gRSubU RS
+  open gReflectiveClosure RS
+  open gRSubUInduction RS GΣ
 }
 }
 
@@ -175,7 +193,7 @@ module _
 
   is-connected-map'←is-equiv : is-equiv f → is-connected-map' RS f
   is-connected-map'←is-equiv fe b
-    = is-singleton←Reflector (is-reflective.reflector RS (fibre f b))
+    = ○-is-singleton←is-singleton (is-reflective.reflector RS (fibre f b))
         (has-singleton-fibres←is-equiv fe b)
 
 module _
@@ -282,7 +300,7 @@ up-connected-map←⊥modal K f orth {U = U} U∈K
     where
 
     fst∈K : is-modal-map K (fst {B = U})
-    fst∈K b = gSubU.∈S←equiv K (fibre-straighten U b e⁻¹) (U∈K b)
+    fst∈K b = gSubU.in-SubU←equiv K (fibre-straighten U b e⁻¹) (U∈K b)
 }
 }
 
@@ -484,7 +502,7 @@ module _ {α} (RS : gRSubU α) (open gRSubU RS) (open gReflectiveClosure RS) whe
   is-equiv←is-modal←is-connected m c
     = is-equiv←has-singleton-fibres λ b
       → is-single←equiv⁻¹
-          (mk≃ _ (η-is-equiv←in-SubU (reflector (fibre _ b)) (m b)))
+          (mk≃ _ (η-is-equiv←in-SubU (m b)))
           (c b)
 }
 }
@@ -616,7 +634,7 @@ module gReflectorConnectedMaps
   (Rf : (b : B) → gReflector GS (fibre f b))
   where
 
-  reflected-fibres-singleton : Type (𝓤 ⊔ 𝓥)
+  reflected-fibres-singleton : Type (𝓥 ⊔ α (𝓤 ⊔ 𝓥))
   reflected-fibres-singleton
     = (b : B) → is-singleton (gReflector.○ (Rf b))
 
@@ -628,7 +646,7 @@ module gReflectorConnectedMaps
         (λ U∈S → 3-for-2
           (gReflector.reflects (Rf b) U∈S)
           (up-connected-fibres←up-connected-!-fibres GS f conn-!-fibre b U∈S))
-        (gReflector.○∈S (Rf b))
+        (gReflector.○-in-SubU (Rf b))
 
   up-connected-!-fibre←reflected-fibres-singleton
     : ((b : B) → is-singleton (gReflector.○ (Rf b)))
@@ -763,7 +781,7 @@ module gReflectorFibres
   reflected-fibre-singleton←null-homotopy {b} (u , H)
     = let module Fb = gReflector (Rf b)
     in mk-singl  u
-        (happly (unap (is-embedding←is-equiv (Fb.reflects Fb.○∈S)) (funext→ H)))
+        (happly (unap (is-embedding←is-equiv (Fb.reflects Fb.○-in-SubU)) (funext→ H)))
 
   fibre-precomp-Π-η-fibre≃Π-null-homotopy-over
     : fibre (precomp-Π (λ b → gReflector.○ (Rf b)) f) η-fibre-section
@@ -783,7 +801,7 @@ module gReflectorFibres
         (Trunc.η ∘ fibre-null-homotopy←over b ∘ ev b)
         (Trunc.○-rec ║-║₋₁-is-prop
           (Trunc.η ∘ fibre-precomp-Π-η-fibre≃Π-null-homotopy-over ._≃_.fwd)
-          (surj (λ b → gReflector.○∈S (Rf b)) η-fibre-section))
+          (surj (λ b → gReflector.○-in-SubU (Rf b)) η-fibre-section))
 }
 }
 
@@ -861,11 +879,11 @@ module _
     : up-connected-map' S f → is-connected-map' RS f
   is-connected-map'←up-connected-map' fc b
     = let
-        ext = fc {P = ○ ∘ fibre f} (λ _ → ○∈S)
+        ext = fc {P = ○ ∘ fibre f} (λ _ → ○-in-SubU)
         d = is-equiv.bwd ext (λ a → η (a , refl))
         H = happly (is-equiv.ε ext (λ a → η (a , refl)))
       in
-      mk-singl (d b) (∈S▹η.bwd ○∈S (λ { (a , refl) → H a }))
+      mk-singl (d b) (in-SubU▹η.bwd ○-in-SubU (λ { (a , refl) → H a }))
 
 module _
   {α} (RS : gRSubU α)
@@ -921,7 +939,7 @@ module _
   connected⊥modal
     : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
         {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-      → is-connected-map' (is-reflective←gRSubU RS) f
+      → is-connected-map RS f
       → is-modal-map' S g
       → f ⊥ g
   connected⊥modal {f = f} {g = g} fconn
@@ -1027,7 +1045,7 @@ fibrewise #{\mathrm{Empty}}-connected.
 Empty-gSubU : gSubU (λ 𝓤 → 𝓤)
 Empty-gSubU .gSubU.S .Subtype.family A = ¬ A
 Empty-gSubU .gSubU.S .Subtype.family-is-subtype A x y = funext→ λ a → ¡ (x a)
-Empty-gSubU .gSubU.∈S←equiv e A∉ = A∉ ∘ _≃_.bwd e
+Empty-gSubU .gSubU.in-SubU←equiv e A∉ = A∉ ∘ _≃_.bwd e
 
 point-true-up-connected-map
   : up-connected-map Empty-gSubU (point true)

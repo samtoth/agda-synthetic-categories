@@ -16,11 +16,11 @@ open import Foundations.Prelude
 open import Core.Orthogonal
 open import Modalities.GlobalReflectiveSubuniverses
 open import Modalities.ConnectedMaps
+open import Modalities.ConnectedTypes
 open import Modalities.ModalMaps
 open import Modalities.Factorisations
 open import Modalities.WideSubcategoriesTypes
 open import Modalities.GlobalOrthogonalFactorisationSystems
-open import Modalities.ReflectiveSubuniverses.ConnectedModalFactorisationSystem
 }
 }
 
@@ -33,8 +33,16 @@ open import Modalities.ReflectiveSubuniverses.ConnectedModalFactorisationSystem
 \p{
 Given a Σ-closed global reflective subuniverse, then the connected maps and
 modal maps form respectively the left and the right class of a global orthogonal
-factorisation system. This follows from the [corresponding non-global orthogonal
-factorisation system](stt-011I).
+factorisation system. As for the [corresponding non-global orthogonal
+factorisation system](stt-011I), a map #{f \colon A \to B} factors through
+#{\Sigma1{b:B}{\bigcirc\fibre{f}{b}}}. When the reflection raises universes,
+so does this middle type.
+}
+
+\p{
+The following proof duplicates the construction for non-global reflective
+subuniverses, but since the reflectors of global reflective subuniverses may
+raise universe levels, neither construction subsumes the other.
 }
 
 \agda{
@@ -44,7 +52,7 @@ module GlobalReflectiveFactorisationSystem
   (open gReflectiveClosure RS)
   where
 
-  Ll : gWideSubcatType (_⊔_)
+  Ll : gWideSubcatType (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥))
   Ll .gWideSubcatType.K .Subtype.family
     = is-connected-map RS
   Ll .gWideSubcatType.K .Subtype.family-is-subtype _
@@ -63,14 +71,35 @@ module GlobalReflectiveFactorisationSystem
 
   module _
     {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
-    (open ConnectedModalFactorisation (is-reflective←gRSubU RS) SΣ f)
     where
 
-    factorisation : gFactorisation (_⊔_) Ll Rr f
+    Im : Type (𝓥 ⊔ α (𝓤 ⊔ 𝓥))
+    Im = Σ B (○ ∘ fibre f)
+
+    l : A → Im
+    l a = (f a , η (a , refl))
+
+    r : Im → B
+    r = fst
+
+    l-is-connected : is-connected-map RS l
+    l-is-connected x
+      = is-connected←equiv RS
+          (fibre-total-map-refl-fibre f (λ _ → η) x e⁻¹)
+          (η-is-connected RS SΣ (snd x))
+
+    r-is-modal : is-modal-map GS r
+    r-is-modal b = in-SubU←equiv (fibre-straighten (○ ∘ fibre f) b e⁻¹) ○-in-SubU
+
+    factorisation : gFactorisation (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥)) Ll Rr f
     factorisation
       = mk-factorisation Im l l-is-connected r r-is-modal ~refl
 
-  ofs : gOFS (_⊔_) (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥)) (_⊔_)
+  ofs
+    : gOFS
+        (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥))
+        (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥))
+        (λ 𝓤 𝓥 → 𝓥 ⊔ α (𝓤 ⊔ 𝓥))
   ofs
     = gOFS←unique-lifts Ll Rr factorisation
         ( λ fc gm

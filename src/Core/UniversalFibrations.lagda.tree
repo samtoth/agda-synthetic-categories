@@ -20,7 +20,6 @@ open import Core.Arrows
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
 open import Core.GlobalClassesMaps
-open import Core.PiSection
 open import Core.Small
 }
 }
@@ -185,39 +184,68 @@ module Type-is-universal {𝓤}
 \subtree[stt-00K8]{
 \title{Lifts of small maps}
 \taxon{Corollary}
+\contributor{fredrikbakke}
 
-\p{Lifts of small maps #{p \colon E \to B} against #{A \colon \Gamma \to B} correspond to
-sections of the induced map #{\Gamma \to \UU}.}
+\p{
+Lifts of small maps #{p \colon E \to B} against #{A \colon \Gamma \to B} correspond
+to sections of the induced map #{\Gamma \to \UU}.
+}
 
 \agda{
-Lift←arrow-map
-  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-      (F : Arrow-map f g)
-    → {Γ : Type 𝓝} (A : Γ → B)
-    → LiftMap f A
-    → LiftMap g (F .Arrow-map.bot ∘ A)
-Lift←arrow-map F A = arrow-fibre (postcomp-square F _) A
+module _
+  {𝓤 𝓥 𝓦 𝓜 𝓝}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
+  where
 
-Lift←cartesian-arrow-map-is-equiv
-  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-      {X : Type 𝓦} {Y : Type 𝓜} {g : X → Y}
-      (F : Arrow-map f g)
+  Lift←arrow-map
+    : (F : Arrow-map f g)
+    → {Γ : Type 𝓝} (C : Γ → B)
+    → Lift f C
+    → Lift g (F .Arrow-map.bot ∘ C)
+  Lift←arrow-map F C
+    = fibre-postcomp≃Lift g (F .Arrow-map.bot ∘ C) ._≃_.fwd
+    ∘ arrow-fibre (postcomp-square F _) C
+    ∘ _≃_.bwd (fibre-postcomp≃Lift f C)
+
+  Lift←cartesian-arrow-map-is-equiv
+    : (F : Arrow-map f g)
     → (Fc : is-cartesian F)
-    → {Γ : Type 𝓝} (A : Γ → B)
-    → is-equiv (Lift←arrow-map F A)
-Lift←cartesian-arrow-map-is-equiv F Fc A = postcomp-cartesian F Fc A
+    → {Γ : Type 𝓝} (C : Γ → B)
+    → is-equiv (Lift←arrow-map F C)
+  Lift←cartesian-arrow-map-is-equiv F Fc C
+    = is-equiv-∘
+        (fibre-postcomp≃Lift g (F .Arrow-map.bot ∘ C) ._≃_.fwd-is-equiv)
+        (is-equiv-∘
+          (postcomp-cartesian F Fc C)
+          (bwd-is-equiv (fibre-postcomp≃Lift f C)))
+
+  Lift≃cartesian-arrow-map
+    : (F : Arrow-map f g)
+    → is-cartesian F → {Γ : Type 𝓝} (h : Γ → B)
+    → Lift f h ≃ Lift g (F .Arrow-map.bot ∘ h)
+  Lift≃cartesian-arrow-map F F-is-cartesian h
+    = mk≃
+        (Lift←arrow-map F h)
+        (Lift←cartesian-arrow-map-is-equiv F F-is-cartesian h)
+
+section-type∙≃
+  : ∀ {𝓤 𝓥} {Γ : Type 𝓤} (A : Γ → Type 𝓥)
+    → Lift (Type-π _) A ≃ Π Γ A
+section-type∙≃ A
+  = Π≃Lift (Type-π _) A e⁻¹
+  ∙e postcomp-Π-≃ (fibre-straighten id ∘ A)
 
 section-type∙
   : ∀ {𝓤 𝓥 𝓦} {Γ : Type 𝓤} (A : Γ → Type (𝓥 ⊔ 𝓦))
-    → LiftMap (Type-π _) A → Π Γ A
-section-type∙ A = is-equiv.bwd (LiftMap←Π-is-equiv A)
+    → Lift (Type-π _) A → Π Γ A
+section-type∙ A = section-type∙≃ A ._≃_.fwd
 
 universal-section
   : ∀ {𝓤 𝓥 𝓦 𝓜} {Γ : Type 𝓤} {E : Type 𝓥} {B : Type 𝓦} {p : E → B}
       (A : Γ → B)
     → (ff : p ∈ᵃ Small 𝓜)
-    → LiftMap p A
+    → Lift p A
     → Π Γ (is-universal.arrow-map Type-is-universal-small-map ff .Arrow-Π.bot ∘ A)
 universal-section {𝓤} {𝓥} {𝓦} {𝓜} {p  = p} A fsm
   = section-type∙ {𝓥 = 𝓜} {𝓜}
@@ -232,11 +260,11 @@ universal-section-is-equiv
     → is-equiv (universal-section A ff)
 universal-section-is-equiv A fsm
   = is-equiv-∘
-      (is-equiv⁻¹ (LiftMap←Π-is-equiv _))
-      (Lift←cartesian-arrow-map-is-equiv
-          (Type-is-universal.arrow-map fsm)
-          (is-universal.arrow-map-is-cartesian Type-is-universal-small-map fsm)
-          A)
+      (section-type∙≃ _ ._≃_.fwd-is-equiv)
+      (Lift≃cartesian-arrow-map
+        (Type-is-universal.arrow-map fsm)
+        (is-universal.arrow-map-is-cartesian Type-is-universal-small-map fsm)
+        A ._≃_.fwd-is-equiv)
 }
 }
 

@@ -279,12 +279,28 @@ module _
 
   precomp-Liftᵈ-Arrow-equiv
     : (h : Π B Y)
-    → Arrow-equiv (arrow-fibre (power-homᵈ f g) h) (precomp-Liftᵈ f g h)
+    → Arrow-equiv
+        (arrow-fibre (power-homᵈ f g) h)
+        (precomp-Liftᵈ f g h)
   precomp-Liftᵈ-Arrow-equiv h
     = mk-arr-equiv
         (fibre-postcomp-Π≃Liftᵈ g h)
         (fibre-postcomp-Π≃Liftᵈ (g ∘ f) (h ∘ f))
         (λ where (k , refl) → refl)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  where
+
+  precomp-Lift-Arrow-equiv
+    : (h : B → Y)
+    → Arrow-equiv
+        (arrow-fibre (power-hom f g) h)
+        (precomp-Lift f g h)
+  precomp-Lift-Arrow-equiv
+    = precomp-Liftᵈ-Arrow-equiv f (λ _ → g)
 }
 }
 
@@ -307,8 +323,8 @@ module _
   (Y-is-single : (b : B) → is-singleton (Y b))
   where
 
-  Π̂-precomp-Π-Arrow-equiv : Arrow-equiv (Π̂ f g) (precomp-Π X f)
-  Π̂-precomp-Π-Arrow-equiv
+  Π̂-at-singleton-codomain≃precomp-Π : Arrow-equiv (Π̂ f g) (precomp-Π X f)
+  Π̂-at-singleton-codomain≃precomp-Π
     = mk-arr-equiv
         (id≃)
         ( Arrow-Π-repr≃ f g
@@ -319,25 +335,45 @@ module _
 }
 }
 
-\subtree[stt-00LT]{ % TODO: new file on functoriality
-\title{Functorial action of the pullback power}
-\taxon{Definition}
+\subtree[bak-D4C5]{
+\title{Dependent pullback powers with empty domains}
+\taxon{Lemma}
 \author{fredrikbakke}
-\date{2026-04-05}
+\date{2026-10-28}
+
+\p{
+If #{f \colon A \to B} has empty domain, then its dependent pullback power equivalent
+to dependent postcomposition at #{B}.
+}
 
 \agda{
-pullback-power₁-right
-  : ∀ {𝓤 𝓥 𝓐 𝓑 𝓒 𝓓} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
-      {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
-      {g : A → B} {h : C → D}
-    → (F : Arrow-map g h)
-    → Arrow-map (pullback-power f g) (pullback-power f h)
-pullback-power₁-right f F .Arrow-map.top
-  = Arrow-map.top F ∘_
-pullback-power₁-right f F .Arrow-map.bot
-  = paste-squares F
-pullback-power₁-right f F .Arrow-map.comm l
-  = Arrow-map-path→ (~refl , Arrow-map.comm F ∘ l , ~refl)
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  (A-is-empty : ¬ A)
+  where
+
+  Π̂-at-empty-domain≃postcomp-Π : Arrow-equiv (Π̂ f g) (postcomp-Π g)
+  Π̂-at-empty-domain≃postcomp-Π
+    = mk-arr-equiv
+        (id≃)
+        ( Arrow-Π-repr≃ f g
+        ∙e Σ-comm
+        ∙e Σ-singleton (λ _
+            → Σ-is-single (Π-is-single (λ a → ¡ (A-is-empty a))) (λ _
+              → Π-is-single (λ a → ¡ (A-is-empty a)))))
+        (~refl)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  (A-is-empty : ¬ A)
+  where
+
+  pullback-power-at-empty-domain≃postcomp
+    : Arrow-equiv (pullback-power f g) (postcomp B g)
+  pullback-power-at-empty-domain≃postcomp
+    = Π̂-at-empty-domain≃postcomp-Π f (λ _ → g) A-is-empty
 }
 }
 
@@ -394,79 +430,6 @@ module _
                                      gap-is-equiv where
     gap-is-equiv : is-pullback (pb-power-cone f g)
     gap-is-equiv = is-pullback←up-pullback _ (up-pullback←is-cartesian _ pb)
-}
-}
-
-\subtree[stt-010N]{
-\taxon{Construction}
-\title{Functoriality of exponential squares}
-\date{2025-11-26}
-\author{samueltoth}
-\contributor{fredrikbakke}
-
-\p{
-Morphisms of arrows induce cubes between exponential squares. If the
-morphism is an equivalence of arrows the induced cube is an equivalence of squares.
-}
-
-\agda{
-module _
-  {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
-  {A : Type 𝓤} {B : Type 𝓥}
-  {X : Type 𝓦} {Y : Type 𝓜}
-  {C : Type 𝓝} {D : Type 𝓛}
-  where
-
-  power-hom-cube←right-arrow-map
-    : (f : A → B)
-      (g : X → Y)
-      (g' : C → D)
-      (F : Arrow-map g g')
-    → Cube (power-hom f g) (power-hom f g')
-  power-hom-cube←right-arrow-map f g g' F .Cube.left = postcomp-square F _
-  power-hom-cube←right-arrow-map f g g' F .Cube.right = postcomp-square F _
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .fst = ~refl
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .fst = ~refl
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .snd a
-      = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-prewhisker-funext _)
-
-  power-hom-cube←right-arrow-equiv
-    : (f : A → B)
-      {g : X → Y}
-      {g' : C → D}
-    → Arrow-equiv g g'
-    → Cube-equiv (power-hom f g) (power-hom f g')
-  power-hom-cube←right-arrow-equiv f (F , Fe)
-    = ( power-hom-cube←right-arrow-map f _ _ F
-      , postcomp-square-is-equiv F Fe , postcomp-square-is-equiv F Fe)
-
-  power-hom-cube←left-arrow-map
-    : (f : A → B)
-      (f' : X → Y)
-      (F : Arrow-map f f')
-      (g : C → D)
-    → Cube
-        (transpose-square (power-hom f' g))
-        (transpose-square (power-hom f g))
-  power-hom-cube←left-arrow-map f f' F g .Cube.left = precomp-square F _
-  power-hom-cube←left-arrow-map f f' F g .Cube.right = precomp-square F _
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .fst = ~refl
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .fst = ~refl
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .snd k
-    = ∙-reflr _ ∙ ∙-reflr _
-    ∙ sym (commutes-postwhisker-funext {h = g} _)
-    ∙ ap funext→ (funext→ (◃h∘ g k _ h⁻¹))
-
-  power-hom-cube←left-arrow-equiv
-    : {f : A → B} {f' : X → Y}
-    → Arrow-equiv f f'
-    → (g : C → D)
-    → Cube-equiv
-        (transpose-square (power-hom f' g))
-        (transpose-square (power-hom f g))
-  power-hom-cube←left-arrow-equiv (F , Fe) g
-    = ( power-hom-cube←left-arrow-map _ _ F g
-      , precomp-square-is-equiv F Fe , precomp-square-is-equiv F Fe)
 }
 }
 

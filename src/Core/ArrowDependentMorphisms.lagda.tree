@@ -1,0 +1,311 @@
+\title{Dependent morphisms of arrows of types}
+\taxon{Module}
+\import{stt-macros}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+{-# OPTIONS --lossy-unification #-}
+
+module Core.ArrowDependentMorphisms where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+
+open import Core.CanonicalPushouts
+open import Core.Arrows
+}
+}
+
+\subtree[stt-00EF]{
+\taxon{Definition}
+\date{2026-02-20}
+\title{Dependent morphisms of arrows}
+
+\p{
+Given an arrow #{f \colon A \to B}, a \em{dependent arrow} over #{f} is a family of arrows
+over its domain, #{g \colon \Pi1{b : B}{X(b) \to Y(b)}}. Given such a dependent arrow, then a
+\em{dependent morphism of arrows} is a pair of dependent functions
+#{i \colon \Pi1{b : B}{Y(b)}} and #{j \colon \Pi1{a : A}{X (f(a))}} so that #{i \circ f \sim g \circ j}.
+}
+
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  (f : A → B)
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  where
+
+  record Arrow-Π : Type (𝓤1 ⊔ 𝓤2 ⊔ 𝓤3 ⊔ 𝓤4) where
+    constructor mk-amap
+    field
+      top : (a : A) → X (f a)
+      bot : (b : B) → Y b
+      comm : precomp-Π Y f bot ~ postcomp-Π (λ a → g (f a)) top
+
+  unquoteDecl Arrow-Π-repr≊ Arrow-Π-repr≃
+    = make-record-repr Arrow-Π-repr≊ Arrow-Π-repr≃ (quote Arrow-Π)
+}
+}
+
+
+\subtree[stt-00EG]{
+\taxon{Theorem}
+\date{2026-02-20}
+\title{The type of dependent morphisms of arrows as a pullback}
+\author{fredrikbakke}
+
+\p{The type #{\Hom^{\mathrm{d}}(f,g)} is the pullback of #{g \circ {-}} and
+#{{-} \circ f}.}
+
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 : Level}
+  {A : Type 𝓤1}
+  {B : Type 𝓤2}
+  {f : A → B}
+  {X : B → Type 𝓤3}
+  {Y : B → Type 𝓤4}
+  {g : (b : B) → X b → Y b}
+  where
+
+  Arrow-Π-cone
+    : Cone (mk-cospan ((a : A) → Y (f a))
+                      (precomp-Π Y f)
+                      (postcomp-Π (λ a → g (f a))))
+           (Arrow-Π f g)
+  Arrow-Π-cone .Cone.i p = Arrow-Π.bot p
+  Arrow-Π-cone .Cone.j p = Arrow-Π.top p
+  Arrow-Π-cone .Cone.filler p = funext→ (Arrow-Π.comm p)
+
+  Arrow-Π≃pullback-repr
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback-repr
+    = Arrow-Π f g
+        ≃⟨ Arrow-Π-repr≃ f g ⟩
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+      Σ[ b ∶ ((b : B) → Y b) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-comm ⟩
+      Σ[ b ∶ ((b : B) → Y b) ]
+      Σ[ t ∶ ((a : A) → X (f a)) ]
+       (precomp-Π Y f b ~ postcomp-Π (λ a → g (f a)) t)
+        ≃⟨ Σ-snd-≃ (λ _ → Σ-snd-≃ λ _ → (funext≃ e⁻¹)) ⟩
+      Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+        ≃∎
+
+  Arrow-Π≃pullback-repr~gap
+    : Arrow-Π≃pullback-repr ._≃_.fwd ~ gap Arrow-Π-cone
+  Arrow-Π≃pullback-repr~gap = ~refl
+
+  Arrow-Π-is-pullback : is-pullback Arrow-Π-cone
+  Arrow-Π-is-pullback
+    = is-equiv←~⁻¹
+        (Arrow-Π≃pullback-repr~gap)
+        (Arrow-Π≃pullback-repr ._≃_.fwd-is-equiv)
+
+  Arrow-Π≃pullback
+    : Arrow-Π f g
+    ≃ Pullback (precomp-Π Y f) (postcomp-Π (λ a → g (f a)))
+  Arrow-Π≃pullback
+    = mk≃ (gap Arrow-Π-cone) (Arrow-Π-is-pullback)
+}
+}
+
+\subtree[bak-F836]{
+\title{Characterising equality of dependent morphisms of arrows}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓛} {g : (b : B) → X b → Y b}
+  where
+
+  coherence-Arrow-Π-path
+    : (G H : Arrow-Π f g)
+    → Arrow-Π.top G ~ Arrow-Π.top H
+    → Arrow-Π.bot G ~ Arrow-Π.bot H
+    → Type (𝓤 ⊔ 𝓛)
+  coherence-Arrow-Π-path (mk-amap t b H) (mk-amap t' b' H') p q
+    = H ∙h ((λ {a} → g (f a)) ◃h p) ~ q ▹h f ∙h H'
+
+  Arrow-Π-path : ∀ (G H : Arrow-Π f g) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  Arrow-Π-path G H
+    = Σ[ p ∶ Arrow-Π.top G ~ Arrow-Π.top H ]
+      Σ[ q ∶ Arrow-Π.bot G ~ Arrow-Π.bot H ]
+      coherence-Arrow-Π-path G H p q
+
+  Arrow-Π-path-refl : {G : Arrow-Π f g} → Arrow-Π-path G G
+  Arrow-Π-path-refl = (~refl , ~refl , ∙h-reflr _)
+
+  Arrow-Π-path-is-Reflexive-ppred
+    : ∀ (G : Arrow-Π f g)
+      → Reflexive-ppred (Arrow-Π f g) G (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
+  Arrow-Π-path-is-Reflexive-ppred G
+    = (Arrow-Π-path G , Arrow-Π-path-refl)
+
+  Arrow-Π-path←id : ∀ {G H : Arrow-Π f g} → (G ＝ H) → Arrow-Π-path G H
+  Arrow-Π-path←id refl = Arrow-Π-path-refl
+
+  opaque
+    Arrow-Π-path≃ : (G H : Arrow-Π f g) → (G ＝ H) ≃ Arrow-Π-path G H
+    Arrow-Π-path≃ G@(mk-amap t b h) H
+      = mk≃
+          (Arrow-Π-path←id)
+          (fundamental-Id
+            (Arrow-Π-path G)
+            (is-single←equiv
+              (Σ-fst-≃ (Arrow-Π-repr≃ f g e⁻¹))
+              (is-singleton-structure←parts (SingS-is-single t)
+                (t , ~refl)
+                (is-singleton-structure←parts (SingS-is-single b)
+                  (b , ~refl)
+                  (SingS-is-single (h ∙h ~refl)))))
+            (λ _ → Arrow-Π-path←id)
+            (H))
+
+    Arrow-Π-path→
+      : {G H : Arrow-Π f g}
+      → Arrow-Π-path G H
+      → (G ＝ H)
+    Arrow-Π-path→ = _≃_.bwd (Arrow-Π-path≃ _ _)
+
+    Arrow-Π-path→-refl
+      : {G : Arrow-Π f g}
+      → Arrow-Π-path→ (Arrow-Π-path-refl {G = G}) ＝ refl
+    Arrow-Π-path→-refl
+      = unap-equiv
+          (Arrow-Π-path≃ _ _ ._≃_.fwd-is-equiv)
+          (is-equiv.ε (Arrow-Π-path≃ _ _ ._≃_.fwd-is-equiv) _)
+}
+}
+
+\subtree[bak-0CED]{
+\title{Characterising second-order equality of dependent morphisms of arrows}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {f : A → B} {g : (b : B) → X b → Y b}
+  {S T : Arrow-Π f g}
+  (let H = Arrow-Π.comm S)
+  (let K = Arrow-Π.comm T)
+  where
+
+  coherence-Arrow-Π-path²
+    : (p q : Arrow-Π-path S T)
+    → p .fst ~ q .fst
+    → p .snd .fst ~ q .snd .fst
+    → Type (𝓤 ⊔ 𝓜)
+  coherence-Arrow-Π-path² (p , q , C) (p' , q' , C') P Q
+    = C ∙h ((Q ∘ f) ▸h K) ~ (H ◂h ((λ {a} → ap (g (f a))) ◃h P)) ∙h C'
+
+  Arrow-Π-path²
+    : (p q : Arrow-Π-path S T) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  Arrow-Π-path² p q
+    = Σ[ P ∶ p .fst ~ q .fst ]
+      Σ[ Q ∶ p .snd .fst ~ q .snd .fst ]
+       ( coherence-Arrow-Π-path² p q P Q)
+
+  Arrow-Π-path²-refl
+    : {p : Arrow-Π-path S T} → Arrow-Π-path² p p
+  Arrow-Π-path²-refl = (~refl , ~refl , ∙h-reflr _)
+
+  Arrow-Π-path²←id
+    : {p q : Arrow-Π-path S T} → p ＝ q → Arrow-Π-path² p q
+  Arrow-Π-path²←id refl = Arrow-Π-path²-refl
+
+  opaque
+    Arrow-Π-path²-is-torsorial
+      : (p : Arrow-Π-path S T) → is-torsorial (Arrow-Π-path² p)
+    Arrow-Π-path²-is-torsorial (p , q , C)
+      = is-singleton-structure←parts (SingS-is-single p) (p , ~refl)
+          (is-singleton-structure←parts
+            (SingS-is-single q) (q , ~refl)
+            (SingS-is-single (C ∙h ~refl)))
+
+    Arrow-Π-path²←id-is-equiv
+      : (p q : Arrow-Π-path S T)
+      → is-equiv (Arrow-Π-path²←id {p} {q})
+    Arrow-Π-path²←id-is-equiv p
+      = fundamental-Id
+          (Arrow-Π-path² p)
+          (Arrow-Π-path²-is-torsorial p)
+          (λ _ → Arrow-Π-path²←id)
+
+    Arrow-Π-path²≃
+      : (p q : Arrow-Π-path S T) → (p ＝ q) ≃ Arrow-Π-path² p q
+    Arrow-Π-path²≃ p q
+      = mk≃ Arrow-Π-path²←id (Arrow-Π-path²←id-is-equiv p q)
+}
+}
+
+\subtree[bak-6C78]{
+\title{Concatenation of homotopies of dependent morphisms of arrows}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} {g : (b : B) → X b → Y b}
+  where
+
+  coherence-concat-Arrow-Π-path
+    : {S T U : Arrow-Π f g}
+    → (p : Arrow-Π-path S T) (q : Arrow-Π-path T U)
+    → coherence-Arrow-Π-path S U (p .fst ∙h q .fst) (p .snd .fst ∙h q .snd .fst)
+  coherence-concat-Arrow-Π-path {S} {T} {U} (p , q , C) (p' , q' , C')
+    = (Arrow-Π.comm S ◂h ◃h∙ (λ {a} → g (f a)) p p')
+    ∙h ( ∙h-assoc
+          (Arrow-Π.comm S)
+          ((λ {a} → g (f a)) ◃h p)
+          ((λ {a} → g (f a)) ◃h p') h⁻¹)
+    ∙h (C ▸h ((λ {a} → g (f a)) ◃h p'))
+    ∙h (∙h-assoc (q ▹h f) (Arrow-Π.comm T) ((λ {a} → g (f a)) ◃h p'))
+    ∙h ((q ▹h f) ◂h C')
+    ∙h (∙h-assoc (q ▹h f) (q' ▹h f) (Arrow-Π.comm U) h⁻¹)
+
+  concat-Arrow-Π-path
+    : {S T U : Arrow-Π f g}
+    → Arrow-Π-path S T → Arrow-Π-path T U → Arrow-Π-path S U
+  concat-Arrow-Π-path p q
+    = ( p .fst ∙h q .fst
+      , p .snd .fst ∙h q .snd .fst
+      , coherence-concat-Arrow-Π-path p q)
+
+  concat-Arrow-Π-path-left-unit
+    : {S T : Arrow-Π f g} (p : Arrow-Π-path S T)
+    → concat-Arrow-Π-path Arrow-Π-path-refl p ＝ p
+  concat-Arrow-Π-path-left-unit {S} (p , q , C)
+    = ap
+      ( λ D → (p , q , D))
+      ( funext→
+        ( ∙h-cancel-left
+            ( ∙h-assoc-refl-middle (Arrow-Π.comm S) ((λ {a} → g (f a)) ◃h p))
+            ( (~refl ◂h C) ∙h ~refl)
+        ∙h ∙h-reflr (~refl ◂h C)
+        ∙h ~refl◂h C))
+}
+}

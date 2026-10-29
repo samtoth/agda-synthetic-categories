@@ -259,35 +259,36 @@ is homotopic to the map we had previously constructed.}
 }
 
 \agda{
-bundle-map
-  : ∀ {𝓤} {A B : Type 𝓤} (f : A → B)
-    → Bundle 𝓤 A → Bundle 𝓤 B → Type 𝓤
-bundle-map f (A' , pa) (B' , pb)
-  = Σ[ f' ∶ (A' → B') ] (pb ∘ f' ~ f ∘ pa)
+module _ {𝓤} {A B : Type 𝓤} where
 
-module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤} where
+  bundle-map
+    : (f : A → B)
+      → Bundle 𝓤 A → Bundle 𝓤 B → Type 𝓤
+  bundle-map f (A' , pa) (B' , pb)
+    = Σ[ f' ∶ (A' → B') ] (pb ∘ f' ~ f ∘ pa)
 
   amap←bmap
-    : ∀ {A B : Type 𝓤} (f : A → B)
+      : (f : A → B)
         (A' : Bundle 𝓤 A) (B' : Bundle 𝓤 B)
       → bundle-map f A' B'
-      → Arrow-map
-        (A' .snd)
-        (B' .snd)
+      → Arrow-map (A' .snd) (B' .snd)
   amap←bmap f (A' , pa) (B' , pb) (f' , H)
       = mk-amap f' f (H h⁻¹)
 
+module _
+  {𝓤} {A B : Type 𝓤} {f : A → B}
+  {Ab@(A' , pa) : Bundle 𝓤 A} {Bb@(B' , pb) : Bundle 𝓤 B}
+  where
+
   is-cartesian-bmap
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A} {B' : Bundle 𝓤 B}
-      → bundle-map f A' B' → Type 𝓤
-  is-cartesian-bmap {f = f} {(_ , pa)} {(_ , pb)} bmap
+    : bundle-map f Ab Bb → Type 𝓤
+  is-cartesian-bmap bmap
     = is-cartesian {f = pa} {f' = pb} (amap←bmap f _ _ bmap)
 
   tofib
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A} {B' : Bundle 𝓤 B}
-      → (bundle-map f A' B')
-      ≃ (∀ b → fibre (A' .snd) b → fibre (B' .snd) (f b))
-  tofib {A} {B} {f} {(A' , pa)} {(B' , pb)}
+    : (bundle-map f Ab Bb)
+    ≃ (∀ b → fibre pa b → fibre pb (f b))
+  tofib
     = equiv←qequiv (mk≊ to (from , ret , sec)) where
     to : _ → _
     to F = arrow-fibre (amap←bmap _ _ _ F)
@@ -297,7 +298,7 @@ module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤} where
                         (λ a fa → pb fa ＝ f (pa a))
                         (λ x → feq (pa x) (x , refl))
 
-    ret : (a : bundle-map f _ (B' , pb)) → (from ∘ to) a ＝ a
+    ret : (a : bundle-map f _ Bb) → (from ∘ to) a ＝ a
     ret (f , H) = Σ-path→ (refl , (funext→ (λ a → ∙-reflr _ ∙ sym-sym)))
 
     sec : _
@@ -305,84 +306,74 @@ module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤} where
       (a , refl) → Σ-path→ (refl , (∙-reflr _ ∙ sym-sym))))
 
   tofibeq
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A} {B' : Bundle 𝓤 B}
-      → (∀ b → fibre (A' .snd) b ≃ fibre (B' .snd) (f b))
-      → (Σ[ F ∶ bundle-map f A' B' ] is-cartesian-bmap {f = f} {A'} {B'} F)
-  tofibeq {f = f} {A'} {B'} fmap
+    : (∀ b → fibre pa b ≃ fibre pb (f b))
+    → (Σ[ F ∶ bundle-map f Ab Bb ] is-cartesian-bmap F)
+  tofibeq fmap
     = (_≃_.bwd tofib (fmap.fwd) , eq' fmap.fwd-is-equiv) module tofibeq' where
     module fmap a = _≃_ (fmap a)
 
     from-fmap
-      : (∀ b → fibre (A' .snd) b → fibre (B' .snd) (f b))
-      → bundle-map f A' B'
+      : (∀ b → fibre pa b → fibre pb (f b)) → bundle-map f Ab Bb
     from-fmap = _≃_.bwd tofib
 
-    lem : ∀ f' a → arrow-fibre (amap←bmap f A' B' (from-fmap f')) a ~ f' a
+    lem : ∀ f' a → arrow-fibre (amap←bmap f Ab Bb (from-fmap f')) a ~ f' a
     lem f' a = happly (happly (_≃_.ε tofib f') a)
 
     opaque
       eq'
-        : {f' : ∀ b → fibre (A' .snd) b → fibre (B' .snd) (f b)}
+        : {f' : ∀ b → fibre (Ab .snd) b → fibre (Bb .snd) (f b)}
         → is-fibrewise-equiv f'
-        → is-cartesian-bmap {f = f} {A'} {B'} (from-fmap f')
+        → is-cartesian-bmap (from-fmap f')
       eq' {f'} feq a = is-equiv←~ (lem f' a) (feq a)
 
   tofibeq≃
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A} {B' : Bundle 𝓤 B}
-      → (Σ[ F ∶ bundle-map f A' B' ] is-cartesian-bmap {f = f} {A'} {B'} F)
-      ≃ (∀ b → fibre (A' .snd) b ≃ fibre (B' .snd) (f b))
-  tofibeq≃ {A} {B} {f} {(A' , pa)} {(B' , pb)}
-    = Σ (bundle-map f _ (B' , pb)) (is-cartesian-bmap {f = f} {_} {B' , pb})
+    : (Σ[ F ∶ bundle-map f Ab Bb ] is-cartesian-bmap F)
+    ≃ (∀ b → fibre (Ab .snd) b ≃ fibre (Bb .snd) (f b))
+  tofibeq≃
+    = Σ (bundle-map f _ Bb) (is-cartesian-bmap)
         ≃⟨ Σ-fst-≃ tofib ⟩
       (Σ[ f' ∶ (∀ b → fibre pa b → fibre pb (f b))] is-fibrewise-equiv f')
         ≃⟨ fibrewise-equiv≃ ⟩
       ((b : A) → fibre pa b ≃ fibre pb (f b)) ≃∎
 
-  tofibeq~
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A} {B' : Bundle 𝓤 B}
-      → tofibeq ~ _≃_.bwd (tofibeq≃ {f = f} {A'} {B'})
+  tofibeq~ : tofibeq ~ _≃_.bwd tofibeq≃
   tofibeq~ fmap = Σ-path→ (refl , is-cartesian-is-prop _ _)
 
-  tofibeq-is-equiv
-    : ∀ {A B : Type 𝓤} {f : A → B} {A' : Bundle 𝓤 A}
-        {B' : Bundle 𝓤 B}
-      → is-equiv (tofibeq {f = f} {A'} {B'})
-  tofibeq-is-equiv
-    = is-equiv←~ tofibeq~ (bwd-is-equiv tofibeq≃)
+  tofibeq-is-equiv : is-equiv tofibeq
+  tofibeq-is-equiv = is-equiv←~ tofibeq~ (bwd-is-equiv tofibeq≃)
+
+module _ {𝓤} {A B : Type 𝓤} {f : A → B} (Ab@(A' , pa) : Bundle 𝓤 A) where
 
   strait-bundle
-    : ∀ {A B} {f : A → B} (A' : Bundle 𝓤 A)
-      → (Σ[ B' ∶ Bundle 𝓤 B ]
-          Σ (bundle-map f A' B') (is-cartesian-bmap {f = f} {A'} {B'}))
-      ≃ (Σ[ Q ∶ (B → Type 𝓤)] (∀ a → fibre (A' . snd) a ＝ Q (f a)))
-  strait-bundle {A} {B} {f} Ab@(A' , pa)
-    = (Σ[ B' ∶ (Bundle 𝓤 B) ]
-        Σ (bundle-map f Ab B') (is-cartesian-bmap {f = f} {Ab} {B'}))
+    : (Σ[ Bb ∶ Bundle 𝓤 B ] Σ (bundle-map f Ab Bb) (is-cartesian-bmap))
+    ≃ (Σ[ Q ∶ (B → Type 𝓤)] (∀ a → fibre (Ab .snd) a ＝ Q (f a)))
+  strait-bundle
+    = (Σ[ Bb ∶ (Bundle 𝓤 B) ]
+        Σ (bundle-map f Ab Bb) (is-cartesian-bmap {f = f} {Ab} {Bb}))
         ≃⟨ Σ-snd-≃ (λ bun → tofibeq≃) ⟩
-      (Σ[ B' ∶ (Bundle 𝓤 B)] (∀ a → fibre pa a ≃ fibre (B' .snd) (f a)))
+      (Σ[ Bb ∶ (Bundle 𝓤 B)] (∀ a → fibre pa a ≃ fibre (Bb .snd) (f a)))
         ≃⟨ Σ-fst-≃ {B = λ Q → ∀ a → fibre pa a ≃ Q (f a)} (straighten≃ lzero) ⟩
       (Σ[ Q ∶ (B → Type 𝓤)] ((a : A) → fibre pa a ≃ Q (f a)))
         ≃⟨ Σ-snd-≃ (λ Q → postcomp-Π-≃ (λ c → ua≃)) ⟩
       Σ (B → Type 𝓤) (λ Q → (a : A) → fibre pa a ＝ Q (f a)) ≃∎
 
   strait-bundle-map
-    : ∀ {A B} {f : A → B} (A' : Bundle 𝓤 A)
-      → (Σ[ B' ∶ Bundle 𝓤 B ]
-          Σ (bundle-map f A' B') (is-cartesian-bmap {f = f} {A'} {B'}))
-      → Σ[ Q ∶ (B → Type 𝓤)] ((a : A) → fibre (A' .snd) a ＝ Q (f a))
-  strait-bundle-map {f = f} A' (B' , bm , cart)
-    = (straighten lzero B' , (λ a → ua (mk≃ _ (cart a))))
-
+    : (Σ[ Bb ∶ Bundle 𝓤 B ]
+        Σ (bundle-map f Ab Bb) (is-cartesian-bmap {f = f} {Ab} {Bb}))
+    → Σ[ Q ∶ (B → Type 𝓤)] ((a : A) → fibre (Ab .snd) a ＝ Q (f a))
+  strait-bundle-map (Bb , bm , cart)
+    = (straighten lzero Bb , (λ a → ua (mk≃ _ (cart a))))
 
   strait-bundle-map'
-    : ∀ {A B} {f : A → B} (A' : Bundle 𝓤 A)
-      → Σ[ Q ∶ (B → Type 𝓤)] ((a : A) → fibre (A' .snd) a ＝ Q (f a))
-      → Σ[ B' ∶ Bundle 𝓤 B ]
-          Σ (bundle-map f A' B') (is-cartesian-bmap {f = f} {A'} {B'})
-  strait-bundle-map' {f = f} A' (Q , fmap)
+    : Σ[ Q ∶ (B → Type 𝓤)] ((a : A) → fibre (Ab .snd) a ＝ Q (f a))
+    → Σ[ Bb ∶ Bundle 𝓤 B ]
+        Σ (bundle-map f Ab Bb) (is-cartesian-bmap  {f = f} {Ab} {Bb})
+  strait-bundle-map' (Q , fmap)
     = ( unstraighten lzero Q
       , tofibeq (λ a → coe≃ (fmap a) ∙e (fibre-straighten Q (f a)) e⁻¹))
     where module fmap a = _≃_ (coe≃ (fmap a))
+
+module _ {𝓤} {Sp : Span 𝓤 𝓤 𝓤} where
 
   strait-bundle-map-is-equiv
     : ∀ {A B} {f : A → B}
@@ -642,9 +633,10 @@ of spans #{S' \to S}.
 }
 
 \agda{
-module SquarePB {𝓤 𝓥 𝓦 𝓜 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
-                (C : Cocone S X) {X' : Type 𝓛} (f : X' → X)
-                where
+module SquarePB
+  {𝓤 𝓥 𝓦 𝓜 𝓛} {S : Span 𝓤 𝓥 𝓦} {X : Type 𝓜}
+  (C : Cocone S X) {X' : Type 𝓛} (f : X' → X)
+  where
   open Span S
   open Cocone C
 

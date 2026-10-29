@@ -1,7 +1,7 @@
-\date{2026-02-23}
-\author{fredrikbakke}
 \title{Null-homotopy}
 \taxon{Module}
+\author{fredrikbakke}
+\date{2026-02-23}
 
 \import{stt-macros}
 
@@ -37,8 +37,9 @@ open import Foundations.Straightening
 \taxon{Definition}
 
 \p{
-Given a map #{f \colon A \to B} then its type of \em{null-homotopies} is the collection of
-elements #{b} of #{B} such that for all #{a} in #{A} we have #{b = f(a)}.
+Given a map #{f \colon A \to B} then its type of \em{null-homotopies} is the
+collection of elements #{b} of #{B} such that for all #{a} in #{A} we have
+#{b = f(a)}.
 ##{\nullhtpy{f} \defeq \Sigma1{b : B}{(\Pi1{a : A}{b = f(a)})}.}
 }
 
@@ -83,43 +84,60 @@ weakly-constant←null-homotopy (b , H) x y
 \subtree[stt-00F4]{
 \title{The action on identifications of null-homotopic maps is null-homotopic}
 \taxon{Proposition}
+\contributor{fredrikbakke}
 
 \p{
 If #{f \colon A \to B} is null-homotopic, then for any #{x,y : A}, the induced map on
-identifications #{\ap f \colon (x = y) \to (f(x) = f(y))} is null-homotopic.
+identifications #{\ap f \colon (x = y) \to (f(x) = f(y))} is null-homotopic. In fact,
+it suffices that #{f} is weakly constant.
 }
 
+\p{This appears in the proof of \citet{Auxiliary Lemma 4.3}{KECA17}.}
+
 \agda{
-ap-null-homotopy
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-    → null-homotopy f
-    → (x y : A) → null-homotopy (ap f {x} {y})
-ap-null-homotopy {f = f} (b , h) x y
-  = (sym (h x) ∙ h y , (λ where refl → ∙-sym' (h x)))
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
+
+  opaque
+    ap-null-homotopy←weakly-constant
+      : ((x y : A) → f x ＝ f y)
+      → (x y : A) → null-homotopy (ap f {x} {y})
+    ap-null-homotopy←weakly-constant c x y
+      = (sym (c x x) ∙ c x y , (λ where refl → ∙-sym' (c x x)))
+
+    ap-null-homotopy
+      : null-homotopy f
+      → (x y : A) → null-homotopy (ap f {x} {y})
+    ap-null-homotopy h
+      = ap-null-homotopy←weakly-constant (weakly-constant←null-homotopy h)
 }
 }
 
 \subtree{
-\title{The type of fibrewise pointed maps}
+\title{Null-homotopic maps into fibres}
 \taxon{Definition}
+
+\p{
+Given a map #{g : X \to Y} and a type #{A}, we consider the type null-homotopic
+functions #{j : A \to \fibre{g}{y}} for some element #{y : Y}.
+}
 
 \agda{
 module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X → Y) where
 
-  fibre-pointed-total : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
-  fibre-pointed-total
+  null-homotopic-map-into-fibre : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  null-homotopic-map-into-fibre
     = Σ[ y ∶ Y ] Σ[ j ∶ (A → fibre g y) ] null-homotopy j
 
-  fibre-pointed-total←domain : X → fibre-pointed-total
-  fibre-pointed-total←domain x
-    = g x , const: (fibre g (g x)) A (x , refl) , (x , refl) , ~refl
+  null-homotopic-map-into-fibre←domain : X → null-homotopic-map-into-fibre
+  null-homotopic-map-into-fibre←domain x
+    = (g x , const: (fibre g (g x)) A (x , refl) , (x , refl) , ~refl)
 
-  domain←fibre-pointed-total : fibre-pointed-total → X
-  domain←fibre-pointed-total (_ , _ , y , _) = fst y
+  domain←null-homotopic-map-into-fibre : null-homotopic-map-into-fibre → X
+  domain←null-homotopic-map-into-fibre (_ , _ , y , _) = fst y
 }
 }
 
-\p{The remainder of the results assume function extensionality.}
+\p{The remainder of this module assumes function extensionality.}
 
 \agda{
 module NullHomotopyWithFunExt (FE : FunExt-global) where
@@ -147,6 +165,12 @@ module NullHomotopyWithFunExt (FE : FunExt-global) where
 \title{Identifications of null-homotopies}
 \taxon{Lemma}
 
+\p{
+Given a map #{f : A \to B} and two null-homotopies #{(y,H)} and #{(y',H')}  of #{f},
+then an identification of the two null-homotopies is the same as an identification
+#{p : y = y'} such that #{H(x) \concat p = H'(x)} for all #{x}.
+}
+
 \agda{
   module _ {𝓤1 𝓤2} {A : Type 𝓤1} {B : Type 𝓤2} where
 
@@ -157,24 +181,8 @@ module NullHomotopyWithFunExt (FE : FunExt-global) where
         (r : fam-null-homotopy f l)
         (t : c ＝ l)
       → Idᶠ (fam-null-homotopy f) t h r ≃ ((a : A) → t ∙ r a ＝ h a)
-    null-homotopy-path-Idᶠ≃pointwise {f = f} h r t
-      = Idᶠ (fam-null-homotopy f) t h r
-          ≃⟨ ＝-postconcat-≃
-              ( J (λ l' t' → (λ a → sym t' ∙ h a) ＝ tr (fam-null-homotopy f) t' h)
-                  (refl)
-                  (t)) ⟩
-        ((λ a → sym t ∙ h a) ＝ r)
-          ≃⟨ funext≃ ⟩
-        ((a : A) → sym t ∙ h a ＝ r a)
-          ≃⟨ Π-fam-≃
-                (λ a
-                → J (λ l' t' → (r' : l' ＝ f a)
-                      → (sym t' ∙ h a ＝ r') ≃ (t' ∙ r' ＝ h a))
-                    (λ _ → sym≃)
-                    t
-                    (r a)) ⟩
-        ((a : A) → t ∙ r a ＝ h a)
-          ≃∎
+    null-homotopy-path-Idᶠ≃pointwise h r refl
+      = funext≃ ∙e Π-fam-≃ (λ _ → sym≃)
 
     null-homotopy-path≃
       : {f : A → B}
@@ -198,75 +206,73 @@ module NullHomotopyWithFunExt (FE : FunExt-global) where
 \taxon{Construction}
 
 \p{
-Given a map #{g \colon X \to Y} and any type #{A}, then #{X} is equivalent to the data
-consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a null-homotopy of #{j}.
+Given a map #{g \colon X \to Y} and any type #{A}, then #{X} is equivalent to the
+data consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a
+null-homotopy of #{j}.
 ##{X \;\simeq\; \Sigma2{y : Y}{j \colon A \to \fibre{g}{y}}{\nullhtpy(j)}}
 }
 
 \agda{
   module _ {𝓤 𝓥 𝓦} (A : Type 𝓤) {X : Type 𝓥} {Y : Type 𝓦} (g : X → Y) where
 
-    domain←fibre-pointed-total-qinv : quasi-inv (domain←fibre-pointed-total A g)
-    domain←fibre-pointed-total-qinv .fst = fibre-pointed-total←domain A g
-    domain←fibre-pointed-total-qinv .snd .fst (.(g x) , j , (x , refl) , H)
+    domain←null-homotopic-map-into-fibre-qinv
+      : quasi-inv (domain←null-homotopic-map-into-fibre A g)
+    domain←null-homotopic-map-into-fibre-qinv .fst
+      = null-homotopic-map-into-fibre←domain A g
+    domain←null-homotopic-map-into-fibre-qinv .snd .fst (.(g x) , j , (x , refl) , H)
       = funext-rec
-          (λ H' → fibre-pointed-total←domain A g x ＝ (g x , j , (x , refl) , H'))
+          ( λ H'
+            → null-homotopic-map-into-fibre←domain A g x
+            ＝ (g x , j , (x , refl) , H'))
           (λ where refl → refl)
           H
-    domain←fibre-pointed-total-qinv .snd .snd x = refl
+    domain←null-homotopic-map-into-fibre-qinv .snd .snd x = refl
 
-    fibre-pointed-total≃domain : fibre-pointed-total A g ≃ X
-    fibre-pointed-total≃domain
-      = mk≃ (domain←fibre-pointed-total A g)
-            (is-equiv←qinv domain←fibre-pointed-total-qinv)
+    null-homotopic-map-into-fibre≃domain : null-homotopic-map-into-fibre A g ≃ X
+    null-homotopic-map-into-fibre≃domain
+      = mk≃ (domain←null-homotopic-map-into-fibre A g)
+            (is-equiv←qinv domain←null-homotopic-map-into-fibre-qinv)
 }
 }
 
 \subtree[stt-00F6]{
-\title{Postcomposition preserves null-homotopies}
+\title{Precomposition preserves null-homotopies}
 \taxon{Proposition}
 
 \agda{
   module _
-    {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3} (e : A ≃ B) (j : A → C)
+    {𝓤1 𝓤2 𝓤3} {A : Type 𝓤1} {B : Type 𝓤2} {C : Type 𝓤3} (e : B ≃ A) (j : A → C)
     where
 
-    homotopy-const-postcomp-≃
-      : (y : C)
-      → (const: C A y ~ j)
-      ≃ (const: C B y ~ ((precomp-≃ (e e⁻¹)) ._≃_.fwd j))
-    homotopy-const-postcomp-≃ y
-      = precomp-Π-≃ (λ a → y ＝ j a) (e e⁻¹)
+    homotopy-const-precomp-≃
+      : (y : C) → (const: C A y ~ j) ≃ (const: C B y ~ (precomp-≃ e ._≃_.fwd j))
+    homotopy-const-precomp-≃ y = precomp-Π-≃ (λ a → y ＝ j a) e
 
-    null-homotopy-postcomp-≃
-      : null-homotopy j
-      ≃ null-homotopy ((precomp-≃ (e e⁻¹)) ._≃_.fwd j)
-    null-homotopy-postcomp-≃
-      = Σ-snd-≃ homotopy-const-postcomp-≃
+    null-homotopy-precomp-≃
+      : null-homotopy j ≃ null-homotopy (precomp-≃ e ._≃_.fwd j)
+    null-homotopy-precomp-≃ = Σ-snd-≃ homotopy-const-precomp-≃
 }
 }
 
 \subtree[stt-00MV]{
-\date{2026-03-19}
-\author{fredrikbakke}
+\title{Null-homotopies as fibres of the constant map}
 \taxon{Lemma}
-\title{Fibres of constant maps are null-homotopies}
+\author{fredrikbakke}
+\date{2026-03-19}
 
 \agda{
   module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (h : A → B) where
 
-    fibre-const≃null-homotopy
-      : fibre (const: B A) h ≃ null-homotopy h
-    fibre-const≃null-homotopy
-      = Σ-snd-≃ (λ _ → funext≃)
+    fibre-const≃null-homotopy : fibre (const: B A) h ≃ null-homotopy h
+    fibre-const≃null-homotopy = Σ-snd-≃ (λ _ → funext≃)
 }
 }
 
 \subtree[stt-00MW]{
-\date{2026-03-19}
-\author{fredrikbakke}
-\taxon{Theorem}
 \title{Fibres of dependent precomposition via fibrewise null-homotopies}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-03-19}
 
 \agda{
   module _
@@ -283,21 +289,19 @@ consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a null
     Ext-precomp-Π-null-homotopy≃
       = Extᵈ f U h
           ≃⟨ Σ-snd-≃
-              (λ g
-              → Π-fam-≃
-                  (λ a
-                  → mk≃
-                      (λ q → q ∙ tr-refl {P = U} refl (h a) refl)
-                      (∙-is-equiv' (tr-refl {P = U} refl (h a) refl)))
-              ∙e ((precomp-Π-≃
-                    (λ z → g (z .fst) ＝ precomp-Π-over-fibres U f h (z .fst) (z .snd))
-                    ((total≃total-fibre f) e⁻¹)) e⁻¹)
-              ∙e curry≃) ⟩
+                ( λ g
+                  → Π-fam-≃ (λ a → ＝-preconcat-≃ (tr-refl {P = U} refl (h a) refl))
+                  ∙e ((precomp-Π-≃
+                        ( λ z
+                          → g (z .fst)
+                          ＝ precomp-Π-over-fibres U f h (z .fst) (z .snd))
+                        ((total≃total-fibre f) e⁻¹)) e⁻¹)
+                  ∙e curry≃) ⟩
         (Σ[ g ∶ Π B U ]
           ((b : B) → (x : fibre f b) → g b ＝ precomp-Π-over-fibres U f h b x))
-          ≃⟨ (Σ-Π-swap≃
-                U
-                (λ b g → (x : fibre f b) → g ＝ precomp-Π-over-fibres U f h b x)) e⁻¹ ⟩
+          ≃⟨ Σ-Π-swap≃ U
+                (λ b g → (x : fibre f b) → g ＝ precomp-Π-over-fibres U f h b x)
+                e⁻¹ ⟩
         (Π B (λ b → null-homotopy (precomp-Π-over-fibres U f h b)))
           ≃∎
 
@@ -309,9 +313,7 @@ consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a null
       ∙e Ext-precomp-Π-null-homotopy≃
 
     fibre-precomp-Π≃Ext : fibre (precomp-Π U f) h ≃ Extᵈ f U h
-    fibre-precomp-Π≃Ext
-      = fibre-precomp-Π-null-homotopy≃
-      ∙e Ext-precomp-Π-null-homotopy≃ e⁻¹
+    fibre-precomp-Π≃Ext = Σ-snd-≃ (λ _ → funext≃)
 }
 }
 
@@ -325,8 +327,7 @@ consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a null
     where
 
     null-homotopy-map-codomain-≃
-      : null-homotopy j
-      ≃ null-homotopy (e ._≃_.fwd ∘ j)
+      : null-homotopy j ≃ null-homotopy (e ._≃_.fwd ∘ j)
     null-homotopy-map-codomain-≃
       = null-homotopy j
           ≃⟨ Σ-snd-≃ (λ y → Π-fam-≃ (λ a → ＝-equiv e)) ⟩
@@ -362,7 +363,6 @@ consisting of a point #{y : Y}, a map #{j \colon A \to \fibre{g}{y}}, and a null
           ≃∎
 }
 }
-
 
 \subtree[stt-013P]{
 \title{Null-homotopies into dependent sums}

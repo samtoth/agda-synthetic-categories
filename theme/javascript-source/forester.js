@@ -46,6 +46,7 @@ window.addEventListener('load', (event) => {
   const jsonUrl = `${baseUrl}forest.json`;
 
   const searchBtn = document.querySelector('#search-button');
+  const shuffleBtn = document.querySelector('#shuffle-button');
   searchBtn.addEventListener('click', () => {
     ninja.open();
   });
@@ -53,6 +54,15 @@ window.addEventListener('load', (event) => {
   fetch(jsonUrl)
     .then((res) => res.json())
     .then((trees) => {
+      const modules = trees.filter((tree) => tree.taxon === 'Module' && tree.route);
+      if (shuffleBtn && modules.length > 0) {
+        shuffleBtn.addEventListener('click', () => {
+          const module = modules[Math.floor(Math.random() * modules.length)];
+          window.location.href = module.route;
+        });
+        shuffleBtn.disabled = false;
+      }
+
       const items = [];
 
       const editIcon =

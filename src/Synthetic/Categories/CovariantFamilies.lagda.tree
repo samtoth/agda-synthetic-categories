@@ -14,8 +14,6 @@ module Synthetic.Categories.CovariantFamilies
   {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
   where
 
-open import Synthetic.Categories.Groupoids Δ¹ I public
-
 open Lattice I renaming (0l to i0; 1l to i1)
 open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
 private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
@@ -39,11 +37,15 @@ open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 
+open import Modalities.Instances.Truncation
+
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
 }
 }
 
@@ -149,6 +151,49 @@ opaque
 }
 }
 
+\subtree[stt-015U]{
+\title{Covariant transport is co-strict}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-02}
+
+\p{
+[Covariant transport](stt-00O8) is [co-strict](stt-015V): if #{0 = 1}, it coincides
+with ordinary transport, which is an equivalence.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (P-is-covariant : is-covariant P) where
+
+  opaque
+    tr-cov-is-co-strict
+      : (h : Δ¹ → A) → is-co-strict-map (tr-cov {P = P} P-is-covariant h)
+    tr-cov-is-co-strict h
+      = is-co-strict-map←is-equiv-under-0＝1 (λ p
+        → is-equiv←~⁻¹
+            ( λ x
+              → let lift = tr-cov-filler {P = P} P-is-covariant h x
+                in ap (tr (P ∘ h) p) (sym (lift .Homᵈ.hom0))
+                 ∙ apᶠ (lift .Homᵈ.hom) p
+                 ∙ lift .Homᵈ.hom1)
+            ( tr-is-equiv p))
+
+  opaque
+    unfolding tr-cov-hom
+
+    tr-cov-hom-is-co-strict
+      : {x y : A} (h : Hom A x y)
+      → is-co-strict-map (tr-cov-hom {P = P} P-is-covariant h)
+    tr-cov-hom-is-co-strict (mk-hom h refl refl) = tr-cov-is-co-strict h
+
+  tr-covˢ : (h : Δ¹ → A) → P (h i0) →ˢ P (h i1)
+  tr-covˢ h = (tr-cov {P = P} P-is-covariant h , tr-cov-is-co-strict h)
+
+  tr-cov-homˢ : {x y : A} → Hom A x y → P x →ˢ P y
+  tr-cov-homˢ h = (tr-cov-hom {P = P} P-is-covariant h , tr-cov-hom-is-co-strict h)
+}
+}
+
 \subtree[stt-00O5]{
 \title{Left families}
 \taxon{Definition}
@@ -223,6 +268,33 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
 
   is-left-family←is-covariant : is-covariant B → is-left-family B
   is-left-family←is-covariant = is-left-family↔is-covariant .snd
+}
+}
+
+\subtree[stt-016I]{
+\title{Evaluation at the source in a covariant family}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-24}
+
+\p{
+Given a [covariant family](stt-00AY) #{P \colon A \to \UV} and an arrow
+#{h \colon \Delta^1 \to A}, evaluation at #{0} gives an equivalence between
+sections of #{P \circ h} and the fibre #{P(h(0))}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (P-is-covariant : is-covariant P) (h : Δ¹ → A)
+  where
+
+  ev-i0-is-equiv←is-covariant : is-equiv (evᵈ: (P ∘ h) i0)
+  ev-i0-is-equiv←is-covariant
+    = is-equiv-∘ unit-ev-is-equiv (is-left-family←is-covariant P P-is-covariant h)
+
+  ev-i0≃←is-covariant : Π Δ¹ (P ∘ h) ≃ P (h i0)
+  ev-i0≃←is-covariant = mk≃ (ev i0) ev-i0-is-equiv←is-covariant
 }
 }
 
@@ -303,6 +375,7 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \subtree[stt-00TN]{
 \title{Left fibrations are maps which induce equivalences on coslices}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{#{p \colon E \to B} is a left fibration iff for each #{e : E}, the induced map
 #{E_{e/} \to B_{p(e)/}} is an equivalence.}
@@ -310,37 +383,28 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \agda{
 module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 
-  arrow-fibre-left-fibration-is-coslice-map
-    : ∀ (e : E)
-      → Arrow-equiv
-          (postcompose-coslice (point e) p)
-          (arrow-fibre (transpose-square (power-hom (point i0) p)) (point e))
-  arrow-fibre-left-fibration-is-coslice-map e
+  coslice-map-Ext-equiv
+    : (e : E)
+    → Arrow-equiv
+        (postcompose-coslice (point e) p)
+        (postcomp-Ext (point i0) p (point e))
+  coslice-map-Ext-equiv e
     = mk-arr-equiv
-        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (λ x → fibre-path→
-          ( refl
-          , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom0 (x .snd tt)))
-          ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom0 (x .snd tt))))
+        (Coslice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → point≃))
+        (Coslice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → point≃))
+        ~refl
 
   coslice-map-is-equiv←is-left-fibration
     : is-left-fibration p → (∀ e → is-equiv (postcompose-coslice (point e) p))
-  coslice-map-is-equiv←is-left-fibration lfib e
-    = src-is-equiv←Arrow-equiv
-        (arrow-fibre-left-fibration-is-coslice-map e)
-        (transpose-is-cartesian _ (is-cartesian←are-orthogonal lfib) (point e))
-
+  coslice-map-is-equiv←is-left-fibration fib e
+    = src-is-equiv←Arrow-equiv (coslice-map-Ext-equiv e)
+        (postcomp-Ext-is-equiv←orthogonal (point i0) p fib (point e))
 
   is-left-fibration←coslice-map-is-equiv
     : (∀ e → is-equiv (postcompose-coslice (point e) p)) → is-left-fibration p
   is-left-fibration←coslice-map-is-equiv eqv
-    = are-orthogonal←is-cartesian
-        (transpose-is-cartesian _
-          λ e
-          → tgt-is-equiv←Arrow-equiv
-              (arrow-fibre-left-fibration-is-coslice-map (e tt))
-              (eqv (e tt)))
+    = orthogonal←postcomp-Ext-is-equiv (point i0) p
+        (λ e → tgt-is-equiv←Arrow-equiv (coslice-map-Ext-equiv (e tt)) (eqv (e tt)))
 }
 }
 
@@ -659,6 +723,18 @@ const-is-covariant←is-Δ¹-discrete
 const-is-covariant←is-Δ¹-discrete B-disc
   = is-covariant←cov-unital-transport
       (λ _ → B-disc) ((λ _ → id) , (λ _ → ~refl))
+
+
+!-is-left-fibration←is-Δ¹-discrete
+  : ∀ {𝓤} {B : Type 𝓤}
+    → is-Δ¹-discrete B → is-left-fibration (!: B)
+!-is-left-fibration←is-Δ¹-discrete {B = B} Bdisc
+  = are-orthogonal←are-orthogonal-fibre
+      (is-left-family←is-covariant (fibre !)
+        (is-covariant←cov-unital-transport {B = fibre ! }
+          (λ _ → is-Δ¹-discrete←equiv (Σ-singleton (λ _ → is-single!) e⁻¹) Bdisc)
+          ((λ _ → id) , (λ _ → ~refl))))
+
 }
 }
 
@@ -798,11 +874,11 @@ tr-cov-ap-hom
   : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
       (F : Y → Type 𝓦) (Fc : is-covariant F)
       (Ffc : is-covariant (F ∘ f))
-      (h : covariant-base-change {P = F} f Fc ＝ Ffc)
-      {a b : X}
+    → (covariant-base-change {P = F} f Fc ＝ Ffc)
+    → {a b : X}
       (h : Hom X a b)
       (g : Hom Y (f a) (f b))
-      (p : g ＝ ap-hom f h)
+    → (g ＝ ap-hom f h)
     → tr-cov-hom {P = F} Fc g
     ~ tr-cov-hom {P = F ∘ f} Ffc h
 tr-cov-ap-hom f F Fc Ffc refl h _ refl x = tr-cov-hom-unique F Fc (ap-hom f h) x

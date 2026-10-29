@@ -8,7 +8,7 @@ WATCH_DIR ?= src
 UPSTREAM ?= upstream
 PORT ?= 1313
 DUP_DIR ?= ./trees/
-AGDA_FLAGS ?= --without-K --auto-inline --rewriting --guardedness --flat-split --level-universe --postfix-projections --local-confluence-check --no-qualified-instances -WnoWithoutKFlagPrimEraseEquality
+AGDA_FLAGS ?=
 EVERYTHING_INPUTS := $(shell find src -type f \( -name '*.agda' -o -name '*.lagda.tree' \) ! -name 'Everything.agda' | sort)
 
 .PHONY: help generate-everything prepare-agda-datadir sync-forest-src typecheck benchmark-typecheck build-forest watch-agda check-port watch-forest server serve python-server check-duplicate-tree-ids list-trees assign-tree-ids-dry confirm-assign-tree-ids assign-tree-ids-no-commit assign-tree-ids clean-agda clean-forester clean
@@ -39,7 +39,7 @@ help:
 	@echo "    # List all of the trees in the forest"
 	@echo "  make assign-tree-ids-no-commit [PREFIX=<prefix>] [UPSTREAM=<upstream>]"
 	@echo "    # Assign tree ids to non-canonically-ID'd trees (PREFIX=... required) (UPSTREAM, default: upstream)"
-	@echo "  make assign-tree-ids           [PREFIX=<prefixr>] [UPSTREAM=<upstream>]"
+	@echo "  make assign-tree-ids           [PREFIX=<prefix>] [UPSTREAM=<upstream>]"
 	@echo "    # Run assign-tree-ids-no-commit and then commit the results"
 	@echo "  make clean-agda"
 	@echo "    # Remove generated agda artefacts"
@@ -84,6 +84,7 @@ benchmark-typecheck: $(EVERYTHING_FILE)
 	@Agda_datadir="./$(AGDA_DATADIR)" agda $(AGDA_FLAGS) --profile=modules -i src "$(EVERYTHING_FILE)" +RTS -s -RTS
 
 sync-forest-src:
+	@rm -rf "$(AUTOGEN_DIR)"
 	@mkdir -p "$(AUTOGEN_DIR)"
 	@find ./src -name '*.lagda.tree' | while read -r file; do \
 		rel=$${file#./src/}; \

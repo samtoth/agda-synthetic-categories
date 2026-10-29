@@ -31,6 +31,7 @@ open import Core.PushoutSums
 open import Ergonomics.Notations.Orthogonality
 open Core.Orthogonal.notation
 
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
@@ -117,6 +118,54 @@ opaque
 }
 }
 
+\subtree[stt-0164]{
+\title{Contravariant transport is co-strict}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-02}
+
+\p{
+[Contravariant transport](stt-00OF) is [co-strict](stt-015V): if #{0 = 1}, it
+coincides with ordinary reverse transport, which is an equivalence.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (P-is-contravariant : is-contravariant P)
+  where
+
+  opaque
+    tr-contrav-is-co-strict
+      : (h : Δ¹ → A) → is-co-strict-map (tr-contrav {P = P} P-is-contravariant h)
+    tr-contrav-is-co-strict h
+      = is-co-strict-map←is-equiv-under-0＝1 (λ p
+        → is-equiv←~⁻¹
+            ( λ y
+              → let lift = tr-contrav-filler {P = P} P-is-contravariant h y
+                in ap (tr (P ∘ h) (sym p)) (sym (lift .Homᵈ.hom1))
+                 ∙ apᶠ (lift .Homᵈ.hom) (sym p)
+                 ∙ lift .Homᵈ.hom0)
+            ( tr-is-equiv (sym p)))
+
+  opaque
+    unfolding tr-contrav-hom
+
+    tr-contrav-hom-is-co-strict
+      : {x y : A} (h : Hom A x y)
+      → is-co-strict-map (tr-contrav-hom {P = P} P-is-contravariant h)
+    tr-contrav-hom-is-co-strict (mk-hom h refl refl) = tr-contrav-is-co-strict h
+
+  tr-contravˢ : (h : Δ¹ → A) → P (h i1) →ˢ P (h i0)
+  tr-contravˢ h
+    = (tr-contrav {P = P} P-is-contravariant h , tr-contrav-is-co-strict h)
+
+  tr-contrav-homˢ : {x y : A} → Hom A x y → P y →ˢ P x
+  tr-contrav-homˢ h
+    = (tr-contrav-hom {P = P} P-is-contravariant h , tr-contrav-hom-is-co-strict h)
+}
+}
+
 \subtree[stt-00OE]{
 \title{Right type families}
 \taxon{Definition}
@@ -185,6 +234,34 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
 
   is-right-family←is-contravariant : is-contravariant P → is-right-family P
   is-right-family←is-contravariant = is-right-family↔is-contravariant .snd
+}
+}
+
+\subtree[stt-016G]{
+\title{Evaluation at the target in a contravariant family}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-09-24}
+
+\p{
+Given a [covariant family](stt-00AY) #{P \colon A \to \UV} and an arrow
+#{h \colon \Delta^1 \to A}, evaluation at #{1} gives an equivalence between
+sections of #{P \circ h} and the fibre #{P(h(1))}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (P-is-contravariant : is-contravariant P) (h : Δ¹ → A)
+  where
+
+  ev-i1-is-equiv←is-contravariant : is-equiv (evᵈ: (P ∘ h) i1)
+  ev-i1-is-equiv←is-contravariant
+    = is-equiv-∘ unit-ev-is-equiv
+        (is-right-family←is-contravariant P P-is-contravariant h)
+
+  ev-i1≃←is-contravariant : Π Δ¹ (P ∘ h) ≃ P (h i1)
+  ev-i1≃←is-contravariant = mk≃ (ev i1) ev-i1-is-equiv←is-contravariant
 }
 }
 
@@ -258,6 +335,7 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \subtree[stt-00TU]{
 \title{Right fibrations are maps which induce equivalences on slices}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{#{p \colon E \to B} is a right fibration iff for each #{e : E}, the induced map
 #{E_{/e} \to B_{/p(e)}} is an equivalence.}
@@ -265,35 +343,28 @@ module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 \agda{
 module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
 
-  arrow-fibre-right-fibration-is-slice-map
-    : ∀ (e : E)
-      → Arrow-equiv
-          (postcompose-slice (point e) p)
-          (arrow-fibre (transpose-square (power-hom (point i1) p)) (point e))
-  arrow-fibre-right-fibration-is-slice-map e
+  slice-map-Ext-equiv
+    : (e : E)
+    → Arrow-equiv
+        (postcompose-slice (point e) p)
+        (postcomp-Ext (point i1) p (point e))
+  slice-map-Ext-equiv e
     = mk-arr-equiv
-        (Slice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (Slice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → ＝-equiv point≃))
-        (λ x → fibre-path→
-          ( refl
-          , sym (ap-∘ (p ∘_) (λ a _ → a) (Homᵈ.hom1 (x .snd tt)))
-          ∙ ap-∘ (λ a _ → a) p (Homᵈ.hom1 (x .snd tt))))
+        (Slice-object-repr≃ e ∙e Σ-snd-≃ (λ _ → point≃))
+        (Slice-object-repr≃ (p e) ∙e Σ-snd-≃ (λ _ → point≃))
+        ~refl
 
   slice-map-is-equiv←is-right-fibration
     : is-right-fibration p → (∀ e → is-equiv (postcompose-slice (point e) p))
-  slice-map-is-equiv←is-right-fibration lfib e
-    = src-is-equiv←Arrow-equiv
-        (arrow-fibre-right-fibration-is-slice-map e)
-        (transpose-is-cartesian _ (is-cartesian←are-orthogonal lfib) (point e))
+  slice-map-is-equiv←is-right-fibration fib e
+    = src-is-equiv←Arrow-equiv (slice-map-Ext-equiv e)
+        (postcomp-Ext-is-equiv←orthogonal (point i1) p fib (point e))
+
   is-right-fibration←slice-map-is-equiv
     : (∀ e → is-equiv (postcompose-slice (point e) p)) → is-right-fibration p
   is-right-fibration←slice-map-is-equiv eqv
-    = are-orthogonal←is-cartesian
-        (transpose-is-cartesian _
-          λ e
-          → tgt-is-equiv←Arrow-equiv
-              (arrow-fibre-right-fibration-is-slice-map (e tt))
-              (eqv (e tt)))
+    = orthogonal←postcomp-Ext-is-equiv (point i1) p
+        (λ e → tgt-is-equiv←Arrow-equiv (slice-map-Ext-equiv (e tt)) (eqv (e tt)))
 }
 }
 

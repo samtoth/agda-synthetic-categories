@@ -1,0 +1,230 @@
+\title{Dependent lifting squares}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-10-28}
+\import{stt-macros}
+
+\agda{
+module Core.DependentLiftingSquares where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Core.Arrows
+open import Core.ArrowDependentMorphisms
+open import Foundations.Prelude
+open import Ergonomics.Representation
+open import Ergonomics.Extensionality
+}
+}
+
+\subtree[bak-C978]{
+\title{Dependent lifts of squares}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+
+\p{
+Given a dependent morphism of arrows, i.e., a dependent square
+
+\quiver{
+\begin{tikzcd}
+A && X(b) \\
+\\
+(b : B) && Y(b)
+\arrow["f"', from=1-1, to=3-1]
+\arrow["f'", from=1-3, to=3-3]
+\arrow[from=1-1, to=1-3]
+\arrow[from=3-1, to=3-3]
+\arrow[from=1-1, to=3-3, phantom, "H"]
+\end{tikzcd}
+}
+then a \em{lift} is a section from the bottom left to the top right,
+#{\ell \colon \Pi1{b : B}{X(b)}}, such that both evident triangles commute \em{and}
+such that the pasting of the triangles agrees with the full square. In other words,
+it is a completion of the diagram
+
+\quiver{
+\begin{tikzcd}
+A && X(b) \\
+\\
+(b : B) && Y(b)
+\arrow["f"', from=1-1, to=3-1]
+\arrow["f'", from=1-3, to=3-3]
+\arrow[from=1-1, to=1-3]
+\arrow[from=3-1, to=3-3]
+\arrow[from=3-1, to=1-3, dashed, "\ell" description]
+\arrow[from=1-1, to=3-3, phantom, "L" very near start, "K" very near end]
+\end{tikzcd}
+}
+which coheres with the original homotopy of the square.
+}
+
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {g : (b : B) → X b → Y b}
+  (G : Arrow-Π f g)
+  (let top = G .Arrow-Π.top)
+  (let bot = G .Arrow-Π.bot)
+  (let H = G .Arrow-Π.comm)
+  where
+
+  record SqLiftᵈ : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜) where
+    constructor mk-square-lift
+    field
+      lift : Π B X
+      L : lift ∘ f ~ top
+      K : postcomp-Π g lift ~ bot
+      pastes : (λ {a} → g (f a)) ◃h L ~ K ▹h f ∙h H
+
+  unquoteDecl SqLiftᵈ-repr≊ SqLiftᵈ-repr≃
+    = make-record-repr SqLiftᵈ-repr≊ SqLiftᵈ-repr≃ (quote SqLiftᵈ)
+}
+}
+
+\subtree[bak-A2B6]{
+\title{Unique dependent lifts of squares}
+\taxon{Definition}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-10-28}
+
+\p{A dependent square has a \em{unique lift} if its type of lifts is a singleton.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {g : (b : B) → X b → Y b}
+  where
+
+  has-unique-sqliftᵈ : Arrow-Π f g → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  has-unique-sqliftᵈ G = is-singleton (SqLiftᵈ G)
+}
+}
+
+\subtree[bak-77B8]{
+\title{The dependent lifting square induced by a section}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {g : (b : B) → X b → Y b}
+  where
+
+  diagonal-squareᵈ : Π B X → Arrow-Π f g
+  diagonal-squareᵈ d = mk-amap (d ∘ f) (postcomp-Π g d) ~refl
+
+  diagonal-sqliftᵈ : (d : Π B X) → SqLiftᵈ (diagonal-squareᵈ d)
+  diagonal-sqliftᵈ d = mk-square-lift d ~refl ~refl ~refl
+
+  diagonal-squareᵈ-htpy
+    : {d e : Π B X} → d ~ e
+    → Arrow-Π-path (diagonal-squareᵈ d) (diagonal-squareᵈ e)
+  diagonal-squareᵈ-htpy H
+    = ( H ▹h f
+      , (λ {b} → g b) ◃h H
+      , (∙h-reflr ((λ {a} → g (f a)) ◃h (H ▹h f)) h⁻¹))
+}
+}
+
+\subtree[bak-7B00]{
+\title{Homotopies of dependent lifts of squares}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {g : (b : B) → X b → Y b}
+  {G : Arrow-Π f g}
+  where
+
+  SqLiftᵈ-htpy-boundary
+    : (s : SqLiftᵈ G)
+    → Arrow-Π-path (diagonal-squareᵈ (SqLiftᵈ.lift s)) G
+  SqLiftᵈ-htpy-boundary s = (SqLiftᵈ.L s , SqLiftᵈ.K s , SqLiftᵈ.pastes s)
+
+  coherence-SqLiftᵈ-htpy
+    : (s t : SqLiftᵈ G)
+    → SqLiftᵈ.lift s ~ SqLiftᵈ.lift t
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  coherence-SqLiftᵈ-htpy s t H
+    = Arrow-Π-path² {f = f} {g = g}
+        (SqLiftᵈ-htpy-boundary s)
+        ( concat-Arrow-Π-path {f = f} {g = g}
+            (diagonal-squareᵈ-htpy {f = f} {g = g} H) (SqLiftᵈ-htpy-boundary t))
+
+  SqLiftᵈ-htpy : (s t : SqLiftᵈ G) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  SqLiftᵈ-htpy s t
+    = Σ[ H ∶ SqLiftᵈ.lift s ~ SqLiftᵈ.lift t ] coherence-SqLiftᵈ-htpy s t H
+}
+}
+
+\subtree[bak-B273]{
+\title{Characterising equality of dependent lifts of a square}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{Homotopies of dependent lifts characterise their equality.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  {g : (b : B) → X b → Y b}
+  {G : Arrow-Π f g}
+  where
+
+  SqLiftᵈ-htpy-refl : {s : SqLiftᵈ G} → SqLiftᵈ-htpy s s
+  SqLiftᵈ-htpy-refl {s}
+    = ( ~refl
+      , Arrow-Π-path²←id {f = f} {g = g}
+          ( sym
+              (concat-Arrow-Π-path-left-unit {f = f} {g = g}
+                (SqLiftᵈ-htpy-boundary s))))
+
+  SqLiftᵈ-htpy←id : {s t : SqLiftᵈ G} → s ＝ t → SqLiftᵈ-htpy s t
+  SqLiftᵈ-htpy←id refl = SqLiftᵈ-htpy-refl
+
+  opaque
+    SqLiftᵈ-htpy-is-torsorial : (s : SqLiftᵈ G) → is-torsorial (SqLiftᵈ-htpy s)
+    SqLiftᵈ-htpy-is-torsorial s
+      = is-single←equiv
+          (Σ-fst-≃ (SqLiftᵈ-repr≃ G e⁻¹))
+          (is-singleton-structure←parts
+            (SingS-is-single (SqLiftᵈ.lift s)) (SqLiftᵈ.lift s , ~refl)
+            (is-single←equiv⁻¹
+              (Σ-snd-≃ (λ p
+                → tr≃
+                    (Arrow-Π-path² {f = f} {g = g} (SqLiftᵈ-htpy-boundary s))
+                    (concat-Arrow-Π-path-left-unit {f = f} {g = g} p)))
+              ( Arrow-Π-path²-is-torsorial {f = f} {g = g}
+                  (SqLiftᵈ-htpy-boundary s))))
+
+    SqLiftᵈ-htpy←id-is-equiv
+      : (s t : SqLiftᵈ G) → is-equiv (SqLiftᵈ-htpy←id {s} {t})
+    SqLiftᵈ-htpy←id-is-equiv s
+      = fundamental-Id (SqLiftᵈ-htpy s) (SqLiftᵈ-htpy-is-torsorial s)
+          (λ _ → SqLiftᵈ-htpy←id)
+
+    SqLiftᵈ-htpy≃ : (s t : SqLiftᵈ G) → (s ＝ t) ≃ SqLiftᵈ-htpy s t
+    SqLiftᵈ-htpy≃ s t = mk≃ SqLiftᵈ-htpy←id (SqLiftᵈ-htpy←id-is-equiv s t)
+
+    SqLiftᵈ-htpy→ : {s t : SqLiftᵈ G} → SqLiftᵈ-htpy s t → s ＝ t
+    SqLiftᵈ-htpy→ = _≃_.bwd (SqLiftᵈ-htpy≃ _ _)
+}
+}

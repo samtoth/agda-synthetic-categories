@@ -16,9 +16,12 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Arrows
+open import Core.ArrowDependentMorphisms
+open import Core.ArrowMorphisms
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
 open import Core.LiftingSquares
+open import Core.DependentOrthogonal
 open import Core.PullbackPowers
 open import Core.FunctorialityPullbacks
 open import Core.CanonicalPushouts
@@ -31,6 +34,7 @@ open import Ergonomics.Notations.Orthogonality
 \subtree[stt-0048]{
 \title{Orthogonal maps}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{Given maps #{f \colon A \to B} and #{g \colon C \to D}, we say #{f} is \em{left
 orthogonal} to #{g} when the [pullback power](stt-004D) #{\pullpow{f}{g}} is an
@@ -41,13 +45,14 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
        {B : Type 𝓥} {C : Type 𝓦}
        {D : Type 𝓛} where
   are-orthogonal : ∀ (f : A → B) (g : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  are-orthogonal f g = is-equiv (pullback-power f g)
+  are-orthogonal f g = are-dependently-orthogonal f (λ _ → g)
 }
 }
 
 \subtree[stt-00NZ]{
 \title{Orthogonal maps admit unique lifting solutions}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{#{f} and #{g} are orthogonal iff any [square](stt-003U) from #{f} to #{g}
 has a unique [lift](stt-0044).}
@@ -61,31 +66,28 @@ module _ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤}
        {B : Type 𝓥} {C : Type 𝓦}
        {D : Type 𝓛} where
   admit-unique-lifts : ∀ (f : A → B) (g : C → D) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓛)
-  admit-unique-lifts f g = ∀ (F : Arrow-map f g) → has-unique-lift F
+  admit-unique-lifts f g = admit-unique-dependent-lifts f (λ _ → g)
 
   are-orthogonal←unique-lifts
      : ∀ {f : A → B} {g : C → D}
        → admit-unique-lifts f g
        → are-orthogonal f g
-  are-orthogonal←unique-lifts {f} {g} lifts
-    = is-equiv←has-singleton-fibres λ G@(mk-amap t b H)
-      → is-single←equiv⁻¹ (pb-power-fibre≃lifts f g G) (lifts G)
+  are-orthogonal←unique-lifts {f} {g}
+    = are-dependently-orthogonal←unique-lifts {f = f} {g = λ _ → g}
 
   unique-lifts←are-orthogonal
     : ∀ {f : A → B} {g : C → D}
       → are-orthogonal f g
       → admit-unique-lifts f g
-  unique-lifts←are-orthogonal {f} {g} orth problem
-    = is-single←equiv
-        (pb-power-fibre≃lifts f g problem)
-        (has-singleton-fibres←is-equiv orth problem)
+  unique-lifts←are-orthogonal {f} {g}
+    = unique-lifts←are-dependently-orthogonal {f = f} {g = λ _ → g}
 
   unique-lifts↔are-orthogonal
     : ∀ {f : A → B} {g : C → D}
       → admit-unique-lifts f g
       ↔ are-orthogonal f g
-  unique-lifts↔are-orthogonal
-    = (are-orthogonal←unique-lifts , unique-lifts←are-orthogonal)
+  unique-lifts↔are-orthogonal {f} {g}
+    = unique-lifts↔are-dependently-orthogonal {f = f} {g = λ _ → g}
 }
 }
 
@@ -103,7 +105,7 @@ module _
 
   is-equiv←self-orthogonal : is-equiv f
   is-equiv←self-orthogonal
-    = is-equiv←self-lift
+    = is-equiv←self-sqlift
         ( unique-lifts←are-orthogonal f⊥f id-square .centre)
 }
 }
@@ -227,7 +229,7 @@ module _
     → has-unique-extensions f P
   unique-extensions←are-orthogonal-fam orth F
     = is-single←equiv
-        (fibre-precomp-Π≃Ext (P ∘ F .ArrFam-map.bot) f (F .ArrFam-map.top))
+        (fibre-precomp-Π≃Extᵈ (P ∘ F .ArrFam-map.bot) f (F .ArrFam-map.top))
         (has-singleton-fibres←is-equiv
           (orth (F .ArrFam-map.bot))
           (F .ArrFam-map.top))
@@ -237,7 +239,7 @@ module _
     → are-orthogonal-fam f P
   are-orthogonal-fam←unique-extensions ext g
     = is-equiv←has-singleton-fibres λ h
-      → is-single←equiv⁻¹ (fibre-precomp-Π≃Ext _ f _) (ext (mk-afmap g h))
+      → is-single←equiv⁻¹ (fibre-precomp-Π≃Extᵈ _ f _) (ext (mk-afmap g h))
 
   are-orthogonal-fam↔has-unique-extensions
     : are-orthogonal-fam f P ↔ has-unique-extensions f P
@@ -251,6 +253,7 @@ module _
 \subtree[stt-00O2]{
 \title{(Un)straightening orthogonality at type families}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{For maps #{f} and #{g}, we have #{f \perp g} iff #{f \perp \fibre-fam{g}}.}
 
@@ -261,48 +264,42 @@ module _
   {f : A → B} {g : C → D}
   where
 
-  power-hom-arr-fibre
-    : ∀ h
-      → Arrow-equiv
-          (arrow-fibre (power-hom f g) h)
-          (precomp-Π (fibre g ∘ h) f)
-  power-hom-arr-fibre h
-    = mk-arr-equiv
-        (fibre-postcomp≃ g h)
-        (fibre-postcomp≃ g (h ∘ f))
-        (λ where (_ , refl) → refl)
+  power-hom-arrow-fibre
+    : (h : B → D)
+    → Arrow-equiv
+        (arrow-fibre (power-hom f g) h)
+        (precomp-Π (fibre g ∘ h) f)
+  power-hom-arrow-fibre
+    = power-homᵈ-fibre-Arrow-equiv f (λ _ → g)
 
   are-orthogonal-fibre←is-cartesian
     : is-cartesian (power-hom f g)
     → are-orthogonal-fam f (fibre g)
-  are-orthogonal-fibre←is-cartesian pb h
-    = tgt-is-equiv←Arrow-equiv (power-hom-arr-fibre h) (pb h)
+  are-orthogonal-fibre←is-cartesian
+    = fibre-sections-is-equiv←power-homᵈ-is-cartesian f (λ _ → g)
 
   is-cartesian←are-orthogonal-fibre
     : are-orthogonal-fam f (fibre g)
     → is-cartesian (power-hom f g)
-  is-cartesian←are-orthogonal-fibre eq h
-    = src-is-equiv←Arrow-equiv (power-hom-arr-fibre h) (eq h)
+  is-cartesian←are-orthogonal-fibre
+    = power-homᵈ-is-cartesian←fibre-sections-is-equiv f (λ _ → g)
 
   are-orthogonal-fibre←are-orthogonal
       : are-orthogonal f g
       → are-orthogonal-fam f (fibre g)
-  are-orthogonal-fibre←are-orthogonal orth h
-    = are-orthogonal-fibre←is-cartesian
-        (power-hom-cartesian←pullback-power f g orth)
-        h
+  are-orthogonal-fibre←are-orthogonal
+    = fibre-sections-is-equiv←are-dependently-orthogonal f (λ _ → g)
 
   are-orthogonal←are-orthogonal-fibre
     : are-orthogonal-fam f (fibre g)
     → are-orthogonal f g
-  are-orthogonal←are-orthogonal-fibre orth
-    = pullback-power←power-hom-cartesian f g
-        (is-cartesian←are-orthogonal-fibre orth)
+  are-orthogonal←are-orthogonal-fibre
+    = are-dependently-orthogonal←fibre-sections-is-equiv f (λ _ → g)
 
   are-orthogonal↔are-orthogonal-fibre
     : are-orthogonal f g ↔ are-orthogonal-fam f (fibre g)
   are-orthogonal↔are-orthogonal-fibre
-    = (are-orthogonal-fibre←are-orthogonal , are-orthogonal←are-orthogonal-fibre)
+    = are-dependently-orthogonal↔fibre-sections-is-equiv f (λ _ → g)
 }
 
 \p{Similarly we have #{f \perp P} iff #{f \perp \pi_P}.}
@@ -340,6 +337,7 @@ module _
 \subtree[stt-004A]{
 \title{Classification of orthogonal maps}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \p{We summarise the main results of this module.
 For maps #{f \colon A \to B} and #{g \colon C \to D}, we have that the following
@@ -350,10 +348,13 @@ are equivalent:}
   \li{The square defined in \ref{stt-004C} is a pullback square}
   \li{There are unique [lifts](stt-0044) for any square from #{f} to #{g}}
   \li{#{f \perp \fibre-fam{g}} – i.e the [dependent postcomposition](stt-004M)
-        by #{f} at the fibre of #{g} is an equivalence.}
-  \li{For every #{i \colon A \to C}, the [induced postcomposition map on extension
-      types](stt-0152): #{g^* \colon \Ext{f}{i} \to \Ext{i}{g \circ i}} [is an
-      equivalence](stt-0153).}
+      by #{f} at the fibre of #{g} is an equivalence.}
+  \li{For every #{i \colon A \to C}, [postcomposition on extensions](stt-0152)
+      #{g \circ (-) \colon \Ext{f}{i} \to \Ext{f}{g \circ i}}
+      [is an equivalence](stt-0153).}
+  \li{For every #{h \colon B \to D}, [precomposition on lifts](bak-46E2)
+      #{(-) \circ f \colon \Lift{g}{h} \to \Lift{g\circ f}{h \circ f}}
+      [is an equivalence](bak-9D07).}
 }
 
 \proof{
@@ -372,44 +373,37 @@ And finally, \ref{stt-0153} proves (1) iff (5).
 \subtree{
 \title{Details}
 \agda{
-unique-lifts←are-orthogonal-fam
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → are-orthogonal-fam f (fibre g)
+module _
+  {𝓤 𝓥 𝓦 𝓛}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓛} {g : C → D}
+  where
+
+  unique-lifts←are-orthogonal-fam
+    : are-orthogonal-fam f (fibre g)
     → admit-unique-lifts f g
-unique-lifts←are-orthogonal-fam {f = f} {g} eqv F
-  = is-single←equiv
-      (pb-power-fibre≃lifts _ _ F)
-      (has-singleton-fibres←is-equiv
-        (pullback-power←power-hom-cartesian _ _
-          (is-cartesian←are-orthogonal-fibre eqv))
-          F)
+  unique-lifts←are-orthogonal-fam
+    = unique-lifts←are-orthogonal
+    ∘ are-orthogonal←are-orthogonal-fibre
 
-unique-lifts←is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → is-cartesian (power-hom f g)
+  unique-lifts←is-cartesian
+    : is-cartesian (power-hom f g)
     → admit-unique-lifts f g
-unique-lifts←is-cartesian cart
-  = unique-lifts←are-orthogonal-fam (are-orthogonal-fibre←is-cartesian cart)
+  unique-lifts←is-cartesian
+    = unique-lifts←are-orthogonal-fam
+    ∘ are-orthogonal-fibre←is-cartesian
 
-is-cartesian←are-orthogonal
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → are-orthogonal f g
+  is-cartesian←are-orthogonal
+    : are-orthogonal f g
     → is-cartesian (power-hom f g)
-is-cartesian←are-orthogonal = power-hom-cartesian←pullback-power _ _
+  is-cartesian←are-orthogonal
+    = power-homᵈ-is-cartesian←are-dependently-orthogonal f (λ _ → g)
 
-are-orthogonal←is-cartesian
-  : ∀ {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
-      {C : Type 𝓦} {D : Type 𝓛}
-      {f : A → B} {g : C → D}
-    → is-cartesian (power-hom f g)
+  are-orthogonal←is-cartesian
+    : is-cartesian (power-hom f g)
     → are-orthogonal f g
-are-orthogonal←is-cartesian = pullback-power←power-hom-cartesian _ _
+  are-orthogonal←is-cartesian
+    = are-dependently-orthogonal←power-homᵈ-is-cartesian f (λ _ → g)
 }
 }
 }
@@ -434,33 +428,65 @@ module _
   {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
   where
 
-  postcomp-Ext-Arrow-equiv
-    : (a : A → X)
-    → Arrow-equiv
-        (arrow-fibre (transpose-square (power-hom i f)) a)
-        (postcomp-Ext i f a)
-  postcomp-Ext-Arrow-equiv a
-    = mk-arr-equiv
-        (Σ-snd-≃ (λ _ → funext≃))
-        (Σ-snd-≃ (λ _ → funext≃))
-        (λ where (h , refl) → refl)
-
   postcomp-Ext-is-equiv←orthogonal
     : are-orthogonal i f → ((a : A → X) → is-equiv (postcomp-Ext i f a))
-  postcomp-Ext-is-equiv←orthogonal orth a
-    = tgt-is-equiv←Arrow-equiv
-        (postcomp-Ext-Arrow-equiv a)
-        (transpose-is-cartesian _ (is-cartesian←are-orthogonal orth) a)
+  postcomp-Ext-is-equiv←orthogonal
+    = postcomp-Extᵈ-is-equiv←dependent-orthogonal i (λ _ → f)
 
   orthogonal←postcomp-Ext-is-equiv
     : ((a : A → X) → is-equiv (postcomp-Ext i f a)) → are-orthogonal i f
-  orthogonal←postcomp-Ext-is-equiv unique-ext
-    = are-orthogonal←is-cartesian
-        (transpose-is-cartesian _ (λ a
-          → src-is-equiv←Arrow-equiv (postcomp-Ext-Arrow-equiv a) (unique-ext a)))
+  orthogonal←postcomp-Ext-is-equiv
+    = dependent-orthogonal←postcomp-Extᵈ-is-equiv i (λ _ → f)
+
+  orthogonal↔postcomp-Ext-is-equiv
+    : are-orthogonal i f ↔ ((a : A → X) → is-equiv (postcomp-Ext i f a))
+  orthogonal↔postcomp-Ext-is-equiv
+    = dependent-orthogonal↔postcomp-Extᵈ-is-equiv i (λ _ → f)
+
+  postcomp-Ext-≃
+    : are-orthogonal i f → (a : A → X) → Ext i a ≃ Ext i (f ∘ a)
+  postcomp-Ext-≃ = postcomp-Extᵈ-≃ i (λ _ → f)
 }
 }
 
+\subtree[bak-9D07]{
+\title{Orthogonality as equivalence of lift types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Maps #{f \colon A \to B} and #{g \colon X \to Y} are orthogonal if and only if
+precomposition by #{f} induces an equivalence on [lifts](bak-102F) along #{g},
+for every map #{h \colon B \to Y}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  where
+
+  precomp-Lift-is-equiv←orthogonal
+    : are-orthogonal f g → (h : B → Y) → is-equiv (precomp-Lift f g h)
+  precomp-Lift-is-equiv←orthogonal
+    = precomp-Liftᵈ-is-equiv←dependent-orthogonal f (λ _ → g)
+
+  orthogonal←precomp-Lift-is-equiv
+    : ((h : B → Y) → is-equiv (precomp-Lift f g h)) → are-orthogonal f g
+  orthogonal←precomp-Lift-is-equiv
+    = dependent-orthogonal←precomp-Liftᵈ-is-equiv f (λ _ → g)
+
+  orthogonal↔precomp-Lift-is-equiv
+    : are-orthogonal f g ↔ ((h : B → Y) → is-equiv (precomp-Lift f g h))
+  orthogonal↔precomp-Lift-is-equiv
+    = dependent-orthogonal↔precomp-Liftᵈ-is-equiv f (λ _ → g)
+
+  precomp-Lift-≃
+    : are-orthogonal f g → (h : B → Y) → Lift g h ≃ Lift g (h ∘ f)
+  precomp-Lift-≃ = precomp-Liftᵈ-≃ f (λ _ → g)
+}
+}
 
 \subtree[stt-004N]{
 \date{2025-05-24}
@@ -484,7 +510,8 @@ by f is an equivalence.}
 
 \agda{
 orthogonal-type
-  : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥}
+  : ∀ {𝓤 𝓥 𝓦}
+      {X : Type 𝓤} {Y : Type 𝓥}
       (f : X → Y) (A : Type 𝓦)
     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
 orthogonal-type f A = is-equiv (precomp A f)
@@ -570,19 +597,16 @@ module _ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} {f : X → Y} {A : Typ
     fst≃ = mk≃ fst (is-equiv←qinv (fst⁻¹ , (λ where (a , refl) → refl) , ~refl))
 
   orthogonal-type←orthogonal-! : (f ⊥ !: A) → (f ⊥ A)
-  orthogonal-type←orthogonal-! orth
-    = tgt-is-equiv←Arrow-equiv
-        precomp-fibre-!-Arrow-equiv
-        (are-orthogonal-fibre←are-orthogonal orth !)
+  orthogonal-type←orthogonal-!
+    = dependent-orthogonal-terminal↔precomp-Π f (λ _ → A) .fst
 
   orthogonal-!←orthogonal-type : (f ⊥ A) → (f ⊥ !: A)
-  orthogonal-!←orthogonal-type orth
-    = are-orthogonal←are-orthogonal-fibre λ _ →
-        src-is-equiv←Arrow-equiv precomp-fibre-!-Arrow-equiv orth
+  orthogonal-!←orthogonal-type
+    = dependent-orthogonal-terminal↔precomp-Π f (λ _ → A) .snd
 
   is-orthogonal↔orthogonal-! : (f ⊥ !: A) ↔ (f ⊥ A)
   is-orthogonal↔orthogonal-!
-    = (orthogonal-type←orthogonal-! , orthogonal-!←orthogonal-type)
+    = dependent-orthogonal-terminal↔precomp-Π f (λ _ → A)
 }
 }
 
@@ -599,7 +623,7 @@ is-anodyne
     → (A → B) → (X → Y) → Typeω
 is-anodyne f k
   = ∀ {𝓤' 𝓥'} {U : Type 𝓤'} {V : Type 𝓥'} (g : U → V)
-   → k ⊥ g → f ⊥ g
+    → k ⊥ g → f ⊥ g
 }
 }
 
@@ -778,5 +802,65 @@ right-orthogonal-⨄₁ᶠ .fst orth
   = (λ i → orth (inl i)) , (λ j → orth (inr j))
 right-orthogonal-⨄₁ᶠ .snd (forth , gorth) (inl i) = forth i
 right-orthogonal-⨄₁ᶠ .snd (forth , gorth) (inr j) = gorth j
+}
+}
+
+
+\subtree[bak-A003]{
+\title{Orthogonality of total maps as dependent orthogonality against all reindexings}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+A map #{f \colon A \to B} is orthogonal to the total map of a family
+#{g \colon \Pi1{c : C}{X(c) \to Y(c)}} if and only if it is dependently orthogonal
+to the reindexing of #{g} along every map #{h \colon B \to C}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓒 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {C : Type 𝓒} {X : C → Type 𝓦} {Y : C → Type 𝓜}
+  (g : (c : C) → X c → Y c)
+  where
+
+  are-dependently-orthogonal-reindex←are-orthogonal-total
+    : are-orthogonal f (total-map g)
+    → (h : B → C) → f ⊥ᵈ (g ∘ h)
+  are-dependently-orthogonal-reindex←are-orthogonal-total f⊥Σg h
+    = are-dependently-orthogonal←fibre-sections-is-equiv f (g ∘ h) (λ k
+      → are-orthogonal-fam←equiv
+          (λ (c , y) → fibre≃total-map {f = g} {a = c} {b = y})
+          (are-orthogonal-fibre←are-orthogonal f⊥Σg)
+          (λ b → (h b , k b)))
+
+  are-orthogonal-total←are-dependently-orthogonal-reindex
+    : ((h : B → C) → f ⊥ᵈ (g ∘ h))
+    → are-orthogonal f (total-map g)
+  are-orthogonal-total←are-dependently-orthogonal-reindex f⊥ᵈgh
+    = are-orthogonal←are-orthogonal-fibre
+        (are-orthogonal-fam←equiv
+          (λ (c , y) → fibre≃total-map {f = g} {a = c} {b = y} e⁻¹)
+          ( λ h
+            → fibre-sections-is-equiv←are-dependently-orthogonal
+                f (g ∘ fst ∘ h) (f⊥ᵈgh (fst ∘ h)) (snd ∘ h)))
+
+  are-orthogonal-total↔are-dependently-orthogonal-reindex
+    : are-orthogonal f (total-map g)
+    ↔ ((h : B → C) → f ⊥ᵈ (g ∘ h))
+  are-orthogonal-total↔are-dependently-orthogonal-reindex
+    = ( are-dependently-orthogonal-reindex←are-orthogonal-total
+      , are-orthogonal-total←are-dependently-orthogonal-reindex)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  are-dependently-orthogonal←are-orthogonal-total
+    : are-orthogonal f (total-map g) → f ⊥ᵈ g
+  are-dependently-orthogonal←are-orthogonal-total f⊥Σg
+    = are-dependently-orthogonal-reindex←are-orthogonal-total f g f⊥Σg id
 }
 }

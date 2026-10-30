@@ -28,71 +28,60 @@ open import Algebra.Lattice
 has a canonical lattice structure on it, given by logical and and or}
 
 \agda{
-Prop-ua : ∀ {𝓤} {P Q : Prop-U 𝓤} → (P .fst ↔ Q .fst) → P ＝ Q
-Prop-ua {_} {P} {Q} eq
-  = Σ-path→ (is-equiv.bwd
-              (propExt (is-prop←is-truncated (P .snd))
-                       (is-prop←is-truncated (Q .snd))) eq
-            , (Trunc.S .Subtype.family-is-subtype _ _ _))
-
-Prop-U-ext : ∀ {𝓤} {P Q : Prop-U 𝓤} → (P .fst ≃ Q .fst) → P ＝ Q
-Prop-U-ext e = Σ-path→ (ua e , (Trunc.S .Subtype.family-is-subtype _ _ _))
-
-Prop-Lattice : ∀ 𝓤 → Lattice (Prop-U 𝓤)
+Prop-Lattice : ∀ 𝓤 → Lattice (Prop 𝓤)
 Prop-Lattice 𝓤 = l where
-  l : Lattice (Prop-U 𝓤)
-  l .Lattice.0l = TULift -1 𝓤 (∅ , trunc!)
-  l .Lattice.1l = TULift -1 𝓤 (𝟙 , trunc!)
-  l .Lattice._∧_ (A , p) (B , q) = (A × B , Σ-is-truncated p λ _ → q)
+  l : Lattice (Prop 𝓤)
+  l .Lattice.0l = TruncLift -1 𝓤 (∅ , is-prop!)
+  l .Lattice.1l = TruncLift -1 𝓤 (𝟙 , is-prop!)
+  l .Lattice._∧_ (A , p) (B , q) = (A × B , ×-is-truncated -1 p q)
   l .Lattice._∨_ (A , p) (B , q)
-    = (A * B , is-truncated←is-prop (*-is-prop
-                (is-prop←is-truncated p)
-                (is-prop←is-truncated q)))
+    = (A * B , *-is-prop p q)
   l .Lattice.str-is-lattice .is-lattice.∧-assoc
-    = Prop-ua ((λ x → (x .fst , x .snd .fst) , x .snd .snd)
-              , λ x → x .fst .fst , x .fst .snd , x .snd)
-  -- todo formalise untruncated *-assoc
+    = Prop-ext→
+        ( (λ x → (x .fst , x .snd .fst) , x .snd .snd)
+        , (λ x → x .fst .fst , x .fst .snd , x .snd) )
   l .Lattice.str-is-lattice .is-lattice.∨-assoc {x} {y} {z}
-    = Prop-ua (*-prop-rec xyzprp
-                          (ι₁ ∘ ι₁)
-                          (*-prop-rec xyzprp (ι₁ ∘ ι₂) ι₂)
-              , *-prop-rec xyzprp'
-                          (*-prop-rec xyzprp' ι₁ (ι₂ ∘ ι₁))
-                          (ι₂ ∘ ι₂)) where
-      xprp = is-prop←is-truncated (x .snd)
-      yprp = is-prop←is-truncated (y .snd)
-      zprp = is-prop←is-truncated (z .snd)
-      xyzprp = *-is-prop (*-is-prop xprp yprp) zprp
-      xyzprp' = *-is-prop xprp (*-is-prop yprp zprp)
+    = Prop-ext→
+        (*-prop-rec xyz-is-prop
+            (ι₁ ∘ ι₁)
+            (*-prop-rec xyz-is-prop (ι₁ ∘ ι₂) ι₂)
+        , *-prop-rec xyz'-is-prop
+            (*-prop-rec xyz'-is-prop ι₁ (ι₂ ∘ ι₁))
+            (ι₂ ∘ ι₂))
+      where
+
+      xyz-is-prop = *-is-prop (*-is-prop (x .snd) (y .snd)) (z .snd)
+      xyz'-is-prop = *-is-prop (x .snd) (*-is-prop (y .snd) (z .snd))
 
   l .Lattice.str-is-lattice .is-lattice.∧-comm
-    = Prop-U-ext ×-swap
+    = Prop-ua→ ×-swap
   l .Lattice.str-is-lattice .is-lattice.∨-comm
-    = Prop-U-ext *-comm
+    = Prop-ua→ *-comm
   l .Lattice.str-is-lattice .is-lattice.∨-∧-abs {x}
-    = Prop-ua ((*-prop-rec (is-prop←is-truncated (x .snd)) id fst) , ι₁)
+    = Prop-ext→ (*-prop-rec (x .snd) id fst , ι₁)
   l .Lattice.str-is-lattice .is-lattice.∧-∨-abs {x}
-    = Prop-ua (fst , λ x → x , (ι₁ x))
+    = Prop-ext→ (fst , λ x → x , (ι₁ x))
   l .Lattice.str-is-lattice .is-lattice.0-bottom {x}
-    = Prop-ua (*-prop-rec (is-prop←is-truncated (x .snd)) id (¡ ∘ unlift)
-              , ι₁)
+    = Prop-ext→ ( *-prop-rec (x .snd) id (¡ ∘ unlift) , ι₁)
   l .Lattice.str-is-lattice .is-lattice.1-top
-    = Prop-ua ((λ z → z .fst) , (λ z → z , ttᴸ))
+    = Prop-ext→ ((λ z → z .fst) , (λ z → z , ttᴸ))
 
 Prop-Lattice-is-distributive
   : ∀ {𝓤} → is-distributive (Prop-Lattice 𝓤)
 Prop-Lattice-is-distributive .is-distributive.distrib-∨-∧ {x = x} {y} {z}
-  = Prop-ua ((*-prop-rec (×-is-prop (*-is-prop xprp yprp) (*-is-prop xprp zprp))
-                         (λ x → (ι₁ x , ι₁ x))
-                         (λ (y , z) → (ι₂ y , ι₂ z)))
-            , λ (xy , xz) → *-prop-rec xyzprp
-                                       ι₁
-                            (λ y → *-prop-rec xyzprp
-                                              ι₁
-                                              (λ z → ι₂ (y , z)) xz) xy) where
-  xprp = is-prop←is-truncated (x .snd)
-  yprp = is-prop←is-truncated (y .snd)
-  zprp = is-prop←is-truncated (z .snd)
-  xyzprp = *-is-prop xprp (×-is-prop yprp zprp)
+  = Prop-ext→
+      ( *-prop-rec (×-is-prop xy-is-prop xz-is-prop)
+          (λ x → (ι₁ x , ι₁ x))
+          (λ (y , z) → (ι₂ y , ι₂ z))
+      , (λ (xy , xz)
+         → *-prop-rec xyz-is-prop
+             ι₁
+             (λ y → *-prop-rec xyz-is-prop ι₁ (λ z → ι₂ (y , z)) xz)
+             xy))
+  where
+
+  xy-is-prop = *-is-prop (x .snd) (y .snd)
+  xz-is-prop = *-is-prop (x .snd) (z .snd)
+  xyz-is-prop = *-is-prop (x .snd) (×-is-prop (y .snd) (z .snd))
 }
 }

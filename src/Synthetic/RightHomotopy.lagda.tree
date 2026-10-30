@@ -26,7 +26,7 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-open import Core.Arrows
+open import Core.ArrowEquiv
 open import Core.Orthogonal
 open import Core.Slices
 open import Core.CocartesianSquares
@@ -55,8 +55,8 @@ A \em{right homotopy} #{f \rhtpy g} is a filler of the [triangle](stt-00AK)
 \begin{tikzcd}
   a && b\nsp{.} \\
   & b
-  \arrow[from=1-1, to=1-3, "f"]
-  \arrow[from=1-1, to=2-2, "g"']
+  \arrow[from=1-1, to=1-3, "g"]
+  \arrow[from=1-1, to=2-2, "f"']
   \arrow[from=2-2, to=1-3, equals]
 \end{tikzcd}
 }
@@ -108,68 +108,42 @@ proj-~Δ = cogap ~Δ-proj-cocone
 }
 }
 
-\subtree[bak-515F]{
-\title{Projecting the inner horn onto its first edge}
-\taxon{Lemma}
-\author{fredrikbakke}
-\date{2026-09-23}
-
-\p{We have a pushout square}
-
-\quiver{
-\begin{tikzcd}
-  {\Delta^1} && {\Lambda^2_1} \\
-  \\
-  {\b1} && {\Delta^1}\nsp{.}
-  \arrow["{\iota_2}", from=1-1, to=1-3]
-  \arrow["!"', from=1-1, to=3-1]
-  \arrow["{\mathrm{projection}}", from=1-3, to=3-3]
-  \arrow["\point 1"', from=3-1, to=3-3]
-  \arrow["\ulcorner" very near end, phantom, from=1-1, to=3-3]
-\end{tikzcd}
-}
-
-\agda{
-right-unit-horn-degeneracy : Arrow-map (ι₂ {f = point i1} {point i0}) (point i1)
-right-unit-horn-degeneracy = mk-amap ! Λ[2,1]-right-eval ~refl
-
-right-unit-horn-is-pushout : up-cocartesian right-unit-horn-degeneracy
-right-unit-horn-is-pushout
-  = cocartesian-square-cancel
-      (Pushout-square-has-up-cocartesian Λ[2,1]-span)
-      (untranspose-square-has-up-cocartesian _
-        (cocartesian←equiv-map _ id-is-equiv id-is-equiv))
-}
-}
-
 \subtree[bak-0CC5]{
 \title{The walking right homotopy classifies right homotopies}
 \taxon{Theorem}
 \author{fredrikbakke}
 \date{2026-09-23}
 
-\p{Maps #{{}_{\sim}\Delta \to A} classify right homotopies in #{A}.}
+\p{Maps #{{}_{\sim}\Delta \to A} classify [right homotopies](bak-EB4D) in #{A}.}
 
 \agda{
 module _ {𝓤} {A : Type 𝓤} where
 
+  right-unit-horn-restrict-Arrow-equiv
+    : Arrow-equiv
+        (id: (Δ¹ → A))
+        ( λ (l : Σ[ x ∶ A ] Ext Λ[2,1]-right-leg-incl (const x))
+          → l .snd .fst ∘ Λ[2,1]-left-leg-incl)
+  right-unit-horn-restrict-Arrow-equiv
+    = mk-arr-equiv
+        ( precomp-≃ (cogap-square≃ _ right-unit-horn-is-pushout)
+        ∙e Cofibre-map-repr Λ[2,1]-right-leg-incl)
+        (id≃)
+        (~refl)
+
   right-unit-horn≃
-    : (Δ¹ → A) ≃ Σ[ x ∶ A ] Ext {B = Λ[2,1]} ι₂ (const x)
+    : (Δ¹ → A) ≃ Σ[ x ∶ A ] Ext Λ[2,1]-right-leg-incl (const x)
   right-unit-horn≃
     = mk≃ (λ f → (_ , make-horn (idH _) (λhom f) , ~refl))
-        (3-for-2 {f = (λ a → a .snd .fst ∘ ι₁)}
-          (3-for-2' (Cofibre-map-repr ι₂ ._≃_.fwd-is-equiv)
-            (precomp-equiv
-              (3-for-2
-                (is-pushout←up-cocartesian _ right-unit-horn-is-pushout)
-                id-is-equiv)))
+        (3-for-2
+          (tgt-is-equiv←Arrow-equiv right-unit-horn-restrict-Arrow-equiv id-is-equiv)
           id-is-equiv)
 
   ~Δ-rep3
     : (~Δ → A) ≃ Σ[ f ∶ (Δ¹ → A) ] Ext Λ[2,1]-incl (make-horn (idH _) (λhom f))
   ~Δ-rep3
     = ~Δ-rep1
-    ∙e Σ-snd-≃ (λ a → Ext-compose≃ Λ[2,1]-incl ι₂ (const a))
+    ∙e Σ-snd-≃ (λ a → Ext-compose≃ Λ[2,1]-incl Λ[2,1]-right-leg-incl (const a))
     ∙e (Σ-assoc e⁻¹)
     ∙e (Σ-fst-≃ right-unit-horn≃ e⁻¹)
 
@@ -276,22 +250,17 @@ module _ {𝓤} {A : Type 𝓤} where
   tgt-local←▵~←＝-is-equiv e
     = tgt-local←＝≃▵~ (λ f g → mk≃ ▵~←＝ (e f g))
 
-  tgt-local≃▵~-is-torsorial
+  tgt-local↔▵~-is-torsorial
     : orthogonal-type tgt-~Δ A
-    ≃ ({a b : A} (f : Hom A a b) → is-torsorial (f ▵~_))
-  tgt-local≃▵~-is-torsorial
-    = equiv←logical is-equiv-is-prop
-        (Πᵢ-is-prop (Πᵢ-is-prop (Π-is-prop (λ _ → is-single-is-prop))))
-        (▵~-is-torsorial←tgt-local , tgt-local←▵~-is-torsorial)
+    ↔ ({a b : A} (f : Hom A a b) → is-torsorial (f ▵~_))
+  tgt-local↔▵~-is-torsorial
+    = (▵~-is-torsorial←tgt-local , tgt-local←▵~-is-torsorial)
 
-  tgt-local≃▵~←＝-is-equiv
+  tgt-local↔▵~←＝-is-equiv
     : orthogonal-type tgt-~Δ A
-    ≃ ({a b : A} (f g : Hom A a b) → is-equiv (▵~←＝ {f = f} {g = g}))
-  tgt-local≃▵~←＝-is-equiv
-    = equiv←logical is-equiv-is-prop
-        (Πᵢ-is-prop (Πᵢ-is-prop
-          (Π-is-prop (λ _ → Π-is-prop (λ _ → is-equiv-is-prop)))))
-        (▵~←＝-is-equiv←tgt-local , tgt-local←▵~←＝-is-equiv)
+    ↔ ({a b : A} (f g : Hom A a b) → is-equiv (▵~←＝ {f = f} {g = g}))
+  tgt-local↔▵~←＝-is-equiv
+    = (▵~←＝-is-equiv←tgt-local , tgt-local←▵~←＝-is-equiv)
 }
 }
 
@@ -303,13 +272,13 @@ module _ {𝓤} {A : Type 𝓤} where
 \date{2026-09-23}
 
 \p{
-Given a morphism over #{f : \Hom_A(a,b)} from #{h : \Hom_A(a,c)} to
-#{g : \Hom_A(b,c)}, we extract a diagonal morphism #{\delta : \Hom_A(a,c)} together
-with a composition triangle #{\delta = g \circ f} and a right homotopy
-#{h \rhtpy \delta}. In particular, when #{f} is an identity morphism, this gives a
-left + right homotopy decomposition of a morphism of morphisms: given two edges
-#{h, g : \Hom_A(a,c)} and a morphism #{\alpha : \Hom_{\Hom_A(a,c)}(h,g)}, then
-#{h \rhtpy \delta} and #{g \lhtpy \delta}.
+Given a dependent morphism in the type family #{\Hom_A({-},c)} over
+#{f : \Hom_A(a,b)} from #{h : \Hom_A(a,c)} to #{g : \Hom_A(b,c)}, we extract a
+diagonal morphism #{\delta : \Hom_A(a,c)} together with a composition triangle
+#{\delta = g \circ f} and a right homotopy #{h \rhtpy \delta}. In particular, when
+#{f} is an identity morphism, this gives a left + right homotopy decomposition of a
+morphism of morphisms: given two edges #{h, g : \Hom_A(a,c)} and a morphism
+#{\alpha : \Hom_{\Hom_A(a,c)}(h,g)}, then #{h \rhtpy \delta} and #{g \lhtpy \delta}.
 }
 
 \agda{

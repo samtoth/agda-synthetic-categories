@@ -66,21 +66,29 @@ idH a = λhom λ _ → a
 
 {-# NOINLINE idH #-}
 
-Hom-over
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y}
-    → Hom A x y → B x → B y → Type (𝓘 ⊔ 𝓥)
-Hom-over {A = A} {B} f x' y'
-  = Homᵈ (B ∘ f .Homᵈ.hom)
-         (tr B (sym (f .Homᵈ.hom0)) x')
-         (tr B (sym (f .Homᵈ.hom1)) y')
+Homᵈ-over
+  : ∀ {𝓤 𝓥} {A : I → Type 𝓤} {B : (i : I) → A i → Type 𝓥} {x : A i0} {y : A i1}
+    → Homᵈ A x y → B i0 x → B i1 y → Type (𝓘 ⊔ 𝓥)
+Homᵈ-over {A = A} {B} f x' y'
+  = Homᵈ
+      (λ i → B i (f .Homᵈ.hom i))
+      (tr (B i0) (sym (f .Homᵈ.hom0)) x')
+      (tr (B i1) (sym (f .Homᵈ.hom1)) y')
 
-total-hom : ∀ {𝓤} {A : Type 𝓤} → (I → A) ≃ (Σ[ x y ∶ A ] Hom A x y)
+Hom-over
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} {x y : A}
+    → Hom A x y → B x → B y → Type (𝓘 ⊔ 𝓥)
+Hom-over {A = A} {B} = Homᵈ-over {A = λ _ → A} {B = λ _ → B}
+
+total-hom
+  : ∀ {𝓤} {A : I → Type 𝓤}
+    → ((i : I) → A i) ≃ (Σ[ x ∶ A i0 ] Σ[ y ∶ A i1 ] Homᵈ A x y)
 total-hom {A = A} = equiv←qequiv
   (mk≊
     (λ f → (f i0 , f i1 , λhom f))
-    ((λ {(a , b , mk-hom f refl refl) → f})
+    ((λ where (a , b , mk-hom f refl refl) → f)
     , ~refl
-    , (λ { (a , b , mk-hom f refl refl) → refl})))
+    , (λ where (a , b , mk-hom f refl refl) → refl)))
 }
 
 \remark{
@@ -104,66 +112,57 @@ between #{f} and #{g}, we need a homotopy #{H} of the underlying maps, but also
 coherence data: #{H_{0} \sim g_0 \sim f_0} for #{i = 0,1}.}
 
 \agda{
-Hom-path
-  : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f g : Hom A x y)
-    → Type (𝓘 ⊔ 𝓤)
-Hom-path (mk-hom f p q) (mk-hom g r s)
-  = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+module _ {𝓤} {A : I → Type 𝓤} {x : A i0} {y : A i1} where
 
-opaque
-  Hom-path-is-torsorial
-    : ∀ {𝓤} {A : Type 𝓤} {x y : A} (f : Hom A x y)
-      → is-torsorial (Hom-path f)
-  Hom-path-is-torsorial f
-    = is-single←equiv (Σ-fst-≃ (Homᵈ-repr≃ e⁻¹))
-        (is-singleton-structure←parts
-          (SingS-is-single (f .Homᵈ.hom))
-          (f .Homᵈ.hom , ~refl)
+  Hom-path : (f g : Homᵈ A x y)  → Type (𝓘 ⊔ 𝓤)
+  Hom-path (mk-hom f p q) (mk-hom g r s)
+    = Σ[ H ∶ f ~ g ] ((H i0 ∙ r ＝ p) × (H i1 ∙ s ＝ q))
+
+  opaque
+    Hom-path-is-torsorial
+      : (f : Homᵈ A x y) → is-torsorial (Hom-path f)
+    Hom-path-is-torsorial f
+      = is-single←equiv (Σ-fst-≃ (Homᵈ-repr≃ e⁻¹))
           (is-singleton-structure←parts
-            Sing'-is-singleton
-            (_ , refl)
-            Sing'-is-singleton))
+            (SingS-is-single (f .Homᵈ.hom))
+            (f .Homᵈ.hom , ~refl)
+            (is-singleton-structure←parts
+              Sing'-is-singleton
+              (_ , refl)
+              Sing'-is-singleton))
 
-Hom-path-refl
-  : ∀ {𝓤} {A : Type 𝓤} {x y} {f : Hom A x y} → Hom-path f f
-Hom-path-refl = (~refl , refl , refl)
+  Hom-path-refl
+    : {f : Homᵈ A x y} → Hom-path f f
+  Hom-path-refl = (~refl , refl , refl)
 
-instance
-  IdS-Hom : ∀ {𝓤} {A : Type 𝓤} {x y : A} → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
-  IdS-Hom .Identity-system.IdS = Hom-path
-  IdS-Hom .Identity-system.IdS←Id refl = Hom-path-refl
-  IdS-Hom .Identity-system.IdS←Id-is-equiv f
-    = fundamental-Id (Hom-path f) (Hom-path-is-torsorial f) _
+  instance
+    IdS-Hom : Identity-system (Homᵈ A x y) (𝓘 ⊔ 𝓤)
+    IdS-Hom .Identity-system.IdS = Hom-path
+    IdS-Hom .Identity-system.IdS←Id refl = Hom-path-refl
+    IdS-Hom .Identity-system.IdS←Id-is-equiv f
+      = fundamental-Id (Hom-path f) (Hom-path-is-torsorial f) _
 
+  Hom-ext→
+    : {f g : Homᵈ A x y} → Hom-path f g → f ＝ g
+  Hom-ext→ = ext!
 
-Hom-ext→
-  : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f g : Hom A x y}
-    → Hom-path f g → f ＝ g
-Hom-ext→ = ext!
+module _ {𝓤} {A : I → Type 𝓤}  where
 
-adjust-hom
-  : ∀ {𝓤} {A : Type 𝓤} {x y x' y'} (p : x ＝ x') (q : y ＝ y')
-    → Hom A x y → Hom A x' y'
-adjust-hom p q (mk-hom fh f0 f1) = mk-hom fh (f0 ∙ p) (f1 ∙ q)
-
-adjust-homᵈ
-  : ∀ {𝓤} (A : I → Type 𝓤) {x x' : A i0} {y y' : A i1}
-    → x ＝ x' → y ＝ y'
+  adjust-hom
+    : {x x' : A i0} {y y' : A i1} (p : x ＝ x') (q : y ＝ y')
     → Homᵈ A x y → Homᵈ A x' y'
-adjust-homᵈ A p q (mk-hom fh f0 f1) = mk-hom fh (f0 ∙ p) (f1 ∙ q)
+  adjust-hom p q (mk-hom fh f0 f1) = mk-hom fh (f0 ∙ p) (f1 ∙ q)
 
-adjust-hom-refl
-  : ∀ {𝓤} {A : Type 𝓤} {x y}
-    → (id: Hom A x y) ~ adjust-hom refl refl
-adjust-hom-refl f = Hom-ext→ (~refl , ∙-reflr _ , ∙-reflr _)
+  adjust-hom-refl
+    : {x : A i0} {y : A i1}
+    → (id: Homᵈ A x y) ~ adjust-hom refl refl
+  adjust-hom-refl f = Hom-ext→ (~refl , ∙-reflr _ , ∙-reflr _)
 
-adjust-hom-is-equiv
-  : ∀ {𝓤} {A : Type 𝓤} {x y x' y' : A} (p : x ＝ x') (q : y ＝ y')
+  adjust-hom-is-equiv
+    : {x x' : A i0} {y y' : A i1}  (p : x ＝ x') (q : y ＝ y')
     → is-equiv (adjust-hom p q)
-adjust-hom-is-equiv refl refl
-  = is-equiv←~⁻¹
-      (λ _ → Hom-ext→ (~refl , ∙-reflr _ , ∙-reflr _))
-      id-is-equiv
+  adjust-hom-is-equiv refl refl
+    = is-equiv←~⁻¹ (λ _ → Hom-ext→ (~refl , ∙-reflr _ , ∙-reflr _))id-is-equiv
 
 adjust-idH
   : ∀ {𝓤} {A : Type 𝓤} {x y : A}
@@ -171,71 +170,73 @@ adjust-idH
     → idH y ＝ adjust-hom p p (idH x)
 adjust-idH refl = adjust-hom-refl (idH _)
 
-Hom-pathᵈ
-  : ∀ {𝓤} {A : Type 𝓤} {x y z w : A} (p : x ＝ z) (q : y ＝ w)
-      (f : Hom A x y) (g : Hom A z w) → Type (𝓘 ⊔ 𝓤)
-Hom-pathᵈ p q (mk-hom f f0 f1) (mk-hom g g0 g1)
-  = Σ[ H ∶ (f ~ g) ] (Square (H i0) p f0 g0 × Square (H i1) q f1 g1)
 
-Hom-path←pathᵈ
-  : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
-      {f g : Hom A x y} → Hom-pathᵈ refl refl f g → Hom-path f g
-Hom-path←pathᵈ (H , K , R)
-  = (H , un-square K ∙ ∙-reflr _ , un-square R ∙ ∙-reflr _)
+module _ {𝓤} {A : I → Type 𝓤}  where
 
-Hom-pathᵈ←path
-  : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
-      {f g : Hom A x y} → Hom-path f g → Hom-pathᵈ refl refl f g
-Hom-pathᵈ←path (H , K , R)
-  = (H , mk-square (K ∙ sym (∙-reflr _)) , mk-square (R ∙ sym (∙-reflr _)))
+  Hom-pathᵈ
+    : {x x' : A i0} {y y' : A i1} (p : x ＝ x') (q : y ＝ y')
+      (f : Homᵈ A x y) (g : Homᵈ A x' y') → Type (𝓘 ⊔ 𝓤)
+  Hom-pathᵈ p q (mk-hom f f0 f1) (mk-hom g g0 g1)
+    = Σ[ H ∶ (f ~ g) ] (Square (H i0) p f0 g0 × Square (H i1) q f1 g1)
 
-Hom-pathᵈ≊path
-  : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
-      {f g : Hom A x y} → Hom-path f g ≊ Hom-pathᵈ refl refl f g
-Hom-pathᵈ≊path ._≊_.fwd = Hom-pathᵈ←path
-Hom-pathᵈ≊path ._≊_.fwd-qinv .fst = Hom-path←pathᵈ
-Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .fst (H , p , q)
-  = Σ-path→ (refl , ×-path→
-      ( ap (_∙ ∙-reflr _) (un-mk-square (p ∙ sym (∙-reflr _)))
-        ∙ (∙-assoc p _ _) ∙ ap (p ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _
-      , ap (_∙ ∙-reflr _) (un-mk-square (q ∙ sym (∙-reflr _)))
-        ∙ (∙-assoc q _ _) ∙ ap (q ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _))
-Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .snd (J , p , q)
-  = Σ-path→ (refl , ×-path→
-     ( ap mk-square (∙-assoc (un-square p) _ _
-       ∙ ap (un-square p ∙_) (∙-sym (∙-reflr _)) ∙ ∙-reflr _) ∙ mk-un-square p
-     , ap mk-square (∙-assoc (un-square q) _ _
-       ∙ ap (un-square q ∙_) (∙-sym (∙-reflr _)) ∙ ∙-reflr _) ∙ mk-un-square q))
+  Hom-path←pathᵈ
+    : {x : A i0} {y : A i1} {f g : Homᵈ A x y}
+    → Hom-pathᵈ refl refl f g → Hom-path f g
+  Hom-path←pathᵈ (H , K , R)
+    = (H , un-square K ∙ ∙-reflr _ , un-square R ∙ ∙-reflr _)
 
-Hom-pathᵈ≃path
-  : ∀ {𝓤} {A : Type 𝓤} {x y  : A}
-      {f g : Hom A x y} → Hom-path f g ≃ Hom-pathᵈ refl refl f g
-Hom-pathᵈ≃path = equiv←qequiv Hom-pathᵈ≊path
+  Hom-pathᵈ←path
+    : {x : A i0} {y : A i1} {f g : Homᵈ A x y}
+    → Hom-path f g → Hom-pathᵈ refl refl f g
+  Hom-pathᵈ←path (H , K , R)
+    = (H , mk-square (K ∙ sym (∙-reflr _)) , mk-square (R ∙ sym (∙-reflr _)))
 
-Hom-pathᵈ-is-torsorial
-  : ∀ {𝓤} {A : Type 𝓤} {x y : A}
-      {f : Hom A x y} → is-torsorial (Hom-pathᵈ refl refl f)
-Hom-pathᵈ-is-torsorial
-  = is-single←equiv (Σ-snd-≃ (λ _ → Hom-pathᵈ≃path))
-      (Hom-path-is-torsorial _)
+  Hom-pathᵈ≊path
+    : {x : A i0} {y : A i1} {f g : Homᵈ A x y}
+    → Hom-path f g ≊ Hom-pathᵈ refl refl f g
+  Hom-pathᵈ≊path ._≊_.fwd = Hom-pathᵈ←path
+  Hom-pathᵈ≊path ._≊_.fwd-qinv .fst = Hom-path←pathᵈ
+  Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .fst (H , p , q)
+    = Σ-path→ (refl , ×-path→
+        ( ap (_∙ ∙-reflr _) (un-mk-square (p ∙ sym (∙-reflr _)))
+          ∙ (∙-assoc p _ _) ∙ ap (p ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _
+        , ap (_∙ ∙-reflr _) (un-mk-square (q ∙ sym (∙-reflr _)))
+          ∙ (∙-assoc q _ _) ∙ ap (q ∙_) (∙-sym' (∙-reflr _)) ∙ ∙-reflr _))
+  Hom-pathᵈ≊path ._≊_.fwd-qinv .snd .snd (J , p , q)
+    = Σ-path→ (refl , ×-path→
+      ( ap mk-square (∙-assoc (un-square p) _ _
+        ∙ ap (un-square p ∙_) (∙-sym (∙-reflr _)) ∙ ∙-reflr _) ∙ mk-un-square p
+      , ap mk-square (∙-assoc (un-square q) _ _
+        ∙ ap (un-square q ∙_) (∙-sym (∙-reflr _)) ∙ ∙-reflr _) ∙ mk-un-square q))
 
-Hom-pathᵈ-refl
-  : ∀ {𝓤} {A : Type 𝓤} {x y : A} {f : Hom A x y} → Hom-pathᵈ refl refl f f
-Hom-pathᵈ-refl = Hom-pathᵈ←path Hom-path-refl
+  Hom-pathᵈ≃path
+    : {x : A i0} {y : A i1} {f g : Homᵈ A x y}
+    → Hom-path f g ≃ Hom-pathᵈ refl refl f g
+  Hom-pathᵈ≃path = equiv←qequiv Hom-pathᵈ≊path
 
-Hom-extᵈ→
-  : ∀ {𝓤} {A : Type 𝓤} {x y z w : A} (p : x ＝ z) (q : y ＝ w)
-    → {f : Hom A x y} {g : Hom A z w}
-    → Hom-pathᵈ p q f g → Idᵈ (ap₂ (Hom A) p q) f g
-Hom-extᵈ→ refl refl = Hom-ext→ ∘ Hom-path←pathᵈ
+  Hom-pathᵈ-is-torsorial
+    : {x : A i0} {y : A i1} {f : Homᵈ A x y}
+    → is-torsorial (Hom-pathᵈ refl refl f)
+  Hom-pathᵈ-is-torsorial
+    = is-single←equiv (Σ-snd-≃ (λ _ → Hom-pathᵈ≃path)) (Hom-path-is-torsorial _)
 
-Hom-IdSᵈ
-  : ∀ {𝓤} {A : Type 𝓤} {x y : A}
-    → Identity-system (Hom A x y) (𝓘 ⊔ 𝓤)
-Hom-IdSᵈ .Identity-system.IdS = Hom-pathᵈ refl refl
-Hom-IdSᵈ .Identity-system.IdS←Id refl = Hom-pathᵈ-refl
-Hom-IdSᵈ .Identity-system.IdS←Id-is-equiv a
-  = fundamental-Id _ Hom-pathᵈ-is-torsorial _
+  Hom-pathᵈ-refl
+    : {x : A i0} {y : A i1} {f : Homᵈ A x y}
+    → Hom-pathᵈ refl refl f f
+  Hom-pathᵈ-refl = Hom-pathᵈ←path Hom-path-refl
+
+  Hom-extᵈ→
+    : {x x' : A i0} {y y' : A i1} (p : x ＝ x') (q : y ＝ y')
+    → {f : Homᵈ A x y} {g : Homᵈ A x' y'}
+    → Hom-pathᵈ p q f g → Idᵈ (ap₂ (Homᵈ A) p q) f g
+  Hom-extᵈ→ refl refl = Hom-ext→ ∘ Hom-path←pathᵈ
+
+  Hom-IdSᵈ
+    : {x : A i0} {y : A i1} → Identity-system (Homᵈ A x y) (𝓘 ⊔ 𝓤)
+  Hom-IdSᵈ .Identity-system.IdS = Hom-pathᵈ refl refl
+  Hom-IdSᵈ .Identity-system.IdS←Id refl = Hom-pathᵈ-refl
+  Hom-IdSᵈ .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ Hom-pathᵈ-is-torsorial _
 }
 }
 
@@ -245,17 +246,17 @@ Hom-IdSᵈ .Identity-system.IdS←Id-is-equiv a
 \author{fredrikbakke}
 
 \agda{
-module _ {𝓤} {A : Type 𝓤} {x y : A}  where
+module _ {𝓤} {A : I → Type 𝓤} {x : A i0} {y : A i1}  where
 
   Hom-path-hom-ap
-    : {f g : Hom A x y}
+    : {f g : Homᵈ A x y}
     → (p : f ＝ g) (i : I)
     → Identity-system.IdS←Id IdS-Hom p .fst i
     ＝ ap (λ h → h .Homᵈ.hom i) p
   Hom-path-hom-ap refl i = refl
 
   adjust-hom-refl-hom
-    : (f : Hom A x y) (i : I)
+    : (f : Homᵈ A x y) (i : I)
     → ap (λ h → h .Homᵈ.hom i) (adjust-hom-refl f) ＝ refl
   adjust-hom-refl-hom f i
     = sym (Hom-path-hom-ap (adjust-hom-refl f) i)
@@ -264,6 +265,8 @@ module _ {𝓤} {A : Type 𝓤} {x y : A}  where
            ( ~refl
            , ∙-reflr _
            , ∙-reflr _))
+
+module _ {𝓤} {A : Type 𝓤} {x y : A} where
 
   adjust-idH-hom
     : (p : x ＝ y) (i : I)
@@ -276,48 +279,44 @@ module _ {𝓤} {A : Type 𝓤} {x y : A}  where
 \title{Functions have an action on synthetic morphisms}
 
 \agda{
-ap-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) {x y}
-    → Hom A x y → Hom B (f x) (f y)
-ap-hom f (mk-hom hom hom0 hom1)
-  = mk-hom (f ∘ hom) (ap f hom0) (ap f hom1)
+module _
+  {𝓤 𝓥} {A : I → Type 𝓤} {B : I → Type 𝓥}
+  where
+
+  ap-hom
+    : (f : {i : I} → A i → B i) {x : A i0} {y : A i1}
+    → Homᵈ A x y → Homᵈ B (f x) (f y)
+  ap-hom f (mk-hom hom hom0 hom1)
+    = mk-hom (f ∘ hom) (ap f hom0) (ap f hom1)
+
+  ap-total-hom
+    : ({i : I} → A i → B i)
+      → (Σ[ x ∶ A i0 ] Σ[ y ∶ A i1 ] Homᵈ A x y)
+      → Σ[ x' ∶ B i0 ] Σ[ y' ∶ B i1 ] Homᵈ B x' y'
+  ap-total-hom F = map-Σ F (λ a → map-Σ F λ b → ap-hom F)
+
+  ap-total-hom-is-equiv
+    : {f : {i : I} → A i → B i}
+    → ({i : I} → is-equiv (f {i})) → is-equiv (ap-total-hom f)
+  ap-total-hom-is-equiv {f = F} Fe
+    = tgt-is-equiv←Arrow-equiv
+        (mk-arr-equiv total-hom total-hom ~refl)
+        (postcomp-Π-equiv Fe)
+
+  ap-hom-const
+    : (b : {i : I} → B i) {x : A i0} {y : A i1}
+    → (h : Homᵈ A x y)
+    → ap-hom (λ {i} _ → b {i}) h ＝ λhom (λ i → b {i})
+  ap-hom-const b (mk-hom h refl refl) = refl
 
 ap-hom-over
-  : ∀ {𝓤} {𝓥} {A : Type 𝓤} {B : A → Type 𝓥} (f : Π A B)
-      {x y} (h : Hom A x y)
-    → Hom-over h (f x) (f y)
+  : ∀ {𝓤 𝓥} {A : I → Type 𝓤} {B : (i : I) → A i → Type 𝓥}
+      (f : {i : I} (a : A i) → B i a)
+      {x : A i0} {y : A i1} (h : Homᵈ A x y)
+    → Homᵈ-over h (f x) (f y)
 ap-hom-over F (mk-hom f hom0 hom1) .Homᵈ.hom = F ∘ f
 ap-hom-over F (mk-hom f refl hom1) .Homᵈ.hom0 = refl
 ap-hom-over F (mk-hom f hom0 refl) .Homᵈ.hom1 = refl
-
-ap-total-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → (A → B)
-    → (Σ[ x y ∶ A ] Hom A x y) → Σ[ x' y' ∶ B ] Hom B x' y'
-ap-total-hom F = map-Σ F (λ a → map-Σ F λ b → ap-hom F)
-
-ap-total-hom-is-equiv
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-    → is-equiv f → is-equiv (ap-total-hom f)
-ap-total-hom-is-equiv {f = F} Fe
-  = tgt-is-equiv←Arrow-equiv
-      (mk-arr-equiv total-hom total-hom ~refl)
-      (postcomp-equiv Fe)
-
-ap-hom-const
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → (b : B) {x y : A}
-    → (h : Hom A x y)
-    → ap-hom (const b) h ＝ idH b
-ap-hom-const b (mk-hom h refl refl) = refl
-
-apᵈ-hom
-  : ∀ {𝓤 𝓥} {A : I → Type 𝓤} {B : I → Type 𝓥}
-      {x : A i0} {y : A i1}
-      (f : {i : I} → A i → B i)
-    → Homᵈ A x y
-    → Homᵈ B (f x) (f y)
-apᵈ-hom f x = mk-hom (f ∘ x .Homᵈ.hom) (ap f (x .Homᵈ.hom0)) (ap f (x .Homᵈ.hom1))
 }
 }
 
@@ -330,25 +329,28 @@ apᵈ-hom f x = mk-hom (f ∘ x .Homᵈ.hom) (ap f (x .Homᵈ.hom0)) (ap f (x .H
 \p{A morphism in a constant family is the same as an ordinary morphism.}
 
 \agda{
-module _  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A} {x' y' : B} where
+module _
+  {𝓤 𝓥} {A : I → Type 𝓤} {B : I → Type 𝓥}
+  {x : A i0} {y : A i1} {x' : B i0} {y' : B i1}
+  where
 
-  Hom←Hom-over-const : (f : Hom A x y) → Hom-over {B = λ _ → B} f x' y' → Hom B x' y'
+  Hom←Hom-over-const : (f : Homᵈ A x y) → Homᵈ-over {B = λ i _ → B i} f x' y' → Homᵈ B x' y'
   Hom←Hom-over-const f
     = adjust-hom
         (tr-constant (sym (f .Homᵈ.hom0)) x')
         (tr-constant (sym (f .Homᵈ.hom1)) y')
 
   Hom-over-const←Hom
-    : (f : Hom A x y)
-    → Hom B x' y'
-    → Hom-over {B = λ _ → B} f x' y'
+    : (f : Homᵈ A x y)
+    → Homᵈ B x' y'
+    → Homᵈ-over {B = λ i _ → B i} f x' y'
   Hom-over-const←Hom f
     = adjust-hom
         (sym (tr-constant (sym (f .Homᵈ.hom0)) x'))
         (sym (tr-constant (sym (f .Homᵈ.hom1)) y'))
 
   Hom←Hom-over-const-is-equiv
-    : (f : Hom A x y) → is-equiv (Hom←Hom-over-const f)
+    : (f : Homᵈ A x y) → is-equiv (Hom←Hom-over-const f)
   Hom←Hom-over-const-is-equiv f = mk-eqv qinv coh where
     qinv : quasi-inv (Hom←Hom-over-const f)
     qinv = adjust-hom-is-equiv
@@ -363,8 +365,8 @@ module _  {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {x y : A} {x' y' : B} wher
       .is-equiv.coherent
 
   Hom-over-const≃Hom
-    : (f : Hom A x y)
-    → Hom-over {B = λ _ → B} f x' y' ≃ Hom B x' y'
+    : (f : Homᵈ A x y)
+    → Homᵈ-over {B = λ i _ → B i} f x' y' ≃ Homᵈ B x' y'
   Hom-over-const≃Hom f
     = mk≃ (Hom←Hom-over-const f) (Hom←Hom-over-const-is-equiv f)
 }

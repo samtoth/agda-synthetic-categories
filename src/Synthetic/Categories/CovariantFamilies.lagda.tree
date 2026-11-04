@@ -37,6 +37,7 @@ open import Ergonomics.Notations.Orthogonality
 open import Ergonomics.Extensionality
 open Core.Orthogonal.notation
 
+open import Modalities.Instances.Nullification
 open import Modalities.Instances.Truncation
 
 open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
@@ -53,49 +54,116 @@ open import Synthetic.Categories.Groupoids Δ¹ I
 \taxon{Definition}
 \title{Covariant families}
 
-\p{We say that a type family #{P \colon A \to \UU} is covariant if for any arrow #{f}
-in #{A}, and term #{x_0} at #{P_{f(0)}}, the type of homs over #{f} which extend
-#{x_0} is a singleton type.}
-
-\p{Covariant families admit a directed transport.}
+\p{
+We say that a type family #{P \colon A \to \UU} is covariant if for any arrow #{f} in
+#{A}, and term #{x_0} at #{P_{f(0)}}, the type of homs over #{f} which extend #{x_0}
+is a singleton.
+}
 
 \agda{
-is-covariant
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-covariant {A = A} B
-    = ∀ (x : Δ¹ → A) (x₀ : B (x i0))
-      → is-singleton (Σ[ x₁ ∶ B (x i1)] Homᵈ (B ∘ x) x₀ x₁)
+module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
 
-{-# INJECTIVE_FOR_INFERENCE is-covariant #-}
+  is-covariant : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-covariant
+    = (x : Δ¹ → A) (x₀ : B (x i0))
+    → is-singleton (Σ[ x₁ ∶ B (x i1)] Homᵈ (B ∘ x) x₀ x₁)
 
-is-covariant-is-prop
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → is-prop (is-covariant B)
-is-covariant-is-prop B
-  = Π-is-prop (λ a → Π-is-prop (λ b → is-single-is-prop))
+  {-# INJECTIVE_FOR_INFERENCE is-covariant #-}
 
-is-covariant-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-covariant-hom {A = A} B
-  = ∀ {x y} (f : Hom A x y) (x' : B x)
+  is-covariant-is-prop : is-prop is-covariant
+  is-covariant-is-prop
+    = Π-is-prop (λ a → Π-is-prop (λ b → is-single-is-prop))
+
+  is-covariant-hom
+    : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-covariant-hom
+    = {x y : A} (f : Hom A x y) (x' : B x)
     → is-singleton (Σ[ y' ∶ B y ] Hom-over f x' y')
 
-is-covariant-hom←is-covariant
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-    → is-covariant B → is-covariant-hom B
-is-covariant-hom←is-covariant B cov (mk-hom f refl refl) x' = cov f x'
+  is-covariant-hom←is-covariant
+    : is-covariant → is-covariant-hom
+  is-covariant-hom←is-covariant cov (mk-hom f refl refl)
+    = cov f
 
-is-covariant←is-covariant-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-    → is-covariant-hom B → is-covariant B
-is-covariant←is-covariant-hom B cov f x' = cov (λhom f) x'
+  is-covariant←is-covariant-hom
+    : is-covariant-hom → is-covariant
+  is-covariant←is-covariant-hom cov = cov ∘ λhom
+}
+}
+
+\subtree[bak-4CAE]{
+\title{Fibres of evaluation at #{0} as covariant lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-11-04}
+
+\p{
+Let #{P \colon A \to \UV} be a type family, #{h \colon Δ¹ \to A} an arrow, and
+#{x : P(h(0))}. Then the type of lifts of #{h} with left endpoint #{x} is equivalent
+to the fibre over #{x} of evaluation at #{0}.
+}
+
+\agda{
+Covariant-lifts
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-lifts {A = A} P
+  = (h : Δ¹ → A) (x : P (h i0))
+  → Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y
+
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+
+  cov-lift≃fibre-ev-i0
+    : (h : Δ¹ → A) (x : P (h i0))
+    → (Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y) ≃ fibre (evᵈ: (P ∘ h) i0) x
+  cov-lift≃fibre-ev-i0 h x
+    =  (Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y)
+    ≃⟨ Σ-snd-≃ (λ y → Homᵈ-repr≃) ⟩
+       (Σ[ y ∶ P (h i1) ] Σ[ f ∶ Π Δ¹ (P ∘ h) ] ((f i0 ＝ x) × (f i1 ＝ y)))
+    ≃⟨ Σ-comm ∙e Σ-snd-≃ (λ f → Σ-comm) ⟩
+       (Σ[ f ∶ Π Δ¹ (P ∘ h) ] ((f i0 ＝ x) × Σ[ y ∶ P (h i1) ] (f i1 ＝ y)))
+    ≃⟨ Σ-snd-≃ (λ f → Σ-singleton (λ _ → Sing-is-singleton)) ⟩
+       fibre (evᵈ: (P ∘ h) i0) x
+    ≃∎
+
+  Covariant-lifts≃sections-ev-i0
+    : Covariant-lifts P ≃ ((h : Δ¹ → A) → section (evᵈ: (P ∘ h) i0))
+  Covariant-lifts≃sections-ev-i0
+    = postcomp-Π-≃ (λ h
+        →  postcomp-Π-≃ (cov-lift≃fibre-ev-i0 h)
+        ∙e section≃fibres (ev i0))
+}
+}
+
+\subtree[bak-19CB]{
+\title{Covariant transport}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{
+We say a type family #{P \colon A \to \UU} admits \em{covariant transport} if there
+is a transport function #{(\blank)_* \colon \hom_A(x,y) \to P(x) \to P(y)} for all
+#{x} and #{y} in #{A}. If this transport function satisfies #{\id_* \sim \id}, then
+we say the transport is \em{unital}.
+}
+
+\agda{
+Covariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-transport {A = A} B = {x y : A} → Hom A x y → B x → B y
+
+Covariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-unital-transport {A = A} B
+  = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
 }
 }
 
 \subtree[stt-00O8]{
-\title{Covariant type families admit directed transport}
+\title{Covariant type families admit unital covariant transport}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \agda{
 tr-cov
@@ -121,8 +189,7 @@ tr-cov-unique Pc h f p x = ap fst (central (Pc h p) (f p , x))
 opaque
   tr-cov-hom
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-      → is-covariant P
-      → ∀ {x y} (h : Hom A x y) → P x → P y
+      → is-covariant P → Covariant-transport P
   tr-cov-hom cov h = fst ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 
   tr-cov-over
@@ -148,21 +215,48 @@ opaque
         (H : h ＝ h')
       → tr-cov-hom {P = P} Pc h ~ tr-cov-hom {P = P} Pc h'
   tr-cov-equal-hom Pc h .h refl = ~refl
+
+opaque
+  tr-cov-id
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x : A}
+      → tr-cov {P = P} cov (λ _ → x) ~ id
+  tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x'))
+
+opaque
+  unfolding tr-cov-hom
+  tr-cov-idH
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+      → tr-cov-hom {P = P} cov (idH x) ~ id
+  tr-cov-idH P cov = tr-cov-id P cov
+
+  tr-cov-idH~
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
+        (f : Hom A x x)
+      → f ＝ idH x
+      → tr-cov-hom {P = P} cov f ~ id
+  tr-cov-idH~ P cov _ refl = tr-cov-idH P cov
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  cov-unital-transport←is-covariant
+    : is-covariant B → Covariant-unital-transport B
+  cov-unital-transport←is-covariant B-is-cov
+    = (tr-cov-hom B-is-cov , (λ _ → tr-cov-idH B B-is-cov))
 }
 }
 
 \subtree[stt-015U]{
-\title{Covariant transport is co-strict}
+\title{Transport in covariant families is co-strict}
 \taxon{Lemma}
 \author{fredrikbakke}
 \date{2026-10-02}
 
 \p{
-[Covariant transport](stt-00O8) is [co-strict](stt-015V): if #{0 = 1}, it coincides
+[Transport in covariant families](stt-00O8) is [co-strict](stt-015V): if #{0 = 1}, it coincides
 with ordinary transport, which is an equivalence.
 }
 
-\agda{
+\agda{ --TODO: is covariant (unital?) transport enough? covariant lifts?
 module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (P-is-covariant : is-covariant P) where
 
   opaque
@@ -198,8 +292,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (P-is-covariant : is-
 \title{Left families}
 \taxon{Definition}
 
-\p{We say that a type family is \em{a left family} if, as a family, it is right orthogonal
-to the left endpoint inclusion.}
+\p{
+We say that a type family is \em{a left family} if, as a family, it is right
+orthogonal to the left endpoint inclusion.
+}
 
 \agda{
 is-left-family
@@ -228,16 +324,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
     : ∀ (σ : Δ¹ → A) (x₀ : B (σ i0))
       → Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀) ≃ Extᵈ (point i0) (B ∘ σ) (point x₀)
   cov-lift-is-extension σ x₀
-    =  Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀)
-    ≃⟨ Σ-snd-≃ (λ b → Homᵈ-repr≃) ⟩
-       (Σ[ x₁ ∶ B (σ i1) ] Σ[ f ∶ Π Δ¹ (B ∘ σ) ] ((f i0 ＝ x₀) × (f i1 ＝ x₁)))
-    ≃⟨ Σ-comm ∙e Σ-snd-≃ (λ f → Σ-comm) ⟩
-       (Σ[ f ∶ Π Δ¹ (B ∘ σ) ] ((f i0 ＝ x₀) × Σ[ x₁ ∶ B (σ i1) ] (f i1 ＝ x₁)))
-    ≃⟨ Σ-snd-≃ (λ f → Σ-singleton (λ _ → Sing-is-singleton)) ⟩
-       (Σ[ f ∶ Π Δ¹ (B ∘ σ)] (f i0 ＝ x₀))
-    ≃⟨ Σ-snd-≃ (λ f → unit-UP≃ e⁻¹) ⟩
-       Extᵈ (point i0) (B ∘ σ) (point x₀)
-    ≃∎
+    = cov-lift≃fibre-ev-i0 B σ x₀ ∙e Σ-snd-≃ (λ f → unit-UP≃ e⁻¹)
 
   opaque
     is-covariant←has-unique-extensions
@@ -525,37 +612,19 @@ Hom-cov'≃  P Pc f x' y'
 }
 
 \subtree[stt-00DQ]{
-\title{Covariant transport is functorial}
+\title{Transport in covariant families is functorial}
 \taxon{Theorem}
 
 \citet{8.16}{RS17}
 
 \p{Given a covariant family #{P}, we show the transport operation is functorial,
 in the sense that #{P(\id) \sim \id} and
-#{P(f \circ g) \sim P(f) \circ P(g)}.}
+#{P(f \circ g) \sim P(f) \circ P(g)}. The identity law was proved with the
+[transport construction](stt-00O8).}
 
 \agda{
 opaque
-  tr-cov-id
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
-      → tr-cov {P = P} cov (λ _ → x) ~ id
-  tr-cov-id P cov {x} x' = ap fst (cov (λ _ → x) x' .central (x' , idH x'))
-
-opaque
   unfolding tr-cov-hom
-  tr-cov-idH
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
-      → tr-cov-hom {P = P} cov (idH x) ~ id
-  tr-cov-idH P cov {x} x' = ap fst
-    (is-covariant-hom←is-covariant _ cov (idH x) x' .central (x' , idH x'))
-
-  tr-cov-idH~
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P) {x}
-        (f : Hom A x x)
-      → f ＝ idH x
-      → tr-cov-hom {P = P} cov f ~ id
-  tr-cov-idH~ P cov _ refl = tr-cov-idH P cov
-
   tr-cov-∘
     : ∀ {𝓤 𝓥} {A : Type 𝓤} (Apc : is-segal A) (P : A → Type 𝓥)
         (cov : is-covariant P) {x y z} (g : Hom A y z) (f : Hom A x y)
@@ -571,25 +640,114 @@ opaque
 }
 }
 
+\subtree[bak-AAAD]{
+\title{Covariant lift criterion for covariant families}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{
+A type family #{B \colon A \to \Type} is covariant iff its fibres are #{Δ¹}-discrete
+and it admits [covariant lifts](bak-4CAE), i.e., for every arrow
+#{f \colon Δ¹ \to A}, evaluation at #{0} into #{B \circ f} has a section.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  is-Δ¹-discrete-family←is-covariant
+    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
+  is-Δ¹-discrete-family←is-covariant B-is-cov x
+    = is-Δ¹-discrete←is-left (λ _
+      → is-left-family←is-covariant B B-is-cov (const x))
+
+  cov-transport←lifts : Covariant-lifts B → Covariant-transport B
+  cov-transport←lifts lift-B (mk-hom h refl refl) = fst ∘ lift-B h
+
+  is-covariant←lifts
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-lifts B → is-covariant B
+  is-covariant←lifts B-disc lift-B
+    = is-covariant←is-left-family B (λ g
+      → 3-for-2 unit-ev-is-equiv (is-equiv←section←injective
+          (λ {s} {t} p → funext→ (λ i
+            → sym (transport-section g s (0≤i i))
+            ∙ ap (ρ (ap-hom g (0≤i i))) p
+            ∙ transport-section g t (0≤i i)))
+          (_≃_.fwd (Covariant-lifts≃sections-ev-i0 B) lift-B g)))
+    where
+
+    ρ : Covariant-transport B
+    ρ = cov-transport←lifts lift-B
+
+    transport-section
+      : (f : Δ¹ → A) (s : Π Δ¹ (B ∘ f)) {i j : Δ¹} (h : Hom Δ¹ i j)
+      → ρ (ap-hom f h) (s i) ＝ s j
+    transport-section f s (mk-hom h refl refl)
+      = sym (ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i0)))
+          (Hom-ext→ {f = i≤1 i0} {g = 0≤1} ((λ _ → 0-bottom) , prop! , prop!)))
+      ∙ weakly-constant←is-null (B-disc (f (h i1))) tt
+          (λ i → ρ (ap-hom (f ∘ h) (i≤1 i)) (s (h i))) i0 i1
+      ∙ ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i1))) i≤1-at-1
+      ∙ sym (Id←Hom←is-Δ¹-discrete (B-disc (f (h i1)))
+          (lift-B (const (f (h i1))) (s (h i1)) .snd))
+
+  ev-i0-is-equiv←sections
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → ((f : Δ¹ → A) → section (evᵈ: (B ∘ f) i0))
+    → (f : Δ¹ → A) → is-equiv (evᵈ: (B ∘ f) i0)
+  ev-i0-is-equiv←sections B-disc s
+    = ev-i0-is-equiv←is-covariant {P = B}
+        (is-covariant←lifts B-disc (_≃_.bwd (Covariant-lifts≃sections-ev-i0 B) s))
+
+  ev-i0-sections-is-prop
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → is-prop ((f : Δ¹ → A) → section (evᵈ: (B ∘ f) i0))
+  ev-i0-sections-is-prop B-disc
+    = is-prop←is-single-if-inhabited (λ s
+      → Π-is-single (λ f
+        → section-is-single←qinv
+            (ev-i0-is-equiv←sections B-disc s f .is-equiv.qinv)))
+}
+
+\p{In particular, any constant family of #{Δ¹}-discrete types is covariant.}
+
+\agda{
+const-is-covariant←is-Δ¹-discrete
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
+    → is-Δ¹-discrete B → is-covariant (const: (Type 𝓥) A B)
+const-is-covariant←is-Δ¹-discrete B-disc
+  = is-covariant←is-left-family _
+      (λ _ → is-left←is-Δ¹-discrete B-disc tt)
+
+!-is-left-fibration←is-Δ¹-discrete
+  : ∀ {𝓤} {B : Type 𝓤}
+    → is-Δ¹-discrete B → is-left-fibration (!: B)
+!-is-left-fibration←is-Δ¹-discrete Bdisc
+  = orthogonal-!←orthogonal-type (is-left←is-Δ¹-discrete Bdisc tt)
+}
+}
+
 \subtree[stt-00VJ]{
 \title{Unital transport criterion for covariant families}
-\date{2026-08-18}
-\author{fredrikbakke}
 \taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-08-18}
 
 \p{
 A type family #{B \colon A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
-and a transport map #{f_* \colon B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such that
-#{\id_* \sim \id}.
+and a transport map #{f_* \colon B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such
+that #{\id_* \sim \id}.
 }
 
 \p{This result is due to [[robschellingerhout]].}
 
 \proof{
 \p{
-The forwards direction is obvious. For the backwards direction we show that the
-family is a left family by constructing an explicit inverse. I.e., we must construct
-a lift of the diagram
+The forwards direction follows from [unitality of covariant transport](stt-00O8)
+and [discreteness of the fibres](bak-AAAD). For the backwards direction we show
+that the family is a left family using the [covariant lifts criterion](bak-AAAD).
+I.e., we must construct a lift of the diagram
 \quiver{
 \begin{tikzcd}
 \{0\} && \Sigma1{a:A}{B(a)} \\
@@ -602,7 +760,8 @@ a lift of the diagram
 \arrow[from=3-1, to=1-3, dashed, "f'"]
 \end{tikzcd}
 }
-and show that this gives an inverse to \code{precomp-Π (B ∘ f) (point i0)}.
+which, by that criterion, gives an inverse to
+\code{precomp-Π (B ∘ f) (point i0)}.
 }
 
 \p{
@@ -614,127 +773,117 @@ This lies over #{f}, and its value at #{0} is #{(f(0),b)} by unitality.
 }
 
 \p{
-This construction is an inverse to restriction at #{0}. One inverse law follows
-immediately from unitality. For the other, the contraction of #{Δ¹_{/i}} from
-#{(0,0\leq i)} to #{(i,\id_i)} induces a morphism in #{B(f(i))} from the
-#{f(0\leq i)_*(s(0))} to #{f(\id_i)_*(s(i))}. Unitality gives
-#{f(\id_i)_*(s(i)) = s(i)}, and #{Δ¹}-discreteness gives the desired equality.
+By the [covariant lifts criterion](bak-AAAD), this construction is an inverse to
+restriction at #{0}. One inverse law follows immediately from unitality. For the
+other, the contraction of #{Δ¹_{/i}} from #{(0,0\leq i)} to #{(i,\id_i)} induces a
+morphism in #{B(f(i))} from the #{f(0\leq i)_*(s(0))} to #{f(\id_i)_*(s(i))}.
+Unitality gives #{f(\id_i)_*(s(i)) = s(i)}, and #{Δ¹}-discreteness gives the desired
+equality.
 }
 }
 
 \agda{
-Covariant-transport
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Covariant-transport {A = A} B = {x y : A} → Hom A x y → B x → B y
-
-Covariant-unital-transport
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Covariant-unital-transport {A = A} B
-  = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
-
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 
-  cov-unital-transport←is-covariant
-    : is-covariant B → Covariant-unital-transport B
-  cov-unital-transport←is-covariant B-is-cov
-    = (tr-cov-hom B-is-cov , (λ _ → tr-cov-idH B B-is-cov))
+  section-ev-i0←cov-unital-transport
+    : Covariant-unital-transport B
+    → (h : Δ¹ → A) → section (evᵈ: (B ∘ h) i0)
+  section-ev-i0←cov-unital-transport (ρ , ρ-id) h
+    = ( (λ x i → ρ (ap-hom h (0≤i i)) x)
+      , (λ x → ap (λ f → ρ (ap-hom h f) x) 0≤i-at-0 ∙ ρ-id (h i0) x))
 
-  is-Δ¹-discrete-family←is-covariant
-    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
-  is-Δ¹-discrete-family←is-covariant B-is-cov x
-    = is-Δ¹-discrete←Id←Hom λ {a} {b} f
-    → sym (tr-cov-idH B B-is-cov a)
-    ∙ tr-cov-hom-unique B B-is-cov (idH x) a b f
-
-  is-left-family←cov-unital-transport
-    : ((x : A) → is-Δ¹-discrete (B x))
-    → Covariant-unital-transport B
-    → is-left-family B
-  is-left-family←cov-unital-transport B-disc (ρ , ρ-id)
-    = is-equiv←qinv ∘ qinv where
-
-    slice-contraction
-      : (i : Δ¹) → Hom (Σ[ j ∶ Δ¹ ] Hom Δ¹ j i) (i0 , 0≤i i) (i , idH i)
-    slice-contraction i = Hom-Σ (0≤i i , tail) where
-      tail : Hom-over (0≤i i) (0≤i i) (idH i)
-      tail .Homᵈ.hom j
-        = mk-hom
-          (λ k → (j ∨ k) ∧ i)
-          (ap (_∧ i) 0-bottom)
-          (ap (_∧ i) 1-coinit ∙ 1-top')
-      tail .Homᵈ.hom0
-        = Idᶠ-right
-            (adjust-Idᵈ
-              (ap₂-right-refl (Hom Δ¹) 0-init)
-              (Hom-extᵈ→ 0-init refl
-                ((λ _ → ap (_∧ i) 0-bottom')
-                , mk-square prop!
-                , mk-square prop!)))
-      tail .Homᵈ.hom1
-        = Idᶠ-right
-            (adjust-Idᵈ
-              (ap₂-right-refl (Hom Δ¹) 1-top')
-              (Hom-extᵈ→ 1-top' refl
-                ( (λ _ → ap (_∧ i) 1-coinit' ∙ 1-top')
-                , mk-square prop!
-                , mk-square prop!)))
-
-    qinv : (f : Δ¹ → A) → quasi-inv (precomp-Π (B ∘ f) (point i0))
-    qinv f .fst x i = ρ (ap-hom f (0≤i i)) (x tt)
-    qinv f .snd .fst s
-      = funext→ λ i
-      → is-equiv.bwd
-          (is-Hom←Id-equiv←is-Δ¹-discrete (B-disc (f i)) _ _)
-          (adjust-hom
-            refl
-            (ρ-id (f i) (s i))
-            (ap-hom
-              (λ r → ρ (ap-hom f (r .snd)) (s (r .fst)))
-              (slice-contraction i)))
-    qinv f .snd .snd x
-      = funext→ λ _
-      → ap (λ h → ρ (ap-hom f h) (x tt)) 0≤i-at-0 ∙ ρ-id (f i0) (x tt)
+  lift-cov-unital-transport
+    : Covariant-unital-transport B → Covariant-lifts B
+  lift-cov-unital-transport ρ
+    = _≃_.bwd
+      (Covariant-lifts≃sections-ev-i0 B)
+      (section-ev-i0←cov-unital-transport ρ)
 
   is-covariant←cov-unital-transport
     : ((x : A) → is-Δ¹-discrete (B x))
     → Covariant-unital-transport B
     → is-covariant B
   is-covariant←cov-unital-transport B-disc ρ
-    = is-covariant←is-left-family B (is-left-family←cov-unital-transport B-disc ρ)
+    = is-covariant←lifts B-disc (lift-cov-unital-transport ρ)
+
+  is-left-family←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-left-family B
+  is-left-family←cov-unital-transport B-disc
+    = is-left-family←is-covariant B
+    ∘ is-covariant←cov-unital-transport B-disc
 
   is-covariant↔cov-unital-transport
     : is-covariant B
-    ↔ (Covariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
+    ↔ ( Covariant-unital-transport B
+      × ((x : A) → is-Δ¹-discrete (B x)))
   is-covariant↔cov-unital-transport .fst B-is-cov
     = ( cov-unital-transport←is-covariant B-is-cov
       , is-Δ¹-discrete-family←is-covariant B-is-cov)
   is-covariant↔cov-unital-transport .snd (ρ , B-disc)
     = is-covariant←cov-unital-transport B-disc ρ
 }
+}
+
+\subtree[bak-6BAE]{
+\title{The fibrewise #{Δ¹}-discretisation of families equipped with covariant lifts are covariant}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-11-04}
 
 \p{
-In particular, any constant family of #{Δ¹}-discrete types is covariant.
+Let #{P \colon A \to \Type} be a type family which admits covariant lifts of every
+arrow, then #{{ʃ} \circ P} is a covariant family.
+}
+
+\p{
+[[danielgratzer]] asked for an instance of this result on Mathstodon in
+[this post](https://mathstodon.xyz/@danielgratzer/116482079443956409). Thanks to
+[[robschellingerhouts]]'s
+[unital transport criterion of covariant families](stt-00VJ) we can easily answer
+this question in the positive.
 }
 
 \agda{
-const-is-covariant←is-Δ¹-discrete
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → is-Δ¹-discrete B → is-covariant (const: (Type 𝓥) A B)
-const-is-covariant←is-Δ¹-discrete B-disc
-  = is-covariant←cov-unital-transport
-      (λ _ → B-disc) ((λ _ → id) , (λ _ → ~refl))
+module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (lift-P : Covariant-lifts P) where
 
+  ʃ∘-cov-transport←lifts : Covariant-transport (Δ¹Disc.○ ∘ P)
+  ʃ∘-cov-transport←lifts f = Δ¹Disc.○₁ (cov-transport←lifts lift-P f)
 
-!-is-left-fibration←is-Δ¹-discrete
-  : ∀ {𝓤} {B : Type 𝓤}
-    → is-Δ¹-discrete B → is-left-fibration (!: B)
-!-is-left-fibration←is-Δ¹-discrete {B = B} Bdisc
-  = are-orthogonal←are-orthogonal-fibre
-      (is-left-family←is-covariant (fibre !)
-        (is-covariant←cov-unital-transport {B = fibre ! }
-          (λ _ → is-Δ¹-discrete←equiv (Σ-singleton (λ _ → is-single!) e⁻¹) Bdisc)
-          ((λ _ → id) , (λ _ → ~refl))))
+  ʃ∘-cov-transport←lifts-unital
+    : (a : A) → ʃ∘-cov-transport←lifts (idH a) ~ id
+  ʃ∘-cov-transport←lifts-unital a
+    = Δ¹Disc.▹η.bwd
+        ( Δ¹Disc.○₁-β (fst ∘ lift-P (const a))
+        ∙h ( λ x
+             → sym
+                (Id←Hom←is-Δ¹-discrete Δ¹Disc.○∈S
+                  (ap-hom Δ¹Disc.η (lift-P (const a) x .snd)))))
 
+  ʃ∘-cov-unital-transport←lifts
+    : Covariant-unital-transport (Δ¹Disc.○ ∘ P)
+  ʃ∘-cov-unital-transport←lifts
+    = (ʃ∘-cov-transport←lifts , ʃ∘-cov-transport←lifts-unital)
+
+  ʃ∘-is-covariant←lifts : is-covariant (Δ¹Disc.○ ∘ P)
+  ʃ∘-is-covariant←lifts
+    = is-covariant←cov-unital-transport
+        (λ _ → Δ¹Disc.○∈S)
+        (ʃ∘-cov-unital-transport←lifts)
+
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (τ : Covariant-unital-transport P)
+  where
+
+  ʃ∘-cov-unital-transport
+    : Covariant-unital-transport (Δ¹Disc.○ ∘ P)
+  ʃ∘-cov-unital-transport
+    = ʃ∘-cov-unital-transport←lifts (lift-cov-unital-transport τ)
+
+  ʃ∘-is-covariant : is-covariant (Δ¹Disc.○ ∘ P)
+  ʃ∘-is-covariant
+    = ʃ∘-is-covariant←lifts {P = P} (lift-cov-unital-transport τ)
 }
 }
 

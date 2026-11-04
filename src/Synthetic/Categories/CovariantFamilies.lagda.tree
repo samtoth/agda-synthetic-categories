@@ -150,17 +150,17 @@ we say the transport is \em{unital}.
 
 \agda{
 Covariant-transport
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Covariant-transport {A = A} B = {x y : A} → Hom A x y → B x → B y
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-transport {A = A} B = {x : A i0} {y : A i1} → Homᵈ A x y → B x → B y
 
 Covariant-unital-transport
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
 Covariant-unital-transport {A = A} B
   = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : {i : Δ¹} → A i → Type 𝓥} where
 
-  cov-transport←lifts : Covariant-lifts B → Covariant-transport B
+  cov-transport←lifts : Covariant-lifts (λ {i} → B {i}) → Covariant-transport B
   cov-transport←lifts lift-B (mk-hom h refl refl) = fst ∘ lift-B h
 }
 }
@@ -171,55 +171,48 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 \contributor{fredrikbakke}
 
 \agda{
-tr-cov
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant P → (h : Δ¹ → A) → P (h i0) → P (h i1)
-tr-cov cov h = fst ∘ centre ∘ cov h
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (cov : is-covariant P)
+  where
 
-tr-cov-filler
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → (Pc : is-covariant P) → (h : Δ¹ → A)
-    → ∀ p → Homᵈ (P ∘ h) p (tr-cov {P = P} Pc h p)
-tr-cov-filler cov h = snd ∘ centre ∘ cov h
 
-tr-cov-unique
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-      (Pc : is-covariant P) (h : Δ¹ → A)
-      (f : P (h i0) → P (h i1))
-    → ∀ p
-    → Homᵈ (P ∘ h) p (f p)
-    → tr-cov {P = P} Pc h p ＝ f p
-tr-cov-unique Pc h f p x = ap fst (central (Pc h p) (f p , x))
+  tr-cov
+    : (h : Δ¹ → A) → P (h i0) → P (h i1)
+  tr-cov h = fst ∘ centre ∘ cov h
 
-opaque
-  tr-cov-hom
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-      → is-covariant P → Covariant-transport P
-  tr-cov-hom cov h = fst ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
+  tr-cov-filler
+    : (h : Δ¹ → A) → ∀ p → Homᵈ (P ∘ h) p (tr-cov h p)
+  tr-cov-filler h = snd ∘ centre ∘ cov h
 
-  tr-cov-over
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-      → (cov : is-covariant P)
-      → ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom cov h x')
-  tr-cov-over cov h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
+  tr-cov-unique
+    : (h : Δ¹ → A) (f : P (h i0) → P (h i1))
+      → ∀ p
+      → Homᵈ (P ∘ h) p (f p)
+      → tr-cov h p ＝ f p
+  tr-cov-unique h f p x = ap fst (central (cov h p) (f p , x))
 
-  tr-cov-hom-unique
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (cov : is-covariant P)
-        {x y} (f : Hom A x y) x' y'
-      → (Hom-over f x' y') → tr-cov-hom {P = P} cov f x' ＝ y'
-  tr-cov-hom-unique P Pc f x' y' p
-    = ap fst
-        (central
-          (is-covariant-hom←is-covariant _ Pc f x')
-          (y' , p))
+  opaque
+    tr-cov-hom
+      : Covariant-transport P
+    tr-cov-hom h = fst ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
 
-  tr-cov-equal-hom
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-        (Pc : is-covariant P)
-        {x y} (h h' : Hom A x y)
-        (H : h ＝ h')
-      → tr-cov-hom {P = P} Pc h ~ tr-cov-hom {P = P} Pc h'
-  tr-cov-equal-hom Pc h .h refl = ~refl
+    tr-cov-over
+      : ∀ {x y} (h : Hom A x y) → (x' : P x) → Hom-over h x' (tr-cov-hom h x')
+    tr-cov-over h = snd ∘ centre ∘ is-covariant-hom←is-covariant _ cov h
+
+    tr-cov-hom-unique
+      : ∀ {x y} (f : Hom A x y) x' y'
+        → (Hom-over f x' y') → tr-cov-hom f x' ＝ y'
+    tr-cov-hom-unique f x' y' p
+      = ap fst
+          (central
+            (is-covariant-hom←is-covariant _ cov f x')
+            (y' , p))
+
+    tr-cov-equal-hom
+      : ∀ {x y} (h h' : Hom A x y) (H : h ＝ h')
+        → tr-cov-hom h ~ tr-cov-hom h'
+    tr-cov-equal-hom h .h refl = ~refl
 
 opaque
   tr-cov-id
@@ -950,7 +943,7 @@ module _
     : ∀ {x y} (f : Hom A x y)
       → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
   tr-cov-hom-naturality f x'
-    = tr-cov-hom-unique G Gc f
+    = tr-cov-hom-unique Gc f
         (α _ x')
         (α _ (tr-cov-hom Fc f x'))
         (filler f x') where
@@ -1043,7 +1036,7 @@ tr-cov-ap-hom
     → (g ＝ ap-hom f h)
     → tr-cov-hom {P = F} Fc g
     ~ tr-cov-hom {P = F ∘ f} Ffc h
-tr-cov-ap-hom f F Fc Ffc refl h _ refl x = tr-cov-hom-unique F Fc (ap-hom f h) x
+tr-cov-ap-hom f F Fc Ffc refl h _ refl x = tr-cov-hom-unique Fc (ap-hom f h) x
   (tr-cov-hom (covariant-base-change {P = F} f Fc) h x)
   (adjust-hom {A = F ∘ f ∘ h .Homᵈ.hom}
     (ap (λ p → coe p x) (ap-∘ F f _ ∙ ap (ap F) (ap-sym f (h .Homᵈ.hom0))))

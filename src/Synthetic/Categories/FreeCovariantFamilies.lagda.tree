@@ -40,9 +40,34 @@ open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Initial Δ¹ I
 open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.NaturalTransformations Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.AlgebraicLaws Δ¹ I
 open import Synthetic.Categories.Groupoids Δ¹ I
+}
+}
+
+\subtree[bak-C23E]{
+\title{Covariant discs}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{
+Let #{p \colon E \to B} be any map, then for any diagram #{b \colon J \to B}
+we may form the type of \em{covariant discs under #{p} into #{b}}, given by
+#{\CovDisc_p(b)\defeq ʃ(p \downarrow b)} where #{p \downarrow b} is the
+[comma type](stt-00C3) and #{ʃ} is nullification at #{Δ¹}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
+
+  Cov-disc : ∀ {𝓙} {J : Type 𝓙} → (J → B) → Type (𝓘 ⊔ 𝓙 ⊔ 𝓤 ⊔ 𝓥)
+  Cov-disc b = Δ¹Disc.○ (p ↓ b)
+
+  Cov-disc-π : ∀ {𝓙} {J : Type 𝓙} → Σ (J → B) Cov-disc → (J → B)
+  Cov-disc-π = fst: Cov-disc
 }
 }
 
@@ -65,53 +90,115 @@ maps over #{B}. In this module we show that when #{B} is a [Segal type](stt-00AI
 #{\FreeCov(-)} is the left adjoint to this forgetful functor.}
 
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {E : Type 𝓥} (p : E → A) where
+module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
 
-  Free-cov-fam : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  Free-cov-fam a = Δ¹Disc.○ (p ↓ point a)
+  Free-cov-fam : B → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Free-cov-fam b = Cov-disc p (point b)
 
-  Free-left-fibration : Σ A Free-cov-fam → A
+  Free-left-fibration : Σ B Free-cov-fam → B
   Free-left-fibration = fst: Free-cov-fam
 }
 }
 
-\subtree[stt-014Y]{
-\title{The free covariant family over a Segal type is covariant}
-\author{samueltoth}
-\date{2026-09-24}
-\taxon{Lemma}
+\subtree[bak-CA79]{
+\title{Transport in covariant discs}
+\taxon{Construction}
+\author{fredrikbakke}
+\date{2026-11-04}
 
-\p{If #{B} is a [Segal](stt-00AI) type, then the free covariant family on any map
-#{p \colon E \to B} is a [covariant type family](stt-00AY).}
+\p{
+Given a map #{p \colon E \to B} into a [Segal type](stt-00AI) #{B} and a pair of
+diagrams in #{B}, #{x \colon J' \to B} and #{y \colon J \to B}, then every reindexing
+map #{j₀ \colon J' \to J} equipped with a natural transformation of morphisms
+#{{\Hom(x, yj₀)}} gives a transport map of comma types:
+##{(p \downarrow x) \to (p \downarrow y)\nsp{,}}
+and this transport map descends to covariant discs
+##{\CovDisc_p(x) \to \CovDisc_p(y)\nsp{.}}
+}
 
-\proof{
-\p{We use the [unital transport criterion](stt-00VJ), where the transport map is given
-by postcomposition in the Segal type.}
+\p{
+Moreover, this action is unital in the sense that it restricts to the identity
+function when #{x} is {y}, the reindexing is the identity, and the natural
+transformation is given by the identity transformation. Hence, by the
+[unital transport criterion](stt-00VJ) #{\CovDisc_p} defines a covariant family.
 }
 
 \agda{
 module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E → B) where
 
   transport-comma
-    : ∀ {a b : B} → Hom B a b → p ↓ point a → p ↓ point b
-  transport-comma f = total-map (λ c → total-map (λ _ → f ∘[ 𝐵 ]_))
+    : ∀ {𝓙 𝓙'} {J : Type 𝓙} {J' : Type 𝓙'} {x : J' → B} {y : J → B}
+      → (j₀ : J' → J) → (x ⇒ y ∘ j₀)
+      → p ↓ x → p ↓ y
+  transport-comma j₀ f (e , i , α) = (e , j₀ i , f i ∘[ 𝐵 ] α)
 
-  transport-Free-cov-fam
-    : ∀ {a b : B} → Hom B a b → Free-cov-fam p a → Free-cov-fam p b
-  transport-Free-cov-fam f = Δ¹Disc.○₁ (transport-comma f)
+  transport-Cov-disc
+    : ∀ {𝓙 𝓙'} {J : Type 𝓙} {J' : Type 𝓙'} {x : J' → B} {y : J → B}
+      → (j₀ : J' → J) → (x ⇒ y ∘ j₀)
+      → Cov-disc p x → Cov-disc p y
+  transport-Cov-disc j₀ f = Δ¹Disc.○₁ (transport-comma j₀ f)
 
   transport-comma-unital
-    : ∀ {b : B} → transport-comma (idH b) ~ id
-  transport-comma-unital x = Σ-path→ (refl , (Σ-path→ (refl , ∘[ 𝐵 ]-right-unit)))
+    : ∀ {𝓙} {J : Type 𝓙} {y : J → B}
+      → transport-comma id (idH ∘ y) ~ id
+  transport-comma-unital x
+    = Σ-path→ (refl , (Σ-path→ (refl , ∘[ 𝐵 ]-right-unit)))
+
+  transport-Cov-disc-unital
+    : ∀ {𝓙} {J : Type 𝓙} (b : J → B)
+      → transport-Cov-disc id (idH ∘ b) ~ id
+  transport-Cov-disc-unital _
+    = Δ¹Disc.○-~ transport-comma-unital ∙h Δ¹Disc.○₁-id
+
+  Cov-disc-is-covariant
+    : ∀ {𝓙} {J : Type 𝓙} → is-covariant (Cov-disc p {J = J})
+  Cov-disc-is-covariant
+    = is-covariant←cov-unital-transport
+        (λ b → Δ¹Disc.○∈S {A = p ↓ b})
+        ( (λ f → transport-Cov-disc id (Nat←Hom f))
+        , transport-Cov-disc-unital)
+}
+}
+
+\subtree[stt-014Y]{
+\title{The free covariant family over a Segal type is covariant}
+\taxon{Corollary}
+\author{samueltoth}
+\contributor{fredrikbakke}
+\date{2026-09-24}
+
+\p{If #{B} is a [Segal](stt-00AI) type, then the free covariant family on any map
+#{p \colon E \to B} is a [covariant type family](stt-00AY).}
+
+\proof{
+\p{
+The free covariant family is the [base change](stt-00FU) of the
+[covariant disc family](bak-CA79) along #{\point \colon B \to (\b1 \to B)}.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E → B) where
+
+  transport-under
+    : {a b : B} → Hom B a b → p ↓ point a → p ↓ point b
+  transport-under f = transport-comma 𝐵 p id (λ _ → f)
+
+  transport-Free-cov-fam
+    : {a b : B} → Hom B a b → Free-cov-fam p a → Free-cov-fam p b
+  transport-Free-cov-fam f = transport-Cov-disc 𝐵 p id (λ _ → f)
+
+  transport-under-unital
+    : {b : B} → transport-under (idH b) ~ id
+  transport-under-unital = transport-comma-unital 𝐵 p
 
   transport-Free-cov-fam-unital
-    : ∀ (b : B) → transport-Free-cov-fam (idH b) ~ id
-  transport-Free-cov-fam-unital _ = Δ¹Disc.○-~ transport-comma-unital ∙h Δ¹Disc.○₁-id
+    : (b : B) → transport-Free-cov-fam (idH b) ~ id
+  transport-Free-cov-fam-unital = transport-Cov-disc-unital 𝐵 p ∘ point
 
   Free-cov-fam-is-covariant : is-covariant (Free-cov-fam p)
   Free-cov-fam-is-covariant
-    = is-covariant←cov-unital-transport (λ b → Δ¹Disc.○∈S {A = p ↓ point b})
-        (transport-Free-cov-fam , transport-Free-cov-fam-unital)
+    = covariant-base-change {P = Cov-disc p} point (Cov-disc-is-covariant 𝐵 p)
 }
 }
 

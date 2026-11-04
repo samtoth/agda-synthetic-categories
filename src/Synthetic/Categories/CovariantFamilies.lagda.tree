@@ -157,6 +157,11 @@ Covariant-unital-transport
   : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
 Covariant-unital-transport {A = A} B
   = Σ[ ρ ∶ Covariant-transport B ] ((x : A) → ρ (idH x) ~ id)
+
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  cov-transport←lifts : Covariant-lifts B → Covariant-transport B
+  cov-transport←lifts lift-B (mk-hom h refl refl) = fst ∘ lift-B h
 }
 }
 
@@ -246,31 +251,43 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 }
 
 \subtree[stt-015U]{
-\title{Transport in covariant families is co-strict}
+\title{Transport from covariant lifts is co-strict}
 \taxon{Lemma}
 \author{fredrikbakke}
 \date{2026-10-02}
 
 \p{
-[Transport in covariant families](stt-00O8) is [co-strict](stt-015V): if #{0 = 1}, it coincides
-with ordinary transport, which is an equivalence.
+Transport obtained from [covariant lifts](bak-4CAE) is [co-strict](stt-015V): if
+#{0 = 1}, it coincides with ordinary transport, which is an equivalence. In
+particular, this applies to [transport in covariant families](stt-00O8).
 }
 
-\agda{ --TODO: is covariant (unital?) transport enough? covariant lifts?
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (lift-P : Covariant-lifts P) where
+
+  opaque
+    cov-transport←lifts-is-co-strict
+      : {x y : A} (h : Hom A x y)
+      → is-co-strict-map (cov-transport←lifts {B = P} lift-P h)
+    cov-transport←lifts-is-co-strict (mk-hom h refl refl)
+      = is-co-strict-map←is-equiv-under-0＝1 (λ p
+        → is-equiv←~⁻¹
+            ( λ x
+              → let lift = lift-P h x .snd
+                in ap (tr (P ∘ h) p) (sym (lift .Homᵈ.hom0))
+                 ∙ apᶠ (lift .Homᵈ.hom) p
+                 ∙ lift .Homᵈ.hom1)
+            ( tr-is-equiv p))
+
 module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (P-is-covariant : is-covariant P) where
 
   opaque
     tr-cov-is-co-strict
       : (h : Δ¹ → A) → is-co-strict-map (tr-cov {P = P} P-is-covariant h)
     tr-cov-is-co-strict h
-      = is-co-strict-map←is-equiv-under-0＝1 (λ p
-        → is-equiv←~⁻¹
-            ( λ x
-              → let lift = tr-cov-filler {P = P} P-is-covariant h x
-                in ap (tr (P ∘ h) p) (sym (lift .Homᵈ.hom0))
-                 ∙ apᶠ (lift .Homᵈ.hom) p
-                 ∙ lift .Homᵈ.hom1)
-            ( tr-is-equiv p))
+      = cov-transport←lifts-is-co-strict {P = P}
+          (λ h x → P-is-covariant h x .centre)
+          (λhom h)
 
   opaque
     unfolding tr-cov-hom
@@ -660,9 +677,6 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
   is-Δ¹-discrete-family←is-covariant B-is-cov x
     = is-Δ¹-discrete←is-left (λ _
       → is-left-family←is-covariant B B-is-cov (const x))
-
-  cov-transport←lifts : Covariant-lifts B → Covariant-transport B
-  cov-transport←lifts lift-B (mk-hom h refl refl) = fst ∘ lift-B h
 
   is-covariant←lifts
     : ((x : A) → is-Δ¹-discrete (B x))

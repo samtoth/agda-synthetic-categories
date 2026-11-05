@@ -50,34 +50,32 @@ open import Synthetic.Categories.Groupoids Δ¹ I
 the type of morphisms over #{f} which extend #{x_1} forms a singleton.}
 
 \agda{
-is-contravariant
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
-    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-contravariant {A = A} P
-  = ∀ f (x₁ : P (f i1)) → is-singleton (Σ[ x₀ ∶ P (f i0) ] Homᵈ (P ∘ f) x₀ x₁)
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥) where
 
-{-# INJECTIVE_FOR_INFERENCE is-contravariant #-}
+  is-contravariant : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-contravariant
+    = (f : (i : Δ¹) → A i) (x₁ : B (f i1))
+    → is-singleton (Σ[ x₀ ∶ B (f i0) ] Homᵈ (B ∘ f) x₀ x₁)
 
-is-contravariant-is-prop
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) → is-prop (is-contravariant P)
-is-contravariant-is-prop _
-  = Π-is-prop (λ _ → Π-is-prop (λ _ → is-single-is-prop))
+  {-# INJECTIVE_FOR_INFERENCE is-contravariant #-}
 
-is-contravariant-hom
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥)
-    → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-contravariant-hom {A = A} P
-  = ∀ {x y} (f : Hom A x y) (y' : P y)
-    → is-singleton (Σ[ x' ∶ P x ] Hom-over f x' y')
+  is-contravariant-is-prop
+    : is-prop is-contravariant
+  is-contravariant-is-prop
+    = Π-is-prop (λ _ → Π-is-prop (λ _ → is-single-is-prop))
 
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+  is-contravariant-hom : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-contravariant-hom
+    = {x : A i0} {y : A i1} (f : Homᵈ A x y) (y' : B y)
+    → is-singleton (Σ[ x' ∶ B x ] Homᵈ-over {B = λ i → B {i}} f x' y')
+
   is-contravariant-hom←is-contravariant
-    : is-contravariant B → is-contravariant-hom B
+    : is-contravariant → is-contravariant-hom
   is-contravariant-hom←is-contravariant contrav (mk-hom f refl refl) x'
     = contrav f x'
 
   is-contravariant←is-contravariant-hom
-    : is-contravariant-hom B → is-contravariant B
+    : is-contravariant-hom → is-contravariant
   is-contravariant←is-contravariant-hom contrav f x'
     = contrav (λhom f) x'
 }
@@ -106,7 +104,7 @@ opaque
       → is-contravariant P
       → ∀ {x y} (h : Hom A x y) → P y → P x
   tr-contrav-hom contrav h
-    = fst ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
+    = fst ∘ centre ∘ is-contravariant-hom←is-contravariant _ contrav h
 
   tr-contrav-over
     : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
@@ -114,7 +112,7 @@ opaque
       → ∀ {x y} (h : Hom A x y) → (y' : P y)
       → Hom-over h (tr-contrav-hom cov h y') y'
   tr-contrav-over contrav h
-    = snd ∘ centre ∘ is-contravariant-hom←is-contravariant contrav h
+    = snd ∘ centre ∘ is-contravariant-hom←is-contravariant _ contrav h
 }
 }
 
@@ -414,7 +412,7 @@ is-inner-family←is-contravariant-hom
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
     → is-contravariant-hom B → is-inner-family B
 is-inner-family←is-contravariant-hom
-  = is-inner-family←is-contravariant ∘ is-contravariant←is-contravariant-hom
+  = is-inner-family←is-contravariant ∘ is-contravariant←is-contravariant-hom _
 
 Σ-contrav-is-segal
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
@@ -447,7 +445,7 @@ opaque
     : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravariant P) {x}
       → tr-contrav-hom {P = P} Pc (idH x) ~ id
   tr-contrav-idH P contrav {x} x' = ap fst
-    (is-contravariant-hom←is-contravariant contrav (idH x) x' .central (x' , idH x'))
+    (is-contravariant-hom←is-contravariant _ contrav (idH x) x' .central (x' , idH x'))
 
   tr-contrav-idH~
     : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P) {x}
@@ -464,7 +462,7 @@ opaque
       ＝ tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
   tr-contrav-∘ 𝐴 P contrav g f z'
     = ap fst
-        (is-contravariant-hom←is-contravariant contrav (g ∘[ 𝐴 ] f) z' .central
+        (is-contravariant-hom←is-contravariant _ contrav (g ∘[ 𝐴 ] f) z' .central
           ( tr-contrav-hom contrav f (tr-contrav-hom contrav g z')
           , Compᵈ 𝐴 P (is-inner-family←is-contravariant contrav) g f
                   (tr-contrav-over contrav g _) (tr-contrav-over contrav f _)))
@@ -517,7 +515,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravarian
       : ∀ {x y} (f : Hom A x y) x' y'
         → tr-contrav-hom {P = P} Pc f y' ＝ x' → Hom-over f x' y'
     Hom-contrav' f x' y' refl
-      =  is-contravariant-hom←is-contravariant Pc f y' .centre .snd
+      =  is-contravariant-hom←is-contravariant P Pc f y' .centre .snd
 
   Hom-contrav'-is-equiv
     : ∀ {x y} (f : Hom A x y) x' y'
@@ -525,7 +523,7 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (Pc : is-contravarian
   Hom-contrav'-is-equiv f x' y'
     = fundamental-Id
         _
-        (is-contravariant-hom←is-contravariant Pc f y')
+        (is-contravariant-hom←is-contravariant P Pc f y')
         (λ x' → Hom-contrav' f x' y')
         x'
 

@@ -28,6 +28,7 @@ open import Core.Orthogonal
 open import Core.OrthogonalClosure
 
 open import Modalities.ConnectedMaps
+open import Modalities.ConnectedTypes
 open import Modalities.Factorisations
 open import Modalities.OrthogonalFactorisationSystems
 open import Modalities.ModalEquivalences
@@ -67,8 +68,14 @@ module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
   Cov-disk : ∀ {𝓙} {J : Type 𝓙} → (J → B) → Type (𝓘 ⊔ 𝓙 ⊔ 𝓤 ⊔ 𝓥)
   Cov-disk b = Δ¹Disc.○ (p ↓ b)
 
+  Cov-disk: : ∀ {𝓙} (J : Type 𝓙) → (J → B) → Type (𝓘 ⊔ 𝓙 ⊔ 𝓤 ⊔ 𝓥)
+  Cov-disk: J = Cov-disk
+
   Cov-disk-π : ∀ {𝓙} {J : Type 𝓙} → Σ (J → B) Cov-disk → (J → B)
   Cov-disk-π = fst: Cov-disk
+
+  Cov-disk-π: : ∀ {𝓙} (J : Type 𝓙) → Σ (J → B) Cov-disk → (J → B)
+  Cov-disk-π: J = Cov-disk-π
 }
 }
 
@@ -140,8 +147,8 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E 
   transport-Cov-disk j₀ f = Δ¹Disc.○₁ (transport-comma j₀ f)
 
   transport-comma-unital
-    : ∀ {𝓙} {J : Type 𝓙} {y : J → B}
-      → transport-comma id (idH ∘ y) ~ id
+    : ∀ {𝓙} {J : Type 𝓙} {b : J → B}
+      → transport-comma id (idH ∘ b) ~ id
   transport-comma-unital x
     = Σ-path→ (refl , (Σ-path→ (refl , ∘[ 𝐵 ]-right-unit)))
 
@@ -151,13 +158,17 @@ module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E 
   transport-Cov-disk-unital _
     = Δ¹Disc.○-~ transport-comma-unital ∙h Δ¹Disc.○₁-id
 
+  unital-transport-Cov-disk
+    : ∀ {𝓙} {J : Type 𝓙} → Covariant-unital-transport (Cov-disk: p J)
+  unital-transport-Cov-disk
+    = (transport-Cov-disk id ∘ Nat←Hom , transport-Cov-disk-unital)
+
   Cov-disk-is-covariant
     : ∀ {𝓙} {J : Type 𝓙} → is-covariant (Cov-disk p {J = J})
   Cov-disk-is-covariant
     = is-covariant←cov-unital-transport
-        ( λ b → Δ¹Disc.○∈S {A = p ↓ b})
-        ( (transport-Cov-disk id ∘ Nat←Hom)
-        , transport-Cov-disk-unital)
+        (λ b → Δ¹Disc.○∈S {A = p ↓ b})
+        (unital-transport-Cov-disk)
 
   Cov-disk-π-is-left-fibration
     : ∀ {𝓙} {J : Type 𝓙} → is-left-fibration (Cov-disk-π p {J = J})
@@ -251,6 +262,11 @@ module _
   lift-comma-base-change lift-J h (e , j , α)
     = lift-comma-along h e (lift-J h j) α
 
+  transport-comma-base-change
+    : Covariant-lifts J → Covariant-transport (λ a → (p ↓ b a))
+  transport-comma-base-change lift-J
+    = cov-transport←lifts {B = (λ a → (p ↓ b a))} (lift-comma-base-change lift-J)
+
   Cov-disk-base-change-is-covariant
     : Covariant-lifts J → is-covariant (Cov-disk p ∘ b)
   Cov-disk-base-change-is-covariant lift-J
@@ -269,7 +285,7 @@ Let #{p \colon E \to B} be a map, and #{b : \Pi1{a : A}{J(a) \to B}} a family of
 diagrams in #{B}. Their total space #{\Sigma1{a : A}{\CovDisk_p(b(a))}} is the
 \em{covariant disk bundle} under #{p} into #{b}. This type comes equipped with a unit
 map #{\Sigma1{a : A}{p \downarrow b(a)} \to \Sigma1{a : A}{\CovDisk_p(b(a))}} which
-is left anodyne, in fact it is #{Δ¹}-anodyne. Moreover, when #{B} is Segal and #{J}
+is left anodyne, in fact it is #{Δ¹}-connected. Moreover, when #{B} is Segal and #{J}
 admits covariant lifts, the bundle projection map
 #{\Sigma1{a : A}{\CovDisk_p(b(a))} \to A} is a [left fibration](bak-B06D).
 }
@@ -311,7 +327,7 @@ module _
     : is-connected-map Δ¹DiscreteType-gRSubU Cov-disk-bundle-η
   Cov-disk-bundle-η-is-connected
     = is-connected-map←up-connected-map Δ¹DiscreteType-gRSubU Cov-disk-bundle-η
-        (λ {U = Y} Y-is-discrete
+        ( λ {U = Y} Y-is-discrete
           → precomp-Cov-disk-bundle-η≃ Y Y-is-discrete id ._≃_.fwd-is-equiv)
 
   Cov-disk-bundle-η-is-left-anodyne
@@ -343,10 +359,10 @@ module _
     = Cov-disk-bundle-π-is-left-fibration b
         (λ h j → J-is-covariant h j .centre)
 
-  Cov-disk-bundle-π-is-left-fibration'
+  Cov-disk-bundle-π-at-const-fam-is-left-fibration
     : {J : Type 𝓙} (b : A → J → B)
     → is-left-fibration (Cov-disk-bundle-π p b)
-  Cov-disk-bundle-π-is-left-fibration' b
+  Cov-disk-bundle-π-at-const-fam-is-left-fibration b
     = Cov-disk-bundle-π-is-left-fibration b (λ _ j → (j , idH j))
 }
 }
@@ -401,16 +417,20 @@ module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
   Free-cov-fam-η-fibred : ∀ b → (e : fibre p b) → Free-cov-fam p b
   Free-cov-fam-η-fibred b (e , p) = Δ¹Disc.η (e , (tt , (Hom←Id p)))
 
+  Free-left-fib-comma-η : E → Σ[ b ∶ B ] (p ↓ point b)
+  Free-left-fib-comma-η e = (p e , e , tt , idH (p e))
+
   Free-left-fib-η : E → Σ B (Free-cov-fam p)
   Free-left-fib-η e = (p e , Free-cov-fam-η e)
 
 module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E → B) where
 
-  Free-left-fib-η-is-left-anodyne : is-left-anodyne (Free-left-fib-η p)
+  Free-left-fib-η-is-left-anodyne
+    : is-left-anodyne (Free-left-fib-η p)
   Free-left-fib-η-is-left-anodyne
     = is-anodyne-∘ (point i0)
         (Cov-disk-bundle-η-is-left-anodyne p point)
-        (is-anodyne←equiv _ _
+        (is-anodyne←equiv _ (Free-left-fib-comma-η p)
           (mk-arr-equiv
             (Σ-singleton (λ _ → 𝟙-is-singleton))
             (total-coslice≃total-comma-point p)
@@ -517,22 +537,21 @@ the unit #{E \to \FreeCov(p)} induces an equivalence on realisations
 \agda{
 module _ {𝓤 𝓥} {B : Type 𝓤} (𝐵 : is-segal B) {E : Type 𝓥} (p : E → B) where
 
-  Free-left-fib-η-has-up-modal-equiv
+  Free-left-fib-η-has-up-ʃ-equiv
     : up-modal-equiv Δ¹DiscreteType-gSubU (Free-left-fib-η p)
-  Free-left-fib-η-has-up-modal-equiv Q-is-discrete
+  Free-left-fib-η-has-up-ʃ-equiv Q-is-discrete
     = orthogonal-type←orthogonal-!
         (Free-left-fib-η-is-left-anodyne 𝐵 p !
           (!-is-left-fibration←is-Δ¹-discrete Q-is-discrete))
 
-  Free-left-fib-η-is-modal-equiv
+  Free-left-fib-η-is-ʃ-equiv
     : is-modal-equiv Δ¹DiscreteType-gRSubU (Free-left-fib-η p)
-  Free-left-fib-η-is-modal-equiv
-    = is-modal-equiv←up-modal-equiv
-        (Δ¹DiscreteType-gRSubU)
-        (Free-left-fib-η-has-up-modal-equiv)
+  Free-left-fib-η-is-ʃ-equiv
+    = is-modal-equiv←up-modal-equiv Δ¹DiscreteType-gRSubU
+        Free-left-fib-η-has-up-ʃ-equiv
 
   ʃFree-left-fib≃ : Δ¹Disc.○ E ≃ Δ¹Disc.○ (Σ B (Free-cov-fam p))
   ʃFree-left-fib≃
-    = mk≃ (Δ¹Disc.○₁ (Free-left-fib-η p)) Free-left-fib-η-is-modal-equiv
+    = mk≃ (Δ¹Disc.○₁ (Free-left-fib-η p)) Free-left-fib-η-is-ʃ-equiv
 }
 }

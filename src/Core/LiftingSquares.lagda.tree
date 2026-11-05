@@ -14,14 +14,15 @@ open import Axioms.UF
 \agda-imports{
 \agda{
 open import Core.Arrows
+open import Core.ArrowMorphisms
+open import Core.DependentLiftingSquares public
 open import Foundations.Prelude
-open import Ergonomics.Representation
-open import Ergonomics.Extensionality
 }
 }
 
 \subtree[stt-0044]{
 \title{Lifts of squares}
+\contributor{fredrikbakke}
 
 \p{Given a morphism of arrows, i.e., a square
 
@@ -37,10 +38,10 @@ B && D
 \arrow[from=1-1, to=3-3, phantom, "H"]
 \end{tikzcd}
 }
-then a \em{lift} is a map from the bottom left to the top right, #{\ell \colon B \to X},
-such that both evident triangles commute \em{and} such that the pasting
-of the triangles agrees with the full square. In other words, it is a completion of
-the diagram
+then a \em{lift} is a map from the bottom left to the top right,
+#{\ell \colon B \to C}, such that both evident triangles commute \em{and} such that
+the pasting of the triangles agrees with the full square. In other words, it is a
+completion of the diagram
 
 \quiver{
 \begin{tikzcd}
@@ -60,37 +61,50 @@ which coheres with the original homotopy of the square.
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦 𝓜}
-  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
   {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
-  (G : Arrow-map f f')
-  (let g = G .Arrow-map.top)
-  (let g' = G .Arrow-map.bot)
-  (let H = G .Arrow-map.comm)
   where
 
-  record Lift : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜) where
-    constructor mk-lift
-    field
-      lift : B → C
-      L : lift ∘ f ~ g
-      K : f' ∘ lift ~ g'
-      pastes : f' ◃h L ~ K ▹h f ∙h H {- H ~ K ▹h f ∙h f' ◃h L -}
+  SqLift : Arrow-map f f' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  SqLift = SqLiftᵈ {f = f} {g = λ _ → f'}
 
-  unquoteDecl Lift-repr≊ Lift-repr≃
-    = make-record-repr Lift-repr≊ Lift-repr≃ (quote Lift)
+  SqLift-repr≊
+    : (G : Arrow-map f f')
+    → SqLift G ≊
+      (Σ[ l ∶ (B → C) ]
+       Σ[ L ∶ l ∘ f ~ G .Arrow-map.top ]
+       Σ[ K ∶ f' ∘ l ~ G .Arrow-map.bot ]
+       (f' ◃h L ~ K ▹h f ∙h G .Arrow-map.comm))
+  SqLift-repr≊ = SqLiftᵈ-repr≊ {f = f} {g = λ _ → f'}
+
+  SqLift-repr≃
+    : (G : Arrow-map f f')
+    → SqLift G ≃
+      (Σ[ l ∶ (B → C) ]
+       Σ[ L ∶ l ∘ f ~ G .Arrow-map.top ]
+       Σ[ K ∶ f' ∘ l ~ G .Arrow-map.bot ]
+       (f' ◃h L ~ K ▹h f ∙h G .Arrow-map.comm))
+  SqLift-repr≃ = SqLiftᵈ-repr≃ {f = f} {g = λ _ → f'}
+
+module SqLift = SqLiftᵈ
 }
 }
 
 \subtree[stt-0047]{
 \title{Unique lifts of squares}
 \taxon{Definition}
+\author{samueltoth}
 
 \p{We say a square has unique lifts if its type of lifts is a singleton.}
 
 \agda{
-  has-unique-lift : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
-  has-unique-lift = is-singleton Lift
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {f' : C → D}
+  where
+
+  has-unique-sqlift : Arrow-map f f' → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  has-unique-sqlift = has-unique-sqliftᵈ {f = f} {g = λ _ → f'}
 }
 }
 
@@ -101,10 +115,11 @@ module _
 \date{2026-09-11}
 
 \agda{
-is-equiv←self-lift
+is-equiv←self-sqlift
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
-  → Lift (id-square: f) → is-equiv f
-is-equiv←self-lift s = is-equiv←qinv (Lift.lift s , Lift.L s , Lift.K s)
+  → SqLift (id-square: f) → is-equiv f
+is-equiv←self-sqlift s
+  = is-equiv←qinv (SqLift.lift s , SqLift.L s , SqLift.K s)
 }
 }
 
@@ -116,21 +131,21 @@ is-equiv←self-lift s = is-equiv←qinv (Lift.lift s , Lift.L s , Lift.K s)
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
-  {C : Type 𝓦} {D : Type 𝓜} {f : A → B} {g : C → D}
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
   where
 
   diagonal-square : (B → C) → Arrow-map f g
-  diagonal-square d = mk-amap (d ∘ f) (g ∘ d) ~refl
+  diagonal-square = diagonal-squareᵈ {f = f} {g = λ _ → g}
 
-  diagonal-lift : (d : B → C) → Lift (diagonal-square d)
-  diagonal-lift d = mk-lift d ~refl ~refl ~refl
+  diagonal-sqlift : (d : B → C) → SqLift (diagonal-square d)
+  diagonal-sqlift = diagonal-sqliftᵈ {f = f} {g = λ _ → g}
 
   diagonal-square-htpy
     : {d e : B → C} → d ~ e
     → Arrow-map-path (diagonal-square d) (diagonal-square e)
-  diagonal-square-htpy H
-    = (H ▹h f , g ◃h H , (∙h-reflr (g ◃h H ▹h f) h⁻¹))
+  diagonal-square-htpy = diagonal-squareᵈ-htpy {f = f} {g = λ _ → g}
 }
 
 \p{
@@ -153,23 +168,22 @@ module _
   {G : Arrow-map f g}
   where
 
-  Lift-htpy-boundary
-    : (s : Lift G)
-    → Arrow-map-path (diagonal-square (Lift.lift s)) G
-  Lift-htpy-boundary s = (Lift.L s , Lift.K s , Lift.pastes s)
+  SqLift-htpy-boundary
+    : (s : SqLift G)
+    → Arrow-map-path (diagonal-square (SqLift.lift s)) G
+  SqLift-htpy-boundary
+    = SqLiftᵈ-htpy-boundary {f = f} {g = λ _ → g} {G = G}
 
-  coherence-Lift-htpy
-    : (s t : Lift G)
-    → Lift.lift s ~ Lift.lift t
+  coherence-SqLift-htpy
+    : (s t : SqLift G)
+    → SqLift.lift s ~ SqLift.lift t
     → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
-  coherence-Lift-htpy s t H
-    = Arrow-map-path²
-        (Lift-htpy-boundary s)
-        (concat-Arrow-map-path (diagonal-square-htpy H) (Lift-htpy-boundary t))
+  coherence-SqLift-htpy
+    = coherence-SqLiftᵈ-htpy {f = f} {g = λ _ → g} {G = G}
 
-  Lift-htpy : (s t : Lift G) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
-  Lift-htpy s t
-    = Σ[ H ∶ Lift.lift s ~ Lift.lift t ] coherence-Lift-htpy s t H
+  SqLift-htpy : (s t : SqLift G) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  SqLift-htpy
+    = SqLiftᵈ-htpy {f = f} {g = λ _ → g} {G = G}
 }
 }
 
@@ -182,38 +196,34 @@ module _
 \p{Homotopies of lifts characterise their equality.}
 
 \agda{
-  Lift-htpy-refl : {s : Lift G} → Lift-htpy s s
-  Lift-htpy-refl {s}
-    = ( ~refl
-      , Arrow-map-path²←id
-          ( sym (concat-Arrow-map-path-left-unit (Lift-htpy-boundary s))))
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} {f : A → B}
+  {C : Type 𝓦} {D : Type 𝓜} {g : C → D}
+  {G : Arrow-map f g}
+  where
 
-  Lift-htpy←id : {s t : Lift G} → s ＝ t → Lift-htpy s t
-  Lift-htpy←id refl = Lift-htpy-refl
+  SqLift-htpy-refl : {s : SqLift G} → SqLift-htpy s s
+  SqLift-htpy-refl
+    = SqLiftᵈ-htpy-refl {f = f} {g = λ _ → g} {G = G}
 
-  opaque
-    Lift-htpy-is-torsorial : (s : Lift G) → is-torsorial (Lift-htpy s)
-    Lift-htpy-is-torsorial s
-      = is-single←equiv
-          (Σ-fst-≃ (Lift-repr≃ G e⁻¹))
-          (is-singleton-structure←parts
-            (SingS-is-single (Lift.lift s)) (Lift.lift s , ~refl)
-            (is-single←equiv⁻¹
-              (Σ-snd-≃ (λ p
-                → tr≃
-                    (Arrow-map-path² (Lift-htpy-boundary s))
-                    (concat-Arrow-map-path-left-unit p)))
-              (Arrow-map-path²-is-torsorial (Lift-htpy-boundary s))))
+  SqLift-htpy←id : {s t : SqLift G} → s ＝ t → SqLift-htpy s t
+  SqLift-htpy←id
+    = SqLiftᵈ-htpy←id {f = f} {g = λ _ → g} {G = G}
 
-    Lift-htpy←id-is-equiv
-      : (s t : Lift G) → is-equiv (Lift-htpy←id {s} {t})
-    Lift-htpy←id-is-equiv s
-      = fundamental-Id (Lift-htpy s) (Lift-htpy-is-torsorial s) (λ _ → Lift-htpy←id)
+  SqLift-htpy-is-torsorial
+    : (s : SqLift G) → is-torsorial (SqLift-htpy s)
+  SqLift-htpy-is-torsorial
+    = SqLiftᵈ-htpy-is-torsorial {f = f} {g = λ _ → g} {G = G}
 
-    Lift-htpy≃ : (s t : Lift G) → (s ＝ t) ≃ Lift-htpy s t
-    Lift-htpy≃ s t = mk≃ Lift-htpy←id (Lift-htpy←id-is-equiv s t)
+  SqLift-htpy←id-is-equiv
+    : (s t : SqLift G) → is-equiv (SqLift-htpy←id {s} {t})
+  SqLift-htpy←id-is-equiv = SqLiftᵈ-htpy←id-is-equiv {f = f} {g = λ _ → g} {G = G}
 
-    Lift-htpy→ : {s t : Lift G} → Lift-htpy s t → s ＝ t
-    Lift-htpy→ = _≃_.bwd (Lift-htpy≃ _ _)
+  SqLift-htpy≃ : (s t : SqLift G) → (s ＝ t) ≃ SqLift-htpy s t
+  SqLift-htpy≃ = SqLiftᵈ-htpy≃ {f = f} {g = λ _ → g} {G = G}
+
+  SqLift-htpy→ : {s t : SqLift G} → SqLift-htpy s t → s ＝ t
+  SqLift-htpy→ = SqLiftᵈ-htpy→ {f = f} {g = λ _ → g} {G = G}
 }
 }

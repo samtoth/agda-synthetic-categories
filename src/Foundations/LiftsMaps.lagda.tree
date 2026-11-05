@@ -1,0 +1,207 @@
+\title{Lifts of maps}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-10-28}
+\import{stt-macros}
+
+\agda{
+module Foundations.LiftsMaps where
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Universes
+open import Foundations.Functions
+open import Foundations.Identity
+open import Foundations.Homotopy
+open import Foundations.Sigma
+open import Foundations.SigmaProperties
+open import Foundations.FibrewiseEquivalences
+open import Foundations.Equivalences
+open import Foundations.FunExt
+open import Foundations.SingletonClosure
+open import Foundations.TheoremOfChoice
+open import Foundations.TorsorialTypeFamilies
+}
+}
+
+\subtree[bak-102F]{
+\title{Lift types}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Given a family of maps #{g \colon \Pi1{b : B}{X(b) \to Y(b)}} and a section
+#{h : \Pi_B Y}, a \em{dependent lift} of #{h} along #{g} is a section
+#{k : \Pi_B X} such that #{g(b,k(b)) = h(b)} for all #{b : B}. The type of such lifts
+is the \em{dependent lift type}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : B → Type 𝓥} {Y : B → Type 𝓦}
+  where
+
+  Liftᵈ : (g : (b : B) → X b → Y b) (h : Π B Y) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Liftᵈ g h = Σ[ k ∶ Π B X ] (postcomp-Π g k ~ h)
+
+Lift
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦}
+  → (g : X → Y) (h : B → Y) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+Lift g h = Liftᵈ (λ _ → g) h
+}
+}
+
+\subtree[bak-46E2]{
+\title{Precomposition of lifts}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Precomposition by a map #{f} defines a map on types of lifts
+##{\Lift{g}{h} \to \Lift{g\circ f}{h \circ f}.}
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  precomp-Liftᵈ
+    : (h : Π B Y) → Liftᵈ g h → Liftᵈ (g ∘ f) (h ∘ f)
+  precomp-Liftᵈ h (k , H) = (k ∘ f , H ∘ f)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  where
+
+  precomp-Lift : (h : B → Y) → Lift g h → Lift g (h ∘ f)
+  precomp-Lift = precomp-Liftᵈ f (λ _ → g)
+}
+}
+
+\subtree[bak-AF07]{
+\title{Homotopies of lifts}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+A \em{homotopy} of lifts is a homotopy of sections which coheres with their given
+triangles.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : B → Type 𝓥} {Y : B → Type 𝓦}
+  {g : (b : B) → X b → Y b} {h : Π B Y}
+  where
+
+  Liftᵈ-htpy : Liftᵈ g h → Liftᵈ g h → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Liftᵈ-htpy u v
+    = Σ[ H ∶ u .fst ~ v .fst ] (u .snd ~ ((λ {b} → g b) ◃h H ∙h v .snd))
+
+  refl-Liftᵈ-htpy : (u : Liftᵈ g h) → Liftᵈ-htpy u u
+  refl-Liftᵈ-htpy u = (~refl , ~refl)
+
+  Liftᵈ-htpy←Id : {u v : Liftᵈ g h} → u ＝ v → Liftᵈ-htpy u v
+  Liftᵈ-htpy←Id {u} refl = refl-Liftᵈ-htpy u
+}
+}
+
+\subtree[bak-E01D]{
+\title{Dependent lifts as sections of fibres}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : B → Type 𝓥} {Y : B → Type 𝓦}
+  (g : (b : B) → X b → Y b) (h : Π B Y)
+  where
+
+  Π≃Liftᵈ : Π B (λ b → fibre (g b) (h b)) ≃ Liftᵈ g h
+  Π≃Liftᵈ = Σ-Π-swap≃ X (λ b x → g b x ＝ h b)
+
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦}
+  (g : X → Y) (h : B → Y)
+  where
+
+  Π≃Lift : Π B (fibre g ∘ h) ≃ Lift g h
+  Π≃Lift = Π≃Liftᵈ (λ _ → g) h
+}
+}
+
+\agda{
+module LiftsWithFunExt (FE : FunExt-global) (open WithFunExt-global FE) where
+}
+
+\subtree[bak-FA3B]{
+\title{Characterising equality of lifts}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : B → Type 𝓥} {Y : B → Type 𝓦}
+    {g : (b : B) → X b → Y b} {h : Π B Y}
+    where
+
+    Liftᵈ-htpy-is-torsorial
+      : (u : Liftᵈ g h) → is-torsorial (Liftᵈ-htpy {g = g} u)
+    Liftᵈ-htpy-is-torsorial u
+      = is-singleton-structure←parts
+          (htpy-is-torsorial FE (u .fst))
+          (_ , ~refl)
+          (htpy-is-torsorial FE (u .snd))
+
+    Liftᵈ-htpy←Id-is-equiv
+      : (u v : Liftᵈ g h) → is-equiv (Liftᵈ-htpy←Id {g = g} {u = u} {v})
+    Liftᵈ-htpy←Id-is-equiv u
+      = fundamental-Id
+          (Liftᵈ-htpy {g = g} u)
+          (Liftᵈ-htpy-is-torsorial u)
+          (λ _ → Liftᵈ-htpy←Id {g = g})
+
+    Id≃Liftᵈ-htpy : (u v : Liftᵈ g h) → (u ＝ v) ≃ Liftᵈ-htpy {g = g} u v
+    Id≃Liftᵈ-htpy u v
+      = mk≃ (Liftᵈ-htpy←Id {g = g}) (Liftᵈ-htpy←Id-is-equiv u v)
+
+    Id←Liftᵈ-htpy : {u v : Liftᵈ g h} → Liftᵈ-htpy {g = g} u v → u ＝ v
+    Id←Liftᵈ-htpy {u} {v} = _≃_.bwd (Id≃Liftᵈ-htpy u v)
+}
+}
+
+\subtree[bak-C09E]{
+\title{Fibres of postcomposition are types of lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{The fibre of postcomposition by #{g} at #{h} is its type of lifts.}
+
+\agda{
+  module _
+    {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : B → Type 𝓥} {Y : B → Type 𝓦}
+    (g : (b : B) → X b → Y b) (h : Π B Y)
+    where
+
+    fibre-postcomp-Π≃Liftᵈ : fibre (postcomp-Π g) h ≃ Liftᵈ g h
+    fibre-postcomp-Π≃Liftᵈ = Σ-snd-≃ (λ _ → funext≃)
+
+  module _
+    {𝓤 𝓥 𝓦} {B : Type 𝓤} {X : Type 𝓥} {Y : Type 𝓦}
+    (g : X → Y) (h : B → Y)
+    where
+
+    fibre-postcomp≃Lift : fibre (postcomp B g) h ≃ Lift g h
+    fibre-postcomp≃Lift = fibre-postcomp-Π≃Liftᵈ (λ _ → g) h
+}
+}

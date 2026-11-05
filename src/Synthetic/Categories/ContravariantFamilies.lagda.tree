@@ -21,9 +21,12 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Orthogonal
+open import Core.DependentOrthogonal
 open import Core.OrthogonalClosure
 open import Core.PullbackPowers
 open import Core.Arrows
+open import Core.ArrowMorphisms
+open import Core.ArrowDependentMorphisms
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
 open import Core.PushoutSums
@@ -205,14 +208,17 @@ module _
 \subtree[stt-00OE]{
 \title{Right type families}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{We say that a type family is a \em{right family} if, as a type family, it is right orthogonal to
 the right endpoint inclusion.}
 
 \agda{
 is-right-family
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-right-family = are-orthogonal-fam (point i1)
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥)
+  → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-right-family B
+  = are-dependently-orthogonal-fam (point i1) (λ {i} → B {i})
 }
 }
 
@@ -221,10 +227,10 @@ is-right-family = are-orthogonal-fam (point i1)
 \contributor{fredrikbakke}
 
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) where
 
   contrav-lift-is-extension
-    : ∀ (σ : Δ¹ → A) (x₁ : P (σ i1))
+    : ∀ (σ : (i : Δ¹) → A i) (x₁ : P (σ i1))
       → (Σ[ x₀ ∶ P (σ i0) ] Homᵈ (P ∘ σ) x₀ x₁)
       ≃ Extᵈ (point i1) (P ∘ σ) (point x₁)
   contrav-lift-is-extension σ x₁
@@ -232,36 +238,47 @@ module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
 
   opaque
     is-contravariant←has-unique-extensions
-      : has-unique-extensions (point i1) P → is-contravariant P
+      : has-unique-dependent-extensions (point i1) (λ {i} → P {i})
+      → is-contravariant (λ {i} → P {i})
     is-contravariant←has-unique-extensions ext σ x₁
       = is-single←equiv⁻¹
           (contrav-lift-is-extension σ x₁)
           (ext (mk-afmap σ (point x₁)))
 
     has-unique-extensions←is-contravariant
-      : is-contravariant P → has-unique-extensions (point i1) P
+      : is-contravariant (λ {i} → P {i})
+      → has-unique-dependent-extensions (point i1) (λ {i} → P {i})
     has-unique-extensions←is-contravariant contrav (mk-afmap σ f)
       = is-single←equiv
           (contrav-lift-is-extension σ (f tt))
           (contrav σ (f tt))
 
   has-unique-extensions↔is-contravariant
-    : has-unique-extensions (point i1) P ↔ is-contravariant P
+    : has-unique-dependent-extensions (point i1) (λ {i} → P {i})
+    ↔ is-contravariant (λ {i} → P {i})
   has-unique-extensions↔is-contravariant
     = ( is-contravariant←has-unique-extensions
       , has-unique-extensions←is-contravariant)
 
   is-right-family↔is-contravariant
-    : is-right-family P ↔ is-contravariant P
+    : is-right-family (λ {i} → P {i})
+    ↔ is-contravariant (λ {i} → P {i})
   is-right-family↔is-contravariant
-    =  are-orthogonal-fam↔has-unique-extensions
+    =  are-dependently-orthogonal-fam↔has-unique-dependent-extensions
+        {P = (λ {i} → P {i})}
     ∙iff has-unique-extensions↔is-contravariant
 
-  is-contravariant←is-right-family : is-right-family P → is-contravariant P
-  is-contravariant←is-right-family = is-right-family↔is-contravariant .fst
+  is-contravariant←is-right-family
+    : is-right-family (λ {i} → P {i})
+    → is-contravariant (λ {i} → P {i})
+  is-contravariant←is-right-family
+    = is-right-family↔is-contravariant .fst
 
-  is-right-family←is-contravariant : is-contravariant P → is-right-family P
-  is-right-family←is-contravariant = is-right-family↔is-contravariant .snd
+  is-right-family←is-contravariant
+    : is-contravariant (λ {i} → P {i})
+    → is-right-family (λ {i} → P {i})
+  is-right-family←is-contravariant
+    = is-right-family↔is-contravariant .snd
 }
 }
 
@@ -303,11 +320,17 @@ endpoint inclusion of #{\Delta^1}.}
 
 \p{See [[stt-00AV]] for the dual notion.}
 
+\p{
+More generally, a family of maps #{p_i \colon E_i \to B_i}, indexed by #{i : Δ¹},
+is a right fibration if it is [dependently right orthogonal](bak-42B9) to the
+right endpoint inclusion.
+}
+
 \agda{
 is-right-fibration
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
-is-right-fibration f = (point i1) ⊥ f
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : Δ¹ → Type 𝓥}
+  → ({i : Δ¹} → A i → B i) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+is-right-fibration f = (point i1) ⊥ᵈ (λ i → f {i})
 
 is-right-anodyne
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
@@ -318,50 +341,64 @@ is-right-anodyne f = is-anodyne f (point i1)
 \subtree[stt-00OI]{
 \title{Contravariant type families straighten to right fibrations}
 \taxon{Corollary}
+\contributor{fredrikbakke}
 
 \p{We show that some family #{P \colon A \to \UU} is [contravariant](stt-00OD) iff
 the map #{\pi \colon \tilde{P} \to A} is a [right fibration](stt-00OH). Equivalently, a
 map #{p \colon E \to B} is a right fibration iff its fibre family is contravariant.}
 
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where opaque
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) where opaque
+
   is-contravariant↔is-right-fibration
-    : is-contravariant P ↔ is-right-fibration (fst: P)
+    : is-contravariant (λ {i} → P {i})
+    ↔ is-right-fibration (λ {i} → fst: P {i})
   is-contravariant↔is-right-fibration
-    = (is-right-family↔is-contravariant P iff⁻¹)
-    ∙iff are-orthogonal-fam↔are-orthogonal-fst
+    = (is-right-family↔is-contravariant (λ {i} → P {i}) iff⁻¹)
+    ∙iff are-dependently-orthogonal-fam↔are-dependently-orthogonal-fst
+        {P = (λ {i} → P {i})}
 
   is-right-fibration←is-contravariant
-    : is-contravariant P → is-right-fibration (fst: P)
-  is-right-fibration←is-contravariant = is-contravariant↔is-right-fibration .fst
+    : is-contravariant (λ {i} → P {i})
+    → is-right-fibration (λ {i} → fst: P {i})
+  is-right-fibration←is-contravariant
+    = is-contravariant↔is-right-fibration .fst
 
   is-contravariant←is-right-fibration
-    : is-right-fibration (fst: P) → is-contravariant P
-  is-contravariant←is-right-fibration = is-contravariant↔is-right-fibration .snd
+    : is-right-fibration (λ {i} → fst: P {i})
+    → is-contravariant (λ {i} → P {i})
+  is-contravariant←is-right-fibration
+    = is-contravariant↔is-right-fibration .snd
 
-module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+module _ {𝓤 𝓥} {E : Δ¹ → Type 𝓤} {B : Δ¹ → Type 𝓥} (p : {i : Δ¹} → E i → B i) where
 
   orthogonal-fibre-fam←is-right-fibration
-    : is-right-fibration p → is-right-family (fibre p)
+    : is-right-fibration p
+    → is-right-family (λ {i} → fibre (p {i}))
   orthogonal-fibre-fam←is-right-fibration
-    = are-orthogonal-fibre←are-orthogonal
+    = fibre-sections-is-equiv←are-dependently-orthogonal
+        (point i1) (λ i → p {i})
 
   is-right-fibration←orthogonal-fibre-fam
-    : is-right-family (fibre p) → is-right-fibration p
+    : is-right-family (λ {i} → fibre (p {i}))
+    → is-right-fibration p
   is-right-fibration←orthogonal-fibre-fam
-    = are-orthogonal←are-orthogonal-fibre
+    = are-dependently-orthogonal←fibre-sections-is-equiv
+        (point i1) (λ i → p {i})
 
   fibre-fam-is-contravariant←is-right-fibration
-    : is-right-fibration p → is-contravariant (fibre p)
+    : is-right-fibration p
+    → is-contravariant (λ {i} → fibre (p {i}))
   fibre-fam-is-contravariant←is-right-fibration
-    = is-contravariant←is-right-family (fibre p)
+    = is-contravariant←is-right-family (λ {i} → fibre (p {i}))
     ∘ orthogonal-fibre-fam←is-right-fibration
 
   is-right-fibration←fibre-fam-is-contravariant
-    : is-contravariant (fibre p) → is-right-fibration p
+    : is-contravariant (λ {i} → fibre (p {i}))
+    → is-right-fibration p
   is-right-fibration←fibre-fam-is-contravariant
     = is-right-fibration←orthogonal-fibre-fam
-    ∘ is-right-family←is-contravariant (fibre p)
+    ∘ is-right-family←is-contravariant (λ {i} → fibre (p {i}))
 }
 }
 
@@ -485,8 +522,9 @@ opaque
                   (tr-contrav-over contrav g _) (tr-contrav-over contrav f _)))
 
 tr∘tr-contrav
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) (contrav : is-contravariant P) {x y z}
-      (p : y ＝ z) (f : Hom A y x)
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥)
+      (contrav : is-contravariant P) {x : A i1} {y z : A i0}
+      (p : y ＝ z) (f : Homᵈ A y x)
     → tr P p ∘ tr-contrav-hom {P = P} contrav f
     ~ tr-contrav-hom {P = P} contrav (adjust-hom p refl f)
 tr∘tr-contrav P Pc refl f a
@@ -626,10 +664,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 
 \agda{
 const-is-contravariant←is-Δ¹-discrete
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → is-Δ¹-discrete B → is-contravariant (const: (Type 𝓥) A B)
-const-is-contravariant←is-Δ¹-discrete B-disc
-  = is-contravariant←is-right-family _
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : Type 𝓥}
+    → is-Δ¹-discrete B → is-contravariant (λ {i} (_ : A i) → B)
+const-is-contravariant←is-Δ¹-discrete {A = A} {B} B-disc
+  = is-contravariant←is-right-family (λ {i} (_ : A i) → B)
       (λ _ → 3-for-2' (B-disc tt) point-is-equiv)
 
 !-is-right-fibration←is-Δ¹-discrete
@@ -711,13 +749,20 @@ contravariant, by the [unital transport criterion](stt-00VL).
 }
 
 \agda{
+module _
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {P : {i : Δ¹} → A i → Type 𝓥}
+  (ℓ : Contravariant-lifts (λ {i} → P {i}))
+  where
+
+  ʃ∘-contrav-transport←lifts
+    : Contravariant-transport (λ {i} → Δ¹Disc.○ ∘ P {i})
+  ʃ∘-contrav-transport←lifts f
+    = Δ¹Disc.○₁ (contrav-transport←lifts ℓ f)
+
 module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Contravariant-lifts P) where
 
-  ʃ∘-contrav-transport←lifts : Contravariant-transport (Δ¹Disc.○ ∘ P)
-  ʃ∘-contrav-transport←lifts f = Δ¹Disc.○₁ (contrav-transport←lifts ℓ f)
-
   ʃ∘-contrav-transport←lifts-unital
-    : (a : A) → ʃ∘-contrav-transport←lifts (idH a) ~ id
+    : (a : A) → ʃ∘-contrav-transport←lifts ℓ (idH a) ~ id
   ʃ∘-contrav-transport←lifts-unital a
     = Δ¹Disc.▹η.bwd
         ( Δ¹Disc.○₁-β (fst ∘ ℓ (const a))
@@ -727,7 +772,8 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Contravariant-
   ʃ∘-contrav-unital-transport←lifts
     : Contravariant-unital-transport (Δ¹Disc.○ ∘ P)
   ʃ∘-contrav-unital-transport←lifts
-    = (ʃ∘-contrav-transport←lifts , ʃ∘-contrav-transport←lifts-unital)
+    = ( ʃ∘-contrav-transport←lifts ℓ
+      , ʃ∘-contrav-transport←lifts-unital)
 
   ʃ∘-is-contravariant←lifts : is-contravariant (Δ¹Disc.○ ∘ P)
   ʃ∘-is-contravariant←lifts
@@ -735,16 +781,21 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Contravariant-
         ʃ∘-contrav-unital-transport←lifts
 
 module _
-  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (τ : Contravariant-unital-transport P)
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (τ : Contravariant-unital-transport P)
   where
 
-  ʃ∘-contrav-unital-transport : Contravariant-unital-transport (Δ¹Disc.○ ∘ P)
   ʃ∘-contrav-unital-transport
-    = ʃ∘-contrav-unital-transport←lifts (lift-contrav-unital-transport τ)
+    : Contravariant-unital-transport (Δ¹Disc.○ ∘ P)
+  ʃ∘-contrav-unital-transport
+    = ʃ∘-contrav-unital-transport←lifts
+        (lift-contrav-unital-transport τ)
 
-  ʃ∘-is-contravariant : is-contravariant (Δ¹Disc.○ ∘ P)
   ʃ∘-is-contravariant
-    = ʃ∘-is-contravariant←lifts {P = P} (lift-contrav-unital-transport τ)
+    : is-contravariant (Δ¹Disc.○ ∘ P)
+  ʃ∘-is-contravariant
+    = ʃ∘-is-contravariant←lifts {P = P}
+        (lift-contrav-unital-transport τ)
 }
 }
 

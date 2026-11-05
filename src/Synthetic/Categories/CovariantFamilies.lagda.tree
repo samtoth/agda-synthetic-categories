@@ -25,10 +25,12 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-
 open import Core.Orthogonal
+open import Core.DependentOrthogonal
 open import Core.OrthogonalClosure
 open import Core.Arrows
+open import Core.ArrowDependentMorphisms
+open import Core.ArrowMorphisms
 open import Core.CartesianSquares
 open import Core.ArrowEquiv
 open import Core.PullbackPowers
@@ -212,6 +214,7 @@ module _
 \subtree[stt-00O5]{
 \title{Left families}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{
 We say that a type family is a \em{left family} if, as a family, it is right
@@ -220,14 +223,17 @@ orthogonal to the left endpoint inclusion.
 
 \agda{
 is-left-family
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-left-family = are-orthogonal-fam (point i0)
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥)
+  → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+is-left-family B
+  = are-dependently-orthogonal-fam (point i0) (λ {i} → B {i})
 }
 }
 
 \subtree[stt-00O6]{
 \title{Left families are covariant}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \proof{
 \p{
@@ -239,42 +245,53 @@ unique extensions.
 }
 
 \agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) where
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥) where
 
   cov-lift-is-extension
-    : ∀ (σ : Δ¹ → A) (x₀ : B (σ i0))
+    : ∀ (σ : (i : Δ¹) → A i) (x₀ : B (σ i0))
       → Σ (B (σ i1)) (Homᵈ (B ∘ σ) x₀) ≃ Extᵈ (point i0) (B ∘ σ) (point x₀)
   cov-lift-is-extension σ x₀
     = cov-lift≃fibre-ev-i0 B σ x₀ ∙e Σ-snd-≃ (λ f → unit-UP≃ e⁻¹)
 
   opaque
     is-covariant←has-unique-extensions
-      : has-unique-extensions (point i0) B → is-covariant B
+      : has-unique-dependent-extensions (point i0) (λ {i} → B {i})
+      → is-covariant (λ {i} → B {i})
     is-covariant←has-unique-extensions ext σ x₀
       = is-single←equiv⁻¹
           (cov-lift-is-extension σ x₀)
           (ext (mk-afmap σ (point x₀)))
 
     has-unique-extensions←is-covariant
-      : is-covariant B → has-unique-extensions (point i0) B
+      : is-covariant (λ {i} → B {i})
+      → has-unique-dependent-extensions (point i0) (λ {i} → B {i})
     has-unique-extensions←is-covariant cov (mk-afmap σ f)
       = is-single←equiv (cov-lift-is-extension σ (f tt)) (cov σ (f tt))
 
   has-unique-extensions↔is-covariant
-    : has-unique-extensions (point i0) B ↔ is-covariant B
+    : has-unique-dependent-extensions (point i0) (λ {i} → B {i})
+    ↔ is-covariant (λ {i} → B {i})
   has-unique-extensions↔is-covariant
     = ( is-covariant←has-unique-extensions
       , has-unique-extensions←is-covariant)
 
-  is-left-family↔is-covariant : is-left-family B ↔ is-covariant B
   is-left-family↔is-covariant
-    = are-orthogonal-fam↔has-unique-extensions
+    : is-left-family (λ {i} → B {i})
+    ↔ is-covariant (λ {i} → B {i})
+  is-left-family↔is-covariant
+    = are-dependently-orthogonal-fam↔has-unique-dependent-extensions
+        {P = (λ {i} → B {i})}
     ∙iff has-unique-extensions↔is-covariant
 
-  is-covariant←is-left-family : is-left-family B → is-covariant B
-  is-covariant←is-left-family = is-left-family↔is-covariant .fst
+  is-covariant←is-left-family
+    : is-left-family (λ {i} → B {i})
+    → is-covariant (λ {i} → B {i})
+  is-covariant←is-left-family
+    = is-left-family↔is-covariant .fst
 
-  is-left-family←is-covariant : is-covariant B → is-left-family B
+  is-left-family←is-covariant
+    : is-covariant (λ {i} → B {i})
+    → is-left-family (λ {i} → B {i})
   is-left-family←is-covariant = is-left-family↔is-covariant .snd
 }
 }
@@ -310,17 +327,24 @@ module _
 \subtree[stt-00AV]{
 \title{Left fibrations}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{A map is a left fibration if it is [right orthogonal](stt-0048) to the left
 endpoint of #{\Delta^1}.}
 
 \p{See [[stt-00OH]] for the dual notion.}
 
+\p{
+More generally, a family of maps #{p_i \colon E_i \to B_i}, indexed by #{i : Δ¹},
+is a left fibration if it is [dependently right orthogonal](bak-42B9) to the
+left endpoint inclusion.
+}
+
 \agda{
 is-left-fibration
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B)
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
-is-left-fibration f = (point i0) ⊥ f
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : Δ¹ → Type 𝓥}
+  → ({i : Δ¹} → A i → B i) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓘)
+is-left-fibration f = (point i0) ⊥ᵈ (λ i → f {i})
 
 is-left-anodyne
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} → (A → B) → Typeω
@@ -332,6 +356,7 @@ is-left-anodyne f = is-anodyne f (point i0)
 \subtree[stt-00AR]{
 \title{Covariant families straighten to left fibrations}
 \taxon{Corollary}
+\contributor{fredrikbakke}
 
 \p{We show that some family #{P \colon A \to \UU} is [covariant](stt-00AY) iff the map
 #{\pi \colon \tilde{P} \to A} is a [left fibration](stt-00AV). Equivalently, a map
@@ -340,44 +365,57 @@ is-left-anodyne f = is-anodyne f (point i0)
 \agda{
 opaque
   is-covariant↔is-left-fibration
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥)
-      → is-covariant B ↔ is-left-fibration (fst: B)
+    : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥)
+      → is-covariant (λ {i} → B {i})
+      ↔ is-left-fibration (λ {i} → fst: B {i})
   is-covariant↔is-left-fibration {A = A} B
-    = (is-left-family↔is-covariant B iff⁻¹) ∙iff are-orthogonal-fam↔are-orthogonal-fst
+    = (is-left-family↔is-covariant (λ {i} → B {i}) iff⁻¹)
+    ∙iff are-dependently-orthogonal-fam↔are-dependently-orthogonal-fst
+        {P = (λ {i} → B {i})}
 
-module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) where
 
   is-left-fibration←is-covariant
-    : is-covariant P → is-left-fibration (fst: P)
-  is-left-fibration←is-covariant = is-covariant↔is-left-fibration P .fst
+    : is-covariant (λ {i} → P {i})
+    → is-left-fibration (λ {i} → fst: P {i})
+  is-left-fibration←is-covariant
+    = is-covariant↔is-left-fibration (λ {i} → P {i}) .fst
 
   is-covariant←is-left-fibration
-    : is-left-fibration (fst: P) → is-covariant P
-  is-covariant←is-left-fibration = is-covariant↔is-left-fibration P .snd
+    : is-left-fibration (λ {i} → fst: P {i})
+    → is-covariant (λ {i} → P {i})
+  is-covariant←is-left-fibration
+    = is-covariant↔is-left-fibration (λ {i} → P {i}) .snd
 
-module _ {𝓤 𝓥} {E : Type 𝓤} {B : Type 𝓥} (p : E → B) where
+module _ {𝓤 𝓥} {E : Δ¹ → Type 𝓤} {B : Δ¹ → Type 𝓥} (p : {i : Δ¹} → E i → B i) where
 
   orthogonal-fibre-fam←is-left-fibration
-    : is-left-fibration p → is-left-family (fibre p)
+    : is-left-fibration p
+    → is-left-family (λ {i} → fibre (p {i}))
   orthogonal-fibre-fam←is-left-fibration
-    = are-orthogonal-fibre←are-orthogonal
+    = fibre-sections-is-equiv←are-dependently-orthogonal
+        (point i0) (λ i → p {i})
 
   is-left-fibration←orthogonal-fibre-fam
-    : is-left-family (fibre p) → is-left-fibration p
+    : is-left-family (λ {i} → fibre (p {i}))
+    → is-left-fibration p
   is-left-fibration←orthogonal-fibre-fam
-    = are-orthogonal←are-orthogonal-fibre
+    = are-dependently-orthogonal←fibre-sections-is-equiv
+        (point i0) (λ i → p {i})
 
   fibre-fam-is-covariant←is-left-fibration
-    : is-left-fibration p → is-covariant (fibre p)
+    : is-left-fibration p
+    → is-covariant (λ {i} → fibre (p {i}))
   fibre-fam-is-covariant←is-left-fibration
-    = is-covariant←is-left-family (fibre p)
+    = is-covariant←is-left-family (λ {i} → fibre (p {i}))
     ∘ orthogonal-fibre-fam←is-left-fibration
 
   is-left-fibration←fibre-fam-is-covariant
-    : is-covariant (fibre p) → is-left-fibration p
+    : is-covariant (λ {i} → fibre (p {i}))
+    → is-left-fibration p
   is-left-fibration←fibre-fam-is-covariant
     = is-left-fibration←orthogonal-fibre-fam
-    ∘ is-left-family←is-covariant (fibre p)
+    ∘ is-left-family←is-covariant (λ {i} → fibre (p {i}))
 }
 }
 
@@ -493,7 +531,10 @@ this map is an equivalence.}
 }
 
 \agda{
-module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) (cov : is-covariant P) where
+module _
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥)
+  (cov : is-covariant P)
+  where
 
   Hom-cov
     : ∀ (f : (i : Δ¹) → A i) x' y'
@@ -630,10 +671,10 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 
 \agda{
 const-is-covariant←is-Δ¹-discrete
-  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
-    → is-Δ¹-discrete B → is-covariant (const: (Type 𝓥) A B)
-const-is-covariant←is-Δ¹-discrete B-disc
-  = is-covariant←is-left-family _
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : Type 𝓥}
+    → is-Δ¹-discrete B → is-covariant (λ {i} (_ : A i) → B)
+const-is-covariant←is-Δ¹-discrete {A = A} {B} B-disc
+  = is-covariant←is-left-family (λ {i} (_ : A i) → B)
       (λ _ → is-left←is-Δ¹-discrete B-disc tt)
 
 !-is-left-fibration←is-Δ¹-discrete
@@ -727,13 +768,20 @@ this question in the positive.
 }
 
 \agda{
+module _
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {P : {i : Δ¹} → A i → Type 𝓥}
+  (ℓ : Covariant-lifts (λ {i} → P {i}))
+  where
+
+  ʃ∘-cov-transport←lifts
+    : Covariant-transport (λ {i} → Δ¹Disc.○ ∘ P {i})
+  ʃ∘-cov-transport←lifts f
+    = Δ¹Disc.○₁ (cov-transport←lifts ℓ f)
+
 module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Covariant-lifts P) where
 
-  ʃ∘-cov-transport←lifts : Covariant-transport (Δ¹Disc.○ ∘ P)
-  ʃ∘-cov-transport←lifts f = Δ¹Disc.○₁ (cov-transport←lifts ℓ f)
-
   ʃ∘-cov-transport←lifts-unital
-    : (a : A) → ʃ∘-cov-transport←lifts (idH a) ~ id
+    : (a : A) → ʃ∘-cov-transport←lifts ℓ (idH a) ~ id
   ʃ∘-cov-transport←lifts-unital a
     = Δ¹Disc.▹η.bwd
         ( Δ¹Disc.○₁-β (fst ∘ ℓ (const a))
@@ -745,7 +793,8 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Covariant-lift
   ʃ∘-cov-unital-transport←lifts
     : Covariant-unital-transport (Δ¹Disc.○ ∘ P)
   ʃ∘-cov-unital-transport←lifts
-    = (ʃ∘-cov-transport←lifts , ʃ∘-cov-transport←lifts-unital)
+    = ( ʃ∘-cov-transport←lifts ℓ
+      , ʃ∘-cov-transport←lifts-unital)
 
   ʃ∘-is-covariant←lifts : is-covariant (Δ¹Disc.○ ∘ P)
   ʃ∘-is-covariant←lifts
@@ -754,7 +803,8 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ℓ : Covariant-lift
         (ʃ∘-cov-unital-transport←lifts)
 
 module _
-  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (τ : Covariant-unital-transport P)
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (τ : Covariant-unital-transport P)
   where
 
   ʃ∘-cov-unital-transport

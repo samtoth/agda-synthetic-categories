@@ -15,6 +15,7 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Arrows
+open import Core.ArrowMorphisms
 open import Core.ArrowDependentMorphisms
 open import Core.ArrowEquiv
 open import Core.PushoutSums
@@ -288,6 +289,146 @@ module _
   precomp-Liftᵈ-≃ f⊥ᵈg h
     = mk≃ (precomp-Liftᵈ f g h)
         (precomp-Liftᵈ-is-equiv←dependent-orthogonal f⊥ᵈg h)
+}
+}
+
+\subtree[bak-4E32]{
+\title{Dependent orthogonality of a map with a family}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+Let #{f \colon A \to B}, #{C \colon B \to \Type}, and
+#{P \colon \Pi1{b : B}{C(b) \to \Type}}. We say that #{f} is
+\em{dependently orthogonal} to #{P} when, for each section
+#{g \colon \Pi1{b : B}{C(b)}}, restriction along #{f} induces an equivalence
+#{\Pi1{b : B}{P(b,g(b))} \to \Pi1{a : A}{P(f(a),g(f(a)))}}.
+}
+
+\agda{
+are-dependently-orthogonal-fam
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : B → Type 𝓦} (f : A → B)
+      (P : {b : B} → C b → Type 𝓜)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+are-dependently-orthogonal-fam {B = B} {C} f P
+  = (g : (b : B) → C b) → is-equiv (precomp-Π (λ b → P {b} (g b)) f)
+
+are-dependently-orthogonal-fam←equiv
+  : ∀ {𝓤 𝓥 𝓦 𝓜 𝓝} {A : Type 𝓤} {B : Type 𝓥}
+      {C : B → Type 𝓦} {f : A → B}
+      {P : {b : B} → C b → Type 𝓜} {P' : {b : B} → C b → Type 𝓝}
+    → ({b : B} (c : C b) → P {b} c ≃ P' {b} c)
+    → are-dependently-orthogonal-fam f (λ {b} → P {b})
+    → are-dependently-orthogonal-fam f (λ {b} → P' {b})
+are-dependently-orthogonal-fam←equiv {f = f} e orth h
+  = tgt-is-equiv←Arrow-equiv
+      (mk-arr-equiv
+        (postcomp-Π-≃ (λ b → e {b} (h b)))
+        (postcomp-Π-≃ (λ a → e {f a} (h (f a))))
+        ~refl)
+      (orth h)
+}
+}
+
+\subtree[bak-F95D]{
+\title{Unique extensions from dependent orthogonality}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+A map is dependently orthogonal to a family if and only if every section over
+its domain has a unique extension over its codomain. The fibres of the dependent
+precomposition map are exactly the desired extensions.
+}
+
+\agda{
+has-unique-dependent-extensions
+  : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+      {C : B → Type 𝓦} (f : A → B)
+      (P : {b : B} → C b → Type 𝓜)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+has-unique-dependent-extensions f P
+  = ∀ (F : ArrFam-map f (λ {b} → P {b}))
+    → is-singleton (Extᵈ f (P ∘ F .ArrFam-map.bot) (F .ArrFam-map.top))
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {C : B → Type 𝓦} {f : A → B}
+  {P : {b : B} → C b → Type 𝓜}
+  where
+
+  unique-extensions←are-dependently-orthogonal-fam
+    : are-dependently-orthogonal-fam f (λ {b} → P {b})
+    → has-unique-dependent-extensions f (λ {b} → P {b})
+  unique-extensions←are-dependently-orthogonal-fam orth F
+    = is-single←equiv
+        (fibre-precomp-Π≃Extᵈ (P ∘ F .ArrFam-map.bot) f (F .ArrFam-map.top))
+        (has-singleton-fibres←is-equiv
+          (orth (F .ArrFam-map.bot))
+          (F .ArrFam-map.top))
+
+  are-dependently-orthogonal-fam←unique-extensions
+    : has-unique-dependent-extensions f (λ {b} → P {b})
+    → are-dependently-orthogonal-fam f (λ {b} → P {b})
+  are-dependently-orthogonal-fam←unique-extensions ext g
+    = is-equiv←has-singleton-fibres (λ h
+      → is-single←equiv⁻¹ (fibre-precomp-Π≃Extᵈ _ f _) (ext (mk-afmap g h)))
+
+  are-dependently-orthogonal-fam↔has-unique-dependent-extensions
+    : are-dependently-orthogonal-fam f (λ {b} → P {b})
+    ↔ has-unique-dependent-extensions f (λ {b} → P {b})
+  are-dependently-orthogonal-fam↔has-unique-dependent-extensions
+    = ( unique-extensions←are-dependently-orthogonal-fam
+      , are-dependently-orthogonal-fam←unique-extensions)
+}
+}
+
+\subtree[bak-0157]{
+\title{Straightening dependent orthogonality at type families}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+A map #{f \colon A \to B} is dependently orthogonal to a family
+#{P \colon \Pi1{b : B}{C(b) \to \Type}} if and only if it is dependently
+orthogonal to the family of projections #{\pi_{P(b)}}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓛} {A : Type 𝓤} {B : Type 𝓥}
+  {C : B → Type 𝓦}
+  {f : A → B} {P : {b : B} → C b → Type 𝓛}
+  where
+  are-dependently-orthogonal-fst←are-dependently-orthogonal-fam
+    : are-dependently-orthogonal-fam f (λ {b} → P {b})
+    → are-dependently-orthogonal f (λ b → fst: P {b})
+  are-dependently-orthogonal-fst←are-dependently-orthogonal-fam orth
+    = are-dependently-orthogonal←fibre-sections-is-equiv f (λ b → fst: P {b})
+        (are-dependently-orthogonal-fam←equiv
+          {P = (λ {b} → P {b})} {P' = (λ {b} → fibre (fst: P {b}))}
+          (λ {b} c → fibre-straighten (P {b}) c e⁻¹)
+          orth)
+
+  are-dependently-orthogonal-fam←are-dependently-orthogonal-fst
+    : are-dependently-orthogonal f (λ b → fst: P {b})
+    → are-dependently-orthogonal-fam f (λ {b} → P {b})
+  are-dependently-orthogonal-fam←are-dependently-orthogonal-fst orth
+    = are-dependently-orthogonal-fam←equiv
+          (λ {b} → fibre-straighten (P {b}))
+          (fibre-sections-is-equiv←are-dependently-orthogonal
+            f (λ b → fst: P {b}) orth)
+
+  are-dependently-orthogonal-fam↔are-dependently-orthogonal-fst
+    : are-dependently-orthogonal-fam f (λ {b} → P {b})
+    ↔ are-dependently-orthogonal f (λ b → fst: P {b})
+  are-dependently-orthogonal-fam↔are-dependently-orthogonal-fst
+    = ( are-dependently-orthogonal-fst←are-dependently-orthogonal-fam
+      , are-dependently-orthogonal-fam←are-dependently-orthogonal-fst)
 }
 }
 

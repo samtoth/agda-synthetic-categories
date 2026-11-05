@@ -1,0 +1,299 @@
+\date{2026-11-05}
+\title{Covariant transport}
+\author{fredrikbakke}
+\taxon{Module}
+\import{stt-macros}
+
+\subtree[bak-8F11]{
+\taxon{Idea}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+This module concerns the structure of covariant transport in type families. I.e., given
+a type family #{B \colon A \to \UU}, then \em{covariant transport} is a map
+##{(\blank)_* \colon \Hom_A(x,y) \to B(x) \to B(y)} for every pair of elements #{x}
+and #{y} in #{A}.
+}
+}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.CovariantTransport
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+open import Core.Arrows
+open import Core.CartesianSquares
+open import Core.ArrowEquiv
+open import Core.PullbackPowers
+
+open import Ergonomics.Notations.Orthogonality
+open import Ergonomics.Extensionality
+open Core.Orthogonal.notation
+
+open import Modalities.Instances.Nullification
+open import Modalities.Instances.Truncation
+
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.WalkingHom Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Comma Δ¹ I
+open import Synthetic.Categories.Groupoids Δ¹ I
+}
+}
+
+\subtree[bak-19CB]{
+\title{Covariant transport}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{
+We say a type family #{P \colon A \to \UU} admits \em{covariant transport} if there
+is a transport function #{(\blank)_* \colon \hom_A(x,y) \to P(x) \to P(y)} for all
+#{x} and #{y} in #{A}. If this transport function satisfies #{\id_* \sim \id}, then
+we say the transport is \em{unital}.
+}
+
+\agda{
+Covariant-transport
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-transport {A = A} B = {x : A i0} {y : A i1} → Homᵈ A x y → B x → B y
+
+unitality-covariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} → Covariant-transport B → Type (𝓤 ⊔ 𝓥)
+unitality-covariant-transport {A = A} ρ = ((x : A) → ρ (idH x) ~ id)
+
+Covariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-unital-transport {A = A} B
+  = Σ[ ρ ∶ Covariant-transport B ] unitality-covariant-transport ρ
+}
+}
+
+\subtree[bak-FEFF]{
+\title{Covariant lifts}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+Let #{P \colon A \to \UV} be a type family, then #{P} has \em{covariant lifts} if for
+every arrow #{h \colon Δ¹ \to A} and #{x : P(h(0))} there is an arrow in #{P} over
+#{h} with left endpoint #{x}.
+}
+
+\agda{
+Covariant-lifts
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Covariant-lifts {A = A} P
+  = (h : (i : Δ¹) → A i) (x : P (h i0))
+  → Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y
+}
+}
+
+\subtree[bak-F367]{
+\title{Covariant lifts gives covariant transport}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\agda{
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : {i : Δ¹} → A i → Type 𝓥} where
+
+  cov-transport←lifts
+    : Covariant-lifts (λ {i} → B {i}) → Covariant-transport B
+  cov-transport←lifts ℓ (mk-hom h refl refl) = fst ∘ ℓ h
+}
+}
+
+\subtree[bak-4CAE]{
+\title{Fibres of evaluation at #{0} as covariant lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-11-04}
+
+\p{
+Let #{P \colon A \to \UV} be a type family, #{h \colon Δ¹ \to A} an arrow, and
+#{x : P(h(0))}. Then the type of lifts of #{h} with left endpoint #{x} is equivalent
+to the fibre over #{x} of evaluation at #{0}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) where
+
+  cov-lift≃fibre-ev-i0
+    : (h : (i : Δ¹) → A i) (x : P (h i0))
+    → (Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y) ≃ fibre (evᵈ: (P ∘ h) i0) x
+  cov-lift≃fibre-ev-i0 h x
+    =  (Σ[ y ∶ P (h i1) ] Homᵈ (P ∘ h) x y)
+    ≃⟨ Σ-snd-≃ (λ y → Homᵈ-repr≃) ⟩
+       (Σ[ y ∶ P (h i1) ] Σ[ f ∶ Π Δ¹ (P ∘ h) ] ((f i0 ＝ x) × (f i1 ＝ y)))
+    ≃⟨ Σ-comm ∙e Σ-snd-≃ (λ f → Σ-comm) ⟩
+       (Σ[ f ∶ Π Δ¹ (P ∘ h) ] ((f i0 ＝ x) × Σ[ y ∶ P (h i1) ] (f i1 ＝ y)))
+    ≃⟨ Σ-snd-≃ (λ f → Σ-singleton (λ _ → Sing-is-singleton)) ⟩
+       fibre (evᵈ: (P ∘ h) i0) x
+    ≃∎
+
+  Covariant-lifts≃sections-ev-i0
+    : Covariant-lifts P ≃ ((h : (i : Δ¹) → A i) → section (evᵈ: (P ∘ h) i0))
+  Covariant-lifts≃sections-ev-i0
+    = postcomp-Π-≃ (λ h
+        →  postcomp-Π-≃ (cov-lift≃fibre-ev-i0 h)
+        ∙e section≃fibres (ev i0))
+}
+}
+
+\subtree[bak-2CC0]{
+\title{Unital covariant transport gives covariant lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{Unital covariant transport in a type family gives covariant lifts.}
+
+\proof{
+\p{
+We construct a lift of the diagram
+\quiver{
+\begin{tikzcd}
+\{0\} && \Sigma1{a:A}{B(a)} \\
+\\
+\Delta^1 && A
+\arrow[from=1-1, to=1-3, "{(f(0),b)}"]
+\arrow[from=3-1, to=3-3, "f"]
+\arrow[from=1-1, to=3-1, hook]
+\arrow[from=1-3, to=3-3, "\pi"]
+\arrow[from=3-1, to=1-3, dashed, "f'"]
+\end{tikzcd}
+}
+}
+
+\p{
+For each #{i : Δ¹}, let #{0\leq i : \Hom_{Δ¹}(0,i)} be the canonical morphism.
+Applying #{f} we get a morphism #{f(0\leq i) : \Hom_A(f(0),f(i))} along which we
+can transport #{b}, and get
+##{f'(i) \defeq \left(f(i), f(0\leq i)_*(b)\right).}
+This lies over #{f}, and its value at #{0} is #{(f(0),b)} by unitality.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  section-ev-i0←cov-unital-transport
+    : Covariant-unital-transport B
+    → (h : Δ¹ → A) → section (evᵈ: (B ∘ h) i0)
+  section-ev-i0←cov-unital-transport (ρ , ρ-id) h
+    = ( (λ x i → ρ (ap-hom h (0≤i i)) x)
+      , (λ x → ap (λ f → ρ (ap-hom h f) x) 0≤i-at-0 ∙ ρ-id (h i0) x))
+
+  lift-cov-unital-transport
+    : Covariant-unital-transport B → Covariant-lifts B
+  lift-cov-unital-transport ρ
+    = _≃_.bwd
+      (Covariant-lifts≃sections-ev-i0 B)
+      (section-ev-i0←cov-unital-transport ρ)
+}
+}
+
+\subtree[fre-015U]{
+\title{Transport from covariant lifts is co-strict}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-04}
+
+\p{
+Transport obtained from [covariant lifts](bak-FEFF) is [co-strict](stt-015V). If
+#{0 = 1} it coincides with ordinary transport, which is an equivalence.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {P : {i : Δ¹} → A i → Type 𝓥} (ℓ : Covariant-lifts P)
+  where
+
+  opaque
+    cov-transport-is-co-strict←lifts
+      : {x : A i0} {y : A i1} (h : Homᵈ A x y)
+      → is-co-strict-map (cov-transport←lifts {B = P} ℓ h)
+    cov-transport-is-co-strict←lifts (mk-hom h refl refl)
+      = is-co-strict-map←is-equiv-under-0＝1 (λ p
+        → is-equiv←~⁻¹
+            ( λ x
+              → let lift = ℓ h x .snd
+                in ap (tr (P ∘ h) p) (sym (lift .Homᵈ.hom0))
+                 ∙ apᶠ (lift .Homᵈ.hom) p
+                 ∙ lift .Homᵈ.hom1)
+            ( tr-is-equiv p))
+
+  tr-cov-homˢ←lifts : {x : A i0} {y : A i1} → Homᵈ A x y → P x →ˢ P y
+  tr-cov-homˢ←lifts h
+    = ( cov-transport←lifts {B = P} ℓ h
+      , cov-transport-is-co-strict←lifts h)
+
+  tr-covˢ←lifts : (h : (i : Δ¹) → A i) → P (h i0) →ˢ P (h i1)
+  tr-covˢ←lifts h = tr-cov-homˢ←lifts (λhom h)
+}
+}
+
+\subtree[bak-00K3]{
+\title{Covariant transport along inequalities in #{Δ¹}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-11-05}
+
+\p{
+Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.
+Consequently, for families over #{\Delta^1} equipped with covariant transport, we may
+coerce along #{i \le j}. If the transport is unital, coercing along #{i \le i} for
+any #{i} is the identity, and coercing along an identification agrees with ordinary
+transport. Coercing along #{0 \le 1} is the same as covariant transport over the
+canonical morphism from #{0} to #{1} given by #{\id \colon \Delta^1 \to \Delta^1}.
+}
+
+\agda{
+module _ {𝓤} (B : Δ¹ → Type 𝓤) (ρ : Covariant-transport B) where
+
+  coe-cov-transport : {i j : Δ¹} → i ≤ j → B i → B j
+  coe-cov-transport = ρ ∘ Δ¹-hom←≤
+
+  coe-cov-transport-0≤1
+    : (p : i0 ≤ i1) → coe-cov-transport p ＝ ρ (λhom id)
+  coe-cov-transport-0≤1 = ap ρ ∘ Δ¹-hom-0≤1
+
+module _ {𝓤} (B : Δ¹ → Type 𝓤) (ρ : Covariant-unital-transport B) where
+
+  coe-cov-transport-id
+    : {i : Δ¹} (p : i ≤ i) → coe-cov-transport B (ρ .fst) p ~ id
+  coe-cov-transport-id {i} p
+    = happly (ap (ρ .fst) (Δ¹-hom-≤-refl p)) ∙h ρ .snd i
+
+  coe-cov-transport-＝
+    : {i j : Δ¹} (p : i ＝ j) (q : i ≤ j)
+    → coe-cov-transport B (ρ .fst) q ~ tr B p
+  coe-cov-transport-＝ refl = coe-cov-transport-id
+}
+}

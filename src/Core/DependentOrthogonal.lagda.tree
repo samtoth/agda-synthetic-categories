@@ -1,0 +1,352 @@
+\title{Dependently orthogonal maps}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-10-28}
+\import{stt-macros}
+
+\agda{
+module Core.DependentOrthogonal where
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Core.Arrows
+open import Core.ArrowDependentMorphisms
+open import Core.ArrowEquiv
+open import Core.PushoutSums
+open import Core.LeibnizAdjunction
+open import Core.CartesianSquares
+open import Core.DependentLiftingSquares
+open import Core.PullbackPowers
+}
+}
+
+\subtree[bak-42B9]{
+\title{Dependent orthogonality}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+A family of maps #{g \colon \Pi1{b : B}{X(b) \to Y(b)}} is
+\em{dependently orthogonal} to a map #{f \colon A \to B}, written
+#{f \perp^{\mathrm d} g}, if their [dependent pullback power](stt-00EN)
+#{\pulldpow_f g} is an equivalence.
+}
+
+\p{
+For constant families #{g}, this concept specialises to that of
+[orthogonal maps](stt-0048).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  where
+
+  are-dependently-orthogonal
+    : (f : A → B) (g : (b : B) → X b → Y b)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  are-dependently-orthogonal f g
+    = is-equiv (Π̂ f g)
+
+  infix 6 _⊥ᵈ_
+  _⊥ᵈ_
+    : (f : A → B) (g : (b : B) → X b → Y b)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  _⊥ᵈ_ = are-dependently-orthogonal
+
+  are-dependently-orthogonal-is-prop
+    : {f : A → B} {g : (b : B) → X b → Y b}
+    → is-prop (f ⊥ᵈ g)
+  are-dependently-orthogonal-is-prop
+    = is-equiv-is-prop
+
+  Π̂≃
+    : (f : A → B) (g : (b : B) → X b → Y b)
+    → f ⊥ᵈ g → Π B X ≃ Arrow-Π f g
+  Π̂≃ f g = mk≃ (Π̂ f g)
+}
+}
+
+\subtree[bak-DF20]{
+\title{Dependent orthogonality as unique dependent square lifting}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+A map #{f \colon A \to B} is dependently orthogonal to a family of maps
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}} if and only if every dependent morphism
+of arrows from #{f} to #{g} has a [unique lift](bak-A2B6). This follows from the
+[fibre characterisation of the dependent pullback power](bak-9B89).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥}
+  {X : B → Type 𝓦} {Y : B → Type 𝓜}
+  where
+
+  admit-unique-dependent-lifts
+    : (f : A → B) (g : (b : B) → X b → Y b)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦 ⊔ 𝓜)
+  admit-unique-dependent-lifts f g
+    = (G : Arrow-Π f g) → has-unique-sqliftᵈ G
+
+  are-dependently-orthogonal←unique-lifts
+    : {f : A → B} {g : (b : B) → X b → Y b}
+    → admit-unique-dependent-lifts f g → f ⊥ᵈ g
+  are-dependently-orthogonal←unique-lifts {f} {g} lifts
+    = is-equiv←has-singleton-fibres (λ G
+      → is-single←equiv⁻¹ (Π̂-fibre≃SqLiftᵈ f g G) (lifts G))
+
+  unique-lifts←are-dependently-orthogonal
+    : {f : A → B} {g : (b : B) → X b → Y b}
+    → f ⊥ᵈ g → admit-unique-dependent-lifts f g
+  unique-lifts←are-dependently-orthogonal {f} {g} orth G
+    = is-single←equiv
+        (Π̂-fibre≃SqLiftᵈ f g G)
+        (has-singleton-fibres←is-equiv orth G)
+
+  unique-lifts↔are-dependently-orthogonal
+    : {f : A → B} {g : (b : B) → X b → Y b}
+    → admit-unique-dependent-lifts f g ↔ (f ⊥ᵈ g)
+  unique-lifts↔are-dependently-orthogonal
+    = ( are-dependently-orthogonal←unique-lifts
+      , unique-lifts←are-dependently-orthogonal)
+}
+}
+
+\subtree[bak-C176]{
+\title{Characterising dependent orthogonality by sections of fibres}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Given a map #{f \colon A \to B} and a family of maps
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}}, then #{f} and #{g} are dependently orthogonal
+if and only if the [dependent exponential square](bak-9368) is cartesian.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  power-homᵈ-is-cartesian←are-dependently-orthogonal
+    : f ⊥ᵈ g → is-cartesian (power-homᵈ f g)
+  power-homᵈ-is-cartesian←are-dependently-orthogonal
+    = is-cartesian←is-pullback (power-homᵈ f g)
+    ∘ tgt-is-equiv←Arrow-equiv (Π̂≃power-homᵈ-gap f g)
+
+  are-dependently-orthogonal←power-homᵈ-is-cartesian
+    : is-cartesian (power-homᵈ f g) → f ⊥ᵈ g
+  are-dependently-orthogonal←power-homᵈ-is-cartesian
+    = src-is-equiv←Arrow-equiv (Π̂≃power-homᵈ-gap f g)
+    ∘ is-pullback←is-cartesian (power-homᵈ f g)
+
+  are-dependently-orthogonal↔power-homᵈ-is-cartesian
+    : (f ⊥ᵈ g) ↔ is-cartesian (power-homᵈ f g)
+  are-dependently-orthogonal↔power-homᵈ-is-cartesian
+    = ( power-homᵈ-is-cartesian←are-dependently-orthogonal
+      , are-dependently-orthogonal←power-homᵈ-is-cartesian)
+
+  fibre-sections-is-equiv←power-homᵈ-is-cartesian
+    : is-cartesian (power-homᵈ f g)
+    → (h : Π B Y) → is-equiv (precomp-Π (λ b → fibre (g b) (h b)) f)
+  fibre-sections-is-equiv←power-homᵈ-is-cartesian cart h
+    = tgt-is-equiv←Arrow-equiv (power-homᵈ-fibre-Arrow-equiv f g h) (cart h)
+
+  power-homᵈ-is-cartesian←fibre-sections-is-equiv
+    : ((h : Π B Y) → is-equiv (precomp-Π (λ b → fibre (g b) (h b)) f))
+    → is-cartesian (power-homᵈ f g)
+  power-homᵈ-is-cartesian←fibre-sections-is-equiv sections-is-equiv h
+    = src-is-equiv←Arrow-equiv
+        (power-homᵈ-fibre-Arrow-equiv f g h) (sections-is-equiv h)
+
+  fibre-sections-is-equiv←are-dependently-orthogonal
+    : f ⊥ᵈ g
+    → (h : Π B Y) → is-equiv (precomp-Π (λ b → fibre (g b) (h b)) f)
+  fibre-sections-is-equiv←are-dependently-orthogonal
+    = fibre-sections-is-equiv←power-homᵈ-is-cartesian
+    ∘ power-homᵈ-is-cartesian←are-dependently-orthogonal
+
+  are-dependently-orthogonal←fibre-sections-is-equiv
+    : ((h : Π B Y) → is-equiv (precomp-Π (λ b → fibre (g b) (h b)) f))
+    → f ⊥ᵈ g
+  are-dependently-orthogonal←fibre-sections-is-equiv
+    = are-dependently-orthogonal←power-homᵈ-is-cartesian
+    ∘ power-homᵈ-is-cartesian←fibre-sections-is-equiv
+
+  are-dependently-orthogonal↔fibre-sections-is-equiv
+    : (f ⊥ᵈ g)
+    ↔ ((h : Π B Y) → is-equiv (precomp-Π (λ b → fibre (g b) (h b)) f))
+  are-dependently-orthogonal↔fibre-sections-is-equiv
+    = ( fibre-sections-is-equiv←are-dependently-orthogonal
+      , are-dependently-orthogonal←fibre-sections-is-equiv)
+}
+}
+
+\subtree[bak-B798]{
+\title{Dependent orthogonality as equivalence of dependent extension types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Given a map #{f \colon A \to B} and a family of maps
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}}, then #{g} is dependently orthogonal to #{f}
+if and only if postcomposition by #{g} induces an equivalence on dependent extensions
+along #{f}, for every map #{a : \Pi_A(X \circ f)}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  postcomp-Extᵈ-is-equiv←dependent-orthogonal
+    : f ⊥ᵈ g → (a : Π A (X ∘ f)) → is-equiv (postcomp-Extᵈ f g a)
+  postcomp-Extᵈ-is-equiv←dependent-orthogonal f⊥ᵈg a
+    = tgt-is-equiv←Arrow-equiv (postcomp-Extᵈ-Arrow-equiv f g a)
+        (transpose-is-cartesian _
+          (power-homᵈ-is-cartesian←are-dependently-orthogonal f g f⊥ᵈg) a)
+
+  dependent-orthogonal←postcomp-Extᵈ-is-equiv
+    : ((a : Π A (X ∘ f)) → is-equiv (postcomp-Extᵈ f g a)) → f ⊥ᵈ g
+  dependent-orthogonal←postcomp-Extᵈ-is-equiv postcomp-is-equiv
+    = are-dependently-orthogonal←power-homᵈ-is-cartesian f g
+        (transpose-is-cartesian _ (λ a
+          → src-is-equiv←Arrow-equiv
+              (postcomp-Extᵈ-Arrow-equiv f g a) (postcomp-is-equiv a)))
+
+  dependent-orthogonal↔postcomp-Extᵈ-is-equiv
+    : (f ⊥ᵈ g)
+    ↔ ((a : Π A (X ∘ f)) → is-equiv (postcomp-Extᵈ f g a))
+  dependent-orthogonal↔postcomp-Extᵈ-is-equiv
+    = ( postcomp-Extᵈ-is-equiv←dependent-orthogonal
+      , dependent-orthogonal←postcomp-Extᵈ-is-equiv)
+
+  postcomp-Extᵈ-≃
+    : f ⊥ᵈ g → (a : Π A (X ∘ f))
+    → Extᵈ f X a ≃ Extᵈ f Y (postcomp-Π (g ∘ f) a)
+  postcomp-Extᵈ-≃ f⊥ᵈg a
+    = mk≃ (postcomp-Extᵈ f g a)
+        (postcomp-Extᵈ-is-equiv←dependent-orthogonal f⊥ᵈg a)
+}
+}
+
+\subtree[bak-F4E1]{
+\title{Dependent orthogonality as equivalence of dependent lift types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+Given a map #{f \colon A \to B} and a family of maps
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}} then #{g} is dependently orthogonal to #{f} if
+and only if precomposition along #{f} induces an equivalence on dependent lifts along
+#{g}, for every section #{h \colon \Pi1{b : B}{Y(b)}}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  precomp-Liftᵈ-is-equiv←dependent-orthogonal
+    : f ⊥ᵈ g → (h : Π B Y) → is-equiv (precomp-Liftᵈ f g h)
+  precomp-Liftᵈ-is-equiv←dependent-orthogonal f⊥ᵈg h
+    = tgt-is-equiv←Arrow-equiv (precomp-Liftᵈ-Arrow-equiv f g h)
+        (power-homᵈ-is-cartesian←are-dependently-orthogonal f g f⊥ᵈg h)
+
+  dependent-orthogonal←precomp-Liftᵈ-is-equiv
+    : ((h : Π B Y) → is-equiv (precomp-Liftᵈ f g h)) → f ⊥ᵈ g
+  dependent-orthogonal←precomp-Liftᵈ-is-equiv precomp-is-equiv
+    = are-dependently-orthogonal←power-homᵈ-is-cartesian f g (λ h
+      → src-is-equiv←Arrow-equiv
+          (precomp-Liftᵈ-Arrow-equiv f g h) (precomp-is-equiv h))
+
+  dependent-orthogonal↔precomp-Liftᵈ-is-equiv
+    : (f ⊥ᵈ g) ↔ ((h : Π B Y) → is-equiv (precomp-Liftᵈ f g h))
+  dependent-orthogonal↔precomp-Liftᵈ-is-equiv
+    = ( precomp-Liftᵈ-is-equiv←dependent-orthogonal
+      , dependent-orthogonal←precomp-Liftᵈ-is-equiv)
+
+  precomp-Liftᵈ-≃
+    : f ⊥ᵈ g → (h : Π B Y) → Liftᵈ g h ≃ Liftᵈ (g ∘ f) (h ∘ f)
+  precomp-Liftᵈ-≃ f⊥ᵈg h
+    = mk≃ (precomp-Liftᵈ f g h)
+        (precomp-Liftᵈ-is-equiv←dependent-orthogonal f⊥ᵈg h)
+}
+}
+
+\subtree[bak-C1A5]{
+\title{Dependent orthogonality to terminal maps}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+A map #{f \colon A \to B} is dependently left orthogonal to a family of terminal
+projections #{! \colon \Pi1{b : B}{U(b) \to \b1}} if and only if its the dependent
+precomposition map at the family #{U} is an equivalence.
+}
+
+\p{
+An instance of this is the dependent universal property of
+[epifunctions](Foundations.Epifunctions).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} (f : A → B) (U : B → Type 𝓦)
+  where
+
+  dependent-orthogonal-terminal↔precomp-Π
+    : (f ⊥ᵈ (λ b → !: U b)) ↔ is-equiv (precomp-Π U f)
+  dependent-orthogonal-terminal↔precomp-Π
+    = src↔tgt-is-equiv←Arrow-equiv
+        (Π̂-at-singleton-codomain≃precomp-Π f (λ b → !: U b) (λ _ → 𝟙-is-singleton))
+}
+}
+
+\subtree[bak-43FE]{
+\title{Dependent orthogonality at pushout sums and dependent pullback powers}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+By the [dependent Leibniz adjunction](stt-00FM) we have
+#{\pushsum_f g \perp^\rm{d} h} if and only if #{f \perp^\rm{d} \pulldpow_g h}.
+}
+
+\agda{
+module _
+  {𝓤1 𝓤2 𝓤3 𝓤4 𝓤5 𝓤6}
+  {A : Type 𝓤1} {B : Type 𝓤2} (f : A → B)
+  {X : B → Type 𝓤3} {Y : B → Type 𝓤4}
+  (g : (b : B) → X b → Y b)
+  {U : (b : B) → Y b → Type 𝓤5}
+  {V : (b : B) → Y b → Type 𝓤6}
+  (h : (b : B) (y : Y b) → U b y → V b y)
+  where
+
+  Σ̂⊥ᵈ↔⊥ᵈΠ̂
+    : (Σ̂ f g ⊥ᵈ (λ (b , y) → h b y))
+    ↔ (f ⊥ᵈ (λ b → Π̂ (g b) (h b)))
+  Σ̂⊥ᵈ↔⊥ᵈΠ̂
+    = src↔tgt-is-equiv←Arrow-equiv (Leibnizᵈ≃ f g h)
+}
+}

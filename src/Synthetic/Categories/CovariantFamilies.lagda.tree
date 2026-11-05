@@ -293,13 +293,14 @@ sections of #{P \circ h} and the fibre #{P(h(0))}.
 
 \agda{
 module _
-  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-  (P-is-covariant : is-covariant P) (h : Δ¹ → A)
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {P : {i : Δ¹} → A i → Type 𝓥}
+  (P-is-covariant : is-covariant P) (h : (i : Δ¹) → A i)
   where
 
   ev-i0-is-equiv←is-covariant : is-equiv (evᵈ: (P ∘ h) i0)
   ev-i0-is-equiv←is-covariant
-    = is-equiv-∘ unit-ev-is-equiv (is-left-family←is-covariant P P-is-covariant h)
+    = is-equiv←has-singleton-fibres (λ x
+      → is-single←equiv (cov-lift≃fibre-ev-i0 P h x) (P-is-covariant h x))
 
   ev-i0≃←is-covariant : Π Δ¹ (P ∘ h) ≃ P (h i0)
   ev-i0≃←is-covariant = mk≃ (ev i0) ev-i0-is-equiv←is-covariant
@@ -808,14 +809,16 @@ module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦} {A : Type 𝓤} {F : A → Type 𝓥} {G : A → Type 𝓦}
+  {𝓤 𝓥 𝓦} {A : Δ¹ → Type 𝓤}
+  {F : {i : Δ¹} → A i → Type 𝓥}
+  {G : {i : Δ¹} → A i → Type 𝓦}
   (Fc : is-covariant F)
   (Gc : is-covariant G)
-  (α : ∀ a → F a → G a)
+  (α : {i : Δ¹} (a : A i) → F a → G a)
   where
 
   tr-cov-hom-naturality
-    : ∀ {x y} (f : Hom A x y)
+    : ∀ {x y} (f : Homᵈ A x y)
       → tr-cov-hom Gc f ∘ α x ~ α y ∘ tr-cov-hom Fc f
   tr-cov-hom-naturality f x'
     = tr-cov-hom-unique Gc f
@@ -823,14 +826,14 @@ module _
         (α _ (tr-cov-hom Fc f x'))
         (filler f x') where
     filler
-      : ∀ {x y} (f : Hom _ x y) x'
-        → Hom-over f (α x x') (α y (tr-cov-hom Fc f x'))
-    filler {x}{y} hh@(mk-hom h refl refl) x'
+      : ∀ {x y} (f : Homᵈ A x y) x'
+        → Homᵈ-over {B = λ i → G {i}} f (α x x') (α y (tr-cov-hom Fc f x'))
+    filler {x} {y} hh@(mk-hom h refl refl) x'
       = ap-hom (λ {i} → α (h i)) (tr-cov-over Fc hh x')
 
   adjust-tr-cov-hom
-    : is-fibrewise-equiv α
-    → ∀ {x}{y} (f : Hom A x y)
+    : ({i : Δ¹} → is-fibrewise-equiv (α {i}))
+    → ∀ {x} {y} (f : Homᵈ A x y)
     → Arrow-equiv (tr-cov-hom {P = F} Fc f) (tr-cov-hom {P = G} Gc f)
   adjust-tr-cov-hom e f .fst .Arrow-Π.top = α _
   adjust-tr-cov-hom e f .fst .Arrow-Π.bot = α _
@@ -840,16 +843,16 @@ module _
 
   opaque
     tr-cov-naturality
-      : ∀ (f : Δ¹ → A)
-        → tr-cov {P = G} Gc f ∘ α (f i0) ~ α (f i1) ∘ tr-cov {P = F} Fc f
+      : (f : (i : Δ¹) → A i)
+      → tr-cov {P = G} Gc f ∘ α (f i0) ~ α (f i1) ∘ tr-cov {P = F} Fc f
     tr-cov-naturality f x'
       = ap fst (central (Gc f (α (f i0) x'))
            ( (α (f i1) (tr-cov {P = F} Fc f x'))
            , ap-hom (λ {i} → α (f i)) (tr-cov-filler {P = F} Fc f x')))
 
   adjust-tr-cov
-    : is-fibrewise-equiv α
-    → (f : Δ¹ → A)
+    : ({i : Δ¹} → is-fibrewise-equiv (α {i}))
+    → (f : (i : Δ¹) → A i)
     → Arrow-equiv (tr-cov {P = F} Fc f) (tr-cov {P = G} Gc f)
   adjust-tr-cov e f .fst .Arrow-Π.top = α (f i0)
   adjust-tr-cov e f .fst .Arrow-Π.bot = α (f i1)
@@ -862,9 +865,9 @@ module _
 \agda{
 opaque
   tr-cov-hom-Idᵈ
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} (F : A → Type 𝓥) (Fc : is-covariant F)
-        {x y x' y' : A} (p : x ＝ x') (q : y ＝ y')
-        (f : Hom A x y) (g : Hom A x' y')
+    : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (F : {i : Δ¹} → A i → Type 𝓥) (Fc : is-covariant F)
+        {x y x' y'} (p : x ＝ x') (q : y ＝ y')
+        (f : Homᵈ A x y) (g : Homᵈ A x' y')
         (P : Hom-pathᵈ p q f g)
       → tr F q ∘ tr-cov-hom {P = F} Fc f
       ~ tr-cov-hom {P = F} Fc g ∘ tr F p
@@ -881,17 +884,17 @@ opaque
 
 \agda{
 covariant-base-change
-  : ∀ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {P : B → Type 𝓦}
-    → (f : A → B)
-    → is-covariant P → is-covariant (P ∘ f)
+  : ∀ {𝓤 𝓥 𝓦} {A : Δ¹ → Type 𝓤} {B : Δ¹ → Type 𝓥} {P : {i : Δ¹} → B i → Type 𝓦}
+    → (f : {i : Δ¹} → A i → B i)
+    → is-covariant {A = B} P → is-covariant (P ∘ f)
 covariant-base-change F Pc f x₀ = Pc (F ∘ f) x₀
 
 is-covariant-is-Δ¹-relative
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
-    → is-covariant P ↔ (∀ (f : Δ¹ → A) → is-covariant (P ∘ f))
-is-covariant-is-Δ¹-relative {A = A} {P} .fst Pc f
+    → is-covariant P ↔ ((f : Δ¹ → A) → is-covariant (P ∘ f))
+is-covariant-is-Δ¹-relative {P = P} .fst Pc f
   = covariant-base-change {P = P} f Pc
-is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
+is-covariant-is-Δ¹-relative .snd Pfc h = Pfc h id
 }
 }
 
@@ -901,13 +904,13 @@ is-covariant-is-Δ¹-relative {A = A} {P} .snd Pfc h = Pfc h id
 
 \agda{
 tr-cov-ap-hom
-  : ∀ {𝓤 𝓥 𝓦} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
-      (F : Y → Type 𝓦) (Fc : is-covariant F)
+  : ∀ {𝓤 𝓥 𝓦} {X : Δ¹ → Type 𝓤} {Y : Δ¹ → Type 𝓥} (f : {i : Δ¹} → X i → Y i)
+      (F : {i : Δ¹} → Y i → Type 𝓦) (Fc : is-covariant F)
       (Ffc : is-covariant (F ∘ f))
     → (covariant-base-change {P = F} f Fc ＝ Ffc)
-    → {a b : X}
-      (h : Hom X a b)
-      (g : Hom Y (f a) (f b))
+    → ∀ {a b}
+      (h : Homᵈ X a b)
+      (g : Homᵈ Y (f a) (f b))
     → (g ＝ ap-hom f h)
     → tr-cov-hom {P = F} Fc g
     ~ tr-cov-hom {P = F ∘ f} Ffc h

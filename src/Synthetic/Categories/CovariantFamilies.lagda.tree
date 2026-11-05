@@ -189,15 +189,12 @@ module _
   where
 
   opaque
+    unfolding tr-cov-hom
+
     tr-cov-is-co-strict
       : (h : (i : Δ¹) → A i) → is-co-strict-map (tr-cov {P = P} P-is-covariant h)
     tr-cov-is-co-strict h
-      = cov-transport-is-co-strict←lifts {P = P}
-          (λ h x → P-is-covariant h x .centre)
-          (λhom h)
-
-  opaque
-    unfolding tr-cov-hom
+      = tr-covˢ←lifts {P = P} (λ h x → P-is-covariant h x .centre) h .snd
 
     tr-cov-hom-is-co-strict
       : {x : A i0} {y : A i1} (h : Homᵈ A x y)
@@ -205,7 +202,7 @@ module _
     tr-cov-hom-is-co-strict (mk-hom h refl refl) = tr-cov-is-co-strict h
 
   tr-covˢ : (h : (i : Δ¹) → A i) → P (h i0) →ˢ P (h i1)
-  tr-covˢ h = (tr-cov {P = P} P-is-covariant h , tr-cov-is-co-strict h)
+  tr-covˢ = tr-covˢ←lifts {P = P} (λ h x → P-is-covariant h x .centre)
 
   tr-cov-homˢ : {x : A i0} {y : A i1} → Homᵈ A x y → P x →ˢ P y
   tr-cov-homˢ h = (tr-cov-hom {P = P} P-is-covariant h , tr-cov-hom-is-co-strict h)
@@ -665,31 +662,10 @@ that #{\id_* \sim \id}.
 \proof{
 \p{
 The forwards direction follows from [unitality of covariant transport](stt-00O8)
-and [discreteness of the fibres](bak-AAAD). For the backwards direction we show
-that the family is a left family using the [covariant lifts criterion](bak-AAAD).
-I.e., we must construct a lift of the diagram
-\quiver{
-\begin{tikzcd}
-\{0\} && \Sigma1{a:A}{B(a)} \\
-\\
-\Delta^1 && A
-\arrow[from=1-1, to=1-3, "{(f(0),b)}"]
-\arrow[from=3-1, to=3-3, "f"]
-\arrow[from=1-1, to=3-1, hook]
-\arrow[from=1-3, to=3-3, "\pi"]
-\arrow[from=3-1, to=1-3, dashed, "f'"]
-\end{tikzcd}
-}
-which, by that criterion, gives an inverse to
+and [discreteness of the fibres](bak-AAAD). For the backwards direction we use
+the [lifts constructed from unital transport](bak-2CC0), which, by the
+[covariant lifts criterion](bak-AAAD), give an inverse to
 \code{precomp-Π (B ∘ f) (point i0)}.
-}
-
-\p{
-For each #{i : Δ¹}, let #{0\leq i : \Hom_{Δ¹}(0,i)} be the canonical morphism.
-Applying #{f} we get a morphism #{f(0\leq i) : \Hom_A(f(0),f(i))} along which we
-can transport #{b}, and get
-##{f'(i) \defeq \left(f(i), f(0\leq i)_*(b)\right).}
-This lies over #{f}, and its value at #{0} is #{(f(0),b)} by unitality.
 }
 
 \p{
@@ -704,20 +680,6 @@ desired equality.
 
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
-
-  section-ev-i0←cov-unital-transport
-    : Covariant-unital-transport B
-    → (h : Δ¹ → A) → section (evᵈ: (B ∘ h) i0)
-  section-ev-i0←cov-unital-transport (ρ , ρ-id) h
-    = ( (λ x i → ρ (ap-hom h (0≤i i)) x)
-      , (λ x → ap (λ f → ρ (ap-hom h f) x) 0≤i-at-0 ∙ ρ-id (h i0) x))
-
-  lift-cov-unital-transport
-    : Covariant-unital-transport B → Covariant-lifts B
-  lift-cov-unital-transport ρ
-    = _≃_.bwd
-      (Covariant-lifts≃sections-ev-i0 B)
-      (section-ev-i0←cov-unital-transport ρ)
 
   is-covariant←cov-unital-transport
     : ((x : A) → is-Δ¹-discrete (B x))
@@ -810,6 +772,7 @@ module _
 \subtree[stt-00K3]{
 \title{Covariant transport along inequalities in #{Δ¹}}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.
 consequently, for covariant families over #{\Delta^1}, we may coerce along
@@ -822,25 +785,23 @@ by #{\id \colon \Delta^1 \to \Delta^1}.}
 module _ {𝓤} (B : Δ¹ → Type 𝓤) (bc : is-covariant B) where
 
   coe-cov : {i j : Δ¹} → i ≤ j → B i → B j
-  coe-cov p = tr-cov-hom bc (Δ¹-hom←≤ p)
+  coe-cov = coe-cov-transport B (tr-cov-hom bc)
 
   opaque
     unfolding tr-cov-hom
-    coe-cov-id : {i  : Δ¹} (p : i ≤ i) → coe-cov p ~ id
-    coe-cov-id {i} p
-      =  happly (ap (tr-cov-hom bc) (Δ¹-hom-≤-refl p))
-      ∙h tr-cov-idH B bc
+    coe-cov-id : {i : Δ¹} (p : i ≤ i) → coe-cov p ~ id
+    coe-cov-id = coe-cov-transport-id B (cov-unital-transport←is-covariant bc)
 
     coe-cov-＝ : {i j : Δ¹} (p : i ＝ j) (q : i ≤ j) → coe-cov q ~ tr B p
-    coe-cov-＝ refl = coe-cov-id
+    coe-cov-＝ = coe-cov-transport-＝ B (cov-unital-transport←is-covariant bc)
 
     coe-cov-0≤1 : (p : i0 ≤ i1) → coe-cov p ＝ tr-cov {P = B} bc id
-    coe-cov-0≤1 p = ap (tr-cov-hom bc) (Δ¹-hom-0≤1 p)
+    coe-cov-0≤1 = coe-cov-transport-0≤1 B (tr-cov-hom bc)
 }
 }
 
 \subtree[stt-00FR]{
-\title{Natural transformations are natural with respect to covariant transport}
+\title{Natural transformations are natural with respect to transport in covariant families}
 \taxon{Lemma}
 
 \citet{Proposition 8.17}{RS17}

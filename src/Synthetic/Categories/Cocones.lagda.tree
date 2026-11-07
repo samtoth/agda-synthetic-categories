@@ -61,25 +61,16 @@ the ordinary notion of a [cocone of types under a span](stt-0016).}
 module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 
   𝑪ocone-under : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  𝑪ocone-under a = Hom (K → A) ϕ (const a)
-
-  𝑪ocone-under' : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  𝑪ocone-under' a = ∀ (k : K) → Hom A (ϕ k) a
+  𝑪ocone-under a = ϕ ⇒ const a
 
   𝑪ocone : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
   𝑪ocone = Σ A 𝑪ocone-under
 
-  𝑪ocone' : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  𝑪ocone' = Σ A 𝑪ocone-under'
-
-  𝑪ocone-at≃ : ∀ a → 𝑪ocone-under a ≃ 𝑪ocone-under' a
-  𝑪ocone-at≃ a = Nat≃Hom
-
-  𝑪ocone≃ : 𝑪ocone ≃ 𝑪ocone'
-  𝑪ocone≃ = Σ-snd-≃ 𝑪ocone-at≃
-
   nadir←𝑪ocone : 𝑪ocone → A
   nadir←𝑪ocone = fst
+
+  ι-𝑪ocone : (C : 𝑪ocone) → (k : K) → Hom A (ϕ k) (nadir←𝑪ocone C)
+  ι-𝑪ocone = snd
 }
 }
 
@@ -96,19 +87,26 @@ module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 
   Coslice-proj←nadir : Arrow-map (nadir←𝑪ocone ϕ) (Coslice-proj: ϕ)
-  Coslice-proj←nadir .Arrow-Π.top (a , h) = (h .Homᵈ.hom , h .Homᵈ.hom0)
+  Coslice-proj←nadir .Arrow-Π.top
+    = postcomp (𝑪ocone ϕ)
+        (λ x → (x .snd .Homᵈ.hom , x .snd .Homᵈ.hom0))
+        (total-map (λ _ → Hom←Nat))
   Coslice-proj←nadir .Arrow-Π.bot = const
-  Coslice-proj←nadir .Arrow-Π.comm (a , h) = sym (h .Homᵈ.hom1)
+  Coslice-proj←nadir .Arrow-Π.comm (a , h) = sym (funext→ (Homᵈ.hom1 ∘ h))
 
   opaque
     nadir-base-change-of-Coslice-proj : is-cartesian Coslice-proj←nadir
     nadir-base-change-of-Coslice-proj a
-      = is-equiv←~
-          (λ where (_ , refl) → fibre-path→ (refl , sym sym-sym ∙ sym (∙-reflr _)))
+      = is-equiv-∘~
+          ( λ where (_ , refl) → fibre-path→ (refl , ∙-reflr _ ∙ sym-sym))
           (eqv ._≃_.fwd-is-equiv)
+          (fibre-equiv←is-equiv
+            (total-map (λ _ → Hom←Nat) , ~refl)
+            (is-total-equiv←is-fibrewise-equiv (λ _ → bwd-is-equiv Nat≃Hom))
+            a)
       where
 
-      eqv : fibre (nadir←𝑪ocone ϕ) a ≃ fibre (Coslice-proj: ϕ) (const a)
+      eqv : fibre (fst: (Hom (K → A) ϕ ∘ const)) a ≃ fibre (Coslice-proj: ϕ) (const a)
       eqv ._≃_.fwd ((a , h) , refl) = ((h .Homᵈ.hom , h .Homᵈ.hom0) , h .Homᵈ.hom1)
       eqv ._≃_.fwd-is-equiv .is-equiv.qinv .fst ((f , p) , q) = ((a , mk-hom f p q) , refl)
       eqv ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst (_ , refl) = refl
@@ -132,15 +130,24 @@ comma type of the span #{\{ \phi \} \to A^K \leftarrow A}.}
     → directed-cone (mk-cospan (K → A) (point ϕ) (const: A K)) (𝑪ocone ϕ)
 𝑪ocone-directed-cone F .directed-cone.p = !
 𝑪ocone-directed-cone F .directed-cone.q (a , _) = a
-𝑪ocone-directed-cone F .directed-cone.filler (_ , α) = α
+𝑪ocone-directed-cone F .directed-cone.filler (_ , α) = Hom←Nat α
 
 𝑪ocone-has-up-comma
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
     → up-comma (𝑪ocone-directed-cone F)
-𝑪ocone-has-up-comma F .is-equiv.qinv .fst cone x = (cone .directed-cone.q x , cone .directed-cone.filler x)
-𝑪ocone-has-up-comma F .is-equiv.qinv .snd .fst = ~refl
-𝑪ocone-has-up-comma F .is-equiv.qinv .snd .snd = ~refl
-𝑪ocone-has-up-comma F .is-equiv.coherent = ~refl
+𝑪ocone-has-up-comma F
+  = is-equiv-∘
+      {g = postcomp _ (total-map (λ _ → Hom←Nat))}
+      eqv
+      (postcomp-equiv (is-total-equiv←is-fibrewise-equiv (λ _ → bwd-is-equiv Nat≃Hom)))
+  where
+
+  eqv : is-equiv (directed-cone-map (mk-directed-cone ! fst snd))
+  eqv .is-equiv.qinv .fst cone x
+    = (cone .directed-cone.q x , cone .directed-cone.filler x)
+  eqv .is-equiv.qinv .snd .fst = ~refl
+  eqv .is-equiv.qinv .snd .snd = ~refl
+  eqv .is-equiv.coherent = ~refl
 }
 }
 
@@ -155,40 +162,18 @@ comma type of the span #{\{ \phi \} \to A^K \leftarrow A}.}
     → 𝑪ocone F → 𝑪ocone F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
 𝑪ocone-Id a b
   = Σ[ p ∶ (a .fst ＝ b .fst) ]
-       (Hom-pathᵈ refl (ap const p) (a .snd) (b .snd))
-
-𝑪ocone'-Id
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → 𝑪ocone' F → 𝑪ocone' F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-𝑪ocone'-Id a b
-  = Σ[ p ∶ (a .fst ＝ b .fst) ]
        (∀ i → Hom-pathᵈ refl p (a .snd i) (b .snd i))
 
 𝑪ocone-Id-refl
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
     → (p : 𝑪ocone F) → 𝑪ocone-Id p p
-𝑪ocone-Id-refl a = (refl , Hom-pathᵈ-refl)
-
-𝑪ocone'-Id-refl
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → (p : 𝑪ocone' F) → 𝑪ocone'-Id p p
-𝑪ocone'-Id-refl a = (refl , λ _ → Hom-pathᵈ-refl)
+𝑪ocone-Id-refl a = (refl , λ _ → Hom-pathᵈ-refl)
 
 opaque
   𝑪ocone-Id-is-torsorial
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
       → (F : 𝑪ocone F) → is-torsorial (𝑪ocone-Id F)
   𝑪ocone-Id-is-torsorial F
-    = is-singleton-structure←parts
-        Sing-is-singleton
-        (_ , refl)
-        (SingS-is-single ⦃ Hom-IdSᵈ ⦄ _)
-
-opaque
-  𝑪ocone'-Id-is-torsorial
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → (F : 𝑪ocone' F) → is-torsorial (𝑪ocone'-Id F)
-  𝑪ocone'-Id-is-torsorial F
     = is-singleton-structure←parts
         Sing-is-singleton
         (_ , refl)
@@ -202,15 +187,6 @@ instance
   𝑪ocone-IdS .Identity-system.IdS←Id refl = 𝑪ocone-Id-refl _
   𝑪ocone-IdS .Identity-system.IdS←Id-is-equiv a
     = fundamental-Id _ (𝑪ocone-Id-is-torsorial a) _
-
-instance
-  𝑪ocone'-IdS
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → Identity-system (𝑪ocone' F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  𝑪ocone'-IdS .Identity-system.IdS = 𝑪ocone'-Id
-  𝑪ocone'-IdS .Identity-system.IdS←Id refl = 𝑪ocone'-Id-refl _
-  𝑪ocone'-IdS .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (𝑪ocone'-Id-is-torsorial a) _
 
 opaque
   𝑪ocone-Id→
@@ -232,26 +208,6 @@ opaque
   𝑪ocone-Id-ap-fst
     = IdSJ ⦃ 𝑪ocone-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
            (ap (ap fst) (Id←IdS←Id refl))
-
-  𝑪ocone'-Id→
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : 𝑪ocone' F}
-      → 𝑪ocone'-Id x y → x ＝ y
-  𝑪ocone'-Id→ = Id←IdS ⦃ 𝑪ocone'-IdS ⦄
-
-  𝑪ocone'-Id-is-equiv
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : 𝑪ocone' F}
-      → is-equiv (𝑪ocone'-Id→ {x = x} {y})
-  𝑪ocone'-Id-is-equiv
-    = is-equiv⁻¹ (𝑪ocone'-IdS .Identity-system.IdS←Id-is-equiv _ _)
-
-  𝑪ocone'-Id-ap-fst
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : 𝑪ocone' F}
-      → (p : 𝑪ocone'-Id a b) → ap fst (𝑪ocone'-Id→ p) ＝ fst p
-  𝑪ocone'-Id-ap-fst
-    = IdSJ ⦃ 𝑪ocone'-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
-           (ap (ap fst) (Id←IdS←Id refl))
 }
 }
 
@@ -263,10 +219,10 @@ opaque
 \p{The cocone of a point #{C_{c/}} is equivalent to the coslice #{C_{c/}}.}
 
 \agda{
-𝑪ocone'-point≃Coslice
+𝑪ocone-point≃Coslice
   : ∀ {𝓤} {A : Type 𝓤} (a : A)
-    → 𝑪ocone' (point a) ≃ Coslice a
-𝑪ocone'-point≃Coslice a = Σ-snd-≃ (λ b → unit-UP≃) ∙e Coslice-hom-repr≃ a
+    → 𝑪ocone (point a) ≃ Coslice a
+𝑪ocone-point≃Coslice a = Σ-snd-≃ (λ b → unit-UP≃) ∙e Coslice-hom-repr≃ a
 }
 }
 
@@ -285,7 +241,7 @@ opaque
       {K : Type 𝓚} {p : K → A}
       {K' : Type 𝓚'} {q : K' → A}
       (t : Slice-map q p)
-    → 𝑪ocone' p → 𝑪ocone' q
+    → 𝑪ocone p → 𝑪ocone q
 𝑪ocone₁ {p = p} {q = q} (f , H)
   = total-map
       λ a

@@ -22,8 +22,9 @@ open import Axioms.UF
 \agda{
 open import Foundations.Prelude
 
-
-
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.OrthogonalClosure
 
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Categories.Precategories Δ¹ I
@@ -33,6 +34,7 @@ open import Synthetic.Categories.CovariantHomFamilies Δ¹ I
 open import Synthetic.Categories.Initial Δ¹ I
 open import Synthetic.Categories.Adjoints Δ¹ I
 open import Synthetic.Categories.FullyFaithfulMaps Δ¹ I
+open import Synthetic.Categories.NaturalTransformations Δ¹ I
 open import Synthetic.Categories.Cocones Δ¹ I
 }
 }
@@ -220,10 +222,12 @@ module Colimit {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) {𝒦 : Type 𝓥
   opaque
     𝑪ocone-under-is-covariant : is-covariant (𝑪ocone-under D)
     𝑪ocone-under-is-covariant
-      = covariant-base-change
-        {P = Hom (𝒦 → A) D}
-        (const: A 𝒦)
-        (hom-fam-cov (→-is-segal 𝐴) D)
+      = is-covariant←is-left-fibration
+          (𝑪ocone-under D)
+          (orthogonal←base-change (point i0)
+            (Coslice-proj←nadir D)
+            (nadir-base-change-of-Coslice-proj D)
+            (Coslice-proj-is-left-fibration (→-is-segal 𝐴) D))
 
   is-colimit : ∀ colimD (cc : 𝑪ocone-under D colimD) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
   is-colimit colimD cc
@@ -260,14 +264,26 @@ module _
 
   restrict-𝑪ocone-under
     : {a : A} → 𝑪ocone-under D a → 𝑪ocone-under (D ∘ j) a
-  restrict-𝑪ocone-under = ap-hom (precomp A j)
+  restrict-𝑪ocone-under = precomp-Π _ j
+
+  restrict-𝑪ocone-under≃ap-hom-precomp
+    : ∀ {a : A}
+      → Arrow-equiv
+         (ap-hom (precomp A j) {D} {const a})
+         (restrict-𝑪ocone-under {a})
+  restrict-𝑪ocone-under≃ap-hom-precomp
+    = mk-arr-equiv Nat≃Hom Nat≃Hom
+        (λ f → funext→ (λ l → Hom-ext→ (~refl , ap-∘ _ _ _ , ap-∘ _ _ _)))
 
   module _ (precomp-is-ff : is-ff (precomp A j)) where
 
     restrict-𝑪ocone≃
       : (a : A) → 𝑪ocone-under D a ≃ 𝑪ocone-under (D ∘ j) a
     restrict-𝑪ocone≃ a
-      = mk≃ restrict-𝑪ocone-under (is-ff'←is-ff precomp-is-ff)
+      = mk≃ restrict-𝑪ocone-under
+          (tgt-is-equiv←Arrow-equiv
+            (restrict-𝑪ocone-under≃ap-hom-precomp)
+            (is-ff'←is-ff precomp-is-ff))
 
     module _
       (𝐴 : is-segal A)

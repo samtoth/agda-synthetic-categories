@@ -48,33 +48,20 @@ open import Synthetic.Categories.Slices Δ¹ I
 
 \p{Given a diagram #{\phi \colon \mathcal{K} \to A}, the type of #{D}-shaped \em{cones}
 at some element #{a : A} is given by a natural transformation #{\const_a \Rightarrow D}.
-We write #{A_{/\phi}} for the type consisting of a point and a cone at that point,
-called \code{Over ϕ} in code. This type comes with a canonical projection to #{A}
-which we call the \em{apex} map.}
+We write #{A_{/\phi}} for the type consisting of a point and a cone over that point.
+This type comes with a canonical projection to #{A} which we call the \em{apex} map.}
 
 \agda{
 module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 
-  Cone-at : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  Cone-at a = Hom (K → A) (const a) ϕ
+  𝑪one-over : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  𝑪one-over a = ∀ (k : K) → Hom A a (ϕ k)
 
-  Cone-at' : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  Cone-at' a = ∀ (k : K) → Hom A a (ϕ k)
+  𝑪one : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
+  𝑪one = Σ A 𝑪one-over
 
-  Over : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  Over = Σ A Cone-at
-
-  Over' : Type (𝓘 ⊔ 𝓤 ⊔ 𝓚)
-  Over' = Σ A Cone-at'
-
-  Cone-at≃ : ∀ a → Cone-at a ≃ Cone-at' a
-  Cone-at≃ a = Nat≃Hom
-
-  Over≃ : Over ≃ Over'
-  Over≃ = Σ-snd-≃ Cone-at≃
-
-  apex : Over → A
-  apex = fst
+  apex←𝑪one : 𝑪one → A
+  apex←𝑪one = fst
 }
 }
 
@@ -83,25 +70,32 @@ module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 \taxon{Lemma}
 
 \p{The apex map #{A_{/ϕ} \to A} is a base change of the slice map
-#{(A^\mathcal{K})_{/ϕ} \to A^{\mathcal{K}}}.}
+#{(A^\mathcal{K})_{/ϕ} \to A^{\mathcal{K}}} along the diagonal map.}
 
 \agda{
 module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 
-  Slice-proj←apex : Arrow-map (apex ϕ) (Slice-proj: ϕ)
-  Slice-proj←apex .Arrow-Π.top (a , h) = (h .Homᵈ.hom , h .Homᵈ.hom1)
+  Slice-proj←apex : Arrow-map (apex←𝑪one ϕ) (Slice-proj: ϕ)
+  Slice-proj←apex .Arrow-Π.top
+    = postcomp (𝑪one ϕ)
+        (λ x → x .snd .Homᵈ.hom , x .snd .Homᵈ.hom1)
+        (total-map (λ _ → Hom←Nat))
   Slice-proj←apex .Arrow-Π.bot = const
-  Slice-proj←apex .Arrow-Π.comm (a , h) = sym (h .Homᵈ.hom0)
+  Slice-proj←apex .Arrow-Π.comm (a , h) = sym (funext→ (Homᵈ.hom0 ∘ h))
 
   opaque
     apex-base-change-of-Slice-proj : is-cartesian Slice-proj←apex
     apex-base-change-of-Slice-proj a
-      = is-equiv←~
-          (λ where (_ , refl) → fibre-path→ (refl , sym sym-sym ∙ sym (∙-reflr _)))
+      = is-equiv-∘~
+          (λ where (_ , refl) → fibre-path→ (refl , ∙-reflr _ ∙ sym-sym))
           (eqv ._≃_.fwd-is-equiv)
+          (fibre-equiv←is-equiv
+            (total-map (λ b → Hom←Nat) , ~refl)
+            (is-total-equiv←is-fibrewise-equiv (λ x → bwd-is-equiv Nat≃Hom))
+            (a))
       where
 
-      eqv : fibre (apex ϕ) a ≃ fibre (Slice-proj: ϕ) (const a)
+      eqv : fibre (fst: λ a → Hom (K → A) (const a) ϕ) a ≃ fibre (Slice-proj: ϕ) (const a)
       eqv ._≃_.fwd ((a , h) , refl) = ((h .Homᵈ.hom , h .Homᵈ.hom1) , h .Homᵈ.hom0)
       eqv ._≃_.fwd-is-equiv .is-equiv.qinv .fst ((f , p) , q) = ((a , mk-hom f q p) , refl)
       eqv ._≃_.fwd-is-equiv .is-equiv.qinv .snd .fst (_ , refl) = refl
@@ -112,155 +106,112 @@ module _ {𝓤 𝓚} {A : Type 𝓤} {K : Type 𝓚} (ϕ : K → A) where
 
 \subtree[tot-2A5I]{
 \taxon{Lemma}
-\title{Over types as comma types}
+\title{Cone types as comma types}
 
-\p{For any map #{\phi : K \to A}, the overcategory #{A_{/\phi}} is equivalent to the
+\p{For any map #{\phi : K \to A}, the cone #{A_{/\phi}} is equivalent to the
 comma type of the span #{A \to A^K \leftarrow \{\phi\}}.}
 
 \agda{
-Over-directed-cone
+𝑪one-directed-cone
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {K : Type 𝓥}
       (ϕ : K → A)
-    → directed-cone (mk-cospan (K → A) (const: A K) (point ϕ)) (Over ϕ)
-Over-directed-cone F .directed-cone.p (a , _) = a
-Over-directed-cone F .directed-cone.q = !
-Over-directed-cone F .directed-cone.filler (_ , α) = α
+    → directed-cone (mk-cospan (K → A) (const: A K) (point ϕ)) (𝑪one ϕ)
+𝑪one-directed-cone F .directed-cone.p (a , _) = a
+𝑪one-directed-cone F .directed-cone.q = !
+𝑪one-directed-cone F .directed-cone.filler (_ , α) = Hom←Nat α
 
-Over-is-comma
+𝑪one-has-up-comma
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} (F : I → C)
-    → up-comma (Over-directed-cone F)
-Over-is-comma F .is-equiv.qinv .fst cone x = (cone .directed-cone.p x , cone .directed-cone.filler x)
-Over-is-comma F .is-equiv.qinv .snd .fst = ~refl
-Over-is-comma F .is-equiv.qinv .snd .snd = ~refl
-Over-is-comma F .is-equiv.coherent = ~refl
+    → up-comma (𝑪one-directed-cone F)
+𝑪one-has-up-comma F
+  = is-equiv-∘
+      eqv
+      (postcomp-equiv
+        (is-total-equiv←is-fibrewise-equiv (λ _ → bwd-is-equiv Nat≃Hom)))
+  where
+
+  eqv : is-equiv (directed-cone-map (mk-directed-cone fst ! snd))
+  eqv .is-equiv.qinv .fst cone x = (cone .directed-cone.p x , cone .directed-cone.filler x)
+  eqv .is-equiv.qinv .snd .fst = ~refl
+  eqv .is-equiv.qinv .snd .snd = ~refl
+  eqv .is-equiv.coherent = ~refl
 }
 }
 
 \subtree[tot-BZC1]{
-\title{Identity types of undertypes}
+\title{Identity types of cones}
 
 \agda{
-Over-Id
+𝑪one-Id
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → Over F → Over F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Over-Id a b
-  = Σ[ p ∶ (a .fst ＝ b .fst) ]
-       (Hom-pathᵈ (ap const p) refl (a .snd) (b .snd))
-
-Over'-Id
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → Over' F → Over' F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-Over'-Id a b
+    → 𝑪one F → 𝑪one F → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+𝑪one-Id a b
   = Σ[ p ∶ (a .fst ＝ b .fst) ]
        (∀ i → Hom-pathᵈ p refl (a .snd i) (b .snd i))
 
-Over-Id-refl
+𝑪one-Id-refl
   : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → (p : Over F) → Over-Id p p
-Over-Id-refl a = (refl , Hom-pathᵈ-refl)
-
-Over'-Id-refl
-  : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-    → (p : Over' F) → Over'-Id p p
-Over'-Id-refl a = (refl , λ _ → Hom-pathᵈ-refl)
+    → (p : 𝑪one F) → 𝑪one-Id p p
+𝑪one-Id-refl a = (refl , λ _ → Hom-pathᵈ-refl)
 
 opaque
-  Over-Id-is-torsorial
+  𝑪one-Id-is-torsorial
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → (F : Over F) → is-torsorial (Over-Id F)
-  Over-Id-is-torsorial F
-    = is-singleton-structure←parts
-        Sing-is-singleton
-        (_ , refl)
-        (SingS-is-single ⦃ Hom-IdSᵈ ⦄ _)
-
-opaque
-  Over'-Id-is-torsorial
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → (F : Over' F) → is-torsorial (Over'-Id F)
-  Over'-Id-is-torsorial F
+      → (F : 𝑪one F) → is-torsorial (𝑪one-Id F)
+  𝑪one-Id-is-torsorial F
     = is-singleton-structure←parts
         Sing-is-singleton
         (_ , refl)
         (SingS-is-single ⦃ IdS-Π ⦃ Hom-IdSᵈ ⦄ ⦄ _)
 
 instance
-  Over-IdS
+  𝑪one-IdS
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → Identity-system (Over F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  Over-IdS .Identity-system.IdS = Over-Id
-  Over-IdS .Identity-system.IdS←Id refl = Over-Id-refl _
-  Over-IdS .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Over-Id-is-torsorial a) _
-
-instance
-  Over'-IdS
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → Identity-system (Over' F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-  Over'-IdS .Identity-system.IdS = Over'-Id
-  Over'-IdS .Identity-system.IdS←Id refl = Over'-Id-refl _
-  Over'-IdS .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Over'-Id-is-torsorial a) _
+      → Identity-system (𝑪one F) (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  𝑪one-IdS .Identity-system.IdS = 𝑪one-Id
+  𝑪one-IdS .Identity-system.IdS←Id refl = 𝑪one-Id-refl _
+  𝑪one-IdS .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (𝑪one-Id-is-torsorial a) _
 
 opaque
-  Over-Id→
+  𝑪one-Id→
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Over F}
-      → Over-Id x y → x ＝ y
-  Over-Id→ = Id←IdS ⦃ Over-IdS ⦄
+      → {x y : 𝑪one F}
+      → 𝑪one-Id x y → x ＝ y
+  𝑪one-Id→ = Id←IdS ⦃ 𝑪one-IdS ⦄
 
-  Over-Id-is-equiv
+  𝑪one-Id-is-equiv
     : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Over F}
-      → is-equiv (Over-Id→ {x = x} {y})
-  Over-Id-is-equiv
-    = is-equiv⁻¹ (Over-IdS .Identity-system.IdS←Id-is-equiv _ _)
+      → {x y : 𝑪one F}
+      → is-equiv (𝑪one-Id→ {x = x} {y})
+  𝑪one-Id-is-equiv
+    = is-equiv⁻¹ (𝑪one-IdS .Identity-system.IdS←Id-is-equiv _ _)
 
-  Over-Id-ap-fst
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : Over F}
-      → (p : Over-Id a b) → ap fst (Over-Id→ p) ＝ fst p
-  Over-Id-ap-fst
-    = IdSJ ⦃ Over-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
-           (ap (ap fst) (Id←IdS←Id refl))
-
-  Over'-Id→
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Over' F}
-      → Over'-Id x y → x ＝ y
-  Over'-Id→ = Id←IdS ⦃ Over'-IdS ⦄
-
-  Over'-Id-is-equiv
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C}
-      → {x y : Over' F}
-      → is-equiv (Over'-Id→ {x = x} {y})
-  Over'-Id-is-equiv
-    = is-equiv⁻¹ (Over'-IdS .Identity-system.IdS←Id-is-equiv _ _)
-
-  Over'-Id-ap-fst
-    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : Over' F}
-      → (p : Over'-Id a b) → ap fst (Over'-Id→ p) ＝ fst p
-  Over'-Id-ap-fst
-    = IdSJ ⦃ Over'-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
+  𝑪one-Id-ap-fst
+    : ∀ {𝓤 𝓥} {C : Type 𝓤} {I : Type 𝓥} {F : I → C} {a b : 𝑪one F}
+      → (p : 𝑪one-Id a b) → ap fst (𝑪one-Id→ p) ＝ fst p
+  𝑪one-Id-ap-fst
+    = IdSJ ⦃ 𝑪one-IdS ⦄ (λ x → ap fst (Id←IdS (x .snd)) ＝ fst (x .snd))
            (ap (ap fst) (Id←IdS←Id refl))
 }
 }
 
 \subtree[tot-110C]{
-\title{Overtypes and slice categories}
+\title{Cones and slice types}
 \taxon{Lemma}
 
-\p{The undercategory of a point #{C_{/c}} is equivalent to the slice #{C_{/c}}.}
+\p{The cone of a point #{C_{/c}} is equivalent to the slice #{C_{/c}}.}
 
 \agda{
-Over'-point≃Slice
+𝑪one-point≃Slice
   : ∀ {𝓤} {A : Type 𝓤} (a : A)
-    → Over' (point a) ≃ Slice a
-Over'-point≃Slice a = Σ-snd-≃ (λ b → unit-UP≃) ∙e Slice-hom-repr≃ a
+    → 𝑪one (point a) ≃ Slice a
+𝑪one-point≃Slice a = Σ-snd-≃ (λ b → unit-UP≃) ∙e Slice-hom-repr≃ a
 }
 }
 
 \subtree[tot-1101]{
-\title{Functoriality of the over type at a fixed type}
+\title{Functoriality of cones at a fixed type}
 \taxon{Lemma}
 \author{samueltoth}
 \date{2026-09-26}
@@ -269,13 +220,13 @@ Over'-point≃Slice a = Σ-snd-≃ (λ b → unit-UP≃) ∙e Slice-hom-repr≃ 
 #{\Type_{/A} \to \Type}.}
 
 \agda{
-Over₁
+𝑪one₁
   : ∀ {𝓤 𝓚 𝓚'} {A : Type 𝓤}
       {K : Type 𝓚} {p : K → A}
       {K' : Type 𝓚'} {q : K' → A}
       (t : Slice-map q p)
-    → Over' p → Over' q
-Over₁ {p = p} {q = q} (f , H)
+    → 𝑪one p → 𝑪one q
+𝑪one₁ {p = p} {q = q} (f , H)
   = total-map λ a
       → postcomp-Π (λ k' → adjust-hom refl (H k'))
       ∘ precomp-Π (λ k → Hom _ a (p k)) f

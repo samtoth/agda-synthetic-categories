@@ -16,8 +16,6 @@ module Synthetic.Categories.CovariantHomFamilies
   where
 
 open Lattice I renaming (0l to i0; 1l to i1)
-open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
-private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
 
 open import Axioms.UF
 }
@@ -45,6 +43,8 @@ open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.JoinSlice Δ¹ I
+open import Synthetic.LeftHomotopy Δ¹ I
+open import Synthetic.RightHomotopy Δ¹ I
 open import Synthetic.Categories.Homotopy Δ¹ I
 open import Synthetic.Categories.LeftSegal Δ¹ I
 open import Synthetic.Categories.Cocones Δ¹ I
@@ -230,135 +230,52 @@ the family #{(a : A) \mapsto \Hom_A(a,{-})} is given by postcomposition.
 
 \proof{
 \p{
-By [covariance of representable families](stt-00VK), the family #{\Hom_A(a,-)} is
-covariant. For composable morphisms #{f : \Hom_A(a,b)} and #{g : \Hom_A(b,c)}, choose
-a 2-simplex #{\sigma} witnessing their composition. Restricting that 2-simplex along
-the map #{(s,t) \mapsto (s,s \land t)} produces a dependent homotopy over #{g} from
-#{f} to #{g \circ f}. Since covariant transport is defined as the centre of the
-contractible type of such dependent lifts, this point must coincide with the
-transport of #{f} along #{g}. Hence transporting along #{g} sends #{f} to
-#{g \circ f}.
+Given composable morphisms #{f : \Hom_A(a,b)} and #{g : \Hom_A(b,c)}, we must show
+that covariant transport
+#{\Hom_A(b,c) \to \Hom_A(a,b) \to \Hom_A(a,c)} of #{f} along #{g} is equal to the
+composite #{g \circ f}. Let #{h} be the transported morphism. Covariance gives a
+dependent morphism #{H : \Hom_{\Hom_A(a,{-})}^g(f, h)} over #{g}. Such a dependent
+morphism defines a commuting square
+
+\quiver{
+\begin{tikzcd}
+a && a \\
+\\
+b && c\nsp{.}
+\arrow[from=1-1, to=1-3, equals]
+\arrow[from=1-1, to=3-1, "f"']
+\arrow[from=3-1, to=3-3, "g"]
+\arrow[from=1-3, to=3-3, "h"]
+\arrow[from=1-1, to=3-3, "H", phantom]
+\end{tikzcd}
+}
+
+The diagonal of this square is a composite of #{f} and #{g}, so by
+uniqueness of composites it is equal to the canonical composite #{g \circ f}.
+Moreover, taking the upper right triangle we obtain a [left homotopy](stt-016T) of
+#{h} and the diagonal so they are equal, and hence #{h = g \circ f} as desired.
 }
 }
 
 \agda{
-module CovariantActionPostcomp
-  {𝓤 : Level} {A : Type 𝓤} (𝐴 : is-segal A)
-  where
+module _ {𝓤} {A : Type 𝓤} (𝐴 : is-segal A) where
 
-  tr-cov-hom-is-comp
+  =∘←Hom-over
+    : {a b c : A} (g : Hom A b c) (f : Hom A a b) {h : Hom A a c}
+    → Hom-over g f h → h ＝ g ∘[ 𝐴 ] f
+  =∘←Hom-over g f {h} α
+    = h
+        ＝⟨ ＝←~▵ 𝐴 (~▵←Hom-over g f α) ⟩
+      diag-hom←Hom-over g f α
+        ＝⟨ sym (∘=←Hom2 𝐴 (Hom2←Hom-over g f α)) ⟩
+      g ∘[ 𝐴 ] f ∎
+
+  tr-cov-hom-is-∘
     : {a b c : A}
       (g : Hom A b c) (f : Hom A a b)
-    → tr-cov-hom (hom-fam-cov 𝐴 _) g f
+    → tr-cov-hom (hom-fam-cov 𝐴 a) g f
     ＝ g ∘[ 𝐴 ] f
-  tr-cov-hom-is-comp {a} (mk-hom gh refl refl) f@(mk-hom fh refl fh1)
-    = tr-cov-hom-unique
-        (Homᵈ (λ _ → A) (fh i0))
-        (hom-fam-cov 𝐴 a)
-        g f gf
-        comp-hov
-    where
-    g = mk-hom gh refl refl
-    gf = g ∘[ 𝐴 ] f
-    σ = ∘[ 𝐴 ]-is-composite {g} {f}
-
-    bd : (x : ∂Δ²) → σ .fst (∂Δ²-incl x) ＝ make-∂Δ² g f gf x
-    bd = σ .snd
-
-    face2 : (s : Δ¹) → σ .fst (s , i0) ＝ fh s
-    face2 s = bd (ι₁ (ι₁ s))
-
-    face0 : (t : Δ¹) → σ .fst (i1 , t) ＝ gh t
-    face0 t = bd (ι₁ (ι₂ t))
-
-    diag : (s : Δ¹) → σ .fst (s , s) ＝ gf .Homᵈ.hom s
-    diag s = bd (ι₂ s)
-
-    wedge-hom : (t : Δ¹) → Hom A (fh i0) (gh t)
-    wedge-hom t = mk-hom
-      (λ s → σ .fst ((s , s ∧ t) ⦃ ∧-≤-eliml ≤-refl ⦄))
-      (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙ face2 i0)
-      (ap (σ .fst) (Δ²-ext (refl , 1-top')) ∙ face0 t)
-
-    diag-glue0
-      : face2 i0
-      ＝ (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0) ∙ diag i0) ∙ gf .Homᵈ.hom0
-    diag-glue0
-      = sym (homotopy-cancel bd (glue ∂Δ¹-0))
-      ∙ ap ((ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0) ∙ diag i0) ∙_)
-           (ap sym (pushout-rec-apβ ∂Δ¹-0) ∙ sym-sym)
-
-    diag-glue1
-      : face0 i1
-      ＝ (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1) ∙ diag i1) ∙ gf .Homᵈ.hom1
-    diag-glue1
-      = sym (homotopy-cancel bd (glue ∂Δ¹-1))
-      ∙ ap ((ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1) ∙ diag i1) ∙_)
-           (ap sym (pushout-rec-apβ ∂Δ¹-1) ∙ sym-sym)
-
-    comp-hov-hom0-path : Hom-path (wedge-hom i0) f
-    comp-hov-hom0-path
-      = ( (λ s → ap (σ .fst) (Δ²-ext (refl , 0-init')) ∙ face2 s)
-        , ∙-reflr _ ∙ ap (λ p → ap (σ .fst) p ∙ face2 i0) (Δ²-is-set _ _ _ _)
-        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 0-init'))) (face2 i1) fh1
-          ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init')) ∙_)
-               (ap (face2 i1 ∙_)
-                   (sym (∙-reflr fh1)
-                   ∙ sym (pushout-rec-apβ {c = wedge-cocone fh gh (fh1 ∙ refl)} tt)
-                   ∙ ap-∘ (make-∂Δ² g f gf) ∂Δ²←Λ[2,1] Λ[2,1]-glue)
-               ∙ homotopy-natural bd (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
-          ∙ sym (∙-assoc (ap (σ .fst) (Δ²-ext (refl , 0-init')))
-                         (ap (σ .fst ∘ ∂Δ²-incl) (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
-                         (face0 i0))
-          ∙ ap (_∙ face0 i0)
-               (ap (ap (σ .fst) (Δ²-ext (refl , 0-init')) ∙_)
-                   (ap-∘ (σ .fst) ∂Δ²-incl (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue))
-               ∙ sym (ap-∙ (σ .fst)
-                           (Δ²-ext (refl , 0-init'))
-                           (ap ∂Δ²-incl (ap ∂Δ²←Λ[2,1] Λ[2,1]-glue)))
-               ∙ ap (ap (σ .fst)) (Δ²-is-set _ _ _ _)))
-
-    comp-hov-hom1-path : Hom-path (wedge-hom i1) gf
-    comp-hov-hom1-path
-      = ( (λ s → ap (σ .fst) (Δ²-ext (refl , 1-top)) ∙ diag s)
-        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i0) (gf .Homᵈ.hom0)
-          ∙ ap (_∙ (diag i0 ∙ gf .Homᵈ.hom0))
-               (ap (ap (σ .fst))
-                   (Δ²-is-set _ _
-                     (Δ²-ext (refl , 1-top))
-                     (Δ²-ext (refl , 0-init) ∙ ap ∂Δ²-incl (glue ∂Δ¹-0)))
-               ∙ ap-∙ (σ .fst) (Δ²-ext (refl , 0-init)) (ap ∂Δ²-incl (glue ∂Δ¹-0))
-               ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
-                    (sym (ap-∘ (σ .fst) ∂Δ²-incl (glue ∂Δ¹-0))))
-          ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 0-init)))
-                    (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0))
-                    (diag i0 ∙ gf .Homᵈ.hom0)
-          ∙ ap (ap (σ .fst) (Δ²-ext (refl , 0-init)) ∙_)
-               (sym (∙-assoc (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-0))
-                             (diag i0) (gf .Homᵈ.hom0))
-               ∙ sym diag-glue0)
-        , ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top))) (diag i1) (gf .Homᵈ.hom1)
-          ∙ ap (_∙ (diag i1 ∙ gf .Homᵈ.hom1))
-               (ap (ap (σ .fst))
-                   (Δ²-is-set _ _
-                     (Δ²-ext (refl , 1-top))
-                     (Δ²-ext (refl , 1-top') ∙ ap ∂Δ²-incl (glue ∂Δ¹-1)))
-               ∙ ap-∙ (σ .fst)
-                      (Δ²-ext (refl , 1-top'))
-                      (ap ∂Δ²-incl (glue ∂Δ¹-1))
-               ∙ ap (ap (σ .fst) (Δ²-ext (refl , 1-top')) ∙_)
-                    (sym (ap-∘ (σ .fst) ∂Δ²-incl (glue ∂Δ¹-1))))
-          ∙ ∙-assoc (ap (σ .fst) (Δ²-ext (refl , 1-top')))
-                    (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1))
-                    (diag i1 ∙ gf .Homᵈ.hom1)
-          ∙ ap (ap (σ .fst) (Δ²-ext (refl , 1-top')) ∙_)
-               (sym (∙-assoc (ap (σ .fst ∘ ∂Δ²-incl) (glue ∂Δ¹-1))
-                             (diag i1) (gf .Homᵈ.hom1))
-               ∙ sym diag-glue1))
-
-    comp-hov : Homᵈ (Hom A (fh i0) ∘ gh) f gf
-    comp-hov .Homᵈ.hom = wedge-hom
-    comp-hov .Homᵈ.hom0 = Hom-ext→ comp-hov-hom0-path
-    comp-hov .Homᵈ.hom1 = Hom-ext→ comp-hov-hom1-path
+  tr-cov-hom-is-∘ {a} g f
+    = =∘←Hom-over g f (tr-cov-over (hom-fam-cov 𝐴 a) g f)
 }
 }

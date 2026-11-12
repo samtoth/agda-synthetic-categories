@@ -1,0 +1,244 @@
+\title{Coslice types}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.LatticeGeometry.Coslices
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open import Axioms.UF
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrows
+open import Core.CartesianSquares
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.LatticeGeometry.Comma Δ¹ I
+}
+}
+
+\subtree[tot-00C4]{
+\title{Coslice types}
+\taxon{Definition}
+
+\p{Given a type #{C} and an element #{c} of #{C}, we define the \em{coslice type}
+#{C_{c/}} whose elements consists of morphisms in #{C} with domain #{c}.
+Equivalently, this is the fibre of the evaluation at #{0} map, #{C^{\Delta^1} \to C}.
+}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} where
+
+  𝐂oslice : C → Type (𝓘 ⊔ 𝓤)
+  𝐂oslice = fibre (ev: C i0)
+
+  infix 25 𝐂oslice-proj:_ 𝐂oslice-const:_
+
+  𝐂oslice-proj:_ : ∀ (c : C) → 𝐂oslice c → C
+  𝐂oslice-proj:_ c = ev i1 ∘ fst
+
+  𝐂oslice-proj : ∀ {c : C} → 𝐂oslice c → C
+  𝐂oslice-proj = 𝐂oslice-proj: _
+
+  Hom←𝐂oslice : {c : C} → (x : 𝐂oslice c) → Hom C c (𝐂oslice-proj x)
+  Hom←𝐂oslice x .Homᵈ.hom = x .fst
+  Hom←𝐂oslice x .Homᵈ.hom0 = x .snd
+  Hom←𝐂oslice x .Homᵈ.hom1 = refl
+
+  𝐂oslice-const:_ : (c : C) → 𝐂oslice c
+  𝐂oslice-const:_ c = (const c , refl)
+}
+}
+
+\subtree[tot-C9R1]{
+\title{The coslice projection map as a base change of the endpoint evaluation map}
+\taxon{Lemma}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The codomain projection #{C_{/c} \to C} is the base change of
+#{C^{\Delta^1} \to C \times C} along #{C \xrightarrow{(c, _)} C \times C}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  src×tgt←𝐂oslice-proj : Arrow-map (𝐂oslice-proj: c) (src×tgt: C)
+  src×tgt←𝐂oslice-proj .Arrow-Π.top = fst
+  src×tgt←𝐂oslice-proj .Arrow-Π.bot = (c ,_)
+  src×tgt←𝐂oslice-proj .Arrow-Π.comm (f , p) = ×-path→ (sym p , refl)
+
+  opaque
+    𝐂oslice-proj-base-change-of-src×tgt : is-cartesian src×tgt←𝐂oslice-proj
+    𝐂oslice-proj-base-change-of-src×tgt a
+      = is-equiv←~
+          (λ where ((f , refl) , refl) → refl)
+          (eqv a ._≃_.fwd-is-equiv)
+      where
+
+      eqv : ∀ a → fibre (𝐂oslice-proj: c) a ≃ fibre (src×tgt: C) (c , a)
+      eqv a = Σ-assoc ∙e Σ-snd-≃ λ f → ×-path
+}
+}
+
+\subtree[tot-BYCZ]{
+\title{The fibres of the coslice projection map}
+\taxon{Lemma}
+
+\p{For any #{x : C}, the fibre of the map #{C_{c/} \to C} at #{x} is equivalent to
+the type of morphisms #{\Hom(c,x)}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  𝐂oslice-fibre≃ : ∀ (d : C) → Hom C c d ≃ fibre (𝐂oslice-proj: c) d
+  𝐂oslice-fibre≃ d = Homᵈ-repr≃ {A = const C} ∙e Σ-assoc e⁻¹
+
+  𝐂oslice-hom-repr≃ : Σ C (Hom C c) ≃ 𝐂oslice c
+  𝐂oslice-hom-repr≃ = Σ-snd-≃ 𝐂oslice-fibre≃ ∙e total≃total-fibre 𝐂oslice-proj
+}
+}
+
+\subtree[stt-014V]{
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-26}
+
+\agda{
+module _ {𝓤 𝓥} {B : Type 𝓤} {E : Type 𝓥} (p : E → B) where
+
+  total-𝐂oslice≃total-comma-point
+    : (Σ[ e ∶ E ] 𝐂oslice (p e)) ≃ (Σ[ b ∶ B ] (p ↓ point b))
+  total-𝐂oslice≃total-comma-point
+    =  Σ-snd-≃ (λ e → 𝐂oslice-hom-repr≃ (p e) e⁻¹)
+    ∙e Σ-comm
+    ∙e Σ-snd-≃ (λ b → Σ-snd-≃ (λ e → Σ-𝟙 e⁻¹))
+}
+}
+
+\subtree[tot-195I]{
+\title{Coslices are comma types}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-29}
+
+\p{For any map #{a : A}, the coslice #{A_{a/}} is equivalent to the
+comma type of the cospan #{\{a\} \to A \leftarrow A}.}
+
+\agda{
+𝐂oslice-directed-cone
+  : ∀ {𝓤} {A : Type 𝓤}
+      (a : A)
+    → directed-cone (mk-cospan A (point a) id) (𝐂oslice a)
+𝐂oslice-directed-cone F .directed-cone.p = !
+𝐂oslice-directed-cone F .directed-cone.q = 𝐂oslice-proj
+𝐂oslice-directed-cone F .directed-cone.filler = Hom←𝐂oslice
+
+𝐂oslice≃Comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → point a ↓ id ≃ 𝐂oslice a
+𝐂oslice≃Comma a = 𝐂oslice-hom-repr≃ a ∘e Σ-𝟙
+
+𝐂oslice-is-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → is-comma (𝐂oslice-directed-cone a)
+𝐂oslice-is-comma a = bwd-is-equiv (𝐂oslice≃Comma a)
+
+𝐂oslice-up-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → up-comma (𝐂oslice-directed-cone a)
+𝐂oslice-up-comma a = up-comma←is-comma (𝐂oslice-is-comma a)
+}
+}
+
+\subtree[tot-ACUV]{
+\title{[Global reflective subuniverses](stt-00IF) are closed under taking coslices}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-22}
+
+\agda{
+module gReflective𝐂osliceClosure
+  {α 𝓤} (K : gRSubU α)
+  (open gRSubU K renaming (S to 𝓚))
+  (open gReflectiveClosure K)
+  {C : Type 𝓤} (c : C) (C∈K : C ∈ 𝓚)
+  where
+
+  𝐂oslice∈S : 𝐂oslice c ∈ 𝓚
+  𝐂oslice∈S = fibre∈S (ev i0) c (Π∈S (λ _ → C∈K)) C∈K
+}
+
+\p{In particular, slices of [(complete)](stt-00PG) [Segal types](stt-00AI) are
+(complete) Segal, and slices of [(pre)](stt-00GH)[categories](stt-00PH) are
+(pre)categories.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  -- open gReflectiveCosliceClosure Segal-gRSubU c public
+  --   renaming (Coslice∈S to Coslice-is-segal)
+
+  -- open gReflectiveCosliceClosure Precat-gRSubU c public
+  --   renaming (Coslice∈S to Coslice-is-precategory)
+
+  -- TODO: Cyclic module issue here
+
+  -- open gReflectiveCosliceClosure CompleteSegal-gRSubU c public
+  --   renaming (Coslice∈S to Coslice-is-complete-segal)
+
+  -- open gReflectiveCosliceClosure Category-gRSubU c public
+  --   renaming (Coslice∈S to Coslice-is-category)
+}
+}
+
+\subtree[tot-10Q6]{
+\title{Functoriality of the coslice construction}
+\taxon{Construction}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The coslice construction determines a functor #{\Type_* \to \Type}.}
+
+\agda{
+module _ (open Type∗) (open map∗) where
+
+  𝐂oslice₀ : ∀ {𝓤} → Type∗ 𝓤 → Type (𝓘 ⊔ 𝓤)
+  𝐂oslice₀ A = 𝐂oslice (A .Type∗.pt)
+
+  𝐂oslice₁ : ∀ {𝓤 𝓥} {A : Type∗ 𝓤} {B : Type∗ 𝓥} → map∗ A B → 𝐂oslice₀ A → 𝐂oslice₀ B
+  𝐂oslice₁ (mk-map∗ f p) = map-Σ (postcomp Δ¹ f) (λ g → (_∙ p) ∘ ap f)
+
+  𝐂oslice-id : ∀ {𝓤} {A : Type∗ 𝓤} → 𝐂oslice₁ (id∗ A) ~ id: (𝐂oslice₀ A)
+  𝐂oslice-id x = fibre-path→ (refl , (sym (∙-reflr _ ∙ ap-id _)))
+
+  𝐂oslice-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type∗ 𝓤} {B : Type∗ 𝓥} {C : Type∗ 𝓦}
+        {f : map∗ B C} {g : map∗ A B}
+      → 𝐂oslice₁ (f ∘∗ g) ~ 𝐂oslice₁ f ∘ 𝐂oslice₁ g
+  𝐂oslice-∘ {f = f} {g} h
+    = fibre-path→
+        ( refl
+        , ap (_∙ f .pres-pt)
+            ( ap-∙ (f .hom) _ (g .pres-pt)
+            ∙ ap (_∙ ap (f .hom) (g .pres-pt)) (sym (ap-∘ (f .hom) (g .hom) (h .snd))))
+        ∙ ∙-assoc (ap (f .hom ∘ g .hom) (h .snd)) (ap (f .hom) (g .pres-pt)) (f .pres-pt))
+}
+}

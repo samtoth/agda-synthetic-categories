@@ -19,6 +19,8 @@ open import Core.FlatteningPushouts
 open import Core.Joins
 open import Core.SpanMaps
 open import Core.FunctorialityPushouts
+open import Core.Arrows
+open import Core.ArrowEquiv
 
 open import Ergonomics.Extensionality
 }
@@ -68,6 +70,7 @@ Wedge∗ A B .Type∗.pt = Wedge∙ (Type∗.pt A) (Type∗.pt B)
 \title{Maps out of wedge sums}
 \taxon{Lemma}
 \author{fredrikbakke}
+\contributor{samueltoth}
 \date{2026-05-14}
 
 \agda{
@@ -77,6 +80,79 @@ Wedge-UP≃
   → (Wedge a b → X) ≃ Σ[ f ∶ (A → X) ] Σ[ g ∶ (B → X) ] (f a ＝ g b)
 Wedge-UP≃
   = Pushout-UP≃ ∙e cocone-repr≃ ∙e Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → unit-UP≃))
+
+module _ {𝓤 𝓥} {A : Type∗ 𝓤} {B : Type∗ 𝓥} where
+
+  Wedge∗-inl : map∗ A (Wedge∗ A B)
+  Wedge∗-inl .map∗.hom = ι₁
+  Wedge∗-inl .map∗.pres-pt = refl
+
+  Wedge∗-inr : map∗ B (Wedge∗ A B)
+  Wedge∗-inr .map∗.hom = ι₂
+  Wedge∗-inr .map∗.pres-pt = sym (Wedge-glue)
+
+  Wedge∗-restrict
+    : ∀ {𝓦} {X : Type∗ 𝓦} → map∗ (Wedge∗ A B) X → (map∗ A X × map∗ B X)
+  Wedge∗-restrict f = (f ∘∗ Wedge∗-inl , f ∘∗ Wedge∗-inr)
+
+  Wedge∗-rec
+    : ∀ {𝓦} {X : Type∗ 𝓦} → map∗ A X → map∗ B X → map∗ (Wedge∗ A B) X
+  Wedge∗-rec f g
+    = mk-map∗
+        (cogap
+          (mk-cocone
+            (f .map∗.hom)
+            (g .map∗.hom)
+            (λ _ → f .map∗.pres-pt ∙ sym (g .map∗.pres-pt))))
+        (f .map∗.pres-pt)
+
+  opaque
+    Wedge∗-UP : ∀ {𝓦} {X : Type∗ 𝓦} → is-equiv (Wedge∗-restrict {𝓦} {X})
+    Wedge∗-UP {_} {X} = src-is-equiv←Arrow-equiv arr (eqv ._≃_.fwd-is-equiv)
+      where
+      open Type∗
+      open map∗
+
+      eqv
+        : Σ[ a ∶ Σ[ f ∶ (carrier A → carrier X) ] Σ[ g ∶ (carrier B → carrier X) ]
+              (f (pt A) ＝ g (pt B)) ]
+            (fst a (pt A) ＝ pt X)
+          ≃
+          ( Σ (carrier A → carrier X) (λ a → a (pt A) ＝ pt X)
+          × Σ (carrier B → carrier X) (λ a → a (pt B) ＝ pt X))
+      eqv
+        = Σ-assoc ∙e Σ-snd-≃ (λ _ → ×-swap) ∙e Σ-assoc e⁻¹
+        ∙e Σ-snd-≃ (λ f → Σ-snd-≃ (λ g → ＝-postconcat-≃ (sym (f .snd)) ∙e sym≃))
+
+
+      arr : Arrow-equiv (Wedge∗-restrict {_} {X}) (eqv ._≃_.fwd)
+      arr = mk-arr-equiv
+        ( Σ-fst-≃ {B = λ x → x .fst (pt A) ＝ pt X} Wedge-UP≃
+        ∘e map∗≃fibre-ev (Wedge∗ A B) (pt X))
+        (map∗≃fibre-ev A (pt X) ×≃ map∗≃fibre-ev B (pt X))
+        (precomp-Π _ (map∗≃fibre-ev (Wedge∗ A B) (pt X) ._≃_.fwd)
+          (uncurry λ f p
+            → ×-path→
+                ( refl
+                , fibre-path→
+                    ( refl
+                    , (∙-symsym (sym p) (ap f Wedge-glue)
+                      ∙  ap₂ (_∙_) (sym (ap-sym f Wedge-glue)) sym-sym )))))
+
+  abstract
+    compute-bwd-Wedge∗-UP
+      : ∀ {𝓦} {X : Type∗ 𝓦} → is-equiv.bwd (Wedge∗-UP {𝓦} {X}) ~ uncurry Wedge∗-rec
+    compute-bwd-Wedge∗-UP x@(f , g)
+      = unap-equiv Wedge∗-UP
+          ( is-equiv.ε Wedge∗-UP x
+          ∙ ×-path→
+             ( map∗-path→ (~refl , refl)
+             , map∗-path→
+                (~refl
+                , ( ap (_∙ pres-pt f) (ap-sym _ (glue tt) ∙ ap sym (pushout-rec-apβ tt))
+                  ∙ sym (∙-sym-∙' (sym (g .pres-pt)) (f .pres-pt))
+                  ∙ sym-sym))))
+      where open map∗
 }
 }
 

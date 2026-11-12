@@ -5,7 +5,7 @@
 \import{stt-macros}
 
 \p{
- If we fix a type A, we can consider the slice ∞-category #{\mathcal{S}/A}
+ Fixing a type A, we consider the slice category #{\Type_{/A}}
 }
 
 \agda{
@@ -22,12 +22,20 @@ open import Ergonomics.Extensionality
 }
 
 \agda{
-Slice-map
-  : ∀ {𝓤} {A : Type 𝓤}
-      {𝓥} {B : Type 𝓥} (p : B → A) {𝓦}
-      {C : Type 𝓦} (q : C → A)
-    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
-Slice-map {B = B} p {C = C} q = Σ[ f ∶ (B → C) ] (q ∘ f ~ p)
+module _ {𝓤 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} where
+
+  Slice-map : (B → A) → (C → A) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Slice-map p q = Σ[ f ∶ (B → C) ] (q ∘ f ~ p)
+
+  Slice-equiv : (B → A) → (C → A) → Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  Slice-equiv p q = Σ (Slice-map p q) (is-equiv ∘ fst)
+
+  mk-slice-equiv
+    : ∀ {p : B → A} {q : C → A}
+      → (e : B ≃ C)
+      → q ∘ e ._≃_.fwd ~ p
+      → Slice-equiv p q
+  mk-slice-equiv e H = ((e ._≃_.fwd  , H) , e ._≃_.fwd-is-equiv)
 
 Slice-id
   : ∀ {𝓤} {A : Type 𝓤}
@@ -133,22 +141,35 @@ module _
     : is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F)
     → is-equiv f
   is-equiv←on-fibres fw
-    = 3-for-2' ((total≃total-fibre p) ._≃_.fwd-is-equiv)
-              (is-equiv-∘ ((total≃total-fibre q) ._≃_.fwd-is-equiv)
-                            (is-total-equiv←is-fibrewise-equiv fw))
+    = 3-for-2'
+        (total≃total-fibre p ._≃_.fwd-is-equiv)
+        (is-equiv-∘
+          (total≃total-fibre q ._≃_.fwd-is-equiv)
+          (is-total-equiv←is-fibrewise-equiv fw))
 
-  fibre-equiv←is-equiv
+  fibre-is-equiv←Slice-is-equiv
     : is-equiv f
     → is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F)
-  fibre-equiv←is-equiv feq
+  fibre-is-equiv←Slice-is-equiv feq
     = is-fibrewise-equiv←is-total-equiv
-      (3-for-2 {f = total←total-fibre q}
-        (total≃total-fibre q ._≃_.fwd-is-equiv)
-        (is-equiv-∘ feq ((total≃total-fibre p) ._≃_.fwd-is-equiv)))
+        (3-for-2 {f = total←total-fibre q}
+          (total≃total-fibre q ._≃_.fwd-is-equiv)
+          (is-equiv-∘ feq ((total≃total-fibre p) ._≃_.fwd-is-equiv)))
 
-  fibre≃←is-equiv : is-equiv f → (c : C) → fibre p c ≃ fibre q c
-  fibre≃←is-equiv feq c
-    = mk≃ (Slice-fibre F c) (fibre-equiv←is-equiv feq c)
+module _
+  {𝓤} {C : Type 𝓤}
+  {𝓥} {A : Type 𝓥} {p : A → C}
+  {𝓦} {B : Type 𝓦} {q : B → C}
+  ((F , feq) : Slice-equiv p q)
+  where
+
+  fibre-is-equiv←Slice-equiv
+    : is-fibrewise-equiv (Slice-fibre {p = p} {q = q} F)
+  fibre-is-equiv←Slice-equiv = fibre-is-equiv←Slice-is-equiv F feq
+
+  fibre≃←Slice-equiv : (c : C) → fibre p c ≃ fibre q c
+  fibre≃←Slice-equiv c
+    = mk≃ (Slice-fibre F c) (fibre-is-equiv←Slice-equiv c)
 }
 }
 

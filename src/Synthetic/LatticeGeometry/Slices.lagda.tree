@@ -1,0 +1,257 @@
+\title{Slice types}
+\taxon{Module}
+\author{samueltoth}
+\date{2025-12-09}
+\import{stt-macros}
+
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.LatticeGeometry.Slices
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Algebra.Lattice.Instances.Polynomial hiding (Δ²)
+private Δ² = Algebra.Lattice.Instances.Polynomial.Δ² I
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.GlobalReflectiveSubuniverses
+
+open import Core.Arrows
+open import Core.CartesianSquares
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Boundaries Δ¹ I
+open import Synthetic.LatticeGeometry.Comma Δ¹ I
+}
+}
+
+\subtree[stt-00C4]{
+\title{Slice types}
+\taxon{Definition}
+
+\p{Given a type #{C} and an element #{c} of #{C}, we define a type
+#{C_{c/}} whose elements consists of morphisms in #{C} with codomain #{c}.
+Equivalently, this is the fibre of the evaluation at #{1} map, #{C^{\Delta^1} \to C}.
+}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} where
+  𝐒lice : C → Type (𝓘 ⊔ 𝓤)
+  𝐒lice = fibre (ev: C i1)
+
+  infix 25 𝐒lice-proj:_ 𝐒lice-const:_
+
+  𝐒lice-proj:_ : ∀ (c : C) → 𝐒lice c → C
+  𝐒lice-proj:_ c = ev i0 ∘ fst
+
+  𝐒lice-proj : ∀ {c : C} → 𝐒lice c → C
+  𝐒lice-proj = 𝐒lice-proj: _
+
+  Hom←𝐒lice : {c : C} → (x : 𝐒lice c) → Hom C (𝐒lice-proj x) c
+  Hom←𝐒lice x .Homᵈ.hom = x .fst
+  Hom←𝐒lice x .Homᵈ.hom0 = refl
+  Hom←𝐒lice x .Homᵈ.hom1 = x .snd
+
+  𝐒lice←Hom : {a b : C} → Hom C a b → 𝐒lice b
+  𝐒lice←Hom f = (f .Homᵈ.hom , f .Homᵈ.hom1)
+
+  𝐒lice-const:_ : (c : C) → 𝐒lice c
+  𝐒lice-const:_ c = (const c , refl)
+}
+}
+
+\subtree[tot-CYR1]{
+\title{Slice projection as a base-change of the endpoint evaluation map}
+\taxon{Lemma}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The domain projection #{C_{c/} \to C} is a base-change of
+#{C^{\Delta^1} \to C \times C} by #{C \xrightarrow{(_, c)} C \times C}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  src×tgt←slice-proj : Arrow-map (𝐒lice-proj: c) (src×tgt: C)
+  src×tgt←slice-proj .Arrow-Π.top = fst
+  src×tgt←slice-proj .Arrow-Π.bot = (_, c)
+  src×tgt←slice-proj .Arrow-Π.comm (f , p) = ×-path→ (refl , sym p)
+
+  opaque
+    slice-proj-base-change-of-src×tgt : is-cartesian src×tgt←slice-proj
+    slice-proj-base-change-of-src×tgt a
+      = is-equiv←~
+          (λ where ((f , refl) , refl) → refl)
+          (eqv a ._≃_.fwd-is-equiv)
+      where
+
+      eqv : ∀ a → fibre (𝐒lice-proj: c) a ≃ fibre (src×tgt: C) (a , c)
+      eqv a = Σ-assoc ∙e Σ-snd-≃ (λ f → ×-swap ∙e ×-path)
+}
+}
+
+\subtree[tot-7YCZ]{
+\title{The fibres of the slice projection}
+\taxon{Lemma}
+
+\p{For any #{x : C}, the fibre of the map #{C_{/c} \to C} at #{x} is equivalent to
+the type of morphisms #{\Hom(x,c)}.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  𝐒lice-fibre≃ : ∀ (b : C) → Hom C b c ≃ fibre (𝐒lice-proj: c) b
+  𝐒lice-fibre≃ d = Homᵈ-repr≃ {A = const C} ∙e Σ-snd-≃ (λ f → ×-swap) ∙e Σ-assoc e⁻¹
+
+  𝐒lice-hom-repr≃ : (Σ[ b ∶ C ] Hom C b c) ≃ 𝐒lice c
+  𝐒lice-hom-repr≃ = Σ-snd-≃ 𝐒lice-fibre≃ ∙e total≃total-fibre 𝐒lice-proj
+}
+}
+
+\subtree[tot-1A4I]{
+\title{Slices are comma types}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-29}
+
+\p{For any map #{a : A}, the slice #{A_{/a}} is equivalent to the
+comma type of the cospan #{A \to A \leftarrow \{a\}}.}
+
+\agda{
+𝐒lice-directed-cone
+  : ∀ {𝓤} {A : Type 𝓤}
+      (a : A)
+    → directed-cone (mk-cospan A id (point a)) (𝐒lice a)
+𝐒lice-directed-cone F .directed-cone.p = 𝐒lice-proj
+𝐒lice-directed-cone F .directed-cone.q = !
+𝐒lice-directed-cone F .directed-cone.filler = Hom←𝐒lice
+
+𝐒lice≃Comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → id ↓ point a ≃ 𝐒lice a
+𝐒lice≃Comma a = 𝐒lice-hom-repr≃ a ∘e Σ-snd-≃ (λ _ → Σ-𝟙)
+
+𝐒lice-is-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → is-comma (𝐒lice-directed-cone a)
+𝐒lice-is-comma a = bwd-is-equiv (𝐒lice≃Comma a)
+
+𝐒lice-up-comma
+  : ∀ {𝓤} {A : Type 𝓤} (a : A)
+    → up-comma (𝐒lice-directed-cone a)
+𝐒lice-up-comma a = up-comma←is-comma (𝐒lice-is-comma a)
+}
+}
+
+\subtree[stt-00TO]{
+\taxon{Lemma}
+
+\p{We give a presentation of the comma type #{F \downarrow \{b\}} as
+the pullback #{A \times_{B} B_{/b}}.}
+
+\agda{
+module _
+  {𝓤 𝓥}
+  {A : Type 𝓤} {B : Type 𝓥}
+  (F : A → B)
+  (b : B)
+  where
+
+  pb-slice←comma-point
+    : F ↓ point b → Pullback (𝐒lice-proj: b) F
+  pb-slice←comma-point (x , _ , f) = (𝐒lice←Hom f , x , f .Homᵈ.hom0)
+
+  comma-point←pb-slice
+    : Pullback (𝐒lice-proj: b) F
+    → F ↓ point b
+  comma-point←pb-slice (f , c , p) = (c , _ , mk-hom (f .fst) p (f .snd))
+
+  comma-point←pb-slice-is-equiv
+    : is-equiv comma-point←pb-slice
+  comma-point←pb-slice-is-equiv .is-equiv.qinv .fst = pb-slice←comma-point
+  comma-point←pb-slice-is-equiv .is-equiv.qinv .snd = (~refl , ~refl)
+  comma-point←pb-slice-is-equiv .is-equiv.coherent = ~refl
+}
+}
+
+
+\subtree[tot-0943]{
+\title{[Global reflective subuniverses](stt-00IF) are closed under taking slices}
+\taxon{Lemma}
+\author{samueltoth}
+\date{2026-09-22}
+
+\agda{
+module gReflective𝐒liceClosure
+  {α 𝓤} (K : gRSubU α)
+  (open gRSubU K renaming (S to 𝓚))
+  (open gReflectiveClosure K)
+  {C : Type 𝓤} (c : C) (C∈K : C ∈ 𝓚)
+  where
+
+  𝐒lice∈S : 𝐒lice c ∈ 𝓚
+  𝐒lice∈S = fibre∈S (ev i1) c (Π∈S (λ _ → C∈K)) C∈K
+}
+
+\p{In particular, slices of [(complete)](stt-00PG) [Segal types](stt-00AI) are
+(complete) Segal, and slices of [(pre)](stt-00GH)[categories](stt-00PH) are
+(pre)categories.}
+
+\agda{
+module _ {𝓤} {C : Type 𝓤} (c : C) where
+
+  -- open gReflectiveSliceClosure Segal-gRSubU c public
+  --   renaming (Slice∈S to Slice-is-segal)
+
+  -- open gReflective𝐒liceClosure Precat-gRSubU c public
+  --   renaming (𝐒lice∈S to 𝐒lice-is-precategory)
+
+  -- open gReflective𝐒liceClosure CompleteSegal-gRSubU c public
+  --   renaming (𝐒lice∈S to 𝐒lice-is-complete-segal)
+
+  -- open gReflective𝐒liceClosure Category-gRSubU c public
+  --   renaming (𝐒lice∈S to 𝐒lice-is-category)
+}
+}
+
+\subtree[tot-00Y6]{
+\title{Functoriality of the slice construction}
+\taxon{Construction}
+\date{2026-09-22}
+\author{samueltoth}
+
+\p{The slice construction determines a functor #{\Type_* \to \Type}.}
+
+\agda{
+module _ (open Type∗) (open map∗) where
+
+  𝐒lice₀ : ∀ {𝓤} → Type∗ 𝓤 → Type (𝓘 ⊔ 𝓤)
+  𝐒lice₀ A = 𝐒lice (A .Type∗.pt)
+
+  𝐒lice₁ : ∀ {𝓤 𝓥} {A : Type∗ 𝓤} {B : Type∗ 𝓥} → map∗ A B → 𝐒lice₀ A → 𝐒lice₀ B
+  𝐒lice₁ (mk-map∗ f p) = map-Σ (postcomp Δ¹ f) (λ g → (_∙ p) ∘ ap f)
+
+  𝐒lice-id : ∀ {𝓤} {A : Type∗ 𝓤} → 𝐒lice₁ (id∗ A) ~ id: (𝐒lice₀ A)
+  𝐒lice-id x = fibre-path→ (refl , (sym (∙-reflr _ ∙ ap-id _)))
+
+  𝐒lice-∘
+    : ∀ {𝓤 𝓥 𝓦} {A : Type∗ 𝓤} {B : Type∗ 𝓥} {C : Type∗ 𝓦}
+        {f : map∗ B C} {g : map∗ A B}
+      → 𝐒lice₁ (f ∘∗ g) ~ 𝐒lice₁ f ∘ 𝐒lice₁ g
+  𝐒lice-∘ {f = f} {g} h
+    = fibre-path→
+        ( refl
+        , ap (_∙ f .pres-pt)
+            ( ap-∙ (f .hom) _ (g .pres-pt)
+            ∙ ap (_∙ ap (f .hom) (g .pres-pt)) (sym (ap-∘ (f .hom) (g .hom) (h .snd))))
+        ∙ ∙-assoc (ap (f .hom ∘ g .hom) (h .snd)) (ap (f .hom) (g .pres-pt)) (f .pres-pt))
+}
+}

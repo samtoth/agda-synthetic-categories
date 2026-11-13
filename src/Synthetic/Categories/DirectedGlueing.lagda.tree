@@ -63,17 +63,54 @@ open import Synthetic.Categories.CovariantClosure Δ¹ I
 \subtree[stt-00UY]{
 \title{The glueing of a fibrewise map}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
 \p{Given a pair of type families #{F, G \colon B \to \Type} and a fibrewise map
 #{\alpha_b \colon F_b \to G_b}, we can construct the glueing family
 #{\rm{Gl}(\alpha) \colon B \times \Delta^1 \to \Type}.
 ##{\rm{Gl}(\alpha)(b, i) \defeq \Sigma1{g : G_b}{((i = 0) \to \fibre{\alpha_b}{g})}}}
 
+\p{More generally, we may replace the fibres of #{\alpha} by any type family over
+the target, giving rise to the type family \code{Glᵈ}.}
+
 \agda{
+Glᵈ
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
+      (G : B → Type 𝓥) (F : (b : B) → G b → Type 𝓦)
+    → B × Δ¹ → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+Glᵈ G F (b , i) = Σ[ y ∶ G b ] ((i ＝ i0) → F b y)
+
 Gl
   : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓦)
     → (α : (b : B) → F b → G b) → B × Δ¹ → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
-Gl F G α (b , i) = Σ[ a ∶ G b ] ((i ＝ i0) → fibre (α b) a)
+Gl F G α = Glᵈ G (fibre ∘ α)
+}
+
+\p{The endpoints of \code{Glᵈ F G} are #{\Sigma_{F(b)} G(b)} and #{F(b)}.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  Glᵈ-0 : (b : B) → Glᵈ F G (b , i0) → Σ (F b) (G b)
+  Glᵈ-0 b = total-map (λ _ → ev refl)
+
+  Glᵈ-0≃ : (b : B) → Glᵈ F G (b , i0) ≃ Σ (F b) (G b)
+  Glᵈ-0≃ b = Σ-snd-≃ (λ _ → sing-UP≃ (mk-singl refl (J-set! _ refl)))
+
+  Glᵈ-0-is-equiv : is-fibrewise-equiv Glᵈ-0
+  Glᵈ-0-is-equiv = _≃_.fwd-is-equiv ∘ Glᵈ-0≃
+
+  Glᵈ-1 : (b : B) → Glᵈ F G (b , i1) → F b
+  Glᵈ-1 b = fst
+
+  Glᵈ-1≃ : (b : B) → Glᵈ F G (b , i1) ≃ F b
+  Glᵈ-1≃ b = Σ-singleton (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+
+  Glᵈ-1-is-equiv : is-fibrewise-equiv Glᵈ-1
+  Glᵈ-1-is-equiv = _≃_.fwd-is-equiv ∘ Glᵈ-1≃
 }
 
 \p{#{\rm{Gl}(\alpha)(b,0) = F(b)} and #{\rm{Gl}(\alpha)(b,1) = G(b)}}
@@ -89,18 +126,16 @@ module _
   Gl-0 b = fst ∘ ev refl ∘ snd
 
   Gl-0≃ : ∀ b → Gl F G α (b , i0) ≃ F b
-  Gl-0≃ b
-    = Σ-snd-≃ (λ _ → sing-UP≃ (mk-singl refl (J-set! _ refl)))
-    ∙e total≃total-fibre _
+  Gl-0≃ b = Glᵈ-0≃ G (fibre ∘ α) b ∙e total≃total-fibre _
 
   Gl-0-is-equiv : is-fibrewise-equiv Gl-0
   Gl-0-is-equiv = _≃_.fwd-is-equiv ∘ Gl-0≃
 
   Gl-1 : ∀ b → Gl F G α (b , i1) → G b
-  Gl-1 b = fst
+  Gl-1 = Glᵈ-1 G (fibre ∘ α)
 
   Gl-1≃ : ∀ b → Gl F G α (b , i1) ≃ G b
-  Gl-1≃ b = Σ-singleton (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+  Gl-1≃ = Glᵈ-1≃ G (fibre ∘ α)
 
   Gl-1-is-equiv : is-fibrewise-equiv Gl-1
   Gl-1-is-equiv = _≃_.fwd-is-equiv ∘ Gl-1≃
@@ -112,11 +147,22 @@ map to #{\alpha_b}.}
 
 \agda{
 module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  Glᵈ-map : (b : B) → Glᵈ F G (b , i0) → Glᵈ F G (b , i1)
+  Glᵈ-map b = total-map (λ _ → precomp-Π _ (¡ ∘ 0≠1 ∘ sym))
+
+  Glᵈ-map-agrees : (b : B) → Arrow-equiv (Glᵈ-map b) (fst: G b)
+  Glᵈ-map-agrees b = mk-arr-equiv (Glᵈ-0≃ F G b) (Glᵈ-1≃ F G b) ~refl
+
+module _
   {𝓤 𝓥 𝓦} {B : Type 𝓤} {F : B → Type 𝓥} {G : B → Type 𝓦} (α : (b : B) → F b → G b)
   where
 
   Gl-map : ∀ b → Gl F G α (b , i0) → Gl F G α (b , i1)
-  Gl-map b = total-map (λ a → precomp-Π _ (¡ ∘ 0≠1 ∘ sym))
+  Gl-map = Glᵈ-map G (fibre ∘ α)
 
   Gl-map-agrees : ∀ b → Arrow-equiv (Gl-map b) (α b)
   Gl-map-agrees b
@@ -127,36 +173,49 @@ module _
 \subtree[stt-00UZ]{
 \title{Covariance of the directed glueing family}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{If #{F} and #{G} are covariant families over #{B}, then the directed glueing of any
 map #{\alpha} is also covariant over #{B \times \Delta^1}.}
 
+\p{More generally, \code{Glᵈ F G} is covariant when #{F} and \code{uncurry G}
+are covariant.}
+
 \agda{
-opaque
-  Gl-is-covariant
-    : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
-        (F : B → Type 𝓥) (G : B → Type 𝓦)
-        (α : (b : B) → F b → G b)
-      → is-covariant F
-      → is-covariant G
-      → is-covariant (Gl F G α)
-  Gl-is-covariant {B = B} F G α Fc Gc
-    = Σ-is-covariant
-        {B = G ∘ fst}
-        {C = λ bi a → (bi .snd ＝ i0) → fibre (α (bi .fst)) a}
-        (covariant-base-change {P = G} (fst: λ _ → Δ¹) Gc)
-        (covariant-base-change
-          {P = λ x → x .snd ＝ i0
-                   → fibre (α (x .fst .fst)) (x .fst .snd)}
-          (λ ((b , i) , g) → ((b , g) , i))
-          (^●-is-covariant
-            (Δ¹-directed)
-            (uncurry (λ b g → fibre (α b) g) ∘ fst)
-            (covariant-base-change
-              {P = uncurry (λ b g → fibre (α b) g)}
-              fst
-              (fibre-is-covariant _ _ Fc Gc α))
-            snd))
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  opaque
+    Glᵈ-is-covariant
+      : is-covariant F → is-covariant (uncurry G) → is-covariant (Glᵈ F G)
+    Glᵈ-is-covariant F-is-cov G-is-cov
+      = Σ-is-covariant
+          {B = F ∘ fst} {C = λ bi y → (bi .snd ＝ i0) → G (bi .fst) y}
+          (covariant-base-change {P = F} fst F-is-cov)
+          (^●-is-covariant Δ¹-directed
+            (λ ((b , i) , y) → G b y)
+            (covariant-base-change {P = uncurry G}
+              (λ ((b , i) , y) → (b , y)) G-is-cov)
+            (snd ∘ fst))
+
+  Glᵈ∘-is-covariant
+    : ∀ {𝓧} {A : Type 𝓧} (f : A → B × Δ¹)
+      → is-covariant F → is-covariant (uncurry G) → is-covariant (Glᵈ F G ∘ f)
+  Glᵈ∘-is-covariant f F-is-cov G-is-cov
+    = covariant-base-change {P = Glᵈ F G} f
+        (Glᵈ-is-covariant F-is-cov G-is-cov)
+
+Gl-is-covariant
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
+      (F : B → Type 𝓥) (G : B → Type 𝓦)
+      (α : (b : B) → F b → G b)
+    → is-covariant F
+    → is-covariant G
+    → is-covariant (Gl F G α)
+Gl-is-covariant {B = B} F G α Fc Gc
+  = Glᵈ-is-covariant G (fibre ∘ α) Gc (fibre-is-covariant F G Fc Gc α)
 
 Gl∘-is-covariant
   : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓤'} (f : A → B × Δ¹)
@@ -174,8 +233,23 @@ Gl∘-is-covariant f F G α Fc Gc
 \subtree[stt-00KF]{
 \title{Paths in glue types}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} {G : (b : B) → F b → Type 𝓦}
+  where
+
+  IdS-Glᵈ : (bi : B × Δ¹) → Identity-system (Glᵈ F G bi) (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  IdS-Glᵈ bi = IdS-Sigma ⦃ IdS-default ⦄ ⦃ IdS-Π ⦃ IdS-default ⦄ ⦄
+
+  Glᵈ-Id : (bi : B × Δ¹) → Glᵈ F G bi → Glᵈ F G bi → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  Glᵈ-Id bi = IdS ⦃ IdS-Glᵈ bi ⦄
+
+  Glᵈ-Id→ : (bi : B × Δ¹) {x y : Glᵈ F G bi} → Glᵈ-Id bi x y → x ＝ y
+  Glᵈ-Id→ bi = Id←IdS ⦃ IdS-Glᵈ bi ⦄
+
 module _
   {𝓤 𝓥 𝓦} {B : Type 𝓤}
   {F : B → Type 𝓥} {G : B → Type 𝓦}
@@ -348,6 +422,7 @@ module _
 \subtree[stt-00V4]{
 \title{Left inverse}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{Under no assumptions, this map is a left inverse. I.e for covariant type families
 #{X} and #{Y} with a fibrewise map #{\alpha} between them, there is an equivalence
@@ -356,6 +431,43 @@ of families of arrows between transporting over the [glueing family](stt-00UY) o
 
 \agda{
 module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  tr-Glᵈ-hom
+    : (b : B) (x : Glᵈ F G (b , i0))
+    → Homᵈ (Glᵈ F G ∘ (b ,_)) x (Glᵈ-map F G b x)
+  tr-Glᵈ-hom b x .Homᵈ.hom i = (x .fst , (λ _ → x .snd refl))
+  tr-Glᵈ-hom b x .Homᵈ.hom0 = Σ-path→ (refl , funext→ (J-set! _ refl))
+  tr-Glᵈ-hom b x .Homᵈ.hom1 = Σ-path→ (refl , funext→ (¡ ∘ 0≠1 ∘ sym))
+
+  tr-Glᵈ
+    : (Gl-is-cov : is-covariant (Glᵈ F G)) (b : B)
+    → tr-cov {P = Glᵈ F G} Gl-is-cov (b ,_) ~ Glᵈ-map F G b
+  tr-Glᵈ Gl-is-cov b x
+    = tr-cov-unique {P = Glᵈ F G} Gl-is-cov (b ,_)
+        (Glᵈ-map F G b) x (tr-Glᵈ-hom b x)
+
+  tr-hom-Glᵈ
+    : (b : B) (Gl-is-cov : is-covariant (Glᵈ F G ∘ (b ,_)))
+    → tr-cov-hom {P = Glᵈ F G ∘ (b ,_)} Gl-is-cov 0≤1 ~ Glᵈ-map F G b
+  tr-hom-Glᵈ b Gl-is-cov x
+    = tr-cov-hom-unique Gl-is-cov 0≤1 x (Glᵈ-map F G b x) (tr-Glᵈ-hom b x)
+
+  tr-Glᵈ-0≤1H
+    : (b : B) (Gl-is-cov : is-covariant (Glᵈ F G ∘ (b ,_)))
+    → Arrow-equiv (tr-cov-hom {P = Glᵈ F G ∘ (b ,_)} Gl-is-cov 0≤1) (fst: G b)
+  tr-Glᵈ-0≤1H b Gl-is-cov
+    = mk-arr-equiv (Glᵈ-0≃ F G b) (Glᵈ-1≃ F G b) (ap fst ∘ tr-hom-Glᵈ b Gl-is-cov)
+
+  tr-Glᵈ-0≤1
+    : (Gl-is-cov : is-covariant (Glᵈ F G)) (b : B)
+    → Arrow-equiv (tr-cov {P = Glᵈ F G} Gl-is-cov (b ,_)) (fst: G b)
+  tr-Glᵈ-0≤1 Gl-is-cov b
+    = mk-arr-equiv (Glᵈ-0≃ F G b) (Glᵈ-1≃ F G b) (ap fst ∘ tr-Glᵈ Gl-is-cov b)
+
+module _
   {𝓤 𝓥 𝓥'} {B : Type 𝓤}
   where
 
@@ -363,9 +475,7 @@ module _
     : {X : B → Type (𝓘 ⊔ 𝓥)} {Y : B → Type (𝓘 ⊔ 𝓥')}
       (α : ∀ b → X b → Y b)
     → ∀ b x → Homᵈ (Gl X Y α ∘ (b ,_)) x (Gl-map α b x)
-  tr-Gl-hom α b x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
-  tr-Gl-hom α b x .Homᵈ.hom0  = Σ-path→ (refl , (funext→ (J-set! _ refl)))
-  tr-Gl-hom α b x .Homᵈ.hom1  = Σ-path→ (refl , (funext→ (¡ ∘ 0≠1 ∘ sym)))
+  tr-Gl-hom {Y = Y} α = tr-Glᵈ-hom Y (fibre ∘ α)
 
   tr-Gl
     : {X : B → Type (𝓘 ⊔ 𝓥)} {Y : B → Type (𝓘 ⊔ 𝓥')}
@@ -374,13 +484,8 @@ module _
     → ∀ b
     → tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_)
     ~ Gl-map α b
-  tr-Gl {X} {Y} α Xc Yc b x
-    = tr-cov-unique {P = Gl X Y α}
-        (Gl-is-covariant _ _ α Xc Yc)
-        (b ,_)
-        (Gl-map α b)
-        x
-        (tr-Gl-hom α b x)
+  tr-Gl {X} {Y} α Xc Yc
+    = tr-Glᵈ Y (fibre ∘ α) (Gl-is-covariant X Y α Xc Yc)
 
   tr-hom-Gl
     : {X : B → Type (𝓘 ⊔ 𝓥)} {Y : B → Type (𝓘 ⊔ 𝓥')}
@@ -391,14 +496,8 @@ module _
         (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
         0≤1
     ~ Gl-map α b
-  tr-hom-Gl {X} {Y} α Xc Yc b x
-    = tr-cov-hom-unique
-        {P = Gl X Y α ∘ (b ,_)}
-        (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
-        0≤1
-        x
-        (Gl-map α b x)
-        (tr-Gl-hom α b x)
+  tr-hom-Gl {X} {Y} α Xc Yc b
+    = tr-hom-Glᵈ Y (fibre ∘ α) b (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
 
   tr-Gl-0≤1H
     : {X : B → Type (𝓘 ⊔ 𝓥)} {Y : B → Type (𝓘 ⊔ 𝓥')}
@@ -533,7 +632,8 @@ module _
     : ∀ (@♭ F : CovBundle (𝓘 ⊔ 𝓥) (B × Δ¹))
       → is-fibrewise-equiv (Gl←cov-fam {𝓤} {𝓥} F)
   Gl←cov-fam-is-equiv FF
-    = crisp-cov-Nat-is-equiv FF (total-tr-cov-inv {𝓤} {𝓘 ⊔ 𝓥} {𝓘 ⊔ 𝓥} {B} (total-tr-cov FF))
+    = crisp-cov-Nat-is-equiv FF
+        (total-tr-cov-inv {𝓤} {𝓘 ⊔ 𝓥} {𝓘 ⊔ 𝓥} {B} (total-tr-cov FF))
         (Gl←cov-fam FF)
         (λ where
           b ∂Δ¹-1 → is-♭-equiv←is-equiv (Gl←cov-fam-is-equiv-at-1 FF b)

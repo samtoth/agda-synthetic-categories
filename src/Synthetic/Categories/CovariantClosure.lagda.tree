@@ -31,6 +31,7 @@ open import Core.ArrowDependentMorphisms
 open import Core.ArrowMorphisms
 open import Core.ArrowEquiv
 open import Core.CartesianSquares
+open import Core.DependentOrthogonal
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open notation
@@ -41,7 +42,9 @@ open import Synthetic.Directedness Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
 open import Synthetic.Categories.Precategories Δ¹ I
 open import Synthetic.Categories.Groupoids Δ¹ I
+open import Synthetic.Categories.CovariantTransport Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantTransport Δ¹ I
 open import Synthetic.Categories.ContravariantFamilies Δ¹ I
 }
 }
@@ -233,44 +236,53 @@ opaque
 }
 
 \subtree[stt-00UD]{
-\title{Contravariance of the family #{i \mapsto (i = 0)}}
-\date{2026-06-22}
+\title{Contravariance of the family #{i ↦ (i = 0)}}
 \taxon{Example}
+\contributor{fredrikbakke}
+\date{2026-06-22}
 
 \p{
 Assuming [quasicoherence](stt-00TA), or more specifically that every endomap on
-#{Δ^1} is monotone, the family #{i \mapsto (i = 0)} is contravariant.}
+#{Δ¹} is monotone, the family #{i \mapsto (i = 0)} is contravariant.}
+
+\p{
+More generally, let #{A \colon Δ¹ \to \UU} and #{f_i \colon A(i) \to Δ¹}. Then the
+family #{a \mapsto (f_i(a) = 0)} is contravariant.
+}
 
 \proof{
 \p{
 We want to show the family #{({-}) = 0} is orthogonal to the point inclusion
-#{\{1\} \to \Delta^1}. Since this is a family of propositions it suffices to
-construct some lift. In other words, for each #{\sigma \colon Δ^1 \to Δ^1} such that
-#{\sigma(1) = 0} we need to show that #{\sigma(i) = 0} for each #{i}, but this
+#{\{1\} \hookrightarrow \Delta^1}. Since this is a family of propositions it suffices
+to construct some lift. In other words, for each #{\sigma \colon Δ^1 \to Δ^1} such
+that #{\sigma(1) = 0} we need to show that #{\sigma(i) = 0} for each #{i}, but this
 follows from the fact that #{\sigma} is monotone.
 }
 }
 
 \agda{
-module _ (Δ¹-directed : Δ¹-is-directed) where
+module _
+  (Δ¹-directed : Δ¹-is-directed) {𝓤} {A : Δ¹ → Type 𝓤}
+  (f : {i : Δ¹} → A i → Δ¹)
+  where
 
-  ●-unique-extensions : has-unique-extensions (point i1) (_＝ i0)
+  ●-unique-extensions
+    : has-unique-dependent-extensions (point i1) (λ {i} a → f {i} a ＝ i0)
   ●-unique-extensions (mk-afmap σ p) .centre .fst a
-    = ≤-antisym (≤-trans (Δ¹-directed σ auto!) (≤←＝ (p tt))) auto!
+    = ≤-antisym (≤-trans (Δ¹-directed (f ∘ σ) auto!) (≤←＝ (p tt))) auto!
   ●-unique-extensions (mk-afmap σ p) .centre .snd a = prop!
-  ●-unique-extensions F .central
+  ●-unique-extensions (mk-afmap σ p) .central
     = Extᵈ-Subtype-is-prop
         (point i1)
-        (mk-subtype {family = _＝ i0} λ _ _ _ → prop!)
-        F _
+        (mk-subtype {family = _＝ i0} (λ _ _ _ → prop!))
+        (mk-afmap (f ∘ σ) p) _
 
   ●-is-contravariant
-    : ∀ {𝓤} {A : Type 𝓤} (f : A → Δ¹)
-      → is-contravariant ((_＝ i0) ∘ f)
-  ●-is-contravariant f
-    = contravariant-base-change {P = (_＝ i0)} f
-        (is-contravariant←is-right-family (_＝ i0)
-          (are-orthogonal-fam←unique-extensions ●-unique-extensions))
+    : is-contravariant (λ {i} a → f {i} a ＝ i0)
+  ●-is-contravariant
+    = is-contravariant←has-unique-extensions
+        (λ {i} a → f {i} a ＝ i0)
+        ●-unique-extensions
 }
 }
 
@@ -422,7 +434,8 @@ module FromBaseChangeLeftAnodyne
 
   transposed-left-map-is-left-anodyne
     : (σ : Δ¹ → B)
-    → is-contravariant F → is-left-anodyne (transposed-left-map σ)
+    → is-contravariant F
+    → is-left-anodyne (transposed-left-map σ)
   transposed-left-map-is-left-anodyne σ rfib
     = is-anodyne←equiv
         (base-change-arrow (fst: (F ∘ σ)) (point i0))
@@ -434,15 +447,15 @@ module FromBaseChangeLeftAnodyne
           (is-right-fibration←is-contravariant (F ∘ σ) (rfib ∘ (σ ∘_))))
 
   cov^contrav-is-covariant-alternative
-    : is-contravariant F → is-covariant G → is-covariant G^F
-  cov^contrav-is-covariant-alternative Fctr Gcov
+    : is-contravariant F →  is-covariant G → is-covariant G^F
+  cov^contrav-is-covariant-alternative Fcontrav Gcov
     = is-covariant←has-unique-extensions G^F
         (λ {(mk-afmap σ h)
            → is-single←equiv
                (transpose-ext-exponentials-at-point-i0 F G σ (h tt) e⁻¹)
                (unique-extensions←are-orthogonal-fam {P = G}
                  (are-orthogonal-fam←are-orthogonal-fst
-                   (transposed-left-map-is-left-anodyne σ Fctr (fst: G)
+                   (transposed-left-map-is-left-anodyne σ Fcontrav (fst: G)
                      (is-left-fibration←is-covariant G Gcov)))
                (mk-afmap (σ ∘ fst) (h tt)))})
 }
@@ -472,17 +485,48 @@ can be given by #{j \mapsto x(i \land j, F^*(p))}, and this can be shown to have
 correct boundary trivially at #{0}, and at #{1} by again applying uniqueness of
 transport with a similarly constructed dependent morphism.}
 
+\p{
+This approach readily generalises to dependent exponentials, so we formalise it at
+that level of generality first.
+}
 
 \agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  Π-contrav-cov-transport
+    : Contravariant-lifts F
+    → Covariant-transport (uncurry G)
+    → Covariant-transport (λ b → (x : F b) → G b x)
+  Π-contrav-cov-transport ℓ ρ (mk-hom f refl refl) g y
+    = ρ (ap-hom (λ {i} x → (f i , x)) (ℓ f y .snd)) (g (ℓ f y .fst))
+
+  Π-transport-along-lift-id
+    : (G-is-cov : is-covariant (uncurry G))
+    → (b : B) (g : Π (F b) (G b)) {x y : F b} (h : Hom (F b) x y)
+    → tr-cov-hom G-is-cov (ap-hom (b ,_) h) (g x) ＝ g y
+  Π-transport-along-lift-id G-is-cov b g (mk-hom h refl refl)
+    = tr-cov-hom-unique {P = uncurry G} G-is-cov _ _ _ (λhom (g ∘ h))
+
+  Π-contrav-cov-is-covariant
+    : Contravariant-lifts F
+    → is-covariant (uncurry G)
+    → is-covariant (λ b → (x : F b) → G b x)
+  Π-contrav-cov-is-covariant ℓ G-is-cov
+    = is-covariant←cov-unital-transport
+        (Π-is-Δ¹-discrete ∘ curry (is-Δ¹-discrete-family←is-covariant G-is-cov))
+        ( Π-contrav-cov-transport ℓ (tr-cov-hom G-is-cov)
+        , ( λ b g → funext→ (λ y
+            → Π-transport-along-lift-id G-is-cov b g (ℓ (const b) y .snd))))
+
 module _ {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓦) where
 
   cov^contrav-is-covariant
     : is-contravariant F → is-covariant G → is-covariant (λ b → F b → G b)
   cov^contrav-is-covariant Fc Gc
-    = is-covariant←cov-unital-transport
-        (λ b → →-is-Δ¹-discrete (is-Δ¹-discrete-family←is-covariant Gc b))
-        ( (λ f g → tr-cov-hom Gc f ∘ g ∘ tr-contrav-hom Fc f)
-        , (λ b g → funext→ (tr-cov-idH G Gc ◽h (g ◃h tr-contrav-idH F Fc))))
+    = Π-contrav-cov-is-covariant F (λ b _ → G b) (λ f y → Fc f y .centre)
+        (covariant-base-change {P = G} fst Gc)
 }
 }
 }
@@ -490,6 +534,7 @@ module _ {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 
 
 \subtree[stt-00UF]{
 \taxon{Corollary}
+\contributor{fredrikbakke}
 
 \p{Assuming [directedness](Synthetic.Directedness) of the interval, then for any
 #{f \colon A \to Δ^1} and covariant family #{F}, the type family
@@ -498,11 +543,18 @@ module _ {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 
 \agda{
 module _ (Δ¹-directed : Δ¹-is-directed) where opaque
 
+  Π●-is-covariant
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} (f : A → Δ¹) (F : (a : A) → f a ＝ i0 → Type 𝓥)
+      → is-covariant (uncurry F) → is-covariant (λ a → (p : f a ＝ i0) → F a p)
+  Π●-is-covariant f F
+    = Π-contrav-cov-is-covariant ((_＝ i0) ∘ f) F
+        (λ h p → ●-is-contravariant Δ¹-directed f h p .centre)
+
   ^●-is-covariant
     : ∀ {𝓤 𝓥} {A : Type 𝓥} (F : A → Type 𝓤) (F-cov : is-covariant F)
       → (f : A → Δ¹)
       → is-covariant (λ i → (f i ＝ i0) → F i)
   ^●-is-covariant F Fc f
-    = cov^contrav-is-covariant ((_＝ i0) ∘ f) F (●-is-contravariant Δ¹-directed f) Fc
+    = Π●-is-covariant f (λ a _ → F a) (covariant-base-change {P = F} fst Fc)
 }
 }

@@ -601,6 +601,86 @@ opaque
 }
 }
 
+\subtree[stt-00VJ]{
+\title{Unital transport criterion for covariant families}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-08-18}
+
+\p{
+A type family #{B \colon A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f_* \colon B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such
+that #{\id_* \sim \id}.
+}
+
+\p{This result is due to [[robschellingerhout]].}
+
+\proof{
+\p{
+The forwards direction follows from [unitality of covariant transport](stt-00O8) and
+discreteness of the fibres, obtained by restricting to constant arrows. For the
+backwards direction we use the [lifts constructed from unital transport](bak-2CC0) to
+give an inverse to \code{precomp-Π (B ∘ f) (point i0)}.
+}
+
+\p{
+This construction is an inverse to evaluation at #{0}. One inverse law follows
+immediately from unitality. For the other, the contraction of #{Δ¹_{/i}} from
+#{(0,0\leq i)} to #{(i,\id_i)} induces a morphism in #{B(f(i))} from the
+#{f(0\leq i)_*(s(0))} to #{f(\id_i)_*(s(i))}. Unitality then gives
+#{f(\id_i)_*(s(i)) = s(i)}, and #{Δ¹}-discreteness gives the desired equality.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  is-Δ¹-discrete-family←is-covariant
+    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
+  is-Δ¹-discrete-family←is-covariant B-is-cov x
+    = is-Δ¹-discrete←is-left (λ _
+      → is-left-family←is-covariant B B-is-cov (const x))
+
+  is-left-family←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-left-family B
+  is-left-family←cov-unital-transport B-disc (ρ , ρ-id) f
+    = let (lift , lift-id) = section-ev-i0←cov-unital-transport (ρ , ρ-id) f
+      in 3-for-2 unit-ev-is-equiv (is-equiv←qinv
+          (lift , (λ s → funext→ (λ i → transport-section f s (0≤i i))) , lift-id))
+    where
+
+    transport-section
+      : (f : Δ¹ → A) (s : Π Δ¹ (B ∘ f)) {i j : Δ¹} (h : Hom Δ¹ i j)
+      → ρ (ap-hom f h) (s i) ＝ s j
+    transport-section f s (mk-hom h refl refl)
+      = sym (ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i0)))
+          (Hom-ext→ {f = i≤1 i0} {g = 0≤1} ((λ _ → 0-bottom) , prop! , prop!)))
+      ∙ weakly-constant←is-null (B-disc (f (h i1))) tt
+          (λ i → ρ (ap-hom (f ∘ h) (i≤1 i)) (s (h i))) i0 i1
+      ∙ ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i1))) i≤1-at-1
+      ∙ ρ-id (f (h i1)) (s (h i1))
+
+  is-covariant←cov-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-unital-transport B
+    → is-covariant B
+  is-covariant←cov-unital-transport B-disc
+    = is-covariant←is-left-family B ∘ is-left-family←cov-unital-transport B-disc
+
+  is-covariant↔cov-unital-transport
+    : is-covariant B
+    ↔ ( Covariant-unital-transport B
+      × ((x : A) → is-Δ¹-discrete (B x)))
+  is-covariant↔cov-unital-transport .fst B-is-cov
+    = ( cov-unital-transport←is-covariant B-is-cov
+      , is-Δ¹-discrete-family←is-covariant B-is-cov)
+  is-covariant↔cov-unital-transport .snd (ρ , B-disc)
+    = is-covariant←cov-unital-transport B-disc ρ
+}
+}
+
 \subtree[bak-AAAD]{
 \title{Covariant lift criterion for covariant families}
 \taxon{Theorem}
@@ -617,39 +697,18 @@ and it admits [covariant lifts](bak-FEFF). In other words, if its fibres are
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
 
-  is-Δ¹-discrete-family←is-covariant
-    : is-covariant B → (x : A) → is-Δ¹-discrete (B x)
-  is-Δ¹-discrete-family←is-covariant B-is-cov x
-    = is-Δ¹-discrete←is-left (λ _
-      → is-left-family←is-covariant B B-is-cov (const x))
+  cov-unital-transport←lifts
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Covariant-lifts B → Covariant-unital-transport B
+  cov-unital-transport←lifts B-is-disc ℓ
+    = ( cov-transport←lifts ℓ
+      , (λ a x → sym (Id←Hom←is-Δ¹-discrete (B-is-disc a) (ℓ (const a) x .snd))))
 
   is-covariant←lifts
     : ((x : A) → is-Δ¹-discrete (B x))
     → Covariant-lifts B → is-covariant B
-  is-covariant←lifts B-disc ℓ
-    = is-covariant←is-left-family B (λ g
-      → 3-for-2 unit-ev-is-equiv (is-equiv←section←injective
-          (λ {s} {t} p → funext→ (λ i
-            → sym (transport-section g s (0≤i i))
-            ∙ ap (ρ (ap-hom g (0≤i i))) p
-            ∙ transport-section g t (0≤i i)))
-          (_≃_.fwd (Covariant-lifts≃sections-ev-i0 B) ℓ g)))
-    where
-
-    ρ : Covariant-transport B
-    ρ = cov-transport←lifts ℓ
-
-    transport-section
-      : (f : Δ¹ → A) (s : Π Δ¹ (B ∘ f)) {i j : Δ¹} (h : Hom Δ¹ i j)
-      → ρ (ap-hom f h) (s i) ＝ s j
-    transport-section f s (mk-hom h refl refl)
-      = sym (ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i0)))
-          (Hom-ext→ {f = i≤1 i0} {g = 0≤1} ((λ _ → 0-bottom) , prop! , prop!)))
-      ∙ weakly-constant←is-null (B-disc (f (h i1))) tt
-          (λ i → ρ (ap-hom (f ∘ h) (i≤1 i)) (s (h i))) i0 i1
-      ∙ ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i1))) i≤1-at-1
-      ∙ sym (Id←Hom←is-Δ¹-discrete (B-disc (f (h i1)))
-          (ℓ (const (f (h i1))) (s (h i1)) .snd))
+  is-covariant←lifts B-disc
+    = is-covariant←cov-unital-transport B-disc ∘ cov-unital-transport←lifts B-disc
 
   ev-i0-is-equiv←sections
     : ((x : A) → is-Δ¹-discrete (B x))
@@ -682,69 +741,6 @@ const-is-covariant←is-Δ¹-discrete {A = A} {B} B-disc
     → is-Δ¹-discrete B → is-left-fibration (!: B)
 !-is-left-fibration←is-Δ¹-discrete Bdisc
   = orthogonal-!←orthogonal-type (is-left←is-Δ¹-discrete Bdisc tt)
-}
-}
-
-\subtree[stt-00VJ]{
-\title{Unital transport criterion for covariant families}
-\taxon{Theorem}
-\author{fredrikbakke}
-\date{2026-08-18}
-
-\p{
-A type family #{B \colon A \to \UU} is covariant iff it has #{Δ¹}-discrete fibres
-and a transport map #{f_* \colon B(x) \to B(y)}, for every #{f : \Hom_A(x,y)}, such
-that #{\id_* \sim \id}.
-}
-
-\p{This result is due to [[robschellingerhout]].}
-
-\proof{
-\p{
-The forwards direction follows from [unitality of covariant transport](stt-00O8)
-and [discreteness of the fibres](bak-AAAD). For the backwards direction we use
-the [lifts constructed from unital transport](bak-2CC0), which, by the
-[covariant lifts criterion](bak-AAAD), give an inverse to
-\code{precomp-Π (B ∘ f) (point i0)}.
-}
-
-\p{
-By the [covariant lifts criterion](bak-AAAD), this construction is an inverse to
-evaluation at #{0}. One inverse law follows immediately from unitality. For the
-other, the contraction of #{Δ¹_{/i}} from #{(0,0\leq i)} to #{(i,\id_i)} induces a
-morphism in #{B(f(i))} from the #{f(0\leq i)_*(s(0))} to #{f(\id_i)_*(s(i))}.
-Unitality then gives #{f(\id_i)_*(s(i)) = s(i)}, and #{Δ¹}-discreteness gives the
-desired equality.
-}
-}
-
-\agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
-
-  is-covariant←cov-unital-transport
-    : ((x : A) → is-Δ¹-discrete (B x))
-    → Covariant-unital-transport B
-    → is-covariant B
-  is-covariant←cov-unital-transport B-disc ρ
-    = is-covariant←lifts B-disc (lift-cov-unital-transport ρ)
-
-  is-left-family←cov-unital-transport
-    : ((x : A) → is-Δ¹-discrete (B x))
-    → Covariant-unital-transport B
-    → is-left-family B
-  is-left-family←cov-unital-transport B-disc
-    = is-left-family←is-covariant B
-    ∘ is-covariant←cov-unital-transport B-disc
-
-  is-covariant↔cov-unital-transport
-    : is-covariant B
-    ↔ ( Covariant-unital-transport B
-      × ((x : A) → is-Δ¹-discrete (B x)))
-  is-covariant↔cov-unital-transport .fst B-is-cov
-    = ( cov-unital-transport←is-covariant B-is-cov
-      , is-Δ¹-discrete-family←is-covariant B-is-cov)
-  is-covariant↔cov-unital-transport .snd (ρ , B-disc)
-    = is-covariant←cov-unital-transport B-disc ρ
 }
 }
 

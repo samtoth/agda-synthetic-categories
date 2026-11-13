@@ -1,0 +1,295 @@
+\title{Contravariant transport}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-11-05}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.ContravariantTransport
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.WalkingHom Δ¹ I
+}
+}
+
+\subtree[bak-5382]{
+\title{Contravariant transport}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+We say a type family #{P \colon A \to \UU} admits \em{contravariant transport} if
+there is a transport function #{(\blank)^* \colon \hom_A(x,y) \to P(y) \to P(x)} for
+all #{x} and #{y} in #{A}. If this transport function satisfies #{\id^* \sim \id},
+then we say the transport is \em{unital}.
+}
+
+\agda{
+Contravariant-transport
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (B : {i : Δ¹} → A i → Type 𝓥)
+  → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Contravariant-transport {A = A} B
+  = {x : A i0} {y : A i1} → Homᵈ A x y → B y → B x
+
+unitality-contravariant-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥}
+  → Contravariant-transport B → Type (𝓤 ⊔ 𝓥)
+unitality-contravariant-transport {A = A} ρ = (x : A) → ρ (idH x) ~ id
+
+Contravariant-unital-transport
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} (B : A → Type 𝓥) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Contravariant-unital-transport B
+  = Σ[ ρ ∶ Contravariant-transport B ] unitality-contravariant-transport ρ
+}
+}
+
+\subtree[bak-6D62]{
+\title{Contravariant lifts}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+Let #{P \colon A \to \UV} be a type family, then #{P} has \em{contravariant lifts} if
+for every arrow #{h \colon Δ¹ \to A} and #{y : P(h(1))} there is an arrow in #{P}
+over #{h} with right endpoint #{y}.
+}
+
+\agda{
+Contravariant-lifts
+  : ∀ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥)
+  → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+Contravariant-lifts {A = A} P
+  = (h : (i : Δ¹) → A i) (y : P (h i1))
+  → Σ[ x ∶ P (h i0) ] Homᵈ (P ∘ h) x y
+}
+}
+
+\subtree[bak-004B]{
+\title{Contravariant lifts give contravariant transport}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\agda{
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {B : {i : Δ¹} → A i → Type 𝓥} where
+
+  contrav-transport←lifts
+    : Contravariant-lifts (λ {i} → B {i}) → Contravariant-transport B
+  contrav-transport←lifts ℓ (mk-hom h refl refl) = fst ∘ ℓ h
+}
+}
+
+\subtree[bak-F2D8]{
+\title{Fibres of evaluation at #{1} as contravariant lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+Let #{P \colon A \to \UV} be a type family, #{h \colon Δ¹ \to A} an arrow, and
+#{y : P(h(1))}. Then the type of lifts of #{h} with right endpoint #{y} is equivalent
+to the fibre over #{y} of evaluation at #{1}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Δ¹ → Type 𝓤} (P : {i : Δ¹} → A i → Type 𝓥) where
+
+  contrav-lift≃fibre-ev-i1
+    : (h : (i : Δ¹) → A i) (y : P (h i1))
+    → (Σ[ x ∶ P (h i0) ] Homᵈ (P ∘ h) x y) ≃ fibre (evᵈ: (P ∘ h) i1) y
+  contrav-lift≃fibre-ev-i1 h y
+    =  (Σ[ x ∶ P (h i0) ] Homᵈ (P ∘ h) x y)
+    ≃⟨ Σ-snd-≃ (λ x → Homᵈ-repr≃) ⟩
+       (Σ[ x ∶ P (h i0) ] Σ[ f ∶ Π Δ¹ (P ∘ h) ] ((f i0 ＝ x) × (f i1 ＝ y)))
+    ≃⟨ Σ-comm ⟩
+       (Σ[ f ∶ Π Δ¹ (P ∘ h) ] Σ[ x ∶ P (h i0) ] ((f i0 ＝ x) × (f i1 ＝ y)))
+    ≃⟨ Σ-snd-≃ (λ f
+      → Σ-assoc e⁻¹ ∙e ×-swap ∙e Σ-singleton (λ _ → Sing-is-singleton)) ⟩
+       fibre (evᵈ: (P ∘ h) i1) y
+    ≃∎
+
+  Contravariant-lifts≃sections-ev-i1
+    : Contravariant-lifts P
+    ≃ ((h : (i : Δ¹) → A i) → section (evᵈ: (P ∘ h) i1))
+  Contravariant-lifts≃sections-ev-i1
+    = postcomp-Π-≃ (λ h
+      → postcomp-Π-≃ (contrav-lift≃fibre-ev-i1 h) ∙e section≃fibres (ev i1))
+}
+}
+
+\subtree[bak-8791]{
+\title{Unital contravariant transport gives contravariant lifts}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{Unital contravariant transport in a type family gives contravariant lifts.}
+
+\proof{
+\p{
+We construct a lift of the diagram
+\quiver{
+\begin{tikzcd}
+\{1\} && \Sigma1{a:A}{B(a)} \\
+\\
+\Delta^1 && A
+\arrow[from=1-1, to=1-3, "{(f(1),b)}"]
+\arrow[from=3-1, to=3-3, "f"]
+\arrow[from=1-1, to=3-1, hook]
+\arrow[from=1-3, to=3-3, "\pi"]
+\arrow[from=3-1, to=1-3, dashed, "f'"]
+\end{tikzcd}
+}
+}
+
+\p{
+For each #{i : Δ¹}, let #{i\leq 1 : \Hom_{Δ¹}(i,1)} be the canonical morphism.
+Applying #{f} we get a morphism #{f(i\leq 1) : \Hom_A(f(i),f(1))} along which we
+can transport #{b} backwards, and get
+##{f'(i) \defeq \left(f(i), f(i\leq 1)^*(b)\right).}
+This lies over #{f}, and its value at #{1} is #{(f(1),b)} by unitality.
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  section-ev-i1←contrav-unital-transport
+    : Contravariant-unital-transport B
+    → (h : Δ¹ → A) → section (evᵈ: (B ∘ h) i1)
+  section-ev-i1←contrav-unital-transport (ρ , ρ-id) h
+    = ( (λ y i → ρ (ap-hom h (i≤1 i)) y)
+      , (λ y → ap (λ f → ρ (ap-hom h f) y) i≤1-at-1 ∙ ρ-id (h i1) y))
+
+  lift-contrav-unital-transport
+    : Contravariant-unital-transport B → Contravariant-lifts B
+  lift-contrav-unital-transport ρ
+    = _≃_.bwd (Contravariant-lifts≃sections-ev-i1 B)
+        (section-ev-i1←contrav-unital-transport ρ)
+}
+}
+
+\subtree[bak-7C73]{
+\title{Transport from contravariant lifts is co-strict}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+Transport obtained from [contravariant lifts](bak-6D62) is [co-strict](stt-015V). If
+#{0 = 1} it coincides with ordinary reverse transport, which is an equivalence.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Δ¹ → Type 𝓤} {P : {i : Δ¹} → A i → Type 𝓥}
+  (ℓ : Contravariant-lifts P)
+  where
+
+  opaque
+    contrav-transport-is-co-strict←lifts
+      : {x : A i0} {y : A i1} (h : Homᵈ A x y)
+      → is-co-strict-map (contrav-transport←lifts {B = P} ℓ h)
+    contrav-transport-is-co-strict←lifts (mk-hom h refl refl)
+      = is-co-strict-map←is-equiv-under-0＝1 (λ p
+        → is-equiv←~⁻¹
+            ( λ y
+              → let lift = ℓ h y .snd
+                in ap (tr (P ∘ h) (sym p)) (sym (lift .Homᵈ.hom1))
+                 ∙ apᶠ (lift .Homᵈ.hom) (sym p)
+                 ∙ lift .Homᵈ.hom0)
+            (tr-is-equiv (sym p)))
+
+  tr-contrav-homˢ←lifts : {x : A i0} {y : A i1} → Homᵈ A x y → P y →ˢ P x
+  tr-contrav-homˢ←lifts h
+    = ( contrav-transport←lifts {B = P} ℓ h
+      , contrav-transport-is-co-strict←lifts h)
+
+  tr-contravˢ←lifts : (h : (i : Δ¹) → A i) → P (h i1) →ˢ P (h i0)
+  tr-contravˢ←lifts h = tr-contrav-homˢ←lifts (λhom h)
+}
+}
+
+\subtree[bak-DAE2]{
+\title{Unital covariant transport is co-strict}
+\taxon{Corollary}
+\author{fredrikbakke}
+\date{2026-11-13}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥} (ρ : Contravariant-unital-transport P)
+  where
+
+  opaque
+    contrav-unital-transport-is-co-strict
+      : {x y : A} (h : Hom A x y) → is-co-strict-map (ρ .fst h)
+    contrav-unital-transport-is-co-strict (mk-hom h refl refl)
+      = is-co-strict-map-homotopy
+          ( happly (ap
+              (ρ .fst ∘ ap-hom h)
+              (Hom-ext→ {f = i≤1 i0} {g = 0≤1} ((λ _ → 0-bottom) , prop! , prop!))))
+          ( contrav-transport-is-co-strict←lifts {P = P}
+              (lift-contrav-unital-transport ρ) (λhom h))
+}
+}
+
+
+\subtree[bak-E11B]{
+\title{Contravariant transport along inequalities in #{Δ¹}}
+\taxon{Lemma}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-11-05}
+
+\p{
+Each #{i \le j} in #{\Delta^1} induces a morphism #{\Hom_{\Delta^1}(i,j)}.
+Consequently, for families over #{\Delta^1} equipped with contravariant transport, we
+may coerce backwards along #{i \le j}. If the transport is unital, coercing along
+#{i \le i} for any #{i} is the identity, and coercing along an identification agrees
+with ordinary reverse transport. Coercing along #{0 \le 1} is the same as
+contravariant transport over the canonical morphism from #{0} to #{1} given by
+#{\id \colon \Delta^1 \to \Delta^1}.
+}
+
+\agda{
+module _ {𝓤} (B : Δ¹ → Type 𝓤) (ρ : Contravariant-transport B) where
+
+  coe-contrav-transport : {i j : Δ¹} → i ≤ j → B j → B i
+  coe-contrav-transport = ρ ∘ Δ¹-hom←≤
+
+  coe-contrav-transport-0≤1
+    : (p : i0 ≤ i1) → coe-contrav-transport p ＝ ρ (λhom id)
+  coe-contrav-transport-0≤1 = ap ρ ∘ Δ¹-hom-0≤1
+
+module _ {𝓤} (B : Δ¹ → Type 𝓤) (ρ : Contravariant-unital-transport B) where
+
+  coe-contrav-transport-id
+    : {i : Δ¹} (p : i ≤ i) → coe-contrav-transport B (ρ .fst) p ~ id
+  coe-contrav-transport-id {i} p
+    = happly (ap (ρ .fst) (Δ¹-hom-≤-refl p)) ∙h ρ .snd i
+
+  coe-contrav-transport-＝
+    : {i j : Δ¹} (p : j ＝ i) (q : i ≤ j)
+    → coe-contrav-transport B (ρ .fst) q ~ tr B p
+  coe-contrav-transport-＝ refl = coe-contrav-transport-id
+}
+}

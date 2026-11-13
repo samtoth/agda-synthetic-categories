@@ -8,6 +8,7 @@
 \subtree[stt-00US]{
 \taxon{Idea}
 \author{samueltoth}
+\contributor{fredrikbakke}
 
 \p{A glue type was originally introduced to give a constructive interpretation of
 univalence in work on cubical type theory \citek{CCHM15}. Weaver and Licata
@@ -15,9 +16,10 @@ univalence in work on cubical type theory \citek{CCHM15}. Weaver and Licata
 [Buchholtz](ulrikbuchholtz) \citek{GWB24} adapted it in
 the directed setting to construct directed univalent universes. In this module we
 use a directed glueing type to, under certain modal restrictions, give an equivalence
-between covariant type families over the interval and types together with a map
-between them. In \ref{Synthetic.Categories.Spaces}, we use this result to show that
-the classifier for covariant families satisfies directed univalence.}
+between covariant type families over the interval and types together with a
+[co-strict map](stt-015V) between them. In \ref{Synthetic.Categories.Spaces}, we
+use this result to show that the classifier for covariant families satisfies
+directed univalence.}
 }
 
 \agda{
@@ -30,7 +32,6 @@ module Synthetic.Categories.DirectedGlueing
   {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
   (open Lattice I renaming (0l to i0; 1l to i1))
   (open Synthetic.Directedness Δ¹ I)
-  (@♭ 0≠1 : i0 ≠ i1)
   (@♭ Δ¹-directed : Δ¹-is-directed)
   where
 
@@ -47,10 +48,13 @@ open import Ergonomics.Auto
 open import Modalities.Cohesion.Flat
 
 open import Core.Arrows
+open import Core.ArrowMorphisms
 open import Core.ArrowEquiv
 
 open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
 
+open import Synthetic.CoStrict Δ¹ ≤-bounded-poset
+open import Synthetic.CoStrictMaps Δ¹ ≤-bounded-poset
 open import Synthetic.Hom Δ¹ i0 i1
 open import Synthetic.Boundaries Δ¹ I
 open import Synthetic.Categories.WalkingHom Δ¹ I
@@ -62,107 +66,179 @@ open import Synthetic.Categories.CovariantClosure Δ¹ I
 \subtree[stt-00UY]{
 \title{The glueing of a fibrewise map}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
 \p{Given a pair of type families #{F, G \colon B \to \Type} and a fibrewise map
 #{\alpha_b \colon F_b \to G_b}, we can construct the glueing family
-#{\rm{Gl}(\alpha) \colon B \times \Delta^1 \to \Type}.
-##{\rm{Gl}(\alpha)(b, i) \defeq \Sigma1{g : G_b}{((i = 0) \to \fibre{\alpha_b}{g})}}}
+#{\rm{Gl}(\alpha) \colon \Delta^1 \times B \to \Type}.
+##{\rm{Gl}(\alpha)(i, b) \defeq \Sigma1{g : G_b}{((i = 0) \to \fibre{\alpha_b}{g})}}}
+
+\p{More generally, we may replace the fibres of #{\alpha} by any type family over
+the target, giving rise to the type family \code{Glᶠ}.}
 
 \agda{
+Glᶠ
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
+      (G : B → Type 𝓥) (F : (b : B) → G b → Type 𝓦)
+    → Δ¹ × B → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+Glᶠ G F (i , b) = Σ[ y ∶ G b ] ((i ＝ i0) → F b y)
+
 Gl
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓥)
-    → (α : ∀ b → F b → G b) → B × Δ¹ → Type (𝓘 ⊔ 𝓥)
-Gl F G α (b , i) = Σ[ a ∶ G b ] ((i ＝ i0) → fibre (α b) a)
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤} (F : B → Type 𝓥) (G : B → Type 𝓦)
+    → ((b : B) → F b → G b) → Δ¹ × B → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+Gl F G α = Glᶠ G (fibre ∘ α)
 }
 
-\p{#{\rm{Gl}(\alpha)(b,0) = F(b)} and #{\rm{Gl}(\alpha)(b,1) = G(b)}}
+\p{The left endpoint of \code{Glᶠ G F} is #{\Sigma_{G(b)} F(b)}.
+If each #{F(b,y)} is [co-strict](stt-0162), its right endpoint is #{G(b)}.}
 
 \agda{
 module _
-  {𝓤 𝓥} {B : Type 𝓤}
-  (F : B → Type 𝓥) (G : B → Type 𝓥)
-  (α : ∀ b → F b → G b)
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} (G : (b : B) → F b → Type 𝓦)
   where
 
-  Gl-0 : ∀ b → Gl F G α (b , i0) → F b
+  Glᶠ-0 : (b : B) → Glᶠ F G (i0 , b) → Σ (F b) (G b)
+  Glᶠ-0 b = total-map (λ _ → ev refl)
+
+  Glᶠ-0≃ : (b : B) → Glᶠ F G (i0 , b) ≃ Σ (F b) (G b)
+  Glᶠ-0≃ b = Σ-snd-≃ (λ _ → sing-UP≃ (mk-singl refl (J-set! _ refl)))
+
+  Glᶠ-0-is-equiv : is-fibrewise-equiv Glᶠ-0
+  Glᶠ-0-is-equiv = _≃_.fwd-is-equiv ∘ Glᶠ-0≃
+
+  Glᶠ-1 : (b : B) → Glᶠ F G (i1 , b) → F b
+  Glᶠ-1 b = fst
+
+  Glᶠ-1≃
+    : (b : B) → ((y : F b) → is-co-strict (G b y)) → Glᶠ F G (i1 , b) ≃ F b
+  Glᶠ-1≃ b G-is-co-strict
+    = Σ-singleton (λ y → Π-is-single
+        (is-single-if-0=1←is-co-strict (G-is-co-strict y) ∘ sym))
+
+  Glᶠ-1-is-equiv
+    : (b : B) → ((y : F b) → is-co-strict (G b y)) → is-equiv (Glᶠ-1 b)
+  Glᶠ-1-is-equiv b G-is-co-strict = Glᶠ-1≃ b G-is-co-strict ._≃_.fwd-is-equiv
+}
+
+\p{The fibre #{\rm{Gl}(\alpha)(0,b)} is equivalent to #{F(b)}. If
+#{\alpha_b} is [co-strict](stt-015V), the fibre
+#{\rm{Gl}(\alpha)(1,b)} is equivalent to #{G(b)}.}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} {G : B → Type 𝓦}
+  (α : (b : B) → F b → G b)
+  where
+
+  Gl-0 : (b : B) → Gl F G α (i0 , b) → F b
   Gl-0 b = fst ∘ ev refl ∘ snd
 
-  Gl-0≃ : ∀ b → Gl F G α (b , i0) ≃ F b
-  Gl-0≃ b
-    = Σ-snd-≃ (λ _ → sing-UP≃ (mk-singl refl (J-set! _ refl)))
-    ∙e total≃total-fibre _
+  Gl-0≃ : (b : B) → Gl F G α (i0 , b) ≃ F b
+  Gl-0≃ b = Glᶠ-0≃ (fibre ∘ α) b ∙e total≃total-fibre _
 
   Gl-0-is-equiv : is-fibrewise-equiv Gl-0
   Gl-0-is-equiv = _≃_.fwd-is-equiv ∘ Gl-0≃
 
-  Gl-1 : ∀ b → Gl F G α (b , i1) → G b
-  Gl-1 b = fst
+  Gl-1 : (b : B) → Gl F G α (i1 , b) → G b
+  Gl-1 = Glᶠ-1 (fibre ∘ α)
 
-  Gl-1≃ : ∀ b → Gl F G α (b , i1) ≃ G b
-  Gl-1≃ b = Σ-singleton (λ _ → Π-is-single (¡ ∘ 0≠1 ∘ sym))
+  Gl-1≃ : (b : B) → is-co-strict-map (α b) → Gl F G α (i1 , b) ≃ G b
+  Gl-1≃ b α-is-co-strict
+    = Glᶠ-1≃ (fibre ∘ α) b (fibres-are-co-strict←is-co-strict-map α-is-co-strict)
 
-  Gl-1-is-equiv : is-fibrewise-equiv Gl-1
-  Gl-1-is-equiv = _≃_.fwd-is-equiv ∘ Gl-1≃
+  Gl-1-is-equiv : (b : B) → is-co-strict-map (α b) → is-equiv (Gl-1 b)
+  Gl-1-is-equiv b α-is-co-strict = Gl-1≃ b α-is-co-strict ._≃_.fwd-is-equiv
 }
 
 \p{We may also define a map from
 #{\rm{Gl}(\alpha)(0,b) \to \rm{Gl}(\alpha)(1,b)}, which is equivalent as a
-map to #{\alpha_b}.}
+map to #{\alpha_b} whenever #{\alpha_b} is co-strict.}
 
 \agda{
 module _
-  {𝓤 𝓥} {B : Type 𝓤} {F G : B → Type 𝓥} (α : ∀ b → F b → G b)
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
   where
 
-  Gl-map : ∀ b → Gl F G α (b , i0) → Gl F G α (b , i1)
-  Gl-map b = total-map (λ a → precomp-Π _ (¡ ∘ 0≠1 ∘ sym))
+  Glᶠ-map : (b : B) → Glᶠ F G (i0 , b) → Glᶠ F G (i1 , b)
+  Glᶠ-map b (y , u) = (y , (λ _ → u refl))
 
-  Gl-map-agrees : ∀ b → Arrow-equiv (Gl-map b) (α b)
-  Gl-map-agrees b
-    = mk-arr-equiv (Gl-0≃ F G α b) (Gl-1≃ F G α b) (sym ∘ snd ∘ ev refl ∘ snd)
+  Glᶠ-map-agrees
+    : (b : B) → ((y : F b) → is-co-strict (G b y))
+    → Arrow-equiv (Glᶠ-map b) (fst: G b)
+  Glᶠ-map-agrees b G-is-co-strict
+    = mk-arr-equiv (Glᶠ-0≃ G b) (Glᶠ-1≃ G b G-is-co-strict) ~refl
+
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤} {F : B → Type 𝓥} {G : B → Type 𝓦} (α : (b : B) → F b → G b)
+  where
+
+  Gl-map : (b : B) → Gl F G α (i0 , b) → Gl F G α (i1 , b)
+  Gl-map = Glᶠ-map G (fibre ∘ α)
+
+  Gl-map-agrees
+    : (b : B) → is-co-strict-map (α b) → Arrow-equiv (Gl-map b) (α b)
+  Gl-map-agrees b H
+    = mk-arr-equiv (Gl-0≃ α b) (Gl-1≃ α b H) (sym ∘ snd ∘ ev refl ∘ snd)
 }
 }
 
 \subtree[stt-00UZ]{
 \title{Covariance of the directed glueing family}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{If #{F} and #{G} are covariant families over #{B}, then the directed glueing of any
-map #{\alpha} is also covariant over #{B \times \Delta^1}.}
+map #{\alpha} is also covariant over #{\Delta^1 \times B}.}
+
+\p{More generally, \code{Glᶠ G F} is covariant when #{G} and \code{uncurry F}
+are covariant.}
 
 \agda{
-opaque
-  Gl-is-covariant
-    : ∀ {𝓤 𝓥} {B : Type 𝓤}
-        (F : B → Type 𝓥) (G : B → Type 𝓥)
-        (α : ∀ b → F b → G b)
-      → is-covariant F → is-covariant G
-      → is-covariant (Gl F G α)
-  Gl-is-covariant {B = B} F G α Fc Gc
-    = Σ-is-covariant
-        {B = G ∘ fst}
-        {C = λ bi a → (bi .snd ＝ i0) → fibre (α (bi .fst)) a}
-        (covariant-base-change {P = G} (fst: λ _ → Δ¹) Gc)
-        (covariant-base-change
-          {P = λ x → x .snd ＝ i0
-                   → fibre (α (x .fst .fst)) (x .fst .snd)}
-          (λ ((b , i) , g) → ((b , g) , i))
-          (^●-is-covariant
-            (Δ¹-directed)
-            (uncurry (λ b g → fibre (α b) g) ∘ fst)
-            (covariant-base-change
-              {P = uncurry (λ b g → fibre (α b) g)}
-              fst
-              (fibre-is-covariant _ _ Fc Gc α))
-            snd))
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  (F : B → Type 𝓥) (G : (b : B) → F b → Type 𝓦)
+  where
+
+  opaque
+    Glᶠ-is-covariant
+      : is-covariant F → is-covariant (uncurry G) → is-covariant (Glᶠ F G)
+    Glᶠ-is-covariant F-is-cov G-is-cov
+      = Σ-is-covariant
+          {B = F ∘ snd} {C = λ ib y → (ib .fst ＝ i0) → G (ib .snd) y}
+          (covariant-base-change {P = F} snd F-is-cov)
+          (^●-is-covariant Δ¹-directed
+            (λ ((i , b) , y) → G b y)
+            (covariant-base-change {P = uncurry G}
+              (λ ((i , b) , y) → (b , y)) G-is-cov)
+            (fst ∘ fst))
+
+  Glᶠ∘-is-covariant
+    : ∀ {𝓧} {A : Type 𝓧} (f : A → Δ¹ × B)
+      → is-covariant F → is-covariant (uncurry G) → is-covariant (Glᶠ F G ∘ f)
+  Glᶠ∘-is-covariant f F-is-cov G-is-cov
+    = covariant-base-change {P = Glᶠ F G} f
+        (Glᶠ-is-covariant F-is-cov G-is-cov)
+
+Gl-is-covariant
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
+      (F : B → Type 𝓥) (G : B → Type 𝓦)
+      (α : (b : B) → F b → G b)
+    → is-covariant F
+    → is-covariant G
+    → is-covariant (Gl F G α)
+Gl-is-covariant {B = B} F G α Fc Gc
+  = Glᶠ-is-covariant G (fibre ∘ α) Gc (fibre-is-covariant F G Fc Gc α)
 
 Gl∘-is-covariant
-  : ∀ {𝓤 𝓤' 𝓥} {A : Type 𝓤} {B : Type 𝓤'} (f : A → B × Δ¹)
-      (F : B → Type 𝓥) (G : B → Type 𝓥)
-      (α : ∀ b → F b → G b)
+  : ∀ {𝓤 𝓤' 𝓥 𝓦} {A : Type 𝓤} {B : Type 𝓤'} (f : A → Δ¹ × B)
+      {F : B → Type 𝓥} {G : B → Type 𝓦}
+      (α : (b : B) → F b → G b)
     → is-covariant F → is-covariant G
     → is-covariant (Gl F G α ∘ f)
-Gl∘-is-covariant f F G α Fc Gc
+Gl∘-is-covariant f {F} {G} α Fc Gc
   = covariant-base-change {P = Gl F G α} f
       (Gl-is-covariant F G α Fc Gc)
 }
@@ -172,28 +248,43 @@ Gl∘-is-covariant f F G α Fc Gc
 \subtree[stt-00KF]{
 \title{Paths in glue types}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \agda{
 module _
-  {𝓤 𝓥} {B : Type 𝓤}
-  {F G : B → Type 𝓥}
-  {f : ∀ b → F b → G b}
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} {G : (b : B) → F b → Type 𝓦}
   where
 
-  Gl-Id : ∀ (bi : B × Δ¹) → Gl F G f bi → Gl F G f bi → Type (𝓘 ⊔ 𝓥)
-  Gl-Id (b , i) x y
+  IdS-Glᶠ : (ib : Δ¹ × B) → Identity-system (Glᶠ F G ib) (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  IdS-Glᶠ ib = IdS-Sigma ⦃ IdS-default ⦄ ⦃ IdS-Π ⦃ IdS-default ⦄ ⦄
+
+  Glᶠ-Id : (ib : Δ¹ × B) → Glᶠ F G ib → Glᶠ F G ib → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  Glᶠ-Id ib = IdS ⦃ IdS-Glᶠ ib ⦄
+
+  Glᶠ-Id→ : (ib : Δ¹ × B) {x y : Glᶠ F G ib} → Glᶠ-Id ib x y → x ＝ y
+  Glᶠ-Id→ ib = Id←IdS ⦃ IdS-Glᶠ ib ⦄
+
+module _
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} {G : B → Type 𝓦}
+  {f : (b : B) → F b → G b}
+  where
+
+  Gl-Id : (ib : Δ¹ × B) → Gl F G f ib → Gl F G f ib → Type (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  Gl-Id (i , b) x y
     = Σ[ p ∶ x .fst ＝ y .fst ]
-       (∀ (pi : i ＝ i0)
+        ( (pi : i ＝ i0)
         → Σ[ q ∶ x .snd pi .fst ＝ y .snd pi .fst ]
            (Square (x .snd pi .snd) (y .snd pi .snd) (ap (f b) q) p))
 
-  Gl-Id-refl : ∀ i → (x : Gl F G f i) → Gl-Id i x x
+  Gl-Id-refl : (i : Δ¹ × B) → (x : Gl F G f i) → Gl-Id i x x
   Gl-Id-refl i x = (refl , (λ pi → refl , Square-degen-hor _ _ refl))
 
   opaque
     Gl-Id-is-torsorial
-      : ∀ (bi : B × Δ¹) → (x : Gl F G f bi) → is-singleton (Σ _ (Gl-Id bi x))
-    Gl-Id-is-torsorial bi x
+      : (ib : Δ¹ × B) (x : Gl F G f ib) → is-singleton (Σ (Gl F G f ib) (Gl-Id ib x))
+    Gl-Id-is-torsorial ib x
       = is-singleton-structure←parts
           Sing-is-singleton
           (_ , refl)
@@ -209,89 +300,92 @@ module _
                          (x .snd refl .snd)))))
 
   IdS-Gl
-    : ∀ (bi : B × Δ¹) → Identity-system (Gl F G f bi) (𝓘 ⊔ 𝓥)
-  IdS-Gl bi .Identity-system.IdS = Gl-Id bi
-  IdS-Gl bi .Identity-system.IdS←Id refl
-    = Gl-Id-refl bi _
-  IdS-Gl bi .Identity-system.IdS←Id-is-equiv a
-    = fundamental-Id _ (Gl-Id-is-torsorial bi a) _
+    : (ib : Δ¹ × B) → Identity-system (Gl F G f ib) (𝓘 ⊔ 𝓥 ⊔ 𝓦)
+  IdS-Gl ib .Identity-system.IdS = Gl-Id ib
+  IdS-Gl ib .Identity-system.IdS←Id refl
+    = Gl-Id-refl ib _
+  IdS-Gl ib .Identity-system.IdS←Id-is-equiv a
+    = fundamental-Id _ (Gl-Id-is-torsorial ib a) _
 
 Gl-Id→
-  : ∀ {𝓤 𝓥} {B : Type 𝓤}
-      {F G : B → Type 𝓥}
-      (f : ∀ b → F b → G b)
-      (bi : B × Δ¹)
-      {x y : Gl F G f bi}
-    → Gl-Id {f = f} bi x y → x ＝ y
-Gl-Id→ f bi = Id←IdS ⦃ IdS-Gl {f = f} bi ⦄
+  : ∀ {𝓤 𝓥 𝓦} {B : Type 𝓤}
+      {F : B → Type 𝓥} {G : B → Type 𝓦}
+      (f : (b : B) → F b → G b)
+      (ib : Δ¹ × B)
+      {x y : Gl F G f ib}
+    → Gl-Id {f = f} ib x y → x ＝ y
+Gl-Id→ f ib = Id←IdS ⦃ IdS-Gl {f = f} ib ⦄
 }
 }
 
 \subtree[stt-00V3]{
 \title{Covariant #{Δ¹}-bundles}
 \taxon{Definition}
+\contributor{fredrikbakke}
 
 \p{For some base type #{B} we define covariant #{\Delta^1}-bundles over #{B} to
 be the data consisting of:
 
 \ul{
 \li{A pair of covariant type families #{F} and #{G} over #{B}}
-\li{A fibrewise map #{\alpha_{b} \colon F(b) \to G(b)}}
+\li{A fibrewise [co-strict map](stt-015V) #{\alpha_{b} \colon F(b) \to-s G(b)}}
 }
 }
 
 \agda{
 Cov-Δ¹-bundle
-  : ∀ {𝓤} 𝓥 (B : Type 𝓤) → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥)
-Cov-Δ¹-bundle 𝓥 B
-  = Σ[ X Y ∶ Σ (B → Type 𝓥) is-covariant ] (∀ b → X .fst b → Y .fst b)
+  : ∀ {𝓤} 𝓥 𝓥' → Type 𝓤 → Type (𝓘 ⊔ 𝓤 ⊔ lsuc 𝓥 ⊔ lsuc 𝓥')
+Cov-Δ¹-bundle 𝓥 𝓥' B
+  = Σ[ X ∶ CovBundle 𝓥 B ] Σ[ Y ∶ CovBundle 𝓥' B ] ((b : B) → X .fst b →ˢ Y .fst b)
 }
 }
 
 \subtree[stt-00V1]{
 \title{Characterising the identity type of a [covariant #{Δ¹}-bundle](stt-00V3)}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{Given #{(A, B , α)} and #{(X, Y, β)}, a pair of covariant #{\Delta^1}-bundles over
 some type #{B}, the identity type #{(A,B,α) = (X,Y,β)} is equivalent to fibrewise
 equivalences #{e \colon A \simeq X} and #{p \colon B \simeq Y} such that the resulting square
 commutes (#{p\alpha \sim \beta e}). Note that this is equivalent to an arrow
-equivalence #{\alpha_x \simeq \beta_x} for all #{x : B \times \Delta^1}.}
+equivalence #{\alpha_b \simeq \beta_b} for all #{b : B}.}
 
 \agda{
 cov-Δ¹-bundle-Path
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (x y : Cov-Δ¹-bundle 𝓥 B)
-    → Type (𝓤 ⊔ 𝓥)
-cov-Δ¹-bundle-Path ((A , _) , (B , _) , f) ((X , _) , (Y , _) , g)
-  = Σ[ e ∶ (∀ b → A b ≃ X b) ] Σ[ p ∶ (∀ b → B b ≃ Y b) ]
-      (∀ b → p b ._≃_.fwd ∘ f b ~ g b ∘ e b ._≃_.fwd)
+  : ∀ {𝓤 𝓥 𝓥' 𝓦 𝓦'} {B : Type 𝓤}
+      (x : Cov-Δ¹-bundle 𝓥 𝓥' B) (y : Cov-Δ¹-bundle 𝓦 𝓦' B)
+    → Type (𝓤 ⊔ 𝓥 ⊔ 𝓥' ⊔ 𝓦 ⊔ 𝓦')
+cov-Δ¹-bundle-Path {B = B} ((U , _) , (V , _) , f) ((X , _) , (Y , _) , g)
+  = Σ[ e ∶ ((b : B) → U b ≃ X b) ] Σ[ p ∶ ((b : B) → V b ≃ Y b) ]
+      ((b : B) → p b ._≃_.fwd ∘ f b .fst ~ g b .fst ∘ e b ._≃_.fwd)
 
 cov-Δ¹-bundle-Path-refl
-  : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 B)
+  : ∀ {𝓤 𝓥 𝓥'} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 𝓥' B)
     → cov-Δ¹-bundle-Path x x
-cov-Δ¹-bundle-Path-refl x = ((λ _ → id≃) , (λ _ → id≃) , λ _ → ~refl)
+cov-Δ¹-bundle-Path-refl x = ((λ _ → id≃) , (λ _ → id≃) , (λ _ → ~refl))
 
 instance
   IdS-cov-fam
-    : ∀ {𝓤 𝓥} {A : Type 𝓤} → Identity-system (Σ (A → Type 𝓥) is-covariant) (𝓤 ⊔ 𝓥)
-  IdS-cov-fam = IdS←Subtype is-covariant-is-prop auto!
+    : ∀ {𝓤 𝓥} {A : Type 𝓤} → Identity-system (CovBundle 𝓥 A) (𝓤 ⊔ 𝓥)
+  IdS-cov-fam = IdS←Subtype (λ E → is-covariant-is-prop E) auto!
 
 opaque
   cov-Δ¹-bundle-Path-is-torsorial
-    : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 B)
-      → is-singleton (Σ _ (cov-Δ¹-bundle-Path x))
+    : ∀ {𝓤 𝓥} {B : Type 𝓤} (x : Cov-Δ¹-bundle 𝓥 𝓥 B)
+      → is-singleton (Σ (Cov-Δ¹-bundle 𝓥 𝓥 B) (cov-Δ¹-bundle-Path x))
   cov-Δ¹-bundle-Path-is-torsorial (A , B , f)
     = is-singleton-structure←parts
        (SingS-is-single A)
-       (A , λ _ → id≃)
+       (A , (λ _ → id≃))
        (is-singleton-structure←parts
          (SingS-is-single B)
-         (B , λ _ → id≃)
-         (SingS-is-single _))
+         (B , (λ _ → id≃))
+         (SingS-is-single f))
 
 instance
   cov-Δ¹-bundle-IdS
-    : ∀ {𝓤 𝓥} {B : Type 𝓤} → Identity-system (Cov-Δ¹-bundle 𝓥 B) (𝓤 ⊔ 𝓥)
+    : ∀ {𝓤 𝓥} {B : Type 𝓤} → Identity-system (Cov-Δ¹-bundle 𝓥 𝓥 B) (𝓤 ⊔ 𝓥)
   cov-Δ¹-bundle-IdS .Identity-system.IdS = cov-Δ¹-bundle-Path
   cov-Δ¹-bundle-IdS .Identity-system.IdS←Id {a = A} refl = cov-Δ¹-bundle-Path-refl A
   cov-Δ¹-bundle-IdS .Identity-system.IdS←Id-is-equiv x
@@ -302,161 +396,193 @@ instance
 \subtree[stt-00V0]{
 \title{The induced transport of a covariant family over #{Δ¹}}
 \taxon{Construction}
+\contributor{fredrikbakke}
 
-\p{Given a covariant type family over #{B \times \Delta^1}, we can construct a
-[\em{covariant bundle}](stt-00V3) over #{\Delta^1} – i.e.  a pair of covariant
-families #{B \to \Type} together with a fibrewise map between them. }
+\p{Given a covariant type family over #{\Delta^1 \times B}, we can construct a
+[\em{covariant #{Δ¹}-bundle}](stt-00V3) over #{B} – i.e. a pair of covariant
+families #{B \to \Type} together with a fibrewise co-strict map between them. }
 
 \agda{
 total-tr-cov
   : ∀ {𝓤 𝓥} {B : Type 𝓤}
-    → (Σ (B × Δ¹ → Type 𝓥) is-covariant)
-    → Cov-Δ¹-bundle 𝓥 B
+    → CovBundle 𝓥 (Δ¹ × B)
+    → Cov-Δ¹-bundle 𝓥 𝓥 B
 total-tr-cov (F , Fcov)
-  = ( (F ∘ (_, i0) , covariant-base-change {P = F} (_, i0) Fcov)
-    , (F ∘ (_, i1) , covariant-base-change {P = F} (_, i1) Fcov)
-    , (λ b → tr-cov {P = F ∘ (b ,_)} (covariant-base-change {P = F} (b ,_) Fcov) id))
+  = ( (F ∘ (i0 ,_) , covariant-base-change {P = F} (i0 ,_) Fcov)
+    , (F ∘ (i1 ,_) , covariant-base-change {P = F} (i1 ,_) Fcov)
+    , ( λ b
+        → tr-covˢ {P = F ∘ (_, b)} (covariant-base-change {P = F} (_, b) Fcov) id))
 }
 }
 
 \subtree[stt-00V2]{
 \title{Directed univalence for covariant families}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \p{The map defined in \ref{stt-00V0} induces an equivalence between covariant
-families over #{B \times \Delta^1} and covariant bundles over #{B}, i.e. pairs of covariant
-families over #{B} equipped with a fibrewise map between them.}
+families over #{\Delta^1 \times B} and covariant bundles over #{B}, i.e. pairs of
+covariant families over #{B} equipped with a fibrewise co-strict map between them.}
 
 \proof{
 \p{We first define a putative inverse:}
 
 \agda{
 module _
-  {𝓤 𝓥} {B : Type 𝓤}
+  {𝓤 𝓥 𝓥'} {B : Type 𝓤}
   where
 
   total-tr-cov-inv
-    : Cov-Δ¹-bundle 𝓥 B
-    → Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant
+    : Cov-Δ¹-bundle 𝓥 𝓥' B
+    → CovBundle (𝓘 ⊔ 𝓥 ⊔ 𝓥') (Δ¹ × B)
   total-tr-cov-inv ((A , Ac) , (B , Bc) , α)
-    = (Gl A B α , Gl-is-covariant A B α Ac Bc)
+    = (Gl A B (fst ∘ α) , Gl-is-covariant A B (fst ∘ α) Ac Bc)
 }
 
 \subtree[stt-00V4]{
 \title{Left inverse}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
-\p{Under no assumptions, this map is a left inverse. I.e for covariant type families
-#{X} and #{Y} with a fibrewise map #{\alpha} between them, there is an equivalence
-of families of arrows between transporting over the [glueing family](stt-00UY) of
-#{\alpha} and #{\alpha} itself.}
+\p{
+For covariant type families #{X} and #{Y} with a fibrewise co-strict map #{\alpha}
+between them, there is an equivalence of families of arrows between transporting over
+the [glueing family](stt-00UY) of #{\alpha} and #{\alpha} itself.
+}
 
 \agda{
 module _
-  {𝓤 𝓥} {B : Type 𝓤}
+  {𝓤 𝓥 𝓦} {B : Type 𝓤}
+  {F : B → Type 𝓥} (G : (b : B) → F b → Type 𝓦)
+  where
+
+  tr-Glᶠ-hom
+    : (b : B) (x : Glᶠ F G (i0 , b))
+    → Homᵈ (Glᶠ F G ∘ (_, b)) x (Glᶠ-map F G b x)
+  tr-Glᶠ-hom b x .Homᵈ.hom i = (x .fst , (λ _ → x .snd refl))
+  tr-Glᶠ-hom b x .Homᵈ.hom0 = Σ-path→ (refl , funext→ (J-set! _ refl))
+  tr-Glᶠ-hom b x .Homᵈ.hom1 = refl
+
+  tr-Glᶠ
+    : (Gl-is-cov : is-covariant (Glᶠ F G)) (b : B)
+    → tr-cov {P = Glᶠ F G} Gl-is-cov (_, b) ~ Glᶠ-map F G b
+  tr-Glᶠ Gl-is-cov b x
+    = tr-cov-unique {P = Glᶠ F G} Gl-is-cov (_, b)
+        (Glᶠ-map F G b) x (tr-Glᶠ-hom b x)
+
+  tr-hom-Glᶠ
+    : (b : B) (Gl-is-cov : is-covariant (Glᶠ F G ∘ (_, b)))
+    → tr-cov-hom {P = Glᶠ F G ∘ (_, b)} Gl-is-cov 0≤1 ~ Glᶠ-map F G b
+  tr-hom-Glᶠ b Gl-is-cov x
+    = tr-cov-hom-unique Gl-is-cov 0≤1 x (Glᶠ-map F G b x) (tr-Glᶠ-hom b x)
+
+  tr-Glᶠ-0≤1H
+    : (b : B) (Gl-is-cov : is-covariant (Glᶠ F G ∘ (_, b)))
+    → ((y : F b) → is-co-strict (G b y))
+    → Arrow-equiv (tr-cov-hom {P = Glᶠ F G ∘ (_, b)} Gl-is-cov 0≤1) (fst: G b)
+  tr-Glᶠ-0≤1H b Gl-is-cov G-is-co-strict
+    = mk-arr-equiv (Glᶠ-0≃ G b) (Glᶠ-1≃ G b G-is-co-strict)
+        (ap fst ∘ tr-hom-Glᶠ b Gl-is-cov)
+
+  tr-Glᶠ-0≤1
+    : (Gl-is-cov : is-covariant (Glᶠ F G)) (b : B)
+    → ((y : F b) → is-co-strict (G b y))
+    → Arrow-equiv (tr-cov {P = Glᶠ F G} Gl-is-cov (_, b)) (fst: G b)
+  tr-Glᶠ-0≤1 Gl-is-cov b G-is-co-strict
+    = mk-arr-equiv (Glᶠ-0≃ G b) (Glᶠ-1≃ G b G-is-co-strict)
+        (ap fst ∘ tr-Glᶠ Gl-is-cov b)
+
+module _
+  {𝓤 𝓥 𝓥'} {B : Type 𝓤}
+  {X : B → Type (𝓘 ⊔ 𝓥)} {Y : B → Type (𝓘 ⊔ 𝓥')}
+  (α : (b : B) → X b → Y b)
   where
 
   tr-Gl-hom
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-      → ∀ b x → Homᵈ (Gl X Y α ∘ (b ,_)) x (Gl-map α b x)
-  tr-Gl-hom α b x .Homᵈ.hom i = (x .fst , λ p → x .snd refl)
-  tr-Gl-hom α b x .Homᵈ.hom0  = Σ-path→ (refl , (funext→ (J-set! _ refl)))
-  tr-Gl-hom α b x .Homᵈ.hom1  = Σ-path→ (refl , (funext→ (¡ ∘ 0≠1 ∘ sym)))
+    : (b : B) (x : (Gl X Y α ∘ (_, b)) i0)
+    → Homᵈ (Gl X Y α ∘ (_, b)) x (Gl-map α b x)
+  tr-Gl-hom = tr-Glᶠ-hom (fibre ∘ α)
 
   tr-Gl
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-        (Xc : is-covariant X) (Yc : is-covariant Y)
-      → ∀ b
-      → tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_)
-      ~ Gl-map α b
-  tr-Gl α Xc Yc b x
-    = tr-cov-unique
-        (Gl-is-covariant _ _ α Xc Yc)
-        (b ,_)
-        (Gl-map α b)
-        x
-        (tr-Gl-hom α b x)
+    : (Xc : is-covariant X) (Yc : is-covariant Y)
+    → (b : B)
+    → tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (_, b)
+    ~ Gl-map α b
+  tr-Gl Xc Yc
+    = tr-Glᶠ (fibre ∘ α) (Gl-is-covariant X Y α Xc Yc)
 
   tr-hom-Gl
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-        (Xc : is-covariant X) (Yc : is-covariant Y)
-      → ∀ b
-      → tr-cov-hom {P = Gl X Y α ∘ (b ,_)}
-          (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
-          0≤1
-      ~ Gl-map α b
-  tr-hom-Gl {X} {Y} α Xc Yc b x
-    = tr-cov-hom-unique (Gl X Y α ∘ (b ,_))
-        (Gl∘-is-covariant (b ,_) X Y α Xc Yc)
+    : (Xc : is-covariant X) (Yc : is-covariant Y)
+    → (b : B)
+    → tr-cov-hom {P = Gl X Y α ∘ (_, b)}
+        (Gl∘-is-covariant (_, b) α Xc Yc)
         0≤1
-        x
-        (Gl-map α b x)
-        (tr-Gl-hom α b x)
+    ~ Gl-map α b
+  tr-hom-Gl Xc Yc b
+    = tr-hom-Glᶠ (fibre ∘ α) b (Gl∘-is-covariant (_, b) α Xc Yc)
 
   tr-Gl-0≤1H
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-        (Xc : is-covariant X) (Yc : is-covariant Y)
-        (b : B)
-      → Arrow-equiv
-          (tr-cov-hom {P = Gl X Y α ∘ (b ,_)}
-            (Gl∘-is-covariant (b ,_) X Y α Xc Yc) 0≤1)
-          (α b)
-  tr-Gl-0≤1H α Xc Yc b
+    : (Xc : is-covariant X) (Yc : is-covariant Y)
+      (b : B)
+    → is-co-strict-map (α b)
+    → Arrow-equiv
+        (tr-cov-hom {P = Gl X Y α ∘ (_, b)}
+          (Gl∘-is-covariant (_, b) α Xc Yc) 0≤1)
+        (α b)
+  tr-Gl-0≤1H Xc Yc b α-is-co-strict
     = mk-arr-equiv
-        (Gl-0≃ _ _ α b)
-        (Gl-1≃ _ _ α b)
-        λ x → ap fst (tr-hom-Gl α Xc Yc b x) ∙ sym (x .snd refl .snd)
+        (Gl-0≃ α b)
+        (Gl-1≃ α b α-is-co-strict)
+        (λ x → ap fst (tr-hom-Gl Xc Yc b x) ∙ sym (x .snd refl .snd))
 
   tr-Gl-0≤1
-    : ∀ {X Y : B → Type (𝓘 ⊔ 𝓥)}
-        (α : ∀ b → X b → Y b)
-        (Xc : is-covariant X) (Yc : is-covariant Y)
-        (b : B)
-      → Arrow-equiv
-          (tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (b ,_))
-          (α b)
-  tr-Gl-0≤1 α Xc Yc b
+    : (Xc : is-covariant X) (Yc : is-covariant Y)
+      (b : B)
+    → is-co-strict-map (α b)
+    → Arrow-equiv
+        (tr-cov {P = Gl X Y α} (Gl-is-covariant X Y α Xc Yc) (_, b))
+        (α b)
+  tr-Gl-0≤1 Xc Yc b α-is-co-strict
     = mk-arr-equiv
-        (Gl-0≃ _ _ α b)
-        (Gl-1≃ _ _ α b)
-        (λ x@(y , p)
-         → (fst ∘ tr-cov {P = Gl _ _ α} (Gl-is-covariant _ _ α Xc Yc) (b ,_)) x
-         ＝⟨ ap fst (tr-Gl α Xc Yc b x) ⟩
-           x .fst
-         ＝⟨ sym (p refl .snd) ⟩
-           α b (p refl .fst)
-         ∎)
+        (Gl-0≃ α b)
+        (Gl-1≃ α b α-is-co-strict)
+        ( λ x@(y , p)
+          → (fst ∘ tr-cov {P = Gl _ _ α} (Gl-is-covariant _ _ α Xc Yc) (_, b)) x
+          ＝⟨ ap fst (tr-Gl Xc Yc b x) ⟩
+            x .fst
+          ＝⟨ sym (p refl .snd) ⟩
+            α b (p refl .fst)
+          ∎)
 
-  total-tr-cov-section
-    : ∀ (x : Cov-Δ¹-bundle (𝓘 ⊔ 𝓥) B)
-      → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥} {B} (total-tr-cov (total-tr-cov-inv x)) x
-  total-tr-cov-section ((X , _) , (Y , _) , F) .fst b
-    = Gl-0≃ X Y F b
-  total-tr-cov-section ((X , _) , (Y , _) , F) .snd .fst b
-    = Gl-1≃ X Y F b
-  total-tr-cov-section ((X , Ac) , (Y , Bc) , F) .snd .snd b
-    = tr-Gl-0≤1 {X} {Y} F Ac Bc b .fst .Arrow-map.comm
+total-tr-cov-section
+  : ∀ {𝓤 𝓥 𝓥'} {B : Type 𝓤} (x : Cov-Δ¹-bundle (𝓘 ⊔ 𝓥) (𝓘 ⊔ 𝓥') B)
+  → cov-Δ¹-bundle-Path {𝓤} {𝓘 ⊔ 𝓥 ⊔ 𝓥'} {𝓘 ⊔ 𝓥 ⊔ 𝓥'} {𝓘 ⊔ 𝓥} {𝓘 ⊔ 𝓥'} {B = B}
+      (total-tr-cov (total-tr-cov-inv x))
+      (x)
+total-tr-cov-section ((X , _) , (Y , _) , F) .fst b
+  = Gl-0≃ (fst ∘ F) b
+total-tr-cov-section ((X , _) , (Y , _) , F) .snd .fst b
+  = Gl-1≃ (fst ∘ F) b (F b .snd)
+total-tr-cov-section {𝓤} {𝓥} {𝓥'} ((X , Ac) , (Y , Bc) , F) .snd .snd b
+  = tr-Gl-0≤1 {𝓤} {𝓥} {𝓥'} {X = X} {Y = Y} (fst ∘ F) Ac Bc b (F b .snd) .fst .Arrow-map.comm
 }
 }
 
 \subtree[stt-00V5]{
-\taxon{Lemma}
 \title{Right inverse}
+\taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{To show that we have a right inverse, for a covariant family
-#{F} over #{B \times \Delta^1}, we need that #{F(b,i)} is equal to
-#{\Gl(F(b,0), F(b,1), F(b,-)_*)}. By univalence we may give a fibrewise map and show it
-is an equivalence.
+#{F} over #{\Delta^1 \times B}, we need that #{F(i,b)} is equal to
+#{\Gl(F(0,{-}), F(1,{-}), b \mapsto F({-},b)_*)(i,b)}. By univalence we may give a
+fibrewise map and show it is an equivalence.
 }
 
-\p{To show that this map is indeed an equivalence we assume an additional axiom; namely that
-for a crisp fibrewise map #{\alpha} between crisp covariant families over #{B \times
-\Delta^1}, to check it is an equivalence it suffices to check that for all #{b},
-#{\alpha_{(b, 0)}} and #{\alpha_{(b,1)}} are equivalences.}
+\p{To show that this map is indeed an equivalence we assume an additional axiom;
+namely that for a crisp fibrewise map #{\alpha} between crisp covariant families
+over #{\Delta^1 \times B}, to check it is an equivalence it suffices to check that
+for all #{b}, #{\alpha_{(0,b)}} and #{\alpha_{(1,b)}} are equivalences.}
 
 \remark{
 This axiom follows for example from the pair of axioms that types with an
@@ -467,89 +593,85 @@ points of #{\Delta^1}.
 \agda{
 module _
   {𝓤 𝓥} {B : Type 𝓤}
-  (FF@(F , Fc) : Σ (B × Δ¹ → Type (𝓘 ⊔ 𝓥)) is-covariant)
-  (let Fbc b = covariant-base-change {P = F} (b ,_) Fc)
+  (FF@(F , Fc) : CovBundle (𝓘 ⊔ 𝓥) (Δ¹ × B))
+  (let Fbc b = covariant-base-change {P = F} (_, b) Fc)
   where
 
   Gl←cov-fam
-    : (i : B × Δ¹)
+    : (i : Δ¹ × B)
     → F i
     → Gl
-       (F ∘ (_, i0))
-       (F ∘ (_, i1))
-       (λ b → tr-cov {P = F} Fc (b ,_))
+       (F ∘ (i0 ,_))
+       (F ∘ (i1 ,_))
+       (λ b → tr-cov {P = F} Fc (_, b))
        i
-  Gl←cov-fam (b , i) x .fst
-    = tr-cov-hom {P = F ∘ (b ,_)}
+  Gl←cov-fam (i , b) x .fst
+    = tr-cov-hom {P = F ∘ (_, b)}
         (Fbc b)
         (Δ¹-hom←≤ 1-top)
         x
-  Gl←cov-fam (b , i) x .snd refl
+  Gl←cov-fam (i , b) x .snd refl
     = ( x
       , sym
          (happly
-           (coe-cov-0≤1 (F ∘ (b ,_)) (Fbc b) 1-top)
+           (coe-cov-0≤1 (F ∘ (_, b)) (Fbc b) 1-top)
            x))
 
   Gl←cov-fam-is-equiv-at-0
-    : ∀ b → is-equiv (Gl←cov-fam (b , i0))
+    : (b : B) → is-equiv (Gl←cov-fam (i0 , b))
   Gl←cov-fam-is-equiv-at-0 b
     = 3-for-2
-        (Gl-0≃
-          (F ∘ (_, i0))
-          (F ∘ (_, i1))
-          (λ b → tr-cov {P = F} Fc (b ,_))
-          b ._≃_.fwd-is-equiv)
+        (Gl-0≃ (λ b → tr-cov {P = F} Fc (_, b)) b ._≃_.fwd-is-equiv)
         id-is-equiv
 
   Gl←cov-fam-is-equiv-at-1
-    : ∀ b → is-equiv (Gl←cov-fam (b , i1))
+    : (b : B) → is-equiv (Gl←cov-fam (i1 , b))
   Gl←cov-fam-is-equiv-at-1 b
     = 3-for-2~
-        (tr-cov-idH~ (F ∘ (b ,_)) (Fbc b) (Δ¹-hom←≤ 1-top) (Δ¹-hom-≤-refl 1-top) h⁻¹)
+        (tr-cov-idH~ (F ∘ (_, b)) (Fbc b) (Δ¹-hom←≤ 1-top) (Δ¹-hom-≤-refl 1-top) h⁻¹)
         (Gl-1≃
-          (F ∘ (_, i0))
-          (F ∘ (_, i1))
-          (λ b → tr-cov {P = F} Fc (b ,_))
-          b ._≃_.fwd-is-equiv)
+          (λ b → tr-cov {P = F} Fc (_, b))
+          b
+          (tr-cov-is-co-strict {P = F} Fc (_, b)) ._≃_.fwd-is-equiv)
         id-is-equiv
 
 module _
   {@♭ 𝓤 𝓥} {@♭ B : Type 𝓤}
   (@♭ crisp-cov-Nat-is-equiv
-    : ∀ {@♭ 𝓤} (@♭ F G : Σ (B × Δ¹ → Type 𝓤) is-covariant)
-        (@♭ α : ∀ i → F .fst i → G .fst i)
-      → @♭ (∀ (@♭ b : B) (@♭ x) → is-♭-equiv (α (b , ∂Δ¹-incl x)))
+    : ∀ {@♭ 𝓤} (@♭ F G : CovBundle 𝓤 (Δ¹ × B))
+        (@♭ α : (ib : Δ¹ × B) → F .fst ib → G .fst ib)
+      → @♭ (∀ (@♭ b : B) (@♭ x) → is-♭-equiv (α (∂Δ¹-incl x , b)))
       → is-fibrewise-equiv α)
   where
 
   Gl←cov-fam-is-equiv
-    : ∀ (@♭ F : Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
-      → is-fibrewise-equiv (Gl←cov-fam {𝓤} {𝓥} F)
+    : (@♭ F : CovBundle (𝓘 ⊔ 𝓥) (Δ¹ × B))
+    → is-fibrewise-equiv (Gl←cov-fam {𝓤} {𝓥} F)
   Gl←cov-fam-is-equiv FF
-    = crisp-cov-Nat-is-equiv FF (total-tr-cov-inv {𝓤} {𝓥 ⊔ 𝓘} {B} (total-tr-cov FF))
+    = crisp-cov-Nat-is-equiv FF
+        (total-tr-cov-inv {𝓤} {𝓘 ⊔ 𝓥} {𝓘 ⊔ 𝓥} {B} (total-tr-cov FF))
         (Gl←cov-fam FF)
         (λ where
           b ∂Δ¹-1 → is-♭-equiv←is-equiv (Gl←cov-fam-is-equiv-at-1 FF b)
           b ∂Δ¹-0 → is-♭-equiv←is-equiv (Gl←cov-fam-is-equiv-at-0 FF b))
 
   total-tr-cov-retraction
-    : ∀ (@♭ F : Σ (B × Δ¹ → Type (𝓥 ⊔ 𝓘)) is-covariant)
-      → (bi : B × Δ¹)
-      → F .fst bi ≃ total-tr-cov-inv {𝓤} {𝓥 ⊔ 𝓘} {B} (total-tr-cov F) .fst bi
-  total-tr-cov-retraction F bi ._≃_.fwd = Gl←cov-fam {𝓤} {𝓥} F bi
-  total-tr-cov-retraction F bi ._≃_.fwd-is-equiv = Gl←cov-fam-is-equiv F bi
+    : (@♭ F : CovBundle (𝓘 ⊔ 𝓥) (Δ¹ × B))
+    → (ib : Δ¹ × B)
+    → F .fst ib ≃ total-tr-cov-inv {𝓤} {𝓘 ⊔ 𝓥} {𝓘 ⊔ 𝓥} {B} (total-tr-cov F) .fst ib
+  total-tr-cov-retraction F ib ._≃_.fwd = Gl←cov-fam {𝓤} {𝓥} F ib
+  total-tr-cov-retraction F ib ._≃_.fwd-is-equiv = Gl←cov-fam-is-equiv F ib
 }
 }
 
 \agda{
   opaque
     total-tr-cov-is-♭-equiv
-      : is-♭-equiv (total-tr-cov {𝓤} {𝓥 ⊔ 𝓘} {B})
+      : is-♭-equiv (total-tr-cov {𝓤} {𝓘 ⊔ 𝓥} {B = B})
     total-tr-cov-is-♭-equiv = is-equiv←qinv
       ( ♭-map total-tr-cov-inv
       , ♭-ind (λ a → mapply♭ (mod♭ (ext! (λ b → total-tr-cov-retraction a b e⁻¹))))
-      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (total-tr-cov-section {𝓤} {𝓥} a)))))
+      , ♭-ind (λ a → mapply♭ (mod♭ (ext! (total-tr-cov-section {𝓤} {𝓥} {𝓥} a)))))
 }
 }
 }

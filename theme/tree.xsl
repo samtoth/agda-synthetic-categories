@@ -254,6 +254,8 @@
           <xsl:apply-templates select="f:meta[@name='source']" />
           <xsl:apply-templates select="f:meta[@name='doi']" />
           <xsl:apply-templates select="f:meta[@name='orcid']" />
+          <xsl:apply-templates select="f:meta[@name='github']" />
+          <xsl:apply-templates select="f:meta[@name='mastodon']" />
           <xsl:apply-templates select="f:meta[@name='external']" />
           <xsl:apply-templates select="f:meta[@name='license']" />
           <xsl:apply-templates select="f:meta[@name='slides']" />

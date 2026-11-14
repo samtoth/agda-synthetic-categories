@@ -118,9 +118,35 @@
     </li>
   </xsl:template>
 
+  <xsl:template match="f:meta[@name='github']">
+    <li class="meta-item">
+      <a class="github profile-link" href="{concat('https://github.com/', normalize-space(.))}" aria-label="{concat('GitHub: @', normalize-space(.))}">
+        <xsl:value-of select="concat('@', normalize-space(.))" />
+      </a>
+    </li>
+  </xsl:template>
+
+  <xsl:template match="f:meta[@name='mastodon']">
+    <xsl:variable name="handle">
+      <xsl:choose>
+        <xsl:when test="starts-with(normalize-space(.), '@')">
+          <xsl:value-of select="substring(normalize-space(.), 2)" />
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="normalize-space(.)" />
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <li class="meta-item">
+      <a class="mastodon profile-link" href="{concat('https://', substring-after($handle, '@'), '/@', substring-before($handle, '@'))}" aria-label="{concat('Mastodon: @', $handle)}">
+        <xsl:value-of select="concat('@', $handle)" />
+      </a>
+    </li>
+  </xsl:template>
+
   <xsl:template match="f:meta[@name='orcid']">
     <li class="meta-item">
-      <a class="orcid" href="{concat('https://orcid.org/', .)}">
+      <a class="orcid profile-link" href="{concat('https://orcid.org/', .)}" aria-label="{concat('ORCID: ', .)}">
         <xsl:value-of select="." />
       </a>
     </li>

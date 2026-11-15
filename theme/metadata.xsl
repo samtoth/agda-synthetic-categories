@@ -87,18 +87,24 @@
   </xsl:template>
 
   <xsl:template match="f:authors">
-    <xsl:if test="f:author or f:contributor">
+    <!-- Temporary patch for https://github.com/samtoth/agda-synthetic-categories/issues/95 -->
+    <xsl:variable name="local-count" select="count(../f:meta[@name='local-author'])" />
+    <xsl:variable name="authors" select="f:author[$local-count = 0 or position() > last() - $local-count]" />
+    <!-- Forester appends indirect contributors after the explicit contributors. -->
+    <xsl:variable name="local-contributors" select="count(../f:meta[@name='local-contributor'])" />
+    <xsl:variable name="contributors" select="f:contributor[$local-contributors = 0 or position() &lt;= $local-contributors]" />
+    <xsl:if test="$authors or $contributors">
       <li class="meta-item">
         <address class="author">
-          <xsl:for-each select="f:author">
+          <xsl:for-each select="$authors">
             <xsl:apply-templates />
             <xsl:if test="position()!=last()">
               <xsl:text>, &#x20;</xsl:text>
             </xsl:if>
           </xsl:for-each>
-          <xsl:if test="f:contributor">
+          <xsl:if test="$contributors">
             <xsl:text>&#x20;with contributions from&#x20;</xsl:text>
-            <xsl:for-each select="f:contributor">
+            <xsl:for-each select="$contributors">
               <xsl:apply-templates />
               <xsl:if test="position()!=last()">
                 <xsl:text>,&#x20;</xsl:text>

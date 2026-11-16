@@ -124,6 +124,14 @@
     </li>
   </xsl:template>
 
+  <xsl:template match="f:meta[@name='arxiv']">
+    <li class="meta-item">
+      <a class="arxiv link" href="{concat('https://arxiv.org/abs/', normalize-space(.))}">
+        <xsl:value-of select="concat('arXiv:', normalize-space(.))" />
+      </a>
+    </li>
+  </xsl:template>
+
   <xsl:template match="f:meta[@name='github']">
     <li class="meta-item">
       <a class="github profile-link" href="{concat('https://github.com/', normalize-space(.))}" aria-label="{concat('GitHub: @', normalize-space(.))}">

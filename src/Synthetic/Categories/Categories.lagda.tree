@@ -204,14 +204,10 @@ module _ {𝓤} {A : Type 𝓤} where
 }
 
 \subtree[stt-00R0]{
-\title{A Segal type is Rezk-complete iff \code{Iso←Id} is an equivalence}
+\title{A type is Rezk-complete iff \code{Iso←Id} is an equivalence}
 \taxon{Proposition}
 \author{fredrikbakke}
 \date{2026-05-15}
-
-\p{
-In fact, we show the backwards implication is true without assuming Segalness.
-}
 
 \agda{
 module _ {𝓤} {A : Type 𝓤} where
@@ -220,40 +216,35 @@ module _ {𝓤} {A : Type 𝓤} where
     : Iso←Id-is-equiv A
     → is-rezk-complete A
   is-rezk-complete←Iso←Id-is-equiv A-iso _
-    = is-equiv←qinv qinv where
-    module totid = is-equiv (id-TotalIso-is-equiv←Iso←Id-is-equiv A-iso)
+    = 3-for-2~ (ℑ-ev-const h⁻¹) ℑ-ev-is-equiv
+        (id-TotalIso-is-equiv←Iso←Id-is-equiv A-iso)
 
-    qinv : quasi-inv (const: A ℑ)
-    qinv .fst F = totid.bwd (ℑ-rep→ F)
-    qinv .snd .fst a = ap fst (totid.ε (ℑ-rep→ (const: A ℑ a)))
-    qinv .snd .snd F
-      = ℑ-rep←id (totid.bwd (ℑ-rep→ F))
-      ∙ ap ℑ-rep← (totid.ε (ℑ-rep→ F))
-      ∙ ℑ-rep←→ F
+  module _ (A-is-rezk-complete : is-rezk-complete A) where
 
-  id-TotalIso-is-equiv←is-rezk-complete
-    : is-segal A → is-rezk-complete A → is-equiv (id-TotalIso {A = A})
-  id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete
-    = is-equiv-∘~
-        (ℑ-rep→const A-is-segal)
-        (ℑ-rep→-is-equiv A-is-segal)
-        (A-is-rezk-complete tt)
+    id-TotalIso-is-equiv←is-rezk-complete : is-equiv (id-TotalIso {A = A})
+    id-TotalIso-is-equiv←is-rezk-complete
+      = is-equiv-∘~ ℑ-ev-const ℑ-ev-is-equiv (A-is-rezk-complete tt)
 
-  Iso←Id-is-equiv←is-rezk-complete
-    : is-segal A → is-rezk-complete A → Iso←Id-is-equiv A
-  Iso←Id-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete a
-    = is-fibrewise-equiv←is-total-equiv
-        (is-fibrewise-equiv←is-total-equiv
-          (is-equiv-∘~
-            (TotalIso←TotalId'-fst)
-              (id-TotalIso-is-equiv←is-rezk-complete A-is-segal A-is-rezk-complete)
-              (is-equiv⁻¹ refl-TotalId'-is-equiv))
-          (a))
+    Iso-is-torsorial←is-rezk-complete : (a : A) → is-torsorial (Iso a)
+    Iso-is-torsorial←is-rezk-complete
+      = fst-is-equiv←fam-is-singleton
+          (3-for-2' id-TotalIso-is-equiv←is-rezk-complete id-is-equiv)
+
+    Iso←Id-is-equiv←is-rezk-complete : Iso←Id-is-equiv A
+    Iso←Id-is-equiv←is-rezk-complete a
+      = fundamental-Id
+          (Iso a)
+          (Iso-is-torsorial←is-rezk-complete a)
+          (Iso←Id: a)
+
+    Id≃Iso←is-rezk-complete : (a b : A) → (a ＝ b) ≃ Iso a b
+    Id≃Iso←is-rezk-complete a b
+      = mk≃ (Iso←Id: a b) (Iso←Id-is-equiv←is-rezk-complete a b)
 
   is-rezk-complete↔Iso←Id-is-equiv
-    : is-segal A → is-rezk-complete A ↔ Iso←Id-is-equiv A
-  is-rezk-complete↔Iso←Id-is-equiv A-is-segal
-    = ( Iso←Id-is-equiv←is-rezk-complete A-is-segal
+    : is-rezk-complete A ↔ Iso←Id-is-equiv A
+  is-rezk-complete↔Iso←Id-is-equiv
+    = ( Iso←Id-is-equiv←is-rezk-complete
       , is-rezk-complete←Iso←Id-is-equiv)
 }
 }
@@ -290,6 +281,12 @@ module _  {𝓤 : Level} {A : Type 𝓤}  where
     : is-segal A → is-rezk-complete A → is-complete-segal A
   is-complete-segal←is-segal←is-rezk-complete A-segal A-rezk-complete
     = is-local-⨄₁ᶠ←is-local A-segal (is-localᴸ←is-null A-rezk-complete)
+
+  Id≃Iso←is-complete-segal
+    : is-complete-segal A → (a b : A) → (a ＝ b) ≃ Iso a b
+  Id≃Iso←is-complete-segal 𝐴
+    = Id≃Iso←is-rezk-complete
+        (is-segal×is-rezk-complete←is-complete-segal 𝐴 .snd)
 }
 
 \agda{
@@ -384,18 +381,18 @@ module _
     : is-rezk-complete A
     → ((a b : A) → Hom A a b ∈ S)
     → is-separated S A
-  is-separated←Hom∈S←is-complete-segal rezk h a b
+  is-separated←Hom∈S←is-complete-segal A-is-rezk-complete h a b
     = ∈S←equiv
-        (mk≃ (Iso←Id: a b) (Iso←Id-is-equiv←is-rezk-complete 𝐴 rezk a b) e⁻¹)
+        (Id≃Iso←is-rezk-complete A-is-rezk-complete a b e⁻¹)
         (Iso∈S←Hom∈S h a b)
 
   is-separated←is-hom-separated←is-complete-segal
     : is-rezk-complete A
     → is-hom-separated GS A
     → is-separated S A
-  is-separated←is-hom-separated←is-complete-segal rezk sep
-    = is-separated←Hom∈S←is-complete-segal rezk
-        (Hom∈S←is-hom-separated GS sep)
+  is-separated←is-hom-separated←is-complete-segal A-is-rezk-complete A-is-hom-sep
+    = is-separated←Hom∈S←is-complete-segal A-is-rezk-complete
+        (Hom∈S←is-hom-separated GS A-is-hom-sep)
 }
 }
 

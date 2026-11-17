@@ -17,10 +17,12 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Arrows
+open import Core.ArrowMorphisms
 open import Core.ArrowEquiv
 open import Core.ArrowRetracts
 open import Core.GlobalClassesMaps
 open import Core.Orthogonal
+open import Core.DependentOrthogonal
 open import Core.LiftingSquares
 open import Core.Cube
 open import Core.PullbackPowers
@@ -31,6 +33,7 @@ open import Core.CartesianSquares
 open import Core.PushoutSums
 open import Core.Coslices
 open import Core.FunctorialityPushouts
+open import Core.PullbackPowersFunctoriality
 open import Core.SpanMaps
 
 open import Modalities.WideSubcategoriesTypes
@@ -230,20 +233,23 @@ module _ {𝓐 𝓑 𝓒} {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} (j : A
 \date{2026-09-19}
 
 \p{
-Orthogonal families are closed under fibrewise retracts.
+Orthogonal families are closed under fibrewise retracts. This also holds for
+[dependently orthogonal families](bak-4E32).
 }
 
 \agda{
-module _ {𝓐 𝓑 𝓒} {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} (j : A → B) where
+module _
+  {𝓐 𝓑 𝓒} {A : Type 𝓐} {B : Type 𝓑} {C : B → Type 𝓒} (j : A → B)
+  where
 
   are-orthogonal-fam←retract
-    : ∀ {𝓤 𝓥} {P : C → Type 𝓤} {Q : C → Type 𝓥}
-      → (∀ c → retract (P c) (Q c))
-      → are-orthogonal-fam j Q → are-orthogonal-fam j P
+    : ∀ {𝓤 𝓥} {P : {b : B} → C b → Type 𝓤} {Q : {b : B} → C b → Type 𝓥}
+      → ({b : B} (c : C b) → retract (P c) (Q c))
+      → are-dependently-orthogonal-fam j Q → are-dependently-orthogonal-fam j P
   are-orthogonal-fam←retract R orth σ
     = is-equiv←Arrow-incoherent-retract
-        (mk-arr-incoherent-retract (Π-retract (R ∘ σ)) (Π-retract (R ∘ σ ∘ j))
-          ~refl ~refl)
+        (mk-arr-incoherent-retract (Π-retract (λ b → R {b} (σ b)))
+          (Π-retract (λ a → R {j a} (σ (j a)))) ~refl ~refl)
         (orth σ)
 }
 }
@@ -266,8 +272,8 @@ module _
     : Arrow-retract g h
     → Arrow-incoherent-retract (pullback-power f g) (pullback-power f h)
   pullback-power-Arrow-incoherent-retract←right-retract (F , ret)
-    = ( pullback-power←right-arrow-map f F
-      , pullback-power←right-arrow-map f (ret .fst)
+    = ( pullback-power₁-right f F
+      , pullback-power₁-right f (ret .fst)
       , (λ l → funext→ (λ b → ret .snd .fst (l b)))
       , λ G
         → Arrow-map-path→ (paste-squares-assoc (ret .fst) F G)
@@ -1378,38 +1384,38 @@ Consequently, if #{f \perp j}, #{j \perp i}, #{f \perp g}, and #{j \perp g}, the
 module _
   {𝓤 𝓥 𝓦 𝓜}
   {A : Type 𝓤} {B : Type 𝓥} {X : Type 𝓦} {Y : Type 𝓜}
-  {f : A → B} {g : X → Y} {S : Arrow-map f g} (t : Lift S)
+  {f : A → B} {g : X → Y} {S : Arrow-map f g} (t : SqLift S)
   (let module S = Arrow-map S)
-  (let module t = Lift t)
+  (let module t = SqLift t)
   where
 
-  lift-left-orthogonal
+  sqlift-left-orthogonal
     : ∀ {𝓠 𝓡} {C : Type 𝓠} {D : Type 𝓡} {h : C → D}
       → are-orthogonal f h
       → are-orthogonal S.top h
       → are-orthogonal t.lift h
-  lift-left-orthogonal {h = h} fh th
+  sqlift-left-orthogonal {h = h} fh th
     = left-orthogonal-right-cancel fh
         (left-orthogonal-homotopy h (t.L h⁻¹) th)
 
-  lift-right-orthogonal
+  sqlift-right-orthogonal
     : ∀ {𝓠 𝓡} {C : Type 𝓠} {D : Type 𝓡} {h : C → D}
       → are-orthogonal h g
       → are-orthogonal h S.bot
       → are-orthogonal h t.lift
-  lift-right-orthogonal {h = h} hg hb
+  sqlift-right-orthogonal {h = h} hg hb
     = right-orthogonal-left-cancel~ h (t.K h⁻¹) hg hb
 
-  lift-is-equiv
+  sqlift-is-equiv
     : are-orthogonal f S.bot
     → are-orthogonal S.top S.bot
     → are-orthogonal f g
     → are-orthogonal S.top g
     → is-equiv t.lift
-  lift-is-equiv fb tb fg tg
+  sqlift-is-equiv fb tb fg tg
     = is-equiv←self-orthogonal
-        (lift-right-orthogonal
-          (lift-left-orthogonal fg tg)
-          (lift-left-orthogonal fb tb))
+        (sqlift-right-orthogonal
+          (sqlift-left-orthogonal fg tg)
+          (sqlift-left-orthogonal fb tb))
 }
 }

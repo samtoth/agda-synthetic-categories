@@ -23,8 +23,11 @@ open import Core.GlobalClassesMaps
 open import Core.Orthogonal
 open import Core.OrthogonalClosure
 open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.CovariantTransport Δ¹ I
 open import Synthetic.Categories.ContravariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantTransport Δ¹ I
 }
 }
 
@@ -120,10 +123,9 @@ is-kan-is-Δ¹-relative P .snd bi b
 \taxon{Lemma}
 \author{fredrikbakke}
 \date{2026-09-19}
+\date{2026-11-05}
 
-\p{
-Transport between fibres in a Kan family are equivalences.
-}
+\p{Covariant transport in a Kan family defines an equivalence of fibres.}
 \proof{
 \p{
 Let #{P \colon A \to \UV} be a Kan family and let #{f : \Hom_A(x,y)}.
@@ -139,16 +141,84 @@ module _
   (bi : is-kan P)
   where
 
+  tr-cov-is-equiv
+    : (h : Δ¹ → A) → is-equiv (tr-cov {P = P} (is-covariant←is-kan P bi) h)
+  tr-cov-is-equiv h
+    = 3-for-2~'
+        ( λ s
+          → sym
+            ( tr-cov-unique {P = P} (is-covariant←is-kan P bi) h
+                (const (s i1)) (s i0) (λhom s)))
+        (ev-i0-is-equiv←is-covariant {P = P} (is-covariant←is-kan P bi) h)
+        (ev-i1-is-equiv←is-contravariant {P = P} (is-contravariant←is-kan P bi) h)
+
   tr≃-kan : (h : Δ¹ → A) → P (h i0) ≃ P (h i1)
-  tr≃-kan h
-    = P (h i0)
-        ≃⟨ ev-i0≃←is-covariant {P = P} (is-covariant←is-kan P bi) h e⁻¹ ⟩
-      Π Δ¹ (P ∘ h)
-        ≃⟨ ev-i1≃←is-contravariant {P = P} (is-contravariant←is-kan P bi) h ⟩
-      P (h i1)
-        ≃∎
+  tr≃-kan h = mk≃ (tr-cov {P = P} (is-covariant←is-kan P bi) h) (tr-cov-is-equiv h)
+
+  opaque
+    unfolding tr-cov-hom
+
+    tr-cov-hom-is-equiv
+      : {x y : A} (h : Hom A x y)
+      → is-equiv (tr-cov-hom {P = P} (is-covariant←is-kan P bi) h)
+    tr-cov-hom-is-equiv (mk-hom h refl refl) = tr-cov-is-equiv h
 
   tr-hom≃-kan : {x y : A} → Hom A x y → P x ≃ P y
-  tr-hom≃-kan (mk-hom h refl refl) = tr≃-kan h
+  tr-hom≃-kan h
+    = mk≃ (tr-cov-hom {P = P} (is-covariant←is-kan P bi) h) (tr-cov-hom-is-equiv h)
+}
+}
+
+\subtree[bak-CE0F]{
+\title{Unital transport criterion for Kan families}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-03}
+
+\p{
+A type family #{P \colon A \to \UV}  isa Kan family if and only if it has
+[#{Δ¹}-discrete](stt-00B6) fibres and [unital covariant transport](bak-19CB) which
+define equivalences of fibres. In fact, it suffices that the transport function
+defines a retract on fibres.
+}
+
+\proof{
+\p{
+By the [unital transport criterion for covariant families](stt-00VJ) the type family
+#{P} must be covariant, and likewise the inverse transport defines a contravariant
+unital transport function, hence by the
+[unital transport criterion for contravariant families](stt-00VL) the family is also
+contravariant.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} {P : A → Type 𝓥}
+  (P-is-discrete : (a : A) → is-Δ¹-discrete (P a))
+  (ρ : Covariant-unital-transport P)
+  where
+
+  contrav-unital-transport←cov-unital-transport-retraction
+    : ({x y : A} (f : Hom A x y) → retraction (ρ .fst f))
+    → Contravariant-unital-transport P
+  contrav-unital-transport←cov-unital-transport-retraction r .fst f
+    = r f .fst
+  contrav-unital-transport←cov-unital-transport-retraction r .snd x
+    = r (idH x) .fst ◃h (ρ .snd x h⁻¹) ∙h r (idH x) .snd
+
+  is-kan←unital-transport'
+    : ({x y : A} (f : Hom A x y) → retraction (ρ .fst f)) → is-kan P
+  is-kan←unital-transport' r
+    = is-kan↔covariant-and-contravariant P .snd
+        ( is-covariant←cov-unital-transport P-is-discrete ρ
+        , is-contravariant←contrav-unital-transport
+            (P-is-discrete)
+            (contrav-unital-transport←cov-unital-transport-retraction r))
+
+  is-kan←unital-transport
+    : ({x y : A} (f : Hom A x y) → is-equiv (ρ .fst f)) → is-kan P
+  is-kan←unital-transport ρ-is-equiv
+    = is-kan←unital-transport' (is-equiv.retraction-fwd ∘ ρ-is-equiv)
 }
 }

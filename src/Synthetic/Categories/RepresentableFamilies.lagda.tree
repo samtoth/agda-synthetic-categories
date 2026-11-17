@@ -1,0 +1,249 @@
+\title{Representable type families}
+\taxon{Module}
+\author{fredrikbakke}
+\date{2026-11-17}
+\import{stt-macros}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.RepresentableFamilies
+  {𝓘} (Δ¹ : Type 𝓘) (I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+
+open import Modalities.Instances.Truncation
+
+open import Synthetic.Hom Δ¹ i0 i1
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.Categories Δ¹ I
+open import Synthetic.Categories.Isomorphisms Δ¹ I
+open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.CovariantClosure Δ¹ I
+open import Synthetic.Categories.CovariantHomFamilies Δ¹ I
+open import Synthetic.Categories.Yoneda Δ¹ I
+open import Synthetic.Categories.UniversalElements Δ¹ I
+}
+}
+
+\subtree[bak-F022]{
+\title{Hom-representations of type families}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-17}
+
+\p{
+Let #{P \colon A \to \UV} be a type family. A \em{Hom-representation} of #{P}
+consists of an element #{a : A} and a fibrewise equivalence
+#{\Pi1{x : A}{\Hom_A(a,x) \simeq P(x)}}.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+
+  Hom-representation-at : A → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Hom-representation-at a = (x : A) → Hom A a x ≃ P x
+
+  Hom-representation : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  Hom-representation = Σ A Hom-representation-at
+
+module _ {𝓤} {A : Type 𝓤} (a : A) where
+
+  hom-representation : Hom-representation (Hom A a)
+  hom-representation = (a , (λ _ → id≃))
+}
+}
+
+\subtree[bak-2600]{
+\title{Representable type families}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-17}
+
+\p{
+A type family #{P \colon A \to \UV} is \em{representable} if there
+exists a [Hom-representation](bak-F022).
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (P : A → Type 𝓥) where
+
+  is-representable : Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
+  is-representable = ║ Hom-representation P ║₋₁
+
+  is-representable-is-prop : is-prop is-representable
+  is-representable-is-prop = ║-║₋₁-is-prop
+
+  is-representable←representation : Hom-representation P → is-representable
+  is-representable←representation = │_│₋₁
+
+module _ {𝓤} {A : Type 𝓤} (a : A) where
+
+  Hom-is-representable : is-representable (Hom A a)
+  Hom-is-representable = │ hom-representation a │₋₁
+}
+}
+
+\subtree[bak-58B7]{
+\title{Representable type families over Segal types are covariant}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-17}
+
+\p{
+Let #{A} be [Segal](stt-00AI). Every [representable family](bak-2600) over #{A}
+is [covariant](stt-00AY).
+}
+
+\proof{
+\p{
+Covariance is a proposition, so the result follows from [invariance under fibrewise
+equivalence](bak-0EA4).
+}
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) {P : A → Type 𝓥} where
+
+  is-covariant←representation : Hom-representation P → is-covariant P
+  is-covariant←representation (a , e)
+    = is-covariant←equiv e (hom-fam-cov 𝐴 a)
+
+  is-covariant←is-representable : is-representable P → is-covariant P
+  is-covariant←is-representable
+    = Trunc.○-rec (is-covariant-is-prop P) is-covariant←representation
+}
+}
+
+\subtree[bak-8832]{
+\title{Hom-representations as universal elements}
+\taxon{Lemma}
+\author{fredrikbakke}
+\contributor{samueltoth}
+\date{2026-11-17}
+
+\p{
+Let #{A} be [Segal](stt-00AI), #{P \colon A \to \UV} a type family, and #{a : A}.
+Then a [Hom-representation](bak-F022) of #{P} at #{a} is equivalent to a proof that
+#{P} is [covariant](stt-00AY) together with a [universal element](stt-00FX) in
+#{P(a)}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) {P : A → Type 𝓥} (a : A)
+  where
+
+  universal-element≃Hom-representation-at
+    : (Σ[ P-is-cov ∶ is-covariant P ] Σ[ x ∶ P a ] is-universal P-is-cov (a , x))
+    ≃ Hom-representation-at P a
+  universal-element≃Hom-representation-at
+    = Σ-snd-≃ (λ P-is-cov → Σ-fst-≃ (yo≃ P-is-cov a 𝐴) ∙e fibrewise-equiv≃)
+    ∙e ×-swap
+    ∙e Σ-singleton (λ e
+      → mk-singl (is-covariant←representation 𝐴 (a , e)) (is-covariant-is-prop P _))
+}
+}
+
+\subtree[bak-4FD7]{
+\title{Comparing Hom-representations by isomorphisms}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-11-17}
+
+\p{
+Let #{A} be [Segal](stt-00AI), and suppose #{P} is Hom-represented at #{a : A}. Then
+Hom-representations of #{P} at #{b} are equivalent to isomorphisms between #{a} to
+#{b}.
+}
+
+\proof{
+\p{
+By [the Yoneda lemma](stt-00LK), a fibrewise map from #{\Hom_A(b,{-})} to #{P} is
+uniquely of the form #{g \mapsto e_x(g \circ f)} for a morphism #{f : \Hom_A(a,b)}.
+Since each #{e_x} is an equivalence, this map is a fibrewise equivalence [precisely
+when precomposition by #{f} is](stt-00PN), or equivalently when #{f} is an
+isomorphism.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} (𝐴 : is-segal A) {P : A → Type 𝓥}
+  (a : A) (e : Hom-representation-at P a) {b : A}
+  where
+
+  Iso≃Hom-representation-at : Iso a b ≃ Hom-representation-at P b
+  Iso≃Hom-representation-at
+    = Σ-≃
+        ( Hom≃Homʸ 𝐴 a b ∙e Π-fam-≃ (λ x → postcomp-≃ (e x)))
+        ( λ f
+          → equiv←logical
+              (is-iso-is-prop 𝐴)
+              (Π-is-prop (λ _ → is-equiv-is-prop))
+              ( is-iso↔precomp-equiv 𝐴
+              ∙iff ( (λ H x → is-equiv-∘ (e x ._≃_.fwd-is-equiv) (H x))
+                  , (λ H x → 3-for-2 (e x ._≃_.fwd-is-equiv) (H x)))))
+    ∙e fibrewise-equiv≃
+}
+}
+
+\subtree[bak-4DB2]{
+\title{Uniqueness of Hom-representations over complete Segal types}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-11-17}
+
+\p{
+Let #{A} be [complete Segal](stt-00PG) and #{P \colon A \to \UV} a type family.
+Then the type of [Hom-representations](bak-F022) of #{P} is a proposition, and
+consequently, if #{P} is representable, its type of Hom-representations is
+contractible.
+}
+
+\proof{
+\p{
+Assume given a Hom-representation at #{a}. By [comparison of
+Hom-representations](bak-4FD7), the type of all Hom-representations is equivalent to
+#{\Sigma1{b : A}{\Iso_A(a,b)}}, and by [Rezk completeness](stt-00R0) this type is
+contractible.
+}
+}
+
+\agda{
+module _
+  {𝓤 𝓥} {A : Type 𝓤} (𝐴' : is-complete-segal A) (P : A → Type 𝓥)
+  (let 𝐴 = is-segal×is-rezk-complete←is-complete-segal 𝐴' .fst)
+  where
+
+  opaque
+    Hom-representation-is-singleton
+      : is-representable P → is-singleton (Hom-representation P)
+    Hom-representation-is-singleton
+      = Trunc.○-rec is-single-is-prop (λ (a , e)
+        → is-single←equiv
+            ( Σ-snd-≃ (λ b → Id≃Iso←is-complete-segal 𝐴' a b
+            ∙e Iso≃Hom-representation-at 𝐴 a e))
+            Sing-is-singleton)
+
+  Hom-representation-is-prop : is-prop (Hom-representation P)
+  Hom-representation-is-prop
+    = is-prop←is-single-if-inhabited (Hom-representation-is-singleton ∘ │_│₋₁)
+
+  representation←is-representable : is-representable P → Hom-representation P
+  representation←is-representable = centre ∘ Hom-representation-is-singleton
+
+  is-representable↔representation : is-representable P ↔ Hom-representation P
+  is-representable↔representation
+    = (representation←is-representable , is-representable←representation P)
+}
+}

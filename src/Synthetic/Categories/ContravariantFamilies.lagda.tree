@@ -595,15 +595,35 @@ module _
 }
 }
 
-\subtree[bak-A601]{
-\title{Contravariant lift criterion for contravariant families}
+\subtree[stt-00VL]{
+\title{Unital transport criterion for contravariant families}
 \taxon{Theorem}
 \author{fredrikbakke}
-\date{2026-11-05}
+\date{2026-08-19}
 
 \p{
-A type family is contravariant iff its fibres are #{Δ¹}-discrete and it admits
-contravariant lifts, equivalently sections of evaluation at #{1} along every arrow.
+A type family #{B \colon A \to \UU} is contravariant iff it has #{Δ¹}-discrete fibres
+and a transport map #{f^* \colon B(y) \to B(x)}, for every #{f : \Hom_A(x,y)}, such
+that #{\id^* \sim \id}.
+}
+
+\p{This result is due to [[robschellingerhout]].}
+
+\proof{
+\p{
+The forwards direction follows from [unitality of contravariant transport](stt-00OF)
+and discreteness of the fibres, obtained by restricting to constant arrows. For the
+backwards direction we use the [lifts constructed from unital transport](bak-8791) to
+give an inverse to \code{precomp-Π (B ∘ f) (point i1)}.
+}
+
+\p{
+This construction is an inverse to restriction at #{1}. One inverse law follows
+immediately from unitality. For the other, the contraction of #{Δ¹_{i/}} from
+#{(i,\id_i)} to #{(1,i\leq 1)} induces a morphism in #{B(f(i))} from
+#{f(\id_i)^*(s(i))} to #{f(i\leq 1)^*(s(1))}. Unitality and
+#{Δ¹}-discreteness give the desired equality.
+}
 }
 
 \agda{
@@ -615,33 +635,72 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
     = 3-for-2 (is-right-family←is-contravariant B B-is-contrav (const x))
         point-is-equiv
 
-  is-contravariant←lifts
+  is-right-family←contrav-unital-transport
     : ((x : A) → is-Δ¹-discrete (B x))
-    → Contravariant-lifts B → is-contravariant B
-  is-contravariant←lifts B-disc ℓ
-    = is-contravariant←is-right-family B (λ g
-      → 3-for-2 unit-ev-is-equiv (is-equiv←section←injective
-          ( λ {s} {t} p → funext→ (λ i
-            → sym (transport-section g s (i≤1 i))
-            ∙ ap (ρ (ap-hom g (i≤1 i))) p
-            ∙ transport-section g t (i≤1 i)))
-          (_≃_.fwd (Contravariant-lifts≃sections-ev-i1 B) ℓ g)))
+    → Contravariant-unital-transport B → is-right-family B
+  is-right-family←contrav-unital-transport B-disc (ρ , ρ-id) f
+    = let (lift , lift-id) = section-ev-i1←contrav-unital-transport (ρ , ρ-id) f
+      in 3-for-2 unit-ev-is-equiv (is-equiv←qinv
+          (lift , (λ s → funext→ (λ i → transport-section f s (i≤1 i))) , lift-id))
     where
-
-    ρ : Contravariant-transport B
-    ρ = contrav-transport←lifts ℓ
 
     transport-section
       : (f : Δ¹ → A) (s : Π Δ¹ (B ∘ f)) {i j : Δ¹} (h : Hom Δ¹ i j)
       → ρ (ap-hom f h) (s j) ＝ s i
     transport-section f s (mk-hom h refl refl)
       = sym (ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i1)))
-                (Hom-ext→ {f = 0≤i i1} {g = 0≤1} ((λ _ → 1-top) , prop! , prop!)))
+          (Hom-ext→ {f = 0≤i i1} {g = 0≤1} ((λ _ → 1-top) , prop! , prop!)))
       ∙ weakly-constant←is-null (B-disc (f (h i0))) tt
           (λ i → ρ (ap-hom (f ∘ h) (0≤i i)) (s (h i))) i1 i0
       ∙ ap (λ k → ρ (ap-hom (f ∘ h) k) (s (h i0))) 0≤i-at-0
-      ∙ Id←Hom←is-Δ¹-discrete (B-disc (f (h i0)))
-          (ℓ (const (f (h i0))) (s (h i0)) .snd)
+      ∙ ρ-id (f (h i0)) (s (h i0))
+
+  is-contravariant←contrav-unital-transport
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Contravariant-unital-transport B → is-contravariant B
+  is-contravariant←contrav-unital-transport B-disc
+    = is-contravariant←is-right-family B
+    ∘ is-right-family←contrav-unital-transport B-disc
+
+  is-contravariant↔contrav-unital-transport
+    : is-contravariant B
+    ↔ (Contravariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
+  is-contravariant↔contrav-unital-transport .fst B-is-contrav
+    = ( contrav-unital-transport←is-contravariant B-is-contrav
+      , is-Δ¹-discrete-family←is-contravariant B-is-contrav)
+  is-contravariant↔contrav-unital-transport .snd (ρ , B-disc)
+    = is-contravariant←contrav-unital-transport B-disc ρ
+}
+}
+
+\subtree[bak-A601]{
+\title{Contravariant lift criterion for contravariant families}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-11-05}
+
+\p{
+A type family is contravariant iff its fibres are #{Δ¹}-discrete and it admits
+contravariant lifts, or equivalently it admits sections of evaluation at #{1} along
+every arrow.
+}
+
+\agda{
+module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
+
+  contrav-unital-transport←lifts
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Contravariant-lifts B → Contravariant-unital-transport B
+  contrav-unital-transport←lifts B-is-disc ℓ
+    = ( contrav-transport←lifts ℓ
+      , (λ a x → Id←Hom←is-Δ¹-discrete (B-is-disc a) (ℓ (const a) x .snd)))
+
+  is-contravariant←lifts
+    : ((x : A) → is-Δ¹-discrete (B x))
+    → Contravariant-lifts B → is-contravariant B
+  is-contravariant←lifts B-disc
+    = is-contravariant←contrav-unital-transport B-disc
+    ∘ contrav-unital-transport←lifts B-disc
 
   ev-i1-is-equiv←sections
     : ((x : A) → is-Δ¹-discrete (B x))
@@ -675,65 +734,6 @@ const-is-contravariant←is-Δ¹-discrete {A = A} {B} B-disc
   → is-Δ¹-discrete B → is-right-fibration (!: B)
 !-is-right-fibration←is-Δ¹-discrete B-disc
   = orthogonal-!←orthogonal-type (3-for-2' (B-disc tt) point-is-equiv)
-}
-}
-
-\subtree[stt-00VL]{
-\title{Unital transport criterion for contravariant families}
-\taxon{Theorem}
-\author{fredrikbakke}
-\date{2026-08-19}
-
-\p{
-A type family #{B \colon A \to \UU} is contravariant iff it has #{Δ¹}-discrete fibres
-and a transport map #{f^* \colon B(y) \to B(x)}, for every #{f : \Hom_A(x,y)}, such
-that #{\id^* \sim \id}.
-}
-
-\p{This result is due to [[robschellingerhout]].}
-
-\proof{
-\p{
-The forwards direction follows from [unitality of contravariant transport](stt-00OF)
-and [discreteness of the fibres](bak-A601). For the backwards direction,
-the [lifts constructed from unital transport](bak-8791), together with the
-[contravariant lift criterion](bak-A601), give an inverse to
-\code{precomp-Π (B ∘ f) (point i1)}.
-}
-
-\p{
-This construction is an inverse to restriction at #{1}. One inverse law follows
-immediately from unitality. For the other, the contraction of #{Δ¹_{i/}} from
-#{(i,\id_i)} to #{(1,i\leq 1)} induces a morphism in #{B(f(i))} from
-#{f(\id_i)^*(s(i))} to #{f(i\leq 1)^*(s(1))}. Unitality and
-#{Δ¹}-discreteness give the desired equality.
-}
-}
-
-\agda{
-module _ {𝓤 𝓥} {A : Type 𝓤} {B : A → Type 𝓥} where
-
-  is-contravariant←contrav-unital-transport
-    : ((x : A) → is-Δ¹-discrete (B x))
-    → Contravariant-unital-transport B → is-contravariant B
-  is-contravariant←contrav-unital-transport B-disc ρ
-    = is-contravariant←lifts B-disc (lift-contrav-unital-transport ρ)
-
-  is-right-family←contrav-unital-transport
-    : ((x : A) → is-Δ¹-discrete (B x))
-    → Contravariant-unital-transport B → is-right-family B
-  is-right-family←contrav-unital-transport B-disc
-    = is-right-family←is-contravariant B
-    ∘ is-contravariant←contrav-unital-transport B-disc
-
-  is-contravariant↔contrav-unital-transport
-    : is-contravariant B
-    ↔ (Contravariant-unital-transport B × ((x : A) → is-Δ¹-discrete (B x)))
-  is-contravariant↔contrav-unital-transport .fst B-is-contrav
-    = ( contrav-unital-transport←is-contravariant B-is-contrav
-      , is-Δ¹-discrete-family←is-contravariant B-is-contrav)
-  is-contravariant↔contrav-unital-transport .snd (ρ , B-disc)
-    = is-contravariant←contrav-unital-transport B-disc ρ
 }
 }
 

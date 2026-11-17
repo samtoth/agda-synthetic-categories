@@ -244,7 +244,10 @@
       </h1>
       <div class="metadata">
         <ul>
-          <xsl:apply-templates select="f:date" />
+          <!-- Temporary patch for https://github.com/samtoth/agda-synthetic-categories/issues/95 -->
+          <!-- <xsl:apply-templates select="f:date" /> -->
+          <xsl:variable name="local-dates" select="count(f:meta[@name='local-date'])" />
+          <xsl:apply-templates select="f:date[$local-dates = 0 or position() > last() - $local-dates]" />
           <xsl:if test="not(f:meta[@name = 'author']/.='false')">
             <xsl:apply-templates select="f:authors" />
           </xsl:if>
@@ -253,7 +256,10 @@
           <xsl:apply-templates select="f:meta[@name='venue']" />
           <xsl:apply-templates select="f:meta[@name='source']" />
           <xsl:apply-templates select="f:meta[@name='doi']" />
+          <xsl:apply-templates select="f:meta[@name='arxiv']" />
           <xsl:apply-templates select="f:meta[@name='orcid']" />
+          <xsl:apply-templates select="f:meta[@name='github']" />
+          <xsl:apply-templates select="f:meta[@name='mastodon']" />
           <xsl:apply-templates select="f:meta[@name='external']" />
           <xsl:apply-templates select="f:meta[@name='license']" />
           <xsl:apply-templates select="f:meta[@name='slides']" />

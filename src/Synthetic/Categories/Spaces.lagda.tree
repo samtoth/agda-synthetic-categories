@@ -97,6 +97,7 @@ open import Core.GlobalClassesMaps
 open import Synthetic.Horns Δ¹ I
 open import Synthetic.Categories.Groupoids Δ¹ I
 open import Synthetic.Categories.CovariantFamilies Δ¹ I
+open import Synthetic.Categories.ContravariantTransport Δ¹ I
 open import Synthetic.Categories.ContravariantFamilies Δ¹ I
 open import Synthetic.Categories.CovariantClosure Δ¹ I
 open import Synthetic.Categories.DirectedGlueing Δ¹ I 0≠1 Δ¹-directed
@@ -171,7 +172,8 @@ The universe of amazingly covariant types is closed under retracts, #{\Sigma},
 #{\times}, identity types, and products indexed by a crisp type. Maps between
 amazingly covariant types have amazingly covariant fibres, and pullbacks of
 amazingly covariant types are amazingly covariant. Finally, amazingly covariant
-families are closed under exponentiation by contravariant families.
+families are closed under dependent products indexed by crisp families with
+[contravariant lifts](bak-6D62).
 }
 
 \proof{
@@ -270,29 +272,38 @@ Pullback-is-acov f g ac bc cc
   = Σ-is-acov ac (λ _ → Σ-is-acov bc (λ _ → ＝-is-acov cc))
 
 opaque
+  Π-contrav-acov-is-acov
+    : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ B : Type 𝓤} (@♭ F : B → Type 𝓥)
+      → Contravariant-lifts F → (b : B) {G : F b → Type 𝓦}
+      → ((x : F b) → is-acov (G x)) → is-acov (Π (F b) G)
+  Π-contrav-acov-is-acov {𝓦 = 𝓦} {B} F ℓ b G-is-acov
+    = lift-fibrancy │ i0 │₋₁
+        ( λ ((b , G) : Σ[ b ∶ B ] (F b → Space 𝓦))
+          → (x : F b) → Space.Carrier (G x))
+        (Π-contrav-cov-is-covariant (F ∘ fst) (λ γ x → Space.Carrier (γ .snd x))
+          (λ h → ℓ (fst ∘ h)) (UFib-is-fib (λ (γ , x) → γ .snd x)))
+        (b , (λ x → mk-ufib _ (G-is-acov x)))
+
   acov^contrav-is-acov
     : ∀ {@♭ 𝓤 𝓥 𝓦} {@♭ B : Type 𝓤} (@♭ F : B → Type 𝓥)
-      → is-contravariant F → {A : Type 𝓦}
+      → Contravariant-lifts F → {A : Type 𝓦}
       → is-acov A → (b : B) → is-acov (F b → A)
-  acov^contrav-is-acov {𝓦 = 𝓦} {B} F Fc ac b
-    = lift-fibrancy │ i0 │₋₁
-        (λ ((A , b) : Space 𝓦 × B) → F b → Space.Carrier A)
-        (cov^contrav-is-covariant (F ∘ snd) (Space.Carrier ∘ fst)
-          (contravariant-base-change {P = F} snd Fc) (UFib-is-fib fst))
-        (mk-ufib _ ac , b)
+  acov^contrav-is-acov F ℓ ac b = Π-contrav-acov-is-acov F ℓ b (const ac)
 
   exp-●-is-acov
-   : ∀ {@♭ 𝓤} {A : Type 𝓤}
-     → is-acov A
-     → (∀ {i} → is-acov (i ＝ i0 → A))
-  exp-●-is-acov ac {i}
-    = acov^contrav-is-acov (_＝ i0) (●-is-contravariant Δ¹-directed id) ac i
+    : ∀ {@♭ 𝓤} {i : Δ¹} {A : i ＝ i0 → Type 𝓤}
+      → ((p : i ＝ i0) → is-acov (A p)) → is-acov ((p : i ＝ i0) → A p)
+  exp-●-is-acov {i = i}
+    = Π-contrav-acov-is-acov (_＝ i0)
+        (λ h p → ●-is-contravariant Δ¹-directed id h p .centre)
+        (i)
 
 instance
   exp-●-is-Acov
-    : ∀ {@♭ 𝓤} {A : Type 𝓤} ⦃ _ : is-acov A ⦄
-      → (∀ {i} → is-acov (i ＝ i0 → A))
-  exp-●-is-Acov = exp-●-is-acov auto!
+    : ∀ {@♭ 𝓤} {i : Δ¹} {A : i ＝ i0 → Type 𝓤}
+      ⦃ _ : {p : i ＝ i0} → is-acov (A p) ⦄
+      → is-acov ((p : i ＝ i0) → A p)
+  exp-●-is-Acov = exp-●-is-acov (λ _ → auto!)
 }
 }
 

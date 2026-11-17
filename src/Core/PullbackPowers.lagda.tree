@@ -17,10 +17,13 @@ open import Axioms.UF
 open import Foundations.Prelude
 
 open import Core.Arrows
+open import Core.ArrowDependentMorphisms
+open import Core.ArrowMorphisms
 open import Core.CartesianSquares
 open import Core.ArrowEquiv
 open import Core.Cube
 open import Core.Postwhisker
+open import Core.DependentLiftingSquares
 open import Core.LiftingSquares
 open import Core.PullbackPowersFamilies
 }
@@ -69,7 +72,7 @@ module _
 }
 
 \subtree[stt-004D]{
-\title{Pullback power}
+\title{The pullback power}
 \taxon{Construction}
 
 \quiver{
@@ -106,29 +109,62 @@ module _
 \p{The pullback power of #{f} with #{g} is sometimes written #{\pullpow{f}{g}}.}
 }
 
-\subtree[stt-00LT]{
-\title{Functorial action of the pullback power}
-\taxon{Definition}
+\subtree[bak-9368]{
+\title{The dependent exponential square}
+\taxon{Construction}
 \author{fredrikbakke}
-\date{2026-04-05}
+\date{2026-10-28}
+
+\p{
+Given a map #{f \colon A \to B} and a family of maps
+#{g \colon \Pi1{b : B}{X(b) \to Y(b)}}, then we have a commuting square
+}
+
+\quiver{
+\begin{tikzcd}
+  \Pi_B X \arrow[r, "{(-)\circ f}"] \arrow[d, "{g\circ(-)}"'] &
+  \Pi_A(X\circ f) \arrow[d, "{(g\circ f)\circ(-)}"] \\
+  \Pi_B Y \arrow[r, "{(-)\circ f}"'] & \Pi_A(Y\circ f).
+\end{tikzcd}
+}
+
+\p{
+The gap map of this square is the [dependent pullback power](stt-00EN).
+}
 
 \agda{
-pullback-power←right-arrow-map
-  : ∀ {𝓤 𝓥 𝓐 𝓑 𝓒 𝓓} {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
-      {A : Type 𝓐} {B : Type 𝓑} {C : Type 𝓒} {D : Type 𝓓}
-      {g : A → B} {h : C → D}
-    → (F : Arrow-map g h)
-    → Arrow-map (pullback-power f g) (pullback-power f h)
-pullback-power←right-arrow-map f F .Arrow-map.top = Arrow-map.top F ∘_
-pullback-power←right-arrow-map f F .Arrow-map.bot = paste-squares F
-pullback-power←right-arrow-map f F .Arrow-map.comm l
-  = Arrow-map-path→ (~refl , Arrow-map.comm F ∘ l , ~refl)
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  power-homᵈ : Arrow-map (postcomp-Π g) (postcomp-Π (g ∘ f))
+  power-homᵈ .Arrow-map.top = precomp-Π X f
+  power-homᵈ .Arrow-map.bot = precomp-Π Y f
+  power-homᵈ .Arrow-map.comm = ~refl
+
+  Π̂≃power-homᵈ-gap : Arrow-equiv (Π̂ f g) (gap-square power-homᵈ)
+  Π̂≃power-homᵈ-gap
+    = mk-arr-equiv id≃ Arrow-Π≃pullback (λ _
+        → pullback-path→ (refl , refl , sym (∙-reflr _ ∙ funext-refl)))
+
+  power-homᵈ-fibre-Arrow-equiv
+    : (h : Π B Y)
+    → Arrow-equiv
+        (arrow-fibre power-homᵈ h)
+        (precomp-Π (λ b → fibre (g b) (h b)) f)
+  power-homᵈ-fibre-Arrow-equiv h
+    = mk-arr-equiv
+        (fibre-postcomp-Π≃ g h)
+        (fibre-postcomp-Π≃ (g ∘ f) (h ∘ f))
+        (λ where (_ , refl) → refl)
 }
 }
 
 \subtree[stt-004C]{
-\title{Pullback power is a gap map}
+\title{The pullback power is a gap map}
 \taxon{Theorem}
+\contributor{fredrikbakke}
 
 \p{The name pullback power comes from the fact that for any pair
 of maps, we can define a square as follows:}
@@ -167,9 +203,7 @@ module _
   where
 
   power-hom : Arrow-map (postcomp B g) (postcomp A g)
-  power-hom .Arrow-map.top = precomp _ f
-  power-hom .Arrow-map.bot = precomp _ f
-  power-hom .Arrow-map.comm = ~refl
+  power-hom = power-homᵈ f (λ _ → g)
 
   pb-power-cone : Cone (mk-cospan (A → D) (precomp _ f) (postcomp _ g)) (B → C)
   pb-power-cone = snd (Cone←Arrow-map power-hom)
@@ -182,7 +216,170 @@ module _
   power-hom-gap≃pullback-power
     : Arrow-equiv ⟨ f , g ⟩ (gap-square power-hom)
   power-hom-gap≃pullback-power
-    = mk-arr-equiv id≃ Arrow-map≃pullback' (sym ∘ pullback-gap~pullback-power)
+    = Π̂≃power-homᵈ-gap f (λ _ → g)
+}
+}
+
+\subtree[bak-BE7F]{
+\title{The horizontal fibres of the dependent exponential square}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+The horizontal fibres of the [dependent exponential square](bak-9368) are
+[dependent extension types](bak-78C5), and the induced map is
+[postcomposition of extensions](stt-0152).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  postcomp-Extᵈ-Arrow-equiv
+    : (a : Π A (X ∘ f))
+    → Arrow-equiv
+        (arrow-fibre (transpose-square (power-homᵈ f g)) a)
+        (postcomp-Extᵈ f g a)
+  postcomp-Extᵈ-Arrow-equiv a
+    = mk-arr-equiv
+        (fibre-precomp-Π≃Extᵈ X f a)
+        (fibre-precomp-Π≃Extᵈ Y f (postcomp-Π (g ∘ f) a))
+        (λ where (h , refl) → refl)
+
+module _
+  {𝓐 𝓑 𝓤 𝓥}
+  {A : Type 𝓐} {B : Type 𝓑} (i : A → B)
+  {X : Type 𝓤} {Y : Type 𝓥} (f : X → Y)
+  where
+
+  postcomp-Ext-Arrow-equiv
+    : (a : A → X)
+    → Arrow-equiv
+        (arrow-fibre (transpose-square (power-hom i f)) a)
+        (postcomp-Ext i f a)
+  postcomp-Ext-Arrow-equiv
+    = postcomp-Extᵈ-Arrow-equiv i (λ _ → f)
+}
+}
+
+\subtree[bak-E908]{
+\title{The vertical fibres of the dependent exponential square}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+The vertical fibres of the [dependent exponential square](bak-9368) are
+[dependent lift types](bak-C09E), and the induced map is
+[precomposition of lifts](bak-46E2).
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  where
+
+  precomp-Liftᵈ-Arrow-equiv
+    : (h : Π B Y)
+    → Arrow-equiv
+        (arrow-fibre (power-homᵈ f g) h)
+        (precomp-Liftᵈ f g h)
+  precomp-Liftᵈ-Arrow-equiv h
+    = mk-arr-equiv
+        (fibre-postcomp-Π≃Liftᵈ g h)
+        (fibre-postcomp-Π≃Liftᵈ (g ∘ f) (h ∘ f))
+        (λ where (k , refl) → refl)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜}
+  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  where
+
+  precomp-Lift-Arrow-equiv
+    : (h : B → Y)
+    → Arrow-equiv
+        (arrow-fibre (power-hom f g) h)
+        (precomp-Lift f g h)
+  precomp-Lift-Arrow-equiv
+    = precomp-Liftᵈ-Arrow-equiv f (λ _ → g)
+}
+}
+
+\subtree[bak-745C]{
+\title{Dependent pullback powers with contractible codomains}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+If #{g \colon \Pi1{b : B}{X(b) \to Y(b)}} is a family of maps into contractible
+types, then its dependent pullback power is equivalent to dependent precomposition at
+#{X}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  (Y-is-single : (b : B) → is-singleton (Y b))
+  where
+
+  Π̂-at-singleton-codomain≃precomp-Π : Arrow-equiv (Π̂ f g) (precomp-Π X f)
+  Π̂-at-singleton-codomain≃precomp-Π
+    = mk-arr-equiv
+        (id≃)
+        ( Arrow-Π-repr≃ f g
+        ∙e Σ-singleton (λ _
+            → Σ-is-single (Π-is-single Y-is-single) (λ _
+              → Π-is-single (λ a → ＝-is-single (Y-is-single (f a)) _ _))))
+        (~refl)
+}
+}
+
+\subtree[bak-D4C5]{
+\title{Dependent pullback powers with empty domains}
+\taxon{Lemma}
+\author{fredrikbakke}
+\date{2026-10-28}
+
+\p{
+If #{f \colon A \to B} has empty domain, then its dependent pullback power equivalent
+to dependent postcomposition at #{B}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
+  (A-is-empty : ¬ A)
+  where
+
+  Π̂-at-empty-domain≃postcomp-Π : Arrow-equiv (Π̂ f g) (postcomp-Π g)
+  Π̂-at-empty-domain≃postcomp-Π
+    = mk-arr-equiv
+        (id≃)
+        ( Arrow-Π-repr≃ f g
+        ∙e Σ-comm
+        ∙e Σ-singleton (λ _
+            → Σ-is-single (Π-is-single (λ a → ¡ (A-is-empty a))) (λ _
+              → Π-is-single (λ a → ¡ (A-is-empty a)))))
+        (~refl)
+
+module _
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : Type 𝓦} {Y : Type 𝓜} (g : X → Y)
+  (A-is-empty : ¬ A)
+  where
+
+  pullback-power-at-empty-domain≃postcomp
+    : Arrow-equiv (pullback-power f g) (postcomp B g)
+  pullback-power-at-empty-domain≃postcomp
+    = Π̂-at-empty-domain≃postcomp-Π f (λ _ → g) A-is-empty
 }
 }
 
@@ -239,94 +436,46 @@ module _
 }
 }
 
-\subtree[stt-010N]{
-\title{Functoriality of exponential squares}
-\taxon{Construction}
-\author{samueltoth}
-\contributor{fredrikbakke}
-\date{2025-11-26}
+\subtree[bak-9B89]{
+\title{Characterising fibres of dependent pullback powers as dependent square lifts}
+\taxon{Theorem}
+\author{fredrikbakke}
+\date{2026-10-28}
 
 \p{
-Morphisms of arrows induce cubes between exponential squares. If the
-morphism is an equivalence of arrows the induced cube is an equivalence of squares.
+The fibre of the [dependent pullback power](stt-00EN) at a dependent morphism
+of arrows is its type of [dependent square lifts](bak-C978).
 }
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦 𝓜 𝓝 𝓛}
-  {A : Type 𝓤} {B : Type 𝓥}
-  {X : Type 𝓦} {Y : Type 𝓜}
-  {C : Type 𝓝} {D : Type 𝓛}
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {X : B → Type 𝓦} {Y : B → Type 𝓜} (g : (b : B) → X b → Y b)
   where
 
-  power-hom-cube←right-arrow-map
-    : (f : A → B)
-      (g : X → Y)
-      (g' : C → D)
-      (F : Arrow-map g g')
-    → Cube (power-hom f g) (power-hom f g')
-  power-hom-cube←right-arrow-map f g g' F .Cube.left = postcomp-square F _
-  power-hom-cube←right-arrow-map f g g' F .Cube.right = postcomp-square F _
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .fst = ~refl
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .fst = ~refl
-  power-hom-cube←right-arrow-map f g g' F .Cube.comm .snd .snd a
-      = ∙-reflr _ ∙ ∙-reflr _ ∙ sym (commutes-prewhisker-funext _)
-
-  power-hom-cube←right-arrow-equiv
-    : (f : A → B)
-      {g : X → Y}
-      {g' : C → D}
-    → Arrow-equiv g g'
-    → Cube-equiv (power-hom f g) (power-hom f g')
-  power-hom-cube←right-arrow-equiv f (F , Fe)
-    = ( power-hom-cube←right-arrow-map f _ _ F
-      , postcomp-square-is-equiv F Fe , postcomp-square-is-equiv F Fe)
-
-  power-hom-cube←left-arrow-map
-    : (f : A → B)
-      (f' : X → Y)
-      (F : Arrow-map f f')
-      (g : C → D)
-    → Cube
-        (transpose-square (power-hom f' g))
-        (transpose-square (power-hom f g))
-  power-hom-cube←left-arrow-map f f' F g .Cube.left = precomp-square F _
-  power-hom-cube←left-arrow-map f f' F g .Cube.right = precomp-square F _
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .fst = ~refl
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .fst = ~refl
-  power-hom-cube←left-arrow-map f f' F g .Cube.comm .snd .snd k
-    = ∙-reflr _ ∙ ∙-reflr _
-    ∙ sym (commutes-postwhisker-funext {h = g} _)
-    ∙ ap funext→ (funext→ (◃h∘ g k _ h⁻¹))
-
-  power-hom-cube←left-arrow-equiv
-    : {f : A → B} {f' : X → Y}
-    → Arrow-equiv f f'
-    → (g : C → D)
-    → Cube-equiv
-        (transpose-square (power-hom f' g))
-        (transpose-square (power-hom f g))
-  power-hom-cube←left-arrow-equiv (F , Fe) g
-    = ( power-hom-cube←left-arrow-map _ _ F g
-      , precomp-square-is-equiv F Fe , precomp-square-is-equiv F Fe)
+  Π̂-fibre≃SqLiftᵈ
+    : (G : Arrow-Π f g) → fibre (Π̂ f g) G ≃ SqLiftᵈ G
+  Π̂-fibre≃SqLiftᵈ G
+    = Σ-snd-≃ (λ l → Arrow-Π-path≃ (Π̂ f g l) G)
+    ∙e SqLiftᵈ-repr≃ G e⁻¹
 }
 }
 
 \subtree[stt-004K]{
-\title{Characterising fibres of the pullback power as lifts of squares}
+\title{Characterising fibres of the pullback power as lifting squares}
 \taxon{Theorem}
+\contributor{fredrikbakke}
+\date{2026-02-23}
 
 \agda{
 module _
-  {𝓤 𝓥 𝓦 𝓜}
-  {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
+  {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} (f : A → B)
   {C : Type 𝓦} {D : Type 𝓜} (g : C → D)
   where
 
-  pb-power-fibre≃lifts
-    : (G : Arrow-map f g) → fibre (pullback-power f g) G ≃ Lift G
-  pb-power-fibre≃lifts G
-    = Σ-snd-≃ (λ l → Arrow-map-path≃ (pullback-power f g l) G) ∙e Lift-repr≃ G e⁻¹
+  pb-power-fibre≃SqLift
+    : (G : Arrow-map f g) → fibre (pullback-power f g) G ≃ SqLift G
+  pb-power-fibre≃SqLift = Π̂-fibre≃SqLiftᵈ f (λ _ → g)
 }
 }
 

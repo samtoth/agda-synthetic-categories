@@ -22,6 +22,7 @@ open import Foundations.Coproducts
 open import Foundations.ComplementedEmbeddings
 open import Foundations.SingletonFibres
 open import Foundations.EquivHomotopy
+open import Foundations.3for2
 open import Foundations.EquivSingleton
 open import Foundations.Homotopy
 open import Foundations.Sigma
@@ -204,8 +205,9 @@ An [extension](stt-00CL) of #{f \colon \Bool \to A} along
 }
 
 \subtree[stt-00CM]{
-\title{Composition of extension}
+\title{Extensions of composites}
 \taxon{Lemma}
+\contributor{fredrikbakke}
 
 \p{Given a diagram as follows:}
 
@@ -217,9 +219,9 @@ An [extension](stt-00CL) of #{f \colon \Bool \to A} along
 	A && B && C
 	\arrow["p", from=4-1, to=1-5]
 	\arrow["i"', from=4-1, to=4-3]
-	\arrow[dashed, from=4-3, to=1-5]
+	\arrow["f", dashed, from=4-3, to=1-5]
 	\arrow["j"', from=4-3, to=4-5]
-	\arrow[dashed, from=4-5, to=1-5]
+	\arrow["g"', dashed, from=4-5, to=1-5]
 \end{tikzcd}
 }
 
@@ -234,21 +236,35 @@ along #{j}.
 
 
 \agda{
-  Ext-compose≃
-    : ∀ {𝓤 𝓥 𝓦 𝓜} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦}
-      → (j : B → C) (i : A → B) {X : Type 𝓜} (p : A → X)
-      → Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] (Ext j (f .fst)))
-  Ext-compose≃ {B = B} {C = C} j i {X} p
-    = Ext (j ∘ i) p
-        ≃⟨ Σ-snd-≃ (λ g → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹ ∙e Σ-assoc)) ⟩
-      Σ[ g ∶ (C → X) ] Σ[ f ∶ (B → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-        ≃⟨ Σ-comm ⟩
-      Σ[ f ∶ (B → X) ] Σ[ g ∶ (C → X) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
-        ≃⟨ Σ-snd-≃ (λ f → Σ-assoc e⁻¹ ∙e ×-swap) ⟩
-      Σ[ f ∶ (B → X) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
-        ≃⟨ Σ-assoc e⁻¹ ⟩
-      (Σ[ f ∶ Ext i p ] Ext j (f .fst))
-        ≃∎
+  module _
+    {𝓤 𝓥 𝓦 𝓠} {A : Type 𝓤} {B : Type 𝓥} {C : Type 𝓦} {Q : Type 𝓠}
+    (j : B → C) (i : A → B) (p : A → Q)
+    where
+
+    Ext-compose≃⁻¹ : Ext (j ∘ i) p ≃ (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+    Ext-compose≃⁻¹
+      = Ext (j ∘ i) p
+          ≃⟨ Σ-snd-≃ (λ g
+            → (Σ-singl (htpy-is-torsorial FE (g ∘ j)) (g ∘ j , ~refl) e⁻¹)
+            ∙e Σ-assoc) ⟩
+        Σ[ g ∶ (C → Q) ] Σ[ f ∶ (B → Q) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+          ≃⟨ Σ-comm ⟩
+        Σ[ f ∶ (B → Q) ] Σ[ g ∶ (C → Q) ] Σ[ H ∶ (g ∘ j ~ f) ] (f ∘ i ~ p)
+          ≃⟨ Σ-snd-≃ (λ f → (Σ-assoc e⁻¹) ∙e ×-swap) ⟩
+        Σ[ f ∶ (B → Q) ] Σ[ H ∶ (f ∘ i ~ p) ] Ext j f
+          ≃⟨ Σ-assoc e⁻¹ ⟩
+        (Σ[ f ∶ Ext i p ] Ext j (f .fst))
+          ≃∎
+
+    Ext-compose : (Σ[ f ∶ Ext i p ] Ext j (f .fst)) → Ext (j ∘ i) p
+    Ext-compose ((f , H) , g , K) = (g , K ▹h i ∙h H)
+
+    Ext-compose-is-equiv : is-equiv Ext-compose
+    Ext-compose-is-equiv
+      = 3-for-2' (Ext-compose≃⁻¹ ._≃_.fwd-is-equiv) id-is-equiv
+
+    Ext-compose≃ : (Σ[ f ∶ Ext i p ] Ext j (f .fst)) ≃ Ext (j ∘ i) p
+    Ext-compose≃ = mk≃ Ext-compose Ext-compose-is-equiv
 }
 }
 
@@ -298,7 +314,7 @@ identifications of extensions: #{(f \circ r , fR) = (u, H)}.
     Ext-retraction-is-torsorial : is-torsorial (λ u → Ext r (u .fst))
     Ext-retraction-is-torsorial
       = is-single←equiv
-          (Ext-compose≃ r s f)
+          (Ext-compose≃⁻¹ r s f)
           (Ext-is-singleton←is-equiv (is-equiv←~ rs id-is-equiv) f)
 
     Ext-retraction≃Id

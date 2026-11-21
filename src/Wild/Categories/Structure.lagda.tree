@@ -12,6 +12,8 @@ module Wild.Categories.Structure where
 \agda{
 open import Foundations.Prelude
 open import Axioms.FunExt
+open import Ergonomics.Extensionality
+open import Ergonomics.Representation
 }
 }
 
@@ -23,9 +25,9 @@ open import Axioms.FunExt
 
 \p{
 Given a type of objects #{𝒞₀}, the \em{composition prestructure} of a category
-consists of a binary "Hom"-family #{\Hom_𝒞 \colon 𝒞₀ \to 𝒞₀ \to \Type} together with a
-family of "identities" ##{\id \colon \Pi1{a : 𝒞₀}{\Hom_𝒞(a,a)}} and a composition binary
-operator
+consists of a binary "Hom"-family #{\Hom_𝒞 \colon 𝒞₀ \to 𝒞₀ \to \Type} together with
+a family of "identities" ##{\id \colon \Pi1{a : 𝒞₀}{\Hom_𝒞(a,a)}} and a composition
+binary operator
 ##{{-}\circ{-} \colon \Pi1{\{a,b,c : 𝒞₀\}}{\Hom_𝒞(b,c) \to \Hom_𝒞(a,b) \to \Hom_𝒞(a,c)}.}
 }
 
@@ -43,8 +45,8 @@ structure of a binary Hom-family as above together with every operation up to le
 \p{
 This means that a composition #{0}-structure is a composition prestructure together
 with identity laws between #{\id} and #{{-}\circ{-}}, i.e., that #{{\id}\circ f = f}
-and #{f\circ{\id} = f} for all #{f \Hom_𝒞(a,b)}, while a composition #{(-1)}-structure
-is a binary Hom-family together with just a family of identities.
+and #{f\circ{\id} = f} for all #{f \Hom_𝒞(a,b)}, while a composition
+#{(-1)}-structure is a binary Hom-family together with just a family of identities.
 }
 
 \agda{
@@ -67,44 +69,90 @@ record CompPrestructure {𝓤} 𝓥 (𝒞₀ : Type 𝓤) : Type (𝓤 ⊔ lsuc 
   f ∙ʷ g = g ∘ʷ f
 
 open CompPrestructure using (Homʷ ; idʷ: ; compʷ:)
+
+unquoteDecl CompPrestructure-repr≊ CompPrestructure-repr≃
+  = make-record-repr CompPrestructure-repr≊ CompPrestructure-repr≃
+      (quote CompPrestructure)
+}
+}
+
+\subtree[bak-6099]{
+\title{Equivalences of composition prestructures}
+\taxon{Definition}
+\author{fredrikbakke}
+\date{2026-11-21}
+
+\p{
+Given two composition prestructures #{C\defeq ({\Hom},{\id}, {-}\circ{-})} and
+#{D \defeq ({\Hom'},{\id'}, {-}\circ'{-})}  on a type #{A}, then an \em{equivalence}
+between #{C} and #{D} consists of a binary family of equivalences
+##{e \colon \Pi1{x,y : A}{\Hom(x,y) \simeq \Hom'(x,y)}}
+such that #{e(\id_x) = \id'_{e(x)}} for all #{x : A}, and such that
+#{e(g \circ f) = e(g) \circ' e(f)} for all #{f : \Hom(x,y)} and #{g : \Hom(y,z)}.
+}
+
+\agda{
+module _
+  {𝓤 𝓥 𝓦} {𝒞₀ : Type 𝓤}
+  (C : CompPrestructure 𝓥 𝒞₀)
+  (let module C = CompPrestructure C)
+  (D : CompPrestructure 𝓦 𝒞₀)
+  (let module D = CompPrestructure D)
+  where
+
+  CompPrestructure-equiv : Type (𝓤 ⊔ 𝓥 ⊔ 𝓦)
+  CompPrestructure-equiv
+    = Σ[ e ∶ ((a b : 𝒞₀) → C.Homʷ a b ≃ D.Homʷ a b) ]
+        ( ((a : 𝒞₀) → e a a ._≃_.fwd C.idʷ ＝ D.idʷ)
+        × ((a b c : 𝒞₀) (g : C.Homʷ b c) (f : C.Homʷ a b)
+          → e a c ._≃_.fwd (g C.∘ʷ f) ＝ (e b c ._≃_.fwd g D.∘ʷ e a b ._≃_.fwd f)))
+
+module _ {𝓤 𝓥} {𝒞₀ : Type 𝓤} (C : CompPrestructure 𝓥 𝒞₀) where
+
+  CompPrestructure-id-equiv : CompPrestructure-equiv C C
+  CompPrestructure-id-equiv = ((λ a b → id≃) , ~refl , (λ a b c g f → refl))
 }
 }
 
 \subtree[stt-00SM]{
-\title{Equality of composition prestructures}
+\title{Characterising equality of composition prestructures}
 \taxon{Lemma}
 \author{fredrikbakke}
 \date{2026-06-03}
 
-\p{To compare composition operators over an equality of Hom families, it suffices
-to check that transport preserves composition.}
+\p{
+Equality of [composition prestructures](stt-00SL) is characterised by [equivalence of
+composition prestructures](bak-6099).
+}
 
 \agda{
 module _ {𝓤 𝓥} {𝒞₀ : Type 𝓤} where
 
-  HasId : (𝒞₀ → 𝒞₀ → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-  HasId Homʷ = (a : 𝒞₀) → Homʷ a a
+  opaque
+    CompPrestructure-equiv-is-torsorial
+      : (C : CompPrestructure 𝓥 𝒞₀) → is-torsorial (CompPrestructure-equiv {𝓦 = 𝓥} C)
+    CompPrestructure-equiv-is-torsorial C
+      = let module C = CompPrestructure C
+        in is-single←equiv (Σ-fst-≃ (CompPrestructure-repr≃ e⁻¹))
+            ( is-singleton-structure←parts
+              (SingS-is-single ⦃ IdS-Π ⦃ IdS-Π ⦃ IdS-ua ⦄ ⦄ ⦄ C.Homʷ)
+              (C.Homʷ , (λ a b → id≃))
+              ( is-singleton-structure←parts
+                  (SingS-is-single ⦃ IdS-Π ⦃ IdS-default ⦄ ⦄ C.idʷ:)
+                  (C.idʷ: , ~refl)
+                  (SingS-is-single C.compʷ:)))
 
-  HasComp : (𝒞₀ → 𝒞₀ → Type 𝓥) → Type (𝓤 ⊔ 𝓥)
-  HasComp Homʷ = (a b c : 𝒞₀) → Homʷ b c → Homʷ a b → Homʷ a c
+  CompPrestructure-path≃
+    : (C D : CompPrestructure 𝓥 𝒞₀) → (C ＝ D) ≃ CompPrestructure-equiv C D
+  CompPrestructure-path≃ C
+    = fundamental-Id≃
+        (CompPrestructure-equiv C)
+        (CompPrestructure-id-equiv C)
+        (CompPrestructure-equiv-is-torsorial C)
 
   CompPrestructure-path→
-    : {C D : CompPrestructure 𝓥 𝒞₀}
-    → (γ : C .Homʷ ＝ D .Homʷ)
-    → C .idʷ: ＝[ ap HasId γ ] D .idʷ:
-    → C .compʷ: ＝[ ap HasComp γ ] D .compʷ:
-    → C ＝ D
-  CompPrestructure-path→ refl refl refl = refl
-
-  HasComp-path→
-    : {H K : 𝒞₀ → 𝒞₀ → Type 𝓥} {p : H ＝ K} {F : (a b : 𝒞₀) → H a b → K a b}
-    → (λ a b → coe (happly (happly p a) b)) ＝ F
-    → {m : HasComp H} {n : HasComp K}
-    → ({a b c : 𝒞₀} (g : H b c) (f : H a b)
-      → F a c (m a b c g f) ＝ n a b c (F b c g) (F a b f))
-    → m ＝[ ap HasComp p ] n
-  HasComp-path→ {p = refl} refl comp
-    = funext→ (λ a → funext→ (λ b → funext→ (λ c → funext→ (funext→ ∘ comp))))
+    : {C D : CompPrestructure 𝓥 𝒞₀} → CompPrestructure-equiv C D → C ＝ D
+  CompPrestructure-path→ = _≃_.bwd (CompPrestructure-path≃ _ _)
 }
 }
 

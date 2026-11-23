@@ -1,0 +1,472 @@
+\date{2026-09-03}
+\title{Flat Segal types are simplicial}
+\author{ulrikbuchholtz}
+\taxon{Module}
+\import{stt-macros}
+
+\transclude{stt-00AB}
+
+\p{A crisp [Segal type](stt-00AI) is [simplicial](stt-00AC), granted that
+[cubes separate](stt-00J7) and that [simplicial stability](ub-000Z) holds
+(\ref{ub-003F}). The argument is from \citek{SGWB26}, based on initial ideas
+by Gratzer and Schellingerhout. It runs through the
+[ordered subcube](ub-000Y) #{\mathrm{Ord}_n \subseteq \square^n}, the part
+of the cube on which the coordinates are pairwise comparable, and three facts
+about it.}
+
+\ol{
+\li{Its inclusion into the cube is inner anodyne (\ref{ub-0030}), so every
+Segal type is orthogonal to it. This is the combinatorial heart, proved in
+[the module on convex subcubes](Synthetic.Categories.ConvexSubcubes) from a
+retraction of the cube onto a convex subcube.}
+\li{Every simplicial type is orthogonal to it too (\ref{ub-003E}), for the
+different reason that it is null at each comparability.}
+\li{A crisp map that is an equivalence on [figures](ub-0032) of every simplex
+is one on figures of every ordered subcube
+(\ref{ub-003D}), because the ordered subcube is
+[glued from simplices](Synthetic.Categories.OrderedGlueing). Given that cubes
+separate, such a map is an equivalence once its source and target are
+orthogonal to the ordered subcube (\ref{ub-0010}).}
+}
+
+\p{Apply the third to the unit #{\eta : A \to \bigcirc A} of the simplicial
+reflection: stability says that #{\eta} is an equivalence on simplex-figures,
+and the first two
+facts apply to #{A} and #{\bigcirc A}. So #{\eta} is an equivalence.}
+
+\agda{
+open import Foundations.Universes
+open import Algebra.Lattice
+
+module Synthetic.Categories.SegalSimplicial
+  {@♭ 𝓘} (@♭ Δ¹ : Type 𝓘) (@♭ I : Lattice Δ¹)
+  where
+
+open Lattice I renaming (0l to i0; 1l to i1)
+
+open import Axioms.UF
+}
+
+\agda-imports{
+\agda{
+open import Foundations.Prelude
+open import Foundations.Currying
+open import Foundations.Fin
+
+open import Modalities.Cohesion.Flat
+open import Modalities.Cohesion.Continuity
+open import Modalities.ReflectiveSubuniverses
+open import Modalities.Instances.Localisation
+open import Modalities.Instances.Nullification
+
+open import Core.Arrows
+open import Core.ArrowEquiv
+open import Core.Joins
+open import Core.SubtypeUnions
+open import Modalities.Cohesion.Figures
+open import Core.Orthogonal
+open import Core.OrthogonalClosure
+
+open import Ergonomics.Notations.Orthogonality
+open Core.Orthogonal.notation
+
+open import Algebra.Lattice.Instances.Free.Inductive Δ¹ I
+
+open import Synthetic.Cubes Δ¹ i0 i1
+open import Synthetic.Simplicial Δ¹ I
+open import Synthetic.Horns Δ¹ I
+open import Synthetic.Categories.Precategories Δ¹ I
+open import Synthetic.Categories.SquareLifting Δ¹ I
+open import Synthetic.Categories.ConvexSubcubes Δ¹ I
+  using ( Everywhere ; Everywhere-is-prop ; Everywhere-is-inner-anodyne
+        ; □-coord ; Rels ; Cmp ; Cmp-is-prop
+        ; all-pairs ; Everywhere→Cmp ; Cmp→Everywhere )
+open import Synthetic.Categories.OrderedGlueing Δ¹ I
+  using (is-♭-equiv-on-ordered-subcube)
+}
+}
+
+\subtree[ub-000Y]{
+\taxon{Definition}
+\title{The ordered subcube}
+
+\p{The \em{ordered} part of the cube #{\square^n} is where its coordinates
+are pairwise comparable,}
+
+##{\mathrm{Ordered}(v) = \forall i, j < n.\ v_i \le v_j \lor v_j \le v_i,
+   \qquad \mathrm{Ord}_n = \textstyle\sum_{v : \square^n} \mathrm{Ordered}(v).}
+
+\p{Formally it is [\code{Everywhere}](ub-002Z), the comparability of every
+pair. In the model it is the union of the #{n!} simplices of the cube, its
+triangulation; internally, a finite set of pairwise comparable elements is a
+chain, by a sorting induction that may destruct each #{\lor} because the goal
+is a proposition.}
+
+\agda{
+Ordered : ∀ {n} → □^ n → Type 𝓘
+Ordered = Everywhere
+
+Ordered-is-prop : ∀ {n} (v : □^ n) → is-prop (Ordered v)
+Ordered-is-prop = Everywhere-is-prop
+
+ordered-incl : (n : ℕ) → Σ (□^ n) (Ordered {n}) → □^ n
+ordered-incl n = fst
+}
+
+\p{In dimension two #{\mathrm{Ord}_2} is the union of the two triangles, that
+is, the [triangulated square](stt-00CC) (\ref{ub-000F}): there is one pair of
+distinct coordinates to compare, and a coordinate is comparable with itself by
+reflexivity.}
+
+\agda{
+private
+  ord₂→ : (v : □^ 2) → Ordered {2} v → generating-fam-is-simplicial v
+  ord₂→ v h = h (fsuc fzero) fzero
+
+  ord₂← : (v : □^ 2) → generating-fam-is-simplicial v → Ordered {2} v
+  ord₂← v p fzero fzero = ι₁ ≤-refl
+  ord₂← v p fzero (fsuc fzero)
+    = *-prop-rec (generating-fam-is-simplicial-is-prop _) ι₂ ι₁ p
+  ord₂← v p (fsuc fzero) fzero = p
+  ord₂← v p (fsuc fzero) (fsuc fzero) = ι₁ ≤-refl
+
+ordered₂≃ : Σ (□^ 2) (Ordered {2}) ≃ Σ (□^ 2) generating-fam-is-simplicial
+ordered₂≃
+  = sub-incl≃ Ordered-is-prop generating-fam-is-simplicial-is-prop ord₂→ ord₂←
+}
+}
+
+\subtree[ub-0030]{
+\taxon{Theorem}
+\title{The ordered subcube in every dimension}
+
+\p{The inclusion #{\mathrm{Ord}_n \hookrightarrow \square^n} is inner anodyne
+for every #{n}. The proof is
+[the module on convex subcubes](Synthetic.Categories.ConvexSubcubes):}
+
+\ol{
+\li{[the clamp](ub-002F) retracts the cube onto a convex subtype while fixing
+two chosen coordinates, so adjoining
+[the comparability of a pair over a convex base](ub-002M) is inner anodyne;}
+\li{a recursion on a list of pairs adjoins them all, splitting each
+comparability into its two orientations and glueing (\ref{ub-002Y});}
+\li{and enumerating every pair turns the list into the quantifier
+(\ref{ub-002Z}).}
+}
+
+\p{All that is left here is the empty cube, where being ordered is a condition
+on no pairs at all.}
+
+\agda{
+ordered-incl-is-inner-anodyne
+  : (n : ℕ) → is-inner-anodyne (ordered-incl n)
+ordered-incl-is-inner-anodyne zero
+  = is-anodyne←is-equiv Λ[2,1]-incl
+      (singleton-fst-is-equiv λ v → mk-singl (λ ()) (Ordered-is-prop v (λ ())))
+ordered-incl-is-inner-anodyne (suc m) = Everywhere-is-inner-anodyne
+}
+
+\p{So a Segal type is orthogonal to it, and a crisp one is #{\flat}-orthogonal
+to it, which is what \ref{ub-0010} asks of the source and target.}
+
+\agda{
+ordered-incl-precomp-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤} → is-segal A → (n : ℕ)
+  → is-equiv (precomp A (ordered-incl n))
+ordered-incl-precomp-is-equiv {A = A} seg n
+  = is-orthogonal↔orthogonal-! .fst
+      (ordered-incl-is-inner-anodyne n (!: A)
+        (is-orthogonal↔orthogonal-! .snd (seg tt)))
+
+♭-ordered-incl-precomp-is-equiv
+  : ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} → @♭ is-segal A
+  → ∀ {@♭ n} → is-equiv (♭-map (precomp A (ordered-incl n)))
+♭-ordered-incl-precomp-is-equiv seg {n}
+  = is-♭-equiv←is-equiv (ordered-incl-precomp-is-equiv seg n)
+}
+}
+
+\subtree[ub-0010]{
+\taxon{Lemma}
+\title{Cubes separate through the ordered subcube}
+
+\p{Suppose #{X} and #{Y} are #{\flat}-orthogonal to
+#{\iota : \mathrm{Ord}_n \hookrightarrow \square^n} in every dimension: that
+is, restriction along #{\iota} is an equivalence after #{\modflat{-}}. Given
+that [cubes separate](stt-00J7), a crisp #{f : X \to Y} is an equivalence as
+soon as it is one on crisp points and on [#{\mathrm{Ord}_n}-figures](ub-0032)
+for every #{n}. This lemma does not use
+[simplicial stability](ub-000Z).}
+
+\p{The proof is the square}
+
+\quiver{
+\begin{tikzcd}
+	{\modflat{(\square^n \to X)}} && {\modflat{(\square^n \to Y)}} \\
+	\\
+	{\modflat{(\mathrm{Ord}_n \to X)}} && {\modflat{(\mathrm{Ord}_n \to Y)}}
+	\arrow["{f \circ -}", from=1-1, to=1-3]
+	\arrow["{- \circ \iota}"', from=1-1, to=3-1]
+	\arrow["{- \circ \iota}", from=1-3, to=3-3]
+	\arrow["{f \circ -}"', from=3-1, to=3-3]
+\end{tikzcd}
+}
+
+\p{which commutes on the nose — both composites send #{g} to
+#{f \circ g \circ \iota} — so that #{\modflat{-}} of it commutes by
+#{\flat}-induction. The two verticals are equivalences by orthogonality and the
+bottom by hypothesis, so the top is one by three-for-two, and then
+[cubes separate](stt-00UV) gives that #{f} is an equivalence.}
+
+\p{The condition on the ordered subcube can be traded for one on simplices,
+since a crisp map that is an equivalence on simplex-figures is one on
+ordered-subcube-figures
+(\ref{ub-003D}). That is a colimit argument rather than a lifting one, and it
+is the content of [the module on glueing simplices](Synthetic.Categories.OrderedGlueing).}
+
+\agda{
+module _
+  {@♭ 𝓤 𝓥} {@♭ X : Type 𝓤} {@♭ Y : Type 𝓥} (@♭ f : X → Y)
+  where
+
+  private
+    ordered-square
+      : ∀ {@♭ n}
+      → ♭-map (precomp Y (ordered-incl n)) ∘ ♭-map (postcomp (□^ n) f)
+      ~ ♭-map (postcomp (Σ (□^ n) (Ordered {n})) f)
+        ∘ ♭-map (precomp X (ordered-incl n))
+    ordered-square (mod♭ g) = refl
+
+  is-equiv←ordered-cubes
+    : @♭ family-separates (□^_)
+    → @♭ (∀ {@♭ n} → is-equiv (♭-map (precomp X (ordered-incl n))))
+    → @♭ (∀ {@♭ n} → is-equiv (♭-map (precomp Y (ordered-incl n))))
+    → @♭ is-equiv (♭-map f)
+    → @♭ (∀ {@♭ n} → is-♭-equiv-on (Σ (□^ n) (Ordered {n})) f)
+    → is-equiv f
+  is-equiv←ordered-cubes sep oX oY f♭ fOrd
+    = sep (mk-arrow f) f♭
+        (λ {n} → 3-for-2 oY (is-equiv←~ ordered-square (is-equiv-∘ fOrd oX)))
+
+  is-equiv←ordered-simplices
+    : @♭ family-separates (□^_)
+    → @♭ (∀ {@♭ n} → is-equiv (♭-map (precomp X (ordered-incl n))))
+    → @♭ (∀ {@♭ n} → is-equiv (♭-map (precomp Y (ordered-incl n))))
+    → @♭ is-equiv (♭-map f)
+    → @♭ (∀ {@♭ n} → is-♭-equiv-on (Δ^ n) f)
+    → is-equiv f
+  is-equiv←ordered-simplices sep oX oY f♭ fΔ
+    = is-equiv←ordered-cubes sep oX oY f♭
+        (λ {n} → is-♭-equiv-on-ordered-subcube f (λ k → fΔ {k}) n)
+}
+}
+
+\subtree[ub-000Z]{
+\taxon{Definition}
+\title{The simplicial stability axiom}
+
+\p{Simplicial types are the [nullification](stt-00AC) at the family
+#{(i \le j) \lor (j \le i)}, so they form a reflective subuniverse with unit
+#{\eta : A \to \bigcirc A}. \em{Simplicial stability} is the statement that the
+reflection changes nothing on crisp simplices: for every crisp #{A}, the unit
+#{\eta} is an equivalence on [#{\Delta^n}-figures](ub-0032) for every crisp
+#{n},}
+
+##{\modflat{(\eta \circ -)} :
+   \modflat{(\Delta^n \to A)} \longrightarrow \modflat{(\Delta^n \to \bigcirc A)}}
+
+\p{is an equivalence. Like the fact that [cubes separate](stt-00UV), this is a
+property of the intended model rather than a consequence of the axioms
+available here, so it is a definition, to be taken as a hypothesis, and not a
+postulate. \ref{ub-0043} explains what it says in the model.}
+
+\p{A type is simplicial exactly when its unit is an equivalence, which is
+how stability will be used.}
+
+\agda{
+is-simplicial←η-is-equiv
+  : ∀ {𝓤} {A : Type 𝓤} → is-equiv (Simp.η {A = A}) → is-simplicial A
+is-simplicial←η-is-equiv {A = A} = in-SubU←η-is-equiv (Simp.reflector A)
+}
+
+\agda{
+simplicial-stability : Typeω
+simplicial-stability
+  = ∀ {@♭ 𝓤} {@♭ A : Type 𝓤} {@♭ n : ℕ}
+  → is-♭-equiv-on (Δ^ n) (Simp.η {A = A})
+}
+}
+
+\subtree[ub-0043]{
+\taxon{Remark}
+\title{Stability is a finite shadow of cubical generation}
+\date{2026-09-06}
+
+\p{Here is what [simplicial stability](ub-000Z) says in the model, and why it
+is the right shape for an axiom. Three toposes sit inside one another, all
+presheaves on full subcategories of finite posets with monotone maps: the
+classifying topos of distributive lattices #{\mathrm{Set}[\mathrm{DLat}]} is
+presheaves on finite posets, since finitely presented distributive lattices
+are the downset lattices of finite posets; cubical spaces are presheaves on
+finite lattices, the idempotent completion of the cube category, and
+classify the flat lattices; and simplicial spaces are presheaves
+on finite chains. Each inclusion of sites induces a geometric embedding whose
+inverse image is restriction and whose direct image is right Kan extension,
+and the interval is the representable #{y([1])} in all three.}
+
+\p{Simplicial types are the sheaves for the coverage of a cube by the loci
+#{\{f \le g\}}, #{\{g \le f\}}, and that subtopos is the innermost of the
+three: so on a crisp type #{A}, the reflection #{\bigcirc A} is the right Kan
+extension of the restriction of #{A} to chains,
+#{(\bigcirc A)(L) = \lim_{[k] \to L} A([k])}. The simplex #{\Delta^n} is the
+representable #{y([n])}, a chain. So}
+
+##{\modflat{(\Delta^n \to \bigcirc A)} = (\bigcirc A)([n]) = A([n]) =
+   \modflat{(\Delta^n \to A)},}
+
+\p{which is stability, and in the model it is the statement that restricting
+a right Kan extension back to the subcategory returns what was extended: a
+tautology, once #{\bigcirc} is known to be that extension.}
+
+\p{What is not a tautology is the identification of #{\bigcirc}. It rests on
+\em{cubical generation}: every cubical space is the colimit of its cubes, and
+mapping out of a chain commutes with that colimit because a chain is a
+retract of a cube. That is the co-Yoneda lemma for the site, and its
+internalisation would be a colimit indexed by the category of crisp cubes of
+#{A}, with the coherence data that an #{\infty}-categorical diagram requires
+— which the type theory has no way to write down. Stability is the shadow
+of generation on the representable chains: finitely many instances per
+dimension, each a single equivalence, and no coherence at all. The
+[cubes separate](stt-00J7) axiom is the other shadow: the restriction
+#{A \mapsto (n \mapsto \modflat{(\square^n \to A)})} is conservative. The two
+are independent in one direction at least: #{\mathrm{Set}[\mathrm{DLat}]}
+satisfies stability, since #{\bigcirc} is right Kan extension from chains
+there too, and not separation, since a presheaf on finite posets is not
+determined on lattices.}
+
+\p{Two consequences of the picture. Stability at the cubes fails: the
+reflection of the split square #{S} is the square, so
+#{\modflat{(\square^2 \to S)} \to \modflat{(\square^2 \to \bigcirc S)}}
+misses the identity; the internal retraction #{\square^n \to \Delta^n} by
+sorting shows that stability at simplices would follow from stability at
+cubes, and this is why it cannot. And the general form of stability, that for
+every crisp finite lattice #{L} the maps #{N(L) \to \bigcirc A} are computed
+by the limit over the simplices of #{N(L)} of the maps #{\Delta^k \to A},
+follows from the stated form together with \ref{ub-003E} and
+\ref{ub-003D}, so stability at chains is the minimal shadow to take.}
+}
+
+\subtree[ub-003E]{
+\taxon{Lemma}
+\title{Simplicial types are orthogonal to the ordered subcube}
+
+\p{Every simplicial type is orthogonal to
+#{\mathrm{Ord}_n \hookrightarrow \square^n}. This is the counterpart of
+\ref{ub-0030} for Segal types, but it holds for a different reason: nullity
+rather than lifting. Being ordered is a \em{finite conjunction} of
+comparabilities, and a type null at each of two propositions is null at their
+conjunction (\code{is-null-at-×}, from
+[the closure of null types under sums](stt-00L9)). So a simplicial type is
+null at #{\mathrm{Ordered}(v)} for every #{v}, and orthogonality to the
+inclusion is exactly that, fibrewise, once the map is curried.}
+
+\p{The conjunction is finite because it is indexed by pairs of coordinates.
+Reading it off the quantifier would need a product over #{\Fin n} broken into
+factors; reading it off [the list of all pairs](ub-002X) instead makes it an
+iterated #{\times} on the nose, and \ref{ub-002Z} says the two agree.}
+
+\agda{
+module _ {𝓤} {S : Type 𝓤} (simp : is-simplicial S) where
+
+  private
+    null-Cmp : ∀ {n} (K : Rels n) → is-null (λ (v : □^ n) → Cmp K v) S
+    null-Cmp [] v = sing-const-is-equiv 𝟙ᴸ-is-singleton
+    null-Cmp ((i , j) ∷ K)
+      = is-null-at-× (λ v → simp (□-coord v i , □-coord v j)) (null-Cmp K)
+
+    null-Ordered : ∀ {n} → is-null (λ (v : □^ n) → Ordered {n} v) S
+    null-Ordered {n}
+      = is-null-at-equiv
+          (λ v → mk≃ (Everywhere→Cmp v)
+                   (is-equiv←qinv
+                     ( Cmp→Everywhere v
+                     , (λ _ → Everywhere-is-prop v _ _)
+                     , (λ _ → Cmp-is-prop (all-pairs n) v _ _))))
+          (null-Cmp (all-pairs n))
+
+  ordered-incl-precomp-is-equiv←is-simplicial
+    : (n : ℕ) → is-equiv (precomp S (ordered-incl n))
+  ordered-incl-precomp-is-equiv←is-simplicial n
+    = 3-for-2 (curry≃ ._≃_.fwd-is-equiv)
+        (is-equiv←~ ~refl (postcomp-Π-equiv (λ {v} → null-Ordered v)))
+}
+}
+
+\subtree[ub-003F]{
+\taxon{Theorem}
+\title{Flat Segal types are simplicial}
+
+\p{A crisp [Segal type](stt-00AI) is [simplicial](stt-00AC), granted that
+[cubes separate](stt-00J7) and that [simplicial stability](ub-000Z) holds.}
+
+\p{This is the only place stability is used. The argument compares #{A}
+with its reflection #{\bigcirc A} along the unit #{\eta}, applying
+\ref{ub-0010} to #{\eta}. That needs four things:}
+
+\ol{
+\li{#{A} is #{\flat}-orthogonal to #{\mathrm{Ord}_n \hookrightarrow \square^n},
+by \ref{ub-0030}, since #{A} is Segal;}
+\li{so is #{\bigcirc A}, by \ref{ub-003E}, since #{\bigcirc A} is simplicial;}
+\li{#{\modflat{\eta}} is an equivalence, which is stability at #{n = 0}, as
+#{\Delta^0} is contractible;}
+\li{#{\eta} is an equivalence on simplex-figures, which is stability itself.}
+}
+
+\p{The first two hold for entirely different reasons, one by lifting and one
+by nullity. So #{\eta} is an equivalence, and a type whose unit is an
+equivalence is simplicial (\ref{ub-000Z}).}
+
+\agda{
+module _ {@♭ 𝓤} {@♭ A : Type 𝓤} where
+
+  private
+    ○-ordered
+      : ∀ {@♭ n} → is-equiv (♭-map (precomp (Simp.○ A) (ordered-incl n)))
+    ○-ordered {n}
+      = is-♭-equiv←is-equiv
+          (ordered-incl-precomp-is-equiv←is-simplicial Simp.○∈S n)
+
+    const-Δ^0 : ∀ {𝓥} {B : Type 𝓥} → is-equiv (const: B (Δ^ 0))
+    const-Δ^0 = sing-const-is-equiv Δ⁰-is-singleton
+
+    η-square
+      : ♭-map (const: (Simp.○ A) (Δ^ 0)) ∘ ♭-map (Simp.η {A = A})
+      ~ ♭-map (postcomp (Δ^ 0) (Simp.η {A = A})) ∘ ♭-map (const: A (Δ^ 0))
+    η-square (mod♭ a) = refl
+
+    η-♭ : @♭ simplicial-stability → is-equiv (♭-map (Simp.η {A = A}))
+    η-♭ stab
+      = 3-for-2 (is-♭-equiv←is-equiv const-Δ^0)
+          (is-equiv←~ η-square
+            (is-equiv-∘ (stab {A = A} {n = 0}) (is-♭-equiv←is-equiv const-Δ^0)))
+
+  is-simplicial←♭-ordered-orthogonal
+    : @♭ family-separates (□^_)
+    → @♭ simplicial-stability
+    → @♭ (∀ {@♭ n} → is-equiv (♭-map (precomp A (ordered-incl n))))
+    → is-simplicial A
+  is-simplicial←♭-ordered-orthogonal sep stab oA
+    = is-simplicial←η-is-equiv
+        (is-equiv←ordered-simplices (Simp.η {A = A}) sep oA ○-ordered
+          (η-♭ stab) (λ {n} → stab {A = A} {n = n}))
+
+  is-simplicial←is-segal-ordered
+    : @♭ family-separates (□^_)
+    → @♭ simplicial-stability
+    → @♭ is-segal A
+    → is-simplicial A
+  is-simplicial←is-segal-ordered sep stab seg
+    = is-simplicial←♭-ordered-orthogonal sep stab
+        (♭-ordered-incl-precomp-is-equiv seg)
+}
+}

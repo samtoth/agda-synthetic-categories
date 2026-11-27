@@ -40,10 +40,11 @@ open import Core.SurjectiveMaps
 }
 
 \subtree[stt-00G3]{
-\taxon{Definition}
 \title{Fully faithful maps in terms of the action on morphisms}
-\date{2026-03-11}
+\taxon{Definition}
 \author{samueltoth}
+\contributor{fredrikbakke}
+\date{2026-03-11}
 
 \p{A map #{F \colon A \to B} is called \em{fully faithful} if its
 [action on synthetic morphisms](stt-00CE) #{\Hom_A(a,b) \to \Hom_B(F(a), F(b))} is an
@@ -51,10 +52,15 @@ equivalence.
 }
 
 \agda{
-is-ff'
+is-hom-equiv
   : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥}
     → (A → B) → Type (𝓘 ⊔ 𝓤 ⊔ 𝓥)
-is-ff' f = ∀ {x y} → is-equiv (ap-hom f {x} {y})
+is-hom-equiv f = ∀ {x y} → is-equiv (ap-hom f {x} {y})
+
+Hom-equiv←is-hom-equiv
+  : ∀ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} {a b : A}
+    → is-hom-equiv f → Hom A a b ≃ Hom B (f a) (f b)
+Hom-equiv←is-hom-equiv {f = f} ff = mk≃ (ap-hom f) ff
 }
 }
 
@@ -96,21 +102,23 @@ open FF public using () renaming
 \subtree[stt-00G4]{
 \title{Equivalences are fully faithful}
 \taxon{Lemma}
-\date{2026-03-11}
 \author{samueltoth}
+\date{2026-03-11}
 
-\p{If #{F} is a family of equivalences, then so is the induced map on total-homs
+\p{
+If #{F} is a family of equivalences, then so is the induced map on total-homs
 #{\Sigma_{a,b}\Hom_A(a,b) \to \Sigma_{a',b'}\Hom_B(a',b')}. Since this map
-is given by #{\Sigma_F \Sigma_F \textsf{ap-hom}(F)}, by the relevant 3 for 2
-theorem, we have that the total is an equivalence, each #{F} is an equivalence so
-#{\textsf{ap-hom}(F)} is also an equivalence.}
+is given by #{\Sigma_F \Sigma_F \textsf{ap-hom}(F)}, by the 3-for-2 property
+we have that the total is an equivalence. Finally, each #{F} is an equivalence so
+#{\textsf{ap-hom}(F)} is an equivalence.
+}
 
 \agda{
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
 
-  is-ff'←is-equiv
-    : {f : A → B} → is-equiv f → is-ff' f
-  is-ff'←is-equiv {f = f} Fe {x} {y}
+  is-hom-equiv←is-equiv
+    : {f : A → B} → is-equiv f → is-hom-equiv f
+  is-hom-equiv←is-equiv {f = f} Fe {x} {y}
     = is-fibrewise-equiv←is-total-equiv (eq2 x) y where
     eq1 : is-equiv (total-map λ a → map-Σ f λ _ → ap-hom f)
     eq1 = 3-for-2
@@ -122,6 +130,15 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} where
     eq2 a = 3-for-2 {f = total-map-fst f}
               (total-is-equiv←fst-is-equiv Fe)
               (is-fibrewise-equiv←is-total-equiv eq1 a)
+
+  Hom-equiv←is-equiv
+    : {f : A → B} {a b : A} → is-equiv f → Hom A a b ≃ Hom B (f a) (f b)
+  Hom-equiv←is-equiv = Hom-equiv←is-hom-equiv ∘ is-hom-equiv←is-equiv
+
+  Hom-equiv
+    : {a b : A} (e : A ≃ B)
+    → Hom A a b ≃ Hom B (e ._≃_.fwd a) (e ._≃_.fwd b)
+  Hom-equiv e = Hom-equiv←is-equiv (e ._≃_.fwd-is-equiv)
 }
 }
 
@@ -137,8 +154,8 @@ are equivalent.
 }
 \proof{
 \p{
-Let #{\iota \colon \partial\Delta^1 \hookrightarrow \Delta^1} be the boundary inclusion.
-Given a map #{f \colon A \to B}, then we have an equivalence of arrows
+Let #{\iota \colon \partial\Delta^1 \hookrightarrow \Delta^1} be the boundary
+inclusion. Given a map #{f \colon A \to B}, then we have an equivalence of arrows
 
 \quiver{
 \begin{tikzcd}
@@ -248,8 +265,8 @@ module CompareFF {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥} (f : A → 
 
 module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
 
-  is-ff'←is-ff : is-ff f → is-ff' f
-  is-ff'←is-ff ι⊥f {x} {y}
+  is-hom-equiv←is-ff : is-ff f → is-hom-equiv f
+  is-hom-equiv←is-ff ι⊥f {x} {y}
     = is-fibrewise-equiv←is-total-equiv
         (is-fibrewise-equiv←is-total-equiv
             (tgt-is-equiv←Arrow-equiv
@@ -259,16 +276,21 @@ module _ {𝓤 𝓥} {A : Type 𝓤} {B : Type 𝓥} {f : A → B} where
           (x))
         (y)
 
-  is-ff←is-ff' : is-ff' f → is-ff f
-  is-ff←is-ff' ap-hom-is-eqv _
+  is-ff←is-hom-equiv : is-hom-equiv f → is-ff f
+  is-ff←is-hom-equiv ap-hom-is-eqv _
     = src-is-equiv←Arrow-equiv
           ( CompareFF.total-ap-hom-square f
           , CompareFF.total-ap-hom-square-is-equiv f)
           (is-total-equiv←is-fibrewise-equiv λ x →
              is-total-equiv←is-fibrewise-equiv λ y → ap-hom-is-eqv {x} {y})
 
-  is-ff↔is-ff' : is-ff f ↔ is-ff' f
-  is-ff↔is-ff' = (is-ff'←is-ff , is-ff←is-ff')
+  is-ff↔is-hom-equiv : is-ff f ↔ is-hom-equiv f
+  is-ff↔is-hom-equiv = (is-hom-equiv←is-ff , is-ff←is-hom-equiv)
+
+  Hom-equiv←is-ff
+    : is-ff f → {a b : A} → Hom A a b ≃ Hom B (f a) (f b)
+  Hom-equiv←is-ff ff
+    = Hom-equiv←is-hom-equiv (is-hom-equiv←is-ff (λ _ → ff tt))
 }
 }
 
@@ -422,8 +444,7 @@ Given a fully faithful map #{F \colon A \to B} and a morphism #{f : \Hom_A(a,b)}
 \proof{
 \p{
 The isomorphism case follows from the split mono + split epi case, and these two
-cases are dual to one another, so let's just demonstrate that split monos are
-reflected.
+cases are dual to one another, so we'll focus on the split mono case.
 }
 
 \p{
@@ -489,31 +510,31 @@ Finally we register the theorems for fully faithful maps.
 module _
   {𝓤 𝓥 : Level} {A : Type 𝓤} {B : Type 𝓥}
   (𝐴 : is-segal A) (𝐵 : is-segal B)
-  {F : A → B} (F-is-ff : is-ff' F)
+  {F : A → B} (F-is-ff : is-hom-equiv F)
   {a b : A} {f : Hom A a b}
   where
 
-  reflects-split-monos←is-ff'
+  reflects-split-monos←is-hom-equiv
     : split-mono-witness (ap-hom F f) → split-mono-witness f
-  reflects-split-monos←is-ff' (r' , η')
+  reflects-split-monos←is-hom-equiv (r' , η')
     = split-mono-witness←ap-hom-fibre 𝐴 𝐵
         (unap-equiv F-is-ff)
         η'
         (is-equiv.bwd F-is-ff r' , is-equiv.ε F-is-ff r')
 
-  reflects-split-epis←is-ff'
+  reflects-split-epis←is-hom-equiv
     : split-epi-witness (ap-hom F f) → split-epi-witness f
-  reflects-split-epis←is-ff' (s' , ε')
+  reflects-split-epis←is-hom-equiv (s' , ε')
     = split-epi-witness←ap-hom-fibre 𝐴 𝐵
         (unap-equiv F-is-ff)
         ε'
         (is-equiv.bwd F-is-ff s' , is-equiv.ε F-is-ff s')
 
-  reflects-isos←is-ff'
+  reflects-isos←is-hom-equiv
     : is-iso (ap-hom F f) → is-iso f
-  reflects-isos←is-ff' (r , s , η , ε)
+  reflects-isos←is-hom-equiv (r , s , η , ε)
     = is-iso←split-mono-witness×split-epi-witness
-        ( reflects-split-monos←is-ff' (r , η)
-        , reflects-split-epis←is-ff' (s , ε))
+        ( reflects-split-monos←is-hom-equiv (r , η)
+        , reflects-split-epis←is-hom-equiv (s , ε))
 }
 }

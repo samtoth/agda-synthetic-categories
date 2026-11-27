@@ -14,6 +14,7 @@ let
       collection-latex
       pgf
       tikz-cd
+      tikz-nfold
       quiver
       babel
       mathtools
